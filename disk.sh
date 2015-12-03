@@ -1,4 +1,4 @@
-MOUNT_DIR="/mnt/Naias"
+MOUNT_DIR="/mnt/Raph_Kernel"
 IMAGE="disk.img"
 
 umount() {
