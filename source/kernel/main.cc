@@ -1,6 +1,7 @@
 #include "global.h"
 #include "spinlock.h"
 #include "acpi.h"
+#include "apic.h"
 #include "multiboot.h"
 #include "mem/physmem.h"
 #include "mem/paging.h"

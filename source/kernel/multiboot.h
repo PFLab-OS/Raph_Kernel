@@ -42,7 +42,6 @@ private:
   void SetupAcpi() {
     kassert(align(multiboot_info, 8) == multiboot_info);
     virt_addr addr = PhysAddr(static_cast<phys_addr>(multiboot_info)).GetVirtAddr();
-    uint32_t size = *(reinterpret_cast<uint32_t *>(addr));
     addr += 8;
     multiboot_tag *tag;
     for (tag = reinterpret_cast<multiboot_tag *>(addr); tag->type != MULTIBOOT_TAG_TYPE_END; addr = alignUp(addr + tag->size, 8), tag = reinterpret_cast<multiboot_tag *>(addr)) {

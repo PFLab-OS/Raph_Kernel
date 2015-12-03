@@ -69,7 +69,7 @@ public:
 
     uint8_t sum = 0;
     uint8_t *byte = reinterpret_cast<uint8_t *>(rsdp);
-    for (int i = 0; i < 20; i++, byte++) {
+    for (uint32_t i = 0; i < 20; i++, byte++) {
       sum += *byte;
     }
     if (sum != 0){
@@ -86,7 +86,7 @@ public:
       return;
     }
     
-    for (int i = 0; i < rsdt->Length; i++) {
+    for (uint32_t i = 0; i < rsdt->Length; i++) {
       ACPISDTHeader *sdth = reinterpret_cast<ACPISDTHeader *>(ptr2virtaddr(rsdt + 1) + i * 4);
       if (strncmp(sdth->Signature, "APIC", 4)) {
         asm volatile("hlt;nop;");
@@ -97,7 +97,7 @@ private:
   int CheckACPISDTHeader(ACPISDTHeader *header) {
     uint8_t sum = 0;
     uint8_t  *byte = reinterpret_cast<uint8_t *>(header);
-    for (int i = 0; i < header->Length; i++, byte++) {
+    for (uint32_t i = 0; i < header->Length; i++, byte++) {
       sum += *byte;
     }
     return (sum == 0);
