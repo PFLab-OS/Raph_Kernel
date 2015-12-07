@@ -49,8 +49,12 @@ hoge.c
 *.i*86
 *.x86_64
 *.hex
+*.img
 
 # Debug files
 *.dSYM/
 *.s
 *.i
+
+# Makefile
+*.d
