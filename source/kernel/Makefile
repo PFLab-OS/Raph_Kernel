@@ -1,5 +1,5 @@
 KERNEL = kernel.elf
-OBJ = boot/boot.o main.o spinlock.o mem/virtmem.o mem/paging.o mem/physmem.o
+OBJ = boot/boot.o main.o spinlock.o apic.o acpi.o mem/virtmem.o mem/paging.o mem/physmem.o
 TEST_OBJ = test_main.o spinlock.o list.o mem/virtmem.o mem/paging.o mem/physmem.o
 BUILD = ../../build/
 DEPS= $(OBJ:%.o=%.d) $(TEST_OBJ:%.o=%.d)

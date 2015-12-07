@@ -113,78 +113,76 @@ setup_paging:
   or  $(PML4E_PRESENT_BIT | PML4E_WRITE_BIT), %eax
   mov %eax, (%edi)
   lea (0x0 + 256 * 8)(%ebx), %edi
-  lea 0x2000(%ebx), %eax
+  lea 0x1000(%ebx), %eax
   or  $(PML4E_PRESENT_BIT | PML4E_WRITE_BIT), %eax
   mov %eax, (%edi)
   lea (0x0 + 511 * 8)(%ebx), %edi
-  lea 0x3000(%ebx), %eax
+  lea 0x2000(%ebx), %eax
   or  $(PML4E_PRESENT_BIT | PML4E_WRITE_BIT), %eax
   mov %eax, (%edi)
 
   // setup pdpt1
   lea (0x1000)(%ebx), %edi
+  lea 0x3000(%ebx), %eax
+  or  $(PDPTE_PRESENT_BIT | PDPTE_WRITE_BIT), %eax
+  mov %eax, (%edi)
+  lea (0x1000 + 1 * 8)(%ebx), %edi
   lea 0x4000(%ebx), %eax
   or  $(PDPTE_PRESENT_BIT | PDPTE_WRITE_BIT), %eax
   mov %eax, (%edi)
-
-  // setup pdpt2
-  lea (0x2000)(%ebx), %edi
-  lea 0x10000(%ebx), %eax
-  or  $(PDPTE_PRESENT_BIT | PDPTE_WRITE_BIT), %eax
-  mov %eax, (%edi)
-
-  lea (0x10000)(%ebx), %edi
-  mov $0, %ecx
-  mov $0, %eax
-setup_linear_addr_loop:
-  or  $(PDE_PRESENT_BIT | PDE_WRITE_BIT | PDE_2MPAGE_BIT | PDE_GLOBAL_BIT), %eax
-  mov %eax, (%edi)
-  inc %ecx
-  cmp $512, %ecx
-  je  setup_linear_addr_end
-  add $8, %edi
-  add $0x200000, %eax
-  jmp setup_linear_addr_loop
-
-setup_linear_addr_end: 
-  
-  // setup pdpt3
-  lea (0x3000 + 510 * 8)(%ebx), %edi
+  lea (0x1000 + 2 * 8)(%ebx), %edi
   lea 0x5000(%ebx), %eax
   or  $(PDPTE_PRESENT_BIT | PDPTE_WRITE_BIT), %eax
   mov %eax, (%edi)
-  lea (0x3000 + 511 * 8)(%ebx), %edi
+  lea (0x1000 + 3 * 8)(%ebx), %edi
   lea 0x6000(%ebx), %eax
+  or  $(PDPTE_PRESENT_BIT | PDPTE_WRITE_BIT), %eax
+  mov %eax, (%edi)
+  
+  // setup pdpt2
+  lea (0x2000 + 510 * 8)(%ebx), %edi
+  lea 0x7000(%ebx), %eax
+  or  $(PDPTE_PRESENT_BIT | PDPTE_WRITE_BIT), %eax
+  mov %eax, (%edi)
+  lea (0x2000 + 511 * 8)(%ebx), %edi
+  lea 0x8000(%ebx), %eax
   or  $(PDPTE_PRESENT_BIT | PDPTE_WRITE_BIT), %eax
   mov %eax, (%edi)
 
   // setup pd1
-  lea 0x4000(%ebx), %edi
-  lea 0x7000(%ebx), %eax
-  or  $(PDE_PRESENT_BIT | PDE_WRITE_BIT), %eax
-  mov %eax, (%edi)
+  lea (0x3000)(%ebx), %edi
+  mov $0, %eax
+  call setup_1G_table
 
   // setup pd2
-  lea 0x5000(%ebx), %edi
+  lea (0x4000)(%ebx), %edi
+  mov $0x40000000, %eax
+  call setup_1G_table
+
+  // setup pd3
+  lea (0x5000)(%ebx), %edi
+  mov $0x80000000, %eax
+  call setup_1G_table
+
+  // setup pd4
+  lea (0x6000)(%ebx), %edi
+  mov $0xC0000000, %eax
+  call setup_1G_table
+
+  // setup pd5
+  lea 0x7000(%ebx), %edi
   mov $0, %eax
   or  $(PDE_PRESENT_BIT | PDE_WRITE_BIT | PDE_2MPAGE_BIT | PDE_GLOBAL_BIT), %eax
   mov %eax, (%edi)
 
-  // setup pd3
-  lea (0x6000 + 511 * 8)(%ebx), %edi
-  lea 0x8000(%ebx), %eax
+  // setup pd6
+  lea (0x8000 + 511 * 8)(%ebx), %edi
+  lea 0x9000(%ebx), %eax
   or  $(PDE_PRESENT_BIT | PDE_WRITE_BIT), %eax
   mov %eax, (%edi)
 
-  // setup pt1
-  lea (0x7000 + 256 * 8)(%ebx), %edi
-  mov $0x100000, %eax
-  or  $(PTE_PRESENT_BIT | PTE_WRITE_BIT | PTE_GLOBAL_BIT), %eax
-  mov %eax, (%edi)
-
   // setup pt3
-  lea (0x8000 + 511 * 8)(%ebx), %edi
-
+  lea (0x9000 + 511 * 8)(%ebx), %edi
   mov $initial_stack_buffer, %eax
   or  $(PTE_PRESENT_BIT | PTE_WRITE_BIT | PTE_GLOBAL_BIT), %eax
   mov %eax, (%edi)
@@ -208,6 +206,20 @@ switchto_longmode:
   lgdt gdtr
   ljmp $0x10, $trampoline
 
+setup_1G_table:
+  mov $0, %ecx
+setup_1G_table_loop:
+  or  $(PDE_PRESENT_BIT | PDE_WRITE_BIT | PDE_2MPAGE_BIT | PDE_GLOBAL_BIT), %eax
+  mov %eax, (%edi)
+  inc %ecx
+  cmp $512, %ecx
+  je  setup_1G_table_end
+  add $8, %edi
+  add $0x200000, %eax
+  jmp setup_1G_table_loop
+setup_1G_table_end:
+  ret
+	
 unknown_state:
   hlt
   jmp unknown_state

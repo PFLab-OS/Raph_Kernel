@@ -115,27 +115,8 @@ class PagingCtrl {
   static const int kPageSize = 0x1000;
   #ifdef __UNIT_TEST__
   entry_type *_pml4t;
-  /*  bool IsPageEntryPresent(virt_addr entry_addr) {
-    assert(entry_addr % sizeof(entry_type) == 0);
-    assert(GetPML4TIndex(entry_addr) == _selfref_pml4t_index);
-    entry_type *pdpt = reinterpret_cast<entry_type *>(RoundAddrOnPageBoundary(_pml4t[GetPML4TIndex(entry_addr)]));
-    entry_type *pd = reinterpret_cast<entry_type *>(RoundAddrOnPageBoundary(pdpt[GetPDPTIndex(entry_addr)]));
-    entry_type *pt = reinterpret_cast<entry_type *>(RoundAddrOnPageBoundary(pd[GetPDPTIndex(entry_addr)]));
-    entry_type *page = reinterpret_cast<entry_type *>(RoundAddrOnPageBoundary(pt[GetPTIndex(entry_addr)]));
-    return (page[GetPageOffset(entry_addr)] & PTE_PRESENT_BIT) != 0;
-  }
-  void SetPageEntry(virt_addr entry_addr, entry_type val) {
-    assert(entry_addr % sizeof(entry_type) == 0);
-    assert(GetPML4TIndex(entry_addr) == _selfref_pml4t_index);
-    entry_type *pdpt = reinterpret_cast<entry_type *>(RoundAddrOnPageBoundary(_pml4t[GetPML4TIndex(entry_addr)]));
-    entry_type *pd = reinterpret_cast<entry_type *>(RoundAddrOnPageBoundary(pdpt[GetPDPTIndex(entry_addr)]));
-    entry_type *pt = reinterpret_cast<entry_type *>(RoundAddrOnPageBoundary(pd[GetPDPTIndex(entry_addr)]));
-    entry_type *page = reinterpret_cast<entry_type *>(RoundAddrOnPageBoundary(pt[GetPTIndex(entry_addr)]));
-    page[GetPageOffset(entry_addr)] = val;
-    }*/
 
   // page structure tablesのindex情報を元に仮想アドレスを算出する
-  // PML4Tの循環参照を使えば、page structure tablesそのものを書き換える事も可能
   static virt_addr CalcVirtAddrFromStructureTableOffset(int pml4_index, int pdpt_index, int pd_index, int pt_index, int offset) {
     assert(IsPageStructureTableIndex(pml4_index));
     assert(IsPageStructureTableIndex(pdpt_index));
@@ -150,7 +131,6 @@ class PagingCtrl {
   #else
 private:
   // page structure tablesのindex情報を元に仮想アドレスを算出する
-  // PML4Tの循環参照を使えば、page structure tablesそのものを書き換える事も可能
   static virt_addr CalcVirtAddrFromStructureTableOffset(int pml4_index, int pdpt_index, int pd_index, int pt_index, int offset) {
     assert(IsPageStructureTableIndex(pml4_index));
     assert(IsPageStructureTableIndex(pdpt_index));
@@ -159,26 +139,12 @@ private:
     return (static_cast<virt_addr>(pml4_index) << 39) | (static_cast<virt_addr>(pdpt_index) << 30) | (static_cast<virt_addr>(pd_index) << 21) << (static_cast<virt_addr>(pt_index) << 12) | offset;
   }
   #endif
-  // ページエントリのpresent bitが立っているか調べる
-  // entry_addrのページが存在するかどうかを判定しているわけではない事に注意
-  // entry_addr: ページエントリが格納されているアドレス
-  static bool IsPageEntryPresent(virt_addr entry_addr) {
-    assert(entry_addr % sizeof(entry_type) == 0);
-    assert(GetPML4TIndex(entry_addr) == _selfref_pml4t_index);
-    return (*(reinterpret_cast<entry_type *>(entry_addr)) & PTE_PRESENT_BIT) != 0;
-  }
-  static void SetPageEntry(virt_addr entry_addr, entry_type val) {
-    assert(entry_addr % sizeof(entry_type) == 0);
-    assert(GetPML4TIndex(entry_addr) == _selfref_pml4t_index);
-    *(reinterpret_cast<phys_addr *>(entry_addr)) = val;
-  }
   static bool IsPageStructureTableIndex(int index) {
     return index >= 0 && index < 512;
   }
   static bool IsPageOffset(int offset) {
     return offset >= 0 && offset < 4096;
   }
-  static const int _selfref_pml4t_index = 510;
 };
 
 #endif // ! ASM_FILE

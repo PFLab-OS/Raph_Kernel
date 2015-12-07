@@ -25,6 +25,7 @@
 
 #include <stdint.h>
 #include <string.h>
+#include "global.h"
 #include "mem/physmem.h"
 
 // RSDP v1
@@ -58,45 +59,32 @@ struct ACPISDTHeader {
   uint32_t CreatorRevision;
 } __attribute__ ((packed));
 
+struct MADT {
+  ACPISDTHeader header;
+  uint32_t lapicCtrlAddr;
+  uint32_t flags;
+  uint8_t table[0];
+} __attribute__ ((packed));
+
+enum class MADTStType : uint8_t {
+  kLocalAPIC = 0,
+    kIOAPIC = 1,
+};
+
+struct MADTSt {
+  MADTStType type;
+  uint8_t length;
+} __attribute__ ((packed));
+
 class AcpiCtrl {
 public:
   AcpiCtrl() {
   }
-  void Setup(RSDPDescriptor *rsdp) {
-    if (strncmp(rsdp->Signature, "RSD PTR ", 8)) {
-      return;
-    }
-
-    uint8_t sum = 0;
-    uint8_t *byte = reinterpret_cast<uint8_t *>(rsdp);
-    for (uint32_t i = 0; i < 20; i++, byte++) {
-      sum += *byte;
-    }
-    if (sum != 0){
-      return;
-    }
-
-    //TODO マッピング範囲内に収まってるかどうか調べた方が良い
-    ACPISDTHeader *rsdt = reinterpret_cast<ACPISDTHeader *>(p2v(rsdp->RsdtAddress));
-    if (strncmp(rsdt->Signature, "RSDT", 4)) {
-      return;
-    }
-    
-    if (!CheckACPISDTHeader(rsdt)) {
-      return;
-    }
-    
-    for (uint32_t i = 0; i < rsdt->Length; i++) {
-      ACPISDTHeader *sdth = reinterpret_cast<ACPISDTHeader *>(ptr2virtaddr(rsdt + 1) + i * 4);
-      if (strncmp(sdth->Signature, "APIC", 4)) {
-        asm volatile("hlt;nop;");
-      }
-    }
-  }
+  void Setup(RSDPDescriptor *rsdp);
 private:
   int CheckACPISDTHeader(ACPISDTHeader *header) {
     uint8_t sum = 0;
-    uint8_t  *byte = reinterpret_cast<uint8_t *>(header);
+    uint8_t *byte = reinterpret_cast<uint8_t *>(header);
     for (uint32_t i = 0; i < header->Length; i++, byte++) {
       sum += *byte;
     }

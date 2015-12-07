@@ -30,6 +30,8 @@ extern "C" int main() {
 
   multiboot_ctrl->Setup();
 
+  apic_ctrl->Setup();
+
   VirtmemCtrl _virtmem_ctrl;
   virtmem_ctrl = &_virtmem_ctrl;
 
