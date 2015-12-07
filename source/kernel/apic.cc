@@ -70,13 +70,15 @@ void ApicCtrl::Lapic::Setup() {
   _ctrlAddr[kRegSvr] = kRegSvrApicEnableFlag | (32 + 31); // TODO
 
   // disable all local interrupt sources
-  _ctrlAddr[kRegLvtTimer] = kRegLintMask;
+  _ctrlAddr[kRegLvtTimer] = kRegLvtMask | kRegTimerPeriodic;
   // TODO : check APIC version before mask tsensor & pcnt
-  _ctrlAddr[kRegLvtThermalSensor] = kRegLintMask;
-  _ctrlAddr[kRegLvtPerformanceCnt] = kRegLintMask;
-  _ctrlAddr[kRegLvtLint0] = kRegLintMask;
-  _ctrlAddr[kRegLvtLint1] = kRegLintMask;
-  _ctrlAddr[kRegLvtErr] = 32 + 19; // TODO  
+  _ctrlAddr[kRegLvtThermalSensor] = kRegLvtMask;
+  _ctrlAddr[kRegLvtPerformanceCnt] = kRegLvtMask;
+  _ctrlAddr[kRegLvtLint0] = kRegLvtMask;
+  _ctrlAddr[kRegLvtLint1] = kRegLvtMask;
+  _ctrlAddr[kRegLvtErr] = 32 + 19; // TODO
+
+  
 }
 
 void ApicCtrl::Ioapic::Setup() {

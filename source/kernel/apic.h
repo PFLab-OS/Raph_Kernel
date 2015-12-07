@@ -77,7 +77,8 @@ private:
     static const int kRegLvtErr = 0x370 / sizeof(uint32_t);
 
     // see intel64 manual vol3 Figure 10-8 (Local Vector Table)
-    static const int kRegLintMask = 1 << 16;
+    static const int kRegLvtMask = 1 << 16;
+    static const int kRegTimerPeriodic = 1 << 17;
 
     // see intel64 manual vol3 Figure 10-23 (Spurious-Interrupt Vector Register)
     static const uint32_t kRegSvrApicEnableFlag = 1 << 8;
