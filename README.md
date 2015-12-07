@@ -20,3 +20,4 @@ There are many references to create Raph_Kernel. In the source code, I used shor
 - intel64 manual : intel64 and IA-32 architectures software developer's manual
 - mp spec : MultiProcessor Specification
 - IOAPIC manual : 82093AA I/O Advanced Programmable Interrupt Controller (IOAPIC)
+- acpi spec: Advanced Configuration and Power Interface Specification

@@ -29,6 +29,7 @@
 struct ACPISDTHeader;
 struct MADTSt;
 
+// see acpi spec
 struct MADTStLAPIC {
   MADTSt st;
   uint8_t pid;
@@ -36,6 +37,7 @@ struct MADTStLAPIC {
   uint32_t flags;
 } __attribute__ ((packed));
 
+// see acpi spec
 struct MADTStIOAPIC {
   MADTSt st;
   uint8_t length;
@@ -54,18 +56,51 @@ public:
     _madt = table;
   }
 private:
-  void SetupLapic();
   MADT *_madt = nullptr;
-  uint32_t *_lapicCtrlAddr = nullptr;
+  class Lapic {
+  public:
+    void Setup();
+    void SetCtrlAddr(uint32_t *ctrlAddr) {
+      _ctrlAddr = ctrlAddr;
+    }
+  private:
+    uint32_t *_ctrlAddr = nullptr;
+    static const int kIa32ApicBaseMsr = 0x1B;
+    static const uint32_t kApicGlobalEnableFlag = 1 << 11;
+    // see intel64 manual vol3 Table 10-1 (Local APIC Register Address Map)
+    static const int kRegSvr = 0xF0 / sizeof(uint32_t);
+    static const int kRegLvtTimer = 0x320 / sizeof(uint32_t);
+    static const int kRegLvtThermalSensor = 0x330 / sizeof(uint32_t);
+    static const int kRegLvtPerformanceCnt = 0x340 / sizeof(uint32_t);
+    static const int kRegLvtLint0 = 0x350 / sizeof(uint32_t);
+    static const int kRegLvtLint1 = 0x360 / sizeof(uint32_t);
+    static const int kRegLvtErr = 0x370 / sizeof(uint32_t);
 
-  static const int kIa32ApicBaseMsr = 0x1B;
-  static const uint32_t kApicGlobalEnableFlag = 1 << 11;
-  // see intel64 manual vol3 Table 10-1 (Local APIC Register Address Map)
-  static const int kLapicRegSvr = 0xF0 / sizeof(uint32_t);
-  static const int kLapicRegLvtErr = 0x370 / sizeof(uint32_t);
+    // see intel64 manual vol3 Figure 10-8 (Local Vector Table)
+    static const int kRegLintMask = 1 << 16;
 
-  // see intel64 manual vol3 Figure 10-23 (Spurious-Interrupt Vector Register)
-  static const uint32_t kLapicRegSvrApicEnableFlag = 1 << 8;
+    // see intel64 manual vol3 Figure 10-23 (Spurious-Interrupt Vector Register)
+    static const uint32_t kRegSvrApicEnableFlag = 1 << 8;
+  } _lapic;
+  class Ioapic {
+  public:
+    void Setup();
+    uint32_t Read(uint32_t index) {
+      _reg[kIndex] = index;
+      return _reg[kData];
+    }
+    void Write(uint32_t index, uint32_t data) {
+      _reg[kIndex] = index;
+      _reg[kData] = data;
+    }
+    void SetReg(uint32_t *reg) {
+      _reg = reg;
+    }
+  private:
+    uint32_t *_reg = nullptr;
+    static const int kIndex = 0x0;
+    static const int kData = 0x10 / sizeof(uint32_t);
+  } _ioapic;
 };
 
 #endif /* __RAPH_KERNEL_APIC_H__ */

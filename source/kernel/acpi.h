@@ -28,6 +28,8 @@
 #include "global.h"
 #include "mem/physmem.h"
 
+// see acpi spec
+
 // RSDP v1
 struct RSDPDescriptor {
   char Signature[8];

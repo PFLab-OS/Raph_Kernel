@@ -34,12 +34,14 @@ void ApicCtrl::Setup() {
       case MADTStType::kLocalAPIC:
 	{
 	  MADTStLAPIC *madtStLAPIC = reinterpret_cast<MADTStLAPIC *>(ptr);
+	  _lapic.SetCtrlAddr(reinterpret_cast<uint32_t *>(p2v(_madt->lapicCtrlAddr)));
 	  ncpu++;
 	}
 	break;
       case MADTStType::kIOAPIC:
 	{
 	  MADTStIOAPIC *madtStIOAPIC = reinterpret_cast<MADTStIOAPIC *>(ptr);
+	  _ioapic.SetReg(reinterpret_cast<uint32_t *>(p2v(madtStIOAPIC->ioapicAddr)));
 	}
 	break;
       default:
@@ -47,16 +49,16 @@ void ApicCtrl::Setup() {
       }
       offset += madtSt->length;
     }
-    if (ncpu > 0) {
-      _lapicCtrlAddr = reinterpret_cast<uint32_t *>(p2v(_madt->lapicCtrlAddr));
-      SetupLapic();
-    }
+    _lapic.Setup();
+    _ioapic.Setup();
   }
 }
 
-void ApicCtrl::SetupLapic() {
-  assert(_lapicCtrlAddr != nullptr);
-
+void ApicCtrl::Lapic::Setup() {
+  if (_ctrlAddr == nullptr) {
+    return;
+  }
+  
   uint32_t msr;
   // check if local apic enabled
   // see intel64 manual vol3 10.4.3 (Enabling or Disabling the Local APIC)
@@ -65,12 +67,22 @@ void ApicCtrl::SetupLapic() {
     return;
   }
 
-  // see intel64 manual vol3 8.4.4 (MP Initialization Example)
-  _lapicCtrlAddr[kLapicRegSvr] |= kLapicRegSvrApicEnableFlag;
-  _lapicCtrlAddr[kLapicRegLvtErr] = 32 + 19; // TODO
-  
+  _ctrlAddr[kRegSvr] = kRegSvrApicEnableFlag | (32 + 31); // TODO
 
-  
+  // disable all local interrupt sources
+  _ctrlAddr[kRegLvtTimer] = kRegLintMask;
+  // TODO : check APIC version before mask tsensor & pcnt
+  _ctrlAddr[kRegLvtThermalSensor] = kRegLintMask;
+  _ctrlAddr[kRegLvtPerformanceCnt] = kRegLintMask;
+  _ctrlAddr[kRegLvtLint0] = kRegLintMask;
+  _ctrlAddr[kRegLvtLint1] = kRegLintMask;
+  _ctrlAddr[kRegLvtErr] = 32 + 19; // TODO  
 
-  asm volatile("hlt; nop;"::"a"(_madt->lapicCtrlAddr));
+  asm volatile("hlt; nop;"::"a"(_ctrlAddr));
+}
+
+void ApicCtrl::Ioapic::Setup() {
+  if (_reg == nullptr) {
+    return;
+  }
 }
