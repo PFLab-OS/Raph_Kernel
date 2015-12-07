@@ -97,9 +97,22 @@ private:
       _reg = reg;
     }
   private:
+    uint32_t GetMaxIntr() {
+      // see IOAPIC manual 3.2.2 (IOAPIC Version Register)
+      return (Read(kRegVer) >> 16) & 0xff;
+    }
     uint32_t *_reg = nullptr;
+    
+    // see IOAPIC manual 3.1 (Memory Mapped Registers for Accessing IOAPIC Registers)
     static const int kIndex = 0x0;
     static const int kData = 0x10 / sizeof(uint32_t);
+
+    // see IOAPIC manual 3.2 (IOAPIC Registers)
+    static const uint32_t kRegVer = 0x1;
+    static const uint32_t kRegRedTbl = 0x10;
+
+    // see IOAPIC manual 3.2.4 (I/O Redirection Table Registers)
+    static const uint32_t kRegRedTblMask = 1 << 16;
   } _ioapic;
 };
 

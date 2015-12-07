@@ -77,12 +77,17 @@ void ApicCtrl::Lapic::Setup() {
   _ctrlAddr[kRegLvtLint0] = kRegLintMask;
   _ctrlAddr[kRegLvtLint1] = kRegLintMask;
   _ctrlAddr[kRegLvtErr] = 32 + 19; // TODO  
-
-  asm volatile("hlt; nop;"::"a"(_ctrlAddr));
 }
 
 void ApicCtrl::Ioapic::Setup() {
   if (_reg == nullptr) {
     return;
+  }
+
+  uint32_t intr = GetMaxIntr();
+  // disable all external I/O interrupts
+  for (uint32_t i = 0; i < intr; i++) {
+    Write(kRegRedTbl + 2 * i, kRegRedTblMask);
+    Write(kRegRedTbl + 2 * i + 1, 0);
   }
 }
