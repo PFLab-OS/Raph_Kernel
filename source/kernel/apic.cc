@@ -69,8 +69,12 @@ void ApicCtrl::Lapic::Setup() {
 
   _ctrlAddr[kRegSvr] = kRegSvrApicEnableFlag | (32 + 31); // TODO
 
+  // setup timer
+  _ctrlAddr[kRegDivConfig] = kDivVal1;
+  _ctrlAddr[kRegTimerInitCnt] = 1448895600;
+
   // disable all local interrupt sources
-  _ctrlAddr[kRegLvtTimer] = kRegLvtMask | kRegTimerPeriodic;
+  _ctrlAddr[kRegLvtTimer] = kRegTimerPeriodic | (32 + 10);
   // TODO : check APIC version before mask tsensor & pcnt
   _ctrlAddr[kRegLvtThermalSensor] = kRegLvtMask;
   _ctrlAddr[kRegLvtPerformanceCnt] = kRegLvtMask;

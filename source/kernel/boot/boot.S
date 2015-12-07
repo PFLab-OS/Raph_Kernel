@@ -61,6 +61,7 @@ multibootheader_end:
 .balign 4
 .text
 entry:
+  cli
   cmp %eax, MULTIBOOT2_BOOTLOADER_MAGIC
   je unknown_state
   mov %ebx, (multiboot_info)

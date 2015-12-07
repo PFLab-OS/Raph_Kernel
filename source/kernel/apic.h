@@ -75,6 +75,11 @@ private:
     static const int kRegLvtLint0 = 0x350 / sizeof(uint32_t);
     static const int kRegLvtLint1 = 0x360 / sizeof(uint32_t);
     static const int kRegLvtErr = 0x370 / sizeof(uint32_t);
+    static const int kRegTimerInitCnt = 0x380 / sizeof(uint32_t);
+    static const int kRegDivConfig = 0x3E0 / sizeof(uint32_t);
+
+    // see intel64 manual vol3 Figure 10-10 (Divide Configuration Register)
+    static const uint32_t kDivVal1 = 0xB;
 
     // see intel64 manual vol3 Figure 10-8 (Local Vector Table)
     static const int kRegLvtMask = 1 << 16;
