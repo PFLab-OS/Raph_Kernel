@@ -24,6 +24,12 @@
 #include "acpi.h"
 #include "apic.h"
 
+extern "C" void entryothers();
+
+void microdelay(int us) {
+  // TODO:
+}
+
 void ApicCtrl::Setup() {
   if (_madt) {
     int ncpu = 0;
@@ -35,6 +41,7 @@ void ApicCtrl::Setup() {
 	{
 	  MADTStLAPIC *madtStLAPIC = reinterpret_cast<MADTStLAPIC *>(ptr);
 	  _lapic.SetCtrlAddr(reinterpret_cast<uint32_t *>(p2v(_madt->lapicCtrlAddr)));
+	  _lapic.apicIds[ncpu] = madtStLAPIC->apicId;
 	  ncpu++;
 	}
 	break;
@@ -51,6 +58,16 @@ void ApicCtrl::Setup() {
     }
     _lapic.Setup();
     _ioapic.Setup();
+    _lapic.ncpu = ncpu;
+  }
+}
+
+void ApicCtrl::StartAPs() {
+  for(int i = 0; i < _lapic.ncpu; i++) {
+    // skip already started core
+    if(i == _lapic.Cpunum()) continue;
+    _lapic.Start(_lapic.apicIds[i], reinterpret_cast<uint64_t>(entryothers));
+    // TODO: wait until core finishs startup
   }
 }
 
@@ -83,6 +100,40 @@ void ApicCtrl::Lapic::Setup() {
   _ctrlAddr[kRegLvtErr] = 32 + 19; // TODO
 
   
+}
+
+void ApicCtrl::Lapic::Start(uint8_t apicId, uint64_t entryPoint) {
+  // set AP shutdown handling
+  // see intel MPspec Appendix B.5
+  uint16_t *warmResetVector;
+  Outb(kIoRtc, 0xf); // 0xf = shutdown code
+  Outb(kIoRtc + 1, 0x0a);
+  warmResetVector = (uint16_t *)p2v((0x40 << 4 | 0x67));
+  warmResetVector[0] = 0;
+  warmResetVector[1] = (entryPoint >> 4) & 0xffff;
+
+  // Universal startup algorithm
+  // see intel MPspec Appendix B.4.1
+  WriteIcr(apicId << 24, kDeliverModeInit | kTriggerModeLevel | kLevelAssert);
+  microdelay(200);
+  WriteIcr(apicId << 24, kDeliverModeInit | kTriggerModeLevel | kLevelDeassert);
+  microdelay(100);
+
+  // Application Processor Setup (defined in MPspec Appendix B.4)
+  // see intel MPspec Appendix B.4.2
+  int i;
+  for(i = 0; i < 2; i++) {
+    WriteIcr(apicId << 24, kDeliverModeStartup | ((entryPoint >> 12) & 0xff));
+    microdelay(200);
+  }
+}
+
+void ApicCtrl::Lapic::WriteIcr(uint32_t hi, uint32_t lo) {
+  _ctrlAddr[kRegIcrHi] = hi;
+  // wait for write to finish, by reading
+  _ctrlAddr[kRegId];
+  _ctrlAddr[kRegIcrLo] = lo;
+  _ctrlAddr[kRegId];
 }
 
 void ApicCtrl::Ioapic::Setup() {

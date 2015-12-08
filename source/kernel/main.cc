@@ -41,6 +41,8 @@ extern "C" int main() {
   PagingCtrl _paging_ctrl;
   paging_ctrl = &_paging_ctrl;
 
+  apic_ctrl->StartAPs();
+
   while(1) {
     asm volatile("hlt");
   }
