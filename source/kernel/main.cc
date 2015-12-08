@@ -41,7 +41,6 @@ Idt *idt;
 extern "C" int main() {
   SpinLockCtrl _spinlock_ctrl;
   spinlock_ctrl = &_spinlock_ctrl;
-
   
   MultibootCtrl _multiboot_ctrl;
   multiboot_ctrl = &_multiboot_ctrl;
@@ -55,7 +54,7 @@ extern "C" int main() {
 
   Idt _idt;
   idt = &_idt;
-  idt->Setup();
+  //  idt->Setup();
 
   VirtmemCtrl _virtmem_ctrl;
   virtmem_ctrl = &_virtmem_ctrl;

@@ -41,7 +41,7 @@ void Idt::Setup() {
   }
   static volatile uint16_t idtr[5];
   virt_addr idt_addr = reinterpret_cast<virt_addr>(idt_def);
-  idtr[0] = 255;
+  idtr[0] = 8*256-1;
   idtr[1] = idt_addr & 0xffff;
   idtr[2] = (idt_addr >> 16) & 0xffff;
   idtr[3] = (idt_addr >> 32) & 0xffff;

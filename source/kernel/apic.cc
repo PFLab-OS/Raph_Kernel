@@ -25,6 +25,7 @@
 #include "apic.h"
 
 extern "C" void entryothers();
+extern "C" void entry();
 
 void microdelay(int us) {
   // TODO:
@@ -41,7 +42,7 @@ void ApicCtrl::Setup() {
 	{
 	  MADTStLAPIC *madtStLAPIC = reinterpret_cast<MADTStLAPIC *>(ptr);
 	  _lapic.SetCtrlAddr(reinterpret_cast<uint32_t *>(p2v(_madt->lapicCtrlAddr)));
-	  _lapic.apicIds[ncpu] = madtStLAPIC->apicId;
+	  _lapic._apicIds[ncpu] = madtStLAPIC->apicId;
 	  ncpu++;
 	}
 	break;
@@ -58,15 +59,23 @@ void ApicCtrl::Setup() {
     }
     _lapic.Setup();
     _ioapic.Setup();
-    _lapic.ncpu = ncpu;
+    _lapic._ncpu = ncpu;
   }
 }
 
+extern uint64_t boot16_start;
+extern uint64_t boot16_end;
+
 void ApicCtrl::StartAPs() {
-  for(int i = 0; i < _lapic.ncpu; i++) {
-    // skip already started core
+  uint64_t *src = &boot16_start;
+  uint64_t *dest = reinterpret_cast<uint64_t *>(0x8000);
+  for (; src < &boot16_end; src++, dest++) {
+    *dest = *src;
+  }
+  for(int i = 0; i < _lapic._ncpu; i++) {
+    // skip BSP
     if(i == _lapic.Cpunum()) continue;
-    _lapic.Start(_lapic.apicIds[i], reinterpret_cast<uint64_t>(entryothers));
+    _lapic.Start(_lapic._apicIds[i], reinterpret_cast<uint64_t>(entryothers));
     // TODO: wait until core finishs startup
   }
 }
@@ -79,7 +88,7 @@ void ApicCtrl::Lapic::Setup() {
   uint32_t msr;
   // check if local apic enabled
   // see intel64 manual vol3 10.4.3 (Enabling or Disabling the Local APIC)
-  asm volatile("rdmsr;":"=a"(msr):"c"(kIa32ApicBaseMsr));
+  asm volatile("cli;rdmsr;sti":"=a"(msr):"c"(kIa32ApicBaseMsr));  //TODO need debug
   if (!(msr & kApicGlobalEnableFlag)) {
     return;
   }
@@ -98,12 +107,11 @@ void ApicCtrl::Lapic::Setup() {
   _ctrlAddr[kRegLvtLint0] = kRegLvtMask;
   _ctrlAddr[kRegLvtLint1] = kRegLvtMask;
   _ctrlAddr[kRegLvtErr] = 32 + 19; // TODO
-  
 }
 
 void ApicCtrl::Lapic::Start(uint8_t apicId, uint64_t entryPoint) {
   // set AP shutdown handling
-  // see intel MPspec Appendix B.5
+  // see mp spec Appendix B.5
   uint16_t *warmResetVector;
   Outb(kIoRtc, 0xf); // 0xf = shutdown code
   Outb(kIoRtc + 1, 0x0a);
@@ -112,14 +120,14 @@ void ApicCtrl::Lapic::Start(uint8_t apicId, uint64_t entryPoint) {
   warmResetVector[1] = (entryPoint >> 4) & 0xffff;
 
   // Universal startup algorithm
-  // see intel MPspec Appendix B.4.1
+  // see mp spec Appendix B.4.1
   WriteIcr(apicId << 24, kDeliverModeInit | kTriggerModeLevel | kLevelAssert);
   microdelay(200);
-  WriteIcr(apicId << 24, kDeliverModeInit | kTriggerModeLevel | kLevelDeassert);
+  WriteIcr(apicId << 24, kDeliverModeInit | kTriggerModeLevel);
   microdelay(100);
 
-  // Application Processor Setup (defined in MPspec Appendix B.4)
-  // see intel MPspec Appendix B.4.2
+  // Application Processor Setup (defined in mp spec Appendix B.4)
+  // see mp spec Appendix B.4.2
   int i;
   for(i = 0; i < 2; i++) {
     WriteIcr(apicId << 24, kDeliverModeStartup | ((entryPoint >> 12) & 0xff));

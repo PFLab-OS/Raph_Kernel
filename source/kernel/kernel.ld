@@ -4,10 +4,11 @@ ENTRY (entry)
 
 SECTIONS{
   kLinearAddrOffset = 0xffffffff80000000;
+
   . = 0x100000;
   virt_memory_start = . + kLinearAddrOffset;
   phys_memory_start = .;
-  .bootstrap : {
+  .boot : {
     *(.bootstrap*) 
     *boot.o (.text*)
     *boot.o (.rodata*)
@@ -15,19 +16,30 @@ SECTIONS{
     *boot.o (.bss*)
   }
 
-  . += kLinearAddrOffset;
-  .text : AT(LOADADDR(.bootstrap) + SIZEOF(.bootstrap)) {
-    *(EXCLUDE_FILE (*boot.o) .text*)
+  . = 0x8000;
+  .boot16 : AT(LOADADDR(.boot) + SIZEOF(.boot)) {
+    *bootap.o (.text*)
+    *bootap.o (.rodata*)
+    *bootap.o (.data*)
+    *bootap.o (.bss*)
+    . = ALIGN(0x1000);
+  }
+  boot16_start = LOADADDR(.boot16);
+  boot16_end = LOADADDR(.boot16) + SIZEOF(.boot16);
+
+  . = kLinearAddrOffset + LOADADDR(.boot16) + SIZEOF(.boot16);
+  .text : AT(LOADADDR(.boot16) + SIZEOF(.boot16)) {
+    *(EXCLUDE_FILE (*boot.o *bootap.o) .text*)
     *(.gnu.linkonce.t*)
   }
 
   .rodata : {
-    *(EXCLUDE_FILE (*boot.o) .rodata*)
+    *(EXCLUDE_FILE (*boot.o *bootap.o) .rodata*)
     *(.gnu.linkonce.r*)
   }
 
   .data : {
-    *(EXCLUDE_FILE (*boot.o) .data*)
+    *(EXCLUDE_FILE (*boot.o *bootap.o) .data*)
     *(.gnu.linkonce.d*)
   }
 
@@ -35,7 +47,7 @@ SECTIONS{
 
   .bss : {
     *(.COMMON*)
-    *(EXCLUDE_FILE (*boot.o) .bss*)
+    *(EXCLUDE_FILE (*boot.o *bootap.o) .bss*)
     lock_data_start = .;
     *(.lock.bss*)
     lock_data_end = .;

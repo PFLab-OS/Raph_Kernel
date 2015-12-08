@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2015 OASIS Project
+ * Copyright (c) 2015 Raphine Project
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -27,11 +27,12 @@
 #include "../idt.h"
 
 #define MULTIBOOTHEADER_SIZE (multibootheader_end - multibootheader_start)
+
 .global entry
 .global multiboot_info
 .code32
-
 .section .bootstrap
+
 .balign 8
 
 .extern initial_stack_buffer
@@ -59,18 +60,7 @@ end_tag_end:
   
 multibootheader_end:
 
-# entry point of APs must be located on the align of 4KB
-# see intel MPspec Appendix B.4.2
-.balign 4096
 .text
-
-.globl entryothers
-entryothers:
-  hlt
-  nop
-  nop
-  nop
-
 entry:
   cli
   cmp %eax, MULTIBOOT2_BOOTLOADER_MAGIC
@@ -278,4 +268,3 @@ gdtr:
 .bss
 tmp_stack: 
   .skip 32
-

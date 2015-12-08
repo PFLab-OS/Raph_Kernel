@@ -57,11 +57,14 @@ public:
   }
   void StartAPs();
   static constexpr int lapicMaxNumber = 128;
+  void SendIpi() {
+    _lapic.SendIpi();
+  }
 private:
   MADT *_madt = nullptr;
   class Lapic {
   public:
-	// setup local APIC respond to specified index
+    // setup local APIC respond to specified index
     void Setup();
     void SetCtrlAddr(uint32_t *ctrlAddr) {
       _ctrlAddr = ctrlAddr;
@@ -70,16 +73,21 @@ private:
       if(_ctrlAddr == nullptr) {
         return 0;
       }
-      for(int n = 0; n < ncpu; n++) {
-        if(_ctrlAddr[kRegId] >> 24 == apicIds[n])
+      for(int n = 0; n < _ncpu; n++) {
+        if(_ctrlAddr[kRegId] >> 24 == _apicIds[n])
           return n;
       }
       return 0;
     }
-	// start local APIC respond to specified index with apicId
+    // start local APIC respond to specified index with apicId
     void Start(uint8_t apicId, uint64_t entryPoint);
-    int ncpu;
-    uint8_t apicIds[lapicMaxNumber];
+    int _ncpu;
+    uint8_t _apicIds[lapicMaxNumber];
+
+    void SendIpi() {
+      // debug
+      WriteIcr(0 << 24, kTriggerModeLevel | kLevelAssert | 0x32);  
+    }
   private:
     uint32_t *_ctrlAddr = nullptr;
     static const int kIa32ApicBaseMsr = 0x1B;
@@ -113,7 +121,6 @@ private:
     static const uint32_t kDeliverModeStartup = 0x00000600;
 
     // see intel64 manual vol3 Figure 10-12 (Interrupt Command Register)
-    static const uint32_t kLevelDeassert = 0x00000000;
     static const uint32_t kLevelAssert   = 0x00004000;
     static const uint32_t kTriggerModeEdge  = 0x00000000;
     static const uint32_t kTriggerModeLevel = 0x00008000;
