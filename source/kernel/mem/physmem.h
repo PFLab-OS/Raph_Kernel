@@ -39,6 +39,18 @@ static inline virt_addr p2v(phys_addr addr) {
   return reinterpret_cast<virt_addr>(0xffff800000000000 + addr);
 }
 
+static inline phys_addr v2p(virt_addr addr) {
+  assert(addr >= 0xffff800000000000);
+  return reinterpret_cast<phys_addr>(addr - 0xffff800000000000);
+}
+
+extern char kLinearAddrOffset;
+static inline phys_addr k2p(virt_addr addr) {
+  virt_addr koffset = ptr2virtaddr(&kLinearAddrOffset);
+  assert(addr >= koffset);
+  return reinterpret_cast<phys_addr>(addr - koffset);
+}
+
 template <typename ptr> static inline ptr *p2v(ptr *addr) {
   return reinterpret_cast<ptr *>(p2v(reinterpret_cast<phys_addr>(addr)));
 }

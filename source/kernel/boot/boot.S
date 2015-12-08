@@ -24,6 +24,7 @@
 #include "multiboot2.h"
 #include "../mem/virtmem.h"
 #include "../mem/paging.h"
+#include "../idt.h"
 
 #define MULTIBOOTHEADER_SIZE (multibootheader_end - multibootheader_start)
 .global entry
@@ -205,7 +206,7 @@ switchto_longmode:
   or $(1 << 31), %eax
   mov %eax, %cr0
   lgdt gdtr
-  ljmp $0x10, $trampoline
+  ljmp $KERNEL_CS, $trampoline
 
 setup_1G_table:
   mov $0, %ecx
@@ -230,7 +231,7 @@ trampoline:
   // lower address(1MB~)
   // this code call c function which mapped at
   // higher address(last 2GB of virtual memory)
-  movl $0x18, %eax
+  movl $KERNEL_DS, %eax
   mov %ax, %ds
   mov %ax, %es
   mov %ax, %fs
@@ -238,7 +239,7 @@ trampoline:
   mov %ax, %ss
   mov $kKernelEndAddr - 3, %rsp
   pushq $0   // return addr
-  pushq $0x10
+  pushq $KERNEL_CS
   mov $main, %rax
   pushq %rax
   mov $kLinearAddrOffset, %rax

@@ -81,7 +81,6 @@ void ApicCtrl::Lapic::Setup() {
   _ctrlAddr[kRegLvtLint0] = kRegLvtMask;
   _ctrlAddr[kRegLvtLint1] = kRegLvtMask;
   _ctrlAddr[kRegLvtErr] = 32 + 19; // TODO
-
   
 }
 

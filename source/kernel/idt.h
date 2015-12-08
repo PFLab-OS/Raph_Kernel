@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2015 Raphine Project
+ * Copyright (c) 2015 Project Raphine
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -20,25 +20,28 @@
  * 
  */
 
-#ifndef __RAPH_KERNEL_GLOBAL_H__
-#define __RAPH_KERNEL_GLOBAL_H__
+#ifndef __RAPH_KERNEL_IDT_H__
+#define __RAPH_KERNEL_IDT_H__
 
-class SpinLockCtrl;
-class AcpiCtrl;
-class ApicCtrl;
-class MultibootCtrl;
-class PagingCtrl;
-class PhysmemCtrl;
-class VirtmemCtrl;
-class Idt;
+#define KERNEL_CS (0x10)
+#define KERNEL_DS (0x18)
 
-extern SpinLockCtrl *spinlock_ctrl;
-extern AcpiCtrl *acpi_ctrl;
-extern ApicCtrl *apic_ctrl;
-extern MultibootCtrl *multiboot_ctrl;
-extern PagingCtrl *paging_ctrl;
-extern PhysmemCtrl *physmem_ctrl;
-extern VirtmemCtrl *virtmem_ctrl;
-extern Idt *idt;
+#ifndef ASM_FILE
+#include <stdint.h>
 
-#endif // __RAPH_KERNEL_GLOBAL_H__
+struct Regs {
+  uint64_t rax, rbx, rcx, rdx, rbp, rsi, rdi, r8, r9, r10, r11, r12, r13, r14, r15;
+  uint64_t n, ecode, rip, cs, rflags;
+  uint64_t rsp, ss;
+}__attribute__((__packed__));
+
+class Idt {
+ public:
+  void Setup();
+ private:
+  void SetGate(void (*gate)(Regs *rs), int n, uint8_t dpl, bool trap);
+  static const uint32_t kIdtPresent = 1 << 15;
+};
+
+#endif // ! ASM_FILE
+#endif // __RAPH_KERNEL_IDT_H__

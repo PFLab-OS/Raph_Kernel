@@ -37,9 +37,6 @@ template <typename ptr> inline virt_addr ptr2virtaddr(ptr *addr) {
   return reinterpret_cast<virt_addr>(addr);
 }
 
-// 管理単位
-// 
-
 class VirtmemCtrl {
 public:
   VirtmemCtrl();
