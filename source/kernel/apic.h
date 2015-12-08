@@ -55,20 +55,40 @@ public:
   void SetMADT(MADT *table) {
     _madt = table;
   }
+  void StartAPs();
+  static constexpr int lapicMaxNumber = 128;
 private:
   MADT *_madt = nullptr;
   class Lapic {
   public:
+	// setup local APIC respond to specified index
     void Setup();
     void SetCtrlAddr(uint32_t *ctrlAddr) {
       _ctrlAddr = ctrlAddr;
     }
+    int Cpunum() {
+      if(_ctrlAddr == nullptr) {
+        return 0;
+      }
+      for(int n = 0; n < ncpu; n++) {
+        if(_ctrlAddr[kRegId] >> 24 == apicIds[n])
+          return n;
+      }
+      return 0;
+    }
+	// start local APIC respond to specified index with apicId
+    void Start(uint8_t apicId, uint64_t entryPoint);
+    int ncpu;
+    uint8_t apicIds[lapicMaxNumber];
   private:
     uint32_t *_ctrlAddr = nullptr;
     static const int kIa32ApicBaseMsr = 0x1B;
     static const uint32_t kApicGlobalEnableFlag = 1 << 11;
     // see intel64 manual vol3 Table 10-1 (Local APIC Register Address Map)
+    static const int kRegId = 0x20 / sizeof(uint32_t);
     static const int kRegSvr = 0xF0 / sizeof(uint32_t);
+    static const int kRegIcrLo = 0x300 / sizeof(uint32_t);
+    static const int kRegIcrHi = 0x310 / sizeof(uint32_t);
     static const int kRegLvtTimer = 0x320 / sizeof(uint32_t);
     static const int kRegLvtThermalSensor = 0x330 / sizeof(uint32_t);
     static const int kRegLvtPerformanceCnt = 0x340 / sizeof(uint32_t);
@@ -87,6 +107,25 @@ private:
 
     // see intel64 manual vol3 Figure 10-23 (Spurious-Interrupt Vector Register)
     static const uint32_t kRegSvrApicEnableFlag = 1 << 8;
+
+    // see intel64 manual vol3 10.5.1 (Delivery Mode)
+    static const uint32_t kDeliverModeInit    = 0x00000500;
+    static const uint32_t kDeliverModeStartup = 0x00000600;
+
+    // see intel64 manual vol3 Figure 10-12 (Interrupt Command Register)
+    static const uint32_t kLevelDeassert = 0x00000000;
+    static const uint32_t kLevelAssert   = 0x00004000;
+    static const uint32_t kTriggerModeEdge  = 0x00000000;
+    static const uint32_t kTriggerModeLevel = 0x00008000;
+
+    // see intel MPspec Appendix B.5
+    static const uint32_t kIoRtc = 0x70;
+
+    // write to 64-bit value to local APIC ICR (Interrupt Command Register)
+    void WriteIcr(uint32_t hi, uint32_t lo);
+    void Outb(int pin, uint8_t data) {
+      asm volatile("outb %%al, %%dx"::"d"(pin), "a"(data));
+    }
   } _lapic;
   class Ioapic {
   public:

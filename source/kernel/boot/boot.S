@@ -59,8 +59,18 @@ end_tag_end:
   
 multibootheader_end:
 
-.balign 4
+# entry point of APs must be located on the align of 4KB
+# see intel MPspec Appendix B.4.2
+.balign 4096
 .text
+
+.globl entryothers
+entryothers:
+  hlt
+  nop
+  nop
+  nop
+
 entry:
   cli
   cmp %eax, MULTIBOOT2_BOOTLOADER_MAGIC

@@ -66,7 +66,7 @@ extern "C" int main() {
   PagingCtrl _paging_ctrl;
   paging_ctrl = &_paging_ctrl;
 
-  asm volatile ("cli; movq $1, %rbx; int $0x32");
+  apic_ctrl->StartAPs();
   while(1) {
     asm volatile("hlt");
   }
