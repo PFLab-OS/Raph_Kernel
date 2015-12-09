@@ -7,7 +7,7 @@ BUILD_DIR = build
 default: image
 
 run: image
-	qemu-system-x86_64 -S -gdb tcp::1234 -hda $(IMAGE) -smp 2 -monitor stdio
+	qemu-system-x86_64 -hda $(IMAGE) -smp 2 -monitor stdio
 
 #$(CORE_FILE): $(subst $(MOUNT_DIR)/core,$(BUILD),$@)
 #	cp $< $@
