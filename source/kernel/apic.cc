@@ -88,7 +88,7 @@ void ApicCtrl::Lapic::Setup() {
   uint32_t msr;
   // check if local apic enabled
   // see intel64 manual vol3 10.4.3 (Enabling or Disabling the Local APIC)
-  asm volatile("cli;rdmsr;sti":"=a"(msr):"c"(kIa32ApicBaseMsr));  //TODO need debug
+  asm volatile("rdmsr":"=a"(msr):"c"(kIa32ApicBaseMsr));  //TODO need debug
   if (!(msr & kApicGlobalEnableFlag)) {
     return;
   }
