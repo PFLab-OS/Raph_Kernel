@@ -128,8 +128,7 @@ void ApicCtrl::Lapic::Start(uint8_t apicId, uint64_t entryPoint) {
 
   // Application Processor Setup (defined in mp spec Appendix B.4)
   // see mp spec Appendix B.4.2
-  int i;
-  for(i = 0; i < 2; i++) {
+  for(int i = 0; i < 2; i++) {
     WriteIcr(apicId << 24, kDeliverModeStartup | ((entryPoint >> 12) & 0xff));
     microdelay(200);
   }
