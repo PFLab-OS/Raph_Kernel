@@ -20,32 +20,31 @@
  * 
  */
 
-#ifndef __RAPH_KERNEL_GLOBAL_H__
-#define __RAPH_KERNEL_GLOBAL_H__
+#include "../acpi.h"
+#include "../mem/physmem.h"
+#include "../global.h"
+#include "../tty.h"
+#include "pci.h"
 
-class SpinLockCtrl;
-class AcpiCtrl;
-class ApicCtrl;
-class MultibootCtrl;
-class PagingCtrl;
-class PhysmemCtrl;
-class VirtmemCtrl;
-class Idt;
-class Tty;
-
-class DevPCI;
-
-extern SpinLockCtrl *spinlock_ctrl;
-extern AcpiCtrl *acpi_ctrl;
-extern ApicCtrl *apic_ctrl;
-extern MultibootCtrl *multiboot_ctrl;
-extern PagingCtrl *paging_ctrl;
-extern PhysmemCtrl *physmem_ctrl;
-extern VirtmemCtrl *virtmem_ctrl;
-extern Idt *idt;
-
-extern Tty *gtty;
-
-extern DevPCI *dev_pci;
-
-#endif // __RAPH_KERNEL_GLOBAL_H__
+void DevPCI::Init() {
+  if (_mcfg == nullptr) {
+    // print "could not find MCFG table"
+    return;
+  }
+  for (int i = 0; i * sizeof(MCFGSt) < _mcfg->header.Length - sizeof(ACPISDTHeader); i++) {
+    if (i == 1) {
+      // print "multiple MCFG tables."
+      break;
+    }
+    if (_mcfg->list[i].ecam_base >= 0x100000000) {
+      // print "ECAM base addr is not exist in low 4GB of memory"
+      continue;
+    }
+    _base_addr = p2v(_mcfg->list[i].ecam_base);
+    for (int j = _mcfg->list[i].pci_bus_start; j <= _mcfg->list[i].pci_bus_end; j++) {
+      for (int k = 0; k < 32; k++) {
+	//	_mcfg->list[i].ecam_base | (j << 20) | (k << 15);
+      }
+    }
+  }
+}

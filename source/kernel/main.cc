@@ -28,6 +28,10 @@
 #include "mem/physmem.h"
 #include "mem/paging.h"
 #include "idt.h"
+#include "tty.h"
+
+#include "dev/vga.h"
+#include "dev/pci.h"
 
 SpinLockCtrl *spinlock_ctrl;
 MultibootCtrl *multiboot_ctrl;
@@ -37,6 +41,9 @@ PhysmemCtrl *physmem_ctrl;
 PagingCtrl *paging_ctrl;
 VirtmemCtrl *virtmem_ctrl;
 Idt *idt;
+
+DevPCI *dev_pci;
+Tty *gtty;
 
 extern "C" int main() {
   SpinLockCtrl _spinlock_ctrl;
@@ -48,13 +55,11 @@ extern "C" int main() {
   AcpiCtrl _acpi_ctrl;
   acpi_ctrl = &_acpi_ctrl;
 
-  multiboot_ctrl->Setup();
-
-  apic_ctrl->Setup();
+  DevPCI _dev_pci;
+  dev_pci = &_dev_pci;
 
   Idt _idt;
   idt = &_idt;
-  //  idt->Setup();
 
   VirtmemCtrl _virtmem_ctrl;
   virtmem_ctrl = &_virtmem_ctrl;
@@ -64,6 +69,17 @@ extern "C" int main() {
 
   PagingCtrl _paging_ctrl;
   paging_ctrl = &_paging_ctrl;
+
+  Vga _vga;
+  gtty = &_vga;
+
+  multiboot_ctrl->Setup();
+
+  apic_ctrl->Setup();
+
+  idt->Setup();
+
+  dev_pci->Init();
 
   apic_ctrl->StartAPs();
   while(1) {

@@ -26,8 +26,22 @@
 #include <stdint.h>
 #include "acpi.h"
 
-struct ACPISDTHeader;
-struct MADTSt;
+struct MADT {
+  ACPISDTHeader header;
+  uint32_t lapicCtrlAddr;
+  uint32_t flags;
+  uint8_t table[0];
+} __attribute__ ((packed));
+
+enum class MADTStType : uint8_t {
+  kLocalAPIC = 0,
+    kIOAPIC = 1,
+};
+
+struct MADTSt {
+  MADTStType type;
+  uint8_t length;
+} __attribute__ ((packed));
 
 // see acpi spec
 struct MADTStLAPIC {

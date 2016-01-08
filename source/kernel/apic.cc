@@ -115,7 +115,7 @@ void ApicCtrl::Lapic::Start(uint8_t apicId, uint64_t entryPoint) {
   uint16_t *warmResetVector;
   Outb(kIoRtc, 0xf); // 0xf = shutdown code
   Outb(kIoRtc + 1, 0x0a);
-  warmResetVector = (uint16_t *)p2v((0x40 << 4 | 0x67));
+  warmResetVector = reinterpret_cast<uint16_t *>(p2v((0x40 << 4 | 0x67)));
   warmResetVector[0] = 0;
   warmResetVector[1] = (entryPoint >> 4) & 0xffff;
 
@@ -128,8 +128,7 @@ void ApicCtrl::Lapic::Start(uint8_t apicId, uint64_t entryPoint) {
 
   // Application Processor Setup (defined in mp spec Appendix B.4)
   // see mp spec Appendix B.4.2
-  int i;
-  for(i = 0; i < 2; i++) {
+  for(int i = 0; i < 2; i++) {
     WriteIcr(apicId << 24, kDeliverModeStartup | ((entryPoint >> 12) & 0xff));
     microdelay(200);
   }

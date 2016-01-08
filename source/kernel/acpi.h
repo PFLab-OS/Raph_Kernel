@@ -42,7 +42,6 @@ struct RSDPDescriptor {
 // RSDP v2
 struct RSDPDescriptor20 {
   RSDPDescriptor firstPart;
- 
   uint32_t Length;
   uint64_t XsdtAddress;
   uint8_t ExtendedChecksum;
@@ -59,23 +58,6 @@ struct ACPISDTHeader {
   uint32_t OEMRevision;
   uint32_t CreatorID;
   uint32_t CreatorRevision;
-} __attribute__ ((packed));
-
-struct MADT {
-  ACPISDTHeader header;
-  uint32_t lapicCtrlAddr;
-  uint32_t flags;
-  uint8_t table[0];
-} __attribute__ ((packed));
-
-enum class MADTStType : uint8_t {
-  kLocalAPIC = 0,
-    kIOAPIC = 1,
-};
-
-struct MADTSt {
-  MADTStType type;
-  uint8_t length;
 } __attribute__ ((packed));
 
 class AcpiCtrl {
