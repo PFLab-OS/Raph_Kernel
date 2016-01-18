@@ -20,7 +20,7 @@ image:
 	-mkdir $(BUILD_DIR)
 	make -C source
 	sudo cp grub.cfg $(MOUNT_DIR)/boot/grub/grub.cfg 
-	-sudo rm -r $(MOUNT_DIR)/core
+	-sudo rm -rf $(MOUNT_DIR)/core
 	sudo cp -r $(BUILD_DIR) $(MOUNT_DIR)/core
 	make umount
 
@@ -38,10 +38,10 @@ umount:
 	sh disk.sh umount
 
 deldisk: umount
-	-rm $(IMAGE)
+	-rm -f $(IMAGE)
 
 clean: deldisk
-	-rm -r $(BUILD_DIR)
+	-rm -rf $(BUILD_DIR)
 	make -C source clean
 
 diskclean: deldisk clean

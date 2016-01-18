@@ -31,4 +31,4 @@ $(BUILD)$(KERNEL): $(OBJ) kernel.ld
 	$(LD) -nostdinc -nostdlib -Tkernel.ld $(OBJ) -o $@
 
 clean:
-	-rm $(OBJ) $(TEST) $(DEPS)
+	-rm -f $(OBJ) $(TEST) $(DEPS)
