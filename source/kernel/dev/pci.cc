@@ -28,22 +28,33 @@
 
 void DevPCI::Init() {
   if (_mcfg == nullptr) {
-    // print "could not find MCFG table"
+    gtty->Printf("s", "could not find MCFG table");
     return;
   }
+  gtty->Printf("d", -12340, "s", " ", "x", 0xABC0123, "s", "\n\n");
   for (int i = 0; i * sizeof(MCFGSt) < _mcfg->header.Length - sizeof(ACPISDTHeader); i++) {
     if (i == 1) {
-      // print "multiple MCFG tables."
+      gtty->Printf("s", "multiple MCFG tables.");
       break;
     }
     if (_mcfg->list[i].ecam_base >= 0x100000000) {
-      // print "ECAM base addr is not exist in low 4GB of memory"
+      gtty->Printf("s", "ECAM base addr is not exist in low 4GB of memory");
       continue;
     }
     _base_addr = p2v(_mcfg->list[i].ecam_base);
     for (int j = _mcfg->list[i].pci_bus_start; j <= _mcfg->list[i].pci_bus_end; j++) {
       for (int k = 0; k < 32; k++) {
-	//	_mcfg->list[i].ecam_base | (j << 20) | (k << 15);
+	uint16_t vid = ReadReg<uint16_t>(GetVaddr(j, k, 0, kVendorIDReg));
+	if (vid == 0xffff) {
+	  continue;
+	}
+	gtty->Printf("x", vid, "s", " ");
+	uint16_t did = ReadReg<uint16_t>(GetVaddr(j, k, 0, kDeviceIDReg));
+	gtty->Printf("x", did, "s", " ");
+	if (ReadReg<uint8_t>(GetVaddr(j, k, 0, kHeaderTypeReg)) & kHeaderTypeMultiFunction) {
+	  gtty->Printf("s", "mf");
+	}
+	gtty->Printf("s", "\n");
       }
     }
   }

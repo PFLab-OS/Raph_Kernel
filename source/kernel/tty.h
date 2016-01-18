@@ -23,6 +23,7 @@
 #ifndef __RAPH_KERNEL_TTY_H__
 #define __RAPH_KERNEL_TTY_H__
 
+#include <string.h>
 #include <stdint.h>
 #include <assert.h>
 
@@ -30,43 +31,87 @@ class Tty {
  public:
   Tty() {
   }
-  void Print() {
+  void Printf() {
+  }
+  template<class T>
+    void Printf(T /* arg */) {
   }
   template<class... T2>
-    void Print(const char arg1, const T2& ...args) {
-    Write(arg1);
-    Print(args...);
-  }
-  template<class... T2>
-    void Print(const char* arg1, const T2& ...args) {
-    if (arg1[0] == 0) {
-      return;
-    }
-    Write(arg1[0]);
-    Print(arg1 + 1, args...);
-  }
-  template<class... T2>
-    void Print(const int arg1, const T2& ...args) {
-    if (arg1 >= 0 && arg1 < 10) {
-      Write(arg1 + '0');
-      Print(args...);
-    } else if (arg1 < 0) {
-      Write('-');
-      Print(-arg1, args...);
+    void Printf(const char *arg1, const char arg2, const T2& ...args) {
+    if (strcmp(arg1, "c")) {
+      Printf("s", "(invalid format)", args...);
     } else {
-      int i = arg1;
-      int j = 1;
-      while(i >= 10) {
-	i /= 10;
-	j *= 10;
-      }
-      Write(i + '0');
-      Print(arg1 - i * j, args...);
+      Write(arg2);
+      Printf(args...);
     }
+  }
+  template<class... T2>
+    void Printf(const char* arg1, const char *arg2, const T2& ...args) {
+    if (strcmp(arg1, "s")) {
+      Printf("s", "(invalid format)");
+    } else {
+      if (arg2[0] != 0) {
+	Write(arg2[0]);
+	Printf("s", arg2 + 1);
+      }
+    }
+    Printf(args...);
+  }
+  template<class... T2>
+    void Printf(const char *arg1, const int arg2, const T2& ...args) {
+    if (!strcmp(arg1, "d")) {
+      if (arg2 < 0) {
+	Write('-');
+      }
+      unsigned int _arg2 = (arg2 < 0) ? -arg2 : arg2;
+      unsigned int i = _arg2;
+      int digit = 0;
+      while (i >= 10) {
+	i /= 10;
+	digit++;
+      }
+      for (int j = digit; j >= 0; j--) {
+	i = 1;
+	for (int k = 0; k < j; k++) {
+	  i *= 10;
+	}
+	unsigned int l = _arg2 / i;
+	Write(l + '0');
+	_arg2 -= l * i;
+      }
+    } else if (!strcmp(arg1, "x")) {
+      unsigned int _arg2 = arg2;
+      unsigned int i = _arg2;
+      int digit = 0;
+      while (i >= 16) {
+	i /= 16;
+	digit++;
+      }
+      for (int j = digit; j >= 0; j--) {
+	i = 1;
+	for (int k = 0; k < j; k++) {
+	  i *= 16;
+	}
+	unsigned int l = _arg2 / i;
+	if (l < 10) {
+	  Write(l + '0');
+	} else if (l < 16) {
+	  Write(l - 10 + 'A');
+	}
+	_arg2 -= l * i;
+      }
+    } else {
+      Printf("s", "(invalid format)");
+    }
+    Printf(args...);
   } 
   template<class T1, class... T2>
-    void Print(const T1& /*arg1*/, const T2& ...args) {
-    Print("(unknown)", args...);
+    void Print(const char *arg1, const T1& /*arg2*/, const T2& ...args) {
+    Printf("s", "(unknown)", args...);
+  }
+  template<class T1, class T2, class... T3>
+    void Print(const T1& /*arg1*/, const T2& /*arg2*/, const T3& ...args) {
+    Printf("s", "(invalid format)", args...);
   }
  private:
   virtual void Write(uint8_t c) {

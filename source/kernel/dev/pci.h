@@ -50,8 +50,16 @@ class DevPCI {
   virt_addr GetVaddr(uint8_t bus, uint8_t device, uint8_t func, uint16_t reg) {
     return _base_addr + ((bus & 0xff) << 20) + ((device & 0x1f) << 15) + ((func & 0x7) << 12) + (reg & 0xfff);
   }
+  template<class T> static T ReadReg(virt_addr vaddr) {
+    return *(reinterpret_cast<T *>(vaddr));
+  }
+  static const uint16_t kDevIdentifyReg = 0x2;
+  static const uint16_t kVendorIDReg = 0x00;
+  static const uint16_t kDeviceIDReg = 0x02;
+  static const uint16_t kHeaderTypeReg = 0x0E;
+  static const uint8_t kHeaderTypeMultiFunction = 0x80;
   MCFG *_mcfg = nullptr;
-  virt_addr _base_addr;
+  virt_addr _base_addr = 0;
 };
 
 #endif /* __RAPH_KERNEL_DEV_PCI_H__ */
