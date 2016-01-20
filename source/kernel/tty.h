@@ -58,6 +58,23 @@ class Tty {
     Printf(args...);
   }
   template<class... T2>
+    void Printf(const char *arg1, const int arg2, const T2& ...args) {
+      PrintInt(arg1, arg2, args...);
+    }
+  template<class... T2>
+    void Printf(const char *arg1, const unsigned int arg2, const T2& ...args) {
+      PrintInt(arg1, arg2, args...);
+    }
+  template<class T1, class... T2>
+    void Printf(const char *arg1, const T1& /*arg2*/, const T2& ...args) {
+    Printf("s", "(unknown)", args...);
+  }
+  template<class T1, class T2, class... T3>
+    void Printf(const T1& /*arg1*/, const T2& /*arg2*/, const T3& ...args) {
+    Printf("s", "(invalid format)", args...);
+  }
+ private:
+  template<class... T2>
     void PrintInt(const char *arg1, const int arg2, const T2& ...args) {
     if (!strcmp(arg1, "d")) {
       if (arg2 < 0) {
@@ -105,23 +122,6 @@ class Tty {
     }
     Printf(args...);
   } 
-  template<class... T2>
-    void Printf(const char *arg1, const int arg2, const T2& ...args) {
-      PrintInt(arg1, arg2, args...);
-    }
-  template<class... T2>
-    void Printf(const char *arg1, const unsigned int arg2, const T2& ...args) {
-      PrintInt(arg1, arg2, args...);
-    }
-  template<class T1, class... T2>
-    void Print(const char *arg1, const T1& /*arg2*/, const T2& ...args) {
-    Printf("s", "(unknown)", args...);
-  }
-  template<class T1, class T2, class... T3>
-    void Print(const T1& /*arg1*/, const T2& /*arg2*/, const T3& ...args) {
-    Printf("s", "(invalid format)", args...);
-  }
- private:
   virtual void Write(uint8_t c) {
     assert(false);
   }
