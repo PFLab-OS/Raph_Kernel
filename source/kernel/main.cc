@@ -32,6 +32,7 @@
 
 #include "dev/vga.h"
 #include "dev/pci.h"
+#include "dev/e1000.h"
 
 SpinLockCtrl *spinlock_ctrl;
 MultibootCtrl *multiboot_ctrl;
@@ -43,6 +44,7 @@ VirtmemCtrl *virtmem_ctrl;
 Idt *idt;
 
 DevPCI *dev_pci;
+E1000 *e1000;
 Tty *gtty;
 
 extern "C" int main() {
@@ -57,6 +59,9 @@ extern "C" int main() {
 
   DevPCI _dev_pci;
   dev_pci = &_dev_pci;
+
+  E1000 _e1000;
+  e1000 = &_e1000;
 
   Idt _idt;
   idt = &_idt;
@@ -80,6 +85,8 @@ extern "C" int main() {
   idt->Setup();
 
   dev_pci->Init();
+
+  e1000->Setup();
 
   apic_ctrl->StartAPs();
   while(1) {

@@ -58,7 +58,7 @@ class Tty {
     Printf(args...);
   }
   template<class... T2>
-    void Printf(const char *arg1, const int arg2, const T2& ...args) {
+    void PrintInt(const char *arg1, const int arg2, const T2& ...args) {
     if (!strcmp(arg1, "d")) {
       if (arg2 < 0) {
 	Write('-');
@@ -105,6 +105,14 @@ class Tty {
     }
     Printf(args...);
   } 
+  template<class... T2>
+    void Printf(const char *arg1, const int arg2, const T2& ...args) {
+      PrintInt(arg1, arg2, args...);
+    }
+  template<class... T2>
+    void Printf(const char *arg1, const unsigned int arg2, const T2& ...args) {
+      PrintInt(arg1, arg2, args...);
+    }
   template<class T1, class... T2>
     void Print(const char *arg1, const T1& /*arg2*/, const T2& ...args) {
     Printf("s", "(unknown)", args...);

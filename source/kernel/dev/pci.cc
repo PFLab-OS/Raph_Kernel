@@ -51,6 +51,10 @@ void DevPCI::Init() {
 	gtty->Printf("x", vid, "s", " ");
 	uint16_t did = ReadReg<uint16_t>(GetVaddr(j, k, 0, kDeviceIDReg));
 	gtty->Printf("x", did, "s", " ");
+
+	uint32_t base_addr = ReadReg<uint32_t>(GetVaddr(j, k, 0, kBassAddress0));
+	gtty->Printf("x", base_addr, "s", " ");
+
 	if (ReadReg<uint8_t>(GetVaddr(j, k, 0, kHeaderTypeReg)) & kHeaderTypeMultiFunction) {
 	  gtty->Printf("s", "mf");
 	}
