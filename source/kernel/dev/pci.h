@@ -58,6 +58,7 @@ class DevPCI {
   static const uint16_t kDeviceIDReg = 0x02;
   static const uint16_t kHeaderTypeReg = 0x0E;
   static const uint32_t kBassAddress0 = 0x10;
+  static const uint32_t kBassAddress1 = 0x14;
   static const uint8_t kHeaderTypeMultiFunction = 0x80;
   MCFG *_mcfg = nullptr;
   virt_addr _base_addr = 0;

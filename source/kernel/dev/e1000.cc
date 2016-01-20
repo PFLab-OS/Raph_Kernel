@@ -29,8 +29,6 @@
 void E1000::Setup() {
   // the following sequence is indicated in pcie-gbe-controllers 14.3
 
-//  _mmioAddr = reinterpret_cast<uint32_t *>(*kPCIeBAR);
-
   // disable interrupts (see 13.3.32)
   _mmioAddr[kRegImc] = 0xffffffff;
 
@@ -172,10 +170,10 @@ uint16_t E1000::EepromRead(uint16_t addr) {
   // see pcie-gbe-controllers 5.2.1
 
   // notify start bit and addr
-  _mmioAddr[kRegEerd] = (((addr << 8) & 0xff) | 1);
+  _mmioAddr[kRegEerd] = (((addr & 0xff) << 8) | 1);
+  gtty->Printf("x", _mmioAddr[0], "s", " ", "x", (((addr & 0xff) << 8) | 1));
   
   // polling
-//  while(!(_mmioAddr[kRegEerd] & (1 << 1))) {
   while(!(_mmioAddr[kRegEerd] & (1 << 4))) {
     // busy-wait
   }

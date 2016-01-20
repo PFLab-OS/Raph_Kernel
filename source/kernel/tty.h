@@ -58,11 +58,35 @@ class Tty {
     Printf(args...);
   }
   template<class... T2>
-    void Printf(const char *arg1, const int arg2, const T2& ...args) {
+    void Printf(const char *arg1, const int8_t arg2, const T2& ...args) {
       PrintInt(arg1, arg2, args...);
     }
   template<class... T2>
-    void Printf(const char *arg1, const unsigned int arg2, const T2& ...args) {
+    void Printf(const char *arg1, const int16_t arg2, const T2& ...args) {
+      PrintInt(arg1, arg2, args...);
+    }
+  template<class... T2>
+    void Printf(const char *arg1, const int32_t arg2, const T2& ...args) {
+      PrintInt(arg1, arg2, args...);
+    }
+  template<class... T2>
+    void Printf(const char *arg1, const int64_t arg2, const T2& ...args) {
+      PrintInt(arg1, arg2, args...);
+    }
+  template<class... T2>
+    void Printf(const char *arg1, const uint8_t arg2, const T2& ...args) {
+      PrintInt(arg1, arg2, args...);
+    }
+  template<class... T2>
+    void Printf(const char *arg1, const uint16_t arg2, const T2& ...args) {
+      PrintInt(arg1, arg2, args...);
+    }
+  template<class... T2>
+    void Printf(const char *arg1, const uint32_t arg2, const T2& ...args) {
+      PrintInt(arg1, arg2, args...);
+    }
+  template<class... T2>
+    void Printf(const char *arg1, const uint64_t arg2, const T2& ...args) {
       PrintInt(arg1, arg2, args...);
     }
   template<class T1, class... T2>

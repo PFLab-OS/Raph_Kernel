@@ -24,6 +24,7 @@
 #define __RAPH_KERNEL_E1000_H__
 
 #include <stdint.h>
+#include "../mem/physmem.h"
 
 /*
  * e1000 is the driver for Intel 8254x/8256x/8257x and so on.
@@ -98,7 +99,7 @@ public:
   uint8_t tx_buf_[kBufSize];
 private:
   // Memory Mapped I/O Base Address
-  uint32_t *_mmioAddr = reinterpret_cast<uint32_t *>(0xfebc0000);
+  uint32_t *_mmioAddr = reinterpret_cast<uint32_t *>(p2v(0xfebc0000));
   // software reset of e1000 device
   void Reset();
   // initialize receiver
