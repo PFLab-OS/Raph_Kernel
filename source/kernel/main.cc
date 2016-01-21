@@ -87,6 +87,7 @@ extern "C" int main() {
   dev_pci->Init();
 
   e1000->Setup();
+  e1000->PrintEthAddr();
 
   apic_ctrl->StartAPs();
   while(1) {

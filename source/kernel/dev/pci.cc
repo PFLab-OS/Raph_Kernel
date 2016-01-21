@@ -53,7 +53,8 @@ void DevPCI::Init() {
 	gtty->Printf("x", did, "s", " ");
 
 	uint32_t base_addr = ReadReg<uint32_t>(GetVaddr(j, k, 0, kBassAddress0));
-	gtty->Printf("x", base_addr, "s", " ");
+	gtty->Printf("s", "bus:", "x", j, "s", " dev:", "x", k, "s", " ");
+	gtty->Printf("s", "BAR:", "x", base_addr, "s", " ");
 
 	if (ReadReg<uint8_t>(GetVaddr(j, k, 0, kHeaderTypeReg)) & kHeaderTypeMultiFunction) {
 	  gtty->Printf("s", "mf");

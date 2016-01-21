@@ -97,9 +97,11 @@ public:
   uint8_t rx_buf_[kBufSize];
   // transmit buffer
   uint8_t tx_buf_[kBufSize];
+  // for debugging
+  void PrintEthAddr();
 private:
   // Memory Mapped I/O Base Address
-  uint32_t *_mmioAddr = reinterpret_cast<uint32_t *>(p2v(0xfebc0000));
+  uint32_t *_mmioAddr = reinterpret_cast<uint32_t*>(p2v(0xfebc0000));
   // software reset of e1000 device
   void Reset();
   // initialize receiver
@@ -119,37 +121,37 @@ private:
   E1000TxDesc tx_desc_buf_[kTxdescNumber];
 
   // Ethernet Controller EEPROM Map (see pcie-gbe-controllers Table 5-2)
-  static const int kEepromEthAddrLo = 0x00;
+  static const int kEepromEthAddrHi = 0x00;
   static const int kEepromEthAddrMd = 0x01;
-  static const int kEepromEthAddrHi = 0x02;
+  static const int kEepromEthAddrLo = 0x02;
   static const int kEepromPciDeviceId = 0x0d;
   static const int kEepromPciVendorId = 0x0e;
 
   // Ethernet Controller Register Summary (see pcie-gbe-controllers Table 13-3)
-  static const int kRegCtrl = 0x00000;
-  static const int kRegEerd = 0x00014;
-  static const int kRegCtrlExt = 0x00018;
-  static const int kRegIms = 0x000d0;
-  static const int kRegImc = 0x000d8;
-  static const int kRegRctl = 0x00100;
-  static const int kRegTctl = 0x00400;
-  static const int kRegTipg = 0x00410;
-  static const int kRegRdbal0 = 0x02800;
-  static const int kRegRdbah0 = 0x02804;
-  static const int kRegRdlen0 = 0x02808;
-  static const int kRegRdh0 = 0x02810;
-  static const int kRegRdt0 = 0x02818;
-  static const int kRegRxdctl = 0x02828;
-  static const int kRegTdbal = 0x03800;
-  static const int kRegTdbah = 0x03804;
-  static const int kRegTdlen = 0x03808;
-  static const int kRegTdh = 0x03810;
-  static const int kRegTdt = 0x03814;
-  static const int kRegTxdctl = 0x03828;
-  static const int kRegTxdctl1 = 0x03928;
-  static const int kRegMta = 0x05200;
-  static const int kRegRal0 = 0x05400;
-  static const int kRegRah0 = 0x05404;
+  static const int kRegCtrl = 0x00000 / sizeof(uint32_t);
+  static const int kRegEerd = 0x00014 / sizeof(uint32_t);
+  static const int kRegCtrlExt = 0x00018 / sizeof(uint32_t);
+  static const int kRegIms = 0x000d0 / sizeof(uint32_t);
+  static const int kRegImc = 0x000d8 / sizeof(uint32_t);
+  static const int kRegRctl = 0x00100 / sizeof(uint32_t);
+  static const int kRegTctl = 0x00400 / sizeof(uint32_t);
+  static const int kRegTipg = 0x00410 / sizeof(uint32_t);
+  static const int kRegRdbal0 = 0x02800 / sizeof(uint32_t);
+  static const int kRegRdbah0 = 0x02804 / sizeof(uint32_t);
+  static const int kRegRdlen0 = 0x02808 / sizeof(uint32_t);
+  static const int kRegRdh0 = 0x02810 / sizeof(uint32_t);
+  static const int kRegRdt0 = 0x02818 / sizeof(uint32_t);
+  static const int kRegRxdctl = 0x02828 / sizeof(uint32_t);
+  static const int kRegTdbal = 0x03800 / sizeof(uint32_t);
+  static const int kRegTdbah = 0x03804 / sizeof(uint32_t);
+  static const int kRegTdlen = 0x03808 / sizeof(uint32_t);
+  static const int kRegTdh = 0x03810 / sizeof(uint32_t);
+  static const int kRegTdt = 0x03814 / sizeof(uint32_t);
+  static const int kRegTxdctl = 0x03828 / sizeof(uint32_t);
+  static const int kRegTxdctl1 = 0x03928 / sizeof(uint32_t);
+  static const int kRegMta = 0x05200 / sizeof(uint32_t);
+  static const int kRegRal0 = 0x05400 / sizeof(uint32_t);
+  static const int kRegRah0 = 0x05404 / sizeof(uint32_t);
 
   // CTRL Register Bit Description (see pcie-gbe-controllers Table 13-4)
   static const int kRegCtrlSluFlag = 1 << 6;

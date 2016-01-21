@@ -171,7 +171,6 @@ uint16_t E1000::EepromRead(uint16_t addr) {
 
   // notify start bit and addr
   _mmioAddr[kRegEerd] = (((addr & 0xff) << 8) | 1);
-  gtty->Printf("x", _mmioAddr[0], "s", " ", "x", (((addr & 0xff) << 8) | 1));
   
   // polling
   while(!(_mmioAddr[kRegEerd] & (1 << 4))) {
@@ -179,4 +178,17 @@ uint16_t E1000::EepromRead(uint16_t addr) {
   }
 
   return (_mmioAddr[kRegEerd] >> 16) & 0xffff;
+}
+
+void E1000::PrintEthAddr() {
+  uint16_t ethaddr_lo = this->EepromRead(kEepromEthAddrLo);
+  uint16_t ethaddr_md = this->EepromRead(kEepromEthAddrMd);
+  uint16_t ethaddr_hi = this->EepromRead(kEepromEthAddrHi);
+  gtty->Printf("s", "MAC Address ... ");
+  gtty->Printf("x", (ethaddr_hi & 0xff), "s", ":");
+  gtty->Printf("x", (ethaddr_hi >> 8) & 0xff, "s", ":");
+  gtty->Printf("x", (ethaddr_md & 0xff), "s", ":");
+  gtty->Printf("x", (ethaddr_md >> 8) & 0xff, "s", ":");
+  gtty->Printf("x", (ethaddr_lo & 0xff), "s", ":");
+  gtty->Printf("x", (ethaddr_lo >> 8) & 0xff, "s", "\n");
 }
