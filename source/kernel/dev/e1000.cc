@@ -41,13 +41,19 @@ void E1000::Setup() {
   // enable link (connection between L1(PHY) and L2(MAC), see 14.8)
   _mmioAddr[kRegCtrl] |= kRegCtrlSluFlag;
 
-  // general config (mainly focus on Intel 82571EB, see 14.5)
-  // TODO: handle other chips appropriately
-  // disable link mode (see 12.5)
-  _mmioAddr[kRegCtrlExt] &= (~kRegCtrlExtLinkModeMask);
-  _mmioAddr[kRegCtrl] &= (~kRegCtrlIlosFlag);
-  _mmioAddr[kRegTxdctl] |= (1 << 22);
-  _mmioAddr[kRegTxdctl1] |= (1 << 22);
+  // general config (82571x -> 14.5, 8254x -> 14.3)
+  switch(kDeviceId) {
+    case kI8257x:
+      // disable link mode (see 12.5)
+      _mmioAddr[kRegCtrlExt] &= (~kRegCtrlExtLinkModeMask);
+      _mmioAddr[kRegCtrl] &= (~kRegCtrlIlosFlag);
+      _mmioAddr[kRegTxdctl] |= (1 << 22);
+      _mmioAddr[kRegTxdctl1] |= (1 << 22);
+      break;
+    case kI8254x:
+      _mmioAddr[kRegCtrl] &= (~kRegCtrlPhyRstFlag | ~kRegCtrlVmeFlag);
+      break;
+  }
 
   // initialize receiver/transmitter ring buffer
   this->SetupRx();
@@ -98,7 +104,7 @@ void E1000::SetupRx() {
   // (see the definition of E1000 class)
 
   // set base address of ring buffer
-  _mmioAddr[kRegRdbal0] = v2p(reinterpret_cast<virt_addr>(rx_desc_buf_)) & 0xffffffff; // must be 16B-aligned
+  _mmioAddr[kRegRdbal0] = v2p(reinterpret_cast<virt_addr>(rx_desc_buf_)) & 0xffffffff; // TODO: must be 16B-aligned
   _mmioAddr[kRegRdbah0] = v2p(reinterpret_cast<virt_addr>(rx_desc_buf_)) >> 32;
 
   // set the size of the desc ring
@@ -138,7 +144,7 @@ void E1000::SetupTx() {
   // (see the definition of E1000 class)
 
   // set base address of ring buffer
-  _mmioAddr[kRegTdbal] = v2p(reinterpret_cast<virt_addr>(tx_desc_buf_)) & 0xffffffff; // must be 16B-aligned
+  _mmioAddr[kRegTdbal] = v2p(reinterpret_cast<virt_addr>(tx_desc_buf_)) & 0xffffffff; // TODO: must be 16B-aligned
   _mmioAddr[kRegTdbah] = v2p(reinterpret_cast<virt_addr>(tx_desc_buf_)) >> 32;
   
   // set the size of the desc ring
@@ -167,14 +173,24 @@ void E1000::SetupTx() {
 
 uint16_t E1000::EepromRead(uint16_t addr) {
   // EEPROM is a kind of non-volatile memory storing config info
-  // see pcie-gbe-controllers 5.2.1
+  // see pcie-gbe-controllers 5.2.1 (i8257x) or 5.3.1 (i8254x)
 
   // notify start bit and addr
-  _mmioAddr[kRegEerd] = (((addr & 0xff) << 8) | 1);
-  
-  // polling
-  while(!(_mmioAddr[kRegEerd] & (1 << 4))) {
-    // busy-wait
+  switch(kDeviceId) {
+    case kI8254x:
+      _mmioAddr[kRegEerd] = (((addr & 0xff) << 8) | 1);
+      // polling
+      while(!(_mmioAddr[kRegEerd] & (1 << 4))) {
+        // busy-wait
+      }
+      break;
+    case kI8257x:
+      _mmioAddr[kRegEerd] = (((addr & 0x3fff) << 2) | 1);
+      // polling
+      while(!(_mmioAddr[kRegEerd] & (1 << 1))) {
+        // busy-wait
+      }
+      break;
   }
 
   return (_mmioAddr[kRegEerd] >> 16) & 0xffff;

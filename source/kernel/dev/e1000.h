@@ -35,6 +35,7 @@
  * Main reference is PCIe* GbE Controllers Open Source Software Developer’s Manual.
  *   URL: http://www.intel.com/content/www/us/en/embedded/products/networking/pcie-gbe-controllers-open-source-manual.html
  * "pcie-gbe-controllers" in the source codes refers to this reference.
+ * (if there's no notations, this means the reference of i8257x, not i8254x)
  */
 
 /*
@@ -111,6 +112,13 @@ private:
   // read data from EEPROM
   uint16_t EepromRead(uint16_t addr);
 
+  // Device ID (TODO: this must be fetched from PCIe device list)
+  static const uint16_t kDeviceId = 0x100e; // for QEMU
+
+  // Device ID list
+  static const uint16_t kI8254x = 0x100e;
+  static const uint16_t kI8257x = 0x105e;
+
   // the number of receiver descriptors
   static const int kRxdescNumber = 4;
   // the buffer for receiver descriptors
@@ -157,6 +165,8 @@ private:
   static const int kRegCtrlSluFlag = 1 << 6;
   static const int kRegCtrlIlosFlag = 1 << 7; // see Table 5-4
   static const int kRegCtrlRstFlag = 1 << 26;
+  static const int kRegCtrlVmeFlag = 1 << 30;
+  static const int kRegCtrlPhyRstFlag = 1 << 31;
 
   // CTRL_EXT Register Bit Description (see pcie-gbe-controllers Table 13-9)
   static const int kRegCtrlExtLinkModeMask = 3 << 22;
