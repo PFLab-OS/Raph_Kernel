@@ -46,7 +46,7 @@
  */
 struct E1000RxDesc {
   // buffer address
-  void *   bufAddr;
+  uint8_t *bufAddr;
   // additional information for VLAN
   uint16_t vlanTag;
   // see Table 3-3
@@ -66,7 +66,7 @@ struct E1000RxDesc {
  */
 struct E1000TxDesc {
   // buffer address
-  void *   bufAddr;
+  uint8_t *bufAddr;
   // special field
   uint16_t special;
   // checksum start
@@ -89,9 +89,9 @@ public:
   // init sequence of e1000 device (see pcie-gbe-controllers 14.3)
   void Setup();
   // see pcie-gbe-controllers 3.2
-  void ReceivePacket();
+  uint32_t ReceivePacket(uint8_t *buffer, uint32_t size);
   // see pcie-gbe-controllers 3.3, 3.4
-  void TransmitPacket();
+  uint32_t TransmitPacket(const uint8_t *packet, uint32_t length);
   // buffer size
   static const int kBufSize = 0x100;
   // receive buffer

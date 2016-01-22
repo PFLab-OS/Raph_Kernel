@@ -63,10 +63,52 @@ void E1000::Setup() {
   _mmioAddr[kRegImc] = 0;
 }
 
-void E1000::ReceivePacket() {
+uint32_t E1000::ReceivePacket(uint8_t *buffer, uint32_t size) {
+  E1000RxDesc *rxdesc;
+  uint32_t rdh = _mmioAddr[kRegRdh0];
+  uint32_t rdt = _mmioAddr[kRegRdt0];
+  uint32_t length;
+  int rx_available = (kRxdescNumber - rdt + rdh) % kRxdescNumber;
+
+  if(rx_available > 0) {
+    // if the packet is on the wire
+    rxdesc = rx_desc_buf_ + (rdt % kRxdescNumber);
+    length = length < rxdesc->length ? length : rxdesc->length;
+    memcpy(buffer, rxdesc->bufAddr, length);
+    _mmioAddr[kRegRdt0] = (rdt + 1) % kRxdescNumber;
+    return length;
+  } else {
+    // if rx_desc_buf_ is full, fails
+	// please retry again
+    return -1;
+  }
 }
 
-void E1000::TransmitPacket() {
+uint32_t E1000::TransmitPacket(const uint8_t *packet, uint32_t length) {
+  E1000TxDesc *txdesc;
+  uint32_t tdh = _mmioAddr[kRegTdh];
+  uint32_t tdt = _mmioAddr[kRegTdt];
+  int tx_available = kTxdescNumber - ((kTxdescNumber - tdh + tdt) % kTxdescNumber);
+  
+  if(tx_available > 0) {
+    // if tx_desc_buf_ is not full
+    txdesc = tx_desc_buf_ + (tdt % kTxdescNumber);
+    memcpy(txdesc->bufAddr, packet, length);
+    txdesc->length = length;
+    txdesc->sta = 0;
+    txdesc->css = 0;
+    txdesc->cso = 0;
+    txdesc->special = 0;
+    txdesc->cmd = 0xd;
+
+    _mmioAddr[kRegTdt] = (tdt + 1) % kTxdescNumber;
+
+    return length;
+  } else {
+    // if tx_desc_buf_ is full, fails
+	// please retry again
+    return -1;
+  }
 }
 
 void E1000::Reset() {

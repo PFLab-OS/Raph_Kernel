@@ -40,4 +40,11 @@ static inline int strcmp(const char *s1, const char *s2) {
   return *s1 - *s2;
 }
 
+static void * memcpy(void *dest, const void *src, size_t n) {
+  uint8_t *d = reinterpret_cast<uint8_t *>(dest);
+  const uint8_t *s = reinterpret_cast<const uint8_t *>(src);
+  while(n--) *(d++) = *(s++);
+  return dest;
+}
+
 #endif // __RAPH_LIB_STRING_H__
