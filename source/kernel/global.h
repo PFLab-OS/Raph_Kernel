@@ -33,7 +33,7 @@ class VirtmemCtrl;
 class Idt;
 class Tty;
 
-class DevPCI;
+class PCICtrl;
 
 extern SpinLockCtrl *spinlock_ctrl;
 extern AcpiCtrl *acpi_ctrl;
@@ -46,6 +46,6 @@ extern Idt *idt;
 
 extern Tty *gtty;
 
-extern DevPCI *dev_pci;
+extern PCICtrl *pci_ctrl;
 
 #endif // __RAPH_KERNEL_GLOBAL_H__

@@ -25,6 +25,7 @@
 
 #include <stdint.h>
 #include "../acpi.h"
+#include "../globals.h"
 
 struct MCFGSt {
   uint8_t reserved1[8];
@@ -40,7 +41,7 @@ struct MCFG {
   MCFGSt list[0];
 } __attribute__ ((packed));
 
-class DevPCI {
+class PCICtrl {
  public:
   void Init();
   void SetMCFG(MCFG *table) {
@@ -60,6 +61,13 @@ class DevPCI {
   static const uint8_t kHeaderTypeMultiFunction = 0x80;
   MCFG *_mcfg = nullptr;
   virt_addr _base_addr = 0;
+};
+
+class DevPCI : public Device {
+ public:
+  void Setup(uint16_t vid, uint16_t did);
+  virtual void Init(uint8_t bus, uint8_t device, bool mf) override;
+ private:
 };
 
 #endif /* __RAPH_KERNEL_DEV_PCI_H__ */

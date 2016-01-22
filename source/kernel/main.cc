@@ -42,7 +42,7 @@ PagingCtrl *paging_ctrl;
 VirtmemCtrl *virtmem_ctrl;
 Idt *idt;
 
-DevPCI *dev_pci;
+PCICtrl *pci_ctrl;
 Tty *gtty;
 
 extern "C" int main() {
@@ -55,8 +55,8 @@ extern "C" int main() {
   AcpiCtrl _acpi_ctrl;
   acpi_ctrl = &_acpi_ctrl;
 
-  DevPCI _dev_pci;
-  dev_pci = &_dev_pci;
+  PCICtrl _pci_ctrl;
+  pci_ctrl = &_pci_ctrl;
 
   Idt _idt;
   idt = &_idt;
@@ -79,7 +79,7 @@ extern "C" int main() {
 
   idt->Setup();
 
-  dev_pci->Init();
+  pci_ctrl->Init();
 
   apic_ctrl->StartAPs();
   while(1) {

@@ -26,7 +26,7 @@
 #include "../tty.h"
 #include "pci.h"
 
-void DevPCI::Init() {
+void PCICtrl::Init() {
   if (_mcfg == nullptr) {
     gtty->Printf("s", "could not find MCFG table");
     return;
