@@ -51,10 +51,15 @@ void PCICtrl::Init() {
 	gtty->Printf("x", vid, "s", " ");
 	uint16_t did = ReadReg<uint16_t>(GetVaddr(j, k, 0, kDeviceIDReg));
 	gtty->Printf("x", did, "s", " ");
-	if (ReadReg<uint8_t>(GetVaddr(j, k, 0, kHeaderTypeReg)) & kHeaderTypeMultiFunction) {
+	bool mf = ReadReg<uint8_t>(GetVaddr(j, k, 0, kHeaderTypeReg)) & kHeaderTypeMultiFunction;
+	if (mf) {
 	  gtty->Printf("s", "mf");
 	}
 	gtty->Printf("s", "\n");
+
+	for (int l = 0; l < _device_register_num; l++) {
+	  _device_map[l]->CheckInit(vid, did, j, k, mf);
+	}
       }
     }
   }
