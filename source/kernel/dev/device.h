@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2015 Raphine Project
+ * Copyright (c) 2016 Project Raphine
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -20,32 +20,12 @@
  * 
  */
 
-#ifndef __RAPH_KERNEL_GLOBAL_H__
-#define __RAPH_KERNEL_GLOBAL_H__
+#ifndef __RAPH_KERNEL_DEV_DEVICE_H__
+#define __RAPH_KERNEL_DEV_DEVICE_H__
 
-class SpinLockCtrl;
-class AcpiCtrl;
-class ApicCtrl;
-class MultibootCtrl;
-class PagingCtrl;
-class PhysmemCtrl;
-class VirtmemCtrl;
-class Idt;
-class Tty;
+class Device {
+ public:
+  virtual void Init() {}
+};
 
-class PCICtrl;
-
-extern SpinLockCtrl *spinlock_ctrl;
-extern AcpiCtrl *acpi_ctrl;
-extern ApicCtrl *apic_ctrl;
-extern MultibootCtrl *multiboot_ctrl;
-extern PagingCtrl *paging_ctrl;
-extern PhysmemCtrl *physmem_ctrl;
-extern VirtmemCtrl *virtmem_ctrl;
-extern Idt *idt;
-
-extern Tty *gtty;
-
-extern PCICtrl *pci_ctrl;
-
-#endif // __RAPH_KERNEL_GLOBAL_H__
+#endif /* __RAPH_KERNEL_DEV_DEVICE_H__ */

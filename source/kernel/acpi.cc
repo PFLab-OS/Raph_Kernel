@@ -53,7 +53,7 @@ void AcpiCtrl::Setup(RSDPDescriptor *rsdp) {
     if (!strncmp(sdth->Signature, "APIC", 4)) {
       apic_ctrl->SetMADT(reinterpret_cast<MADT *>(ptr2virtaddr(sdth)));
     } else if (!strncmp(sdth->Signature, "MCFG", 4)) {
-      dev_pci->SetMCFG(reinterpret_cast<MCFG *>(ptr2virtaddr(sdth)));
+      pci_ctrl->SetMCFG(reinterpret_cast<MCFG *>(ptr2virtaddr(sdth)));
     }
   }
 }

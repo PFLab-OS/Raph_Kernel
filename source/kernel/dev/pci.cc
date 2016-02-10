@@ -26,7 +26,7 @@
 #include "../tty.h"
 #include "pci.h"
 
-void DevPCI::Init() {
+void PCICtrl::Init() {
   if (_mcfg == nullptr) {
     gtty->Printf("s", "could not find MCFG table");
     return;
@@ -55,11 +55,15 @@ void DevPCI::Init() {
 	uint32_t base_addr = ReadReg<uint32_t>(GetVaddr(j, k, 0, kBassAddress0));
 	gtty->Printf("s", "bus:", "x", j, "s", " dev:", "x", k, "s", " ");
 	gtty->Printf("s", "BAR:", "x", base_addr, "s", " ");
-
-	if (ReadReg<uint8_t>(GetVaddr(j, k, 0, kHeaderTypeReg)) & kHeaderTypeMultiFunction) {
+	bool mf = ReadReg<uint8_t>(GetVaddr(j, k, 0, kHeaderTypeReg)) & kHeaderTypeMultiFunction;
+	if (mf) {
 	  gtty->Printf("s", "mf");
 	}
 	gtty->Printf("s", "\n");
+
+	for (int l = 0; l < _device_register_num; l++) {
+	  _device_map[l]->CheckInit(vid, did, j, k, mf);
+	}
       }
     }
   }

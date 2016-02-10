@@ -25,6 +25,8 @@
 
 #include <stdint.h>
 #include "../acpi.h"
+#include "../global.h"
+#include "device.h"
 
 struct MCFGSt {
   uint8_t reserved1[8];
@@ -40,11 +42,21 @@ struct MCFG {
   MCFGSt list[0];
 } __attribute__ ((packed));
 
-class DevPCI {
+class DevPCI;
+
+class PCICtrl {
  public:
   void Init();
   void SetMCFG(MCFG *table) {
     _mcfg = table;
+  }
+  void RegisterDevice(DevPCI *pci) {
+    for (int i = 0; i < _device_register_num; i++) {
+      if (_device_map[i] != nullptr) {
+	_device_map[i] = pci;
+	break;
+      }
+    }
   }
  private:
   virt_addr GetVaddr(uint8_t bus, uint8_t device, uint8_t func, uint16_t reg) {
@@ -62,6 +74,32 @@ class DevPCI {
   static const uint8_t kHeaderTypeMultiFunction = 0x80;
   MCFG *_mcfg = nullptr;
   virt_addr _base_addr = 0;
+  // TODO: 動的にしたい
+  static const int _device_register_num = 256;
+  DevPCI *_device_map[_device_register_num];
+};
+
+class DevPCI : public Device {
+ public:
+  virtual void Init() override {
+    Device::Init();
+    pci_ctrl->RegisterDevice(this);
+  }
+  void Setup(uint16_t vid, uint16_t did) {
+    _vid = vid;
+    _did = did;
+  }
+  bool CheckInit(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {
+    if (_vid == vid && _did == did) {
+      InitPCI(bus, device, mf);
+      return true;
+    }
+    return false;
+  }
+  virtual void InitPCI(uint8_t bus, uint8_t device, bool mf);
+ private:
+  uint16_t _vid;
+  uint16_t _did;
 };
 
 #endif /* __RAPH_KERNEL_DEV_PCI_H__ */
