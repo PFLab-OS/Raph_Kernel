@@ -88,10 +88,17 @@ class E1000 {
 public:
   E1000() {}
   static void InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {
-    E1000 *addr = reinterpret_cast<E1000 *>(virtmem_ctrl->Alloc(sizeof(E1000)));
-    E1000 *e1000 = new(addr) E1000;
-    e1000->Setup(bus, device, mf);
-    e1000->PrintEthAddr();
+    if (vid == kVendorId) {
+      switch(did) {
+      case kI8254x:
+      case kI8257x:
+	E1000 *addr = reinterpret_cast<E1000 *>(virtmem_ctrl->Alloc(sizeof(E1000)));
+	E1000 *e1000 = new(addr) E1000;
+	e1000->Setup();
+	e1000->PrintEthAddr();
+	break;
+      }
+    }
   }
   // init sequence of e1000 device (see pcie-gbe-controllers 14.3)
   void Setup();
@@ -118,6 +125,8 @@ private:
   void SetupTx();
   // read data from EEPROM
   uint16_t EepromRead(uint16_t addr);
+
+  static const uint16_t kVendorId = 0x8086;
 
   // Device ID (TODO: this must be fetched from PCIe device list)
   static const uint16_t kDeviceId = 0x100e; // for QEMU

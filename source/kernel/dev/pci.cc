@@ -26,7 +26,7 @@
 #include "../tty.h"
 #include "pci.h"
 
-#include "dev/e1000.h"
+#include "e1000.h"
 
 void PCICtrl::_Init() {
   _mcfg = acpi_ctrl->GetMCFG();
