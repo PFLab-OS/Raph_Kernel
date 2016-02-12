@@ -23,7 +23,7 @@
 #ifndef __RAPH_KERNEL_MULTIBOOT_H__
 #define __RAPH_KERNEL_MULTIBOOT_H__
 
-#include "naias.h"
+#include "raph.h"
 #include "global.h"
 #include "boot/multiboot2.h"
 #include "mem/physmem.h"

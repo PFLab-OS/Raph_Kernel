@@ -21,7 +21,6 @@
  */
 
 #include "physmem.h"
-#include <assert.h>
 #include "paging.h"
 
 extern int *phys_memory_end;
@@ -39,11 +38,11 @@ PhysmemCtrl::PhysmemCtrl() {
 }
 
 #else
-
+#include "../raph.h"
 PhysmemCtrl::PhysmemCtrl() {
   _allocated_area = _allocated_area_buffer.Alloc();
   _allocated_area->start_addr = 0;
-  assert(ptr2physaddr(&phys_memory_end) % PagingCtrl::kPageSize == 0);
+  kassert(ptr2physaddr(&phys_memory_end) % PagingCtrl::kPageSize == 0);
   _allocated_area->end_addr = ptr2physaddr(&phys_memory_end);
   _allocated_area->next = nullptr;
 }
@@ -51,8 +50,8 @@ PhysmemCtrl::PhysmemCtrl() {
 #endif // __UNIT_TEST__
 
 void PhysmemCtrl::Alloc(PhysAddr &paddr, size_t size) {
-  assert(size > 0);
-  assert(size % PagingCtrl::kPageSize == 0);
+  kassert(size > 0);
+  kassert(size % PagingCtrl::kPageSize == 0);
   phys_addr allocated_addr = 0;
   AllocatedArea *allocated_area = nullptr;
   AllocatedArea *fraged_area = nullptr;
@@ -90,8 +89,8 @@ void PhysmemCtrl::Alloc(PhysAddr &paddr, size_t size) {
 }
 
 void PhysmemCtrl::Free(PhysAddr &paddr, size_t size) {
-  assert(size > 0);
-  assert(size % PagingCtrl::kPageSize == 0);
+  kassert(size > 0);
+  kassert(size % PagingCtrl::kPageSize == 0);
   AllocatedArea *newarea = _allocated_area_buffer.Alloc();
   bool newarea_notused = false;
   phys_addr addr = paddr.GetAddr();
@@ -131,6 +130,57 @@ void PhysmemCtrl::Free(PhysAddr &paddr, size_t size) {
   }
 }
 
+// TODO: テスト書く
+void PhysmemCtrl::Reserve(phys_addr addr, size_t size) {
+  kassert(size > 0);
+  kassert(size % PagingCtrl::kPageSize == 0);
+  kassert(addr % PagingCtrl::kPageSize == 0);
+  AllocatedArea *allocated_area = _allocated_area;
+  AllocatedArea *fraged_area = nullptr;
+  while(allocated_area->next) {
+    if (fraged_area == nullptr &&
+	allocated_area->next->start_addr == allocated_area->end_addr) {
+      fraged_area = allocated_area;
+    }
+    kassert(allocated_area->start_addr <= addr);
+    if (allocated_area->end_addr > addr) {
+      if (allocated_area->end_addr > addr + size) {
+	break;
+      }
+      if (addr + size <= allocated_area->next->start_addr) {
+	allocated_area->end_addr = addr + size;
+	break;
+      }
+      allocated_area->end_addr = allocated_area->next->start_addr;
+      Reserve(allocated_area->next->start_addr, addr + size - allocated_area->next->start_addr);
+      return;
+    }
+    if (allocated_area->next->start_addr >= addr) {
+      if (addr + size <= allocated_area->next->start_addr) {
+	AllocatedArea *newarea = _allocated_area_buffer.Alloc();
+	newarea->next = allocated_area->next;
+	allocated_area->next = newarea;
+	newarea->start_addr = addr;
+	newarea->end_addr = addr + size;
+	break;
+      }
+      phys_addr tmp = allocated_area->next->start_addr;
+      allocated_area->next->start_addr = addr;
+      Reserve(tmp, addr + size - tmp);
+      return;
+    }
+    allocated_area = allocated_area->next;
+  }
+    
+  // 断片化された領域を結合する
+  if (fraged_area != nullptr) {
+    AllocatedArea *remove_area = fraged_area->next;
+    fraged_area->end_addr = remove_area->end_addr;
+    fraged_area->next = remove_area->next;
+    fraged_area = remove_area;
+    _allocated_area_buffer.Free(fraged_area);
+  }
+}
 
 #ifdef __UNIT_TEST__
 

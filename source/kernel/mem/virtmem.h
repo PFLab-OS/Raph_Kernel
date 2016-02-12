@@ -28,7 +28,7 @@
 #ifndef ASM_FILE
 
 #include "../spinlock.h"
-#include "../naias.h"
+#include "../raph.h"
 #include <stdint.h>
 #include <assert.h>
 

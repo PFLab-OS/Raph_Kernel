@@ -25,7 +25,7 @@
 
 #include <stdint.h>
 #include <assert.h>
-#include "naias.h"
+#include "raph.h"
 
 enum class SpinLockId : int {
   kNull = -1,
@@ -82,7 +82,7 @@ class SpinLockCtrl {
 #include <unistd.h>
 #include <map>
 #include <iostream>
-#include "naias.h"
+#include "raph.h"
 
 class SpinLockCtrlTest : public SpinLockCtrl {
 public:

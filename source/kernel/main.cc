@@ -54,25 +54,25 @@ extern "C" int main() {
 
   AcpiCtrl _acpi_ctrl;
   acpi_ctrl = &_acpi_ctrl;
-
+  
   PCICtrl _pci_ctrl;
   pci_ctrl = &_pci_ctrl;
-
+    
   Idt _idt;
   idt = &_idt;
 
   VirtmemCtrl _virtmem_ctrl;
   virtmem_ctrl = &_virtmem_ctrl;
-
+  
   PhysmemCtrl _physmem_ctrl;
   physmem_ctrl = &_physmem_ctrl;
-
+  
   PagingCtrl _paging_ctrl;
   paging_ctrl = &_paging_ctrl;
-
+  
   Vga _vga;
   gtty = &_vga;
-
+  
   multiboot_ctrl->Setup();
 
   apic_ctrl->Setup();
@@ -82,13 +82,20 @@ extern "C" int main() {
   pci_ctrl->Init();
 
   apic_ctrl->StartAPs();
+  gtty->Printf("s", "kernel initialization completed");
   while(1) {
     asm volatile("hlt");
   }
 }
 
 void kernel_panic(char *class_name, char *err_str) {
+  gtty->Printf("s", "Kernel Panic!");
   while(1) {
     asm volatile("hlt");
   }
+}
+
+extern "C" void __cxa_pure_virtual()
+{
+  kernel_panic("", "");
 }

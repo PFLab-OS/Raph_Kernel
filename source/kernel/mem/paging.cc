@@ -23,7 +23,7 @@
 #include "paging.h"
 #include <assert.h>
 #include "../global.h"
-#include "../naias.h"
+#include "../raph.h"
 #include "virtmem.h"
 
 #ifdef __UNIT_TEST__
