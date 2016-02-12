@@ -55,9 +55,6 @@ extern "C" int main() {
   AcpiCtrl _acpi_ctrl;
   acpi_ctrl = &_acpi_ctrl;
   
-  PCICtrl _pci_ctrl;
-  pci_ctrl = &_pci_ctrl;
-    
   Idt _idt;
   idt = &_idt;
 
@@ -74,15 +71,15 @@ extern "C" int main() {
   gtty = &_vga;
   
   multiboot_ctrl->Setup();
-
+  
   apic_ctrl->Setup();
-
+  
   idt->Setup();
-
-  pci_ctrl->Init();
+  
+  InitDevices<PCICtrl, Device>();
 
   apic_ctrl->StartAPs();
-  gtty->Printf("s", "kernel initialization completed");
+  gtty->Printf("s", "\n\nkernel initialization completed");
   while(1) {
     asm volatile("hlt");
   }

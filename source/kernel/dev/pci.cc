@@ -26,19 +26,20 @@
 #include "../tty.h"
 #include "pci.h"
 
-void PCICtrl::Init() {
+void PCICtrl::_Init() {
+  _mcfg = acpi_ctrl->GetMCFG();
   if (_mcfg == nullptr) {
-    gtty->Printf("s", "could not find MCFG table");
+    gtty->Printf("s", "could not find MCFG table.\n");
     return;
   }
   gtty->Printf("d", -12340, "s", " ", "x", 0xABC0123, "s", "\n\n");
   for (int i = 0; i * sizeof(MCFGSt) < _mcfg->header.Length - sizeof(ACPISDTHeader); i++) {
     if (i == 1) {
-      gtty->Printf("s", "multiple MCFG tables.");
+      gtty->Printf("s", "multiple MCFG tables.\n");
       break;
     }
     if (_mcfg->list[i].ecam_base >= 0x100000000) {
-      gtty->Printf("s", "ECAM base addr is not exist in low 4GB of memory");
+      gtty->Printf("s", "ECAM base addr is not exist in low 4GB of memory\n");
       continue;
     }
     _base_addr = p2v(_mcfg->list[i].ecam_base);
@@ -57,9 +58,7 @@ void PCICtrl::Init() {
 	}
 	gtty->Printf("s", "\n");
 
-	for (int l = 0; l < _device_register_num; l++) {
-	  _device_map[l]->CheckInit(vid, did, j, k, mf);
-	}
+	InitPCIDevices<DevPCI>(vid, did, j, k, mf);
       }
     }
   }
