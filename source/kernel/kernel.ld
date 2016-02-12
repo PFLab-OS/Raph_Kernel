@@ -59,7 +59,7 @@ SECTIONS{
 
     initial_PML4T = . - kLinearAddrOffset;
     /* kLinearAddrOffset is subtracted because 32bit code refers to initial_PML4T */
-    . += 0xB000; /* TODO : why it doesn't work with 0xA000? */
+    . += 0xC000;
 
   /*
    * Page Structure Table
@@ -74,7 +74,9 @@ SECTIONS{
    * 0x6000 - 0x7000 : PD4 (mapped onto PDPT1[3])
    * 0x7000 - 0x8000 : PD5 (mapped onto PDPT2[510]) 
    * 0x8000 - 0x9000 : PD6 (mapped onto PDPT2[511]) 
-   * 0x9000 - 0xA000 : PT3 (mapped onto PD6[511]) 
+   * 0x9000 - 0xA000 : PT1 (mapped onto PD6[511]) 
+   * 0xA000 - 0xB000 : P1 (mapped onto PT1[509]) 
+   * 0xB000 - 0xC000 : P2 (mapped onto PT1[510]) 
    * 
    */
 

@@ -25,7 +25,6 @@
 
 #include <string.h>
 #include <stdint.h>
-#include <assert.h>
 
 class Tty {
  public:
@@ -50,8 +49,8 @@ class Tty {
     if (strcmp(arg1, "s")) {
       Printf("s", "(invalid format)");
     } else {
-      if (arg2[0] != 0) {
-	Write(arg2[0]);
+      if (*arg2 != 0) {
+	Write(*arg2);
 	Printf("s", arg2 + 1);
       }
     }
@@ -146,9 +145,7 @@ class Tty {
     }
     Printf(args...);
   } 
-  virtual void Write(uint8_t c) {
-    assert(false);
-  }
+  virtual void Write(uint8_t c) = 0;
 };
 
 #endif // __RAPH_KERNEL_TTY_H__

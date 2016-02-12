@@ -24,7 +24,7 @@
 #define __RAPH_KERNEL_LIST_DEF_H__
 
 #include <assert.h>
-#include "naias.h"
+#include "raph.h"
 #include "list.h"
 
 template <typename T>

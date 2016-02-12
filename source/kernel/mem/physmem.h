@@ -88,9 +88,11 @@ private:
 class PhysmemCtrl {
  public:
   PhysmemCtrl();
-  // Allocate,Freeでは、ページサイズに拡張したsizeを渡す事
+  // Allocate,Free,Reserveでは、ページサイズに拡張したsizeを渡す事
   void Alloc(PhysAddr &paddr, size_t size);
   void Free(PhysAddr &paddr, size_t size);
+  // addrはページサイズにアラインされている事
+  void Reserve(phys_addr addr, size_t size);
  private:
   struct AllocatedArea {
     phys_addr start_addr;

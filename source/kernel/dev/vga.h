@@ -23,12 +23,20 @@
 #ifndef __RAPH_KERNEL_VGA_H__
 #define __RAPH_KERNEL_VGA_H__
 
+#include "../global.h"
 #include "../mem/physmem.h"
+#include "../mem/paging.h"
+#include "../raph.h"
 
 class Vga : public Tty {
  public:
   Vga() {
-    _vga_addr = reinterpret_cast<uint8_t *>(p2v(0xb8000));
+    kassert(physmem_ctrl != nullptr);
+    phys_addr vga_addr = 0xb8000;
+    // TODO : virt_addrに対してphys_addrを突っ込んでる
+    // TODO : サイズ適当
+    physmem_ctrl->Reserve(PagingCtrl::RoundAddrOnPageBoundary(vga_addr), PagingCtrl::RoundUpAddrOnPageBoundary(0x1000));
+    _vga_addr = reinterpret_cast<uint8_t *>(p2v(vga_addr));
     _cx = 0;
     _cy = 0;
   }

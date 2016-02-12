@@ -183,9 +183,17 @@ setup_paging:
   or  $(PDE_PRESENT_BIT | PDE_WRITE_BIT), %eax
   mov %eax, (%edi)
 
-  // setup pt3
+  // setup pt1
+  lea (0x9000 + 509 * 8)(%ebx), %edi
+  lea 0xA000(%ebx), %eax
+  or  $(PTE_PRESENT_BIT | PTE_WRITE_BIT | PTE_GLOBAL_BIT), %eax
+  mov %eax, (%edi)
+  lea (0x9000 + 510 * 8)(%ebx), %edi
+  lea 0xB000(%ebx), %eax
+  or  $(PTE_PRESENT_BIT | PTE_WRITE_BIT | PTE_GLOBAL_BIT), %eax
+  mov %eax, (%edi)
   lea (0x9000 + 511 * 8)(%ebx), %edi
-  mov $initial_stack_buffer, %eax
+  movl $initial_stack_buffer, %eax
   or  $(PTE_PRESENT_BIT | PTE_WRITE_BIT | PTE_GLOBAL_BIT), %eax
   mov %eax, (%edi)
 
