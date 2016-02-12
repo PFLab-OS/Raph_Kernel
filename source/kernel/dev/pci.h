@@ -70,29 +70,21 @@ class PCICtrl : public Device {
 };
 
 // !!! important !!!
-// 派生クラスはstaic bool Check(uint16_t vid, uint16_t did); とstatic void InitPCI(uint8_t bus, uint8_t device, bool mf); を作成する事
+// 派生クラスはstatic void InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf); を作成する事
 class DevPCI : public Device {
  public:
-  // dummy
-  static bool Check(uint16_t vid, uint16_t did) {
-    return false;
-  }
-  static void InitPCI(uint8_t bus, uint8_t device, bool mf) {} // dummy
+  static void InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {} // dummy
  private:
 };
 
 template<class T>
 static inline void InitPCIDevices(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {
-  if (T::Check(vid, did)) {
-    T::InitPCI(bus, device, mf);
-  }
+  T::InitPCI(vid, did, bus, device, mf);
 }
 
 template<class T1, class T2, class... Rest>
 static inline void InitPCIDevices(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {
-  if (T1::Check(vid, did)) {
-    T1::InitPCI(bus, device, mf);
-  }
+  T1::InitPCI(vid, did, bus, device, mf);
   InitPCIDevices<T2, Rest...>(vid, did, bus, device, mf);
 }
 
