@@ -27,6 +27,7 @@
 #include "../acpi.h"
 #include "../global.h"
 #include "device.h"
+#include "../mem/virtmem.h"
 
 struct MCFGSt {
   uint8_t reserved1[8];
@@ -44,21 +45,15 @@ struct MCFG {
 
 class DevPCI;
 
-class PCICtrl {
+class PCICtrl : public Device {
  public:
-  void Init();
-  void SetMCFG(MCFG *table) {
-    _mcfg = table;
-  }
-  void RegisterDevice(DevPCI *pci) {
-    for (int i = 0; i < _device_register_num; i++) {
-      if (_device_map[i] != nullptr) {
-	_device_map[i] = pci;
-	break;
-      }
-    }
+  static void Init() {
+    PCICtrl *addr = reinterpret_cast<PCICtrl *>(virtmem_ctrl->Alloc(sizeof(PCICtrl)));
+    pci_ctrl = new(addr) PCICtrl; 
+    pci_ctrl->_Init();
   }
  private:
+  void _Init();
   virt_addr GetVaddr(uint8_t bus, uint8_t device, uint8_t func, uint16_t reg) {
     return _base_addr + ((bus & 0xff) << 20) + ((device & 0x1f) << 15) + ((func & 0x7) << 12) + (reg & 0xfff);
   }
@@ -74,32 +69,34 @@ class PCICtrl {
   static const uint8_t kHeaderTypeMultiFunction = 0x80;
   MCFG *_mcfg = nullptr;
   virt_addr _base_addr = 0;
-  // TODO: 動的にしたい
-  static const int _device_register_num = 256;
-  DevPCI *_device_map[_device_register_num];
 };
 
+// !!! important !!!
+// 派生クラスはstaic bool Check(uint16_t vid, uint16_t did); とstatic void InitPCI(uint8_t bus, uint8_t device, bool mf); を作成する事
 class DevPCI : public Device {
  public:
-  virtual void Init() override {
-    Device::Init();
-    pci_ctrl->RegisterDevice(this);
-  }
-  void Setup(uint16_t vid, uint16_t did) {
-    _vid = vid;
-    _did = did;
-  }
-  bool CheckInit(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {
-    if (_vid == vid && _did == did) {
-      InitPCI(bus, device, mf);
-      return true;
-    }
+  // dummy
+  static bool Check(uint16_t vid, uint16_t did) {
     return false;
   }
-  virtual void InitPCI(uint8_t bus, uint8_t device, bool mf);
+  static void InitPCI(uint8_t bus, uint8_t device, bool mf) {} // dummy
  private:
-  uint16_t _vid;
-  uint16_t _did;
 };
+
+template<class T>
+static inline void InitPCIDevices(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {
+  if (T::Check(vid, did)) {
+    T::InitPCI(bus, device, mf);
+  }
+}
+
+template<class T1, class T2, class... Rest>
+static inline void InitPCIDevices(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {
+  if (T1::Check(vid, did)) {
+    T1::InitPCI(bus, device, mf);
+  }
+  InitPCIDevices<T2, Rest...>(vid, did, bus, device, mf);
+}
+
 
 #endif /* __RAPH_KERNEL_DEV_PCI_H__ */

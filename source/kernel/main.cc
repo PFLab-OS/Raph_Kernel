@@ -32,7 +32,6 @@
 
 #include "dev/vga.h"
 #include "dev/pci.h"
-#include "dev/e1000.h"
 
 SpinLockCtrl *spinlock_ctrl;
 MultibootCtrl *multiboot_ctrl;
@@ -44,7 +43,6 @@ VirtmemCtrl *virtmem_ctrl;
 Idt *idt;
 
 PCICtrl *pci_ctrl;
-E1000 *e1000;
 Tty *gtty;
 
 extern "C" int main() {
@@ -57,12 +55,6 @@ extern "C" int main() {
   AcpiCtrl _acpi_ctrl;
   acpi_ctrl = &_acpi_ctrl;
   
-  PCICtrl _pci_ctrl;
-  pci_ctrl = &_pci_ctrl;
-
-  E1000 _e1000;
-  e1000 = &_e1000;
-
   Idt _idt;
   idt = &_idt;
 
@@ -79,18 +71,15 @@ extern "C" int main() {
   gtty = &_vga;
   
   multiboot_ctrl->Setup();
-
+  
   apic_ctrl->Setup();
-
+  
   idt->Setup();
-
-  pci_ctrl->Init();
-
-  e1000->Setup();
-  e1000->PrintEthAddr();
+  
+  InitDevices<PCICtrl, Device>();
 
   apic_ctrl->StartAPs();
-  gtty->Printf("s", "kernel initialization completed");
+  gtty->Printf("s", "\n\nkernel initialization completed");
   while(1) {
     asm volatile("hlt");
   }

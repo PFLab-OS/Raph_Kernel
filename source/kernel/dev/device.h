@@ -23,9 +23,22 @@
 #ifndef __RAPH_KERNEL_DEV_DEVICE_H__
 #define __RAPH_KERNEL_DEV_DEVICE_H__
 
+// !!! important !!!
+// 派生クラスはstatic void Init(); を作成する事
 class Device {
  public:
-  virtual void Init() {}
+  static void Init() {} // dummy
 };
+
+template<class T>
+static inline void InitDevices() {
+  T::Init();
+}
+
+template<class T1, class T2, class... Rest>
+static inline void InitDevices() {
+  T1::Init();
+  InitDevices<T2, Rest...>();
+}
 
 #endif /* __RAPH_KERNEL_DEV_DEVICE_H__ */

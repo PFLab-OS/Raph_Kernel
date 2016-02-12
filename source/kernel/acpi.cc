@@ -22,7 +22,6 @@
 
 #include "apic.h"
 #include "acpi.h"
-#include "dev/pci.h"
 
 void AcpiCtrl::Setup(RSDPDescriptor *rsdp) {
   if (strncmp(rsdp->Signature, "RSD PTR ", 8)) {
@@ -53,7 +52,7 @@ void AcpiCtrl::Setup(RSDPDescriptor *rsdp) {
     if (!strncmp(sdth->Signature, "APIC", 4)) {
       apic_ctrl->SetMADT(reinterpret_cast<MADT *>(ptr2virtaddr(sdth)));
     } else if (!strncmp(sdth->Signature, "MCFG", 4)) {
-      pci_ctrl->SetMCFG(reinterpret_cast<MCFG *>(ptr2virtaddr(sdth)));
+      _mcfg = reinterpret_cast<MCFG *>(ptr2virtaddr(sdth));
     }
   }
 }

@@ -25,6 +25,7 @@
 
 #include <stdint.h>
 #include "../mem/physmem.h"
+#include "../mem/virtmem.h"
 
 /*
  * e1000 is the driver for Intel 8254x/8256x/8257x and so on.
@@ -86,6 +87,12 @@ struct E1000TxDesc {
 class E1000 {
 public:
   E1000() {}
+  static void InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {
+    E1000 *addr = reinterpret_cast<E1000 *>(virtmem_ctrl->Alloc(sizeof(E1000)));
+    E1000 *e1000 = new(addr) E1000;
+    e1000->Setup(bus, device, mf);
+    e1000->PrintEthAddr();
+  }
   // init sequence of e1000 device (see pcie-gbe-controllers 14.3)
   void Setup();
   // see pcie-gbe-controllers 3.2
