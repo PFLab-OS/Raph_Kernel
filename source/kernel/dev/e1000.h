@@ -47,17 +47,17 @@
  */
 struct E1000RxDesc {
   // buffer address
-  uint8_t *bufAddr;
-  // additional information for VLAN
-  uint16_t vlanTag;
-  // see Table 3-3
-  uint8_t  errors;
-  // see Table 3-2
-  uint8_t  status;
-  // check sum
-  uint16_t checkSum;
+  phys_addr bufAddr;
   // buffer length
   uint16_t length;
+  // check sum
+  uint16_t checkSum;
+  // see Table 3-2
+  uint8_t  status;
+  // see Table 3-3
+  uint8_t  errors;
+  // additional information for VLAN
+  uint16_t vlanTag;
 } __attribute__ ((packed));
 
 /*
@@ -67,21 +67,21 @@ struct E1000RxDesc {
  */
 struct E1000TxDesc {
   // buffer address
-  uint8_t *bufAddr;
-  // special field
-  uint16_t special;
-  // checksum start
-  uint8_t  css;
-  // reserved (set to be 0x0)
-  uint8_t  rsv;
-  // status
-  uint8_t  sta;
-  // command
-  uint8_t  cmd;
-  // checksum offset
-  uint8_t  cso;
+  phys_addr bufAddr;
   // segment length
   uint16_t length;
+  // checksum offset
+  uint8_t  cso;
+  // command
+  uint8_t  cmd;
+  // status
+  uint8_t  sta;
+  // reserved (set to be 0x0)
+  uint8_t  rsv;
+  // checksum start
+  uint8_t  css;
+  // special field
+  uint16_t special;
 } __attribute__ ((packed));
 
 class E1000 {
@@ -108,11 +108,7 @@ public:
   // see pcie-gbe-controllers 3.3, 3.4
   uint32_t TransmitPacket(const uint8_t *packet, uint32_t length);
   // buffer size
-  static const int kBufSize = 0x100;
-  // receive buffer
-  uint8_t rx_buf_[kBufSize];
-  // transmit buffer
-  uint8_t tx_buf_[kBufSize];
+  static const int kBufSize = 2048;
   // for debugging
   void PrintEthAddr();
 private:

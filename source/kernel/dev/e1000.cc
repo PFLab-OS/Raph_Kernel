@@ -74,7 +74,7 @@ uint32_t E1000::ReceivePacket(uint8_t *buffer, uint32_t size) {
     // if the packet is on the wire
     rxdesc = rx_desc_buf_ + (rdt % kRxdescNumber);
     length = length < rxdesc->length ? length : rxdesc->length;
-    memcpy(buffer, reinterpret_cast<uint8_t *>(p2v(reinterpret_cast<phys_addr>(rxdesc->bufAddr))), length);
+    memcpy(buffer, reinterpret_cast<uint8_t *>(p2v(rxdesc->bufAddr)), length);
     _mmioAddr[kRegRdt0] = (rdt + 1) % kRxdescNumber;
     return length;
   } else {
@@ -93,7 +93,7 @@ uint32_t E1000::TransmitPacket(const uint8_t *packet, uint32_t length) {
   if(tx_available > 0) {
     // if tx_desc_buf_ is not full
     txdesc = tx_desc_buf_ + (tdt % kTxdescNumber);
-    memcpy(reinterpret_cast<uint8_t *>(p2v(reinterpret_cast<phys_addr>(txdesc->bufAddr))), packet, length);
+    memcpy(reinterpret_cast<uint8_t *>(p2v(txdesc->bufAddr)), packet, length);
     txdesc->length = length;
     txdesc->sta = 0;
     txdesc->css = 0;
@@ -159,7 +159,7 @@ void E1000::SetupRx() {
   // initialize rx desc ring buffer
   for(int i = 0; i < kRxdescNumber; i++) {
     E1000RxDesc *rxdesc = &rx_desc_buf_[i];
-    rxdesc->bufAddr = reinterpret_cast<uint8_t *>(v2p(reinterpret_cast<virt_addr>(rx_buf_)));
+    rxdesc->bufAddr = v2p(virtmem_ctrl->Alloc(kBufSize));
     rxdesc->vlanTag = 0;
     rxdesc->errors = 0;
     rxdesc->status = 0;
@@ -191,6 +191,7 @@ void E1000::SetupTx() {
   
   // set the size of the desc ring
   _mmioAddr[kRegTdlen] = kTxdescNumber * sizeof(E1000TxDesc);
+  gtty->Printf("d",_mmioAddr[kRegTdlen],"s","\n");
 
   // set head and tail pointer of ring
   _mmioAddr[kRegTdh] = 0;
@@ -202,7 +203,7 @@ void E1000::SetupTx() {
   // initialize the tx desc registers (TDBAL, TDBAH, TDL, TDH, TDT)
   for(int i = 0; i < kTxdescNumber; i++) {
     E1000TxDesc *txdesc = &tx_desc_buf_[i];
-    txdesc->bufAddr = reinterpret_cast<uint8_t *>(v2p(reinterpret_cast<virt_addr>(tx_buf_)));
+    txdesc->bufAddr = v2p(virtmem_ctrl->Alloc(kBufSize));
     txdesc->special = 0;
     txdesc->css = 0;
     txdesc->rsv = 0;
@@ -288,4 +289,5 @@ void E1000::TxTest() {
   uint32_t len = sizeof(data)/sizeof(uint8_t);
   this->TransmitPacket(data, len);
   gtty->Printf("s", "Packet sent (length = ", "d", len, "s", ")\n");
+  gtty->Printf("d",_mmioAddr[kRegTdlen],"s","\n");
 }
