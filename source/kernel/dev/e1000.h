@@ -92,11 +92,11 @@ public:
       switch(did) {
       case kI8254x:
       case kI8257x:
-	E1000 *addr = reinterpret_cast<E1000 *>(virtmem_ctrl->Alloc(sizeof(E1000)));
-	E1000 *e1000 = new(addr) E1000;
-	e1000->Setup();
-	e1000->PrintEthAddr();
-	break;
+        E1000 *addr = reinterpret_cast<E1000 *>(virtmem_ctrl->Alloc(sizeof(E1000)));
+        E1000 *e1000 = new(addr) E1000;
+        e1000->Setup();
+        e1000->PrintEthAddr();
+        break;
       }
     }
   }
