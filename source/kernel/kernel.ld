@@ -55,6 +55,7 @@ SECTIONS{
 
     virt_memory_end = .;
     . = ALIGN(0x1000);
+    . += 0xA000;
     virt_allocatedmemory_end = .;
 
     initial_PML4T = . - kLinearAddrOffset;
