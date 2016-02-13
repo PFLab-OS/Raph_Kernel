@@ -250,3 +250,42 @@ void E1000::PrintEthAddr() {
   gtty->Printf("x", (ethaddr_lo & 0xff), "s", ":");
   gtty->Printf("x", (ethaddr_lo >> 8) & 0xff, "s", "\n");
 }
+
+uint32_t E1000::Crc32b(uint8_t *message) {
+  int32_t i, j;
+  uint32_t byte, crc, mask;
+
+  i = 0;
+  crc = 0xFFFFFFFF;
+  while (message[i] != 0) {
+    byte = message[i];  // Get next byte.
+    crc = crc ^ byte;
+    for (j = 7; j >= 0; j--) {  // Do eight times.
+      mask = -(crc & 1);
+      crc = (crc >> 1) ^ (0xEDB88320 & mask);
+    }
+    i = i + 1;
+  }
+  return ~crc;
+}
+
+void E1000::TxTest() {
+  uint8_t data[] = {
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, // Target MAC Address
+    0x08, 0x00, 0x27, 0xc1, 0x5b, 0x93, // Source MAC Address
+    0x08, 0x06, // Type: ARP
+    // ARP Packet
+    0x00, 0x01, // HardwareType: Ethernet
+    0x08, 0x00, // ProtocolType: IPv4
+    0x06, // HardwareLength
+    0x04, // ProtocolLength
+    0x00, 0x01, // Operation: ARP Request
+    0x08, 0x00, 0x27, 0xc1, 0x5b, 0x93, // Source Hardware Address
+    0x0a, 0x00, 0x02, 0x0f, // Source Protocol Address
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
+    0x0a, 0x00, 0x02, 0xf7, // Target Protocol Address
+  };
+  uint32_t len = sizeof(data)/sizeof(uint8_t);
+  this->TransmitPacket(data, len);
+  gtty->Printf("s", "Packet sent (length = ", "d", len, "s", ")\n");
+}

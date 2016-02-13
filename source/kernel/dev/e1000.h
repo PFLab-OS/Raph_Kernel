@@ -96,6 +96,7 @@ public:
         E1000 *e1000 = new(addr) E1000;
         e1000->Setup();
         e1000->PrintEthAddr();
+        e1000->TxTest();
         break;
       }
     }
@@ -125,6 +126,10 @@ private:
   void SetupTx();
   // read data from EEPROM
   uint16_t EepromRead(uint16_t addr);
+
+  // packet transmit test
+  uint32_t Crc32b(uint8_t *message);
+  void TxTest();
 
   static const uint16_t kVendorId = 0x8086;
 
