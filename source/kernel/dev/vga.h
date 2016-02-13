@@ -53,8 +53,8 @@ class Vga : public Tty {
       _vga_addr[(_cy * _x + _cx) * 2 + 1] = 0xf0;
       _cx++;
       if (_cx == _x) {
-	_cx = 0;
-	_cy++;
+        _cx = 0;
+        _cy++;
       }
     }
   }

@@ -50,8 +50,8 @@ class Tty {
       Printf("s", "(invalid format)");
     } else {
       if (*arg2 != 0) {
-	Write(*arg2);
-	Printf("s", arg2 + 1);
+        Write(*arg2);
+        Printf("s", arg2 + 1);
       }
     }
     Printf(args...);
@@ -101,44 +101,44 @@ class Tty {
     void PrintInt(const char *arg1, const int arg2, const T2& ...args) {
     if (!strcmp(arg1, "d")) {
       if (arg2 < 0) {
-	Write('-');
+        Write('-');
       }
       unsigned int _arg2 = (arg2 < 0) ? -arg2 : arg2;
       unsigned int i = _arg2;
       int digit = 0;
       while (i >= 10) {
-	i /= 10;
-	digit++;
+        i /= 10;
+        digit++;
       }
       for (int j = digit; j >= 0; j--) {
-	i = 1;
-	for (int k = 0; k < j; k++) {
-	  i *= 10;
-	}
-	unsigned int l = _arg2 / i;
-	Write(l + '0');
-	_arg2 -= l * i;
+        i = 1;
+        for (int k = 0; k < j; k++) {
+          i *= 10;
+        }
+        unsigned int l = _arg2 / i;
+        Write(l + '0');
+        _arg2 -= l * i;
       }
     } else if (!strcmp(arg1, "x")) {
       unsigned int _arg2 = arg2;
       unsigned int i = _arg2;
       int digit = 0;
       while (i >= 16) {
-	i /= 16;
-	digit++;
+        i /= 16;
+        digit++;
       }
       for (int j = digit; j >= 0; j--) {
-	i = 1;
-	for (int k = 0; k < j; k++) {
-	  i *= 16;
-	}
-	unsigned int l = _arg2 / i;
-	if (l < 10) {
-	  Write(l + '0');
-	} else if (l < 16) {
-	  Write(l - 10 + 'A');
-	}
-	_arg2 -= l * i;
+        i = 1;
+        for (int k = 0; k < j; k++) {
+          i *= 16;
+        }
+        unsigned int l = _arg2 / i;
+        if (l < 10) {
+          Write(l + '0');
+        } else if (l < 16) {
+          Write(l - 10 + 'A');
+        }
+        _arg2 -= l * i;
       }
     } else {
       Printf("s", "(invalid format)");

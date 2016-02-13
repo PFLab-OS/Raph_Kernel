@@ -139,17 +139,17 @@ void PhysmemCtrl::Reserve(phys_addr addr, size_t size) {
   AllocatedArea *fraged_area = nullptr;
   while(allocated_area->next) {
     if (fraged_area == nullptr &&
-	allocated_area->next->start_addr == allocated_area->end_addr) {
+        allocated_area->next->start_addr == allocated_area->end_addr) {
       fraged_area = allocated_area;
     }
     kassert(allocated_area->start_addr <= addr);
     if (allocated_area->end_addr > addr) {
       if (allocated_area->end_addr > addr + size) {
-	break;
+        break;
       }
       if (addr + size <= allocated_area->next->start_addr) {
-	allocated_area->end_addr = addr + size;
-	break;
+        allocated_area->end_addr = addr + size;
+        break;
       }
       allocated_area->end_addr = allocated_area->next->start_addr;
       Reserve(allocated_area->next->start_addr, addr + size - allocated_area->next->start_addr);
@@ -157,12 +157,12 @@ void PhysmemCtrl::Reserve(phys_addr addr, size_t size) {
     }
     if (allocated_area->next->start_addr >= addr) {
       if (addr + size <= allocated_area->next->start_addr) {
-	AllocatedArea *newarea = _allocated_area_buffer.Alloc();
-	newarea->next = allocated_area->next;
-	allocated_area->next = newarea;
-	newarea->start_addr = addr;
-	newarea->end_addr = addr + size;
-	break;
+        AllocatedArea *newarea = _allocated_area_buffer.Alloc();
+        newarea->next = allocated_area->next;
+        allocated_area->next = newarea;
+        newarea->start_addr = addr;
+        newarea->end_addr = addr + size;
+        break;
       }
       phys_addr tmp = allocated_area->next->start_addr;
       allocated_area->next->start_addr = addr;
