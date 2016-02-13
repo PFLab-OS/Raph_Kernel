@@ -7,10 +7,7 @@ BUILD_DIR = build
 default: image
 
 run: image
-	qemu-system-x86_64 -hda $(IMAGE) -smp 2 -machine q35  -monitor stdio -vnc 0.0.0.0:0,password
-
-qdrun: image
-	gdb --args qemu-system-x86_64 -hda $(IMAGE) -smp 2 -monitor stdio
+	sudo qemu-system-x86_64 -hda $(IMAGE) -smp 2 -machine q35  -monitor stdio -vnc 0.0.0.0:0,password -net nic -net bridge,br=br0
 
 #$(CORE_FILE): $(subst $(MOUNT_DIR)/core,$(BUILD),$@)
 #	cp $< $@

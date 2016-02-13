@@ -74,7 +74,7 @@ uint32_t E1000::ReceivePacket(uint8_t *buffer, uint32_t size) {
     // if the packet is on the wire
     rxdesc = rx_desc_buf_ + (rdt % kRxdescNumber);
     length = length < rxdesc->length ? length : rxdesc->length;
-    memcpy(buffer, rxdesc->bufAddr, length);
+    memcpy(buffer, reinterpret_cast<uint8_t *>(p2v(reinterpret_cast<phys_addr>(rxdesc->bufAddr))), length);
     _mmioAddr[kRegRdt0] = (rdt + 1) % kRxdescNumber;
     return length;
   } else {
@@ -93,7 +93,7 @@ uint32_t E1000::TransmitPacket(const uint8_t *packet, uint32_t length) {
   if(tx_available > 0) {
     // if tx_desc_buf_ is not full
     txdesc = tx_desc_buf_ + (tdt % kTxdescNumber);
-    memcpy(txdesc->bufAddr, packet, length);
+    memcpy(reinterpret_cast<uint8_t *>(p2v(reinterpret_cast<phys_addr>(txdesc->bufAddr))), packet, length);
     txdesc->length = length;
     txdesc->sta = 0;
     txdesc->css = 0;
@@ -159,7 +159,7 @@ void E1000::SetupRx() {
   // initialize rx desc ring buffer
   for(int i = 0; i < kRxdescNumber; i++) {
     E1000RxDesc *rxdesc = &rx_desc_buf_[i];
-    rxdesc->bufAddr = rx_buf_;
+    rxdesc->bufAddr = reinterpret_cast<uint8_t *>(v2p(reinterpret_cast<virt_addr>(rx_buf_)));
     rxdesc->vlanTag = 0;
     rxdesc->errors = 0;
     rxdesc->status = 0;
@@ -202,7 +202,7 @@ void E1000::SetupTx() {
   // initialize the tx desc registers (TDBAL, TDBAH, TDL, TDH, TDT)
   for(int i = 0; i < kTxdescNumber; i++) {
     E1000TxDesc *txdesc = &tx_desc_buf_[i];
-    txdesc->bufAddr = tx_buf_;
+    txdesc->bufAddr = reinterpret_cast<uint8_t *>(v2p(reinterpret_cast<virt_addr>(tx_buf_)));
     txdesc->special = 0;
     txdesc->css = 0;
     txdesc->rsv = 0;
@@ -272,7 +272,7 @@ uint32_t E1000::Crc32b(uint8_t *message) {
 void E1000::TxTest() {
   uint8_t data[] = {
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, // Target MAC Address
-    0x08, 0x00, 0x27, 0xc1, 0x5b, 0x93, // Source MAC Address
+    0x52, 0x54, 0x00, 0x12, 0x34, 0x56, // Source MAC Address
     0x08, 0x06, // Type: ARP
     // ARP Packet
     0x00, 0x01, // HardwareType: Ethernet
@@ -280,10 +280,10 @@ void E1000::TxTest() {
     0x06, // HardwareLength
     0x04, // ProtocolLength
     0x00, 0x01, // Operation: ARP Request
-    0x08, 0x00, 0x27, 0xc1, 0x5b, 0x93, // Source Hardware Address
+    0x52, 0x54, 0x00, 0x12, 0x34, 0x56, // Source Hardware Address
     0x0a, 0x00, 0x02, 0x0f, // Source Protocol Address
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
-    0x0a, 0x00, 0x02, 0xf7, // Target Protocol Address
+    0x0a, 0x00, 0x02, 0x03, // Target Protocol Address
   };
   uint32_t len = sizeof(data)/sizeof(uint8_t);
   this->TransmitPacket(data, len);

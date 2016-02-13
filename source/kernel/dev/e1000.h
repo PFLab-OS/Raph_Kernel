@@ -175,7 +175,7 @@ private:
   static const int kRegTdbah = 0x03804 / sizeof(uint32_t);
   static const int kRegTdlen = 0x03808 / sizeof(uint32_t);
   static const int kRegTdh = 0x03810 / sizeof(uint32_t);
-  static const int kRegTdt = 0x03814 / sizeof(uint32_t);
+  static const int kRegTdt = 0x03818 / sizeof(uint32_t);
   static const int kRegTxdctl = 0x03828 / sizeof(uint32_t);
   static const int kRegTxdctl1 = 0x03928 / sizeof(uint32_t);
   static const int kRegMta = 0x05200 / sizeof(uint32_t);
