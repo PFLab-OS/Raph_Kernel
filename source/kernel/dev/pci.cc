@@ -60,7 +60,7 @@ void PCICtrl::_Init() {
         }
         gtty->Printf("s", "\n");
 
-        InitPCIDevices<DevPCI>(vid, did, j, k, mf);
+        InitPCIDevices<E1000, DevPCI>(vid, did, j, k, mf);
       }
     }
   }
