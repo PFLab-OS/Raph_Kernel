@@ -39,21 +39,21 @@ void ApicCtrl::Setup() {
       MADTSt *madtSt = reinterpret_cast<MADTSt *>(ptr);
       switch (madtSt->type) {
       case MADTStType::kLocalAPIC:
-	{
-	  MADTStLAPIC *madtStLAPIC = reinterpret_cast<MADTStLAPIC *>(ptr);
-	  _lapic.SetCtrlAddr(reinterpret_cast<uint32_t *>(p2v(_madt->lapicCtrlAddr)));
-	  _lapic._apicIds[ncpu] = madtStLAPIC->apicId;
-	  ncpu++;
-	}
-	break;
+        {
+          MADTStLAPIC *madtStLAPIC = reinterpret_cast<MADTStLAPIC *>(ptr);
+          _lapic.SetCtrlAddr(reinterpret_cast<uint32_t *>(p2v(_madt->lapicCtrlAddr)));
+          _lapic._apicIds[ncpu] = madtStLAPIC->apicId;
+          ncpu++;
+        }
+        break;
       case MADTStType::kIOAPIC:
-	{
-	  MADTStIOAPIC *madtStIOAPIC = reinterpret_cast<MADTStIOAPIC *>(ptr);
-	  _ioapic.SetReg(reinterpret_cast<uint32_t *>(p2v(madtStIOAPIC->ioapicAddr)));
-	}
-	break;
+        {
+          MADTStIOAPIC *madtStIOAPIC = reinterpret_cast<MADTStIOAPIC *>(ptr);
+          _ioapic.SetReg(reinterpret_cast<uint32_t *>(p2v(madtStIOAPIC->ioapicAddr)));
+        }
+        break;
       default:
-	break;
+        break;
       }
       offset += madtSt->length;
     }
