@@ -26,6 +26,7 @@
 #include <stdint.h>
 #include "../mem/physmem.h"
 #include "../mem/virtmem.h"
+#include "pci.h"
 
 /*
  * e1000 is the driver for Intel 8254x/8256x/8257x and so on.
@@ -84,16 +85,16 @@ struct E1000TxDesc {
   uint16_t special;
 } __attribute__ ((packed));
 
-class E1000 {
+class E1000 : public DevPCI {
 public:
-  E1000() {}
+ E1000(uint8_t bus, uint8_t device, bool mf) : DevPCI(bus, device, mf) {}
   static void InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {
     if (vid == kVendorId) {
       switch(did) {
       case kI8254x:
       case kI8257x:
         E1000 *addr = reinterpret_cast<E1000 *>(virtmem_ctrl->Alloc(sizeof(E1000)));
-        E1000 *e1000 = new(addr) E1000;
+        E1000 *e1000 = new(addr) E1000(bus, device, mf);
         e1000->Setup();
         e1000->PrintEthAddr();
         e1000->TxTest();
@@ -113,7 +114,7 @@ public:
   void PrintEthAddr();
 private:
   // Memory Mapped I/O Base Address
-  uint32_t *_mmioAddr = reinterpret_cast<uint32_t*>(p2v(0xfebc0000));
+  uint32_t *_mmioAddr = nullptr;
   // software reset of e1000 device
   void Reset();
   // initialize receiver
@@ -137,13 +138,13 @@ private:
   static const uint16_t kI8257x = 0x105e;
 
   // the number of receiver descriptors
-  static const int kRxdescNumber = 4;
+  static const int kRxdescNumber = 8;
   // the buffer for receiver descriptors
-  E1000RxDesc rx_desc_buf_[kRxdescNumber];
+  E1000RxDesc *rx_desc_buf_;
   // the number of transmit descriptors
-  static const int kTxdescNumber = 4;
+  static const int kTxdescNumber = 8;
   // the buffer for transmit descriptors
-  E1000TxDesc tx_desc_buf_[kTxdescNumber];
+  E1000TxDesc *tx_desc_buf_;
 
   // Ethernet Controller EEPROM Map (see pcie-gbe-controllers Table 5-2)
   static const int kEepromEthAddrHi = 0x00;

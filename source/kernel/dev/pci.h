@@ -52,21 +52,26 @@ class PCICtrl : public Device {
     pci_ctrl = new(addr) PCICtrl; 
     pci_ctrl->_Init();
   }
- private:
-  void _Init();
   virt_addr GetVaddr(uint8_t bus, uint8_t device, uint8_t func, uint16_t reg) {
     return _base_addr + ((bus & 0xff) << 20) + ((device & 0x1f) << 15) + ((func & 0x7) << 12) + (reg & 0xfff);
   }
   template<class T> static T ReadReg(virt_addr vaddr) {
     return *(reinterpret_cast<T *>(vaddr));
   }
+  template<class T> static void WriteReg(virt_addr vaddr, T value) {
+    *(reinterpret_cast<T *>(vaddr)) = value;
+  }
   static const uint16_t kDevIdentifyReg = 0x2;
   static const uint16_t kVendorIDReg = 0x00;
   static const uint16_t kDeviceIDReg = 0x02;
+  static const uint16_t kCommandReg = 0x04;
+  static const uint16_t kCommandRegBusMasterEnableFlag = 1 << 2;
   static const uint16_t kHeaderTypeReg = 0x0E;
-  static const uint32_t kBassAddress0 = 0x10;
-  static const uint32_t kBassAddress1 = 0x14;
+  static const uint16_t kBaseAddressReg0 = 0x10;
+  static const uint16_t kBaseAddressReg1 = 0x14;
   static const uint8_t kHeaderTypeMultiFunction = 0x80;
+ private:
+  void _Init();
   MCFG *_mcfg = nullptr;
   virt_addr _base_addr = 0;
 };
@@ -75,8 +80,22 @@ class PCICtrl : public Device {
 // 派生クラスはstatic void InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf); を作成する事
 class DevPCI : public Device {
  public:
+ DevPCI(uint8_t bus, uint8_t device, bool mf) : _bus(bus), _device(device), _mf(mf) {}
   static void InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {} // dummy
+  template<class T> T ReadReg(uint16_t reg) {
+    kassert(pci_ctrl != nullptr);
+    virt_addr vaddr = pci_ctrl->GetVaddr(_bus, _device, _mf, reg);
+    return pci_ctrl->ReadReg<T>(vaddr);
+  }
+  template<class T> void WriteReg(uint16_t reg, T value) {
+    kassert(pci_ctrl != nullptr);
+    virt_addr vaddr = pci_ctrl->GetVaddr(_bus, _device, _mf, reg);
+    pci_ctrl->WriteReg(vaddr, value);
+  }
  private:
+  const uint8_t _bus;
+  const uint8_t _device;
+  const bool _mf;
 };
 
 template<class T>

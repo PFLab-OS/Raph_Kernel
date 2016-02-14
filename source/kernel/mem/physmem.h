@@ -40,14 +40,14 @@ static inline virt_addr p2v(phys_addr addr) {
 }
 
 static inline phys_addr v2p(virt_addr addr) {
-  assert(addr >= 0xffff800000000000);
+  kassert(addr >= 0xffff800000000000);
   return reinterpret_cast<phys_addr>(addr - 0xffff800000000000);
 }
 
 extern char kLinearAddrOffset;
 static inline phys_addr k2p(virt_addr addr) {
   virt_addr koffset = ptr2virtaddr(&kLinearAddrOffset);
-  assert(addr >= koffset);
+  kassert(addr >= koffset);
   return reinterpret_cast<phys_addr>(addr - koffset);
 }
 
@@ -66,12 +66,12 @@ public:
   }
   // 原則的にPhysmemCtrl以外からは呼ばない事
   void SetAddr(phys_addr addr) {
-    assert(!_is_initialized);
+    kassert(!_is_initialized);
     _is_initialized = true;
     _addr = addr;
   }
   phys_addr GetAddr() {
-    assert(_is_initialized);
+    kassert(_is_initialized);
     return _addr;
   }
   void Reset() {

@@ -81,14 +81,14 @@ extern "C" int main() {
   apic_ctrl->StartAPs();
   gtty->Printf("s", "\n\nkernel initialization completed");
   while(1) {
-    asm volatile("hlt");
+    asm volatile("hlt;nop;hlt;");
   }
 }
 
 void kernel_panic(char *class_name, char *err_str) {
   gtty->Printf("s", "Kernel Panic!");
   while(1) {
-    asm volatile("hlt");
+    asm volatile("hlt;");
   }
 }
 

@@ -29,6 +29,11 @@
 void E1000::Setup() {
   // the following sequence is indicated in pcie-gbe-controllers 14.3
 
+  // get PCI Base Address Registers
+  phys_addr mmio_addr = this->ReadReg<phys_addr>(PCICtrl::kBaseAddressReg0) & 0xFFFFFFF0; // TODO : もうちょっと厳密にやるべき
+  this->WriteReg(PCICtrl::kCommandReg, this->ReadReg<uint16_t>(PCICtrl::kCommandReg) | PCICtrl::kCommandRegBusMasterEnableFlag);
+  _mmioAddr = reinterpret_cast<uint32_t*>(p2v(mmio_addr));
+
   // disable interrupts (see 13.3.32)
   _mmioAddr[kRegImc] = 0xffffffff;
 
@@ -99,7 +104,7 @@ uint32_t E1000::TransmitPacket(const uint8_t *packet, uint32_t length) {
     txdesc->css = 0;
     txdesc->cso = 0;
     txdesc->special = 0;
-    txdesc->cmd = 0xd;
+    txdesc->cmd = 0xb;
 
     _mmioAddr[kRegTdt] = (tdt + 1) % kTxdescNumber;
 
@@ -146,8 +151,10 @@ void E1000::SetupRx() {
   // (see the definition of E1000 class)
 
   // set base address of ring buffer
-  _mmioAddr[kRegRdbal0] = v2p(reinterpret_cast<virt_addr>(rx_desc_buf_)) & 0xffffffff; // TODO: must be 16B-aligned
-  _mmioAddr[kRegRdbah0] = v2p(reinterpret_cast<virt_addr>(rx_desc_buf_)) >> 32;
+  virt_addr rx_desc_buf_addr = ((virtmem_ctrl->Alloc(sizeof(E1000RxDesc) * kRxdescNumber + 15) + 15) / 16) * 16;
+  rx_desc_buf_ = reinterpret_cast<E1000RxDesc *>(rx_desc_buf_addr);
+  _mmioAddr[kRegRdbal0] = k2p(rx_desc_buf_addr) & 0xffffffff; // TODO: must be 16B-aligned
+  _mmioAddr[kRegRdbah0] = k2p(rx_desc_buf_addr) >> 32;
 
   // set the size of the desc ring
   _mmioAddr[kRegRdlen0] = kRxdescNumber * sizeof(E1000RxDesc);
@@ -159,7 +166,7 @@ void E1000::SetupRx() {
   // initialize rx desc ring buffer
   for(int i = 0; i < kRxdescNumber; i++) {
     E1000RxDesc *rxdesc = &rx_desc_buf_[i];
-    rxdesc->bufAddr = v2p(virtmem_ctrl->Alloc(kBufSize));
+    rxdesc->bufAddr = k2p(virtmem_ctrl->Alloc(kBufSize));
     rxdesc->vlanTag = 0;
     rxdesc->errors = 0;
     rxdesc->status = 0;
@@ -186,24 +193,14 @@ void E1000::SetupTx() {
   // (see the definition of E1000 class)
 
   // set base address of ring buffer
-  _mmioAddr[kRegTdbal] = v2p(reinterpret_cast<virt_addr>(tx_desc_buf_)) & 0xffffffff; // TODO: must be 16B-aligned
-  _mmioAddr[kRegTdbah] = v2p(reinterpret_cast<virt_addr>(tx_desc_buf_)) >> 32;
-  
-  // set the size of the desc ring
-  _mmioAddr[kRegTdlen] = kTxdescNumber * sizeof(E1000TxDesc);
-  gtty->Printf("d",_mmioAddr[kRegTdlen],"s","\n");
-
-  // set head and tail pointer of ring
-  _mmioAddr[kRegTdh] = 0;
-  _mmioAddr[kRegTdt] = 0;
-
-  // set TIPG register (see 13.3.60)
-  _mmioAddr[kRegTipg] = 0x00702008;
+  virt_addr tx_desc_buf_addr = ((virtmem_ctrl->Alloc(sizeof(E1000TxDesc) * kTxdescNumber + 15) + 15) / 16) * 16;
+  gtty->Printf("s",">>> 0x","x",k2p(tx_desc_buf_addr), "s","\n");
+  tx_desc_buf_ = reinterpret_cast<E1000TxDesc *>(tx_desc_buf_addr);
 
   // initialize the tx desc registers (TDBAL, TDBAH, TDL, TDH, TDT)
   for(int i = 0; i < kTxdescNumber; i++) {
-    E1000TxDesc *txdesc = &tx_desc_buf_[i];
-    txdesc->bufAddr = v2p(virtmem_ctrl->Alloc(kBufSize));
+    volatile E1000TxDesc *txdesc = &tx_desc_buf_[i];
+    txdesc->bufAddr = k2p(virtmem_ctrl->Alloc(kBufSize));
     txdesc->special = 0;
     txdesc->css = 0;
     txdesc->rsv = 0;
@@ -212,6 +209,19 @@ void E1000::SetupTx() {
     txdesc->cso = 0;
     txdesc->length = 0;
   }
+
+  _mmioAddr[kRegTdbal] = k2p(tx_desc_buf_addr) & 0xffffffff;
+  _mmioAddr[kRegTdbah] = k2p(tx_desc_buf_addr) >> 32;
+  
+  // set the size of the desc ring
+  _mmioAddr[kRegTdlen] = kTxdescNumber * sizeof(E1000TxDesc);
+
+  // set head and tail pointer of ring
+  _mmioAddr[kRegTdh] = 0;
+  _mmioAddr[kRegTdt] = 0;
+
+  // set TIPG register (see 13.3.60)
+  _mmioAddr[kRegTipg] = 0x00702008;
 }
 
 uint16_t E1000::EepromRead(uint16_t addr) {
@@ -289,5 +299,4 @@ void E1000::TxTest() {
   uint32_t len = sizeof(data)/sizeof(uint8_t);
   this->TransmitPacket(data, len);
   gtty->Printf("s", "Packet sent (length = ", "d", len, "s", ")\n");
-  gtty->Printf("d",_mmioAddr[kRegTdlen],"s","\n");
 }

@@ -86,7 +86,7 @@ private:
 #else
 #define UTEST_VIRTUAL
 #undef kassert
-#define kassert(flag) if (!(flag)) {if (gtty != nullptr) {gtty->Printf("s", "assertion failed. Kernel stopped!");} while(true){asm volatile("hlt");}}
+#define kassert(flag) if (!(flag)) {if (gtty != nullptr) {gtty->Printf("s", "assertion failed at ", "s", __FILE__, "s", " l.", "d", __LINE__, "s", " (", "s", __func__, "s", ") Kernel stopped!");} while(true){asm volatile("hlt");}}
 
 inline void *operator new(size_t, void *p)     throw() { return p; }
 inline void *operator new[](size_t, void *p)   throw() { return p; }
