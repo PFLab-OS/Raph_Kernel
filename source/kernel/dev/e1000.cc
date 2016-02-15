@@ -172,6 +172,12 @@ void E1000::SetupRx() {
     rxdesc->status = 0;
     rxdesc->checkSum = 0;
     rxdesc->length = 0;
+    gtty->Printf(
+      "s", "RXDESC[",
+      "d", i,
+      "s", "]->bufAddr = 0x",
+      "x", rxdesc->bufAddr,
+      "s", "\n");
   }
 
   // enable (this operation must be done after the initialization of rx desc ring)
