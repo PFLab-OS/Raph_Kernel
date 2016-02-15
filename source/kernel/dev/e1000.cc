@@ -316,7 +316,7 @@ void E1000::RxTest() {
     }
   }
   gtty->Printf(
-    "s", "ARP Request received; ",
+    "s", "ARP Reply received; ",
     "x", buf[6], "s", ":",
     "x", buf[7], "s", ":",
     "x", buf[8], "s", ":",
