@@ -194,21 +194,7 @@ void E1000::SetupTx() {
 
   // set base address of ring buffer
   virt_addr tx_desc_buf_addr = ((virtmem_ctrl->Alloc(sizeof(E1000TxDesc) * kTxdescNumber + 15) + 15) / 16) * 16;
-  gtty->Printf("s",">>> 0x","x",k2p(tx_desc_buf_addr), "s","\n");
   tx_desc_buf_ = reinterpret_cast<E1000TxDesc *>(tx_desc_buf_addr);
-
-  // initialize the tx desc registers (TDBAL, TDBAH, TDL, TDH, TDT)
-  for(int i = 0; i < kTxdescNumber; i++) {
-    volatile E1000TxDesc *txdesc = &tx_desc_buf_[i];
-    txdesc->bufAddr = k2p(virtmem_ctrl->Alloc(kBufSize));
-    txdesc->special = 0;
-    txdesc->css = 0;
-    txdesc->rsv = 0;
-    txdesc->sta = 0;
-    txdesc->cmd = 0;
-    txdesc->cso = 0;
-    txdesc->length = 0;
-  }
 
   _mmioAddr[kRegTdbal] = k2p(tx_desc_buf_addr) & 0xffffffff;
   _mmioAddr[kRegTdbah] = k2p(tx_desc_buf_addr) >> 32;
@@ -222,6 +208,19 @@ void E1000::SetupTx() {
 
   // set TIPG register (see 13.3.60)
   _mmioAddr[kRegTipg] = 0x00702008;
+
+  // initialize the tx desc registers (TDBAL, TDBAH, TDL, TDH, TDT)
+  for(int i = 0; i < kTxdescNumber; i++) {
+    volatile E1000TxDesc *txdesc = &tx_desc_buf_[i];
+    txdesc->bufAddr = k2p(virtmem_ctrl->Alloc(kBufSize));
+    txdesc->special = 0;
+    txdesc->css = 0;
+    txdesc->rsv = 0;
+    txdesc->sta = 0;
+    txdesc->cmd = 0;
+    txdesc->cso = 0;
+    txdesc->length = 0;
+  }
 }
 
 uint16_t E1000::EepromRead(uint16_t addr) {
