@@ -68,7 +68,7 @@ void E1000::Setup() {
   _mmioAddr[kRegImc] = 0;
 }
 
-uint32_t E1000::ReceivePacket(uint8_t *buffer, uint32_t size) {
+int32_t E1000::ReceivePacket(uint8_t *buffer, uint32_t size) {
   E1000RxDesc *rxdesc;
   uint32_t rdh = _mmioAddr[kRegRdh0];
   uint32_t rdt = _mmioAddr[kRegRdt0];
@@ -89,7 +89,7 @@ uint32_t E1000::ReceivePacket(uint8_t *buffer, uint32_t size) {
   }
 }
 
-uint32_t E1000::TransmitPacket(const uint8_t *packet, uint32_t length) {
+int32_t E1000::TransmitPacket(const uint8_t *packet, uint32_t length) {
   E1000TxDesc *txdesc;
   uint32_t tdh = _mmioAddr[kRegTdh];
   uint32_t tdt = _mmioAddr[kRegTdt];
@@ -172,12 +172,6 @@ void E1000::SetupRx() {
     rxdesc->status = 0;
     rxdesc->checkSum = 0;
     rxdesc->length = 0;
-    gtty->Printf(
-      "s", "RXDESC[",
-      "d", i,
-      "s", "]->bufAddr = 0x",
-      "x", rxdesc->bufAddr,
-      "s", "\n");
   }
 
   // enable (this operation must be done after the initialization of rx desc ring)
@@ -304,4 +298,34 @@ void E1000::TxTest() {
   uint32_t len = sizeof(data)/sizeof(uint8_t);
   this->TransmitPacket(data, len);
   gtty->Printf("s", "Packet sent (length = ", "d", len, "s", ")\n");
+}
+
+void E1000::RxTest() {
+  const uint32_t kBufsize = 256;
+  virt_addr vaddr = virtmem_ctrl->Alloc(sizeof(uint8_t) * kBufsize);
+  uint8_t *buf = reinterpret_cast<uint8_t*>(k2p(vaddr));
+  int tryCnt = 5;
+  while(tryCnt--) {
+    // polling
+    if(this->ReceivePacket(buf, kBufsize) != -1) {
+      // received packet
+      if(buf[12] == 0x08 && buf[13] == 0x06) {
+        // ARP packet
+        break;
+	  }
+    }
+  }
+  gtty->Printf(
+    "s", "ARP Request received; ",
+    "x", buf[6], "s", ":",
+    "x", buf[7], "s", ":",
+    "x", buf[8], "s", ":",
+    "x", buf[9], "s", ":",
+    "x", buf[10], "s", ":",
+    "x", buf[11], "s", " -> ",
+    "d", buf[28], "s", ".",
+    "d", buf[29], "s", ".",
+    "d", buf[30], "s", ".",
+    "d", buf[31], "s", "\n");
+  virtmem_ctrl->Free(vaddr);
 }
