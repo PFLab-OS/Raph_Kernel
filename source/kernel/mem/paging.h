@@ -118,7 +118,7 @@ class PagingCtrl {
 
   // page structure tablesのindex情報を元に仮想アドレスを算出する
   static virt_addr CalcVirtAddrFromStructureTableOffset(int pml4_index, int pdpt_index, int pd_index, int pt_index, int offset) {
-    assert(IsPageStructureTableIndex(pml4_index));
+    /*    assert(IsPageStructureTableIndex(pml4_index));
     assert(IsPageStructureTableIndex(pdpt_index));
     assert(IsPageStructureTableIndex(pd_index));
     assert(IsPageStructureTableIndex(pt_index));
@@ -126,7 +126,7 @@ class PagingCtrl {
     entry_type *pd = reinterpret_cast<entry_type *>(RoundAddrOnPageBoundary(pdpt[pdpt_index]));
     entry_type *pt = reinterpret_cast<entry_type *>(RoundAddrOnPageBoundary(pd[pd_index]));
     entry_type *page = reinterpret_cast<entry_type *>(RoundAddrOnPageBoundary(pt[pt_index]));
-    return reinterpret_cast<virt_addr>(page) + offset;
+    return reinterpret_cast<virt_addr>(page) + offset;*/
   }
   #else
 private:

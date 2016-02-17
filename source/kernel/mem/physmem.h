@@ -46,6 +46,7 @@ static inline phys_addr v2p(virt_addr addr) {
 
 extern char kLinearAddrOffset;
 static inline phys_addr k2p(virt_addr addr) {
+  // TODO : ちゃんとページテーブルを見に行くように
   virt_addr koffset = ptr2virtaddr(&kLinearAddrOffset);
   kassert(addr >= koffset);
   return reinterpret_cast<phys_addr>(addr - koffset);

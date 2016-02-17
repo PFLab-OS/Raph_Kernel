@@ -42,9 +42,9 @@ int main() {
   SpinLockCtrlTest _spinlock_ctrl;
   spinlock_ctrl = &_spinlock_ctrl;
   virtmem_ctrl = nullptr;
-  paging_test();
-  physmem_test();
-  list_test();
+  //paging_test();
+  //physmem_test();
+  //list_test();
   //virtmem_test();
   VirtmemCtrl _virtmem_ctrl;
   virtmem_ctrl = &_virtmem_ctrl;

@@ -28,9 +28,9 @@
 
 #ifdef __UNIT_TEST__
 PagingCtrl::PagingCtrl() {
-  phys_addr addr = ptr2physaddr(malloc(kPageSize * 2 - 1));
+  /*  phys_addr addr = ptr2physaddr(malloc(kPageSize * 2 - 1));
   _pml4t = reinterpret_cast<entry_type *>(RoundUpAddrOnPageBoundary(addr));
-  _pml4t[_selfref_pml4t_index] = reinterpret_cast<entry_type>(_pml4t);
+  _pml4t[_selfref_pml4t_index] = reinterpret_cast<entry_type>(_pml4t);*/
 }
 #else
 PagingCtrl::PagingCtrl() {
