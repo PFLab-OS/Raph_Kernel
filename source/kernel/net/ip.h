@@ -20,7 +20,10 @@
  * 
  */
 
-#ifndef __RAPH_KERNEL_IP_H__
-#define __RAPH_KERNEL_IP_H__
+#ifndef __RAPH_KERNEL_NET_IP_H__
+#define __RAPH_KERNEL_NET_IP_H__
 
-#endif // __RAPH_KERNEL_IP_H__
+class IPCtrl {
+};
+
+#endif // __RAPH_KERNEL_NET_IP_H__

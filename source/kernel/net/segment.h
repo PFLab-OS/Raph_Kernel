@@ -20,7 +20,10 @@
  * 
  */
 
-#ifndef __RAPH_KERNEL_SEGMENT_H__
-#define __RAPH_KERNEL_SEGMENT_H__
+#ifndef __RAPH_KERNEL_NET_SEGMENT_H__
+#define __RAPH_KERNEL_NET_SEGMENT_H__
 
-#endif // __RAPH_KERNEL_SEGMENT_H__
+class PktSegmentCtrl {
+};
+
+#endif // __RAPH_KERNEL_NET_SEGMENT_H__

@@ -20,13 +20,13 @@
  * 
  */
 
-#ifndef __RAPH_KERNEL_E1000_H__
-#define __RAPH_KERNEL_E1000_H__
+#ifndef __RAPH_KERNEL_DEV_E1000_H__
+#define __RAPH_KERNEL_DEV_E1000_H__
 
 #include <stdint.h>
 #include "../mem/physmem.h"
 #include "../mem/virtmem.h"
-#include "pci.h"
+#include "eth.h"
 
 /*
  * e1000 is the driver for Intel 8254x/8256x/8257x and so on.
@@ -85,9 +85,9 @@ struct E1000TxDesc {
   uint16_t special;
 } __attribute__ ((packed));
 
-class E1000 : public DevPCI {
+class E1000 : public DevEthernet {
 public:
- E1000(uint8_t bus, uint8_t device, bool mf) : DevPCI(bus, device, mf) {}
+ E1000(uint8_t bus, uint8_t device, bool mf) : DevEthernet(bus, device, mf) {}
   static void InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {
     if (vid == kVendorId) {
       switch(did) {
@@ -105,9 +105,9 @@ public:
   // init sequence of e1000 device (see pcie-gbe-controllers 14.3)
   void Setup();
   // see pcie-gbe-controllers 3.2
-  uint32_t ReceivePacket(uint8_t *buffer, uint32_t size);
+  virtual uint32_t ReceivePacket(uint8_t *buffer, uint32_t size) override;
   // see pcie-gbe-controllers 3.3, 3.4
-  uint32_t TransmitPacket(const uint8_t *packet, uint32_t length);
+  virtual uint32_t TransmitPacket(const uint8_t *packet, uint32_t length) override;
   // buffer size
   static const int kBufSize = 2048;
   // for debugging
@@ -221,4 +221,4 @@ private:
   static const int kRegRahAvFlag = 1 << 31;
 };
 
-#endif /* __RAPH_KERNEL_E1000_H__ */
+#endif /* __RAPH_KERNEL_DEV_E1000_H__ */

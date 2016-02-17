@@ -23,7 +23,7 @@ test:
 testrun:
 	make clean
 	make test
-	$(TEST)
+	sudo $(TEST)
 
 $(TEST): $(TEST_OBJ)
 	g++ -pedantic -pthread -static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive -o $@ $^

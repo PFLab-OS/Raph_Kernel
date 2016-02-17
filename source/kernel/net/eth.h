@@ -20,7 +20,10 @@
  * 
  */
 
-#ifndef __RAPH_KERNEL_ETH_H__
-#define __RAPH_KERNEL_ETH_H__
+#ifndef __RAPH_KERNEL_NET_ETH_H__
+#define __RAPH_KERNEL_NET_ETH_H__
 
-#endif // __RAPH_KERNEL_ETH_H__
+class EthCtrl {
+};
+
+#endif // __RAPH_KERNEL_NET_ETH_H__

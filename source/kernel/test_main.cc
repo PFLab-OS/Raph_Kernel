@@ -18,12 +18,15 @@
  *
  * Author: Liva
  * 
+ * User level unit test
+ * 
  */
 
 #include <iostream>
 #include "spinlock.h"
 #include "mem/virtmem.h"
 #include "global.h"
+#include "dev/raw.h"
 
 SpinLockCtrl *spinlock_ctrl;
 VirtmemCtrl *virtmem_ctrl;
@@ -49,6 +52,10 @@ int main() {
   VirtmemCtrl _virtmem_ctrl;
   virtmem_ctrl = &_virtmem_ctrl;
   //memory_test();
+
+
+  DevRawEthernet eth;
+
   std::cout << "test passed" << std::endl;
   return 0;
 }
