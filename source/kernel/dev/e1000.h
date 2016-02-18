@@ -98,6 +98,7 @@ public:
         e1000->Setup();
         e1000->PrintEthAddr();
         e1000->TxTest();
+        e1000->RxTest();
         break;
       }
     }
@@ -105,9 +106,9 @@ public:
   // init sequence of e1000 device (see pcie-gbe-controllers 14.3)
   void Setup();
   // see pcie-gbe-controllers 3.2
-  virtual uint32_t ReceivePacket(uint8_t *buffer, uint32_t size) override;
+  int32_t ReceivePacket(uint8_t *buffer, uint32_t size);
   // see pcie-gbe-controllers 3.3, 3.4
-  virtual uint32_t TransmitPacket(const uint8_t *packet, uint32_t length) override;
+  int32_t TransmitPacket(const uint8_t *packet, uint32_t length);
   // buffer size
   static const int kBufSize = 2048;
   // for debugging
@@ -124,9 +125,10 @@ private:
   // read data from EEPROM
   uint16_t EepromRead(uint16_t addr);
 
-  // packet transmit test
+  // packet transmit/receive test
   uint32_t Crc32b(uint8_t *message);
   void TxTest();
+  void RxTest();
 
   static const uint16_t kVendorId = 0x8086;
 

@@ -38,6 +38,8 @@
 #include <sys/ioctl.h>
 #include <arpa/inet.h>
 
+#define NETWORK_INTERFACE "br0"
+
 class DevRawEthernet : public DevEthernet {
  public:
  DevRawEthernet() : DevEthernet(0, 0, 0) {
@@ -50,7 +52,7 @@ class DevRawEthernet : public DevEthernet {
     struct ifreq ifr;
 
     memset(&ifr, 0, sizeof(ifr));
-    strncpy(ifr.ifr_name, "br0", IFNAMSIZ);
+    strncpy(ifr.ifr_name, NETWORK_INTERFACE, IFNAMSIZ);
     ioctl(_pd, SIOCGIFINDEX, &ifr);
     _ifindex = ifr.ifr_ifindex;
 
@@ -62,35 +64,29 @@ class DevRawEthernet : public DevEthernet {
     sll.sll_ifindex = _ifindex;
     bind(_pd, (struct sockaddr *)&sll, sizeof sll);
 
-    char buf[100];
-
-    // flush buffers
-    int i;
-    do {
-      fd_set fds;
-      struct timeval t;
-      FD_ZERO(&fds);
-      FD_SET(_pd, &fds);
-      memset(&t, 0, sizeof(t));
-      i = select(FD_SETSIZE, &fds, NULL, NULL, &t);
-      if (i > 0)
-        recv(_pd, buf, sizeof(buf), 0);
-    } while (i);
+    FetchAddress();
+    FlushSocket();
   }
-  virtual uint32_t ReceivePacket(uint8_t *buffer, uint32_t size) override {
+  void FetchAddress();
+  void FlushSocket();
+  virtual int32_t ReceivePacket(uint8_t *buffer, uint32_t size) override {
     // TODO ブロックしてしまうため、本来の挙動とは少し異なるのを修正
-    return static_cast<uint32_t>(recv(_pd, buffer, size, 0));
+    return static_cast<int32_t>(recv(_pd, buffer, size, 0));
   }
-  virtual uint32_t TransmitPacket(const uint8_t *packet, uint32_t length) override {
+  virtual int32_t TransmitPacket(const uint8_t *packet, uint32_t length) override {
     struct sockaddr_ll sll;
 
     memset(&sll, 0, sizeof(sll));
     sll.sll_ifindex = _ifindex;
-    return static_cast<uint32_t>(sendto(_pd, packet, length, 0, (struct sockaddr *)&sll, sizeof(sll)));
+    return static_cast<int32_t>(sendto(_pd, packet, length, 0, (struct sockaddr *)&sll, sizeof(sll)));
   }
+  void PrintAddrInfo();
+  void TestRawARP();
  private:
   int _pd;
   int _ifindex;
+  uint8_t _macAddr[6];
+  uint32_t _ipAddr;
 };
 
 #endif // __UNIT_TEST__

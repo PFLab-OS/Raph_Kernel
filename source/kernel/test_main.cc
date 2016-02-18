@@ -55,6 +55,8 @@ int main() {
 
 
   DevRawEthernet eth;
+  eth.PrintAddrInfo();
+  eth.TestRawARP();
 
   std::cout << "test passed" << std::endl;
   return 0;
