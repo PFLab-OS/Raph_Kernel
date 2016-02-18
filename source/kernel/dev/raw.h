@@ -67,6 +67,7 @@ class DevRawEthernet : public DevEthernet {
     FetchAddress();
     FlushSocket();
   }
+  virtual ~DevRawEthernet() { close(_pd); }
   void FetchAddress();
   void FlushSocket();
   virtual int32_t ReceivePacket(uint8_t *buffer, uint32_t size) override {
