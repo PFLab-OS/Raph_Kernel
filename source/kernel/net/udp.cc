@@ -48,7 +48,7 @@ int32_t UDPCtrl::Transmit(const uint8_t *data, uint32_t length) {
   memcpy(datagram + sizeof(UDPHeader), data, length);
 
   // call IPCtrl::TransmitData
-  _ipCtrl->TransmitData(datagram, sizeof(UDPHeader) + length);
+  _ipCtrl->TransmitData(datagram, sizeof(UDPHeader) + length, kProtoUDP);
 
   virtmem_ctrl->Free(reinterpret_cast<virt_addr>(datagram));
 

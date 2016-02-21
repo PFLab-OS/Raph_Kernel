@@ -97,8 +97,8 @@ public:
         E1000 *e1000 = new(addr) E1000(bus, device, mf);
         e1000->Setup();
         e1000->PrintEthAddr();
-//        e1000->TxTest();
-//        e1000->RxTest();
+        e1000->TxTest();
+        e1000->RxTest();
         break;
       }
     }

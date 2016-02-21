@@ -42,10 +42,12 @@ struct UDPHeader {
 class UDPCtrl : public L4Ctrl {
   IPCtrl *_ipCtrl;
 
-  uint16_t kPortHTTP = 80;
+  static const uint8_t kProtoUDP = 17;
 
 public:
-  UDPCtrl(IPCtrl *ipCtrl) : _ipCtrl(ipCtrl) {}
+  UDPCtrl(IPCtrl *ipCtrl) : _ipCtrl(ipCtrl) {
+    _ipCtrl->RegisterL4Ctrl(kProtoUDP, this);
+  }
   virtual int32_t Receive(uint8_t *data, uint32_t size);
   virtual int32_t Transmit(const uint8_t *data, uint32_t length);
 };

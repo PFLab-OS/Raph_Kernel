@@ -45,7 +45,7 @@ int32_t IPCtrl::ReceiveData(uint8_t *data, uint32_t size) {
   return result;
 }
 
-int32_t IPCtrl::TransmitData(const uint8_t *data, uint32_t length) {
+int32_t IPCtrl::TransmitData(const uint8_t *data, uint32_t length, const uint8_t protocolType) {
   int32_t result = -1;
 
   uint32_t totalLen = sizeof(IPv4Header) + length;
@@ -64,8 +64,7 @@ int32_t IPCtrl::TransmitData(const uint8_t *data, uint32_t length) {
   header.fragOffsetHi_flag = ((frag >> 8) & 0x1f) | kFlagNoFragment;
   header.fragOffsetLo = (frag & 0xff);
   header.ttl = kTimeToLive;
-  // TODO: switch protocol ID
-  header.protoId = kProtocolUDP;
+  header.protoId = protocolType;
   header.checksum = 0;
   // TODO: how to get IP address?
   header.srcAddr = 0x0f02000a;
@@ -99,4 +98,8 @@ uint16_t IPCtrl::checkSum(uint8_t *buf, uint32_t size) {
   sum = (sum & 0xffff) + (sum >> 16);	/* once again */
   
   return ~sum;
+}
+
+void IPCtrl::RegisterL4Ctrl(const uint8_t protocolType, L4Ctrl *l4Ctrl) {
+  _l4CtrlTable[protocolType] = l4Ctrl;
 }

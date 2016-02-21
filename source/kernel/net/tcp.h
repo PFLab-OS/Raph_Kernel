@@ -31,10 +31,12 @@
 class TCPCtrl : public L4Ctrl {
   IPCtrl *_ipCtrl;
 
-  uint16_t kPortHTTP = 80;
+  static const uint8_t kProtoTCP = 6;
 
 public:
-  TCPCtrl() {}
+  TCPCtrl(IPCtrl *ipCtrl) : _ipCtrl(ipCtrl) {
+    _ipCtrl->RegisterL4Ctrl(kProtoTCP, this);
+  }
   virtual int32_t Receive(uint8_t *data, uint32_t size);
   virtual int32_t Transmit(const uint8_t *data, uint32_t length);
 };

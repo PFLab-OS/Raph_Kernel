@@ -56,28 +56,28 @@ struct IPv4Header {
 } __attribute__ ((packed));
 
 class IPCtrl {
-  L2Ctrl *_l2Ctrl;
-  uint16_t _idAutoIncrement;
+  static const uint16_t kL4CtrlTableNumber = 0x100;
+  static const uint8_t kIPVersion          = 4;
+  static const uint8_t kPktPriority        = (7 << 5);
+  static const uint8_t kPktDelay           = (1 << 4);
+  static const uint8_t kPktThroughput      = (1 << 3);
+  static const uint8_t kPktReliability     = (1 << 2);
+  static const uint8_t kFlagNoFragment     = (1 << 6);
+  static const uint8_t kFlagMoreFragment   = (1 << 5);
+  static const uint8_t kTimeToLive         = 16;
 
-  const uint8_t kIPVersion        = 4;
-  const uint8_t kPktPriority      = (7 << 5);
-  const uint8_t kPktDelay         = (1 << 4);
-  const uint8_t kPktThroughput    = (1 << 3);
-  const uint8_t kPktReliability   = (1 << 2);
-  const uint8_t kFlagNoFragment   = (1 << 6);
-  const uint8_t kFlagMoreFragment = (1 << 5);
-  const uint8_t kTimeToLive       = 16;
-  const uint8_t kProtocolIP       = 0;
-  const uint8_t kProtocolICMP     = 1;
-  const uint8_t kProtocolTCP      = 6;
-  const uint8_t kProtocolUDP      = 17;
+  L2Ctrl *_l2Ctrl;
+  L4Ctrl *_l4CtrlTable[kL4CtrlTableNumber] = {nullptr};
+  uint16_t _idAutoIncrement;
 
   uint16_t checkSum(uint8_t *buf, uint32_t size);
 
 public:
   IPCtrl(L2Ctrl *l2Ctrl) : _l2Ctrl(l2Ctrl), _idAutoIncrement(0) {}
   virtual int32_t ReceiveData(uint8_t *data, uint32_t size);
-  virtual int32_t TransmitData(const uint8_t *data, uint32_t length);
+  virtual int32_t TransmitData(const uint8_t *data, uint32_t length, const uint8_t protocolType);
+
+  void RegisterL4Ctrl(const uint8_t protocolType, L4Ctrl *l4Ctrl);
 };
 
 #endif // __RAPH_KERNEL_NET_IP_H__

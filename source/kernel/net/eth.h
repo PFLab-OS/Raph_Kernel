@@ -41,8 +41,8 @@ struct EthHeader {
 };
 
 class EthCtrl : public L2Ctrl {
-  const uint16_t kProtocolIPv4 = (0x08) | (0x00 << 8);
-  const uint16_t kProtocolARP  = (0x08) | (0x06 << 8);
+  static const uint16_t kProtocolIPv4 = (0x08) | (0x00 << 8);
+  static const uint16_t kProtocolARP  = (0x08) | (0x06 << 8);
 
 public:
   EthCtrl() {}

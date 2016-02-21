@@ -45,6 +45,8 @@ class L4Ctrl {
 protected:
   L4Ctrl() {}
 
+  static const uint16_t kPortHTTP = 80;
+
 public:
   virtual int32_t Receive(uint8_t *data, uint32_t size) = 0;
   virtual int32_t Transmit(const uint8_t *data, uint32_t length) = 0;

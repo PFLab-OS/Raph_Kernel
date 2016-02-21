@@ -133,27 +133,27 @@ void DevRawEthernet::TestRawUDP() {
     // ===== IPv4 Header =====
     0x45, // IP Version (4bit) | Header Size (4bit)
     0xfc, // TYPE of service
-    0x20, 0x00, // total length
+    0x00, 0x20, // total length
     0x00, 0x00, // identification
     0x40, 0x00, // No Fragments
     0x10, // TTL
     0x11, // Protocol: UDP
     0x9e, 0xfe, // Header checksum
     // Source Address
-    static_cast<uint8_t>((_ipAddr) & 0xff),
-    static_cast<uint8_t>((_ipAddr >> 8) & 0xff),
-    static_cast<uint8_t>((_ipAddr >> 16) & 0xff),
     static_cast<uint8_t>((_ipAddr >> 24) & 0xff),
+    static_cast<uint8_t>((_ipAddr >> 16) & 0xff),
+    static_cast<uint8_t>((_ipAddr >> 8) & 0xff),
+    static_cast<uint8_t>((_ipAddr) & 0xff),
 //    0x0f, 0x02, 0x00, 0x0a, // Destination Address
     // Target Address
-    static_cast<uint8_t>((_ipAddr) & 0xff),
-    static_cast<uint8_t>((_ipAddr >> 8) & 0xff),
-    static_cast<uint8_t>((_ipAddr >> 16) & 0xff),
     static_cast<uint8_t>((_ipAddr >> 24) & 0xff),
+    static_cast<uint8_t>((_ipAddr >> 16) & 0xff),
+    static_cast<uint8_t>((_ipAddr >> 8) & 0xff),
+    static_cast<uint8_t>((_ipAddr) & 0xff),
     // ===== UDP Header =====
-    0x50, 0x00, // Source Port
-    0x50, 0x00, // Destination Port
-    0x0c, 0x00, // length
+    0x00, 0x50, // Source Port
+    0x00, 0x50, // Destination Port
+    0x00, 0x0c, // length
     0x00, 0x00, // checksum (zero)
     // ===== Datagram Body =====
     0x41, 0x42, 0x43, 0x44,
