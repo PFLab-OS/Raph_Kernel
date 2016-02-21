@@ -21,6 +21,9 @@
  */
 
 #define ASM_FILE
+#include "../idt.h"
+#include "../mem/paging.h"
+
 # entry point of APs must be located on the align of 4KB
 # see intel MPspec Appendix B.4.2
 .text
@@ -28,9 +31,60 @@
 .balign 4096
 
 .globl entryothers
+.global stack_of_others
+
 entryothers:
   cli
-  hlt
-  nop
-  nop
-  nop
+
+setup_paging_of_others:
+  mov $initial_PML4T, %edi
+  // TODO : remove bits
+  or $(PML4E_WRITETHROUGH_BIT | PML4E_CACHEDISABLE_BIT), %edi
+  mov %edi, %cr3
+
+  // set PAE&PGE bit
+  mov %cr4, %eax
+  or $(1 << 5 | 1 << 7), %eax
+  mov %eax, %cr4
+
+switchto_longmode_of_others:
+  // set LM bit
+  mov $0xC0000080, %ecx
+  rdmsr
+  or $(1 << 8), %eax
+  wrmsr
+
+  // set PG&PE bit
+  mov %cr0, %eax
+  or $(1 << 31 | 1 << 0), %eax
+  andl $(~(1 << 30 | 1 << 29)), %eax
+  mov %eax, %cr0
+  lgdt gdtr_of_others
+  ljmp $KERNEL_CS, $trampoline_of_others
+
+
+.code64
+trampoline_of_others:
+  movl $KERNEL_DS, %eax
+  mov %ax, %ds
+  mov %ax, %es
+  mov %ax, %fs
+  mov %ax, %gs
+  mov %ax, %ss
+  mov (stack_of_others), %rsp
+  pushq $0   // return addr
+  pushq $KERNEL_CS
+  mov $main_of_others, %rax
+  pushq %rax
+  // load higher address gdt
+  lgdt gdtr
+  lretq
+
+.data
+  .word 0
+gdtr_of_others:
+  .word 8*4 - 1
+  .quad gdt
+
+stack_of_others:
+  .quad 0

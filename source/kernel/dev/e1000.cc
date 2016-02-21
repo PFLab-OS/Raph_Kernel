@@ -22,7 +22,7 @@
 
 #include <stdint.h>
 #include "e1000.h"
-#include "../mem/physmem.h"
+#include "../mem/paging.h"
 #include "../global.h"
 #include "../tty.h"
 
@@ -300,32 +300,29 @@ void E1000::TxTest() {
   gtty->Printf("s", "Packet sent (length = ", "d", len, "s", ")\n");
 }
 
-void E1000::RxTest() {
+void E1000::Handle() {
   const uint32_t kBufsize = 256;
   virt_addr vaddr = virtmem_ctrl->Alloc(sizeof(uint8_t) * kBufsize);
   uint8_t *buf = reinterpret_cast<uint8_t*>(k2p(vaddr));
-  int tryCnt = 5;
-  while(tryCnt--) {
-    // polling
-    if(this->ReceivePacket(buf, kBufsize) != -1) {
-      // received packet
-      if(buf[12] == 0x08 && buf[13] == 0x06) {
-        // ARP packet
-        break;
-	  }
-    }
+  if(this->ReceivePacket(buf, kBufsize) == -1) {
+    virtmem_ctrl->Free(vaddr);
+    return;
+  } 
+  // received packet
+  if(buf[12] == 0x08 && buf[13] == 0x06) {
+    // ARP packet
+    gtty->Printf(
+                 "s", "ARP Reply received; ",
+                 "x", buf[6], "s", ":",
+                 "x", buf[7], "s", ":",
+                 "x", buf[8], "s", ":",
+                 "x", buf[9], "s", ":",
+                 "x", buf[10], "s", ":",
+                 "x", buf[11], "s", " -> ",
+                 "d", buf[28], "s", ".",
+                 "d", buf[29], "s", ".",
+                 "d", buf[30], "s", ".",
+                 "d", buf[31], "s", "\n");
   }
-  gtty->Printf(
-    "s", "ARP Reply received; ",
-    "x", buf[6], "s", ":",
-    "x", buf[7], "s", ":",
-    "x", buf[8], "s", ":",
-    "x", buf[9], "s", ":",
-    "x", buf[10], "s", ":",
-    "x", buf[11], "s", " -> ",
-    "d", buf[28], "s", ".",
-    "d", buf[29], "s", ".",
-    "d", buf[30], "s", ".",
-    "d", buf[31], "s", "\n");
   virtmem_ctrl->Free(vaddr);
 }

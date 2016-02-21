@@ -25,10 +25,13 @@
 #include "acpi.h"
 #include "apic.h"
 #include "multiboot.h"
+#include "polling.h"
 #include "mem/physmem.h"
 #include "mem/paging.h"
 #include "idt.h"
+
 #include "tty.h"
+#include "dev/hpet.h"
 
 #include "dev/vga.h"
 #include "dev/pci.h"
@@ -40,10 +43,13 @@ ApicCtrl *apic_ctrl;
 PhysmemCtrl *physmem_ctrl;
 PagingCtrl *paging_ctrl;
 VirtmemCtrl *virtmem_ctrl;
+PollingCtrl *polling_ctrl;
 Idt *idt;
 
-PCICtrl *pci_ctrl;
 Tty *gtty;
+Hpet *hpet;
+
+PCICtrl *pci_ctrl;
 
 extern "C" int main() {
   SpinLockCtrl _spinlock_ctrl;
@@ -54,6 +60,9 @@ extern "C" int main() {
 
   AcpiCtrl _acpi_ctrl;
   acpi_ctrl = &_acpi_ctrl;
+
+  ApicCtrl _apic_ctrl;
+  apic_ctrl = &_apic_ctrl;
   
   Idt _idt;
   idt = &_idt;
@@ -66,23 +75,56 @@ extern "C" int main() {
   
   PagingCtrl _paging_ctrl;
   paging_ctrl = &_paging_ctrl;
+
+  PollingCtrl _polling_ctrl;
+  polling_ctrl = &_polling_ctrl;
   
+  Hpet _hpet;
+  hpet = &_hpet;
+
   Vga _vga;
   gtty = &_vga;
   
   multiboot_ctrl->Setup();
   
+  // acpi_ctl->Setup() は multiboot_ctrl->Setup()から呼ばれる
+
+  hpet->Setup();
+
+  // hpet->Sertup()より後
   apic_ctrl->Setup();
   
   idt->Setup();
   
   InitDevices<PCICtrl, Device>();
+  gtty->Printf("s", "\n\n");
 
+  gtty->Printf("s", "cpu #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
   apic_ctrl->StartAPs();
-  gtty->Printf("s", "\n\nkernel initialization completed");
-  while(1) {
+
+  gtty->Printf("s", "\n\nkernel initialization completed\n");
+
+  extern int kKernelEndAddr;
+  // stackは12K
+  kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr)));
+  kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 3) + 1));
+  kassert(!paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - 4096 * 3));
+
+  polling_ctrl->HandleAll();
+  while(true) {
     asm volatile("hlt;nop;hlt;");
   }
+  return 0;
+}
+
+extern "C" int main_of_others() {
+  // according to mp spec B.3, system should switch over to Symmetric I/O mode
+  apic_ctrl->BootAP();
+  gtty->Printf("s", "cpu #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
+  while(1) {
+    asm volatile("hlt;");
+  }
+  return 0;
 }
 
 void kernel_panic(char *class_name, char *err_str) {

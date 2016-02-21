@@ -29,6 +29,7 @@
 extern int virt_memory_start;
 extern int virt_memory_end;
 extern int virt_allocatedmemory_end;
+extern int phys_memory_end;
 extern int kHeapEndAddr;
 
 #ifdef __UNIT_TEST__
@@ -342,8 +343,16 @@ VirtmemCtrl::VirtmemCtrl() {
   virt_addr tmp2 = align(ptr2virtaddr(&virt_allocatedmemory_end), 8);
   _heap_end = ptr2virtaddr(&kHeapEndAddr);
 
-  _first = reinterpret_cast<VirtmemCtrl::AreaManager *>(tmp1);
-  _first = new(_first) VirtmemCtrl::AreaManager(_first, _first, tmp2 - tmp1);
+  _first = reinterpret_cast<AreaManager *>(tmp1);
+  _first = new(_first) AreaManager(_first, _first, tmp2 - tmp1);
+
+  // 2MB allocated by boot.S
+  virt_addr tmp3 = reinterpret_cast<virt_addr>(&phys_memory_end);
+  virt_addr tmp4 = 0x200000;
+  kassert(tmp3 + AreaManager::GetAreaManagerSize() < tmp4);
+  AreaManager *second = reinterpret_cast<AreaManager *>(tmp3);
+  _first->Append(second, tmp4 - tmp3);
+
   _list = _first;
 }
 
@@ -394,20 +403,21 @@ virt_addr VirtmemCtrl::Alloc(size_t size) {
   }
   if (cur == _list && best == nullptr) {
     // 新規にページ割り当て
-    kassert(false && "not enough kernel heap memory");
-    /*    AreaManager *end = _first->GetPrev();
-    virt_addr allocated_addr_end = end->GetAddr() + end->_size;
-    assert(allocated_addr_end == align(allocated_addr_end, PagingCtrl::kPageSize));
+    AreaManager *end = _first->GetPrev();
+    virt_addr allocated_addr_end = end->GetAddr() + end->GetSize() + end->GetAreaManagerSize();
+    kassert(allocated_addr_end == align(allocated_addr_end, PagingCtrl::kPageSize));
     if (allocated_addr_end + size < _heap_end) {
       PhysAddr paddr;
-      physmem_ctrl->Alloc(paddr, alignUp(size, PagingCtrl::kPageSize));
-      assert(paging_ctrl->MapPhysAddrToVirtAddr(allocated_addr_end, paddr, PDE_WRITE_BIT, PTE_WRITE_BIT || PTE_GLOBAL_BIT));
-      //TODO エリア結合
-      //TODO paging.hのページテーブル上書きコードをラッピング
+      size_t psize = alignUp(size, PagingCtrl::kPageSize);
+      physmem_ctrl->Alloc(paddr, psize);
+      kassert(false);
+      kassert(paging_ctrl->MapPhysAddrToVirtAddr(allocated_addr_end, paddr, psize, PDE_WRITE_BIT, PTE_WRITE_BIT || PTE_GLOBAL_BIT));
+      AreaManager *next = reinterpret_cast<AreaManager *>(allocated_addr_end);
+      end->Append(next, psize);
     } else {
       // マジかよ
       kassert(false && "not enough kernel heap memory");
-      }*/
+    }
   }
   _list = min;
   best->Allocate();

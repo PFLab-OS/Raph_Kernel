@@ -61,6 +61,7 @@ struct ACPISDTHeader {
 } __attribute__ ((packed));
 
 struct MCFG;
+struct HPETDT;
 
 class AcpiCtrl {
 public:
@@ -69,6 +70,9 @@ public:
   void Setup(RSDPDescriptor *rsdp);
   MCFG *GetMCFG() {
     return _mcfg;
+  }
+  HPETDT *GetHPETDT() {
+    return _hpetdt;
   }
 private:
   int CheckACPISDTHeader(ACPISDTHeader *header) {
@@ -80,6 +84,7 @@ private:
     return (sum == 0);
   }
   MCFG *_mcfg = nullptr;
+  HPETDT *_hpetdt = nullptr;
 };
 
 #endif /* __RAPH_KERNEL_ACPI_H__ */

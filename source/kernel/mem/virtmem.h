@@ -49,10 +49,11 @@ public:
 #ifndef __UNIT_TEST__
 private:
 #endif // __UNIT_TEST__
+  // AreaManagerはAreaManagerの実体とその直後のメモリ空間を管理する
   class AreaManager {
   public:
     AreaManager(AreaManager *next, AreaManager *prev, size_t size) {
-      assert(size == align(size, 8));
+      kassert(size == align(size, 8));
       _next = next;
       _prev = prev;
       _size = size;
@@ -92,19 +93,26 @@ private:
     }
     AreaManager *Divide(size_t size) {
       // sizeはAreaManagerを含まないサイズ!!!
-      assert(size == align(size, 8));
+      kassert(size == align(size, 8));
       size_t esize = size + AreaManager::GetAreaManagerSize();
       kassert(esize <= _size);
       if (esize + AreaManager::GetAreaManagerSize() + kSizeMin > _size) {
         // divideできなかった
         return nullptr;
       }
-      assert(_size == align(_size, 8));
+      kassert(_size == align(_size, 8));
       AreaManager *next = new(reinterpret_cast<AreaManager *>(reinterpret_cast<size_t>(this) + esize)) AreaManager(_next, this, _size - esize);
       _size = esize;
       _next = next;
       next->_next->_prev = next;
       return _next;
+    }
+    // areaは未初期化でOK
+    void Append(AreaManager *area, size_t size) {
+      // thisは理解しやすくするために付加
+      area = new(area) AreaManager(this, this->_next, size);
+      this->_next->_prev = area;
+      this->_next = area;
     }
     virt_addr GetAreaStartAddr() {
       return static_cast<virt_addr>(reinterpret_cast<size_t>(this) + GetAreaManagerSize());

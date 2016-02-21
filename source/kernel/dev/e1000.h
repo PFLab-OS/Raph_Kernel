@@ -26,6 +26,8 @@
 #include <stdint.h>
 #include "../mem/physmem.h"
 #include "../mem/virtmem.h"
+#include "../polling.h"
+#include "../global.h"
 #include "pci.h"
 
 /*
@@ -85,7 +87,7 @@ struct E1000TxDesc {
   uint16_t special;
 } __attribute__ ((packed));
 
-class E1000 : public DevPCI {
+class E1000 : public DevPCI, Polling {
 public:
  E1000(uint8_t bus, uint8_t device, bool mf) : DevPCI(bus, device, mf) {}
   static void InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {
@@ -96,13 +98,14 @@ public:
         E1000 *addr = reinterpret_cast<E1000 *>(virtmem_ctrl->Alloc(sizeof(E1000)));
         E1000 *e1000 = new(addr) E1000(bus, device, mf);
         e1000->Setup();
-        e1000->PrintEthAddr();
+        polling_ctrl->Register(e1000);
         e1000->TxTest();
-        e1000->RxTest();
         break;
       }
     }
   }
+  // from Polling
+  void Handle() override;
   // init sequence of e1000 device (see pcie-gbe-controllers 14.3)
   void Setup();
   // see pcie-gbe-controllers 3.2
@@ -128,7 +131,6 @@ private:
   // packet transmit/receive test
   uint32_t Crc32b(uint8_t *message);
   void TxTest();
-  void RxTest();
 
   static const uint16_t kVendorId = 0x8086;
 

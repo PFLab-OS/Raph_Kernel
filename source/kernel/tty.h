@@ -49,9 +49,9 @@ class Tty {
     if (strcmp(arg1, "s")) {
       Printf("s", "(invalid format)");
     } else {
-      if (*arg2 != 0) {
+      while(*arg2) {
         Write(*arg2);
-        Printf("s", arg2 + 1);
+        arg2++;
       }
     }
     Printf(args...);

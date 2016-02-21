@@ -52,6 +52,7 @@ PhysmemCtrl::PhysmemCtrl() {
 void PhysmemCtrl::Alloc(PhysAddr &paddr, size_t size) {
   kassert(size > 0);
   kassert(size % PagingCtrl::kPageSize == 0);
+  _alloc_lock = false;
   phys_addr allocated_addr = 0;
   AllocatedArea *allocated_area = nullptr;
   AllocatedArea *fraged_area = nullptr;

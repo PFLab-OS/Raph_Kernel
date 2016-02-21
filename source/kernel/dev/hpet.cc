@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2015 Raphine Project
+ * Copyright (c) 2016 Project Raphine
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -20,10 +20,17 @@
  * 
  */
 
-#ifndef __RAPH_LIB_ASSERT_H__
-#define __RAPH_LIB_ASSERT_H__
+#include "hpet.h"
+#include "../acpi.h"
 
-#undef assert
-#define assert(flag) if (!(flag)) {while(true){asm volatile("nop;nop;nop;hlt");}}
+void Hpet::Setup() {
+  _dt = acpi_ctrl->GetHPETDT();
+  kassert(_dt != nullptr);
+  phys_addr pbase = _dt->BaseAddr;
+  _reg = reinterpret_cast<uint64_t *>(p2v(pbase));
 
-#endif // __RAPH_LIB_ASSERT_H__
+  _cnt_clk_period = _reg[kRegGenCapabilities] >> 32;
+  
+  // Enable Timer
+  _reg[kRegGenConfig] |= kRegGenConfigFlagEnable;
+}
