@@ -26,23 +26,23 @@
 #include "../mem/virtmem.h"
 #include "../global.h"
 
-int32_t IPCtrl::ReceiveData(uint8_t *data, uint32_t size) {
+int32_t IPCtrl::ReceiveData(uint8_t *data, uint32_t size, const uint8_t protocolType) {
   // alloc buffer
-  uint8_t *buffer = reinterpret_cast<uint8_t*>(virtmem_ctrl->Alloc(sizeof(uint8_t) * (sizeof(IPv4Header) + size)));
+  int32_t bufsize = sizeof(IPv4Header) + size;
+  uint8_t *buffer = reinterpret_cast<uint8_t*>(virtmem_ctrl->Alloc(sizeof(uint8_t) * bufsize));
 
-  // TODO: size
-  const uint32_t kBufsize = 0x400;
-  int32_t result = _l2Ctrl->ReceiveData(buffer, kBufsize);
+  int32_t result = _l2Ctrl->ReceiveData(buffer, bufsize);
 
-  if(result != -1) {
-    // success
-    uint32_t length = size < (result - sizeof(IPv4Header)) ? size : (result - sizeof(IPv4Header));
+  if(result != -1 && buffer[kProtocolTypeOffset] == protocolType) {
+    // succeed to receive packet and correspond to the specified protocol
+    int32_t length = bufsize < result ? bufsize : result;
 	memcpy(data, buffer + sizeof(IPv4Header), length);
+    virtmem_ctrl->Free(reinterpret_cast<virt_addr>(buffer));
+	return result - sizeof(IPv4Header);
+  } else {
+    virtmem_ctrl->Free(reinterpret_cast<virt_addr>(buffer));
+    return result;
   }
-
-  virtmem_ctrl->Free(reinterpret_cast<virt_addr>(buffer));
-
-  return result;
 }
 
 int32_t IPCtrl::TransmitData(const uint8_t *data, uint32_t length, const uint8_t protocolType) {

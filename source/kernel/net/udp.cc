@@ -25,12 +25,34 @@
 #include "../mem/virtmem.h"
 #include "../global.h"
 
-int32_t UDPCtrl::Receive(uint8_t *data, uint32_t size) {
+#include <stdio.h>
+
+int32_t UDPCtrl::Receive(uint8_t *data, uint32_t size, uint32_t port) {
+  // alloc buffer
+  int32_t bufsize = sizeof(UDPHeader) + size;
+  uint8_t *buffer = reinterpret_cast<uint8_t*>(virtmem_ctrl->Alloc(sizeof(uint8_t) * bufsize));
+
   int32_t result = -1;
-  return result;
+  uint16_t receivedPort = 0;
+
+  while(result == -1 || receivedPort != port) {
+    // succeed to receive packet and correspond to the specified port
+    result = _ipCtrl->ReceiveData(buffer, bufsize, kProtoUDP);
+    receivedPort = (buffer[kDstPortOffset] << 8) | buffer[kDstPortOffset + 1];
+  }
+
+  if(result > 0) {
+    int32_t length = bufsize < result ? bufsize : result;
+    memcpy(data, buffer + sizeof(UDPHeader), length);
+  
+    virtmem_ctrl->Free(reinterpret_cast<virt_addr>(buffer));
+    return result - sizeof(UDPHeader);
+  } else {
+    return result;
+  }
 }
 
-int32_t UDPCtrl::Transmit(const uint8_t *data, uint32_t length) {
+int32_t UDPCtrl::Transmit(const uint8_t *data, uint32_t length, uint32_t dstPort, uint32_t srcPort) {
   int32_t result = -1;
 
   // alloc datagram
@@ -38,8 +60,8 @@ int32_t UDPCtrl::Transmit(const uint8_t *data, uint32_t length) {
 
   // construct header
   UDPHeader header;
-  header.srcPort  = kPortHTTP;
-  header.dstPort  = kPortHTTP;
+  header.srcPort  = srcPort;
+  header.dstPort  = dstPort;
   header.len      = sizeof(UDPHeader) + length;
   header.checksum = 0;  // TODO: calculate
 

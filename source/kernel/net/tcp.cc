@@ -25,12 +25,28 @@
 #include "../mem/virtmem.h"
 #include "../global.h"
 
-int32_t TCPCtrl::Receive(uint8_t *data, uint32_t size) {
+int32_t TCPCtrl::Receive(uint8_t *data, uint32_t size, uint32_t port) {
   int32_t result = -1;
+  // alloc buffer
+//  virt_addr vaddr = virtmem_ctrl->Alloc(sizeof(uint8_t) * (sizeof(TCPHeader) + size));
+//  uint8_t *buffer = reinterpret_cast<uint8_t*>(k2p(vaddr));
+//
+//  // TODO: size
+//  const uint32_t kBufsize = 0x400;
+//  result = _ipCtrl->ReceiveData(buffer, kBufsize);
+//
+//  if(result != -1) {
+//    // success
+//    uint32_t length = size < (result - sizeof(TCPHeader)) ? size : (result - sizeof(TCPHeader));
+//	memcpy(data, buffer + sizeof(TCPHeader), length);
+//  }
+//
+//  virtmem_ctrl->Free(vaddr);
+//
   return result;
 }
 
-int32_t TCPCtrl::Transmit(const uint8_t *data, uint32_t length) {
+int32_t TCPCtrl::Transmit(const uint8_t *data, uint32_t length, uint32_t dstPort, uint32_t srcPort) {
   int32_t result = -1;
 
   // alloc datagram

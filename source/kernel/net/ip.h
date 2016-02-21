@@ -56,15 +56,16 @@ struct IPv4Header {
 } __attribute__ ((packed));
 
 class IPCtrl {
-  static const uint16_t kL4CtrlTableNumber = 0x100;
-  static const uint8_t kIPVersion          = 4;
-  static const uint8_t kPktPriority        = (7 << 5);
-  static const uint8_t kPktDelay           = (1 << 4);
-  static const uint8_t kPktThroughput      = (1 << 3);
-  static const uint8_t kPktReliability     = (1 << 2);
-  static const uint8_t kFlagNoFragment     = (1 << 6);
-  static const uint8_t kFlagMoreFragment   = (1 << 5);
-  static const uint8_t kTimeToLive         = 16;
+  static const uint16_t kL4CtrlTableNumber  = 0x100;
+  static const uint32_t kProtocolTypeOffset = 9;
+  static const uint8_t kIPVersion           = 4;
+  static const uint8_t kPktPriority         = (7 << 5);
+  static const uint8_t kPktDelay            = (1 << 4);
+  static const uint8_t kPktThroughput       = (1 << 3);
+  static const uint8_t kPktReliability      = (1 << 2);
+  static const uint8_t kFlagNoFragment      = (1 << 6);
+  static const uint8_t kFlagMoreFragment    = (1 << 5);
+  static const uint8_t kTimeToLive          = 16;
 
   L2Ctrl *_l2Ctrl;
   L4Ctrl *_l4CtrlTable[kL4CtrlTableNumber] = {nullptr};
@@ -74,7 +75,7 @@ class IPCtrl {
 
 public:
   IPCtrl(L2Ctrl *l2Ctrl) : _l2Ctrl(l2Ctrl), _idAutoIncrement(0) {}
-  virtual int32_t ReceiveData(uint8_t *data, uint32_t size);
+  virtual int32_t ReceiveData(uint8_t *data, uint32_t size, const uint8_t protocolType);
   virtual int32_t TransmitData(const uint8_t *data, uint32_t length, const uint8_t protocolType);
 
   void RegisterL4Ctrl(const uint8_t protocolType, L4Ctrl *l4Ctrl);

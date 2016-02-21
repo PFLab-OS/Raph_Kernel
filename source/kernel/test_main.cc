@@ -70,14 +70,15 @@ int main() {
   udp_ctrl = &_udp_ctrl;
  
   DevRawEthernet eth;
-//  eth.PrintAddrInfo();
-//  eth.TestRawARP();
-//  eth.TestRawUDP();
 
-  uint8_t data[] = {
-    0x41, 0x42, 0x43, 0x44
-  };
-  udp_ctrl->Transmit(data, sizeof(data)/sizeof(uint8_t));
+  const size_t kBufsize = 0x400;
+  uint8_t buf[kBufsize];
+  udp_ctrl->Receive(buf, kBufsize, 4000);
+
+  std::cout << "UDP packet received; >>> " << buf << " <<<" << std::endl;
+
+  udp_ctrl->Transmit(buf, sizeof(buf), 4000, 80);
+  std::cout << "UDP packed sent;" << std::endl;
 
   std::cout << "test passed" << std::endl;
   return 0;

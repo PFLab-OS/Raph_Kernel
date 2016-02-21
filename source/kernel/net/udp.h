@@ -37,19 +37,20 @@ struct UDPHeader {
   uint16_t len;
   // checksum
   uint16_t checksum;
-} __attribute__((packed));
+} __attribute__ ((packed));
 
 class UDPCtrl : public L4Ctrl {
   IPCtrl *_ipCtrl;
 
-  static const uint8_t kProtoUDP = 17;
+  static const uint8_t kProtoUDP       = 17;
+  static const uint32_t kDstPortOffset = 2;
 
 public:
   UDPCtrl(IPCtrl *ipCtrl) : _ipCtrl(ipCtrl) {
     _ipCtrl->RegisterL4Ctrl(kProtoUDP, this);
   }
-  virtual int32_t Receive(uint8_t *data, uint32_t size);
-  virtual int32_t Transmit(const uint8_t *data, uint32_t length);
+  virtual int32_t Receive(uint8_t *data, uint32_t size, uint32_t port);
+  virtual int32_t Transmit(const uint8_t *data, uint32_t length, uint32_t dstPort, uint32_t srcPort);
 };
 
 #endif // __RAPH_KERNEL_NET_UDP_H__

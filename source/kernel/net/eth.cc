@@ -38,22 +38,26 @@ bool EthCtrl::OpenSocket() {
 }
 
 int32_t EthCtrl::ReceiveData(uint8_t *data, uint32_t size) {
-  // alloc buffer
-  uint8_t *buffer = reinterpret_cast<uint8_t*>(virtmem_ctrl->Alloc(sizeof(uint8_t) * (sizeof(EthHeader) + size)));
+  if(_socket == nullptr) {
+    OpenSocket();
+  }
 
-  // TODO: size
-  const uint32_t kBufsize = 0x400;
-  int32_t result = _socket->ReceivePacket(buffer, kBufsize);
+  // alloc buffer
+  int32_t bufsize = sizeof(EthHeader) + size;
+  uint8_t *buffer = reinterpret_cast<uint8_t*>(virtmem_ctrl->Alloc(sizeof(uint8_t) * bufsize));
+
+  int32_t result = _socket->ReceivePacket(buffer, bufsize);
 
   if(result != -1) {
     // success
-    uint32_t length = size < (result - sizeof(EthHeader)) ? size : (result - sizeof(EthHeader));
+    int32_t length = bufsize < result ? bufsize : result;
     memcpy(data, buffer + sizeof(EthHeader), length);
+    virtmem_ctrl->Free(reinterpret_cast<virt_addr>(buffer));
+    return result - sizeof(EthHeader);
+  } else {
+    virtmem_ctrl->Free(reinterpret_cast<virt_addr>(buffer));
+    return result;
   }
-
-  virtmem_ctrl->Free(reinterpret_cast<virt_addr>(buffer));
-
-  return result;
 }
 
 int32_t EthCtrl::TransmitData(const uint8_t *data, uint32_t length) {
