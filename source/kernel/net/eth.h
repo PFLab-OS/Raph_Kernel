@@ -46,9 +46,11 @@ class EthCtrl : public L2Ctrl {
 
 public:
   EthCtrl() {}
+#ifndef __UNIT_TEST__
   virtual bool OpenSocket();
   virtual int32_t ReceiveData(uint8_t *data, uint32_t size);
   virtual int32_t TransmitData(const uint8_t *data, uint32_t length);
+#endif
 };
 
 #endif // __RAPH_KERNEL_NET_ETH_H__

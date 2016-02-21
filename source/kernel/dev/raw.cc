@@ -83,7 +83,11 @@ void DevRawEthernet::TestRawARP() {
     0x04, // ProtocolLength
     0x00, 0x01, // Operation: ARP Request
     _macAddr[0], _macAddr[1], _macAddr[2], _macAddr[3], _macAddr[4], _macAddr[5], // Source Hardware Address 
-    (_ipAddr) & 0xff, (_ipAddr >> 8) & 0xff, (_ipAddr >> 16) & 0xff, (_ipAddr >> 24) & 0xff, // Source Protocol Address
+    // Source Protocol Address
+    static_cast<uint8_t>((_ipAddr) & 0xff),
+    static_cast<uint8_t>((_ipAddr >> 8) & 0xff),
+    static_cast<uint8_t>((_ipAddr >> 16) & 0xff),
+    static_cast<uint8_t>((_ipAddr >> 24) & 0xff),
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
     0x0a, 0x00, 0x02, 0x03, // Target Protocol Address
   };

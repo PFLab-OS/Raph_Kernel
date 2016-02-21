@@ -26,6 +26,8 @@
 #include "../mem/virtmem.h"
 #include "../global.h"
 
+#ifndef __UNIT_TEST__
+
 bool EthCtrl::OpenSocket() {
   if(_devNumber > 0) {
     // TODO: other protocol socket
@@ -74,3 +76,5 @@ int32_t EthCtrl::TransmitData(const uint8_t *data, uint32_t length) {
 
   return result;
 }
+
+#endif

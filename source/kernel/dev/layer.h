@@ -23,6 +23,8 @@
 #ifndef __RAPH_KERNEL_DEV_L2_H__
 #define __RAPH_KERNEL_DEV_L2_H__
 
+#include <stdint.h>
+
 class DevNetL2 {
 protected:
   DevNetL2() {}
