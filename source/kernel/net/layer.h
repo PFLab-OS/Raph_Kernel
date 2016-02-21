@@ -29,7 +29,7 @@
 
 class L2Ctrl {
 protected:
-  Socket *_socket;
+  Socket *_socket = nullptr;
   static const uint32_t kDevNumber = 16;
   uint32_t _devNumber = 0;
   DevNetL2 *_devList[kDevNumber];

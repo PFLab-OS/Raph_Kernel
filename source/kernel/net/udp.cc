@@ -34,8 +34,7 @@ int32_t UDPCtrl::Transmit(const uint8_t *data, uint32_t length) {
   int32_t result = -1;
 
   // alloc datagram
-  virt_addr vaddr = virtmem_ctrl->Alloc(sizeof(uint8_t) * (sizeof(UDPHeader) + length));
-  uint8_t *datagram = reinterpret_cast<uint8_t*>(k2p(vaddr));
+  uint8_t *datagram = reinterpret_cast<uint8_t*>(virtmem_ctrl->Alloc(sizeof(uint8_t) * (sizeof(UDPHeader) + length)));
 
   // construct header
   UDPHeader header;
@@ -51,7 +50,7 @@ int32_t UDPCtrl::Transmit(const uint8_t *data, uint32_t length) {
   // call IPCtrl::TransmitData
   _ipCtrl->TransmitData(datagram, sizeof(UDPHeader) + length);
 
-  virtmem_ctrl->Free(vaddr);
+  virtmem_ctrl->Free(reinterpret_cast<virt_addr>(datagram));
 
   return result;
 }

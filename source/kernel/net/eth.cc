@@ -26,8 +26,6 @@
 #include "../mem/virtmem.h"
 #include "../global.h"
 
-#ifndef __UNIT_TEST__
-
 bool EthCtrl::OpenSocket() {
   if(_devNumber > 0) {
     // TODO: other protocol socket
@@ -40,6 +38,22 @@ bool EthCtrl::OpenSocket() {
 }
 
 int32_t EthCtrl::ReceiveData(uint8_t *data, uint32_t size) {
+  // alloc buffer
+  uint8_t *buffer = reinterpret_cast<uint8_t*>(virtmem_ctrl->Alloc(sizeof(uint8_t) * (sizeof(EthHeader) + size)));
+
+  // TODO: size
+  const uint32_t kBufsize = 0x400;
+  int32_t result = _socket->ReceivePacket(buffer, kBufsize);
+
+  if(result != -1) {
+    // success
+    uint32_t length = size < (result - sizeof(EthHeader)) ? size : (result - sizeof(EthHeader));
+    memcpy(data, buffer + sizeof(EthHeader), length);
+  }
+
+  virtmem_ctrl->Free(reinterpret_cast<virt_addr>(buffer));
+
+  return result;
 }
 
 int32_t EthCtrl::TransmitData(const uint8_t *data, uint32_t length) {
@@ -50,14 +64,13 @@ int32_t EthCtrl::TransmitData(const uint8_t *data, uint32_t length) {
   }
 
   // alloc datagram
-  virt_addr vaddr = virtmem_ctrl->Alloc(sizeof(uint8_t) * (sizeof(EthHeader) + length));
-  uint8_t *datagram = reinterpret_cast<uint8_t*>(k2p(vaddr));
+  uint8_t *datagram = reinterpret_cast<uint8_t*>(virtmem_ctrl->Alloc(sizeof(uint8_t) * (sizeof(EthHeader) + length))); 
 
   // construct header
   EthHeader header;
   // TODO: fetch MAC address
   header.dstAddrHi = 0x0008;
-  header.dstAddrMd = 0x1c27;
+  header.dstAddrMd = 0xc127;
   header.dstAddrLo = 0x935b;
   header.srcAddrHi = 0x5452;
   header.srcAddrMd = 0x1200;
@@ -70,11 +83,9 @@ int32_t EthCtrl::TransmitData(const uint8_t *data, uint32_t length) {
 
   // call device datagram transmitter
   kassert(_socket != nullptr);
-  _socket->TransmitPacket(datagram, length);
+  _socket->TransmitPacket(datagram, sizeof(EthHeader) + length);
 
-  virtmem_ctrl->Free(vaddr);
+  virtmem_ctrl->Free(reinterpret_cast<virt_addr>(datagram));
 
   return result;
 }
-
-#endif

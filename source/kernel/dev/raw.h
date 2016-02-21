@@ -30,6 +30,8 @@
 
 #ifdef __UNIT_TEST__
 
+#include "../net/eth.h"
+#include "../global.h"
 #include <string.h>
 #include <sys/socket.h>
 #include <net/if.h>
@@ -66,6 +68,8 @@ class DevRawEthernet : public DevEthernet {
 
     FetchAddress();
     FlushSocket();
+
+    eth_ctrl->RegisterDevice(this);
   }
   virtual ~DevRawEthernet() { close(_pd); }
   void FetchAddress();

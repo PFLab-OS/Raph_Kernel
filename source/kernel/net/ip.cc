@@ -27,6 +27,22 @@
 #include "../global.h"
 
 int32_t IPCtrl::ReceiveData(uint8_t *data, uint32_t size) {
+  // alloc buffer
+  uint8_t *buffer = reinterpret_cast<uint8_t*>(virtmem_ctrl->Alloc(sizeof(uint8_t) * (sizeof(IPv4Header) + size)));
+
+  // TODO: size
+  const uint32_t kBufsize = 0x400;
+  int32_t result = _l2Ctrl->ReceiveData(buffer, kBufsize);
+
+  if(result != -1) {
+    // success
+    uint32_t length = size < (result - sizeof(IPv4Header)) ? size : (result - sizeof(IPv4Header));
+	memcpy(data, buffer + sizeof(IPv4Header), length);
+  }
+
+  virtmem_ctrl->Free(reinterpret_cast<virt_addr>(buffer));
+
+  return result;
 }
 
 int32_t IPCtrl::TransmitData(const uint8_t *data, uint32_t length) {
@@ -35,14 +51,13 @@ int32_t IPCtrl::TransmitData(const uint8_t *data, uint32_t length) {
   uint32_t totalLen = sizeof(IPv4Header) + length;
 
   // alloc the buffer with length of (data + IPv4header)
-  virt_addr vaddr = virtmem_ctrl->Alloc(sizeof(uint8_t) * (sizeof(IPv4Header) + length));
-  uint8_t *datagram = reinterpret_cast<uint8_t*>(k2p(vaddr));
+  uint8_t *datagram = reinterpret_cast<uint8_t*>(virtmem_ctrl->Alloc(sizeof(uint8_t) * (sizeof(IPv4Header) + length))); 
 
   // construct IPv4 header
   IPv4Header header;
   header.ipHdrLen_ver = (sizeof(IPv4Header) >> 2) | (kIPVersion << 4);
   header.type = kPktPriority | kPktDelay | kPktThroughput | kPktReliability;
-  header.totalLen = (totalLen >> 8 & 0xff) | (totalLen << 8 & 0xff00);
+  header.totalLen = totalLen;
   header.id = _idAutoIncrement++;
   // TODO: fragment on IP layer
   uint16_t frag = 0;
@@ -65,7 +80,7 @@ int32_t IPCtrl::TransmitData(const uint8_t *data, uint32_t length) {
   // call EthCtrl::TransmitData
   result = _l2Ctrl->TransmitData(datagram, sizeof(IPv4Header) + length);
 
-  virtmem_ctrl->Free(vaddr);
+  virtmem_ctrl->Free(reinterpret_cast<virt_addr>(datagram));
 
   return result;
 }

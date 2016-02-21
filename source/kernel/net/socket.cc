@@ -23,13 +23,9 @@
 #include "socket.h"
 
 int32_t UDPSocket::ReceivePacket(uint8_t *data, uint32_t length) {
-  int32_t result = -1;
-  // TODO: impl
-  return result;
+  return _dev->ReceivePacket(data, length);
 }
 
 int32_t UDPSocket::TransmitPacket(const uint8_t *data, uint32_t length) {
-  int32_t result = -1;
-  _dev->TransmitPacket(data, length);
-  return result;
+  return _dev->TransmitPacket(data, length);
 }

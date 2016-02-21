@@ -28,11 +28,18 @@
 #include "global.h"
 #include "dev/raw.h"
 
+#include "net/eth.h"
+#include "net/ip.h"
+#include "net/udp.h"
+
 SpinLockCtrl *spinlock_ctrl;
 VirtmemCtrl *virtmem_ctrl;
 PhysmemCtrl *physmem_ctrl;
 PagingCtrl *paging_ctrl;
 
+UDPCtrl *udp_ctrl;
+IPCtrl *ip_ctrl;
+EthCtrl *eth_ctrl;
 
 void spinlock_test();
 void list_test();
@@ -53,12 +60,24 @@ int main() {
   virtmem_ctrl = &_virtmem_ctrl;
   //memory_test();
 
+  EthCtrl _eth_ctrl;
+  eth_ctrl = &_eth_ctrl;
 
+  IPCtrl _ip_ctrl(eth_ctrl);
+  ip_ctrl = &_ip_ctrl;
+
+  UDPCtrl _udp_ctrl(ip_ctrl);
+  udp_ctrl = &_udp_ctrl;
+ 
   DevRawEthernet eth;
-  eth.PrintAddrInfo();
-  eth.TestRawARP();
+//  eth.PrintAddrInfo();
+//  eth.TestRawARP();
+//  eth.TestRawUDP();
 
-  eth.TestRawUDP();
+  uint8_t data[] = {
+    0x41, 0x42, 0x43, 0x44
+  };
+  udp_ctrl->Transmit(data, sizeof(data)/sizeof(uint8_t));
 
   std::cout << "test passed" << std::endl;
   return 0;
