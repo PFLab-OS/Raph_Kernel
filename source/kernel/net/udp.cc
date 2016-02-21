@@ -20,24 +20,38 @@
  * 
  */
 
-#include "tcp.h"
+#include "udp.h"
 #include "../mem/physmem.h"
 #include "../mem/virtmem.h"
 #include "../global.h"
 
-int32_t TCPCtrl::Receive(uint8_t *data, uint32_t size) {
+int32_t UDPCtrl::Receive(uint8_t *data, uint32_t size) {
   int32_t result = -1;
   return result;
 }
 
-int32_t TCPCtrl::Transmit(const uint8_t *data, uint32_t length) {
+int32_t UDPCtrl::Transmit(const uint8_t *data, uint32_t length) {
   int32_t result = -1;
 
   // alloc datagram
-//  virt_addr vaddr = virtmem_ctrl->Alloc(sizeof(uint8_t) * (sizeof(TCPHeader) + length));
-//  uint8_t *datagram = reinterpret_cast<uint8_t*>(k2p(vaddr));
-//
-//  virtmem_ctrl->Free(vaddr);
+  virt_addr vaddr = virtmem_ctrl->Alloc(sizeof(uint8_t) * (sizeof(UDPHeader) + length));
+  uint8_t *datagram = reinterpret_cast<uint8_t*>(k2p(vaddr));
+
+  // construct header
+  UDPHeader header;
+  header.srcPort  = kPortHTTP;
+  header.dstPort  = kPortHTTP;
+  header.len      = sizeof(UDPHeader) + length;
+  header.checksum = 0;  // TODO: calculate
+
+  // construct datagram
+  memcpy(datagram, reinterpret_cast<uint8_t*>(&header), sizeof(UDPHeader));
+  memcpy(datagram + sizeof(UDPHeader), data, length);
+
+  // call IPCtrl::TransmitData
+  _ipCtrl->TransmitData(datagram, sizeof(UDPHeader) + length);
+
+  virtmem_ctrl->Free(vaddr);
 
   return result;
 }

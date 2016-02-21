@@ -33,6 +33,10 @@
 #include "dev/vga.h"
 #include "dev/pci.h"
 
+#include "net/eth.h"
+#include "net/ip.h"
+#include "net/udp.h"
+
 SpinLockCtrl *spinlock_ctrl;
 MultibootCtrl *multiboot_ctrl;
 AcpiCtrl *acpi_ctrl;
@@ -44,6 +48,10 @@ Idt *idt;
 
 PCICtrl *pci_ctrl;
 Tty *gtty;
+
+EthCtrl *eth_ctrl;
+IPCtrl *ip_ctrl;
+UDPCtrl *udp_ctrl;
 
 extern "C" int main() {
   SpinLockCtrl _spinlock_ctrl;
@@ -75,11 +83,26 @@ extern "C" int main() {
   apic_ctrl->Setup();
   
   idt->Setup();
+
+  EthCtrl _eth_ctrl;
+  eth_ctrl = &_eth_ctrl;
+
+  IPCtrl _ip_ctrl(eth_ctrl);
+  ip_ctrl = &_ip_ctrl;
+
+  UDPCtrl _udp_ctrl(ip_ctrl);
+  udp_ctrl = &_udp_ctrl;
   
   InitDevices<PCICtrl, Device>();
 
+  uint8_t data[] = {
+    0x41, 0x42, 0x43, 0x44
+  };
+  udp_ctrl->Transmit(data, sizeof(data));
+
   apic_ctrl->StartAPs();
   gtty->Printf("s", "\n\nkernel initialization completed");
+
   while(1) {
     asm volatile("hlt;nop;hlt;");
   }

@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2015 Raphine Project
+ * Copyright (c) 2016 Project Raphine
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -16,44 +16,31 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
- * Author: Liva
+ * Author: Levelfour
  * 
  */
 
-#ifndef __RAPH_KERNEL_GLOBAL_H__
-#define __RAPH_KERNEL_GLOBAL_H__
+#ifndef __RAPH_KERNEL_NET_SOCKET_H__
+#define __RAPH_KERNEL_NET_SOCKET_H__
 
-class SpinLockCtrl;
-class AcpiCtrl;
-class ApicCtrl;
-class MultibootCtrl;
-class PagingCtrl;
-class PhysmemCtrl;
-class VirtmemCtrl;
-class Idt;
-class Tty;
+#include <stdint.h>
+#include "../dev/layer.h"
 
-class PCICtrl;
+class Socket {
+protected:
+  DevNetL2 *_dev;
 
-class EthCtrl;
-class IPCtrl;
-class UDPCtrl;
+public:
+  Socket(DevNetL2 *dev) : _dev(dev) {}
+  virtual int32_t ReceivePacket(uint8_t *data, uint32_t length) = 0;
+  virtual int32_t TransmitPacket(const uint8_t *data, uint32_t length) = 0;
+};
 
-extern SpinLockCtrl *spinlock_ctrl;
-extern AcpiCtrl *acpi_ctrl;
-extern ApicCtrl *apic_ctrl;
-extern MultibootCtrl *multiboot_ctrl;
-extern PagingCtrl *paging_ctrl;
-extern PhysmemCtrl *physmem_ctrl;
-extern VirtmemCtrl *virtmem_ctrl;
-extern Idt *idt;
+class UDPSocket : public Socket {
+public:
+  UDPSocket(DevNetL2 *dev) : Socket(dev) {}
+  virtual int32_t ReceivePacket(uint8_t *data, uint32_t length);
+  virtual int32_t TransmitPacket(const uint8_t *data, uint32_t length);
+};
 
-extern Tty *gtty;
-
-extern PCICtrl *pci_ctrl;
-
-extern EthCtrl *eth_ctrl;
-extern IPCtrl *ip_ctrl;
-extern UDPCtrl *udp_ctrl;
-
-#endif // __RAPH_KERNEL_GLOBAL_H__
+#endif // __RAPH_KERNEL_NET_SOCKET_H__

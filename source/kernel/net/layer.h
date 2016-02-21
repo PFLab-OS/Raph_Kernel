@@ -20,35 +20,34 @@
  * 
  */
 
-#ifndef __RAPH_KERNEL_NET_ETH_H__
-#define __RAPH_KERNEL_NET_ETH_H__
+#ifndef __RAPH_KERNEL_NET_L2_H__
+#define __RAPH_KERNEL_NET_L2_H__
 
 #include <stdint.h>
-#include "layer.h"
 #include "socket.h"
+#include "../dev/layer.h"
 
-struct EthHeader {
-  // destination MAC address
-  uint16_t dstAddrHi;
-  uint16_t dstAddrMd;
-  uint16_t dstAddrLo;
-  // source MAC address
-  uint16_t srcAddrHi;
-  uint16_t srcAddrMd;
-  uint16_t srcAddrLo;
-  // protocol type
-  uint16_t type;
-};
-
-class EthCtrl : public L2Ctrl {
-  const uint16_t kProtocolIPv4 = (0x08) | (0x00 << 8);
-  const uint16_t kProtocolARP  = (0x08) | (0x06 << 8);
+class L2Ctrl {
+protected:
+  Socket *_socket;
+  static const uint32_t kDevNumber = 16;
+  uint32_t _devNumber = 0;
+  DevNetL2 *_devList[kDevNumber];
 
 public:
-  EthCtrl() {}
-  virtual bool OpenSocket();
-  virtual int32_t ReceiveData(uint8_t *data, uint32_t size);
-  virtual int32_t TransmitData(const uint8_t *data, uint32_t length);
+  virtual bool RegisterDevice(DevNetL2 *dev);
+  virtual bool OpenSocket() = 0;
+  virtual int32_t ReceiveData(uint8_t *data, uint32_t size) = 0;
+  virtual int32_t TransmitData(const uint8_t *data, uint32_t length) = 0;
 };
 
-#endif // __RAPH_KERNEL_NET_ETH_H__
+class L4Ctrl {
+protected:
+  L4Ctrl() {}
+
+public:
+  virtual int32_t Receive(uint8_t *data, uint32_t size) = 0;
+  virtual int32_t Transmit(const uint8_t *data, uint32_t length) = 0;
+};
+
+#endif // __RAPH_KERNEL_NET_L2_H__

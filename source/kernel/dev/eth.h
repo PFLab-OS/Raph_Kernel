@@ -23,10 +23,11 @@
 #ifndef __RAPH_KERNEL_DEV_ETH_H__
 #define __RAPH_KERNEL_DEV_ETH_H__
 
+#include "layer.h"
 #include "pci.h"
 
-class DevEthernet : public DevPCI {
- public:
+class DevEthernet : public DevPCI, public DevNetL2 {
+public:
  DevEthernet(uint8_t bus, uint8_t device, bool mf) : DevPCI(bus, device, mf) {}
   // TODO : 割り込みベースのインターフェースに変更
   virtual int32_t ReceivePacket(uint8_t *buffer, uint32_t size) = 0;

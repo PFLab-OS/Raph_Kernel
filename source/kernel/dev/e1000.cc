@@ -22,6 +22,7 @@
 
 #include <stdint.h>
 #include "e1000.h"
+#include "../net/eth.h"
 #include "../mem/physmem.h"
 #include "../global.h"
 #include "../tty.h"
@@ -63,6 +64,9 @@ void E1000::Setup() {
   // initialize receiver/transmitter ring buffer
   this->SetupRx();
   this->SetupTx();
+
+  // register device to Ethernet controller
+  eth_ctrl->RegisterDevice(this);
 
   // enable interrupts
   _mmioAddr[kRegImc] = 0;

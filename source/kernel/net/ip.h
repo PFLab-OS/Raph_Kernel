@@ -23,7 +23,61 @@
 #ifndef __RAPH_KERNEL_NET_IP_H__
 #define __RAPH_KERNEL_NET_IP_H__
 
+#include <stdint.h>
+#include "layer.h"
+#include "socket.h"
+
+/*
+ * IPv4 Header
+ */
+struct IPv4Header {
+  // IP Header Length (4bit) | Version (4bit)
+  uint8_t ipHdrLen_ver;
+  // TYPE of service
+  uint8_t type;
+  // Total Length
+  uint16_t totalLen;
+  // Identification
+  uint16_t id;
+  // Fragment Offset High (5bit) | MF (1bit) | NF (1bit) | Reserved (1bit)
+  uint8_t fragOffsetHi_flag;
+  // Fragment Offset Low (8bit)
+  uint8_t fragOffsetLo;
+  // Time to Live
+  uint8_t ttl;
+  // Layer 4 Protocol ID
+  uint8_t protoId;
+  // Header Checksum (NOTE: only on header)
+  uint16_t checksum;
+  // Source Address
+  uint32_t srcAddr;
+  // Destination Address
+  uint32_t dstAddr;
+} __attribute__ ((packed));
+
 class IPCtrl {
+  L2Ctrl *_l2Ctrl;
+  uint16_t _idAutoIncrement;
+
+  const uint8_t kIPVersion        = 4;
+  const uint8_t kPktPriority      = (7 << 5);
+  const uint8_t kPktDelay         = (1 << 4);
+  const uint8_t kPktThroughput    = (1 << 3);
+  const uint8_t kPktReliability   = (1 << 2);
+  const uint8_t kFlagNoFragment   = (1 << 6);
+  const uint8_t kFlagMoreFragment = (1 << 5);
+  const uint8_t kTimeToLive       = 16;
+  const uint8_t kProtocolIP       = 0;
+  const uint8_t kProtocolICMP     = 1;
+  const uint8_t kProtocolTCP      = 6;
+  const uint8_t kProtocolUDP      = 17;
+
+  uint16_t checkSum(uint8_t *buf, uint32_t size);
+
+public:
+  IPCtrl(L2Ctrl *l2Ctrl) : _l2Ctrl(l2Ctrl), _idAutoIncrement(0) {}
+  virtual int32_t ReceiveData(uint8_t *data, uint32_t size);
+  virtual int32_t TransmitData(const uint8_t *data, uint32_t length);
 };
 
 #endif // __RAPH_KERNEL_NET_IP_H__

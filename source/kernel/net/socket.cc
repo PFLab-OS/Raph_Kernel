@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2015 Raphine Project
+ * Copyright (c) 2016 Raphine Project
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -16,44 +16,20 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
- * Author: Liva
+ * Author: Levelfour
  * 
  */
 
-#ifndef __RAPH_KERNEL_GLOBAL_H__
-#define __RAPH_KERNEL_GLOBAL_H__
+#include "socket.h"
 
-class SpinLockCtrl;
-class AcpiCtrl;
-class ApicCtrl;
-class MultibootCtrl;
-class PagingCtrl;
-class PhysmemCtrl;
-class VirtmemCtrl;
-class Idt;
-class Tty;
+int32_t UDPSocket::ReceivePacket(uint8_t *data, uint32_t length) {
+  int32_t result = -1;
+  // TODO: impl
+  return result;
+}
 
-class PCICtrl;
-
-class EthCtrl;
-class IPCtrl;
-class UDPCtrl;
-
-extern SpinLockCtrl *spinlock_ctrl;
-extern AcpiCtrl *acpi_ctrl;
-extern ApicCtrl *apic_ctrl;
-extern MultibootCtrl *multiboot_ctrl;
-extern PagingCtrl *paging_ctrl;
-extern PhysmemCtrl *physmem_ctrl;
-extern VirtmemCtrl *virtmem_ctrl;
-extern Idt *idt;
-
-extern Tty *gtty;
-
-extern PCICtrl *pci_ctrl;
-
-extern EthCtrl *eth_ctrl;
-extern IPCtrl *ip_ctrl;
-extern UDPCtrl *udp_ctrl;
-
-#endif // __RAPH_KERNEL_GLOBAL_H__
+int32_t UDPSocket::TransmitPacket(const uint8_t *data, uint32_t length) {
+  int32_t result = -1;
+  _dev->TransmitPacket(data, length);
+  return result;
+}
