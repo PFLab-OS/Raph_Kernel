@@ -20,17 +20,29 @@
  * 
  */
 
-#include "hpet.h"
+#ifndef __RAPH_KERNEL_DEV_ACPIPMTMR_H__
+#define __RAPH_KERNEL_DEV_ACPIPMTMR_H__
+
+#include <stdint.h>
 #include "../acpi.h"
+#include "../timer.h"
+#include "../global.h"
 
-void Hpet::Setup() {
-  _dt = acpi_ctrl->GetHPETDT();
-  kassert(_dt != nullptr);
-  phys_addr pbase = _dt->BaseAddr;
-  _reg = reinterpret_cast<uint64_t *>(p2v(pbase));
+class AcpiPmTimer : public Timer {
+ public:
+  virtual void Setup() override {
+    kassert(acpi_ctrl->GetFADT() != nullptr);
+    _port = acpi_ctrl->GetFADT()->PmTmrBlk;
 
-  _cnt_clk_period = _reg[kRegGenCapabilities] >> 32;
-  
-  // Enable Timer
-  _reg[kRegGenConfig] |= kRegGenConfigFlagEnable;
-}
+    _cnt_clk_period = 279 >> (32 - 24);
+  }
+  virtual volatile uint32_t ReadMainCnt() override {
+    uint32_t val;
+    asm volatile("inl %%dx, %%eax":"=a"(val): "d"(_port));
+    return val << (32 - 24);
+  }
+ private:
+  uint32_t _port;
+};
+
+#endif /* __RAPH_KERNEL_DEV_ACPIPMTMR_H__ */

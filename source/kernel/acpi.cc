@@ -55,6 +55,8 @@ void AcpiCtrl::Setup(RSDPDescriptor *rsdp) {
       _mcfg = reinterpret_cast<MCFG *>(ptr2virtaddr(sdth));
     } else if (!strncmp(sdth->Signature, "HPET", 4)) {
       _hpetdt = reinterpret_cast<HPETDT *>(ptr2virtaddr(sdth));
+    } else if (!strncmp(sdth->Signature, "FACP", 4)) {
+      _fadt = reinterpret_cast<FADT *>(ptr2virtaddr(sdth));
     }
   }
 }

@@ -1,5 +1,5 @@
 KERNEL = kernel.elf
-DEV_OBJ = dev/pci.o dev/e1000.o dev/hpet.o
+DEV_OBJ = dev/pci.o dev/e1000.o
 OBJ = boot/boot.o boot/bootap.o main.o spinlock.o apic.o acpi.o idt.o int.o mem/virtmem.o mem/paging.o mem/physmem.o $(DEV_OBJ)
 TEST_OBJ = test_main.o spinlock.o list.o mem/virtmem.o mem/paging.o mem/physmem.o
 BUILD = ../../build/

@@ -29,8 +29,10 @@
 #include "mem/physmem.h"
 #include "mem/paging.h"
 #include "idt.h"
+#include "timer.h"
 
 #include "tty.h"
+#include "dev/acpipmtmr.h"
 #include "dev/hpet.h"
 
 #include "dev/vga.h"
@@ -45,9 +47,9 @@ PagingCtrl *paging_ctrl;
 VirtmemCtrl *virtmem_ctrl;
 PollingCtrl *polling_ctrl;
 Idt *idt;
+Timer *timer;
 
 Tty *gtty;
-Hpet *hpet;
 
 PCICtrl *pci_ctrl;
 
@@ -79,25 +81,24 @@ extern "C" int main() {
   PollingCtrl _polling_ctrl;
   polling_ctrl = &_polling_ctrl;
   
-  Hpet _hpet;
-  hpet = &_hpet;
-
   Vga _vga;
   gtty = &_vga;
+
+  AcpiPmTimer _timer;
+  timer = &_timer;
   
   multiboot_ctrl->Setup();
   
   // acpi_ctl->Setup() は multiboot_ctrl->Setup()から呼ばれる
 
-  hpet->Setup();
+  timer->Setup();
 
-  // hpet->Sertup()より後
+  // timer->Sertup()より後
   apic_ctrl->Setup();
   
   idt->Setup();
   
-  InitDevices<PCICtrl, Device>();
-  gtty->Printf("s", "\n\n");
+  //  InitDevices<PCICtrl, Device>();
 
   gtty->Printf("s", "cpu #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
   apic_ctrl->StartAPs();
@@ -110,7 +111,7 @@ extern "C" int main() {
   kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 3) + 1));
   kassert(!paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - 4096 * 3));
 
-  polling_ctrl->HandleAll();
+  //  polling_ctrl->HandleAll();
   while(true) {
     asm volatile("hlt;nop;hlt;");
   }

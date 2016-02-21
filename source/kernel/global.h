@@ -34,7 +34,7 @@ class PollingCtrl;
 class Idt;
 
 class Tty;
-class Hpet;
+class Timer;
 
 class PCICtrl;
 
@@ -49,7 +49,7 @@ extern PollingCtrl *polling_ctrl;
 extern Idt *idt;
 
 extern Tty *gtty;
-extern Hpet *hpet;
+extern Timer *timer;
 
 extern PCICtrl *pci_ctrl;
 

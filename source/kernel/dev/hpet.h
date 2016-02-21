@@ -22,12 +22,14 @@
  *
  */
 
-#ifndef __RAPH_KERNEL_HPET_H__
-#define __RAPH_KERNEL_HPET_H__
+#ifndef __RAPH_KERNEL_DEV_HPET_H__
+#define __RAPH_KERNEL_DEV_HPET_H__
 
 #include <stdint.h>
 #include "../mem/physmem.h"
 #include "../acpi.h"
+#include "../timer.h"
+#include "../global.h"
 
 struct HPETDT {
   ACPISDTHeader header;
@@ -42,33 +44,22 @@ struct HPETDT {
   uint8_t PageProtectionAndOEMAttribute;
 } __attribute__ ((packed));
 
-class Hpet {
+class Hpet : public Timer {
  public:
-  void Setup();
-  volatile uint64_t ReadMainCnt() {
+  virtual void Setup() override {
+    _dt = acpi_ctrl->GetHPETDT();
+    kassert(_dt != nullptr);
+    phys_addr pbase = _dt->BaseAddr;
+    _reg = reinterpret_cast<uint64_t *>(p2v(pbase));
+
+    _cnt_clk_period = (_reg[kRegGenCapabilities] >> 32) / (1000 * 1000);
+  
+    // Enable Timer
+    _reg[kRegGenConfig] |= kRegGenConfigFlagEnable;
+  }
+  virtual volatile uint32_t ReadMainCnt() override {
     return _reg[kRegMainCnt];
   }
-  // us秒後のカウントを取得する
-  volatile uint64_t GetCntAfterPeriod(uint64_t us) {
-    volatile uint64_t cur = ReadMainCnt();
-    return cur + (us * 1000000000) / _cnt_clk_period;
-  }
-  volatile bool IsTimePassed(volatile uint64_t time) {
-    volatile uint64_t cur = ReadMainCnt();
-    return cur >= time;
-  }
-  // ビジーループタイムアウト
-  // 最適化回避のためにできるだけこの関数を使うべき
-  void BusyUwait(uint64_t us) {
-    volatile uint64_t t = GetCntAfterPeriod(1000*1000);
-    while(true) {
-      volatile bool flag = IsTimePassed(t);
-      if (flag) {
-        break;
-      }
-    }
-  }
-  uint32_t _cnt_clk_period = 0;
  private:
   HPETDT *_dt;
   uint64_t *_reg;
@@ -81,4 +72,4 @@ class Hpet {
   static const uint64_t kRegGenConfigFlagEnable = 1 << 0;
 };
 
-#endif /* __RAPH_KERNEL_HPET_H__ */
+#endif /* __RAPH_KERNEL_DEV_HPET_H__ */
