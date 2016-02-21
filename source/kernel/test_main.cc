@@ -58,6 +58,8 @@ int main() {
   eth.PrintAddrInfo();
   eth.TestRawARP();
 
+  eth.TestRawUDP();
+
   std::cout << "test passed" << std::endl;
   return 0;
 }

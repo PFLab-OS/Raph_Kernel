@@ -121,4 +121,46 @@ void DevRawEthernet::TestRawARP() {
     buf[28], buf[29], buf[30], buf[31]);
 }
 
+void DevRawEthernet::TestRawUDP() {
+  FlushSocket();
+
+  uint8_t data[] = {
+    // ===== Ethernet Header =====
+//    0x52, 0x54, 0x00, 0x12, 0x34, 0x56, // Target MAC Address
+    _macAddr[0], _macAddr[1], _macAddr[2], _macAddr[3], _macAddr[4], _macAddr[5], // Target MAC Address 
+    _macAddr[0], _macAddr[1], _macAddr[2], _macAddr[3], _macAddr[4], _macAddr[5], // Source MAC Address 
+    0x08, 0x00, // Type: IPv4
+    // ===== IPv4 Header =====
+    0x45, // IP Version (4bit) | Header Size (4bit)
+    0xfc, // TYPE of service
+    0x20, 0x00, // total length
+    0x00, 0x00, // identification
+    0x40, 0x00, // No Fragments
+    0x10, // TTL
+    0x11, // Protocol: UDP
+    0x9e, 0xfe, // Header checksum
+    // Source Address
+    static_cast<uint8_t>((_ipAddr) & 0xff),
+    static_cast<uint8_t>((_ipAddr >> 8) & 0xff),
+    static_cast<uint8_t>((_ipAddr >> 16) & 0xff),
+    static_cast<uint8_t>((_ipAddr >> 24) & 0xff),
+//    0x0f, 0x02, 0x00, 0x0a, // Destination Address
+    // Target Address
+    static_cast<uint8_t>((_ipAddr) & 0xff),
+    static_cast<uint8_t>((_ipAddr >> 8) & 0xff),
+    static_cast<uint8_t>((_ipAddr >> 16) & 0xff),
+    static_cast<uint8_t>((_ipAddr >> 24) & 0xff),
+    // ===== UDP Header =====
+    0x50, 0x00, // Source Port
+    0x50, 0x00, // Destination Port
+    0x0c, 0x00, // length
+    0x00, 0x00, // checksum (zero)
+    // ===== Datagram Body =====
+    0x41, 0x42, 0x43, 0x44,
+  };
+  uint32_t len = sizeof(data)/sizeof(uint8_t);
+  this->TransmitPacket(data, len);
+  printf("UDP message sent\n");
+}
+
 #endif // __UNIT_TEST__

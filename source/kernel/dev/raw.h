@@ -83,6 +83,7 @@ class DevRawEthernet : public DevEthernet {
   }
   void PrintAddrInfo();
   void TestRawARP();
+  void TestRawUDP();
  private:
   int _pd;
   int _ifindex;
