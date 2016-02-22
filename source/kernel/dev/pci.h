@@ -55,11 +55,13 @@ class PCICtrl : public Device {
   virt_addr GetVaddr(uint8_t bus, uint8_t device, uint8_t func, uint16_t reg) {
     return _base_addr + ((bus & 0xff) << 20) + ((device & 0x1f) << 15) + ((func & 0x7) << 12) + (reg & 0xfff);
   }
-  template<class T> static T ReadReg(virt_addr vaddr) {
-    return *(reinterpret_cast<T *>(vaddr));
+  template<class T>
+    T ReadReg(uint8_t bus, uint8_t device, uint8_t func, uint16_t reg) override {
+    return *(reinterpret_cast<T *>(GetVaddr(bus, device, func, reg)));
   }
-  template<class T> static void WriteReg(virt_addr vaddr, T value) {
-    *(reinterpret_cast<T *>(vaddr)) = value;
+  template<class T>
+    void WriteReg(uint8_t bus, uint8_t device, uint8_t func, uint16_t reg, T value) override {
+    *(reinterpret_cast<T *>(GetVaddr(bus, device, func, reg))) = value;
   }
   static const uint16_t kDevIdentifyReg = 0x2;
   static const uint16_t kVendorIDReg = 0x00;
@@ -84,13 +86,11 @@ class DevPCI : public Device {
   static void InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {} // dummy
   template<class T> T ReadReg(uint16_t reg) {
     kassert(pci_ctrl != nullptr);
-    virt_addr vaddr = pci_ctrl->GetVaddr(_bus, _device, _mf, reg);
-    return pci_ctrl->ReadReg<T>(vaddr);
+    return pci_ctrl->ReadReg<T>(_bus, _device, _mf, reg);
   }
   template<class T> void WriteReg(uint16_t reg, T value) {
     kassert(pci_ctrl != nullptr);
-    virt_addr vaddr = pci_ctrl->GetVaddr(_bus, _device, _mf, reg);
-    pci_ctrl->WriteReg(vaddr, value);
+    pci_ctrl->WriteReg<T>(_bus, _device, _mf, reg, value);
   }
  private:
   const uint8_t _bus;

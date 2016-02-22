@@ -114,11 +114,11 @@ public:
   int32_t TransmitPacket(const uint8_t *packet, uint32_t length);
   // buffer size
   static const int kBufSize = 2048;
-  // for debugging
-  void PrintEthAddr();
+  // allocate 6 byte before call
+  void GetEthAddr(uint8_t *buffer);
 private:
   // Memory Mapped I/O Base Address
-  uint32_t *_mmioAddr = nullptr;
+  volatile uint32_t *_mmioAddr = nullptr;
   // software reset of e1000 device
   void Reset();
   // initialize receiver

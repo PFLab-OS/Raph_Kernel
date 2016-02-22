@@ -88,6 +88,11 @@ extern "C" int main() {
   Hpet _htimer;
   timer = &_atimer;
   
+  PhysAddr paddr;
+  physmem_ctrl->Alloc(paddr, PagingCtrl::kPageSize);
+  extern int kKernelEndAddr;
+  kassert(paging_ctrl->MapPhysAddrToVirtAddr(reinterpret_cast<virt_addr>(&kKernelEndAddr) - PagingCtrl::kPageSize * 3, paddr, PagingCtrl::kPageSize, PDE_WRITE_BIT, PTE_WRITE_BIT || PTE_GLOBAL_BIT));
+
   multiboot_ctrl->Setup();
   
   // acpi_ctl->Setup() は multiboot_ctrl->Setup()から呼ばれる
@@ -116,7 +121,7 @@ extern "C" int main() {
   kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 3) + 1));
   kassert(!paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - 4096 * 3));
 
-  //  polling_ctrl->HandleAll();
+  polling_ctrl->HandleAll();
   while(true) {
     asm volatile("hlt;nop;hlt;");
   }

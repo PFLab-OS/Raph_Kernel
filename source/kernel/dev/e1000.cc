@@ -26,12 +26,15 @@
 #include "../global.h"
 #include "../tty.h"
 
+#include "../timer.h"
+#include "../global.h"
+
 void E1000::Setup() {
   // the following sequence is indicated in pcie-gbe-controllers 14.3
 
   // get PCI Base Address Registers
-  phys_addr mmio_addr = this->ReadReg<phys_addr>(PCICtrl::kBaseAddressReg0) & 0xFFFFFFF0; // TODO : もうちょっと厳密にやるべき
-  this->WriteReg(PCICtrl::kCommandReg, this->ReadReg<uint16_t>(PCICtrl::kCommandReg) | PCICtrl::kCommandRegBusMasterEnableFlag);
+  phys_addr mmio_addr = this->ReadReg<uint32_t>(PCICtrl::kBaseAddressReg0) & 0xFFFFFFF0; // TODO : もうちょっと厳密にやるべき
+  this->WriteReg<uint16_t>(PCICtrl::kCommandReg, this->ReadReg<uint16_t>(PCICtrl::kCommandReg) | PCICtrl::kCommandRegBusMasterEnableFlag | 2 | 1);
   _mmioAddr = reinterpret_cast<uint32_t*>(p2v(mmio_addr));
 
   // disable interrupts (see 13.3.32)
@@ -60,6 +63,7 @@ void E1000::Setup() {
       break;
   }
 
+  _mmioAddr[kRegEerd] = (((0x0E & 0xff) << 8) | 1);
   // initialize receiver/transmitter ring buffer
   this->SetupRx();
   this->SetupTx();
@@ -130,7 +134,7 @@ void E1000::SetupRx() {
   _mmioAddr[kRegRah0] |= (kRegRahAselDestAddr | kRegRahAvFlag);
 
   // initialize the MTA (Multicast Table Array) to 0
-  uint32_t *mta = _mmioAddr + kRegMta;
+  volatile uint32_t *mta = _mmioAddr + kRegMta;
   for(int i = 0; i < 128; i++) mta[i] = 0;
 
   // set appropriate value to IMS (this value is suggested value)
@@ -232,15 +236,23 @@ uint16_t E1000::EepromRead(uint16_t addr) {
     case kI8254x:
       _mmioAddr[kRegEerd] = (((addr & 0xff) << 8) | 1);
       // polling
-      while(!(_mmioAddr[kRegEerd] & (1 << 4))) {
+      while(true) {
         // busy-wait
+        volatile uint32_t data = _mmioAddr[kRegEerd];
+        if (data & (1 << 4)) {
+          break;
+        }
       }
       break;
     case kI8257x:
       _mmioAddr[kRegEerd] = (((addr & 0x3fff) << 2) | 1);
       // polling
-      while(!(_mmioAddr[kRegEerd] & (1 << 1))) {
+      while(true) {
         // busy-wait
+        volatile uint32_t data = _mmioAddr[kRegEerd];
+        if (data & (1 << 1)) {
+          break;
+        }
       }
       break;
   }
@@ -248,17 +260,16 @@ uint16_t E1000::EepromRead(uint16_t addr) {
   return (_mmioAddr[kRegEerd] >> 16) & 0xffff;
 }
 
-void E1000::PrintEthAddr() {
+void E1000::GetEthAddr(uint8_t *buffer) {
   uint16_t ethaddr_lo = this->EepromRead(kEepromEthAddrLo);
   uint16_t ethaddr_md = this->EepromRead(kEepromEthAddrMd);
   uint16_t ethaddr_hi = this->EepromRead(kEepromEthAddrHi);
-  gtty->Printf("s", "MAC Address ... ");
-  gtty->Printf("x", (ethaddr_hi & 0xff), "s", ":");
-  gtty->Printf("x", (ethaddr_hi >> 8) & 0xff, "s", ":");
-  gtty->Printf("x", (ethaddr_md & 0xff), "s", ":");
-  gtty->Printf("x", (ethaddr_md >> 8) & 0xff, "s", ":");
-  gtty->Printf("x", (ethaddr_lo & 0xff), "s", ":");
-  gtty->Printf("x", (ethaddr_lo >> 8) & 0xff, "s", "\n");
+  buffer[0] = ethaddr_hi & 0xff;
+  buffer[1] = (ethaddr_hi >> 8) & 0xff;
+  buffer[2] = ethaddr_md & 0xff;
+  buffer[3] = (ethaddr_md >> 8) & 0xff;
+  buffer[4] = ethaddr_lo & 0xff;
+  buffer[5] = (ethaddr_lo >> 8) & 0xff;
 }
 
 uint32_t E1000::Crc32b(uint8_t *message) {
@@ -282,7 +293,7 @@ uint32_t E1000::Crc32b(uint8_t *message) {
 void E1000::TxTest() {
   uint8_t data[] = {
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, // Target MAC Address
-    0x52, 0x54, 0x00, 0x12, 0x34, 0x56, // Source MAC Address
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source MAC Address
     0x08, 0x06, // Type: ARP
     // ARP Packet
     0x00, 0x01, // HardwareType: Ethernet
@@ -290,11 +301,14 @@ void E1000::TxTest() {
     0x06, // HardwareLength
     0x04, // ProtocolLength
     0x00, 0x01, // Operation: ARP Request
-    0x52, 0x54, 0x00, 0x12, 0x34, 0x56, // Source Hardware Address
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source Hardware Address
     0x0a, 0x00, 0x02, 0x0f, // Source Protocol Address
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
     0x0a, 0x00, 0x02, 0x03, // Target Protocol Address
   };
+  GetEthAddr(data + 6);
+  memcpy(data + 22, data + 6, 6);
+
   uint32_t len = sizeof(data)/sizeof(uint8_t);
   this->TransmitPacket(data, len);
   gtty->Printf("s", "Packet sent (length = ", "d", len, "s", ")\n");

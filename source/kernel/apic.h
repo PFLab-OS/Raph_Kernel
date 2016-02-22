@@ -195,7 +195,7 @@ private:
     // see IOAPIC manual 3.2.4 (I/O Redirection Table Registers)
     static const uint32_t kRegRedTblMask = 1 << 16;
   } _ioapic;
-  bool _started = false;
+  volatile bool _started = false;
 };
 
 #endif /* __RAPH_KERNEL_APIC_H__ */
