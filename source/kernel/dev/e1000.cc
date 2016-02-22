@@ -112,6 +112,39 @@ int32_t E1000::TransmitPacket(const uint8_t *packet, uint32_t length) {
 
     _mmioAddr[kRegTdt] = (tdt + 1) % kTxdescNumber;
 
+
+    gtty->Printf(
+      "s", "UDP sent;\n",
+      "x", packet[0], "s", " ", "x", packet[1], "s", " ",
+      "x", packet[2], "s", " ", "x", packet[3], "s", " ",
+      "x", packet[4], "s", " ", "x", packet[5], "s", " ",
+      "x", packet[6], "s", " ", "x", packet[7], "s", "\n");
+    gtty->Printf(
+      "x", packet[8], "s", " ", "x", packet[9], "s", " ",
+      "x", packet[10], "s", " ", "x", packet[11], "s", " ",
+      "x", packet[12], "s", " ", "x", packet[13], "s", " ",
+      "x", packet[14], "s", " ", "x", packet[15], "s", "\n");
+    gtty->Printf(
+      "x", packet[16], "s", " ", "x", packet[17], "s", " ",
+      "x", packet[18], "s", " ", "x", packet[19], "s", " ",
+      "x", packet[20], "s", " ", "x", packet[21], "s", " ",
+      "x", packet[22], "s", " ", "x", packet[23], "s", "\n");
+    gtty->Printf(
+      "x", packet[24], "s", " ", "x", packet[25], "s", " ",
+      "x", packet[26], "s", " ", "x", packet[27], "s", " ",
+      "x", packet[28], "s", " ", "x", packet[29], "s", " ",
+      "x", packet[30], "s", " ", "x", packet[31], "s", "\n");
+    gtty->Printf(
+      "x", packet[32], "s", " ", "x", packet[33], "s", " ",
+      "x", packet[34], "s", " ", "x", packet[35], "s", " ",
+      "x", packet[36], "s", " ", "x", packet[37], "s", " ",
+      "x", packet[38], "s", " ", "x", packet[39], "s", "\n");
+    gtty->Printf(
+      "x", packet[40], "s", " ", "x", packet[41], "s", " ",
+      "x", packet[42], "s", " ", "x", packet[43], "s", " ",
+      "x", packet[44], "s", " ", "x", packet[45], "s", " ",
+      "x", packet[46], "s", " ", "x", packet[47], "s", "\n");
+
     return length;
   } else {
     // if tx_desc_buf_ is full, fails

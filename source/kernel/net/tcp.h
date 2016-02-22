@@ -24,6 +24,7 @@
 #define __RAPH_KERNEL_NET_TCP_H__
 
 #include <stdint.h>
+#include <stdlib.h>
 #include "socket.h"
 #include "layer.h"
 #include "ip.h"
@@ -51,18 +52,39 @@ struct TCPHeader {
 
 class TCPCtrl : public L4Ctrl {
   IPCtrl *_ipCtrl;
+  uint32_t _dstIPAddr;
+  uint32_t _dstPort;
+  uint8_t _tcpSessionType;
+  uint32_t _sequence;
+  uint32_t _ack;
+  uint32_t _port;  // source port
 
-  static const uint8_t kProtoTCP = 6;
-  static const uint8_t kDstPortOffset = 2;
-  static const uint8_t kFlagFIN = 1 << 0;
-  static const uint8_t kFlagSYN = 1 << 1;
-  static const uint8_t kFlagRST = 1 << 2;
-  static const uint8_t kFlagPSH = 1 << 3;
-  static const uint8_t kFlagACK = 1 << 4;
-  static const uint8_t kFlagURG = 1 << 5;
+  static const uint8_t kProtoTCP          = 6;
+  static const uint32_t kBasicBufsize     = 0x10;
+  static const uint8_t kSrcPortOffset     = 0;
+  static const uint8_t kDstPortOffset     = 2;
+  static const uint8_t kSeqOffset         = 4;
+  static const uint8_t kAckOffset         = 8;
+  static const uint8_t kSessionTypeOffset = 13;
+  static const uint8_t kWindowSizeOffset  = 14;
+  static const uint8_t kFlagFIN           = 1 << 0;
+  static const uint8_t kFlagSYN           = 1 << 1;
+  static const uint8_t kFlagRST           = 1 << 2;
+  static const uint8_t kFlagPSH           = 1 << 3;
+  static const uint8_t kFlagACK           = 1 << 4;
+  static const uint8_t kFlagURG           = 1 << 5;
+
+  int32_t ReceiveBasic(uint8_t session, uint32_t port);
+  int32_t TransmitBasic(uint8_t session,
+                        uint32_t dstIPAddr,
+                        uint32_t dstPort);
+  inline void InitSequence() { _sequence = rand(); }
 
 public:
-  TCPCtrl(IPCtrl *ipCtrl) : _ipCtrl(ipCtrl) {
+  TCPCtrl(IPCtrl *ipCtrl)
+    : _ipCtrl(ipCtrl), _dstIPAddr(0), _dstPort(0),
+      _tcpSessionType(kFlagRST), _sequence(0), _ack(0),
+      _port(0) {
     _ipCtrl->RegisterL4Ctrl(kProtoTCP, this);
   }
   virtual int32_t Receive(uint8_t *data, uint32_t size, uint32_t port);
@@ -71,6 +93,9 @@ public:
                            uint32_t dstIPAddr,
                            uint32_t dstPort,
                            uint32_t srcPort);
+  int32_t Listen(uint32_t port = kPortHTTP);
+  int32_t Connect(uint32_t dstIPAddr, uint32_t dstPort, uint32_t srcPort);
+  int32_t Close();
 };
 
 #endif // __RAPH_KERNEL_NET_TCP_H__

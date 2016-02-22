@@ -49,7 +49,7 @@ void virtmem_test();
 void physmem_test();
 void paging_test();
 
-int main() {
+int main(int argc, char **argv) {
   //spinlock_test();
   SpinLockCtrlTest _spinlock_ctrl;
   spinlock_ctrl = &_spinlock_ctrl;
@@ -77,21 +77,15 @@ int main() {
   DevRawEthernet eth;
 
   uint32_t addr = 0x0a00020f;
-  uint32_t port = 4000;
+  uint32_t port = 23;
 
-  uint8_t buf[] = {
-    0x41, 0x42, 0x43, 0x44, 0x00,
-  };
-
-  udp_ctrl->Transmit(buf, sizeof(buf), addr, port, port);
-
-//  if(!strncmp(argv[1], "server", 6)) {
-//    tcp_ctrl->Listen(port);
-//  } else if(!strncmp(argv[1], "client", 6)) {
-//    tcp_ctrl->Connect(addr, port, port);
-//  } else {
-//    std::cout << "specify either `server` or `client`" << std::endl;
-//  }
+  if(!strncmp(argv[1], "server", 6)) {
+    tcp_ctrl->Listen(port);
+  } else if(!strncmp(argv[1], "client", 6)) {
+    tcp_ctrl->Connect(addr, port, port);
+  } else {
+    std::cout << "specify either `server` or `client`" << std::endl;
+  }
 
   std::cout << "test passed" << std::endl;
   return 0;

@@ -46,7 +46,8 @@ int32_t IPCtrl::ReceiveData(uint8_t *data,
   if(result != -1 && receivedProtocol == protocolType) {
     // succeed to receive packet and correspond to the specified protocol
     int32_t length = bufsize < result ? bufsize : result;
-	memcpy(data, buffer + sizeof(IPv4Header), length);
+    kassert(length - sizeof(IPv4Header) <= size);
+	memcpy(data, buffer + sizeof(IPv4Header), length - sizeof(IPv4Header));
 
 	if(oppIPAddr) {
       *oppIPAddr = ((buffer[kSrcAddrOffset])

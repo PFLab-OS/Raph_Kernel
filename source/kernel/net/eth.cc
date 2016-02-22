@@ -51,7 +51,8 @@ int32_t EthCtrl::ReceiveData(uint8_t *data, uint32_t size) {
   if(result != -1) {
     // success
     int32_t length = bufsize < result ? bufsize : result;
-    memcpy(data, buffer + sizeof(EthHeader), length);
+    kassert(length - sizeof(EthHeader) <= size);
+    memcpy(data, buffer + sizeof(EthHeader), length - sizeof(EthHeader));
     virtmem_ctrl->Free(reinterpret_cast<virt_addr>(buffer));
     return result - sizeof(EthHeader);
   } else {
