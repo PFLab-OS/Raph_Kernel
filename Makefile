@@ -26,6 +26,9 @@ $(IMAGE):
 	parted -s $(IMAGE) mklabel msdos -- mkpart primary 2048s -1
 	sh disk.sh grub-install
 
+cpimg: image
+	cp $(IMAGE) /vagrant
+
 disk: $(IMAGE)
 
 mount: $(IMAGE)

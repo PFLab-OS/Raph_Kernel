@@ -148,6 +148,9 @@ class AcpiCtrl {
 public:
   AcpiCtrl() {}
   void Setup(RSDPDescriptor *rsdp);
+  void Setup(RSDPDescriptor20 *rsdp) {
+    Setup(&rsdp->firstPart);
+  }
   MCFG *GetMCFG() {
     return _mcfg;
   }

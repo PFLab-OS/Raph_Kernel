@@ -60,3 +60,4 @@ void AcpiCtrl::Setup(RSDPDescriptor *rsdp) {
     }
   }
 }
+

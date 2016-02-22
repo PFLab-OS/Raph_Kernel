@@ -41,7 +41,7 @@ public:
 private:
   void SetupAcpi() {
     kassert(align(multiboot_info, 8) == multiboot_info);
-    virt_addr addr = PhysAddr(static_cast<phys_addr>(multiboot_info)).GetVirtAddr();
+    virt_addr addr = p2v(static_cast<phys_addr>(multiboot_info));
     addr += 8;
     multiboot_tag *tag;
     for (tag = reinterpret_cast<multiboot_tag *>(addr); tag->type != MULTIBOOT_TAG_TYPE_END; addr = alignUp(addr + tag->size, 8), tag = reinterpret_cast<multiboot_tag *>(addr)) {
@@ -49,6 +49,12 @@ private:
       case MULTIBOOT_TAG_TYPE_ACPI_OLD:
         {
           RSDPDescriptor *table = reinterpret_cast<RSDPDescriptor *>(tag + 1);
+          acpi_ctrl->Setup(table);
+        }
+        break;
+      case MULTIBOOT_TAG_TYPE_ACPI_NEW:
+        {
+          RSDPDescriptor20 *table = reinterpret_cast<RSDPDescriptor20 *>(tag + 1);
           acpi_ctrl->Setup(table);
         }
         break;
