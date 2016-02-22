@@ -58,6 +58,7 @@ struct IPv4Header {
 class IPCtrl {
   static const uint16_t kL4CtrlTableNumber  = 0x100;
   static const uint32_t kProtocolTypeOffset = 9;
+  static const uint32_t kSrcAddrOffset      = 13;
   static const uint8_t kIPVersion           = 4;
   static const uint8_t kPktPriority         = (7 << 5);
   static const uint8_t kPktDelay            = (1 << 4);
@@ -75,10 +76,13 @@ class IPCtrl {
 
 public:
   IPCtrl(L2Ctrl *l2Ctrl) : _l2Ctrl(l2Ctrl), _idAutoIncrement(0) {}
-  virtual int32_t ReceiveData(uint8_t *data, uint32_t size, const uint8_t protocolType);
+  virtual int32_t ReceiveData(uint8_t *data,
+                              uint32_t size,
+                              uint8_t protocolType,
+                              uint32_t *oppIPAddr = nullptr);
   virtual int32_t TransmitData(const uint8_t *data,
                                uint32_t length,
-                               const uint8_t protocolType,
+                               uint8_t protocolType,
                                uint32_t dstIPAddr);
 
   void RegisterL4Ctrl(const uint8_t protocolType, L4Ctrl *l4Ctrl);

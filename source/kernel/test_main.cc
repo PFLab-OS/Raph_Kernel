@@ -76,17 +76,22 @@ int main() {
 
   DevRawEthernet eth;
 
+  uint32_t addr = 0x0a00020f;
+  uint32_t port = 4000;
+
   uint8_t buf[] = {
-	  0x41, 0x42, 0x43, 0x44, 0x00
+    0x41, 0x42, 0x43, 0x44, 0x00,
   };
-  tcp_ctrl->Transmit(buf, sizeof(buf), 0x0a00020f, 4000, 80);
-//  tcp_ctrl->Receive(buf, kBufsize, 4000);
-//  udp_ctrl->Receive(buf, kBufsize, 4000);
-//
-//  std::cout << "UDP packet received; >>> " << buf << " <<<" << std::endl;
-//
-//  udp_ctrl->Transmit(buf, sizeof(buf), 4000, 80);
-//  std::cout << "UDP packed sent;" << std::endl;
+
+  udp_ctrl->Transmit(buf, sizeof(buf), addr, port, port);
+
+//  if(!strncmp(argv[1], "server", 6)) {
+//    tcp_ctrl->Listen(port);
+//  } else if(!strncmp(argv[1], "client", 6)) {
+//    tcp_ctrl->Connect(addr, port, port);
+//  } else {
+//    std::cout << "specify either `server` or `client`" << std::endl;
+//  }
 
   std::cout << "test passed" << std::endl;
   return 0;

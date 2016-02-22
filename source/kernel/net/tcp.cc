@@ -32,16 +32,26 @@ int32_t TCPCtrl::Receive(uint8_t *data, uint32_t size, uint32_t port) {
 
   int32_t result = -1;
   uint16_t receivedPort = 0;
+  uint32_t dstIPAddr = 0;
+  uint8_t sessionType = 0;
 
-  while(result == -1 || receivedPort != port) {
-    // succeed to receive packet and correspond to the specified port
-    result = _ipCtrl->ReceiveData(buffer, bufsize, kProtoTCP);
+  while(result == -1
+     || receivedPort != port
+     || !(sessionType & _tcpSessionType)) {
+    // succeed to receive packet
+    // and correspond to the specified port / session type
+    result = _ipCtrl->ReceiveData(buffer, bufsize, kProtoTCP, &dstIPAddr);
     receivedPort = (buffer[kDstPortOffset] << 8) | buffer[kDstPortOffset + 1];
+    sessionType = buffer[kSessionTypeOffset];
   }
 
   if(result > 0) {
     int32_t length = bufsize < result ? bufsize : result;
     memcpy(data, buffer + sizeof(TCPHeader), length);
+
+    // for the following transmission
+    _dstIPAddr = dstIPAddr;
+    _dstPort = (buffer[kSrcPortOffset] << 8) | buffer[kSrcPortOffset + 1];
   
     virtmem_ctrl->Free(reinterpret_cast<virt_addr>(buffer));
     return result - sizeof(TCPHeader);

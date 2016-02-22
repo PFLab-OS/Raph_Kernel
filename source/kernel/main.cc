@@ -95,10 +95,14 @@ extern "C" int main() {
   
   InitDevices<PCICtrl, Device>();
 
-  uint8_t data[] = {
-    0x41, 0x42, 0x43, 0x44
+  uint32_t addr = 0x0a00020f;
+  uint32_t port = 4000;
+
+  uint8_t buf[] = {
+    0x41, 0x42, 0x43, 0x44, 0x00,
   };
-  udp_ctrl->Transmit(data, sizeof(data));
+
+  udp_ctrl->Transmit(buf, sizeof(buf), addr, port, port);
 
   apic_ctrl->StartAPs();
   gtty->Printf("s", "\n\nkernel initialization completed");
