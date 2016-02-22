@@ -60,9 +60,10 @@ int32_t UDPCtrl::Transmit(const uint8_t *data, uint32_t length, uint32_t dstPort
 
   // construct header
   UDPHeader header;
-  header.srcPort  = srcPort;
-  header.dstPort  = dstPort;
+  header.srcPort  = (srcPort >> 8) | ((srcPort & 0xff) << 8);
+  header.dstPort  = (dstPort >> 8) | ((dstPort & 0xff) << 8);
   header.len      = sizeof(UDPHeader) + length;
+  header.len      = (header.len >> 8) | ((header.len & 0xff) << 8);
   header.checksum = 0;  // TODO: calculate
 
   // construct datagram

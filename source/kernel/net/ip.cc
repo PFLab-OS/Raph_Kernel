@@ -57,7 +57,7 @@ int32_t IPCtrl::TransmitData(const uint8_t *data, uint32_t length, const uint8_t
   IPv4Header header;
   header.ipHdrLen_ver = (sizeof(IPv4Header) >> 2) | (kIPVersion << 4);
   header.type = kPktPriority | kPktDelay | kPktThroughput | kPktReliability;
-  header.totalLen = totalLen;
+  header.totalLen = (totalLen >> 8) | ((totalLen & 0xff) << 8);
   header.id = _idAutoIncrement++;
   // TODO: fragment on IP layer
   uint16_t frag = 0;
