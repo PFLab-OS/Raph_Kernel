@@ -76,7 +76,10 @@ class IPCtrl {
 public:
   IPCtrl(L2Ctrl *l2Ctrl) : _l2Ctrl(l2Ctrl), _idAutoIncrement(0) {}
   virtual int32_t ReceiveData(uint8_t *data, uint32_t size, const uint8_t protocolType);
-  virtual int32_t TransmitData(const uint8_t *data, uint32_t length, const uint8_t protocolType);
+  virtual int32_t TransmitData(const uint8_t *data,
+                               uint32_t length,
+                               const uint8_t protocolType,
+                               uint32_t dstIPAddr);
 
   void RegisterL4Ctrl(const uint8_t protocolType, L4Ctrl *l4Ctrl);
 };

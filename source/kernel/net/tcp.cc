@@ -50,7 +50,7 @@ int32_t TCPCtrl::Receive(uint8_t *data, uint32_t size, uint32_t port) {
   }
 }
 
-int32_t TCPCtrl::Transmit(const uint8_t *data, uint32_t length, uint32_t dstPort, uint32_t srcPort) {
+int32_t TCPCtrl::Transmit(const uint8_t *data, uint32_t length, uint32_t dstIPAddr, uint32_t dstPort, uint32_t srcPort) {
   int32_t result = -1;
 
   // alloc datagram
@@ -73,7 +73,7 @@ int32_t TCPCtrl::Transmit(const uint8_t *data, uint32_t length, uint32_t dstPort
   memcpy(datagram + sizeof(TCPHeader), data, length);
 
   // call IPCtrl::TransmitData
-  _ipCtrl->TransmitData(datagram, sizeof(TCPHeader) + length, kProtoTCP);
+  _ipCtrl->TransmitData(datagram, sizeof(TCPHeader) + length, kProtoTCP, dstIPAddr);
 
   virtmem_ctrl->Free(reinterpret_cast<virt_addr>(datagram));
 

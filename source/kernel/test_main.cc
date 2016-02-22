@@ -71,16 +71,22 @@ int main() {
   UDPCtrl _udp_ctrl(ip_ctrl);
   udp_ctrl = &_udp_ctrl;
  
+  TCPCtrl _tcp_ctrl(ip_ctrl);
+  tcp_ctrl = &_tcp_ctrl;
+
   DevRawEthernet eth;
 
-  const size_t kBufsize = 0x400;
-  uint8_t buf[kBufsize];
-  udp_ctrl->Receive(buf, kBufsize, 4000);
-
-  std::cout << "UDP packet received; >>> " << buf << " <<<" << std::endl;
-
-  udp_ctrl->Transmit(buf, sizeof(buf), 4000, 80);
-  std::cout << "UDP packed sent;" << std::endl;
+  uint8_t buf[] = {
+	  0x41, 0x42, 0x43, 0x44, 0x00
+  };
+  tcp_ctrl->Transmit(buf, sizeof(buf), 0x0a00020f, 4000, 80);
+//  tcp_ctrl->Receive(buf, kBufsize, 4000);
+//  udp_ctrl->Receive(buf, kBufsize, 4000);
+//
+//  std::cout << "UDP packet received; >>> " << buf << " <<<" << std::endl;
+//
+//  udp_ctrl->Transmit(buf, sizeof(buf), 4000, 80);
+//  std::cout << "UDP packed sent;" << std::endl;
 
   std::cout << "test passed" << std::endl;
   return 0;

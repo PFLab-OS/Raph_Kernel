@@ -50,7 +50,11 @@ public:
     _ipCtrl->RegisterL4Ctrl(kProtoUDP, this);
   }
   virtual int32_t Receive(uint8_t *data, uint32_t size, uint32_t port);
-  virtual int32_t Transmit(const uint8_t *data, uint32_t length, uint32_t dstPort, uint32_t srcPort);
+  virtual int32_t Transmit(const uint8_t *data,
+                           uint32_t length,
+                           uint32_t dstIPAddr,
+                           uint32_t dstPort,
+                           uint32_t srcPort);
 };
 
 #endif // __RAPH_KERNEL_NET_UDP_H__

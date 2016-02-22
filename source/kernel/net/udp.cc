@@ -50,7 +50,7 @@ int32_t UDPCtrl::Receive(uint8_t *data, uint32_t size, uint32_t port) {
   }
 }
 
-int32_t UDPCtrl::Transmit(const uint8_t *data, uint32_t length, uint32_t dstPort, uint32_t srcPort) {
+int32_t UDPCtrl::Transmit(const uint8_t *data, uint32_t length, uint32_t dstIPAddr, uint32_t dstPort, uint32_t srcPort) {
   int32_t result = -1;
 
   // alloc datagram
@@ -69,7 +69,7 @@ int32_t UDPCtrl::Transmit(const uint8_t *data, uint32_t length, uint32_t dstPort
   memcpy(datagram + sizeof(UDPHeader), data, length);
 
   // call IPCtrl::TransmitData
-  _ipCtrl->TransmitData(datagram, sizeof(UDPHeader) + length, kProtoUDP);
+  _ipCtrl->TransmitData(datagram, sizeof(UDPHeader) + length, kProtoUDP, dstIPAddr);
 
   virtmem_ctrl->Free(reinterpret_cast<virt_addr>(datagram));
 

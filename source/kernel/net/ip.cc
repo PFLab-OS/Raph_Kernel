@@ -45,7 +45,7 @@ int32_t IPCtrl::ReceiveData(uint8_t *data, uint32_t size, const uint8_t protocol
   }
 }
 
-int32_t IPCtrl::TransmitData(const uint8_t *data, uint32_t length, const uint8_t protocolType) {
+int32_t IPCtrl::TransmitData(const uint8_t *data, uint32_t length, const uint8_t protocolType, uint32_t dstIPAddr) {
   int32_t result = -1;
 
   uint32_t totalLen = sizeof(IPv4Header) + length;
@@ -68,7 +68,10 @@ int32_t IPCtrl::TransmitData(const uint8_t *data, uint32_t length, const uint8_t
   header.checksum = 0;
   // TODO: how to get IP address?
   header.srcAddr = 0x0f02000a;
-  header.dstAddr = 0x0f02000a;
+  header.dstAddr = (dstIPAddr >> 24)
+                 | (((dstIPAddr >> 16) & 0xff) << 8)
+                 | (((dstIPAddr >> 8) & 0xff) << 16)
+                 | ((dstIPAddr && 0xff) << 24);
 
   header.checksum = checkSum(reinterpret_cast<uint8_t*>(&header), sizeof(IPv4Header));
 
