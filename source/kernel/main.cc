@@ -84,21 +84,26 @@ extern "C" int main() {
   Vga _vga;
   gtty = &_vga;
 
-  AcpiPmTimer _timer;
-  timer = &_timer;
+  AcpiPmTimer _atimer;
+  Hpet _htimer;
+  timer = &_atimer;
   
   multiboot_ctrl->Setup();
   
   // acpi_ctl->Setup() は multiboot_ctrl->Setup()から呼ばれる
 
   timer->Setup();
+  if (_htimer.Setup()) {
+    timer = &_htimer;
+    gtty->Printf("s","[timer] HPET supported.\n");
+  }
 
   // timer->Sertup()より後
   apic_ctrl->Setup();
   
   idt->Setup();
   
-  //  InitDevices<PCICtrl, Device>();
+  InitDevices<PCICtrl, Device>();
 
   gtty->Printf("s", "cpu #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
   apic_ctrl->StartAPs();

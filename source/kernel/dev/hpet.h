@@ -46,9 +46,11 @@ struct HPETDT {
 
 class Hpet : public Timer {
  public:
-  virtual void Setup() override {
+  virtual bool Setup() override {
     _dt = acpi_ctrl->GetHPETDT();
-    kassert(_dt != nullptr);
+    if (_dt == nullptr) {
+      return false;
+    }
     phys_addr pbase = _dt->BaseAddr;
     _reg = reinterpret_cast<uint64_t *>(p2v(pbase));
 
@@ -56,6 +58,7 @@ class Hpet : public Timer {
   
     // Enable Timer
     _reg[kRegGenConfig] |= kRegGenConfigFlagEnable;
+    return true;
   }
   virtual volatile uint32_t ReadMainCnt() override {
     return _reg[kRegMainCnt];

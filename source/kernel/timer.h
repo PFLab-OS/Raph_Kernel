@@ -27,7 +27,7 @@
 
 class Timer {
  public:
-  virtual void Setup() = 0;
+  virtual bool Setup() = 0;
   virtual volatile uint32_t ReadMainCnt() = 0;
   // us秒後のカウントを取得する
   volatile uint32_t GetCntAfterPeriod(volatile uint32_t cur, uint32_t us) {

@@ -30,11 +30,12 @@
 
 class AcpiPmTimer : public Timer {
  public:
-  virtual void Setup() override {
+  virtual bool Setup() override {
     kassert(acpi_ctrl->GetFADT() != nullptr);
     _port = acpi_ctrl->GetFADT()->PmTmrBlk;
 
     _cnt_clk_period = 279 >> (32 - 24);
+    return true;
   }
   virtual volatile uint32_t ReadMainCnt() override {
     uint32_t val;
