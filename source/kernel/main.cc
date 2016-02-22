@@ -81,12 +81,12 @@ extern "C" int main() {
   PollingCtrl _polling_ctrl;
   polling_ctrl = &_polling_ctrl;
   
-  Vga _vga;
-  gtty = &_vga;
-
   AcpiPmTimer _atimer;
   Hpet _htimer;
   timer = &_atimer;
+
+  Vga _vga;
+  gtty = &_vga;
   
   PhysAddr paddr;
   physmem_ctrl->Alloc(paddr, PagingCtrl::kPageSize);

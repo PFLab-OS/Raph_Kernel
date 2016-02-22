@@ -347,12 +347,12 @@ VirtmemCtrl::VirtmemCtrl() {
   _first = new(_first) AreaManager(_first, _first, tmp2 - tmp1);
 
   // 2MB allocated by boot.S
-  virt_addr tmp3 = reinterpret_cast<virt_addr>(&phys_memory_end);
-  virt_addr tmp4 = 0x200000;
+  virt_addr tmp3 = p2v(reinterpret_cast<phys_addr>(&phys_memory_end));
+  virt_addr tmp4 = p2v(0x200000);
   kassert(tmp3 + AreaManager::GetAreaManagerSize() < tmp4);
   AreaManager *second = reinterpret_cast<AreaManager *>(tmp3);
   _first->Append(second, tmp4 - tmp3);
-
+  
   _list = _first;
 }
 
@@ -397,11 +397,12 @@ virt_addr VirtmemCtrl::Alloc(size_t size) {
       }
     }
     cur = cur->GetNext();
+    kassert(cur != nullptr);
     if (cur == _list && best == nullptr) {
       break;
     }
   }
-  if (cur == _list && best == nullptr) {
+  if (best == nullptr) {
     // 新規にページ割り当て
     AreaManager *end = _first->GetPrev();
     virt_addr allocated_addr_end = end->GetAddr() + end->GetSize() + end->GetAreaManagerSize();
@@ -410,15 +411,16 @@ virt_addr VirtmemCtrl::Alloc(size_t size) {
       PhysAddr paddr;
       size_t psize = alignUp(size, PagingCtrl::kPageSize);
       physmem_ctrl->Alloc(paddr, psize);
-      kassert(false);
       kassert(paging_ctrl->MapPhysAddrToVirtAddr(allocated_addr_end, paddr, psize, PDE_WRITE_BIT, PTE_WRITE_BIT || PTE_GLOBAL_BIT));
       AreaManager *next = reinterpret_cast<AreaManager *>(allocated_addr_end);
       end->Append(next, psize);
+      best = next;
     } else {
       // マジかよ
       kassert(false && "not enough kernel heap memory");
     }
   }
+  kassert(min != nullptr);
   _list = min;
   best->Allocate();
   kassert(best != _last_freed);

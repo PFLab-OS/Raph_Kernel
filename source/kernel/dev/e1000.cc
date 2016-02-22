@@ -34,7 +34,7 @@ void E1000::Setup() {
 
   // get PCI Base Address Registers
   phys_addr mmio_addr = this->ReadReg<uint32_t>(PCICtrl::kBaseAddressReg0) & 0xFFFFFFF0; // TODO : もうちょっと厳密にやるべき
-  this->WriteReg<uint16_t>(PCICtrl::kCommandReg, this->ReadReg<uint16_t>(PCICtrl::kCommandReg) | PCICtrl::kCommandRegBusMasterEnableFlag | 2 | 1);
+  this->WriteReg<uint16_t>(PCICtrl::kCommandReg, this->ReadReg<uint16_t>(PCICtrl::kCommandReg) | PCICtrl::kCommandRegBusMasterEnableFlag | 2 | 1 | (1 << 10));
   _mmioAddr = reinterpret_cast<uint32_t*>(p2v(mmio_addr));
 
   // disable interrupts (see 13.3.32)
@@ -98,7 +98,7 @@ int32_t E1000::TransmitPacket(const uint8_t *packet, uint32_t length) {
   uint32_t tdh = _mmioAddr[kRegTdh];
   uint32_t tdt = _mmioAddr[kRegTdt];
   int tx_available = kTxdescNumber - ((kTxdescNumber - tdh + tdt) % kTxdescNumber);
-  
+
   if(tx_available > 0) {
     // if tx_desc_buf_ is not full
     txdesc = tx_desc_buf_ + (tdt % kTxdescNumber);
@@ -106,10 +106,9 @@ int32_t E1000::TransmitPacket(const uint8_t *packet, uint32_t length) {
     txdesc->length = length;
     txdesc->sta = 0;
     txdesc->css = 0;
-    txdesc->cso = 0;
-    txdesc->special = 0;
     txdesc->cmd = 0xb;
-
+    txdesc->special = 0;
+    txdesc->cso = 0;
     _mmioAddr[kRegTdt] = (tdt + 1) % kTxdescNumber;
 
     return length;
@@ -155,10 +154,13 @@ void E1000::SetupRx() {
   // (see the definition of E1000 class)
 
   // set base address of ring buffer
-  virt_addr rx_desc_buf_addr = ((virtmem_ctrl->Alloc(sizeof(E1000RxDesc) * kRxdescNumber + 15) + 15) / 16) * 16;
-  rx_desc_buf_ = reinterpret_cast<E1000RxDesc *>(rx_desc_buf_addr);
-  _mmioAddr[kRegRdbal0] = k2p(rx_desc_buf_addr) & 0xffffffff; // TODO: must be 16B-aligned
-  _mmioAddr[kRegRdbah0] = k2p(rx_desc_buf_addr) >> 32;
+  PhysAddr paddr;
+  physmem_ctrl->Alloc(paddr, PagingCtrl::ConvertNumToPageSize(sizeof(E1000RxDesc) * kRxdescNumber));
+  phys_addr rx_desc_buf_paddr = paddr.GetAddr();
+  virt_addr rx_desc_buf_vaddr = p2v(rx_desc_buf_paddr);
+  rx_desc_buf_ = reinterpret_cast<E1000RxDesc *>(rx_desc_buf_vaddr);
+  _mmioAddr[kRegRdbal0] = rx_desc_buf_paddr & 0xffffffff; // TODO: must be 16B-aligned
+  _mmioAddr[kRegRdbah0] = rx_desc_buf_paddr >> 32;
 
   // set the size of the desc ring
   _mmioAddr[kRegRdlen0] = kRxdescNumber * sizeof(E1000RxDesc);
@@ -170,7 +172,8 @@ void E1000::SetupRx() {
   // initialize rx desc ring buffer
   for(int i = 0; i < kRxdescNumber; i++) {
     E1000RxDesc *rxdesc = &rx_desc_buf_[i];
-    rxdesc->bufAddr = k2p(virtmem_ctrl->Alloc(kBufSize));
+    virt_addr tmp = virtmem_ctrl->Alloc(kBufSize);
+    rxdesc->bufAddr = k2p(tmp);
     rxdesc->vlanTag = 0;
     rxdesc->errors = 0;
     rxdesc->status = 0;
