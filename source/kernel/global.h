@@ -38,6 +38,7 @@ class PCICtrl;
 class EthCtrl;
 class IPCtrl;
 class UDPCtrl;
+class TCPCtrl;
 
 extern SpinLockCtrl *spinlock_ctrl;
 extern AcpiCtrl *acpi_ctrl;
@@ -55,5 +56,6 @@ extern PCICtrl *pci_ctrl;
 extern EthCtrl *eth_ctrl;
 extern IPCtrl *ip_ctrl;
 extern UDPCtrl *udp_ctrl;
+extern TCPCtrl *tcp_ctrl;
 
 #endif // __RAPH_KERNEL_GLOBAL_H__

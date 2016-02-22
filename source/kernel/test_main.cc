@@ -31,12 +31,14 @@
 #include "net/eth.h"
 #include "net/ip.h"
 #include "net/udp.h"
+#include "net/tcp.h"
 
 SpinLockCtrl *spinlock_ctrl;
 VirtmemCtrl *virtmem_ctrl;
 PhysmemCtrl *physmem_ctrl;
 PagingCtrl *paging_ctrl;
 
+TCPCtrl *tcp_ctrl;
 UDPCtrl *udp_ctrl;
 IPCtrl *ip_ctrl;
 EthCtrl *eth_ctrl;

@@ -25,8 +25,6 @@
 #include "../mem/virtmem.h"
 #include "../global.h"
 
-#include <stdio.h>
-
 int32_t UDPCtrl::Receive(uint8_t *data, uint32_t size, uint32_t port) {
   // alloc buffer
   int32_t bufsize = sizeof(UDPHeader) + size;

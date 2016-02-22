@@ -28,10 +28,38 @@
 #include "layer.h"
 #include "ip.h"
 
+struct TCPHeader {
+  // source port
+  uint16_t srcPort;
+  // destination port
+  uint16_t dstPort;
+  // sequence number
+  uint32_t seqNumber;
+  // acknowledge number
+  uint32_t ackNumber;
+  // TCP header length (upper 4bit) | Reserved (lower 4bit)
+  uint8_t headerLen;
+  // Session flags (lower 6bit) + Reserved (upper 2bit)
+  uint8_t flag;
+  // window size
+  uint16_t windowSize;
+  // checksum
+  uint16_t checksum;
+  // urgent pointer
+  uint16_t urgentPointer;
+} __attribute__ ((packed));
+
 class TCPCtrl : public L4Ctrl {
   IPCtrl *_ipCtrl;
 
   static const uint8_t kProtoTCP = 6;
+  static const uint8_t kDstPortOffset = 2;
+  static const uint8_t kFlagFIN = 1 << 0;
+  static const uint8_t kFlagSYN = 1 << 1;
+  static const uint8_t kFlagRST = 1 << 2;
+  static const uint8_t kFlagPSH = 1 << 3;
+  static const uint8_t kFlagACK = 1 << 4;
+  static const uint8_t kFlagURG = 1 << 5;
 
 public:
   TCPCtrl(IPCtrl *ipCtrl) : _ipCtrl(ipCtrl) {
