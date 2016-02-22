@@ -57,11 +57,12 @@ void PCICtrl::_Init() {
         if (mf) {
           gtty->Printf("s", "mf");
         }
-        gtty->Printf("s", "\n");
+        gtty->Printf("s", " | ");
 
         InitPCIDevices<E1000, DevPCI>(vid, did, j, k, mf);
       }
     }
   }
+  gtty->Printf("s", "\n");
 }
 

@@ -29,14 +29,17 @@
 #include "../timer.h"
 #include "../global.h"
 
-void E1000::Setup() {
+void E1000::Setup(uint16_t did) {
+  _did = did;
+
   // the following sequence is indicated in pcie-gbe-controllers 14.3
 
   // get PCI Base Address Registers
-  phys_addr mmio_addr = this->ReadReg<uint32_t>(PCICtrl::kBaseAddressReg0) & 0xFFFFFFF0; // TODO : もうちょっと厳密にやるべき
-  this->WriteReg<uint16_t>(PCICtrl::kCommandReg, this->ReadReg<uint16_t>(PCICtrl::kCommandReg) | PCICtrl::kCommandRegBusMasterEnableFlag | 2 | 1 | (1 << 10));
+  phys_addr bar = this->ReadReg<uint32_t>(PCICtrl::kBaseAddressReg0);
+  kassert((bar & 0xF) == 0);
+  phys_addr mmio_addr = bar & 0xFFFFFFF0; // TODO : もうちょっと厳密にやるべき
+  this->WriteReg<uint16_t>(PCICtrl::kCommandReg, this->ReadReg<uint16_t>(PCICtrl::kCommandReg) | PCICtrl::kCommandRegBusMasterEnableFlag | (1 << 10));
   _mmioAddr = reinterpret_cast<uint32_t*>(p2v(mmio_addr));
-
   // disable interrupts (see 13.3.32)
   _mmioAddr[kRegImc] = 0xffffffff;
 
@@ -50,7 +53,7 @@ void E1000::Setup() {
   _mmioAddr[kRegCtrl] |= kRegCtrlSluFlag;
 
   // general config (82571x -> 14.5, 8254x -> 14.3)
-  switch(kDeviceId) {
+  switch(_did) {
     case kI8257x:
       // disable link mode (see 12.5)
       _mmioAddr[kRegCtrlExt] &= (~kRegCtrlExtLinkModeMask);
@@ -63,7 +66,6 @@ void E1000::Setup() {
       break;
   }
 
-  _mmioAddr[kRegEerd] = (((0x0E & 0xff) << 8) | 1);
   // initialize receiver/transmitter ring buffer
   this->SetupRx();
   this->SetupTx();
@@ -235,7 +237,7 @@ uint16_t E1000::EepromRead(uint16_t addr) {
   // see pcie-gbe-controllers 5.2.1 (i8257x) or 5.3.1 (i8254x)
 
   // notify start bit and addr
-  switch(kDeviceId) {
+  switch(_did) {
     case kI8254x:
       _mmioAddr[kRegEerd] = (((addr & 0xff) << 8) | 1);
       // polling

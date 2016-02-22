@@ -97,7 +97,7 @@ public:
       case kI8257x:
         E1000 *addr = reinterpret_cast<E1000 *>(virtmem_ctrl->Alloc(sizeof(E1000)));
         E1000 *e1000 = new(addr) E1000(bus, device, mf);
-        e1000->Setup();
+        e1000->Setup(did);
         polling_ctrl->Register(e1000);
         e1000->TxTest();
         break;
@@ -107,7 +107,7 @@ public:
   // from Polling
   void Handle() override;
   // init sequence of e1000 device (see pcie-gbe-controllers 14.3)
-  void Setup();
+  void Setup(uint16_t did);
   // see pcie-gbe-controllers 3.2
   int32_t ReceivePacket(uint8_t *buffer, uint32_t size);
   // see pcie-gbe-controllers 3.3, 3.4
@@ -134,8 +134,8 @@ private:
 
   static const uint16_t kVendorId = 0x8086;
 
-  // Device ID (TODO: this must be fetched from PCIe device list)
-  static const uint16_t kDeviceId = 0x100e; // for QEMU
+  // Device ID
+  uint16_t _did = 0;
 
   // Device ID list
   static const uint16_t kI8254x = 0x100e;

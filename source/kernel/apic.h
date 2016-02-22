@@ -84,6 +84,7 @@ public:
   }
 private:
   MADT *_madt = nullptr;
+  static const uint32_t kMadtFlagLapicEnable = 1;
   class Lapic {
   public:
     // setup local APIC respond to specified index

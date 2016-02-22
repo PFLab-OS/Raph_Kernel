@@ -32,6 +32,7 @@ extern "C" void entry();
 
 void ApicCtrl::Setup() {
   kassert(_madt != nullptr);
+  gtty->Printf("s","setup\n");
   int ncpu = 0;
   for(uint32_t offset = 0; offset < _madt->header.Length - sizeof(MADT);) {
     virt_addr ptr = ptr2virtaddr(_madt->table) + offset;
@@ -41,6 +42,9 @@ void ApicCtrl::Setup() {
       {
         MADTStLAPIC *madtStLAPIC = reinterpret_cast<MADTStLAPIC *>(ptr);
         _lapic.SetCtrlAddr(reinterpret_cast<uint32_t *>(p2v(_madt->lapicCtrlAddr)));
+        if ((madtStLAPIC->flags & kMadtFlagLapicEnable) == 0) {
+          break;
+        }
         _lapic._apicIds[ncpu] = madtStLAPIC->apicId;
         ncpu++;
       }
@@ -74,7 +78,7 @@ void ApicCtrl::StartAPs() {
   }
   for(int i = 0; i < _lapic._ncpu; i++) {
     // skip BSP
-    if(i == _lapic.Cpunum()) {
+    if(_lapic._apicIds[i] == _lapic.GetApicId()) {
       continue;
     }
     _started = false;
