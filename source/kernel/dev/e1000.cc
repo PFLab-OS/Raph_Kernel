@@ -81,7 +81,6 @@ void E1000::Setup(uint16_t did) {
 
 int32_t E1000::ReceivePacket(uint8_t *buffer, uint32_t size) {
   int32_t rval;
-  gtty->Printf("s","?");
   WRITE_LOCK(_lock) {
     E1000RxDesc *rxdesc;
     uint32_t rdh = _mmioAddr[kRegRdh0];

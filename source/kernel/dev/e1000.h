@@ -103,7 +103,7 @@ public:
         E1000 *e1000 = new(addr) E1000(bus, device, mf);
         e1000->Setup(did);
         //        polling_ctrl->Register(e1000);
-        e1000->TxTest();
+        //e1000->TxTest();
         break;
       }
     }

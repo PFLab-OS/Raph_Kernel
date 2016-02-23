@@ -44,15 +44,24 @@ class EthCtrl : public L2Ctrl {
   static const uint16_t kProtocolIPv4 = (0x08) | (0x00 << 8);
   static const uint16_t kProtocolARP  = (0x08) | (0x06 << 8);
 
+  static const uint32_t kDstAddrOffset      = 0;
+  static const uint32_t kSrcAddrOffset      = 6;
+  static const uint32_t kProtocolTypeOffset = 12;
+
 public:
   EthCtrl() {}
   virtual bool OpenSocket();
-  virtual int32_t ReceiveData(uint8_t *data, uint32_t size);
-  virtual int32_t TransmitData(const uint8_t *data, uint32_t length);
   // 事前に6バイト確保する事
   void GetEthAddr(uint8_t *data) {
     _socket->GetEthAddr(data);
   }
+  virtual int32_t ReceiveData(uint8_t *data,
+                              uint32_t size,
+                              uint8_t *protocolType = nullptr,
+                              uint8_t *srcAddr = nullptr);
+  virtual int32_t TransmitData(const uint8_t *data,
+                               uint32_t length,
+                               uint8_t *dstAddr);
 };
 
 #endif // __RAPH_KERNEL_NET_ETH_H__

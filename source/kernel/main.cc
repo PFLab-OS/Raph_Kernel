@@ -141,6 +141,51 @@ extern "C" int main() {
   kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 3) + 1));
   kassert(!paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - 4096 * 3));
 
+  uint8_t ipv4addr[] = {
+    0x0a, 0x00, 0x02, 0x0f
+  };
+
+  // ARP Reply
+  if (eth_ctrl->OpenSocket()) {
+    PhysAddr paddr;
+    physmem_ctrl->Alloc(paddr, PagingCtrl::kPageSize);
+    PhysAddr paddr2;
+    physmem_ctrl->Alloc(paddr2, PagingCtrl::kPageSize);
+    uint8_t *buf = reinterpret_cast<uint8_t *>(paddr.GetVirtAddr());
+    uint8_t *buf2 = reinterpret_cast<uint8_t *>(paddr2.GetVirtAddr());
+    uint8_t srcAddr[6];
+    uint8_t ptype[2];
+    while(true) {
+      if (eth_ctrl->ReceiveData(buf, PagingCtrl::kPageSize, ptype, srcAddr) > 0) {
+        bool is_eth = (buf[0] == 0x0) && (buf[1] == 0x01);
+        bool is_ipv4 = (buf[2] == 0x80) && (buf[3] == 0x00);
+        bool is_valid = (buf[4] == 0x06) && (buf[5] == 0x04);
+        bool is_req = (buf[6] == 0x00) && (buf[7] == 0x01);
+        uint8_t *source_eth_addr = buf + 8;
+        uint8_t *source_proto_addr = buf + 14;
+        uint8_t *target_proto_addr = buf + 24;
+        // ARP req
+        gtty->Printf("s","x");
+        if (is_eth && is_ipv4 && is_valid && is_req && ptype[0]==0x08 && ptype[1]==0x06) {
+          // ARP reply
+          buf2[0] = 0x00;
+          buf2[1] = 0x01;
+          buf2[2] = 0x08;
+          buf2[3] = 0x00;
+          buf2[4] = 0x06;
+          buf2[5] = 0x04;
+          buf2[6] = 0x00;
+          buf2[7] = 0x02;
+          eth_ctrl->GetEthAddr(buf2 + 8);
+          memcpy(buf2 + 14, ipv4addr, 4);
+          memcpy(buf2 + 18, source_eth_addr, 6);
+          memcpy(buf2 + 24, source_proto_addr, 4);
+          //          eth_ctrl->TransmitData(buf2, PagingCtrl::kPageSize, srcAddr);
+          gtty->Printf("s","r");
+        }
+      }
+    }
+  }
   polling_ctrl->HandleAll();
   while(true) {
     asm volatile("hlt;nop;hlt;");
@@ -160,58 +205,6 @@ extern "C" int main_of_others() {
     0x41, 0x42, 0x43, 0x44, 0x00,
     };*/
 
-  uint8_t ipv4addr[] = {
-    0x0a, 0x00, 0x02, 0x0f
-  };
-
-  // ARP Reply
-  if (eth_ctrl->OpenSocket()) {
-    PhysAddr paddr;
-    physmem_ctrl->Alloc(paddr, PagingCtrl::kPageSize);
-    PhysAddr paddr2;
-    physmem_ctrl->Alloc(paddr2, PagingCtrl::kPageSize);
-    uint8_t *buf = reinterpret_cast<uint8_t *>(paddr.GetVirtAddr());
-    uint8_t *buf2 = reinterpret_cast<uint8_t *>(paddr2.GetVirtAddr());
-    while(true) {
-      if (eth_ctrl->ReceiveData(buf, PagingCtrl::kPageSize) > 0) {
-        bool target = true;
-        for (int i = 0; i < 6; i++) {
-          target &= (buf[i] == 0xff);
-        }
-        uint8_t *src_eth_addr = buf + 6;
-        bool is_arp = (buf[12] == 0x08) && (buf[13] == 0x06);
-        bool is_eth = (buf[14] == 0x0) && (buf[15] == 0x01);
-        bool is_ipv4 = (buf[16] == 0x80) && (buf[17] == 0x00);
-        bool is_valid = (buf[18] == 0x06) && (buf[19] == 0x04);
-        bool is_req = (buf[20] == 0x00) && (buf[21] == 0x01);
-        uint8_t *source_eth_addr = buf + 22;
-        uint8_t *source_proto_addr = buf + 28;
-        uint8_t *target_proto_addr = buf + 38;
-        // ARP req
-        gtty->Printf("s","x");
-        if (is_arp && is_eth && is_ipv4 && is_valid && is_req && (*(reinterpret_cast<uint32_t *>(target_proto_addr)) == *(reinterpret_cast<uint32_t *>(ipv4addr)))) {
-          // ARP reply
-          memcpy(buf2, src_eth_addr, 6);
-          eth_ctrl->GetEthAddr(buf2 + 6);
-          buf2[12] = 0x08;
-          buf2[13] = 0x06;
-          buf2[14] = 0x00;
-          buf2[15] = 0x01;
-          buf2[16] = 0x08;
-          buf2[17] = 0x00;
-          buf2[18] = 0x06;
-          buf2[19] = 0x04;
-          buf2[20] = 0x00;
-          buf2[21] = 0x02;
-          eth_ctrl->GetEthAddr(buf2 + 22);
-          memcpy(buf2 + 28, ipv4addr, 4);
-          memcpy(buf2 + 32, source_eth_addr, 6);
-          memcpy(buf2 + 38, source_proto_addr, 4);
-          gtty->Printf("s","r");
-        }
-      }
-    }
-  }
     //  udp_ctrl->Transmit(buf, sizeof(buf), addr, port, port);
   while(1) {
     asm volatile("hlt;");

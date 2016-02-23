@@ -37,8 +37,13 @@ protected:
 public:
   virtual bool RegisterDevice(DevNetL2 *dev);
   virtual bool OpenSocket() = 0;
-  virtual int32_t ReceiveData(uint8_t *data, uint32_t size) = 0;
-  virtual int32_t TransmitData(const uint8_t *data, uint32_t length) = 0;
+  virtual int32_t ReceiveData(uint8_t *data,
+                              uint32_t size,
+                              uint8_t *protocolType = nullptr,
+                              uint8_t *srcAddr = nullptr) = 0;
+  virtual int32_t TransmitData(const uint8_t *data,
+                               uint32_t length,
+                               uint8_t *dstAddr) = 0;
 };
 
 class L4Ctrl {

@@ -67,6 +67,10 @@ int32_t IPCtrl::ReceiveData(uint8_t *data,
 int32_t IPCtrl::TransmitData(const uint8_t *data, uint32_t length, const uint8_t protocolType, uint32_t dstIPAddr) {
   int32_t result = -1;
 
+  uint8_t dstAddr[] = {
+    0x08, 0x00, 0x27, 0xc1, 0x5b, 0x93
+  };
+
   uint32_t totalLen = sizeof(IPv4Header) + length;
 
   // alloc the buffer with length of (data + IPv4header)
@@ -98,7 +102,7 @@ int32_t IPCtrl::TransmitData(const uint8_t *data, uint32_t length, const uint8_t
   memcpy(datagram + sizeof(IPv4Header), data, length);
   
   // call EthCtrl::TransmitData
-  result = _l2Ctrl->TransmitData(datagram, sizeof(IPv4Header) + length);
+  result = _l2Ctrl->TransmitData(datagram, sizeof(IPv4Header) + length, dstAddr);
 
   virtmem_ctrl->Free(reinterpret_cast<virt_addr>(datagram));
 
