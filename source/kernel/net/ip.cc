@@ -85,8 +85,7 @@ int32_t IPCtrl::TransmitData(const uint8_t *data, uint32_t length, const uint8_t
   header.ttl = kTimeToLive;
   header.protoId = protocolType;
   header.checksum = 0;
-  // TODO: how to get IP address?
-  header.srcAddr = 0x0f02000a;
+  header.srcAddr = kSourceIPAddress;
   header.dstAddr = (dstIPAddr >> 24)
                  | (((dstIPAddr >> 16) & 0xff) << 8)
                  | (((dstIPAddr >> 8) & 0xff) << 16)

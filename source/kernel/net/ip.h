@@ -68,6 +68,8 @@ class IPCtrl {
   static const uint8_t kFlagMoreFragment    = (1 << 5);
   static const uint8_t kTimeToLive          = 16;
 
+  const uint32_t kSourceIPAddress = 0x0f02000a;
+
   L2Ctrl *_l2Ctrl;
   L4Ctrl *_l4CtrlTable[kL4CtrlTableNumber] = {nullptr};
   uint16_t _idAutoIncrement;
