@@ -37,7 +37,7 @@ bool EthCtrl::OpenSocket() {
   }
 }
 
-int32_t EthCtrl::ReceiveData(uint8_t *data, uint32_t size) {
+int32_t EthCtrl::ReceiveData(uint8_t *data, uint32_t size, uint8_t *protocolType, uint8_t *srcAddr) {
   if(_socket == nullptr) {
     OpenSocket();
   }
@@ -53,6 +53,10 @@ int32_t EthCtrl::ReceiveData(uint8_t *data, uint32_t size) {
     int32_t length = bufsize < result ? bufsize : result;
     kassert(length - sizeof(EthHeader) <= size);
     memcpy(data, buffer + sizeof(EthHeader), length - sizeof(EthHeader));
+    if(protocolType)
+      *protocolType = (buffer[kProtocolTypeOffset] << 8) | buffer[kProtocolTypeOffset + 1];
+    if(srcAddr)
+      memcpy(srcAddr, buffer+kSrcAddrOffset, 6);
     virtmem_ctrl->Free(reinterpret_cast<virt_addr>(buffer));
     return result - sizeof(EthHeader);
   } else {
@@ -61,7 +65,7 @@ int32_t EthCtrl::ReceiveData(uint8_t *data, uint32_t size) {
   }
 }
 
-int32_t EthCtrl::TransmitData(const uint8_t *data, uint32_t length) {
+int32_t EthCtrl::TransmitData(const uint8_t *data, uint32_t length, uint8_t *destAddr) {
   int32_t result = -1;
 
   if(_socket == nullptr) {
@@ -73,13 +77,10 @@ int32_t EthCtrl::TransmitData(const uint8_t *data, uint32_t length) {
 
   // construct header
   EthHeader header;
-  // TODO: fetch MAC address
   // destination address
-  header.dstAddrHi = 0x0008;
-  header.dstAddrMd = 0xc127;
-  header.dstAddrLo = 0x935b;
+  memcpy(&header, destAddr, 6);
   // source address
-  _socket->GetEthAddr(reinterpret_cast<uint8_t*>(&header));
+  _socket->GetEthAddr(reinterpret_cast<uint8_t*>(&header) + 6);
   header.type      = kProtocolIPv4;
 
   // construct datagram
