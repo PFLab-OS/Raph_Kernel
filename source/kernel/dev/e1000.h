@@ -152,6 +152,8 @@ private:
   static const int kTxdescNumber = 8;
   // the buffer for transmit descriptors
   E1000TxDesc *tx_desc_buf_;
+  // ethernet address
+  uint8_t _ethAddr[6];
 
   // Ethernet Controller EEPROM Map (see pcie-gbe-controllers Table 5-2)
   static const int kEepromEthAddrHi = 0x00;

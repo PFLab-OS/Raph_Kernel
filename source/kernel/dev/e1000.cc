@@ -70,6 +70,17 @@ void E1000::Setup(uint16_t did) {
   this->SetupRx();
   this->SetupTx();
 
+  // fetch ethernet address from EEPROM
+  uint16_t ethaddr_lo = this->EepromRead(kEepromEthAddrLo);
+  uint16_t ethaddr_md = this->EepromRead(kEepromEthAddrMd);
+  uint16_t ethaddr_hi = this->EepromRead(kEepromEthAddrHi);
+  _ethAddr[0] = ethaddr_hi & 0xff;
+  _ethAddr[1] = (ethaddr_hi >> 8) & 0xff;
+  _ethAddr[2] = ethaddr_md & 0xff;
+  _ethAddr[3] = (ethaddr_md >> 8) & 0xff;
+  _ethAddr[4] = ethaddr_lo & 0xff;
+  _ethAddr[5] = (ethaddr_lo >> 8) & 0xff;
+
   // enable interrupts
   _mmioAddr[kRegImc] = 0;
 }
@@ -266,15 +277,7 @@ uint16_t E1000::EepromRead(uint16_t addr) {
 }
 
 void E1000::GetEthAddr(uint8_t *buffer) {
-  uint16_t ethaddr_lo = this->EepromRead(kEepromEthAddrLo);
-  uint16_t ethaddr_md = this->EepromRead(kEepromEthAddrMd);
-  uint16_t ethaddr_hi = this->EepromRead(kEepromEthAddrHi);
-  buffer[0] = ethaddr_hi & 0xff;
-  buffer[1] = (ethaddr_hi >> 8) & 0xff;
-  buffer[2] = ethaddr_md & 0xff;
-  buffer[3] = (ethaddr_md >> 8) & 0xff;
-  buffer[4] = ethaddr_lo & 0xff;
-  buffer[5] = (ethaddr_lo >> 8) & 0xff;
+  memcpy(buffer, _ethAddr, 6);
 }
 
 uint32_t E1000::Crc32b(uint8_t *message) {
