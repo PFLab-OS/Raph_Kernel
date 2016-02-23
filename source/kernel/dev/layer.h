@@ -24,14 +24,15 @@
 #define __RAPH_KERNEL_DEV_L2_H__
 
 #include <stdint.h>
+#include "../spinlock.h"
 
 class DevNetL2 {
-protected:
-  DevNetL2() {}
-
 public:
   virtual int32_t ReceivePacket(uint8_t *buffer, uint32_t size) = 0;
   virtual int32_t TransmitPacket(const uint8_t *packet, uint32_t length) = 0;
+protected:
+  DevNetL2() {}
+  SpinLock _lock;
 };
 
 #endif /* __RAPH_KERNEL_DEV_L2_H__ */

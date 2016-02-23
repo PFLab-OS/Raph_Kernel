@@ -26,52 +26,58 @@
 #include "../global.h"
 
 int32_t UDPCtrl::Receive(uint8_t *data, uint32_t size, uint32_t port) {
-  // alloc buffer
-  int32_t bufsize = sizeof(UDPHeader) + size;
-  uint8_t *buffer = reinterpret_cast<uint8_t*>(virtmem_ctrl->Alloc(sizeof(uint8_t) * bufsize));
-
   int32_t result = -1;
-  uint16_t receivedPort = 0;
 
-  while(result == -1 || receivedPort != port) {
-    // succeed to receive packet and correspond to the specified port
-    result = _ipCtrl->ReceiveData(buffer, bufsize, kProtoUDP);
-    receivedPort = (buffer[kDstPortOffset] << 8) | buffer[kDstPortOffset + 1];
-  }
+  WRITE_LOCK(_lock) {
+    // alloc buffer
+    int32_t bufsize = sizeof(UDPHeader) + size;
+    uint8_t *buffer = reinterpret_cast<uint8_t*>(virtmem_ctrl->Alloc(sizeof(uint8_t) * bufsize));
 
-  if(result > 0) {
-    int32_t length = bufsize < result ? bufsize : result;
-    memcpy(data, buffer + sizeof(UDPHeader), length);
+    uint16_t receivedPort = 0;
+
+    while(result == -1 || receivedPort != port) {
+      // succeed to receive packet and correspond to the specified port
+      result = _ipCtrl->ReceiveData(buffer, bufsize, kProtoUDP);
+      receivedPort = (buffer[kDstPortOffset] << 8) | buffer[kDstPortOffset + 1];
+    }
+
+    if(result > 0) {
+      int32_t length = bufsize < result ? bufsize : result;
+      memcpy(data, buffer + sizeof(UDPHeader), length);
   
-    virtmem_ctrl->Free(reinterpret_cast<virt_addr>(buffer));
-    return result - sizeof(UDPHeader);
-  } else {
-    return result;
+      virtmem_ctrl->Free(reinterpret_cast<virt_addr>(buffer));
+      result = result - sizeof(UDPHeader);
+    } else {
+      result = result;
+    }
   }
+  return result;
 }
 
 int32_t UDPCtrl::Transmit(const uint8_t *data, uint32_t length, uint32_t dstIPAddr, uint32_t dstPort, uint32_t srcPort) {
   int32_t result = -1;
 
-  // alloc datagram
-  uint8_t *datagram = reinterpret_cast<uint8_t*>(virtmem_ctrl->Alloc(sizeof(uint8_t) * (sizeof(UDPHeader) + length)));
+  WRITE_LOCK(_lock) {
 
-  // construct header
-  UDPHeader header;
-  header.srcPort  = (srcPort >> 8) | ((srcPort & 0xff) << 8);
-  header.dstPort  = (dstPort >> 8) | ((dstPort & 0xff) << 8);
-  header.len      = sizeof(UDPHeader) + length;
-  header.len      = (header.len >> 8) | ((header.len & 0xff) << 8);
-  header.checksum = 0;  // TODO: calculate
+    // alloc datagram
+    uint8_t *datagram = reinterpret_cast<uint8_t*>(virtmem_ctrl->Alloc(sizeof(uint8_t) * (sizeof(UDPHeader) + length)));
 
-  // construct datagram
-  memcpy(datagram, reinterpret_cast<uint8_t*>(&header), sizeof(UDPHeader));
-  memcpy(datagram + sizeof(UDPHeader), data, length);
+    // construct header
+    UDPHeader header;
+    header.srcPort  = (srcPort >> 8) | ((srcPort & 0xff) << 8);
+    header.dstPort  = (dstPort >> 8) | ((dstPort & 0xff) << 8);
+    header.len      = sizeof(UDPHeader) + length;
+    header.len      = (header.len >> 8) | ((header.len & 0xff) << 8);
+    header.checksum = 0;  // TODO: calculate
 
-  // call IPCtrl::TransmitData
-  _ipCtrl->TransmitData(datagram, sizeof(UDPHeader) + length, kProtoUDP, dstIPAddr);
+    // construct datagram
+    memcpy(datagram, reinterpret_cast<uint8_t*>(&header), sizeof(UDPHeader));
+    memcpy(datagram + sizeof(UDPHeader), data, length);
 
-  virtmem_ctrl->Free(reinterpret_cast<virt_addr>(datagram));
+    // call IPCtrl::TransmitData
+    _ipCtrl->TransmitData(datagram, sizeof(UDPHeader) + length, kProtoUDP, dstIPAddr);
 
+    virtmem_ctrl->Free(reinterpret_cast<virt_addr>(datagram));
+  }
   return result;
 }

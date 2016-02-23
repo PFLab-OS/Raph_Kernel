@@ -80,83 +80,91 @@ void E1000::Setup(uint16_t did) {
 }
 
 int32_t E1000::ReceivePacket(uint8_t *buffer, uint32_t size) {
-  E1000RxDesc *rxdesc;
-  uint32_t rdh = _mmioAddr[kRegRdh0];
-  uint32_t rdt = _mmioAddr[kRegRdt0];
-  uint32_t length;
-  int rx_available = (kRxdescNumber - rdt + rdh) % kRxdescNumber;
+  int32_t rval;
+  WRITE_LOCK(_lock) {
+    E1000RxDesc *rxdesc;
+    uint32_t rdh = _mmioAddr[kRegRdh0];
+    uint32_t rdt = _mmioAddr[kRegRdt0];
+    uint32_t length;
+    int rx_available = (kRxdescNumber - rdt + rdh) % kRxdescNumber;
 
-  if(rx_available > 0) {
-    // if the packet is on the wire
-    rxdesc = rx_desc_buf_ + (rdt % kRxdescNumber);
-    length = size < rxdesc->length ? size : rxdesc->length;
-    memcpy(buffer, reinterpret_cast<uint8_t *>(p2v(rxdesc->bufAddr)), length);
-    _mmioAddr[kRegRdt0] = (rdt + 1) % kRxdescNumber;
-    return length;
-  } else {
-    // if rx_desc_buf_ is full, fails
-	// please retry again
-    return -1;
+    if(rx_available > 0) {
+      // if the packet is on the wire
+      rxdesc = rx_desc_buf_ + (rdt % kRxdescNumber);
+      length = size < rxdesc->length ? size : rxdesc->length;
+      memcpy(buffer, reinterpret_cast<uint8_t *>(p2v(rxdesc->bufAddr)), length);
+      _mmioAddr[kRegRdt0] = (rdt + 1) % kRxdescNumber;
+      rval = length;
+    } else {
+      // if rx_desc_buf_ is full, fails
+      // please retry again
+      rval = -1;
+    }
   }
+  return rval;
 }
 
 int32_t E1000::TransmitPacket(const uint8_t *packet, uint32_t length) {
-  E1000TxDesc *txdesc;
-  uint32_t tdh = _mmioAddr[kRegTdh];
-  uint32_t tdt = _mmioAddr[kRegTdt];
-  int tx_available = kTxdescNumber - ((kTxdescNumber - tdh + tdt) % kTxdescNumber);
+  int32_t rval;
+  WRITE_LOCK(_lock) {
+    E1000TxDesc *txdesc;
+    uint32_t tdh = _mmioAddr[kRegTdh];
+    uint32_t tdt = _mmioAddr[kRegTdt];
+    int tx_available = kTxdescNumber - ((kTxdescNumber - tdh + tdt) % kTxdescNumber);
 
-  if(tx_available > 0) {
-    // if tx_desc_buf_ is not full
-    txdesc = tx_desc_buf_ + (tdt % kTxdescNumber);
-    memcpy(reinterpret_cast<uint8_t *>(p2v(txdesc->bufAddr)), packet, length);
-    txdesc->length = length;
-    txdesc->sta = 0;
-    txdesc->css = 0;
-    txdesc->cmd = 0xb;
-    txdesc->special = 0;
-    txdesc->cso = 0;
-    _mmioAddr[kRegTdt] = (tdt + 1) % kTxdescNumber;
+    if(tx_available > 0) {
+      // if tx_desc_buf_ is not full
+      txdesc = tx_desc_buf_ + (tdt % kTxdescNumber);
+      memcpy(reinterpret_cast<uint8_t *>(p2v(txdesc->bufAddr)), packet, length);
+      txdesc->length = length;
+      txdesc->sta = 0;
+      txdesc->css = 0;
+      txdesc->cmd = 0xb;
+      txdesc->special = 0;
+      txdesc->cso = 0;
+      _mmioAddr[kRegTdt] = (tdt + 1) % kTxdescNumber;
 
 
-    gtty->Printf(
-      "s", "UDP sent;\n",
-      "x", packet[0], "s", " ", "x", packet[1], "s", " ",
-      "x", packet[2], "s", " ", "x", packet[3], "s", " ",
-      "x", packet[4], "s", " ", "x", packet[5], "s", " ",
-      "x", packet[6], "s", " ", "x", packet[7], "s", "\n");
-    gtty->Printf(
-      "x", packet[8], "s", " ", "x", packet[9], "s", " ",
-      "x", packet[10], "s", " ", "x", packet[11], "s", " ",
-      "x", packet[12], "s", " ", "x", packet[13], "s", " ",
-      "x", packet[14], "s", " ", "x", packet[15], "s", "\n");
-    gtty->Printf(
-      "x", packet[16], "s", " ", "x", packet[17], "s", " ",
-      "x", packet[18], "s", " ", "x", packet[19], "s", " ",
-      "x", packet[20], "s", " ", "x", packet[21], "s", " ",
-      "x", packet[22], "s", " ", "x", packet[23], "s", "\n");
-    gtty->Printf(
-      "x", packet[24], "s", " ", "x", packet[25], "s", " ",
-      "x", packet[26], "s", " ", "x", packet[27], "s", " ",
-      "x", packet[28], "s", " ", "x", packet[29], "s", " ",
-      "x", packet[30], "s", " ", "x", packet[31], "s", "\n");
-    gtty->Printf(
-      "x", packet[32], "s", " ", "x", packet[33], "s", " ",
-      "x", packet[34], "s", " ", "x", packet[35], "s", " ",
-      "x", packet[36], "s", " ", "x", packet[37], "s", " ",
-      "x", packet[38], "s", " ", "x", packet[39], "s", "\n");
-    gtty->Printf(
-      "x", packet[40], "s", " ", "x", packet[41], "s", " ",
-      "x", packet[42], "s", " ", "x", packet[43], "s", " ",
-      "x", packet[44], "s", " ", "x", packet[45], "s", " ",
-      "x", packet[46], "s", " ", "x", packet[47], "s", "\n");
+      gtty->Printf(
+                   "s", "UDP sent;\n",
+                   "x", packet[0], "s", " ", "x", packet[1], "s", " ",
+                   "x", packet[2], "s", " ", "x", packet[3], "s", " ",
+                   "x", packet[4], "s", " ", "x", packet[5], "s", " ",
+                   "x", packet[6], "s", " ", "x", packet[7], "s", "\n");
+      gtty->Printf(
+                   "x", packet[8], "s", " ", "x", packet[9], "s", " ",
+                   "x", packet[10], "s", " ", "x", packet[11], "s", " ",
+                   "x", packet[12], "s", " ", "x", packet[13], "s", " ",
+                   "x", packet[14], "s", " ", "x", packet[15], "s", "\n");
+      gtty->Printf(
+                   "x", packet[16], "s", " ", "x", packet[17], "s", " ",
+                   "x", packet[18], "s", " ", "x", packet[19], "s", " ",
+                   "x", packet[20], "s", " ", "x", packet[21], "s", " ",
+                   "x", packet[22], "s", " ", "x", packet[23], "s", "\n");
+      gtty->Printf(
+                   "x", packet[24], "s", " ", "x", packet[25], "s", " ",
+                   "x", packet[26], "s", " ", "x", packet[27], "s", " ",
+                   "x", packet[28], "s", " ", "x", packet[29], "s", " ",
+                   "x", packet[30], "s", " ", "x", packet[31], "s", "\n");
+      gtty->Printf(
+                   "x", packet[32], "s", " ", "x", packet[33], "s", " ",
+                   "x", packet[34], "s", " ", "x", packet[35], "s", " ",
+                   "x", packet[36], "s", " ", "x", packet[37], "s", " ",
+                   "x", packet[38], "s", " ", "x", packet[39], "s", "\n");
+      gtty->Printf(
+                   "x", packet[40], "s", " ", "x", packet[41], "s", " ",
+                   "x", packet[42], "s", " ", "x", packet[43], "s", " ",
+                   "x", packet[44], "s", " ", "x", packet[45], "s", " ",
+                   "x", packet[46], "s", " ", "x", packet[47], "s", "\n");
 
-    return length;
-  } else {
-    // if tx_desc_buf_ is full, fails
-	// please retry again
-    return -1;
+      rval = length;
+    } else {
+      // if tx_desc_buf_ is full, fails
+      // please retry again
+      rval = -1;
+    }
   }
+  return rval;
 }
 
 void E1000::Reset() {
