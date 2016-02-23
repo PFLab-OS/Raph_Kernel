@@ -30,6 +30,7 @@
 
 #ifdef __UNIT_TEST__
 
+#include "netdev.h"
 #include "../net/eth.h"
 #include "../global.h"
 #include <string.h>
@@ -69,10 +70,12 @@ class DevRawEthernet : public DevEthernet {
     FetchAddress();
     FlushSocket();
 
-    eth_ctrl->RegisterDevice(this);
+    if(!netdev_ctrl->RegisterDevice(this)) {
+	  // cannot register device
+	  kasert(false);
+	}
   }
   virtual ~DevRawEthernet() { close(_pd); }
-  void GetEthAddr(uint8_t *buffer);
   void FetchAddress();
   void FlushSocket();
   virtual int32_t ReceivePacket(uint8_t *buffer, uint32_t size) override {
@@ -92,7 +95,6 @@ class DevRawEthernet : public DevEthernet {
  private:
   int _pd;
   int _ifindex;
-  uint8_t _macAddr[6];
   uint32_t _ipAddr;
 };
 

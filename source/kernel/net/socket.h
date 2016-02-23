@@ -24,14 +24,17 @@
 #define __RAPH_KERNEL_NET_SOCKET_H__
 
 #include <stdint.h>
-#include "../dev/layer.h"
+#include "../dev/netdev.h"
+#include "eth.h"
+#include "ip.h"
+#include "udp.h"
 
 class Socket {
 protected:
-  DevNetL2 *_dev;
+  NetDev *_dev;
 
 public:
-  Socket(DevNetL2 *dev) : _dev(dev) {}
+  Socket(NetDev *dev) : _dev(dev) {}
   virtual int32_t ReceivePacket(uint8_t *data, uint32_t length) = 0;
   virtual int32_t TransmitPacket(const uint8_t *data, uint32_t length) = 0;
 
@@ -40,7 +43,7 @@ public:
 
 class UDPSocket : public Socket {
 public:
-  UDPSocket(DevNetL2 *dev) : Socket(dev) {}
+  UDPSocket(NetDev *dev) : Socket(dev) {}
   virtual int32_t ReceivePacket(uint8_t *data, uint32_t length);
   virtual int32_t TransmitPacket(const uint8_t *data, uint32_t length);
 };

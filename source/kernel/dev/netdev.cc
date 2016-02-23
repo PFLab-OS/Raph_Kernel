@@ -20,5 +20,29 @@
  * 
  */
 
-#include "layer.h"
+#include "netdev.h"
 
+const char *NetDevCtrl::kDefaultNetworkInterfaceName = "eth0";
+
+bool NetDevCtrl::RegisterDevice(NetDev *dev, const char *name) {
+  if(_curDevNumber < kMaxDevNumber) {
+    // succeed to register
+    _devTable[_curDevNumber++]->SetName(name);
+    return true;
+  } else {
+    // fail to register
+    return false;
+  }
+}
+
+NetDev *NetDevCtrl::GetDevice(const char *name) {
+  if(!name) name = kDefaultNetworkInterfaceName;
+  for(uint32_t i = _curDevNumber; i > 0; i--) {
+    NetDev *dev = _devTable[i];
+    // search device by network interface name
+    if(!strncmp(dev->GetName(), name, strlen(name))) {
+      return dev;
+    }
+  }
+  return nullptr;
+}

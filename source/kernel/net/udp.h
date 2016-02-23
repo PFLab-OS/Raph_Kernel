@@ -24,7 +24,6 @@
 #define __RAPH_KERNEL_NET_UDP_H__
 
 #include <stdint.h>
-#include "socket.h"
 #include "layer.h"
 #include "ip.h"
 

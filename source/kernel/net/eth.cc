@@ -26,27 +26,12 @@
 #include "../mem/virtmem.h"
 #include "../global.h"
 
-bool EthCtrl::OpenSocket() {
-  if(_devNumber > 0) {
-    // TODO: other protocol socket
-    UDPSocket *addr = reinterpret_cast<UDPSocket *>(virtmem_ctrl->Alloc(sizeof(UDPSocket)));
-    _socket = new(addr) UDPSocket(_devList[--_devNumber]);
-    return true;
-  } else {
-    return false;
-  }
-}
-
 int32_t EthCtrl::ReceiveData(uint8_t *data, uint32_t size, uint8_t *protocolType, uint8_t *srcAddr) {
-  if(_socket == nullptr) {
-    OpenSocket();
-  }
-
   // alloc buffer
   int32_t bufsize = sizeof(EthHeader) + size;
   uint8_t *buffer = reinterpret_cast<uint8_t*>(virtmem_ctrl->Alloc(sizeof(uint8_t) * bufsize));
 
-  int32_t result = _socket->ReceivePacket(buffer, bufsize);
+  int32_t result = _dev->ReceivePacket(buffer, bufsize);
 
   if(result != -1) {
     // success
@@ -68,10 +53,6 @@ int32_t EthCtrl::ReceiveData(uint8_t *data, uint32_t size, uint8_t *protocolType
 int32_t EthCtrl::TransmitData(const uint8_t *data, uint32_t length, uint8_t *destAddr) {
   int32_t result = -1;
 
-  if(_socket == nullptr) {
-    OpenSocket();
-  }
-
   // alloc datagram
   uint8_t *datagram = reinterpret_cast<uint8_t*>(virtmem_ctrl->Alloc(sizeof(uint8_t) * (sizeof(EthHeader) + length))); 
 
@@ -80,7 +61,7 @@ int32_t EthCtrl::TransmitData(const uint8_t *data, uint32_t length, uint8_t *des
   // destination address
   memcpy(&header, destAddr, 6);
   // source address
-  _socket->GetEthAddr(reinterpret_cast<uint8_t*>(&header) + 6);
+  _dev->GetEthAddr(reinterpret_cast<uint8_t*>(&header) + 6);
   // TODO: switch L3 type
   header.type      = htons(kProtocolARP);
 
@@ -89,8 +70,8 @@ int32_t EthCtrl::TransmitData(const uint8_t *data, uint32_t length, uint8_t *des
   memcpy(datagram + sizeof(EthHeader), data, length);
 
   // call device datagram transmitter
-  kassert(_socket != nullptr);
-  _socket->TransmitPacket(datagram, sizeof(EthHeader) + length);
+  kassert(_dev != nullptr);
+  _dev->TransmitPacket(datagram, sizeof(EthHeader) + length);
 
   virtmem_ctrl->Free(reinterpret_cast<virt_addr>(datagram));
 

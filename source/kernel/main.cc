@@ -37,10 +37,7 @@
 
 #include "dev/vga.h"
 #include "dev/pci.h"
-
-#include "net/eth.h"
-#include "net/ip.h"
-#include "net/udp.h"
+#include "dev/netdev.h"
 
 SpinLockCtrl *spinlock_ctrl;
 MultibootCtrl *multiboot_ctrl;
@@ -54,11 +51,7 @@ Idt *idt;
 Timer *timer;
 
 Tty *gtty;
-
-EthCtrl *eth_ctrl;
-IPCtrl *ip_ctrl;
-UDPCtrl *udp_ctrl;
-PCICtrl *pci_ctrl;
+NetDevCtrl *netdev_ctrl;
 
 static uint32_t rnd_next = 1;
 
@@ -96,6 +89,9 @@ extern "C" int main() {
 
   Vga _vga;
   gtty = &_vga;
+
+  NetDevCtrl _netdev_ctrl;
+  netdev_ctrl = &_netdev_ctrl;
   
   PhysAddr paddr;
   physmem_ctrl->Alloc(paddr, PagingCtrl::kPageSize);
@@ -119,15 +115,6 @@ extern "C" int main() {
   
   idt->Setup();
 
-  EthCtrl _eth_ctrl;
-  eth_ctrl = &_eth_ctrl;
-
-  IPCtrl _ip_ctrl(eth_ctrl);
-  ip_ctrl = &_ip_ctrl;
-
-  UDPCtrl _udp_ctrl(ip_ctrl);
-  udp_ctrl = &_udp_ctrl;
-  
   InitDevices<PCICtrl, Device>();
 
   gtty->Printf("s", "cpu #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
@@ -141,51 +128,51 @@ extern "C" int main() {
   kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 3) + 1));
   kassert(!paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - 4096 * 3));
 
-  uint8_t ipv4addr[] = {
-    0x0a, 0x00, 0x02, 0x0f
-  };
-
-  // ARP Reply
-  if (eth_ctrl->OpenSocket()) {
-    PhysAddr paddr;
-    physmem_ctrl->Alloc(paddr, PagingCtrl::kPageSize);
-    PhysAddr paddr2;
-    physmem_ctrl->Alloc(paddr2, PagingCtrl::kPageSize);
-    uint8_t *buf = reinterpret_cast<uint8_t *>(paddr.GetVirtAddr());
-    uint8_t *buf2 = reinterpret_cast<uint8_t *>(paddr2.GetVirtAddr());
-    uint8_t srcAddr[6];
-    uint8_t ptype[2];
-    while(true) {
-      if (eth_ctrl->ReceiveData(buf, PagingCtrl::kPageSize, ptype, srcAddr) > 0) {
-        bool is_eth = (buf[0] == 0x0) && (buf[1] == 0x01);
-        bool is_ipv4 = (buf[2] == 0x80) && (buf[3] == 0x00);
-        bool is_valid = (buf[4] == 0x06) && (buf[5] == 0x04);
-        bool is_req = (buf[6] == 0x00) && (buf[7] == 0x01);
-        uint8_t *source_eth_addr = buf + 8;
-        uint8_t *source_proto_addr = buf + 14;
-        uint8_t *target_proto_addr = buf + 24;
-        // ARP req
-        gtty->Printf("s","x");
-        if (is_eth && is_ipv4 && is_valid && is_req && ptype[0]==0x08 && ptype[1]==0x06) {
-          // ARP reply
-          buf2[0] = 0x00;
-          buf2[1] = 0x01;
-          buf2[2] = 0x08;
-          buf2[3] = 0x00;
-          buf2[4] = 0x06;
-          buf2[5] = 0x04;
-          buf2[6] = 0x00;
-          buf2[7] = 0x02;
-          eth_ctrl->GetEthAddr(buf2 + 8);
-          memcpy(buf2 + 14, ipv4addr, 4);
-          memcpy(buf2 + 18, source_eth_addr, 6);
-          memcpy(buf2 + 24, source_proto_addr, 4);
-          //          eth_ctrl->TransmitData(buf2, PagingCtrl::kPageSize, srcAddr);
-          gtty->Printf("s","r");
-        }
-      }
-    }
-  }
+//  uint8_t ipv4addr[] = {
+//    0x0a, 0x00, 0x02, 0x0f
+//  };
+//
+//  // ARP Reply
+//  if (eth_ctrl->OpenSocket()) {
+//    PhysAddr paddr;
+//    physmem_ctrl->Alloc(paddr, PagingCtrl::kPageSize);
+//    PhysAddr paddr2;
+//    physmem_ctrl->Alloc(paddr2, PagingCtrl::kPageSize);
+//    uint8_t *buf = reinterpret_cast<uint8_t *>(paddr.GetVirtAddr());
+//    uint8_t *buf2 = reinterpret_cast<uint8_t *>(paddr2.GetVirtAddr());
+//    uint8_t srcAddr[6];
+//    uint8_t ptype[2];
+//    while(true) {
+//      if (eth_ctrl->ReceiveData(buf, PagingCtrl::kPageSize, ptype, srcAddr) > 0) {
+//        bool is_eth = (buf[0] == 0x0) && (buf[1] == 0x01);
+//        bool is_ipv4 = (buf[2] == 0x80) && (buf[3] == 0x00);
+//        bool is_valid = (buf[4] == 0x06) && (buf[5] == 0x04);
+//        bool is_req = (buf[6] == 0x00) && (buf[7] == 0x01);
+//        uint8_t *source_eth_addr = buf + 8;
+//        uint8_t *source_proto_addr = buf + 14;
+//        uint8_t *target_proto_addr = buf + 24;
+//        // ARP req
+//        gtty->Printf("s","x");
+//        if (is_eth && is_ipv4 && is_valid && is_req && ptype[0]==0x08 && ptype[1]==0x06) {
+//          // ARP reply
+//          buf2[0] = 0x00;
+//          buf2[1] = 0x01;
+//          buf2[2] = 0x08;
+//          buf2[3] = 0x00;
+//          buf2[4] = 0x06;
+//          buf2[5] = 0x04;
+//          buf2[6] = 0x00;
+//          buf2[7] = 0x02;
+//          eth_ctrl->GetEthAddr(buf2 + 8);
+//          memcpy(buf2 + 14, ipv4addr, 4);
+//          memcpy(buf2 + 18, source_eth_addr, 6);
+//          memcpy(buf2 + 24, source_proto_addr, 4);
+//          //          eth_ctrl->TransmitData(buf2, PagingCtrl::kPageSize, srcAddr);
+//          gtty->Printf("s","r");
+//        }
+//      }
+//    }
+//  }
   polling_ctrl->HandleAll();
   while(true) {
     asm volatile("hlt;nop;hlt;");

@@ -28,20 +28,10 @@
 #include "global.h"
 #include "dev/raw.h"
 
-#include "net/eth.h"
-#include "net/ip.h"
-#include "net/udp.h"
-#include "net/tcp.h"
-
 SpinLockCtrl *spinlock_ctrl;
 VirtmemCtrl *virtmem_ctrl;
 PhysmemCtrl *physmem_ctrl;
 PagingCtrl *paging_ctrl;
-
-TCPCtrl *tcp_ctrl;
-UDPCtrl *udp_ctrl;
-IPCtrl *ip_ctrl;
-EthCtrl *eth_ctrl;
 
 void spinlock_test();
 void list_test();
@@ -62,30 +52,18 @@ int main(int argc, char **argv) {
   virtmem_ctrl = &_virtmem_ctrl;
   //memory_test();
 
-  EthCtrl _eth_ctrl;
-  eth_ctrl = &_eth_ctrl;
-
-  IPCtrl _ip_ctrl(eth_ctrl);
-  ip_ctrl = &_ip_ctrl;
-
-  UDPCtrl _udp_ctrl(ip_ctrl);
-  udp_ctrl = &_udp_ctrl;
- 
-  TCPCtrl _tcp_ctrl(ip_ctrl);
-  tcp_ctrl = &_tcp_ctrl;
-
   DevRawEthernet eth;
 
   uint32_t addr = 0x0a00020f;
   uint32_t port = 23;
 
-  if(!strncmp(argv[1], "server", 6)) {
-    tcp_ctrl->Listen(port);
-  } else if(!strncmp(argv[1], "client", 6)) {
-    tcp_ctrl->Connect(addr, port, port);
-  } else {
-    std::cout << "specify either `server` or `client`" << std::endl;
-  }
+//  if(!strncmp(argv[1], "server", 6)) {
+//    tcp_ctrl->Listen(port);
+//  } else if(!strncmp(argv[1], "client", 6)) {
+//    tcp_ctrl->Connect(addr, port, port);
+//  } else {
+//    std::cout << "specify either `server` or `client`" << std::endl;
+//  }
 
   std::cout << "test passed" << std::endl;
   return 0;

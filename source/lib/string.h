@@ -25,6 +25,12 @@
 
 #include <stdint.h>
 
+static inline size_t strlen(const char *str) {
+  const char *s;
+  for (s = str; *s; ++s);
+  return(s - str);
+} 
+
 static inline int strncmp(const char *s1, const char *s2, size_t n) {
   for (size_t i = 0; i < n; i++, s1++, s2++) {
     if (*s1 != *s2) {
@@ -40,6 +46,13 @@ static inline int strcmp(const char *s1, const char *s2) {
     s2++;
   }
   return *s1 - *s2;
+}
+
+static inline char *strncpy(char *s1, const char *s2, size_t n) {
+  char *s = s1;
+  while (n > 0 && *s2 != '\0') { *s++ = *s2++; --n; }
+  while (n > 0) { *s++ = '\0'; --n; }
+  return s1;
 }
 
 static void * memcpy(void *dest, const void *src, size_t n) {

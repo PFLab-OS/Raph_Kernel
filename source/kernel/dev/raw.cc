@@ -42,10 +42,6 @@ void DevRawEthernet::FlushSocket() {
   } while (i);
 }
 
-void DevRawEthernet::GetEthAddr(uint8_t *buffer) {
-  memcpy(buffer, _macAddr, sizeof(uint8_t) * 6);
-}
-
 void DevRawEthernet::FetchAddress() {
   int fd;
   struct ifreq ifr;
@@ -56,7 +52,7 @@ void DevRawEthernet::FetchAddress() {
   ifr.ifr_addr.sa_family = AF_INET;
   strncpy(ifr.ifr_name, NETWORK_INTERFACE, IFNAMSIZ-1);
   ioctl(fd, SIOCGIFHWADDR, &ifr);
-  memcpy(_macAddr, ifr.ifr_hwaddr.sa_data, sizeof(uint8_t) * 6);
+  memcpy(_ethAddr, ifr.ifr_hwaddr.sa_data, sizeof(uint8_t) * 6);
 
   // fetch IP address
   ioctl(fd, SIOCGIFADDR, &ifr);
@@ -69,7 +65,7 @@ void DevRawEthernet::PrintAddrInfo() {
   printf(
     "MAC Address: %02x:%02x:%02x:%02x:%02x:%02x\n"
     "IP Address : %d.%d.%d.%d\n",
-    _macAddr[0], _macAddr[1], _macAddr[2], _macAddr[3], _macAddr[4], _macAddr[5],
+    _ethAddr[0], _ethAddr[1], _ethAddr[2], _ethAddr[3], _ethAddr[4], _ethAddr[5],
     (_ipAddr) & 0xff, (_ipAddr >> 8) & 0xff, (_ipAddr >> 16) & 0xff, (_ipAddr >> 24) & 0xff);
 }
 
@@ -78,7 +74,7 @@ void DevRawEthernet::TestRawARP() {
 
   uint8_t data[] = {
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, // Target MAC Address
-    _macAddr[0], _macAddr[1], _macAddr[2], _macAddr[3], _macAddr[4], _macAddr[5], // Source MAC Address 
+    _ethAddr[0], _ethAddr[1], _ethAddr[2], _ethAddr[3], _ethAddr[4], _ethAddr[5], // Source MAC Address 
     0x08, 0x06, // Type: ARP
     // ARP Packet
     0x00, 0x01, // HardwareType: Ethernet
@@ -86,7 +82,7 @@ void DevRawEthernet::TestRawARP() {
     0x06, // HardwareLength
     0x04, // ProtocolLength
     0x00, 0x01, // Operation: ARP Request
-    _macAddr[0], _macAddr[1], _macAddr[2], _macAddr[3], _macAddr[4], _macAddr[5], // Source Hardware Address 
+    _ethAddr[0], _ethAddr[1], _ethAddr[2], _ethAddr[3], _ethAddr[4], _ethAddr[5], // Source Hardware Address 
     // Source Protocol Address
     static_cast<uint8_t>((_ipAddr) & 0xff),
     static_cast<uint8_t>((_ipAddr >> 8) & 0xff),
@@ -131,8 +127,8 @@ void DevRawEthernet::TestRawUDP() {
   uint8_t data[] = {
     // ===== Ethernet Header =====
 //    0x52, 0x54, 0x00, 0x12, 0x34, 0x56, // Target MAC Address
-    _macAddr[0], _macAddr[1], _macAddr[2], _macAddr[3], _macAddr[4], _macAddr[5], // Target MAC Address 
-    _macAddr[0], _macAddr[1], _macAddr[2], _macAddr[3], _macAddr[4], _macAddr[5], // Source MAC Address 
+    _ethAddr[0], _ethAddr[1], _ethAddr[2], _ethAddr[3], _ethAddr[4], _ethAddr[5], // Target MAC Address 
+    _ethAddr[0], _ethAddr[1], _ethAddr[2], _ethAddr[3], _ethAddr[4], _ethAddr[5], // Source MAC Address 
     0x08, 0x00, // Type: IPv4
     // ===== IPv4 Header =====
     0x45, // IP Version (4bit) | Header Size (4bit)

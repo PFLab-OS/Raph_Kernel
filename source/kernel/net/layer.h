@@ -24,19 +24,11 @@
 #define __RAPH_KERNEL_NET_L2_H__
 
 #include <stdint.h>
-#include "socket.h"
-#include "../dev/layer.h"
+#include "../dev/netdev.h"
 
 class L2Ctrl {
-protected:
-  Socket *_socket = nullptr;
-  static const uint32_t kDevNumber = 16;
-  uint32_t _devNumber = 0;
-  DevNetL2 *_devList[kDevNumber];
-
 public:
-  virtual bool RegisterDevice(DevNetL2 *dev);
-  virtual bool OpenSocket() = 0;
+  virtual bool RegisterDevice(NetDev *dev);
   virtual int32_t ReceiveData(uint8_t *data,
                               uint32_t size,
                               uint8_t *protocolType = nullptr,

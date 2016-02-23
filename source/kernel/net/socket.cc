@@ -22,6 +22,11 @@
 
 #include "socket.h"
 
+EthCtrl *eth_ctrl;
+IPCtrl *ip_ctrl;
+UDPCtrl *udp_ctrl;
+PCICtrl *pci_ctrl;
+
 void Socket::GetEthAddr(uint8_t *buffer) {
   _dev->GetEthAddr(buffer);
 }

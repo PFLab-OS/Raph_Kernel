@@ -38,10 +38,7 @@ class Timer;
 
 class PCICtrl;
 
-class EthCtrl;
-class IPCtrl;
-class UDPCtrl;
-class TCPCtrl;
+class NetDevCtrl;
 
 extern SpinLockCtrl *spinlock_ctrl;
 extern AcpiCtrl *acpi_ctrl;
@@ -58,9 +55,6 @@ extern Timer *timer;
 
 extern PCICtrl *pci_ctrl;
 
-extern EthCtrl *eth_ctrl;
-extern IPCtrl *ip_ctrl;
-extern UDPCtrl *udp_ctrl;
-extern TCPCtrl *tcp_ctrl;
+extern NetDevCtrl *netdev_ctrl;
 
 #endif // __RAPH_KERNEL_GLOBAL_H__

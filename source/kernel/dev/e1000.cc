@@ -72,8 +72,11 @@ void E1000::Setup(uint16_t did) {
   this->SetupRx();
   this->SetupTx();
 
-  // register device to Ethernet controller
-  eth_ctrl->RegisterDevice(this);
+  // register device to network device table
+  if(!netdev_ctrl->RegisterDevice(this)) {
+    // cannot register device
+    kassert(false);
+  }
 
   // enable interrupts
   _mmioAddr[kRegImc] = 0;
@@ -309,21 +312,6 @@ uint16_t E1000::EepromRead(uint16_t addr) {
   }
 
   return (_mmioAddr[kRegEerd] >> 16) & 0xffff;
-}
-
-void E1000::GetEthAddr(uint8_t *buffer) {
-  if(!IsEthAddrInitialized()) {
-    uint16_t ethaddr_lo = this->EepromRead(kEepromEthAddrLo);
-    uint16_t ethaddr_md = this->EepromRead(kEepromEthAddrMd);
-    uint16_t ethaddr_hi = this->EepromRead(kEepromEthAddrHi);
-    _ethAddr[0] = ethaddr_hi & 0xff;
-    _ethAddr[1] = (ethaddr_hi >> 8) & 0xff;
-    _ethAddr[2] = ethaddr_md & 0xff;
-    _ethAddr[3] = (ethaddr_md >> 8) & 0xff;
-    _ethAddr[4] = ethaddr_lo & 0xff;
-    _ethAddr[5] = (ethaddr_lo >> 8) & 0xff;
-  }
-  memcpy(buffer, _ethAddr, 6);
 }
 
 uint32_t E1000::Crc32b(uint8_t *message) {

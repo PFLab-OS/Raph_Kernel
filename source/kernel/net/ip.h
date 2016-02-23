@@ -25,7 +25,6 @@
 
 #include <stdint.h>
 #include "layer.h"
-#include "socket.h"
 
 /*
  * IPv4 Header

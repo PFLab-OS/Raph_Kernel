@@ -25,6 +25,7 @@
 
 #include <stdint.h>
 #include "../raph.h"
+#include "../dev/netdev.h"
 #include "layer.h"
 #include "socket.h"
 
@@ -42,6 +43,8 @@ struct EthHeader {
 };
 
 class EthCtrl : public L2Ctrl {
+  NetDev *_dev = nullptr;
+
   static const uint16_t kProtocolIPv4 = 0x0800;
   static const uint16_t kProtocolARP  = 0x0806;
 
@@ -54,7 +57,7 @@ public:
   virtual bool OpenSocket();
   // 事前に6バイト確保する事
   void GetEthAddr(uint8_t *data) {
-    _socket->GetEthAddr(data);
+    _dev->GetEthAddr(data);
   }
   virtual int32_t ReceiveData(uint8_t *data,
                               uint32_t size,

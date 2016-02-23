@@ -20,20 +20,49 @@
  * 
  */
 
-#ifndef __RAPH_KERNEL_DEV_L2_H__
-#define __RAPH_KERNEL_DEV_L2_H__
+#ifndef __RAPH_KERNEL_NETDEV_H__
+#define __RAPH_KERNEL_NETDEV_H__
 
 #include <stdint.h>
+#include <string.h>
 #include "../spinlock.h"
+#include "../list.h"
 
-class DevNetL2 {
+class NetDev {
+  static const uint32_t kNetworkInterfaceNameLen = 8;
+  // network interface name
+  char _name[kNetworkInterfaceNameLen];
+
 public:
   virtual int32_t ReceivePacket(uint8_t *buffer, uint32_t size) = 0;
   virtual int32_t TransmitPacket(const uint8_t *packet, uint32_t length) = 0;
-  virtual void GetEthAddr(uint8_t *buffer) = 0;
+  virtual void GetEthAddr(uint8_t *buffer) {
+    memcpy(buffer, _ethAddr, 6);
+  }
+  void SetName(const char *name) {
+    strncpy(_name, name, kNetworkInterfaceNameLen);
+  }
+  const char *GetName() { return _name; }
 protected:
-  DevNetL2() {}
+  NetDev() {}
   SpinLock _lock;
+
+  // ethernet address
+  uint8_t _ethAddr[6];
+  // IP address
+  uint32_t _ipAddr = 0;
 };
 
-#endif /* __RAPH_KERNEL_DEV_L2_H__ */
+class NetDevCtrl {
+  static const uint32_t kNetworkInterfaceNameLen = 8;
+  static const uint32_t kMaxDevNumber = 32;
+  static const char *kDefaultNetworkInterfaceName;
+  uint32_t _curDevNumber = 0;
+  NetDev *_devTable[kMaxDevNumber] = {nullptr};
+
+public:
+  NetDevCtrl() {}
+  bool RegisterDevice(NetDev *dev, const char *name = kDefaultNetworkInterfaceName);
+  NetDev *GetDevice(const char *name = kDefaultNetworkInterfaceName);
+};
+#endif /* __RAPH_KERNEL_NETDEV_H__ */
