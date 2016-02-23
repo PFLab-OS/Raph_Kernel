@@ -34,7 +34,6 @@ void PCICtrl::_Init() {
     gtty->Printf("s", "could not find MCFG table.\n");
     return;
   }
-  gtty->Printf("d", -12340, "s", " ", "x", 0xABC0123, "s", "\n\n");
   for (int i = 0; i * sizeof(MCFGSt) < _mcfg->header.Length - sizeof(ACPISDTHeader); i++) {
     if (i == 1) {
       gtty->Printf("s", "multiple MCFG tables.\n");
@@ -47,21 +46,23 @@ void PCICtrl::_Init() {
     _base_addr = p2v(_mcfg->list[i].ecam_base);
     for (int j = _mcfg->list[i].pci_bus_start; j <= _mcfg->list[i].pci_bus_end; j++) {
       for (int k = 0; k < 32; k++) {
-        uint16_t vid = ReadReg<uint16_t>(GetVaddr(j, k, 0, kVendorIDReg));
+        uint16_t vid = ReadReg<uint16_t>(j, k, 0, kVendorIDReg);
         if (vid == 0xffff) {
           continue;
         }
         gtty->Printf("x", vid, "s", " ");
-        uint16_t did = ReadReg<uint16_t>(GetVaddr(j, k, 0, kDeviceIDReg));
+        uint16_t did = ReadReg<uint16_t>(j, k, 0, kDeviceIDReg);
         gtty->Printf("x", did, "s", " ");
-        bool mf = ReadReg<uint8_t>(GetVaddr(j, k, 0, kHeaderTypeReg)) & kHeaderTypeMultiFunction;
+        bool mf = ReadReg<uint8_t>(j, k, 0, kHeaderTypeReg) & kHeaderTypeMultiFunction;
         if (mf) {
           gtty->Printf("s", "mf");
         }
-        gtty->Printf("s", "\n");
+        gtty->Printf("s", " | ");
 
         InitPCIDevices<E1000, DevPCI>(vid, did, j, k, mf);
       }
     }
   }
+  gtty->Printf("s", "\n");
 }
+

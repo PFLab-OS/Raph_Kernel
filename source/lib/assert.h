@@ -24,6 +24,6 @@
 #define __RAPH_LIB_ASSERT_H__
 
 #undef assert
-#define assert(flag) if (!(flag)) {while(true){asm volatile("hlt");}}
+#define assert(flag) if (!(flag)) {while(true){asm volatile("nop;nop;nop;hlt");}}
 
 #endif // __RAPH_LIB_ASSERT_H__

@@ -32,6 +32,7 @@ class Vga : public Tty {
  public:
   Vga() {
     kassert(physmem_ctrl != nullptr);
+    
     phys_addr vga_addr = 0xb8000;
     // TODO : virt_addrに対してphys_addrを突っ込んでる
     // TODO : サイズ適当
@@ -50,7 +51,7 @@ class Vga : public Tty {
       break;
     default:
       _vga_addr[(_cy * _x + _cx) * 2] = c;
-      _vga_addr[(_cy * _x + _cx) * 2 + 1] = 0xf0;
+      _vga_addr[(_cy * _x + _cx) * 2 + 1] = 0x0f;
       _cx++;
       if (_cx == _x) {
         _cx = 0;

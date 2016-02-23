@@ -130,7 +130,7 @@ int32_t TCPCtrl::Listen(uint32_t port) {
 
   _ack = _sequence + 1;
   _sequence = rand();
-  printf("seq = %x ack = %x\n", _sequence, _ack);
+  gtty->Printf("s", "seq = ", "x", _sequence, "s", " ack = ", "x", _ack, "s", "\n");
   return TransmitBasic(kFlagSYN | kFlagACK, _dstIPAddr, _dstPort);
 }
 
@@ -138,7 +138,7 @@ int32_t TCPCtrl::Connect(uint32_t dstIPAddr, uint32_t dstPort, uint32_t srcPort)
   _port = srcPort;
 
   _sequence = rand();
-  printf("seq = %x ack = %x\n", _sequence, _ack);
+  gtty->Printf("s", "seq = ", "x", _sequence, "s", " ack = ", "x", _ack, "s", "\n");
   TransmitBasic(kFlagSYN, dstIPAddr, dstPort);
 
   ReceiveBasic(kFlagSYN | kFlagACK, _port);
@@ -146,7 +146,7 @@ int32_t TCPCtrl::Connect(uint32_t dstIPAddr, uint32_t dstPort, uint32_t srcPort)
   uint32_t tmp = _sequence;
   _sequence = _ack + 1;
   _ack = tmp + 1;
-  printf("seq = %x ack = %x\n", _sequence, _ack);
+  gtty->Printf("s", "seq = ", "x", _sequence, "s", " ack = ", "x", _ack, "s", "\n");
   return TransmitBasic(kFlagACK, dstIPAddr, dstPort);
 }
 

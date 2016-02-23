@@ -25,6 +25,6 @@
 
 #include <stdint.h>
 
-static inline uint32_t rand();
+uint32_t rand();
 
 #endif // __RAPH_LIB_STDLIB_H__

@@ -61,6 +61,7 @@ struct MADTStIOAPIC {
   uint32_t glblIntBase;
 } __attribute__ ((packed));
 
+
 class ApicCtrl {
 public:
   ApicCtrl() {
@@ -70,18 +71,30 @@ public:
     _madt = table;
   }
   void StartAPs();
+  void BootAP() {
+    _started = true;
+    _lapic.Setup();
+  }
   static constexpr int lapicMaxNumber = 128;
   void SendIpi() {
     _lapic.SendIpi();
   }
+  volatile uint8_t GetApicId() {
+    return _lapic.GetApicId();
+  }
 private:
   MADT *_madt = nullptr;
+  static const uint32_t kMadtFlagLapicEnable = 1;
   class Lapic {
   public:
     // setup local APIC respond to specified index
     void Setup();
     void SetCtrlAddr(uint32_t *ctrlAddr) {
-      _ctrlAddr = ctrlAddr;
+      if (_ctrlAddr == nullptr) {
+        _ctrlAddr = ctrlAddr;
+      } else {
+        kassert(_ctrlAddr == ctrlAddr);
+      }
     }
     int Cpunum() {
       if(_ctrlAddr == nullptr) {
@@ -102,7 +115,10 @@ private:
       // debug
       WriteIcr(0 << 24, kTriggerModeLevel | kLevelAssert | 0x32);  
     }
-  private:
+    volatile uint8_t GetApicId() {
+      return _ctrlAddr[kRegId] >> 24;
+    }
+    //  private:
     uint32_t *_ctrlAddr = nullptr;
     static const int kIa32ApicBaseMsr = 0x1B;
     static const uint32_t kApicGlobalEnableFlag = 1 << 11;
@@ -180,6 +196,7 @@ private:
     // see IOAPIC manual 3.2.4 (I/O Redirection Table Registers)
     static const uint32_t kRegRedTblMask = 1 << 16;
   } _ioapic;
+  volatile bool _started = false;
 };
 
 #endif /* __RAPH_KERNEL_APIC_H__ */

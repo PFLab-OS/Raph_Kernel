@@ -39,17 +39,11 @@ static inline virt_addr p2v(phys_addr addr) {
   return reinterpret_cast<virt_addr>(0xffff800000000000 + addr);
 }
 
+// ストレートマップド仮想メモリを物理メモリに変換する
+// カーネル仮想メモリ等は変換できないのでk2pを使う
 static inline phys_addr v2p(virt_addr addr) {
   kassert(addr >= 0xffff800000000000);
   return reinterpret_cast<phys_addr>(addr - 0xffff800000000000);
-}
-
-extern char kLinearAddrOffset;
-static inline phys_addr k2p(virt_addr addr) {
-  // TODO : ちゃんとページテーブルを見に行くように
-  virt_addr koffset = ptr2virtaddr(&kLinearAddrOffset);
-  kassert(addr >= koffset);
-  return reinterpret_cast<phys_addr>(addr - koffset);
 }
 
 template <typename ptr> static inline ptr *p2v(ptr *addr) {
@@ -65,7 +59,7 @@ public:
     Reset();
     SetAddr(addr);
   }
-  // 原則的にPhysmemCtrl以外からは呼ばない事
+  // 原則的にPhysmemCtrl、PagingCtrl以外からは呼ばない事
   void SetAddr(phys_addr addr) {
     kassert(!_is_initialized);
     _is_initialized = true;
@@ -78,6 +72,7 @@ public:
   void Reset() {
     _is_initialized = false;
   }
+  // ストレートマップド仮想メモリを返す
   virt_addr GetVirtAddr() {
     return p2v(_addr);
   }
@@ -94,6 +89,9 @@ class PhysmemCtrl {
   void Free(PhysAddr &paddr, size_t size);
   // addrはページサイズにアラインされている事
   void Reserve(phys_addr addr, size_t size);
+  // Alloc内部で再度Allocが呼ばれるような場合を回避するための処理
+  // page structure table用なので、4Kメモリしか割り当てられない
+  void AllocFromBuffer(PhysAddr &paddr);
  private:
   struct AllocatedArea {
     phys_addr start_addr;
@@ -102,6 +100,7 @@ class PhysmemCtrl {
   } *_allocated_area;
   List<AllocatedArea> _allocated_area_buffer;
   SpinLock _lock;
+  bool _alloc_lock = false;
 };
 
 #endif // __RAPH_KERNEL_MEM_PHYSMEM_H__

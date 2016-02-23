@@ -25,32 +25,116 @@
 #include "../global.h"
 #include "../raph.h"
 #include "virtmem.h"
+#include "physmem.h"
 
-#ifdef __UNIT_TEST__
 PagingCtrl::PagingCtrl() {
-  /*  phys_addr addr = ptr2physaddr(malloc(kPageSize * 2 - 1));
-  _pml4t = reinterpret_cast<entry_type *>(RoundUpAddrOnPageBoundary(addr));
-  _pml4t[_selfref_pml4t_index] = reinterpret_cast<entry_type>(_pml4t);*/
+  extern PageTable initial_PML4T;
+  phys_addr pml4t_addr = reinterpret_cast<phys_addr>(&initial_PML4T);
+  _pml4t = reinterpret_cast<PageTable *>(p2v(pml4t_addr));
 }
-#else
-PagingCtrl::PagingCtrl() {
+
+void PagingCtrl::ConvertVirtMemToPhysMem(virt_addr vaddr, PhysAddr &paddr) {
+  entry_type entry = _pml4t->entry[GetPML4TIndex(vaddr)];
+  if ((entry & PML4E_PRESENT_BIT) == 0) {
+    return;
+  }
+  PageTable *pdpt = reinterpret_cast<PageTable *>(p2v(GetPML4EMaskedAddr(entry)));
+  entry = pdpt->entry[GetPDPTIndex(vaddr)];
+  if ((entry & PDPTE_PRESENT_BIT) == 0) {
+    return;
+  }
+  if ((entry & PDPTE_1GPAGE_BIT) != 0) {
+    paddr.SetAddr(GetPDPTEMaskedAddr(entry) | Get1GPageOffset(vaddr));
+    return;
+  }
+  PageTable * pd = reinterpret_cast<PageTable *>(p2v(GetPDPTEMaskedAddr(entry)));
+  entry = pd->entry[GetPDIndex(vaddr)];
+  if ((entry & PDE_PRESENT_BIT) == 0) {
+    return;
+  }
+  if ((entry & PDE_2MPAGE_BIT) != 0) {
+    paddr.SetAddr(GetPDEMaskedAddr(entry) | Get2MPageOffset(vaddr));
+    return;
+  }
+  PageTable *pt = reinterpret_cast<PageTable *>(p2v(GetPDEMaskedAddr(entry)));
+  entry = pt->entry[GetPTIndex(vaddr)];
+  if ((entry & PTE_PRESENT_BIT) == 0) {
+    return;
+  }
+  paddr.SetAddr(GetPTEMaskedAddr(entry) | Get4KPageOffset(vaddr));
+  return;
 }
-#endif // __UNIT_TEST__
 
 bool PagingCtrl::IsVirtAddrMapped(virt_addr vaddr) {
-  kassert(false);
-  return false;
+  entry_type entry = _pml4t->entry[GetPML4TIndex(vaddr)];
+  if ((entry & PML4E_PRESENT_BIT) == 0) {
+    return false;
+  }
+  PageTable *pdpt = reinterpret_cast<PageTable *>(p2v(GetPML4EMaskedAddr(entry)));
+  entry = pdpt->entry[GetPDPTIndex(vaddr)];
+  if ((entry & PDPTE_PRESENT_BIT) == 0) {
+    return false;
+  }
+  if ((entry & PDPTE_1GPAGE_BIT) != 0) {
+    return true;
+  }
+  PageTable * pd = reinterpret_cast<PageTable *>(p2v(GetPDPTEMaskedAddr(entry)));
+  entry = pd->entry[GetPDIndex(vaddr)];
+  if ((entry & PDE_PRESENT_BIT) == 0) {
+    return false;
+  }
+  if ((entry & PDE_2MPAGE_BIT) != 0) {
+    return true;
+  }
+  PageTable *pt = reinterpret_cast<PageTable *>(p2v(GetPDEMaskedAddr(entry)));
+  entry = pt->entry[GetPTIndex(vaddr)];
+  if ((entry & PTE_PRESENT_BIT) == 0) {
+    return false;
+  }
+  return true;
 }
 
-bool PagingCtrl::MapPhysAddrToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr pst_flag, phys_addr page_flag) {
-  kassert(false);
-  return false;
+bool PagingCtrl::Map4KPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr pst_flag, phys_addr page_flag) {
+  entry_type entry = _pml4t->entry[GetPML4TIndex(vaddr)];
+  if ((entry & PML4E_PRESENT_BIT) == 0) {
+    PhysAddr tpaddr;
+    physmem_ctrl->Alloc(tpaddr, kPageSize);
+    _pml4t->entry[GetPML4TIndex(vaddr)] = tpaddr.GetAddr() & pst_flag & PML4E_PRESENT_BIT;
+  }
+  PageTable *pdpt = reinterpret_cast<PageTable *>(p2v(GetPML4EMaskedAddr(entry)));
+  entry = pdpt->entry[GetPDPTIndex(vaddr)];
+  if ((entry & PDPTE_PRESENT_BIT) == 0) {
+    PhysAddr tpaddr;
+    physmem_ctrl->Alloc(tpaddr, kPageSize);
+    pdpt->entry[GetPDPTIndex(vaddr)] = tpaddr.GetAddr() & pst_flag & PDPTE_PRESENT_BIT;
+  }
+  if ((entry & PDPTE_1GPAGE_BIT) != 0) {
+    return false;
+  }
+  PageTable *pd = reinterpret_cast<PageTable *>(p2v(GetPDPTEMaskedAddr(entry)));
+  entry = pd->entry[GetPDIndex(vaddr)];
+  if ((entry & PDE_PRESENT_BIT) == 0) {
+    PhysAddr tpaddr;
+    physmem_ctrl->Alloc(tpaddr, kPageSize);
+    pd->entry[GetPDIndex(vaddr)] = tpaddr.GetAddr() & pst_flag & PDE_PRESENT_BIT;
+  }
+  if ((entry & PDE_2MPAGE_BIT) != 0) {
+    return false;
+  }
+  PageTable *pt = reinterpret_cast<PageTable *>(p2v(GetPDEMaskedAddr(entry)));
+  entry = pt->entry[GetPTIndex(vaddr)];
+  if ((entry & PTE_PRESENT_BIT) == 0) {
+    pt->entry[GetPTIndex(vaddr)] = paddr.GetAddr() & page_flag & PTE_PRESENT_BIT;
+    return true;
+  } else {
+    return false;
+  }
 }
 
 extern int kHeapEndAddr;
 
 //TODO deprecated
-virt_addr PagingCtrl::SearchUnmappedArea(size_t size) {
+/*virt_addr PagingCtrl::SearchUnmappedArea(size_t size) {
   kassert(false);
   kassert(size == align(size, kPageSize));
   virt_addr addr = ptr2virtaddr(&kHeapEndAddr);
@@ -69,14 +153,4 @@ virt_addr PagingCtrl::SearchUnmappedArea(size_t size) {
   return addr;
 }
 
-#ifdef __UNIT_TEST__
-
-static void test1() {
-  
-}
-
-void paging_test() {
-  test1();
-}
-
-#endif // __UNIT_TEST__
+*/

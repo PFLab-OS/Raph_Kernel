@@ -30,8 +30,11 @@ class MultibootCtrl;
 class PagingCtrl;
 class PhysmemCtrl;
 class VirtmemCtrl;
+class PollingCtrl;
 class Idt;
+
 class Tty;
+class Timer;
 
 class PCICtrl;
 
@@ -47,9 +50,11 @@ extern MultibootCtrl *multiboot_ctrl;
 extern PagingCtrl *paging_ctrl;
 extern PhysmemCtrl *physmem_ctrl;
 extern VirtmemCtrl *virtmem_ctrl;
+extern PollingCtrl *polling_ctrl;
 extern Idt *idt;
 
 extern Tty *gtty;
+extern Timer *timer;
 
 extern PCICtrl *pci_ctrl;
 

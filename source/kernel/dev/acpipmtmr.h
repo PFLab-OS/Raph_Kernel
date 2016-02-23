@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2015 Raphine Project
+ * Copyright (c) 2016 Project Raphine
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -16,18 +16,34 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
- * Author: Levelfour
+ * Author: Liva
  * 
  */
 
-#include "stdlib.h"
+#ifndef __RAPH_KERNEL_DEV_ACPIPMTMR_H__
+#define __RAPH_KERNEL_DEV_ACPIPMTMR_H__
 
-#define RAND_MAX 0x7fff
+#include <stdint.h>
+#include "../acpi.h"
+#include "../timer.h"
+#include "../global.h"
 
-static uint32_t next = 1;
+class AcpiPmTimer : public Timer {
+ public:
+  virtual bool Setup() override {
+    kassert(acpi_ctrl->GetFADT() != nullptr);
+    _port = acpi_ctrl->GetFADT()->PmTmrBlk;
 
-static inline uint32_t rand() {
-    next = next * 1103515245 + 12345;
-    /* return (unsigned int)(next / 65536) % 32768;*/
-    return (uint32_t)(next >> 16) & RAND_MAX;
-}
+    _cnt_clk_period = 279 >> (32 - 24);
+    return true;
+  }
+  virtual volatile uint32_t ReadMainCnt() override {
+    uint32_t val;
+    asm volatile("inl %%dx, %%eax":"=a"(val): "d"(_port));
+    return val << (32 - 24);
+  }
+ private:
+  uint32_t _port;
+};
+
+#endif /* __RAPH_KERNEL_DEV_ACPIPMTMR_H__ */

@@ -25,7 +25,7 @@
 #include "mem/physmem.h"
 
 extern "C" void dummy_int(Regs *rs) {
-  asm volatile("hlt; hlt;"::"a"(rs->n),"c"(rs->rbx));
+  asm volatile("hlt; nop; nop; hlt; nop; hlt;"::"a"(rs->n),"c"(rs->rbx));
 }
 
 extern void (*vectors[256])(Regs *rs);

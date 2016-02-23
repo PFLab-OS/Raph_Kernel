@@ -21,62 +21,71 @@
  */
 
 #include <assert.h>
+#include "mem/virtmem.h"
 #include "acpi.h"
 #include "apic.h"
+#include "timer.h"
+#include "global.h"
 
 extern "C" void entryothers();
 extern "C" void entry();
 
-void microdelay(int us) {
-  // TODO:
-}
-
 void ApicCtrl::Setup() {
-  if (_madt) {
-    int ncpu = 0;
-    for(uint32_t offset = 0; offset < _madt->header.Length - sizeof(MADT);) {
-      virt_addr ptr = ptr2virtaddr(_madt->table) + offset;
-      MADTSt *madtSt = reinterpret_cast<MADTSt *>(ptr);
-      switch (madtSt->type) {
-      case MADTStType::kLocalAPIC:
-        {
-          MADTStLAPIC *madtStLAPIC = reinterpret_cast<MADTStLAPIC *>(ptr);
-          _lapic.SetCtrlAddr(reinterpret_cast<uint32_t *>(p2v(_madt->lapicCtrlAddr)));
-          _lapic._apicIds[ncpu] = madtStLAPIC->apicId;
-          ncpu++;
+  kassert(_madt != nullptr);
+  gtty->Printf("s","setup\n");
+  int ncpu = 0;
+  for(uint32_t offset = 0; offset < _madt->header.Length - sizeof(MADT);) {
+    virt_addr ptr = ptr2virtaddr(_madt->table) + offset;
+    MADTSt *madtSt = reinterpret_cast<MADTSt *>(ptr);
+    switch (madtSt->type) {
+    case MADTStType::kLocalAPIC:
+      {
+        MADTStLAPIC *madtStLAPIC = reinterpret_cast<MADTStLAPIC *>(ptr);
+        _lapic.SetCtrlAddr(reinterpret_cast<uint32_t *>(p2v(_madt->lapicCtrlAddr)));
+        if ((madtStLAPIC->flags & kMadtFlagLapicEnable) == 0) {
+          break;
         }
-        break;
-      case MADTStType::kIOAPIC:
-        {
-          MADTStIOAPIC *madtStIOAPIC = reinterpret_cast<MADTStIOAPIC *>(ptr);
-          _ioapic.SetReg(reinterpret_cast<uint32_t *>(p2v(madtStIOAPIC->ioapicAddr)));
-        }
-        break;
-      default:
-        break;
+        _lapic._apicIds[ncpu] = madtStLAPIC->apicId;
+        ncpu++;
       }
-      offset += madtSt->length;
+      break;
+    case MADTStType::kIOAPIC:
+      {
+        MADTStIOAPIC *madtStIOAPIC = reinterpret_cast<MADTStIOAPIC *>(ptr);
+        _ioapic.SetReg(reinterpret_cast<uint32_t *>(p2v(madtStIOAPIC->ioapicAddr)));
+      }
+      break;
+    default:
+      break;
     }
-    _lapic.Setup();
-    _ioapic.Setup();
-    _lapic._ncpu = ncpu;
+    offset += madtSt->length;
   }
+  _lapic.Setup();
+  _ioapic.Setup();
+  _lapic._ncpu = ncpu;
 }
 
 extern uint64_t boot16_start;
 extern uint64_t boot16_end;
+extern virt_addr stack_of_others[1];
 
 void ApicCtrl::StartAPs() {
   uint64_t *src = &boot16_start;
   uint64_t *dest = reinterpret_cast<uint64_t *>(0x8000);
+  // TODO : replace this code with memcpy
   for (; src < &boot16_end; src++, dest++) {
     *dest = *src;
   }
   for(int i = 0; i < _lapic._ncpu; i++) {
     // skip BSP
-    if(i == _lapic.Cpunum()) continue;
+    if(_lapic._apicIds[i] == _lapic.GetApicId()) {
+      continue;
+    }
+    _started = false;
+    static const int stack_size = 8192 + 8;
+    *stack_of_others = ((virtmem_ctrl->Alloc(stack_size) + stack_size + 7) / 8) * 8 - 8;
     _lapic.Start(_lapic._apicIds[i], reinterpret_cast<uint64_t>(entryothers));
-    // TODO: wait until core finishs startup
+    while(!_started) {}
   }
 }
 
@@ -122,24 +131,24 @@ void ApicCtrl::Lapic::Start(uint8_t apicId, uint64_t entryPoint) {
   // Universal startup algorithm
   // see mp spec Appendix B.4.1
   WriteIcr(apicId << 24, kDeliverModeInit | kTriggerModeLevel | kLevelAssert);
-  microdelay(200);
+  timer->BusyUwait(200);
   WriteIcr(apicId << 24, kDeliverModeInit | kTriggerModeLevel);
-  microdelay(100);
+  timer->BusyUwait(100);
 
   // Application Processor Setup (defined in mp spec Appendix B.4)
   // see mp spec Appendix B.4.2
   for(int i = 0; i < 2; i++) {
     WriteIcr(apicId << 24, kDeliverModeStartup | ((entryPoint >> 12) & 0xff));
-    microdelay(200);
+    timer->BusyUwait(200);
   }
 }
 
 void ApicCtrl::Lapic::WriteIcr(uint32_t hi, uint32_t lo) {
   _ctrlAddr[kRegIcrHi] = hi;
   // wait for write to finish, by reading
-  _ctrlAddr[kRegId];
+  GetApicId();
   _ctrlAddr[kRegIcrLo] = lo;
-  _ctrlAddr[kRegId];
+  GetApicId();
 }
 
 void ApicCtrl::Ioapic::Setup() {

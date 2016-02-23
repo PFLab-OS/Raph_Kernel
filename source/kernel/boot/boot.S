@@ -30,6 +30,8 @@
 
 .global entry
 .global multiboot_info
+.global gdt
+.global gdtr
 .code32
 .section .bootstrap
 
@@ -105,8 +107,10 @@ setup_paging:
   // TODO : remove bits
   or $(PML4E_WRITETHROUGH_BIT | PML4E_CACHEDISABLE_BIT), %edi
   mov %edi, %cr3
+
+  // clear page tables
   xor %eax, %eax
-  mov $(9*4096/4), %ecx
+  mov $(12*4096/4), %ecx
   rep stosl
 
   mov $initial_PML4T, %ebx
@@ -174,6 +178,7 @@ setup_paging:
   call setup_1G_table
 
   // setup pd5
+  // allocate kernel heap memory  
   lea 0x7000(%ebx), %edi
   mov $0, %eax
   or  $(PDE_PRESENT_BIT | PDE_WRITE_BIT | PDE_2MPAGE_BIT | PDE_GLOBAL_BIT), %eax

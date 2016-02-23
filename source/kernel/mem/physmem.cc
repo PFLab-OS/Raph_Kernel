@@ -30,6 +30,7 @@ extern int *phys_memory_end;
 #include <stdlib.h>
 
 PhysmemCtrl::PhysmemCtrl() {
+  // for UNIT TEST
   _allocated_area = _allocated_area_buffer.Alloc();
   _allocated_area->start_addr = ptr2physaddr(malloc(0xFFF000));
   _allocated_area->end_addr = _allocated_area->start_addr + 0xFFF000;
@@ -43,7 +44,9 @@ PhysmemCtrl::PhysmemCtrl() {
   _allocated_area = _allocated_area_buffer.Alloc();
   _allocated_area->start_addr = 0;
   kassert(ptr2physaddr(&phys_memory_end) % PagingCtrl::kPageSize == 0);
-  _allocated_area->end_addr = ptr2physaddr(&phys_memory_end);
+  // 2MB allocated by boot.S
+  kassert(reinterpret_cast<phys_addr>(&phys_memory_end) < 0x200000);
+  _allocated_area->end_addr = 0x200000;
   _allocated_area->next = nullptr;
 }
 
@@ -52,6 +55,7 @@ PhysmemCtrl::PhysmemCtrl() {
 void PhysmemCtrl::Alloc(PhysAddr &paddr, size_t size) {
   kassert(size > 0);
   kassert(size % PagingCtrl::kPageSize == 0);
+  _alloc_lock = false;
   phys_addr allocated_addr = 0;
   AllocatedArea *allocated_area = nullptr;
   AllocatedArea *fraged_area = nullptr;
