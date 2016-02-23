@@ -53,6 +53,9 @@ class Timer {
       }
     }
   }
+  uint32_t GetCntClkPeriod() {
+    return _cnt_clk_period;
+  }
  protected:
   // １カウントが何ナノ秒か
   uint32_t _cnt_clk_period = 1;

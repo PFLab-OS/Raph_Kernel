@@ -87,6 +87,9 @@ struct E1000TxDesc {
   uint16_t special;
 } __attribute__ ((packed));
 
+class E1000;
+extern E1000 *eth;
+
 class E1000 : public DevPCI, Polling {
 public:
  E1000(uint8_t bus, uint8_t device, bool mf) : DevPCI(bus, device, mf) {}
@@ -99,7 +102,7 @@ public:
         E1000 *e1000 = new(addr) E1000(bus, device, mf);
         e1000->Setup(did);
         polling_ctrl->Register(e1000);
-        e1000->TxTest();
+        eth = e1000;
         break;
       }
     }
@@ -116,6 +119,7 @@ public:
   static const int kBufSize = 2048;
   // allocate 6 byte before call
   void GetEthAddr(uint8_t *buffer);
+  void TxTest();
 private:
   // Memory Mapped I/O Base Address
   volatile uint32_t *_mmioAddr = nullptr;
@@ -130,7 +134,6 @@ private:
 
   // packet transmit/receive test
   uint32_t Crc32b(uint8_t *message);
-  void TxTest();
 
   static const uint16_t kVendorId = 0x8086;
 

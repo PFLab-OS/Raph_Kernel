@@ -28,7 +28,7 @@
 
 #include "../timer.h"
 #include "../global.h"
-
+extern uint32_t cnt;
 void E1000::Setup(uint16_t did) {
   _did = did;
 
@@ -329,19 +329,23 @@ void E1000::Handle() {
   } 
   // received packet
   if(buf[12] == 0x08 && buf[13] == 0x06) {
-    // ARP packet
-    gtty->Printf(
-                 "s", "ARP Reply received; ",
-                 "x", buf[6], "s", ":",
-                 "x", buf[7], "s", ":",
-                 "x", buf[8], "s", ":",
-                 "x", buf[9], "s", ":",
-                 "x", buf[10], "s", ":",
-                 "x", buf[11], "s", " -> ",
-                 "d", buf[28], "s", ".",
-                 "d", buf[29], "s", ".",
-                 "d", buf[30], "s", ".",
-                 "d", buf[31], "s", "\n");
+    if (cnt != 0) {
+      // ARP packet
+      gtty->Printf(
+                   "s", "ARP Reply received; ",
+                   "x", buf[6], "s", ":",
+                   "x", buf[7], "s", ":",
+                   "x", buf[8], "s", ":",
+                   "x", buf[9], "s", ":",
+                   "x", buf[10], "s", ":",
+                   "x", buf[11], "s", " -> ",
+                   "d", buf[28], "s", ".",
+                   "d", buf[29], "s", ".",
+                   "d", buf[30], "s", ".",
+                   "d", buf[31], "s", "\n");
+      gtty->Printf("s", "laytency:","d", ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000,"s","us\n");
+      cnt = 0;
+    }
   }
   virtmem_ctrl->Free(vaddr);
 }

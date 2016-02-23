@@ -53,6 +53,10 @@ Tty *gtty;
 
 PCICtrl *pci_ctrl;
 
+#include "dev/e1000.h"
+E1000 *eth;
+uint32_t cnt;
+
 extern "C" int main() {
   SpinLockCtrl _spinlock_ctrl;
   spinlock_ctrl = &_spinlock_ctrl;
@@ -106,6 +110,8 @@ extern "C" int main() {
   // timer->Sertup()より後
   apic_ctrl->Setup();
   
+  cnt = 0;
+
   idt->Setup();
   
   InitDevices<PCICtrl, Device>();
@@ -120,6 +126,9 @@ extern "C" int main() {
   kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr)));
   kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 3) + 1));
   kassert(!paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - 4096 * 3));
+
+  cnt = timer->ReadMainCnt();
+  eth->TxTest();
 
   polling_ctrl->HandleAll();
   while(true) {
