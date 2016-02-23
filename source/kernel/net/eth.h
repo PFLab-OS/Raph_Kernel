@@ -49,6 +49,10 @@ public:
   virtual bool OpenSocket();
   virtual int32_t ReceiveData(uint8_t *data, uint32_t size);
   virtual int32_t TransmitData(const uint8_t *data, uint32_t length);
+  // 事前に6バイト確保する事
+  void GetEthAddr(uint8_t *data) {
+    _socket->GetEthAddr(data);
+  }
 };
 
 #endif // __RAPH_KERNEL_NET_ETH_H__

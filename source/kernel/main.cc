@@ -153,14 +153,66 @@ extern "C" int main_of_others() {
   apic_ctrl->BootAP();
 
   gtty->Printf("s", "cpu #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
-  uint32_t addr = 0x0a00020f;
+  /*  uint32_t addr = 0x0a00020f;
   uint32_t port = 4000;
 
   uint8_t buf[] = {
     0x41, 0x42, 0x43, 0x44, 0x00,
+    };*/
+
+  uint8_t ipv4addr[] = {
+    0x0a, 0x00, 0x02, 0x0f
   };
 
-  udp_ctrl->Transmit(buf, sizeof(buf), addr, port, port);
+  // ARP Reply
+  if (eth_ctrl->OpenSocket()) {
+    PhysAddr paddr;
+    physmem_ctrl->Alloc(paddr, PagingCtrl::kPageSize);
+    PhysAddr paddr2;
+    physmem_ctrl->Alloc(paddr2, PagingCtrl::kPageSize);
+    uint8_t *buf = reinterpret_cast<uint8_t *>(paddr.GetVirtAddr());
+    uint8_t *buf2 = reinterpret_cast<uint8_t *>(paddr2.GetVirtAddr());
+    while(true) {
+      if (eth_ctrl->ReceiveData(buf, PagingCtrl::kPageSize) > 0) {
+        bool target = true;
+        for (int i = 0; i < 6; i++) {
+          target &= (buf[i] == 0xff);
+        }
+        uint8_t *src_eth_addr = buf + 6;
+        bool is_arp = (buf[12] == 0x08) && (buf[13] == 0x06);
+        bool is_eth = (buf[14] == 0x0) && (buf[15] == 0x01);
+        bool is_ipv4 = (buf[16] == 0x80) && (buf[17] == 0x00);
+        bool is_valid = (buf[18] == 0x06) && (buf[19] == 0x04);
+        bool is_req = (buf[20] == 0x00) && (buf[21] == 0x01);
+        uint8_t *source_eth_addr = buf + 22;
+        uint8_t *source_proto_addr = buf + 28;
+        uint8_t *target_proto_addr = buf + 38;
+        // ARP req
+        gtty->Printf("s","x");
+        if (is_arp && is_eth && is_ipv4 && is_valid && is_req && (*(reinterpret_cast<uint32_t *>(target_proto_addr)) == *(reinterpret_cast<uint32_t *>(ipv4addr)))) {
+          // ARP reply
+          memcpy(buf2, src_eth_addr, 6);
+          eth_ctrl->GetEthAddr(buf2 + 6);
+          buf2[12] = 0x08;
+          buf2[13] = 0x06;
+          buf2[14] = 0x00;
+          buf2[15] = 0x01;
+          buf2[16] = 0x08;
+          buf2[17] = 0x00;
+          buf2[18] = 0x06;
+          buf2[19] = 0x04;
+          buf2[20] = 0x00;
+          buf2[21] = 0x02;
+          eth_ctrl->GetEthAddr(buf2 + 22);
+          memcpy(buf2 + 28, ipv4addr, 4);
+          memcpy(buf2 + 32, source_eth_addr, 6);
+          memcpy(buf2 + 38, source_proto_addr, 4);
+          gtty->Printf("s","r");
+        }
+      }
+    }
+  }
+    //  udp_ctrl->Transmit(buf, sizeof(buf), addr, port, port);
   while(1) {
     asm volatile("hlt;");
   }
