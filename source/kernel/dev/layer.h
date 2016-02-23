@@ -32,6 +32,7 @@ protected:
 public:
   virtual int32_t ReceivePacket(uint8_t *buffer, uint32_t size) = 0;
   virtual int32_t TransmitPacket(const uint8_t *packet, uint32_t length) = 0;
+  virtual void GetEthAddr(uint8_t *buffer) = 0;
 };
 
 #endif /* __RAPH_KERNEL_DEV_L2_H__ */

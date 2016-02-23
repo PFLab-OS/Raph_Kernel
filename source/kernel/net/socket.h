@@ -34,6 +34,8 @@ public:
   Socket(DevNetL2 *dev) : _dev(dev) {}
   virtual int32_t ReceivePacket(uint8_t *data, uint32_t length) = 0;
   virtual int32_t TransmitPacket(const uint8_t *data, uint32_t length) = 0;
+
+  virtual void GetEthAddr(uint8_t *addr);
 };
 
 class UDPSocket : public Socket {

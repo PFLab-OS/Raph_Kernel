@@ -42,6 +42,10 @@ void DevRawEthernet::FlushSocket() {
   } while (i);
 }
 
+void DevRawEthernet::GetEthAddr(uint8_t *buffer) {
+  memcpy(buffer, _macAddr, sizeof(uint8_t) * 6);
+}
+
 void DevRawEthernet::FetchAddress() {
   int fd;
   struct ifreq ifr;

@@ -90,7 +90,10 @@ struct E1000TxDesc {
 
 class E1000 : public DevEthernet, Polling {
 public:
- E1000(uint8_t bus, uint8_t device, bool mf) : DevEthernet(bus, device, mf) {}
+  E1000(uint8_t bus, uint8_t device, bool mf)
+    : DevEthernet(bus, device, mf) {
+    memset(_ethAddr, 0, 6);
+  }
   static void InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {
     if (vid == kVendorId) {
       switch(did) {
@@ -128,6 +131,15 @@ private:
   void SetupTx();
   // read data from EEPROM
   uint16_t EepromRead(uint16_t addr);
+  // is _ethAddr initialized?
+  bool IsEthAddrInitialized() {
+    return !(_ethAddr[0] == 0
+          && _ethAddr[1] == 0
+          && _ethAddr[2] == 0
+          && _ethAddr[3] == 0
+          && _ethAddr[4] == 0
+          && _ethAddr[5] == 0);
+  }
 
   // packet transmit/receive test
   uint32_t Crc32b(uint8_t *message);
@@ -150,6 +162,8 @@ private:
   static const int kTxdescNumber = 8;
   // the buffer for transmit descriptors
   E1000TxDesc *tx_desc_buf_;
+  // ethernet address
+  uint8_t _ethAddr[6];
 
   // Ethernet Controller EEPROM Map (see pcie-gbe-controllers Table 5-2)
   static const int kEepromEthAddrHi = 0x00;

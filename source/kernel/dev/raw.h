@@ -72,6 +72,7 @@ class DevRawEthernet : public DevEthernet {
     eth_ctrl->RegisterDevice(this);
   }
   virtual ~DevRawEthernet() { close(_pd); }
+  void GetEthAddr(uint8_t *buffer);
   void FetchAddress();
   void FlushSocket();
   virtual int32_t ReceivePacket(uint8_t *buffer, uint32_t size) override {

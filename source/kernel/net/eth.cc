@@ -74,12 +74,12 @@ int32_t EthCtrl::TransmitData(const uint8_t *data, uint32_t length) {
   // construct header
   EthHeader header;
   // TODO: fetch MAC address
+  // destination address
   header.dstAddrHi = 0x0008;
   header.dstAddrMd = 0xc127;
   header.dstAddrLo = 0x935b;
-  header.srcAddrHi = 0x5452;
-  header.srcAddrMd = 0x1200;
-  header.srcAddrLo = 0x5634;
+  // source address
+  _socket->GetEthAddr(reinterpret_cast<uint8_t*>(&header));
   header.type      = kProtocolIPv4;
 
   // construct datagram

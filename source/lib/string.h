@@ -49,4 +49,12 @@ static void * memcpy(void *dest, const void *src, size_t n) {
   return dest;
 }
 
+static void *memset(void *dest, uint8_t c, size_t n) {
+  if(n) {
+    uint8_t *d = reinterpret_cast<uint8_t *>(dest);
+    do { *d++ = c; } while (--n);
+  }
+  return dest;
+}
+
 #endif // __RAPH_LIB_STRING_H__

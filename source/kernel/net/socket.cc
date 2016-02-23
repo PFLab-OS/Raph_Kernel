@@ -22,6 +22,10 @@
 
 #include "socket.h"
 
+void Socket::GetEthAddr(uint8_t *buffer) {
+  _dev->GetEthAddr(buffer);
+}
+
 int32_t UDPSocket::ReceivePacket(uint8_t *data, uint32_t length) {
   return _dev->ReceivePacket(data, length);
 }
