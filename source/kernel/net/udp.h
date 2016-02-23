@@ -55,6 +55,7 @@ public:
                            uint32_t dstIPAddr,
                            uint32_t dstPort,
                            uint32_t srcPort);
+  SpinLock _lock;
 };
 
 #endif // __RAPH_KERNEL_NET_UDP_H__

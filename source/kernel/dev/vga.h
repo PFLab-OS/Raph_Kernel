@@ -27,6 +27,7 @@
 #include "../mem/physmem.h"
 #include "../mem/paging.h"
 #include "../raph.h"
+#include "../spinlock.h"
 
 class Vga : public Tty {
  public:
@@ -43,19 +44,21 @@ class Vga : public Tty {
   }
  private:
   virtual void Write(uint8_t c) override {
-    // TODO ページ送り
-    switch(c) {
-    case '\n':
-      _cx = 0;
-      _cy++;
-      break;
-    default:
-      _vga_addr[(_cy * _x + _cx) * 2] = c;
-      _vga_addr[(_cy * _x + _cx) * 2 + 1] = 0x0f;
-      _cx++;
-      if (_cx == _x) {
+    WRITE_LOCK(_lock) {
+      // TODO ページ送り
+      switch(c) {
+      case '\n':
         _cx = 0;
         _cy++;
+        break;
+      default:
+        _vga_addr[(_cy * _x + _cx) * 2] = c;
+        _vga_addr[(_cy * _x + _cx) * 2 + 1] = 0x0f;
+        _cx++;
+        if (_cx == _x) {
+          _cx = 0;
+          _cy++;
+        }
       }
     }
   }
@@ -64,6 +67,7 @@ class Vga : public Tty {
   static const int _y = 25;
   int _cx;
   int _cy;
+  SpinLock _lock;
 };
 
 #endif // __RAPH_KERNEL_VGA_H__

@@ -151,6 +151,7 @@ extern "C" int main() {
 extern "C" int main_of_others() {
   // according to mp spec B.3, system should switch over to Symmetric I/O mode
   apic_ctrl->BootAP();
+
   gtty->Printf("s", "cpu #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
   uint32_t addr = 0x0a00020f;
   uint32_t port = 4000;
