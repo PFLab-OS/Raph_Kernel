@@ -36,7 +36,6 @@ void E1000::InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, boo
       case 0x153A:
         {
           DevGbeIch8 *addr = reinterpret_cast<DevGbeIch8 *>(virtmem_ctrl->Alloc(sizeof(DevGbeIch8)));
-          gtty->Printf("s","i");
           e1000 = new(addr) DevGbeIch8(bus, device, mf);
         }
         break;
@@ -63,7 +62,6 @@ void E1000::InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, boo
 
 
 void E1000::Setup(uint16_t did) {
-  gtty->Printf("s","1");
   _did = did;
 
   // the following sequence is indicated in pcie-gbe-controllers 14.3
@@ -74,7 +72,6 @@ void E1000::Setup(uint16_t did) {
   phys_addr mmio_addr = bar & 0xFFFFFFF0;
   _mmioAddr = reinterpret_cast<uint32_t*>(p2v(mmio_addr));
 
-  gtty->Printf("s","2");
   // Enable BusMaster
   this->WriteReg<uint16_t>(PCICtrl::kCommandReg, this->ReadReg<uint16_t>(PCICtrl::kCommandReg) | PCICtrl::kCommandRegBusMasterEnableFlag | (1 << 10));
 
@@ -86,14 +83,12 @@ void E1000::Setup(uint16_t did) {
 
   // after global reset, interrupts must be disabled again (see 14.4)
   _mmioAddr[kRegImc] = 0xffffffff;
-  gtty->Printf("s","3");
 
   // enable link (connection between L1(PHY) and L2(MAC), see 14.8)
   _mmioAddr[kRegCtrl] |= kRegCtrlSluFlag;
 
   // general config (82571x -> 14.5, 8254x -> 14.3)
   this->GeneralConfig();
-  gtty->Printf("s","4");
 
   // initialize receiver/transmitter ring buffer
   this->SetupRx();
@@ -158,7 +153,6 @@ void E1000::Reset() {
 void E1000::SetupRx() {
   // see 14.6
   // program the Receive address register(s) per the station address
-  gtty->Printf("s","@");
   _mmioAddr[kRegRal0] = this->NvmRead(kEepromEthAddrLo);
   _mmioAddr[kRegRal0] |= this->NvmRead(kEepromEthAddrMd) << 16;
   _mmioAddr[kRegRah0] = this->NvmRead(kEepromEthAddrHi);
@@ -264,7 +258,6 @@ void E1000::SetupTx() {
 }
 
 uint16_t DevGbeI8254::EepromRead(uint16_t addr) {
-  gtty->Printf("s","~");
   // EEPROM is a kind of non-volatile memory storing config info
   // see pcie-gbe-controllers 5.3.1 (i8254x)
 
@@ -282,7 +275,6 @@ uint16_t DevGbeI8254::EepromRead(uint16_t addr) {
 }
 
 uint16_t DevGbeI8257::EepromRead(uint16_t addr) {
-  gtty->Printf("s","&");
   // EEPROM is a kind of non-volatile memory storing config info
   // see pcie-gbe-controllers 5.2.1 (i8257x)
 
@@ -300,7 +292,6 @@ uint16_t DevGbeI8257::EepromRead(uint16_t addr) {
 }
 
 uint16_t DevGbeIch8::FlashRead(uint16_t addr) {
-  gtty->Printf("s","<","x",_flashAddr[kRegGlfpr]);
   // refer to 8 series chipset pch datasheet (Section 21.4) & official E1000 driver source code
 
   // init flash cycle
@@ -319,7 +310,6 @@ uint16_t DevGbeIch8::FlashRead(uint16_t addr) {
 
   // start cycle
   _flashAddr16[kReg16Hsfc] &= kReg16HsfcFlagFgo;
-  gtty->Printf("s","7");
   // polling
   while(true) {
     // busy-wait
@@ -329,8 +319,6 @@ uint16_t DevGbeIch8::FlashRead(uint16_t addr) {
     }
     timer->BusyUwait(1);
   }
-  gtty->Printf("s","8");
-  asm volatile("hlt");
 
   return _flashAddr[kRegFdata0] & 0xFFFF;
 }
