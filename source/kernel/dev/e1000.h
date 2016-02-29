@@ -17,6 +17,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * Author: Levelfour
+ *
+ * 16/01/15: created by Levelfour
+ * 16/02/28: add Ich8 support by Liva
  * 
  */
 
@@ -90,20 +93,7 @@ struct E1000TxDesc {
 class E1000 : public DevPCI, Polling {
 public:
  E1000(uint8_t bus, uint8_t device, bool mf) : DevPCI(bus, device, mf) {}
-  static void InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {
-    if (vid == kVendorId) {
-      switch(did) {
-      case kI8254x:
-      case kI8257x:
-        E1000 *addr = reinterpret_cast<E1000 *>(virtmem_ctrl->Alloc(sizeof(E1000)));
-        E1000 *e1000 = new(addr) E1000(bus, device, mf);
-        e1000->Setup(did);
-        polling_ctrl->Register(e1000);
-        e1000->TxTest();
-        break;
-      }
-    }
-  }
+  static void InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf);
   // from Polling
   void Handle() override;
   // init sequence of e1000 device (see pcie-gbe-controllers 14.3)
@@ -116,7 +106,7 @@ public:
   static const int kBufSize = 2048;
   // allocate 6 byte before call
   void GetEthAddr(uint8_t *buffer);
-private:
+ protected:
   // Memory Mapped I/O Base Address
   volatile uint32_t *_mmioAddr = nullptr;
   // software reset of e1000 device
@@ -125,8 +115,8 @@ private:
   void SetupRx();
   // initialize transmitter
   void SetupTx();
-  // read data from EEPROM
-  uint16_t EepromRead(uint16_t addr);
+  virtual uint16_t NvmRead(uint16_t addr) = 0;
+  virtual void GeneralConfig() = 0;
 
   // packet transmit/receive test
   uint32_t Crc32b(uint8_t *message);
@@ -184,45 +174,125 @@ private:
   static const int kRegRah0 = 0x05404 / sizeof(uint32_t);
 
   // CTRL Register Bit Description (see pcie-gbe-controllers Table 13-4)
-  static const int kRegCtrlSluFlag = 1 << 6;
-  static const int kRegCtrlIlosFlag = 1 << 7; // see Table 5-4
-  static const int kRegCtrlRstFlag = 1 << 26;
-  static const int kRegCtrlVmeFlag = 1 << 30;
-  static const int kRegCtrlPhyRstFlag = 1 << 31;
+  static const uint32_t kRegCtrlSluFlag = 1 << 6;
+  static const uint32_t kRegCtrlIlosFlag = 1 << 7; // see Table 5-4
+  static const uint32_t kRegCtrlRstFlag = 1 << 26;
+  static const uint32_t kRegCtrlVmeFlag = 1 << 30;
+  static const uint32_t kRegCtrlPhyRstFlag = 1 << 31;
 
   // CTRL_EXT Register Bit Description (see pcie-gbe-controllers Table 13-9)
-  static const int kRegCtrlExtLinkModeMask = 3 << 22;
+  static const uint32_t kRegCtrlExtLinkModeMask = 3 << 22;
 
   // IMS Register Bit Description (see pcie-gbe-controllers Table 13-101)
-  static const int kRegImsLscFlag = 1 << 2;
-  static const int kRegImsRxseqFlag = 1 << 3;
-  static const int kRegImsRxdmt0Flag = 1 << 4;
-  static const int kRegImsRxoFlag = 1 << 6;
-  static const int kRegImsRxt0Flag = 1 << 7;
+  static const uint32_t kRegImsLscFlag = 1 << 2;
+  static const uint32_t kRegImsRxseqFlag = 1 << 3;
+  static const uint32_t kRegImsRxdmt0Flag = 1 << 4;
+  static const uint32_t kRegImsRxoFlag = 1 << 6;
+  static const uint32_t kRegImsRxt0Flag = 1 << 7;
 
   // RCTL Register Bit Description (see pcie-gbe-controllers Table 13-104)
-  static const int kRegRctlEnFlag = 1 << 2;
-  static const int kRegRctlRdmts = 0 << 8; // half of RDLEN
-  static const int kRegRctlDtyp = 0 << 10; // legacy description type
-  static const int kRegRctlVfeFlag = 1 << 18;
-  static const int kRegRctlBsize = 0 << 16; // if BSEX=0 => 2048[Bytes]
-  static const int kRegRctlBsex = 0 << 25;
+  static const uint32_t kRegRctlEnFlag = 1 << 2;
+  static const uint32_t kRegRctlRdmts = 0 << 8; // half of RDLEN
+  static const uint32_t kRegRctlDtyp = 0 << 10; // legacy description type
+  static const uint32_t kRegRctlVfeFlag = 1 << 18;
+  static const uint32_t kRegRctlBsize = 0 << 16; // if BSEX=0 => 2048[Bytes]
+  static const uint32_t kRegRctlBsex = 0 << 25;
 
   // TCTL Register Bit Description (see pcie-gbe-controllers Table 13-123)
-  static const int kRegTctlEnFlag = 1 << 1;
-  static const int kRegTctlPsp = 1 << 3;
-  static const int kRegTctlCt = 0x0f << 4; // suggested
-  static const int kRegTctlCold = 0x3f << 12; // suggested for full-duplex
+  static const uint32_t kRegTctlEnFlag = 1 << 1;
+  static const uint32_t kRegTctlPsp = 1 << 3;
+  static const uint32_t kRegTctlCt = 0x0f << 4; // suggested
+  static const uint32_t kRegTctlCold = 0x3f << 12; // suggested for full-duplex
 
   // TXDCTL Register Bit Description (see pcie-gbe-controllers Table 13-132)
-  static const int kRegTxdctlWthresh = 0x01 << 16;
-  static const int kRegTxdctlGranCacheLine = 0 << 24;
-  static const int kRegTxdctlGranDescriptor = 1 << 24;
+  static const uint32_t kRegTxdctlWthresh = 0x01 << 16;
+  static const uint32_t kRegTxdctlGranCacheLine = 0 << 24;
+  static const uint32_t kRegTxdctlGranDescriptor = 1 << 24;
 
   // RAH Register Bit Description (see pcie-gbe-controllers Table 13-141)
-  static const int kRegRahAselDestAddr = 0 << 16;
-  static const int kRegRahAselSourceAddr = 1 << 16;
-  static const int kRegRahAvFlag = 1 << 31;
+  static const uint32_t kRegRahAselDestAddr = 0 << 16;
+  static const uint32_t kRegRahAselSourceAddr = 1 << 16;
+  static const uint32_t kRegRahAvFlag = 1 << 31;
 };
+
+class DevGbeI8254 : public E1000 {
+ public:
+ DevGbeI8254(uint8_t bus, uint8_t device, bool mf) : E1000(bus, device, mf) {}
+ private:
+  virtual uint16_t NvmRead(uint16_t addr) override {
+    return this->EepromRead(addr);
+  }
+  // read data from EEPROM
+  uint16_t EepromRead(uint16_t addr);
+  virtual void GeneralConfig() override {
+    _mmioAddr[kRegCtrl] &= (~kRegCtrlPhyRstFlag | ~kRegCtrlVmeFlag);
+  }
+};
+
+class DevGbeI8257 : public E1000 {
+ public:
+ DevGbeI8257(uint8_t bus, uint8_t device, bool mf) : E1000(bus, device, mf) {}
+ private:
+  virtual uint16_t NvmRead(uint16_t addr) override {
+    return this->EepromRead(addr);
+  }
+  // read data from EEPROM
+  uint16_t EepromRead(uint16_t addr);
+  virtual void GeneralConfig() override {
+      _mmioAddr[kRegCtrlExt] &= (~kRegCtrlExtLinkModeMask);
+      _mmioAddr[kRegCtrl] &= (~kRegCtrlIlosFlag);
+      _mmioAddr[kRegTxdctl] |= (1 << 22);
+      _mmioAddr[kRegTxdctl1] |= (1 << 22);
+  }
+};
+
+class DevGbeIch8 : public E1000 {
+ public:
+ DevGbeIch8(uint8_t bus, uint8_t device, bool mf) : E1000(bus, device, mf) {}
+ private:
+  virtual uint16_t NvmRead(uint16_t addr) override {
+    return this->FlashRead(addr);
+  }
+  // read data from Flash
+  uint16_t FlashRead(uint16_t addr);
+  virtual void GeneralConfig() override {
+      _mmioAddr[kRegCtrlExt] &= (~kRegCtrlExtLinkModeMask);
+      _mmioAddr[kRegCtrl] &= (~kRegCtrlIlosFlag);
+      _mmioAddr[kRegTxdctl] |= (1 << 22);
+      _mmioAddr[kRegTxdctl1] |= (1 << 22);
+
+      phys_addr bar = this->ReadReg<uint32_t>(PCICtrl::kBaseAddressReg1);
+      kassert((bar & 0xF) == 0);
+      phys_addr mmio_addr = bar & 0xFFFFFFF0;
+      _flashAddr = reinterpret_cast<uint32_t*>(p2v(mmio_addr));
+      _flashAddr16 = reinterpret_cast<uint16_t*>(p2v(mmio_addr));
+      gtty->Printf("x",bar,"s","C");
+  }
+  // spi flash mmio
+  volatile uint32_t *_flashAddr = nullptr;
+  volatile uint16_t *_flashAddr16 = nullptr;
+
+  // GbE SPI Flash Program Registers (see 8 series chipset pch datasheet Table 21-1)
+  static const int kRegGlfpr = 0x00 / sizeof(uint32_t);
+  static const int kReg16Hsfs = 0x04 / sizeof(uint16_t);
+  static const int kReg16Hsfc = 0x06 / sizeof(uint16_t);
+  static const int kRegFaddr = 0x08 / sizeof(uint32_t);
+  static const int kRegFdata0 = 0x10 / sizeof(uint32_t);
+
+  uint32_t GetPrb () {
+    return (_flashAddr[kRegGlfpr] & 0x1FFF) << 12;
+  }
+
+  static const uint16_t kReg16HsfsFlagFdone = 1 << 0;
+  static const uint16_t kReg16HsfsFlagFcerr = 1 << 1;
+  static const uint16_t kReg16HsfsFlagAel = 1 << 2;
+  static const uint16_t kReg16HsfsFlagScip = 1 << 5;
+  static const uint16_t kReg16HsfsFlagFdv = 1 << 14;
+ 
+  static const uint16_t kReg16HsfcFlagFdbc16 = 1 << 8; // 2 byte
+  static const uint16_t kReg16HsfcFlagFcycleRead = 0 << 1;
+  static const uint16_t kReg16HsfcFlagFgo = 1 << 0;
+};
+
 
 #endif /* __RAPH_KERNEL_E1000_H__ */

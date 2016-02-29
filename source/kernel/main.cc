@@ -89,9 +89,9 @@ extern "C" int main() {
   gtty = &_vga;
   
   PhysAddr paddr;
-  physmem_ctrl->Alloc(paddr, PagingCtrl::kPageSize);
+  physmem_ctrl->Alloc(paddr, PagingCtrl::kPageSize * 2);
   extern int kKernelEndAddr;
-  kassert(paging_ctrl->MapPhysAddrToVirtAddr(reinterpret_cast<virt_addr>(&kKernelEndAddr) - PagingCtrl::kPageSize * 3, paddr, PagingCtrl::kPageSize, PDE_WRITE_BIT, PTE_WRITE_BIT || PTE_GLOBAL_BIT));
+  kassert(paging_ctrl->MapPhysAddrToVirtAddr(reinterpret_cast<virt_addr>(&kKernelEndAddr) - PagingCtrl::kPageSize * 4, paddr, PagingCtrl::kPageSize * 2, PDE_WRITE_BIT, PTE_WRITE_BIT || PTE_GLOBAL_BIT));
 
   multiboot_ctrl->Setup();
   
@@ -116,10 +116,10 @@ extern "C" int main() {
   gtty->Printf("s", "\n\nkernel initialization completed\n");
 
   extern int kKernelEndAddr;
-  // stackは12K
+  // stackは16K
   kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr)));
-  kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 3) + 1));
-  kassert(!paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - 4096 * 3));
+  kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 4) + 1));
+  kassert(!paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - 4096 * 4));
 
   polling_ctrl->HandleAll();
   while(true) {

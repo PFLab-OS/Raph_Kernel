@@ -63,6 +63,7 @@ void PCICtrl::_Init() {
       }
     }
   }
+  
   gtty->Printf("s", "\n");
 }
 

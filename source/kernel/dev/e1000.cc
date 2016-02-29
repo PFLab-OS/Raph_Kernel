@@ -29,7 +29,41 @@
 #include "../timer.h"
 #include "../global.h"
 
+void E1000::InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {
+    if (vid == kVendorId) {
+      E1000 *e1000 = nullptr;
+      switch(did) {
+      case 0x153A:
+        {
+          DevGbeIch8 *addr = reinterpret_cast<DevGbeIch8 *>(virtmem_ctrl->Alloc(sizeof(DevGbeIch8)));
+          gtty->Printf("s","i");
+          e1000 = new(addr) DevGbeIch8(bus, device, mf);
+        }
+        break;
+      case kI8254x:
+        {
+          DevGbeI8254 *addr = reinterpret_cast<DevGbeI8254 *>(virtmem_ctrl->Alloc(sizeof(DevGbeI8254)));
+          e1000 = new(addr) DevGbeI8254(bus, device, mf);
+        }
+        break;
+      case kI8257x:
+        {
+          DevGbeI8257 *addr = reinterpret_cast<DevGbeI8257 *>(virtmem_ctrl->Alloc(sizeof(DevGbeI8257)));
+          e1000 = new(addr) DevGbeI8257(bus, device, mf);
+        }
+        break;
+      }
+      if (e1000 != nullptr) {
+        e1000->Setup(did);
+        polling_ctrl->Register(e1000);
+        e1000->TxTest();
+      }
+    }
+  }
+
+
 void E1000::Setup(uint16_t did) {
+  gtty->Printf("s","1");
   _did = did;
 
   // the following sequence is indicated in pcie-gbe-controllers 14.3
@@ -37,9 +71,13 @@ void E1000::Setup(uint16_t did) {
   // get PCI Base Address Registers
   phys_addr bar = this->ReadReg<uint32_t>(PCICtrl::kBaseAddressReg0);
   kassert((bar & 0xF) == 0);
-  phys_addr mmio_addr = bar & 0xFFFFFFF0; // TODO : もうちょっと厳密にやるべき
-  this->WriteReg<uint16_t>(PCICtrl::kCommandReg, this->ReadReg<uint16_t>(PCICtrl::kCommandReg) | PCICtrl::kCommandRegBusMasterEnableFlag | (1 << 10));
+  phys_addr mmio_addr = bar & 0xFFFFFFF0;
   _mmioAddr = reinterpret_cast<uint32_t*>(p2v(mmio_addr));
+
+  gtty->Printf("s","2");
+  // Enable BusMaster
+  this->WriteReg<uint16_t>(PCICtrl::kCommandReg, this->ReadReg<uint16_t>(PCICtrl::kCommandReg) | PCICtrl::kCommandRegBusMasterEnableFlag | (1 << 10));
+
   // disable interrupts (see 13.3.32)
   _mmioAddr[kRegImc] = 0xffffffff;
 
@@ -48,23 +86,14 @@ void E1000::Setup(uint16_t did) {
 
   // after global reset, interrupts must be disabled again (see 14.4)
   _mmioAddr[kRegImc] = 0xffffffff;
+  gtty->Printf("s","3");
 
   // enable link (connection between L1(PHY) and L2(MAC), see 14.8)
   _mmioAddr[kRegCtrl] |= kRegCtrlSluFlag;
 
   // general config (82571x -> 14.5, 8254x -> 14.3)
-  switch(_did) {
-    case kI8257x:
-      // disable link mode (see 12.5)
-      _mmioAddr[kRegCtrlExt] &= (~kRegCtrlExtLinkModeMask);
-      _mmioAddr[kRegCtrl] &= (~kRegCtrlIlosFlag);
-      _mmioAddr[kRegTxdctl] |= (1 << 22);
-      _mmioAddr[kRegTxdctl1] |= (1 << 22);
-      break;
-    case kI8254x:
-      _mmioAddr[kRegCtrl] &= (~kRegCtrlPhyRstFlag | ~kRegCtrlVmeFlag);
-      break;
-  }
+  this->GeneralConfig();
+  gtty->Printf("s","4");
 
   // initialize receiver/transmitter ring buffer
   this->SetupRx();
@@ -129,10 +158,12 @@ void E1000::Reset() {
 void E1000::SetupRx() {
   // see 14.6
   // program the Receive address register(s) per the station address
-  _mmioAddr[kRegRal0] = this->EepromRead(kEepromEthAddrLo);
-  _mmioAddr[kRegRal0] |= this->EepromRead(kEepromEthAddrMd) << 16;
-  _mmioAddr[kRegRah0] = this->EepromRead(kEepromEthAddrHi);
+  gtty->Printf("s","@");
+  _mmioAddr[kRegRal0] = this->NvmRead(kEepromEthAddrLo);
+  _mmioAddr[kRegRal0] |= this->NvmRead(kEepromEthAddrMd) << 16;
+  _mmioAddr[kRegRah0] = this->NvmRead(kEepromEthAddrHi);
   _mmioAddr[kRegRah0] |= (kRegRahAselDestAddr | kRegRahAvFlag);
+  gtty->Printf("s","<","x",_mmioAddr[kRegRal0],"x",_mmioAddr[kRegRah0],"s",">");
 
   // initialize the MTA (Multicast Table Array) to 0
   volatile uint32_t *mta = _mmioAddr + kRegMta;
@@ -232,43 +263,82 @@ void E1000::SetupTx() {
   }
 }
 
-uint16_t E1000::EepromRead(uint16_t addr) {
+uint16_t DevGbeI8254::EepromRead(uint16_t addr) {
+  gtty->Printf("s","~");
   // EEPROM is a kind of non-volatile memory storing config info
-  // see pcie-gbe-controllers 5.2.1 (i8257x) or 5.3.1 (i8254x)
+  // see pcie-gbe-controllers 5.3.1 (i8254x)
 
-  // notify start bit and addr
-  switch(_did) {
-    case kI8254x:
-      _mmioAddr[kRegEerd] = (((addr & 0xff) << 8) | 1);
-      // polling
-      while(true) {
-        // busy-wait
-        volatile uint32_t data = _mmioAddr[kRegEerd];
-        if (data & (1 << 4)) {
-          break;
-        }
-      }
+  _mmioAddr[kRegEerd] = (((addr & 0xff) << 8) | 1);
+  // polling
+  while(true) {
+    // busy-wait
+    volatile uint32_t data = _mmioAddr[kRegEerd];
+    if (data & (1 << 4)) {
       break;
-    case kI8257x:
-      _mmioAddr[kRegEerd] = (((addr & 0x3fff) << 2) | 1);
-      // polling
-      while(true) {
-        // busy-wait
-        volatile uint32_t data = _mmioAddr[kRegEerd];
-        if (data & (1 << 1)) {
-          break;
-        }
-      }
+    }
+  }
+  
+  return (_mmioAddr[kRegEerd] >> 16) & 0xffff;
+}
+
+uint16_t DevGbeI8257::EepromRead(uint16_t addr) {
+  gtty->Printf("s","&");
+  // EEPROM is a kind of non-volatile memory storing config info
+  // see pcie-gbe-controllers 5.2.1 (i8257x)
+
+  _mmioAddr[kRegEerd] = (((addr & 0x3fff) << 2) | 1);
+  // polling
+  while(true) {
+    // busy-wait
+    volatile uint32_t data = _mmioAddr[kRegEerd];
+    if (data & (1 << 1)) {
       break;
+    }
   }
 
   return (_mmioAddr[kRegEerd] >> 16) & 0xffff;
 }
 
+uint16_t DevGbeIch8::FlashRead(uint16_t addr) {
+  gtty->Printf("s","<","x",_flashAddr[kRegGlfpr]);
+  // refer to 8 series chipset pch datasheet (Section 21.4) & official E1000 driver source code
+
+  // init flash cycle
+
+  // clear status
+  kassert((_flashAddr16[kReg16Hsfs] & kReg16HsfsFlagFdv) != 0);
+  _flashAddr16[kReg16Hsfs] &= kReg16HsfsFlagAel | kReg16HsfsFlagFcerr;
+
+  // check no running cycle
+  kassert((_flashAddr16[kReg16Hsfs] & kReg16HsfsFlagScip) == 0);
+  _flashAddr16[kReg16Hsfs] &= kReg16HsfsFlagFdone;
+  
+  _flashAddr16[kReg16Hsfc] &= kReg16HsfcFlagFdbc16 | kReg16HsfcFlagFcycleRead;
+  
+  _flashAddr[kRegFaddr] = GetPrb() + addr;
+
+  // start cycle
+  _flashAddr16[kReg16Hsfc] &= kReg16HsfcFlagFgo;
+  gtty->Printf("s","7");
+  // polling
+  while(true) {
+    // busy-wait
+    volatile uint16_t data = _flashAddr16[kReg16Hsfs];
+    if (data & kReg16HsfsFlagFdone) {
+      break;
+    }
+    timer->BusyUwait(1);
+  }
+  gtty->Printf("s","8");
+  asm volatile("hlt");
+
+  return _flashAddr[kRegFdata0] & 0xFFFF;
+}
+
 void E1000::GetEthAddr(uint8_t *buffer) {
-  uint16_t ethaddr_lo = this->EepromRead(kEepromEthAddrLo);
-  uint16_t ethaddr_md = this->EepromRead(kEepromEthAddrMd);
-  uint16_t ethaddr_hi = this->EepromRead(kEepromEthAddrHi);
+  uint16_t ethaddr_lo = this->NvmRead(kEepromEthAddrLo);
+  uint16_t ethaddr_md = this->NvmRead(kEepromEthAddrMd);
+  uint16_t ethaddr_hi = this->NvmRead(kEepromEthAddrHi);
   buffer[0] = ethaddr_hi & 0xff;
   buffer[1] = (ethaddr_hi >> 8) & 0xff;
   buffer[2] = ethaddr_md & 0xff;
