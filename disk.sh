@@ -29,7 +29,7 @@ fi
 
 if [ $1 = "grub-install" ]; then
     loopsetup
-    mkfs -t ext2 ${MAPPEDDEVICE}
+    sudo mkfs -t ext2 ${MAPPEDDEVICE}
     mount
     sudo grub-install --no-floppy ${LOOPDEVICE} --root-directory ${MOUNT_DIR}
     umount
