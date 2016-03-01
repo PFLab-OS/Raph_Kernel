@@ -24,6 +24,7 @@
 #define __RAPH_KERNEL_NET_ETH_H__
 
 #include <stdint.h>
+#include "../raph.h"
 #include "layer.h"
 #include "socket.h"
 
@@ -41,8 +42,8 @@ struct EthHeader {
 };
 
 class EthCtrl : public L2Ctrl {
-  static const uint16_t kProtocolIPv4 = (0x08) | (0x00 << 8);
-  static const uint16_t kProtocolARP  = (0x08) | (0x06 << 8);
+  static const uint16_t kProtocolIPv4 = 0x0800;
+  static const uint16_t kProtocolARP  = 0x0806;
 
   static const uint32_t kDstAddrOffset      = 0;
   static const uint32_t kSrcAddrOffset      = 6;

@@ -21,6 +21,7 @@
  */
 
 #include "udp.h"
+#include "../raph.h"
 #include "../mem/physmem.h"
 #include "../mem/virtmem.h"
 #include "../global.h"
@@ -39,6 +40,7 @@ int32_t UDPCtrl::Receive(uint8_t *data, uint32_t size, uint32_t port) {
       // succeed to receive packet and correspond to the specified port
       result = _ipCtrl->ReceiveData(buffer, bufsize, kProtoUDP);
       receivedPort = (buffer[kDstPortOffset] << 8) | buffer[kDstPortOffset + 1];
+      receivedPort = ntohs(buffer + kDstPortOffset);
     }
 
     if(result > 0) {
@@ -64,10 +66,9 @@ int32_t UDPCtrl::Transmit(const uint8_t *data, uint32_t length, uint32_t dstIPAd
 
     // construct header
     UDPHeader header;
-    header.srcPort  = (srcPort >> 8) | ((srcPort & 0xff) << 8);
-    header.dstPort  = (dstPort >> 8) | ((dstPort & 0xff) << 8);
-    header.len      = sizeof(UDPHeader) + length;
-    header.len      = (header.len >> 8) | ((header.len & 0xff) << 8);
+    header.srcPort  = htons(srcPort);
+    header.dstPort  = htons(dstPort);
+    header.len      = htons(sizeof(UDPHeader) + length);
     header.checksum = 0;  // TODO: calculate
 
     // construct datagram

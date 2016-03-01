@@ -22,6 +22,7 @@
 
 #include <string.h>
 #include "ip.h"
+#include "../raph.h"
 #include "../mem/physmem.h"
 #include "../mem/virtmem.h"
 #include "../global.h"
@@ -50,10 +51,7 @@ int32_t IPCtrl::ReceiveData(uint8_t *data,
 	memcpy(data, buffer + sizeof(IPv4Header), length - sizeof(IPv4Header));
 
 	if(oppIPAddr) {
-      *oppIPAddr = ((buffer[kSrcAddrOffset])
-                  | (buffer[kSrcAddrOffset + 1] << 8)
-                  | (buffer[kSrcAddrOffset + 2] << 16)
-                  | (buffer[kSrcAddrOffset + 3] << 24));
+      *oppIPAddr = ntohl(buffer + kSrcAddrOffset);
     }
 
     virtmem_ctrl->Free(reinterpret_cast<virt_addr>(buffer));
@@ -67,6 +65,7 @@ int32_t IPCtrl::ReceiveData(uint8_t *data,
 int32_t IPCtrl::TransmitData(const uint8_t *data, uint32_t length, const uint8_t protocolType, uint32_t dstIPAddr) {
   int32_t result = -1;
 
+  // TODO: no hard-coding
   uint8_t dstAddr[] = {
     0x08, 0x00, 0x27, 0xc1, 0x5b, 0x93
   };
@@ -80,7 +79,7 @@ int32_t IPCtrl::TransmitData(const uint8_t *data, uint32_t length, const uint8_t
   IPv4Header header;
   header.ipHdrLen_ver = (sizeof(IPv4Header) >> 2) | (kIPVersion << 4);
   header.type = kPktPriority | kPktDelay | kPktThroughput | kPktReliability;
-  header.totalLen = (totalLen >> 8) | ((totalLen & 0xff) << 8);
+  header.totalLen = htons(totalLen);
   header.id = _idAutoIncrement++;
   // TODO: fragment on IP layer
   uint16_t frag = 0;
@@ -89,11 +88,8 @@ int32_t IPCtrl::TransmitData(const uint8_t *data, uint32_t length, const uint8_t
   header.ttl = kTimeToLive;
   header.protoId = protocolType;
   header.checksum = 0;
-  header.srcAddr = kSourceIPAddress;
-  header.dstAddr = (dstIPAddr >> 24)
-                 | (((dstIPAddr >> 16) & 0xff) << 8)
-                 | (((dstIPAddr >> 8) & 0xff) << 16)
-                 | ((dstIPAddr & 0xff) << 24);
+  header.srcAddr = htonl(kSourceIPAddress);
+  header.dstAddr = htonl(dstIPAddr);
 
   header.checksum = checkSum(reinterpret_cast<uint8_t*>(&header), sizeof(IPv4Header));
 

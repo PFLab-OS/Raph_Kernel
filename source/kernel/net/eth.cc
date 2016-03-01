@@ -81,7 +81,8 @@ int32_t EthCtrl::TransmitData(const uint8_t *data, uint32_t length, uint8_t *des
   memcpy(&header, destAddr, 6);
   // source address
   _socket->GetEthAddr(reinterpret_cast<uint8_t*>(&header) + 6);
-  header.type      = 0x0608;
+  // TODO: switch L3 type
+  header.type      = htons(kProtocolARP);
 
   // construct datagram
   memcpy(datagram, reinterpret_cast<uint8_t*>(&header), sizeof(EthHeader));

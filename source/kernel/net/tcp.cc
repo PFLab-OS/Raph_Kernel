@@ -22,6 +22,7 @@
 
 #include <stdlib.h>
 #include "tcp.h"
+#include "../raph.h"
 #include "../mem/physmem.h"
 #include "../mem/virtmem.h"
 #include "../global.h"
@@ -44,16 +45,10 @@ int32_t TCPCtrl::Receive(uint8_t *data, uint32_t size, uint32_t port) {
     // succeed to receive packet
     // and correspond to the specified port / session type
     result = _ipCtrl->ReceiveData(buffer, bufsize, kProtoTCP, &dstIPAddr);
-    receivedPort = (buffer[kDstPortOffset] << 8) | buffer[kDstPortOffset + 1];
+    receivedPort = ntohs(buffer + kDstPortOffset);
+    receivedAck = ntohl(buffer + kAckOffset);
+    receivedSeq = ntohl(buffer + kSeqOffset);
     sessionType = buffer[kSessionTypeOffset];
-    receivedAck = ((buffer[kAckOffset] << 24)
-                 | (buffer[kAckOffset+1] << 16)
-                 | (buffer[kAckOffset+2] << 8)
-                 |  buffer[kAckOffset+3]);
-    receivedSeq = ((buffer[kSeqOffset] << 24)
-                 | (buffer[kSeqOffset+1] << 16)
-                 | (buffer[kSeqOffset+2] << 8)
-                 |  buffer[kSeqOffset+3]);
   }
 
   if(result > 0) {
@@ -63,7 +58,7 @@ int32_t TCPCtrl::Receive(uint8_t *data, uint32_t size, uint32_t port) {
 
     // for the following transmission
     _dstIPAddr = dstIPAddr;
-    _dstPort = (buffer[kSrcPortOffset] << 8) | buffer[kSrcPortOffset + 1];
+    _dstPort = ntohs(buffer + kSrcPortOffset);
     _sequence = receivedSeq;
     _ack = receivedAck;
   
@@ -82,16 +77,10 @@ int32_t TCPCtrl::Transmit(const uint8_t *data, uint32_t length, uint32_t dstIPAd
 
   // construct header
   TCPHeader header;
-  header.srcPort  = (srcPort >> 8) | ((srcPort & 0xff) << 8);
-  header.dstPort  = (dstPort >> 8) | ((dstPort & 0xff) << 8);
-  header.seqNumber = (((_sequence >> 24) & 0xff)
-                   | (((_sequence >> 16) & 0xff) << 8)
-                   | (((_sequence >> 8) & 0xff) << 16)
-                   | ((_sequence & 0xff) << 24));
-  header.ackNumber = (((_ack >> 24) & 0xff)
-                   | (((_ack >> 16) & 0xff) << 8)
-                   | (((_ack >> 8) & 0xff) << 16)
-                   | ((_ack & 0xff) << 24));
+  header.srcPort  = htons(srcPort);
+  header.dstPort  = htons(dstPort);
+  header.seqNumber = htonl(_sequence);
+  header.ackNumber = htonl(_ack);
   header.headerLen = (sizeof(TCPHeader) >> 2) << 4;
   header.flag = _tcpSessionType;
   header.windowSize = 0;

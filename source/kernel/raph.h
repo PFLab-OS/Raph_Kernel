@@ -122,6 +122,37 @@ inline void *operator new(size_t, void *p)     throw() { return p; }
 inline void *operator new[](size_t, void *p)   throw() { return p; }
 inline void  operator delete  (void *, void *) throw() { };
 inline void  operator delete[](void *, void *) throw() { };
+
+static inline uint16_t htons(uint16_t n) {
+  return (((n & 0xff) << 8) | ((n & 0xff00) >> 8));
+}
+
+static inline uint16_t ntohs(uint16_t n) {
+  return (((n & 0xff) << 8) | ((n & 0xff00) >> 8));
+}
+
+static inline uint16_t ntohs(uint8_t a[]) {
+  return ((a[0] << 8) | a[1]);
+}
+
+static inline uint32_t htonl(uint16_t n) {
+  return (((n & 0xff) << 24)
+         |((n & 0xff00) << 8)
+         |((n & 0xff0000) >> 8)
+         |((n & 0xff000000) >> 24));
+}
+
+static inline uint32_t ntohl(uint16_t n) {
+  return (((n & 0xff) << 24)
+         |((n & 0xff00) << 8)
+         |((n & 0xff0000) >> 8)
+         |((n & 0xff000000) >> 24));
+}
+
+static inline uint32_t ntohl(uint8_t a[]) {
+  return ((a[0] << 24) | (a[1] << 16) | (a[2] << 8) | a[3]);
+}
+
 #endif // __UNIT_TEST__
 
 #endif // __RAPH_KERNEL_RAPH_H__
