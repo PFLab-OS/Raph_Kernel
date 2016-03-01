@@ -266,7 +266,6 @@ class DevGbeIch8 : public E1000 {
       phys_addr mmio_addr = bar & 0xFFFFFFF0;
       _flashAddr = reinterpret_cast<uint32_t*>(p2v(mmio_addr));
       _flashAddr16 = reinterpret_cast<uint16_t*>(p2v(mmio_addr));
-      gtty->Printf("x",bar,"s","C");
   }
   // spi flash mmio
   volatile uint32_t *_flashAddr = nullptr;

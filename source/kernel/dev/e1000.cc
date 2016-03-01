@@ -33,12 +33,6 @@ void E1000::InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, boo
     if (vid == kVendorId) {
       E1000 *e1000 = nullptr;
       switch(did) {
-      case 0x153A:
-        {
-          DevGbeIch8 *addr = reinterpret_cast<DevGbeIch8 *>(virtmem_ctrl->Alloc(sizeof(DevGbeIch8)));
-          e1000 = new(addr) DevGbeIch8(bus, device, mf);
-        }
-        break;
       case kI8254x:
         {
           DevGbeI8254 *addr = reinterpret_cast<DevGbeI8254 *>(virtmem_ctrl->Alloc(sizeof(DevGbeI8254)));
@@ -49,6 +43,12 @@ void E1000::InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, boo
         {
           DevGbeI8257 *addr = reinterpret_cast<DevGbeI8257 *>(virtmem_ctrl->Alloc(sizeof(DevGbeI8257)));
           e1000 = new(addr) DevGbeI8257(bus, device, mf);
+        }
+        break;
+      case 0x153A:
+        {
+          DevGbeIch8 *addr = reinterpret_cast<DevGbeIch8 *>(virtmem_ctrl->Alloc(sizeof(DevGbeIch8)));
+          e1000 = new(addr) DevGbeIch8(bus, device, mf);
         }
         break;
       }
@@ -306,10 +306,12 @@ uint16_t DevGbeIch8::FlashRead(uint16_t addr) {
   
   _flashAddr16[kReg16Hsfc] &= kReg16HsfcFlagFdbc16 | kReg16HsfcFlagFcycleRead;
   
-  _flashAddr[kRegFaddr] = GetPrb() + addr;
+  _flashAddr[kRegFaddr] = GetPrb() + addr * 2;
 
   // start cycle
   _flashAddr16[kReg16Hsfc] &= kReg16HsfcFlagFgo;
+  gtty->Printf("x", _flashAddr16[kReg16Hsfs]);
+  asm volatile ("hlt");
   // polling
   while(true) {
     // busy-wait
@@ -317,6 +319,7 @@ uint16_t DevGbeIch8::FlashRead(uint16_t addr) {
     if (data & kReg16HsfsFlagFdone) {
       break;
     }
+    kassert((data & kReg16HsfsFlagFcerr) == 0);
     timer->BusyUwait(1);
   }
 
