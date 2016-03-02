@@ -28,6 +28,8 @@
 #include "../spinlock.h"
 #include "../list.h"
 
+#include "../global.h"
+
 class NetDev {
   static const uint32_t kNetworkInterfaceNameLen = 8;
   // network interface name
@@ -48,7 +50,7 @@ protected:
   SpinLock _lock;
 
   // ethernet address
-  uint8_t _ethAddr[6];
+  uint8_t _ethAddr[6] = {0};
   // IP address
   uint32_t _ipAddr = 0;
 };
@@ -62,7 +64,11 @@ class NetDevCtrl {
 
 public:
   NetDevCtrl() {}
+
+  void d() { gtty->Printf("s", "\ndevice number ", "d", _curDevNumber, "s", "\n"); }
+
   bool RegisterDevice(NetDev *dev, const char *name = kDefaultNetworkInterfaceName);
   NetDev *GetDevice(const char *name = kDefaultNetworkInterfaceName);
 };
+
 #endif /* __RAPH_KERNEL_NETDEV_H__ */

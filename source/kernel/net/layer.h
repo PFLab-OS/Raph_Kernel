@@ -28,14 +28,14 @@
 
 class L2Ctrl {
 public:
-  virtual bool RegisterDevice(NetDev *dev);
-  virtual int32_t ReceiveData(uint8_t *data,
-                              uint32_t size,
-                              uint8_t *protocolType = nullptr,
-                              uint8_t *srcAddr = nullptr) = 0;
-  virtual int32_t TransmitData(const uint8_t *data,
-                               uint32_t length,
-                               uint8_t *dstAddr) = 0;
+  virtual int32_t GenerateHeader(uint8_t *header,
+                                 uint8_t *saddr,
+                                 uint8_t *daddr,
+                                 uint16_t type) = 0;
+  virtual bool FilterPacket(uint8_t *packet,
+                            uint8_t *saddr,
+                            uint8_t *daddr,
+                            uint16_t type) = 0;
 };
 
 class L4Ctrl {
@@ -45,12 +45,13 @@ protected:
   static const uint16_t kPortHTTP = 80;
 
 public:
-  virtual int32_t Receive(uint8_t *data, uint32_t size, uint32_t port) = 0;
-  virtual int32_t Transmit(const uint8_t *data,
-                           uint32_t length,
-                           uint32_t dstIPAddr,
-                           uint32_t dstPort,
-                           uint32_t srcPort) = 0;
+  virtual int32_t GenerateHeader(uint8_t *header,
+                                 uint32_t length,
+                                 uint16_t sport,
+                                 uint16_t dport) = 0;
+  virtual bool FilterPacket(uint8_t *packet,
+                            uint16_t sport,
+                            uint16_t dport) = 0;
 };
 
 #endif // __RAPH_KERNEL_NET_L2_H__

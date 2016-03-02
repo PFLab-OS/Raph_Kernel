@@ -29,7 +29,9 @@
 #include "../tty.h"
 
 #include "../timer.h"
-#include "../global.h"
+
+#define __NETCTRL__
+#include "../net/global.h"
 
 void E1000::Setup(uint16_t did) {
   _did = did;
@@ -73,10 +75,7 @@ void E1000::Setup(uint16_t did) {
   this->SetupTx();
 
   // register device to network device table
-  if(!netdev_ctrl->RegisterDevice(this)) {
-    // cannot register device
-    kassert(false);
-  }
+  kassert(netdev_ctrl->RegisterDevice(this));
 
   // enable interrupts
   _mmioAddr[kRegImc] = 0;

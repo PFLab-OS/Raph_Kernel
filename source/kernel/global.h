@@ -55,6 +55,4 @@ extern Timer *timer;
 
 extern PCICtrl *pci_ctrl;
 
-extern NetDevCtrl *netdev_ctrl;
-
 #endif // __RAPH_KERNEL_GLOBAL_H__

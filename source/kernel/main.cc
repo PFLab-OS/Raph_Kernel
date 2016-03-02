@@ -37,7 +37,8 @@
 
 #include "dev/vga.h"
 #include "dev/pci.h"
-#include "dev/netdev.h"
+
+#include "net/netctrl.h"
 
 SpinLockCtrl *spinlock_ctrl;
 MultibootCtrl *multiboot_ctrl;
@@ -50,8 +51,9 @@ PollingCtrl *polling_ctrl;
 Idt *idt;
 Timer *timer;
 
+PCICtrl *pci_ctrl;
+
 Tty *gtty;
-NetDevCtrl *netdev_ctrl;
 
 static uint32_t rnd_next = 1;
 
@@ -90,9 +92,6 @@ extern "C" int main() {
   Vga _vga;
   gtty = &_vga;
 
-  NetDevCtrl _netdev_ctrl;
-  netdev_ctrl = &_netdev_ctrl;
-  
   PhysAddr paddr;
   physmem_ctrl->Alloc(paddr, PagingCtrl::kPageSize);
   extern int kKernelEndAddr;
@@ -114,6 +113,8 @@ extern "C" int main() {
   apic_ctrl->Setup();
   
   idt->Setup();
+
+  InitNetCtrl();
 
   InitDevices<PCICtrl, Device>();
 
@@ -177,6 +178,9 @@ extern "C" int main() {
   while(true) {
     asm volatile("hlt;nop;hlt;");
   }
+
+  DismissNetCtrl();
+
   return 0;
 }
 

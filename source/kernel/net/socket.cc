@@ -21,20 +21,26 @@
  */
 
 #include "socket.h"
+#include "eth.h"
+#include "ip.h"
+#include "udp.h"
 
-EthCtrl *eth_ctrl;
-IPCtrl *ip_ctrl;
-UDPCtrl *udp_ctrl;
-PCICtrl *pci_ctrl;
+#define __NETCTRL__
+#include "global.h"
 
-void Socket::GetEthAddr(uint8_t *buffer) {
-  _dev->GetEthAddr(buffer);
+int32_t Socket::Open() {
+  _dev = netdev_ctrl->GetDevice();
+  if(!_dev) {
+    return -1;
+  } else {
+    return 0;
+  }
 }
 
-int32_t UDPSocket::ReceivePacket(uint8_t *data, uint32_t length) {
-  return _dev->ReceivePacket(data, length);
+int32_t Socket::ReceivePacket(uint8_t *data, uint32_t length) {
+  return -1;
 }
 
-int32_t UDPSocket::TransmitPacket(const uint8_t *data, uint32_t length) {
-  return _dev->TransmitPacket(data, length);
+int32_t Socket::TransmitPacket(const uint8_t *data, uint32_t length) {
+  return -1;
 }

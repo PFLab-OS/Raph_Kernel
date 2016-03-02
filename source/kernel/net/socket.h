@@ -25,25 +25,15 @@
 
 #include <stdint.h>
 #include "../dev/netdev.h"
-#include "eth.h"
-#include "ip.h"
-#include "udp.h"
 
+// TCP/IP Socket
 class Socket {
 protected:
-  NetDev *_dev;
+  NetDev *_dev = nullptr;
 
 public:
-  Socket(NetDev *dev) : _dev(dev) {}
-  virtual int32_t ReceivePacket(uint8_t *data, uint32_t length) = 0;
-  virtual int32_t TransmitPacket(const uint8_t *data, uint32_t length) = 0;
-
-  virtual void GetEthAddr(uint8_t *addr);
-};
-
-class UDPSocket : public Socket {
-public:
-  UDPSocket(NetDev *dev) : Socket(dev) {}
+  Socket() {}
+  int32_t Open();
   virtual int32_t ReceivePacket(uint8_t *data, uint32_t length);
   virtual int32_t TransmitPacket(const uint8_t *data, uint32_t length);
 };

@@ -91,9 +91,7 @@ struct E1000TxDesc {
 class E1000 : public DevEthernet, Polling {
 public:
   E1000(uint8_t bus, uint8_t device, bool mf)
-    : DevEthernet(bus, device, mf) {
-    memset(_ethAddr, 0, 6);
-  }
+    : DevEthernet(bus, device, mf) {}
   static void InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {
     if (vid == kVendorId) {
       switch(did) {

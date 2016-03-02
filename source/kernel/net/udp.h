@@ -29,9 +29,9 @@
 
 struct UDPHeader {
   // source port
-  uint16_t srcPort;
+  uint16_t sport;
   // destination port
-  uint16_t dstPort;
+  uint16_t dport;
   // length (header + datagram)
   uint16_t len;
   // checksum
@@ -39,22 +39,18 @@ struct UDPHeader {
 } __attribute__ ((packed));
 
 class UDPCtrl : public L4Ctrl {
-  IPCtrl *_ipCtrl;
-
   static const uint8_t kProtoUDP       = 17;
   static const uint32_t kDstPortOffset = 2;
 
 public:
-  UDPCtrl(IPCtrl *ipCtrl) : _ipCtrl(ipCtrl) {
-    _ipCtrl->RegisterL4Ctrl(kProtoUDP, this);
-  }
-  virtual int32_t Receive(uint8_t *data, uint32_t size, uint32_t port);
-  virtual int32_t Transmit(const uint8_t *data,
-                           uint32_t length,
-                           uint32_t dstIPAddr,
-                           uint32_t dstPort,
-                           uint32_t srcPort);
-  SpinLock _lock;
+  UDPCtrl() {}
+  virtual int32_t GenerateHeader(uint8_t *buffer,
+                                 uint32_t length,
+                                 uint16_t sport,
+                                 uint16_t dport);
+  virtual bool FilterPacket(uint8_t *packet,
+                            uint16_t sport,
+                            uint16_t dport);
 };
 
 #endif // __RAPH_KERNEL_NET_UDP_H__

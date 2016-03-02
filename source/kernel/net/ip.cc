@@ -27,82 +27,31 @@
 #include "../mem/virtmem.h"
 #include "../global.h"
 
-int32_t IPCtrl::ReceiveData(uint8_t *data,
-                            uint32_t size,
-                            const uint8_t protocolType,
-                            uint32_t *oppIPAddr) {
-  // alloc buffer
-  int32_t bufsize = sizeof(IPv4Header) + size;
-  uint8_t *buffer = reinterpret_cast<uint8_t*>(virtmem_ctrl->Alloc(sizeof(uint8_t) * bufsize));
-
-  int32_t result = -1;
-  uint8_t receivedProtocol = 0xff;
-
-  while(result == -1
-     || receivedProtocol != protocolType) {
-    result = _l2Ctrl->ReceiveData(buffer, bufsize);
-    receivedProtocol = buffer[kProtocolTypeOffset];
-  }
-
-  if(result != -1 && receivedProtocol == protocolType) {
-    // succeed to receive packet and correspond to the specified protocol
-    int32_t length = bufsize < result ? bufsize : result;
-    kassert(length - sizeof(IPv4Header) <= size);
-	memcpy(data, buffer + sizeof(IPv4Header), length - sizeof(IPv4Header));
-
-	if(oppIPAddr) {
-      *oppIPAddr = ntohl(buffer + kSrcAddrOffset);
-    }
-
-    virtmem_ctrl->Free(reinterpret_cast<virt_addr>(buffer));
-	return result - sizeof(IPv4Header);
-  } else {
-    virtmem_ctrl->Free(reinterpret_cast<virt_addr>(buffer));
-    return result;
-  }
-}
-
-int32_t IPCtrl::TransmitData(const uint8_t *data, uint32_t length, const uint8_t protocolType, uint32_t dstIPAddr) {
-  int32_t result = -1;
-
-  // TODO: no hard-coding
-  uint8_t dstAddr[] = {
-    0x08, 0x00, 0x27, 0xc1, 0x5b, 0x93
-  };
-
-  uint32_t totalLen = sizeof(IPv4Header) + length;
-
-  // alloc the buffer with length of (data + IPv4header)
-  uint8_t *datagram = reinterpret_cast<uint8_t*>(virtmem_ctrl->Alloc(sizeof(uint8_t) * (sizeof(IPv4Header) + length))); 
-
-  // construct IPv4 header
-  IPv4Header header;
-  header.ipHdrLen_ver = (sizeof(IPv4Header) >> 2) | (kIPVersion << 4);
-  header.type = kPktPriority | kPktDelay | kPktThroughput | kPktReliability;
-  header.totalLen = htons(totalLen);
-  header.id = _idAutoIncrement++;
+int32_t IPCtrl::GenerateHeader(uint8_t *buffer, uint32_t length, uint8_t type, uint32_t saddr, uint32_t daddr) {
+  IPv4Header * volatile header = reinterpret_cast<IPv4Header*>(buffer);
+  header->ipHdrLen_ver = (sizeof(IPv4Header) >> 2) | (kIPVersion << 4);
+  header->type = kPktPriority | kPktDelay | kPktThroughput | kPktReliability;
+  header->totalLen = htons(sizeof(IPv4Header) + length);
+  header->id = _idAutoIncrement++;
   // TODO: fragment on IP layer
   uint16_t frag = 0;
-  header.fragOffsetHi_flag = ((frag >> 8) & 0x1f) | kFlagNoFragment;
-  header.fragOffsetLo = (frag & 0xff);
-  header.ttl = kTimeToLive;
-  header.protoId = protocolType;
-  header.checksum = 0;
-  header.srcAddr = htonl(kSourceIPAddress);
-  header.dstAddr = htonl(dstIPAddr);
+  header->fragOffsetHi_flag = ((frag >> 8) & 0x1f) | kFlagNoFragment;
+  header->fragOffsetLo = (frag & 0xff);
+  header->ttl = kTimeToLive;
+  header->protoId = type;
+  header->checksum = 0;
+  header->saddr = htonl(saddr);
+  header->daddr = htonl(daddr);
+  header->checksum = checkSum(reinterpret_cast<uint8_t*>(header), sizeof(IPv4Header));
 
-  header.checksum = checkSum(reinterpret_cast<uint8_t*>(&header), sizeof(IPv4Header));
+  return 0;
+}
 
-  // construct datagram
-  memcpy(datagram, reinterpret_cast<uint8_t*>(&header), sizeof(IPv4Header));
-  memcpy(datagram + sizeof(IPv4Header), data, length);
-  
-  // call EthCtrl::TransmitData
-  result = _l2Ctrl->TransmitData(datagram, sizeof(IPv4Header) + length, dstAddr);
-
-  virtmem_ctrl->Free(reinterpret_cast<virt_addr>(datagram));
-
-  return result;
+bool IPCtrl::FilterPacket(uint8_t *packet, uint8_t type, uint32_t saddr, uint32_t daddr) {
+  IPv4Header * volatile header = reinterpret_cast<IPv4Header*>(packet);
+  return (header->protoId == type)
+      && (header->saddr == saddr)
+      && (header->daddr == daddr);
 }
 
 uint16_t IPCtrl::checkSum(uint8_t *buf, uint32_t size) {
@@ -119,8 +68,4 @@ uint16_t IPCtrl::checkSum(uint8_t *buf, uint32_t size) {
   sum = (sum & 0xffff) + (sum >> 16);	/* once again */
   
   return ~sum;
-}
-
-void IPCtrl::RegisterL4Ctrl(const uint8_t protocolType, L4Ctrl *l4Ctrl) {
-  _l4CtrlTable[protocolType] = l4Ctrl;
 }

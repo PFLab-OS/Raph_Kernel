@@ -31,9 +31,9 @@
 
 struct TCPHeader {
   // source port
-  uint16_t srcPort;
+  uint16_t sport;
   // destination port
-  uint16_t dstPort;
+  uint16_t dport;
   // sequence number
   uint32_t seqNumber;
   // acknowledge number
@@ -51,13 +51,9 @@ struct TCPHeader {
 } __attribute__ ((packed));
 
 class TCPCtrl : public L4Ctrl {
-  IPCtrl *_ipCtrl;
-  uint32_t _dstIPAddr;
-  uint32_t _dstPort;
   uint8_t _tcpSessionType;
   uint32_t _sequence;
   uint32_t _ack;
-  uint32_t _port;  // source port
 
   static const uint8_t kProtoTCP          = 6;
   static const uint32_t kBasicBufsize     = 0x10;
@@ -74,28 +70,17 @@ class TCPCtrl : public L4Ctrl {
   static const uint8_t kFlagACK           = 1 << 4;
   static const uint8_t kFlagURG           = 1 << 5;
 
-  int32_t ReceiveBasic(uint8_t session, uint32_t port);
-  int32_t TransmitBasic(uint8_t session,
-                        uint32_t dstIPAddr,
-                        uint32_t dstPort);
   inline void InitSequence() { _sequence = rand(); }
 
 public:
-  TCPCtrl(IPCtrl *ipCtrl)
-    : _ipCtrl(ipCtrl), _dstIPAddr(0), _dstPort(0),
-      _tcpSessionType(kFlagRST), _sequence(0), _ack(0),
-      _port(0) {
-    _ipCtrl->RegisterL4Ctrl(kProtoTCP, this);
-  }
-  virtual int32_t Receive(uint8_t *data, uint32_t size, uint32_t port);
-  virtual int32_t Transmit(const uint8_t *data,
-                           uint32_t length,
-                           uint32_t dstIPAddr,
-                           uint32_t dstPort,
-                           uint32_t srcPort);
-  int32_t Listen(uint32_t port = kPortHTTP);
-  int32_t Connect(uint32_t dstIPAddr, uint32_t dstPort, uint32_t srcPort);
-  int32_t Close();
+  TCPCtrl() : _tcpSessionType(kFlagRST), _sequence(0), _ack(0) {}
+  virtual int32_t GenerateHeader(uint8_t *header,
+                                 uint32_t length,
+                                 uint16_t sport,
+                                 uint16_t dport);
+  virtual bool FilterPacket(uint8_t *packet,
+                            uint16_t sport,
+                            uint16_t dport);
 };
 
 #endif // __RAPH_KERNEL_NET_TCP_H__

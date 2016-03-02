@@ -70,4 +70,16 @@ static void *memset(void *dest, uint8_t c, size_t n) {
   return dest;
 }
 
+static int32_t memcmp(const void *s1, const void *s2, size_t n) {
+  int32_t v = 0;
+  uint8_t *p1 = const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(s1));
+  uint8_t *p2 = const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(s2));
+
+  while(n-- > 0 && v == 0) {
+    v = *(p1++) - *(p2++);
+  }
+
+  return v;
+}
+
 #endif // __RAPH_LIB_STRING_H__

@@ -26,54 +26,17 @@
 #include "../mem/virtmem.h"
 #include "../global.h"
 
-int32_t EthCtrl::ReceiveData(uint8_t *data, uint32_t size, uint8_t *protocolType, uint8_t *srcAddr) {
-  // alloc buffer
-  int32_t bufsize = sizeof(EthHeader) + size;
-  uint8_t *buffer = reinterpret_cast<uint8_t*>(virtmem_ctrl->Alloc(sizeof(uint8_t) * bufsize));
-
-  int32_t result = _dev->ReceivePacket(buffer, bufsize);
-
-  if(result != -1) {
-    // success
-    int32_t length = bufsize < result ? bufsize : result;
-    kassert(length - sizeof(EthHeader) <= size);
-    memcpy(data, buffer + sizeof(EthHeader), length - sizeof(EthHeader));
-    if(protocolType)
-      *protocolType = (buffer[kProtocolTypeOffset] << 8) | buffer[kProtocolTypeOffset + 1];
-    if(srcAddr)
-      memcpy(srcAddr, buffer+kSrcAddrOffset, 6);
-    virtmem_ctrl->Free(reinterpret_cast<virt_addr>(buffer));
-    return result - sizeof(EthHeader);
-  } else {
-    virtmem_ctrl->Free(reinterpret_cast<virt_addr>(buffer));
-    return result;
-  }
+int32_t EthCtrl::GenerateHeader(uint8_t *buffer, uint8_t *saddr, uint8_t *daddr, uint16_t type) {
+  EthHeader * volatile header = reinterpret_cast<EthHeader*>(buffer);
+  memcpy(header->daddr, daddr, 6);
+  memcpy(header->saddr, saddr, 6);
+  header->type = htons(type);
+  return 0;
 }
 
-int32_t EthCtrl::TransmitData(const uint8_t *data, uint32_t length, uint8_t *destAddr) {
-  int32_t result = -1;
-
-  // alloc datagram
-  uint8_t *datagram = reinterpret_cast<uint8_t*>(virtmem_ctrl->Alloc(sizeof(uint8_t) * (sizeof(EthHeader) + length))); 
-
-  // construct header
-  EthHeader header;
-  // destination address
-  memcpy(&header, destAddr, 6);
-  // source address
-  _dev->GetEthAddr(reinterpret_cast<uint8_t*>(&header) + 6);
-  // TODO: switch L3 type
-  header.type      = htons(kProtocolARP);
-
-  // construct datagram
-  memcpy(datagram, reinterpret_cast<uint8_t*>(&header), sizeof(EthHeader));
-  memcpy(datagram + sizeof(EthHeader), data, length);
-
-  // call device datagram transmitter
-  kassert(_dev != nullptr);
-  _dev->TransmitPacket(datagram, sizeof(EthHeader) + length);
-
-  virtmem_ctrl->Free(reinterpret_cast<virt_addr>(datagram));
-
-  return result;
+bool EthCtrl::FilterPacket(uint8_t *packet, uint8_t *saddr, uint8_t *daddr, uint16_t type) {
+  EthHeader * volatile header = reinterpret_cast<EthHeader*>(packet);
+  return (!daddr || !memcmp(header->daddr, daddr, 6))
+      && (!saddr || !memcmp(header->saddr, saddr, 6))
+      && (ntohs(header->type) == type);
 }

@@ -49,9 +49,9 @@ struct IPv4Header {
   // Header Checksum (NOTE: only on header)
   uint16_t checksum;
   // Source Address
-  uint32_t srcAddr;
+  uint32_t saddr;
   // Destination Address
-  uint32_t dstAddr;
+  uint32_t daddr;
 } __attribute__ ((packed));
 
 class IPCtrl {
@@ -69,24 +69,21 @@ class IPCtrl {
 
   const uint32_t kSourceIPAddress = 0x0a00020f;
 
-  L2Ctrl *_l2Ctrl;
-  L4Ctrl *_l4CtrlTable[kL4CtrlTableNumber] = {nullptr};
   uint16_t _idAutoIncrement;
 
   uint16_t checkSum(uint8_t *buf, uint32_t size);
 
 public:
-  IPCtrl(L2Ctrl *l2Ctrl) : _l2Ctrl(l2Ctrl), _idAutoIncrement(0) {}
-  virtual int32_t ReceiveData(uint8_t *data,
-                              uint32_t size,
-                              uint8_t protocolType,
-                              uint32_t *oppIPAddr = nullptr);
-  virtual int32_t TransmitData(const uint8_t *data,
-                               uint32_t length,
-                               uint8_t protocolType,
-                               uint32_t dstIPAddr);
-
-  void RegisterL4Ctrl(const uint8_t protocolType, L4Ctrl *l4Ctrl);
+  IPCtrl() : _idAutoIncrement(0) {}
+  virtual int32_t GenerateHeader(uint8_t *buffer,
+                                 uint32_t length,
+                                 uint8_t type,
+                                 uint32_t saddr,
+                                 uint32_t daddr);
+  virtual bool FilterPacket(uint8_t *packet,
+                            uint8_t type,
+                            uint32_t saddr,
+                            uint32_t daddr);
 };
 
 #endif // __RAPH_KERNEL_NET_IP_H__

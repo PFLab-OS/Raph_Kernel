@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2016 Raphine Project
+ * Copyright (c) 2016 Project Raphine
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -20,23 +20,14 @@
  * 
  */
 
-#include "udp.h"
-#include "../raph.h"
-#include "../mem/physmem.h"
-#include "../mem/virtmem.h"
-#include "../global.h"
+#ifndef __RAPH_KERNEL_NET_NETCTRL_H__
+#define __RAPH_KERNEL_NET_NETCTRL_H__
 
-int32_t UDPCtrl::GenerateHeader(uint8_t *buffer, uint32_t length, uint16_t sport, uint16_t dport) {
-  UDPHeader * volatile header = reinterpret_cast<UDPHeader*>(buffer);
-  header->sport    = htons(sport);
-  header->dport    = htons(dport);
-  header->len      = htons(sizeof(UDPHeader) + length);
-  header->checksum = 0;
-  return 0;
-}
+// L2/L3/L4Ctrlsの初期化
+// mainから呼びだす
+// mainの初期化シーケンスからネットワークコントローラを隠蔽する目的
+// -> ネットワークコントローラはsocket経由でアクセスする
+void InitNetCtrl();
+void DismissNetCtrl();
 
-bool UDPCtrl::FilterPacket(uint8_t *packet, uint16_t sport, uint16_t dport) {
-  UDPHeader * volatile header = reinterpret_cast<UDPHeader*>(packet);
-  return (ntohs(header->sport) == sport)
-      && (ntohs(header->dport) == dport);
-}
+#endif // __RAPH_KERNEL_NET_NETCTRL_H__

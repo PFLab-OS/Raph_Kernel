@@ -31,13 +31,9 @@
 
 struct EthHeader {
   // destination MAC address
-  uint16_t dstAddrHi;
-  uint16_t dstAddrMd;
-  uint16_t dstAddrLo;
+  uint8_t daddr[6];
   // source MAC address
-  uint16_t srcAddrHi;
-  uint16_t srcAddrMd;
-  uint16_t srcAddrLo;
+  uint8_t saddr[6];
   // protocol type
   uint16_t type;
 };
@@ -45,27 +41,27 @@ struct EthHeader {
 class EthCtrl : public L2Ctrl {
   NetDev *_dev = nullptr;
 
-  static const uint16_t kProtocolIPv4 = 0x0800;
-  static const uint16_t kProtocolARP  = 0x0806;
-
   static const uint32_t kDstAddrOffset      = 0;
   static const uint32_t kSrcAddrOffset      = 6;
   static const uint32_t kProtocolTypeOffset = 12;
 
 public:
   EthCtrl() {}
-  virtual bool OpenSocket();
-  // 事前に6バイト確保する事
-  void GetEthAddr(uint8_t *data) {
-    _dev->GetEthAddr(data);
-  }
-  virtual int32_t ReceiveData(uint8_t *data,
-                              uint32_t size,
-                              uint8_t *protocolType = nullptr,
-                              uint8_t *srcAddr = nullptr);
-  virtual int32_t TransmitData(const uint8_t *data,
-                               uint32_t length,
-                               uint8_t *dstAddr);
+
+  static const uint32_t kHeaderSize = sizeof(EthHeader);
+
+  // protocol type
+  static const uint16_t kProtocolIPv4 = 0x0800;
+  static const uint16_t kProtocolARP  = 0x0806;
+
+  virtual int32_t GenerateHeader(uint8_t *buffer,
+                                 uint8_t *saddr,
+                                 uint8_t *daddr,
+                                 uint16_t type);
+  virtual bool FilterPacket(uint8_t *packet,
+                            uint8_t *saddr,
+                            uint8_t *daddr,
+                            uint16_t type);
 };
 
 #endif // __RAPH_KERNEL_NET_ETH_H__

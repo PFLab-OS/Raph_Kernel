@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2016 Raphine Project
+ * Copyright (c) 2016 Project Raphine
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -20,23 +20,33 @@
  * 
  */
 
-#include "udp.h"
-#include "../raph.h"
-#include "../mem/physmem.h"
-#include "../mem/virtmem.h"
-#include "../global.h"
+#ifndef __RAPH_KERNEL_NET_GLOBAL_H__
+#define __RAPH_KERNEL_NET_GLOBAL_H__
 
-int32_t UDPCtrl::GenerateHeader(uint8_t *buffer, uint32_t length, uint16_t sport, uint16_t dport) {
-  UDPHeader * volatile header = reinterpret_cast<UDPHeader*>(buffer);
-  header->sport    = htons(sport);
-  header->dport    = htons(dport);
-  header->len      = htons(sizeof(UDPHeader) + length);
-  header->checksum = 0;
-  return 0;
-}
+// hide network controllers
+// be careful to define __NETCTRL__ macro
+#ifdef __NETCTRL__
 
-bool UDPCtrl::FilterPacket(uint8_t *packet, uint16_t sport, uint16_t dport) {
-  UDPHeader * volatile header = reinterpret_cast<UDPHeader*>(packet);
-  return (ntohs(header->sport) == sport)
-      && (ntohs(header->dport) == dport);
-}
+// Network Devices
+class NetDevCtrl;
+extern NetDevCtrl *netdev_ctrl;
+
+// L2Ctrl
+class EthCtrl;
+extern EthCtrl *eth_ctrl;
+
+// L3Ctrl
+class IPCtrl;
+extern IPCtrl *ip_ctrl;
+
+// L4Ctrl
+class UDPCtrl;
+class TCPCtrl;
+extern UDPCtrl *udp_ctrl;
+extern TCPCtrl *tcp_ctrl;
+
+#else
+#error "cannot include <net/global.h> unless __NETCTRL__ macro is defined"
+#endif
+
+#endif // __RAPH_KERNEL_NET_GLOBAL_H__
