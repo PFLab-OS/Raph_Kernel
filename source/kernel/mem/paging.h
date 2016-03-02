@@ -95,6 +95,7 @@ class PagingCtrl {
       if (!Map4KPageToVirtAddr(vaddr, tpaddr, pst_flag, page_flag)) {
         return false;
       }
+      vaddr += kPageSize;
       addr += kPageSize;
       size -= kPageSize;
     }

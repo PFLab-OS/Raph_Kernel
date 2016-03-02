@@ -97,7 +97,7 @@ public:
   // from Polling
   void Handle() override;
   // init sequence of e1000 device (see pcie-gbe-controllers 14.3)
-  void Setup(uint16_t did);
+  virtual void Setup(uint16_t did) = 0;
   // see pcie-gbe-controllers 3.2
   int32_t ReceivePacket(uint8_t *buffer, uint32_t size);
   // see pcie-gbe-controllers 3.3, 3.4
@@ -110,13 +110,18 @@ public:
   // Memory Mapped I/O Base Address
   volatile uint32_t *_mmioAddr = nullptr;
   // software reset of e1000 device
-  void Reset();
+  void Reset() {
+    // see 14.9
+    // see 11.2 (ich8-gbe-controllers)
+    _mmioAddr[kRegCtrl] |= kRegCtrlRstFlag;
+  }
+  void WritePhy(uint16_t addr, uint16_t value);
+  uint16_t ReadPhy(uint16_t addr);
   // initialize receiver
   void SetupRx();
   // initialize transmitter
   void SetupTx();
   virtual uint16_t NvmRead(uint16_t addr) = 0;
-  virtual void GeneralConfig() = 0;
 
   // packet transmit/receive test
   uint32_t Crc32b(uint8_t *message);
@@ -151,6 +156,7 @@ public:
   static const int kRegCtrl = 0x00000 / sizeof(uint32_t);
   static const int kRegEerd = 0x00014 / sizeof(uint32_t);
   static const int kRegCtrlExt = 0x00018 / sizeof(uint32_t);
+  static const int kRegMdic = 0x00020 / sizeof(uint32_t);
   static const int kRegIms = 0x000d0 / sizeof(uint32_t);
   static const int kRegImc = 0x000d8 / sizeof(uint32_t);
   static const int kRegRctl = 0x00100 / sizeof(uint32_t);
@@ -177,11 +183,23 @@ public:
   static const uint32_t kRegCtrlSluFlag = 1 << 6;
   static const uint32_t kRegCtrlIlosFlag = 1 << 7; // see Table 5-4
   static const uint32_t kRegCtrlRstFlag = 1 << 26;
+  static const uint32_t kRegCtrlRfceFlag = 1 << 27;
+  static const uint32_t kRegCtrlTfceFlag = 1 << 28;
   static const uint32_t kRegCtrlVmeFlag = 1 << 30;
   static const uint32_t kRegCtrlPhyRstFlag = 1 << 31;
 
   // CTRL_EXT Register Bit Description (see pcie-gbe-controllers Table 13-9)
   static const uint32_t kRegCtrlExtLinkModeMask = 3 << 22;
+
+  // MDI Control Register Bit Description (see pcie-gbe-controllers Table 13-12)
+  static const uint32_t kRegMdicMaskData = 0xFFFF;
+  static const uint32_t kRegMdicOffsetData = 0;
+  static const uint32_t kRegMdicOffsetAddr = 16;  // this driver treats addr as set of phyaddr and regaddr
+  static const uint32_t kRegMdicValueOpcWrite = 1 << 26;
+  static const uint32_t kRegMdicValueOpcRead = 2 << 26;
+  static const uint32_t kRegMdicFlagReady = 1 << 28;
+  static const uint32_t kRegMdicFlagInterrupt = 1 << 29;
+  static const uint32_t kRegMdicFlagErr = 1 << 30;
 
   // IMS Register Bit Description (see pcie-gbe-controllers Table 13-101)
   static const uint32_t kRegImsLscFlag = 1 << 2;
@@ -224,9 +242,7 @@ class DevGbeI8254 : public E1000 {
   }
   // read data from EEPROM
   uint16_t EepromRead(uint16_t addr);
-  virtual void GeneralConfig() override {
-    _mmioAddr[kRegCtrl] &= (~kRegCtrlPhyRstFlag | ~kRegCtrlVmeFlag);
-  }
+  virtual void Setup(uint16_t did) override;
 };
 
 class DevGbeI8257 : public E1000 {
@@ -238,12 +254,7 @@ class DevGbeI8257 : public E1000 {
   }
   // read data from EEPROM
   uint16_t EepromRead(uint16_t addr);
-  virtual void GeneralConfig() override {
-      _mmioAddr[kRegCtrlExt] &= (~kRegCtrlExtLinkModeMask);
-      _mmioAddr[kRegCtrl] &= (~kRegCtrlIlosFlag);
-      _mmioAddr[kRegTxdctl] |= (1 << 22);
-      _mmioAddr[kRegTxdctl1] |= (1 << 22);
-  }
+  virtual void Setup(uint16_t did) override;
 };
 
 class DevGbeIch8 : public E1000 {
@@ -255,23 +266,20 @@ class DevGbeIch8 : public E1000 {
   }
   // read data from Flash
   uint16_t FlashRead(uint16_t addr);
-  virtual void GeneralConfig() override {
-      _mmioAddr[kRegCtrlExt] &= (~kRegCtrlExtLinkModeMask);
-      _mmioAddr[kRegCtrl] &= (~kRegCtrlIlosFlag);
-      _mmioAddr[kRegTxdctl] |= (1 << 22);
-      _mmioAddr[kRegTxdctl1] |= (1 << 22);
+  virtual void Setup(uint16_t did) override;
 
-      phys_addr bar = this->ReadReg<uint32_t>(PCICtrl::kBaseAddressReg1);
-      kassert((bar & 0xF) == 0);
-      phys_addr mmio_addr = bar & 0xFFFFFFF0;
-      _flashAddr = reinterpret_cast<uint32_t*>(p2v(mmio_addr));
-      _flashAddr16 = reinterpret_cast<uint16_t*>(p2v(mmio_addr));
-  }
   // spi flash mmio
   volatile uint32_t *_flashAddr = nullptr;
   volatile uint16_t *_flashAddr16 = nullptr;
 
-  // GbE SPI Flash Program Registers (see 8 series chipset pch datasheet Table 21-1)
+  // Ethernet Controller Register Summary (see ich8-gbe-controllers Table 55)
+  static const int kRegPba = 0x01000 / sizeof(uint32_t);
+  static const int kRegPbs = 0x01008 / sizeof(uint32_t);
+
+  static const uint32_t kRegPbaValue8K = 0x0008;
+  static const uint32_t kRegPbsValue16K = 0x0010;
+
+  // GbE SPI Flash Program Registers (see ich8-gbe-controllers Table 21-1)
   static const int kRegGlfpr = 0x00 / sizeof(uint32_t);
   static const int kReg16Hsfs = 0x04 / sizeof(uint16_t);
   static const int kReg16Hsfc = 0x06 / sizeof(uint16_t);
@@ -291,6 +299,23 @@ class DevGbeIch8 : public E1000 {
   static const uint16_t kReg16HsfcFlagFdbc16 = 1 << 8; // 2 byte
   static const uint16_t kReg16HsfcFlagFcycleRead = 0 << 1;
   static const uint16_t kReg16HsfcFlagFgo = 1 << 0;
+
+  // PHY Register Summary (see I217 datasheet 8.4)
+  // !important! this driver treats addr as set of phyaddr and regaddr
+  static const uint16_t kPhyRegCtrl =  (2 << 5) | 0;
+  static const uint16_t kPhyRegAutoNegAdvertisement =  (2 << 5) | 4;
+  static const uint16_t kPhyRegAutoNegLinkPartenerAbility =  (2 << 5) | 5;
+
+  // PHY Control Register Bit Description (see I217 datasheet 8.5 Table 1)
+  static const uint16_t kPhyRegCtrlFlagReset = 1 << 15;
+
+  // PHY Auto Negotiation Advertisement Register Bit Description (see I217 datasheet 8.5 Table 5)
+  static const uint16_t kPhyRegAutoNegAdvertisementFlagPauseCapable = 1 << 10;
+  static const uint16_t kPhyRegAutoNegAdvertisementFlagAsymmetricPause = 1 << 11;
+
+  // PHY Auto Negotiation Link Partner Ability Register Bit Description (see I217 datasheet 8.5 Table 6)
+  static const uint16_t kPhyRegAutoNegLinkPartnerAbilityFlagPauseCapable = 1 << 10;
+  static const uint16_t kPhyRegAutoNegLinkPartnerAbilityFlagAsymmetricPause = 1 << 11;
 };
 
 
