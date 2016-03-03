@@ -134,7 +134,7 @@ extern "C" int main() {
   if(socket.Open() < 0) {
     gtty->Printf("s", "cannot open socket\n");
   } else {
-    socket.TransmitPacket(ARPSocket::kOpARPRequest);
+    socket.TransmitPacket(ARPSocket::kOpARPRequest, 0x0a000203);
   }
 
 //  uint8_t ipv4addr[] = {

@@ -35,6 +35,9 @@ extern NetDevCtrl *netdev_ctrl;
 class EthCtrl;
 extern EthCtrl *eth_ctrl;
 
+class ARPCtrl;
+extern ARPCtrl *arp_ctrl;
+
 // L3Ctrl
 class IPCtrl;
 extern IPCtrl *ip_ctrl;

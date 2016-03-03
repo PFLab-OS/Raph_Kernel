@@ -46,4 +46,25 @@ struct ARPPacket {
   uint32_t protoDaddr;
 } __attribute__((packed));
 
+class ARPCtrl {
+  static const uint8_t kBcastMACAddr[6];
+
+public:
+  ARPCtrl() {}
+  virtual int32_t GeneratePacket(uint8_t *buffer,
+                                 uint16_t op,
+                                 uint8_t *smacaddr,
+                                 uint32_t sipaddr,
+                                 uint8_t *dmacaddr,
+                                 uint32_t dipaddr);
+  virtual bool FilterPacket(uint8_t *packet,
+                            uint16_t op,
+                            uint8_t *smacaddr,
+                            uint32_t sipaddr,
+                            uint8_t *dmacaddr,
+                            uint32_t dipaddr);
+
+  static const uint16_t kHWEthernet = 0x0001;
+  static const uint16_t kProtocolIPv4 = 0x0800;
+};
 #endif // __RAPH_KERNEL_NET_ARP_H__

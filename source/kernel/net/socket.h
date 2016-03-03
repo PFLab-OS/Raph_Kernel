@@ -50,11 +50,9 @@ public:
 // ARP Socket
 class ARPSocket : public NetSocket {
 public:
-  virtual int32_t TransmitPacket(uint16_t type);
+  virtual int32_t TransmitPacket(uint16_t type, uint32_t tpa, uint8_t *tha = nullptr);
   virtual int32_t ReceivePacket(uint16_t type);
 
-  static const uint16_t kHWEthernet = 0x0001;
-  static const uint16_t kProtocolIPv4 = 0x0800;
   static const uint16_t kOpARPRequest = 0x0001;
   static const uint16_t kOpARPReply = 0x0002;
 };

@@ -106,31 +106,38 @@ int32_t Socket::ReceivePacket(uint8_t *data, uint32_t length) {
   // finalization
   virtmem_ctrl->Free(reinterpret_cast<virt_addr>(packet));
 
-  return -1;
+  return len;
 }
 
-int32_t ARPSocket::TransmitPacket(uint16_t type) {
+int32_t ARPSocket::TransmitPacket(uint16_t type, uint32_t tpa, uint8_t *tha) {
+  uint32_t ipSaddr = 0x0a00020f; // TODO:
+  uint32_t ipDaddr = tpa;
+  uint8_t ethSaddr[6];
+  uint8_t ethDaddr[6];
+  _dev->GetEthAddr(ethSaddr);
+
+  switch(type) {
+    case kOpARPRequest:
+      memset(ethDaddr, 0xff, 6); // broadcast
+      break;
+    case kOpARPReply:
+      memcpy(ethDaddr, tha, 6);
+      break;
+    default:
+      // unknown ARP operation
+      return -1;
+  }
+
   // alloc buffer
   uint32_t len = sizeof(EthHeader) + sizeof(ARPPacket);
   uint8_t *packet = reinterpret_cast<uint8_t*>(virtmem_ctrl->Alloc(len));
 
+
   // ARP header
   uint32_t offsetARP = sizeof(EthHeader);
-  ARPPacket * volatile arp = reinterpret_cast<ARPPacket*>(packet + offsetARP);
-  arp->hwtype = htons(kHWEthernet);
-  arp->protocol = htons(kProtocolIPv4);
-  arp->hlen = 6;
-  arp->plen = 4;
-  arp->op = htons(type);
-  _dev->GetEthAddr(arp->hwSaddr);
-  arp->protoSaddr = htonl(0x0a00020f); // TODO:
-  memset(arp->hwDaddr, 0, 6);
-  arp->protoDaddr = htonl(0x0a000203); // TODO:
+  arp_ctrl->GeneratePacket(packet + offsetARP, type, ethSaddr, ipSaddr, ethDaddr, ipDaddr);
 
   // Ethernet header
-  uint8_t ethSaddr[6];
-  uint8_t ethDaddr[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff}; // TODO:
-  _dev->GetEthAddr(ethSaddr);
   eth_ctrl->GenerateHeader(packet, ethSaddr, ethDaddr, EthCtrl::kProtocolARP);
 
   // transmit
@@ -143,5 +150,30 @@ int32_t ARPSocket::TransmitPacket(uint16_t type) {
 }
 
 int32_t ARPSocket::ReceivePacket(uint16_t type) {
-  return -1;
+  // alloc buffer
+  uint32_t length = sizeof(EthHeader) + sizeof(ARPPacket);
+  uint8_t *packet = reinterpret_cast<uint8_t*>(virtmem_ctrl->Alloc(length));
+  uint8_t ethDaddr[6];
+  _dev->GetEthAddr(ethDaddr);
+
+  do {
+    // receive
+    if(_dev->ReceivePacket(packet, length) < 0) continue;
+
+    // filter Ethernet address
+	if(!eth_ctrl->FilterPacket(packet, nullptr, ethDaddr, EthCtrl::kProtocolIPv4)) continue;
+
+    // filter IP address
+    uint32_t offsetARP = sizeof(EthHeader);
+    if(!arp_ctrl->FilterPacket(packet + offsetARP, type, nullptr, 0, ethDaddr, 0)) continue;
+
+    break;
+  } while(1);
+
+  // handle received ARP request/reply
+
+  // finalization
+  virtmem_ctrl->Free(reinterpret_cast<virt_addr>(packet));
+
+  return length;
 }
