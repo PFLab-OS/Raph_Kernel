@@ -55,7 +55,6 @@ class TCPCtrl : public L4Ctrl {
   uint32_t _sequence;
   uint32_t _ack;
 
-  static const uint8_t kProtoTCP          = 6;
   static const uint32_t kBasicBufsize     = 0x10;
   static const uint8_t kSrcPortOffset     = 0;
   static const uint8_t kDstPortOffset     = 2;

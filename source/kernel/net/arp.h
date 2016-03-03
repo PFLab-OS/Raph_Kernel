@@ -20,36 +20,30 @@
  * 
  */
 
-#ifndef __RAPH_KERNEL_NET_UDP_H__
-#define __RAPH_KERNEL_NET_UDP_H__
+#ifndef __RAPH_KERNEL_NET_ARP_H__
+#define __RAPH_KERNEL_NET_ARP_H__
 
 #include <stdint.h>
-#include "layer.h"
-#include "ip.h"
 
-struct UDPHeader {
-  // source port
-  uint16_t sport;
-  // destination port
-  uint16_t dport;
-  // length (header + datagram)
-  uint16_t len;
-  // checksum
-  uint16_t checksum;
-} __attribute__ ((packed));
+struct ARPPacket {
+  // hardware type
+  uint16_t hwtype;
+  // protocol type
+  uint16_t protocol;
+  // hardware length
+  uint8_t hlen;
+  // protocol length
+  uint8_t plen;
+  // operation
+  uint16_t op;
+  // source hardware address
+  uint8_t hwSaddr[6];
+  // source protocol address
+  uint32_t protoSaddr;
+  // destination hardware address
+  uint8_t hwDaddr[6];
+  // destination protocol address
+  uint32_t protoDaddr;
+} __attribute__((packed));
 
-class UDPCtrl : public L4Ctrl {
-  static const uint32_t kDstPortOffset = 2;
-
-public:
-  UDPCtrl() {}
-  virtual int32_t GenerateHeader(uint8_t *buffer,
-                                 uint32_t length,
-                                 uint16_t sport,
-                                 uint16_t dport);
-  virtual bool FilterPacket(uint8_t *packet,
-                            uint16_t sport,
-                            uint16_t dport);
-};
-
-#endif // __RAPH_KERNEL_NET_UDP_H__
+#endif // __RAPH_KERNEL_NET_ARP_H__

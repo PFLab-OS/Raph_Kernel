@@ -84,6 +84,9 @@ public:
                             uint8_t type,
                             uint32_t saddr,
                             uint32_t daddr);
+
+  static const uint8_t kProtocolTCP       = 6;
+  static const uint8_t kProtocolUDP       = 17;
 };
 
 #endif // __RAPH_KERNEL_NET_IP_H__

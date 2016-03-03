@@ -50,8 +50,8 @@ int32_t IPCtrl::GenerateHeader(uint8_t *buffer, uint32_t length, uint8_t type, u
 bool IPCtrl::FilterPacket(uint8_t *packet, uint8_t type, uint32_t saddr, uint32_t daddr) {
   IPv4Header * volatile header = reinterpret_cast<IPv4Header*>(packet);
   return (header->protoId == type)
-      && (header->saddr == saddr)
-      && (header->daddr == daddr);
+      && (!saddr || header->saddr == saddr)
+      && (!daddr || header->daddr == daddr);
 }
 
 uint16_t IPCtrl::checkSum(uint8_t *buf, uint32_t size) {

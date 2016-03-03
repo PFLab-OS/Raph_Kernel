@@ -20,6 +20,7 @@
  * 
  */
 
+#include "../raph.h"
 #include "../mem/physmem.h"
 #include "../mem/virtmem.h"
 #include "../dev/netdev.h"
@@ -51,6 +52,11 @@ void InitNetCtrl() {
 }
 
 void DismissNetCtrl() {
+  netdev_ctrl->~NetDevCtrl();
+  eth_ctrl->~EthCtrl();
+  ip_ctrl->~IPCtrl();
+  udp_ctrl->~UDPCtrl();
+  tcp_ctrl->~TCPCtrl();
   virtmem_ctrl->Free(reinterpret_cast<virt_addr>(netdev_ctrl));
   virtmem_ctrl->Free(reinterpret_cast<virt_addr>(eth_ctrl));
   virtmem_ctrl->Free(reinterpret_cast<virt_addr>(ip_ctrl));

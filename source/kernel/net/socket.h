@@ -26,16 +26,37 @@
 #include <stdint.h>
 #include "../dev/netdev.h"
 
-// TCP/IP Socket
-class Socket {
+class NetSocket {
 protected:
   NetDev *_dev = nullptr;
 
 public:
-  Socket() {}
   int32_t Open();
-  virtual int32_t ReceivePacket(uint8_t *data, uint32_t length);
+};
+
+// TCP/IP Socket
+class Socket : public NetSocket {
+  uint32_t _daddr = 0x0a00020f;
+  uint16_t _dport = 80;
+
+public:
+  Socket() {}
+  void SetAddr(uint32_t addr) { _daddr = addr; }
+  void SetPort(uint16_t port) { _dport = port; }
   virtual int32_t TransmitPacket(const uint8_t *data, uint32_t length);
+  virtual int32_t ReceivePacket(uint8_t *data, uint32_t length);
+};
+
+// ARP Socket
+class ARPSocket : public NetSocket {
+public:
+  virtual int32_t TransmitPacket(uint16_t type);
+  virtual int32_t ReceivePacket(uint16_t type);
+
+  static const uint16_t kHWEthernet = 0x0001;
+  static const uint16_t kProtocolIPv4 = 0x0800;
+  static const uint16_t kOpARPRequest = 0x0001;
+  static const uint16_t kOpARPReply = 0x0002;
 };
 
 #endif // __RAPH_KERNEL_NET_SOCKET_H__

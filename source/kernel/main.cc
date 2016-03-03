@@ -39,6 +39,7 @@
 #include "dev/pci.h"
 
 #include "net/netctrl.h"
+#include "net/socket.h"
 
 SpinLockCtrl *spinlock_ctrl;
 MultibootCtrl *multiboot_ctrl;
@@ -128,6 +129,13 @@ extern "C" int main() {
   kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr)));
   kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 3) + 1));
   kassert(!paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - 4096 * 3));
+
+  ARPSocket socket;
+  if(socket.Open() < 0) {
+    gtty->Printf("s", "cannot open socket\n");
+  } else {
+    socket.TransmitPacket(ARPSocket::kOpARPRequest);
+  }
 
 //  uint8_t ipv4addr[] = {
 //    0x0a, 0x00, 0x02, 0x0f

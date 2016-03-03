@@ -128,7 +128,6 @@ int32_t E1000::TransmitPacket(const uint8_t *packet, uint32_t length) {
 
 
       gtty->Printf(
-                   "s", "UDP sent;\n",
                    "x", packet[0], "s", " ", "x", packet[1], "s", " ",
                    "x", packet[2], "s", " ", "x", packet[3], "s", " ",
                    "x", packet[4], "s", " ", "x", packet[5], "s", " ",
@@ -177,9 +176,18 @@ void E1000::Reset() {
 void E1000::SetupRx() {
   // see 14.6
   // program the Receive address register(s) per the station address
-  _mmioAddr[kRegRal0] = this->EepromRead(kEepromEthAddrLo);
-  _mmioAddr[kRegRal0] |= this->EepromRead(kEepromEthAddrMd) << 16;
-  _mmioAddr[kRegRah0] = this->EepromRead(kEepromEthAddrHi);
+  uint16_t ethAddrLo = this->EepromRead(kEepromEthAddrLo); 
+  uint16_t ethAddrMd = this->EepromRead(kEepromEthAddrMd); 
+  uint16_t ethAddrHi = this->EepromRead(kEepromEthAddrHi); 
+  _ethAddr[0] = ethAddrHi & 0xff;
+  _ethAddr[1] = ethAddrHi >> 8;
+  _ethAddr[2] = ethAddrMd & 0xff;
+  _ethAddr[3] = ethAddrMd >> 8;
+  _ethAddr[4] = ethAddrLo & 0xff;
+  _ethAddr[5] = ethAddrLo >> 8;
+  _mmioAddr[kRegRal0] = ethAddrLo;
+  _mmioAddr[kRegRal0] |= ethAddrMd << 16;
+  _mmioAddr[kRegRah0] = ethAddrHi;
   _mmioAddr[kRegRah0] |= (kRegRahAselDestAddr | kRegRahAvFlag);
 
   // initialize the MTA (Multicast Table Array) to 0

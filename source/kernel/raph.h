@@ -135,14 +135,14 @@ static inline uint16_t ntohs(uint8_t a[]) {
   return ((a[0] << 8) | a[1]);
 }
 
-static inline uint32_t htonl(uint16_t n) {
+static inline uint32_t htonl(uint32_t n) {
   return (((n & 0xff) << 24)
          |((n & 0xff00) << 8)
          |((n & 0xff0000) >> 8)
          |((n & 0xff000000) >> 24));
 }
 
-static inline uint32_t ntohl(uint16_t n) {
+static inline uint32_t ntohl(uint32_t n) {
   return (((n & 0xff) << 24)
          |((n & 0xff00) << 8)
          |((n & 0xff0000) >> 8)

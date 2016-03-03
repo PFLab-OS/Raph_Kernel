@@ -43,7 +43,7 @@ int32_t TCPCtrl::GenerateHeader(uint8_t *buffer, uint32_t length, uint16_t sport
 
 bool TCPCtrl::FilterPacket(uint8_t *packet, uint16_t sport, uint16_t dport) {
   TCPHeader * volatile header = reinterpret_cast<TCPHeader*>(packet);
-  return (ntohs(header->sport) == sport)
-      && (ntohs(header->dport) == dport)
+  return (!sport || ntohs(header->sport) == sport)
+      && (!dport || ntohs(header->dport) == dport)
       && (header->flag == _tcpSessionType);
 }

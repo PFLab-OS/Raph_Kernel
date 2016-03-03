@@ -27,7 +27,8 @@ const char *NetDevCtrl::kDefaultNetworkInterfaceName = "eth0";
 bool NetDevCtrl::RegisterDevice(NetDev *dev, const char *name) {
   if(_curDevNumber < kMaxDevNumber) {
     // succeed to register
-    _devTable[_curDevNumber++]->SetName(name);
+    dev->SetName(name);
+    _devTable[_curDevNumber++] = dev;
     return true;
   } else {
     // fail to register
@@ -38,7 +39,7 @@ bool NetDevCtrl::RegisterDevice(NetDev *dev, const char *name) {
 NetDev *NetDevCtrl::GetDevice(const char *name) {
   if(!name) name = kDefaultNetworkInterfaceName;
   for(uint32_t i = _curDevNumber; i > 0; i--) {
-    NetDev *dev = _devTable[i];
+    NetDev *dev = _devTable[i - 1];
     // search device by network interface name
     if(!strncmp(dev->GetName(), name, strlen(name))) {
       return dev;
