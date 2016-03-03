@@ -27,6 +27,55 @@
 #include "../global.h"
 #include "raw.h"
 
+#define __NETCTRL__
+#include "../net/global.h"
+
+const char DevRawEthernet::kNetworkInterfaceName[] = "br0";
+
+DevRawEthernet::DevRawEthernet() : DevEthernet(0, 0, 0) {
+  _pd = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
+  if (_pd < 0) {
+    perror("socket():");
+    exit(1);
+  }
+
+  struct ifreq ifr;
+
+  memset(&ifr, 0, sizeof(ifr));
+  strncpy(ifr.ifr_name, kNetworkInterfaceName, IFNAMSIZ);
+  ioctl(_pd, SIOCGIFINDEX, &ifr);
+  _ifindex = ifr.ifr_ifindex;
+
+  struct sockaddr_ll sll;
+
+  memset(&sll, 0xff, sizeof(sll));
+  sll.sll_family = AF_PACKET;
+  sll.sll_protocol = htons(ETH_P_ALL);
+  sll.sll_ifindex = _ifindex;
+  bind(_pd, (struct sockaddr *)&sll, sizeof sll);
+
+  FetchAddress();
+  FlushSocket();
+
+  if(!netdev_ctrl->RegisterDevice(this)) {
+    // cannot register device
+    kassert(false);
+  }
+}
+
+int32_t DevRawEthernet::ReceivePacket(uint8_t *buffer, uint32_t size) {
+  // TODO ブロックしてしまうため、本来の挙動とは少し異なるのを修正
+  return static_cast<int32_t>(recv(_pd, buffer, size, 0));
+}
+
+int32_t DevRawEthernet::TransmitPacket(const uint8_t *packet, uint32_t length) {
+  struct sockaddr_ll sll;
+
+  memset(&sll, 0, sizeof(sll));
+  sll.sll_ifindex = _ifindex;
+  return static_cast<int32_t>(sendto(_pd, packet, length, 0, (struct sockaddr *)&sll, sizeof(sll)));
+}
+
 void DevRawEthernet::FlushSocket() {
   char buf[100];
   int i;
@@ -50,7 +99,7 @@ void DevRawEthernet::FetchAddress() {
 
   // fetch MAC address
   ifr.ifr_addr.sa_family = AF_INET;
-  strncpy(ifr.ifr_name, NETWORK_INTERFACE, IFNAMSIZ-1);
+  strncpy(ifr.ifr_name, kNetworkInterfaceName, IFNAMSIZ-1);
   ioctl(fd, SIOCGIFHWADDR, &ifr);
   memcpy(_ethAddr, ifr.ifr_hwaddr.sa_data, sizeof(uint8_t) * 6);
 

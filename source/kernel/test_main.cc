@@ -28,6 +28,9 @@
 #include "global.h"
 #include "dev/raw.h"
 
+#include "net/netctrl.h"
+#include "net/socket.h"
+
 SpinLockCtrl *spinlock_ctrl;
 VirtmemCtrl *virtmem_ctrl;
 PhysmemCtrl *physmem_ctrl;
@@ -52,6 +55,8 @@ int main(int argc, char **argv) {
   virtmem_ctrl = &_virtmem_ctrl;
   //memory_test();
 
+  InitNetCtrl();
+
   DevRawEthernet eth;
 
   uint32_t addr = 0x0a00020f;
@@ -66,5 +71,8 @@ int main(int argc, char **argv) {
 //  }
 
   std::cout << "test passed" << std::endl;
+
+  DismissNetCtrl();
+
   return 0;
 }

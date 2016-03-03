@@ -25,6 +25,7 @@
 
 // hide network controllers
 // be careful to define __NETCTRL__ macro
+// (intend to be included only in NetDev and its child class)
 #ifdef __NETCTRL__
 
 // Network Devices
