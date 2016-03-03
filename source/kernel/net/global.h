@@ -32,6 +32,10 @@
 class NetDevCtrl;
 extern NetDevCtrl *netdev_ctrl;
 
+// ARP Table
+class ARPTable;
+extern ARPTable *arp_table;
+
 // L2Ctrl
 class EthCtrl;
 extern EthCtrl *eth_ctrl;

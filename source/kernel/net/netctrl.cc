@@ -34,6 +34,7 @@
 #include "global.h"
 
 NetDevCtrl *netdev_ctrl;
+ARPTable *arp_table;
 
 EthCtrl *eth_ctrl;
 ARPCtrl *arp_ctrl;
@@ -43,6 +44,8 @@ TCPCtrl *tcp_ctrl;
 
 void InitNetCtrl() {
   netdev_ctrl = new(reinterpret_cast<NetDevCtrl*>(virtmem_ctrl->Alloc(sizeof(NetDevCtrl)))) NetDevCtrl();
+
+  arp_table = new(reinterpret_cast<ARPTable*>(virtmem_ctrl->Alloc(sizeof(ARPTable)))) ARPTable();
 
   eth_ctrl = new(reinterpret_cast<EthCtrl*>(virtmem_ctrl->Alloc(sizeof(EthCtrl)))) EthCtrl();
 
@@ -57,12 +60,14 @@ void InitNetCtrl() {
 
 void DismissNetCtrl() {
   netdev_ctrl->~NetDevCtrl();
+  arp_table->~ARPTable();
   eth_ctrl->~EthCtrl();
   arp_ctrl->~ARPCtrl();
   ip_ctrl->~IPCtrl();
   udp_ctrl->~UDPCtrl();
   tcp_ctrl->~TCPCtrl();
   virtmem_ctrl->Free(reinterpret_cast<virt_addr>(netdev_ctrl));
+  virtmem_ctrl->Free(reinterpret_cast<virt_addr>(arp_table));
   virtmem_ctrl->Free(reinterpret_cast<virt_addr>(eth_ctrl));
   virtmem_ctrl->Free(reinterpret_cast<virt_addr>(arp_ctrl));
   virtmem_ctrl->Free(reinterpret_cast<virt_addr>(ip_ctrl));

@@ -28,6 +28,9 @@
 #include "../mem/virtmem.h"
 #include "../global.h"
 
+#define __NETCTRL__
+#include "global.h"
+
 const uint8_t ARPCtrl::kBcastMACAddr[] = {0xff};
 
 int32_t ARPCtrl::GeneratePacket(uint8_t *buffer, uint16_t op, uint8_t *smacaddr, uint32_t sipaddr, uint8_t *dmacaddr, uint32_t dipaddr) {
@@ -62,4 +65,48 @@ bool ARPCtrl::FilterPacket(uint8_t *packet, uint16_t op, uint8_t *smacaddr, uint
       && (!sipaddr  || data->protoSaddr == sipaddr)
       && (!dmacaddr || !memcmp(data->hwDaddr, dmacaddr, 6) || !memcmp(data->hwDaddr, kBcastMACAddr, 6))
       && (!dipaddr  || data->protoDaddr == dipaddr);
+}
+
+bool ARPCtrl::RegisterAddress(uint8_t *packet) {
+  ARPPacket * volatile arp = reinterpret_cast<ARPPacket*>(packet);
+  return arp_table->Add(arp->protoSaddr, arp->hwSaddr);
+}
+
+/*
+ * ARPTable
+ */
+
+ARPTable::ARPTable() {
+  for(uint32_t i = 0; i < kMaxNumberRecords; i++) {
+    _table[i].ipaddr = 0;
+  }
+}
+
+uint32_t ARPTable::Hash(uint32_t s) {
+  return s & 0xff;
+}
+
+uint32_t ARPTable::Probe(uint32_t s) {
+  return (s + 1) & 0xff;
+}
+
+bool ARPTable::Add(uint32_t ipaddr, uint8_t *macaddr) {
+  uint32_t index = Hash(ipaddr);
+  while(_table[index].ipaddr != 0) {
+    // record already exists
+    index = Probe(index);
+  }
+  // new record
+  memcpy(_table[index].macaddr, macaddr, 6);
+  return true;
+}
+
+bool ARPTable::Find(uint32_t ipaddr, uint8_t *macaddr) {
+  uint32_t index = Hash(ipaddr);
+  while(_table[index].ipaddr != ipaddr) {
+    // conflict
+    index = Probe(index);
+  }
+  memcpy(macaddr, _table[index].macaddr, 6);
+  return true;
 }

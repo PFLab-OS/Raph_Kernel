@@ -153,6 +153,8 @@ int32_t ARPSocket::ReceivePacket(uint16_t type) {
   // alloc buffer
   uint32_t length = sizeof(EthHeader) + sizeof(ARPPacket);
   uint8_t *packet = reinterpret_cast<uint8_t*>(virtmem_ctrl->Alloc(length));
+
+  uint32_t offsetARP = sizeof(EthHeader);
   uint8_t ethDaddr[6];
   _dev->GetEthAddr(ethDaddr);
 
@@ -164,13 +166,23 @@ int32_t ARPSocket::ReceivePacket(uint16_t type) {
 	if(!eth_ctrl->FilterPacket(packet, nullptr, ethDaddr, EthCtrl::kProtocolIPv4)) continue;
 
     // filter IP address
-    uint32_t offsetARP = sizeof(EthHeader);
     if(!arp_ctrl->FilterPacket(packet + offsetARP, type, nullptr, 0, ethDaddr, 0)) continue;
 
     break;
   } while(1);
 
   // handle received ARP request/reply
+  switch(type) {
+    case kOpARPRequest:
+	  // TODO: auto reply
+	  break;
+	case kOpARPReply:
+	  arp_ctrl->RegisterAddress(packet + offsetARP);
+	  break;
+	default:
+      virtmem_ctrl->Free(reinterpret_cast<virt_addr>(packet));
+	  return -1;
+  }
 
   // finalization
   virtmem_ctrl->Free(reinterpret_cast<virt_addr>(packet));

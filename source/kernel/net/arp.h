@@ -63,8 +63,27 @@ public:
                             uint32_t sipaddr,
                             uint8_t *dmacaddr,
                             uint32_t dipaddr);
+  bool RegisterAddress(uint8_t *packet);
 
   static const uint16_t kHWEthernet = 0x0001;
   static const uint16_t kProtocolIPv4 = 0x0800;
 };
+
+class ARPTable {
+  struct ARPTableRecord {
+    uint32_t ipaddr;
+    uint8_t macaddr[6];
+  };
+
+  static const uint32_t kMaxNumberRecords = 256;
+  ARPTableRecord _table[kMaxNumberRecords];
+  uint32_t Hash(uint32_t s);
+  uint32_t Probe(uint32_t s);
+
+public:
+  ARPTable();
+  bool Add(uint32_t ipaddr, uint8_t *macaddr);
+  bool Find(uint32_t ipaddr, uint8_t *macaddr);
+};
+
 #endif // __RAPH_KERNEL_NET_ARP_H__
