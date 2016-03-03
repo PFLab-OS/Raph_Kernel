@@ -72,6 +72,8 @@ static inline uint32_t inl(uint16_t pin) {
 #define UTEST_VIRTUAL virtual
 #define kassert(flag) if (!(flag)) {throw #flag;}
 
+#include <arpa/inet.h>
+
 #include <map>
 template <class K, class V>
 class StdMap {
