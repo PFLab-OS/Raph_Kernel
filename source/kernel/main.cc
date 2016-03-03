@@ -135,6 +135,8 @@ extern "C" int main() {
     gtty->Printf("s", "cannot open socket\n");
   } else {
     socket.TransmitPacket(ARPSocket::kOpARPRequest, 0x0a000203);
+    socket.ReceivePacket(ARPSocket::kOpARPReply);
+    gtty->Printf("s", "ARP reply received\n");
   }
 
   polling_ctrl->HandleAll();

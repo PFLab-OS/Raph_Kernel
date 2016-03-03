@@ -104,8 +104,13 @@ bool ARPTable::Add(uint32_t ipaddr, uint8_t *macaddr) {
 bool ARPTable::Find(uint32_t ipaddr, uint8_t *macaddr) {
   uint32_t index = Hash(ipaddr);
   while(_table[index].ipaddr != ipaddr) {
-    // conflict
-    index = Probe(index);
+    if(_table[index].ipaddr == 0) {
+      // does not exist
+      return false;
+	} else {
+      // conflict
+      index = Probe(index);
+    }
   }
   memcpy(macaddr, _table[index].macaddr, 6);
   return true;

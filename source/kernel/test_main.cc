@@ -59,16 +59,13 @@ int main(int argc, char **argv) {
 
   DevRawEthernet eth;
 
-  uint32_t addr = 0x0a00020f;
-  uint32_t port = 23;
-
-//  if(!strncmp(argv[1], "server", 6)) {
-//    tcp_ctrl->Listen(port);
-//  } else if(!strncmp(argv[1], "client", 6)) {
-//    tcp_ctrl->Connect(addr, port, port);
-//  } else {
-//    std::cout << "specify either `server` or `client`" << std::endl;
-//  }
+  ARPSocket socket;
+  if(socket.Open() < 0) {
+	  std::cerr << "cannot open socket" << std::endl;
+  } else {
+    socket.TransmitPacket(ARPSocket::kOpARPRequest, 0x0a000203);
+    socket.ReceivePacket(ARPSocket::kOpARPReply);
+  }
 
   std::cout << "test passed" << std::endl;
 

@@ -163,7 +163,7 @@ int32_t ARPSocket::ReceivePacket(uint16_t type) {
     if(_dev->ReceivePacket(packet, length) < 0) continue;
 
     // filter Ethernet address
-	if(!eth_ctrl->FilterPacket(packet, nullptr, ethDaddr, EthCtrl::kProtocolIPv4)) continue;
+    if(!eth_ctrl->FilterPacket(packet, nullptr, ethDaddr, EthCtrl::kProtocolARP)) continue;
 
     // filter IP address
     if(!arp_ctrl->FilterPacket(packet + offsetARP, type, nullptr, 0, ethDaddr, 0)) continue;
@@ -173,15 +173,19 @@ int32_t ARPSocket::ReceivePacket(uint16_t type) {
 
   // handle received ARP request/reply
   switch(type) {
+    case kOpARPReply:
+      arp_ctrl->RegisterAddress(packet + offsetARP);
+      break;
     case kOpARPRequest:
-	  // TODO: auto reply
-	  break;
-	case kOpARPReply:
-	  arp_ctrl->RegisterAddress(packet + offsetARP);
-	  break;
-	default:
+      {
+        // auto reply
+        ARPPacket * volatile req = reinterpret_cast<ARPPacket*>(packet + offsetARP);
+        TransmitPacket(kOpARPReply, req->protoSaddr, req->hwSaddr);
+        break;
+      }
+    default:
       virtmem_ctrl->Free(reinterpret_cast<virt_addr>(packet));
-	  return -1;
+      return -1;
   }
 
   // finalization
