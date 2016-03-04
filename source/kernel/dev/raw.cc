@@ -73,7 +73,18 @@ int32_t DevRawEthernet::TransmitPacket(const uint8_t *packet, uint32_t length) {
 
   memset(&sll, 0, sizeof(sll));
   sll.sll_ifindex = _ifindex;
-  return static_cast<int32_t>(sendto(_pd, packet, length, 0, (struct sockaddr *)&sll, sizeof(sll)));
+  int32_t rval = static_cast<int32_t>(sendto(_pd, packet, length, 0, (struct sockaddr *)&sll, sizeof(sll)));
+
+  printf("# %02x.%02x.%02x.%02x.%02x.%02x.%02x.%02x\n", packet[0], packet[1], packet[2], packet[3], packet[4], packet[5], packet[6], packet[7]);
+  printf("# %02x.%02x.%02x.%02x.%02x.%02x.%02x.%02x\n", packet[8], packet[9], packet[10], packet[11], packet[12], packet[13], packet[14], packet[15]);
+  printf("# %02x.%02x.%02x.%02x.%02x.%02x.%02x.%02x\n", packet[16], packet[17], packet[18], packet[19], packet[20], packet[21], packet[22], packet[23]);
+  printf("# %02x.%02x.%02x.%02x.%02x.%02x.%02x.%02x\n", packet[24], packet[25], packet[26], packet[27], packet[28], packet[29], packet[30], packet[31]);
+  printf("# %02x.%02x.%02x.%02x.%02x.%02x.%02x.%02x\n", packet[32], packet[33], packet[34], packet[35], packet[36], packet[37], packet[38], packet[39]);
+  printf("# %02x.%02x.%02x.%02x.%02x.%02x.%02x.%02x\n", packet[40], packet[41], packet[42], packet[43], packet[44], packet[45], packet[46], packet[47]);
+  printf("# %02x.%02x.%02x.%02x.%02x.%02x.%02x.%02x\n", packet[48], packet[49], packet[50], packet[51], packet[52], packet[53], packet[54], packet[55]);
+  printf("# %02x.%02x.%02x.%02x.%02x.%02x.%02x.%02x\n", packet[56], packet[57], packet[58], packet[59], packet[60], packet[61], packet[62], packet[63]);
+
+  return rval;
 }
 
 void DevRawEthernet::FlushSocket() {

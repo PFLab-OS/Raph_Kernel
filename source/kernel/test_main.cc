@@ -59,12 +59,12 @@ int main(int argc, char **argv) {
 
   DevRawEthernet eth;
 
-  ARPSocket socket;
+  UDPSocket socket;
   if(socket.Open() < 0) {
 	  std::cerr << "cannot open socket" << std::endl;
   } else {
-    socket.TransmitPacket(ARPSocket::kOpARPRequest, 0x0a000203);
-    socket.ReceivePacket(ARPSocket::kOpARPReply);
+    uint8_t data[5] = "ABCD";
+    socket.TransmitPacket(data, 5);
   }
 
   std::cout << "test passed" << std::endl;
