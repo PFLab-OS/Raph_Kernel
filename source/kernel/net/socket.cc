@@ -42,26 +42,77 @@ int32_t NetSocket::Open() {
   }
 }
 
+/*
+ * (TCP/IP) Socket
+ */
+
+uint32_t Socket::L2HeaderLength() { return sizeof(EthHeader); }
+uint32_t Socket::L3HeaderLength() { return sizeof(IPv4Header); }
+uint32_t Socket::L4HeaderLength() { return sizeof(TCPHeader); }
+
+uint16_t Socket::L4Protocol() { return IPCtrl::kProtocolTCP; }
+
+int32_t Socket::GetEthAddr(uint32_t ipaddr, uint8_t *macaddr) {
+  while(arp_table->Find(ipaddr, macaddr) < 0) {
+    ARPSocket socket;
+    if(socket.Open() < 0) {
+      return -1;
+    } else {
+      socket.TransmitPacket(ARPSocket::kOpARPRequest, ipaddr);
+    }
+  }
+  return 0;
+}
+
+int32_t Socket::L2Tx(uint8_t *buffer, uint8_t *saddr, uint8_t *daddr, uint16_t type) {
+  return eth_ctrl->GenerateHeader(buffer, saddr, daddr, type);
+}
+
+bool Socket::L2Rx(uint8_t *buffer, uint8_t *saddr, uint8_t *daddr, uint16_t type) {
+  return eth_ctrl->FilterPacket(buffer, saddr, daddr, type);
+}
+
+int32_t Socket::L3Tx(uint8_t *buffer, uint32_t length, uint8_t type, uint32_t saddr, uint32_t daddr) {
+  return ip_ctrl->GenerateHeader(buffer, length, type, saddr, daddr);
+}
+
+bool Socket::L3Rx(uint8_t *buffer, uint8_t type, uint32_t saddr, uint32_t daddr) {
+  return ip_ctrl->FilterPacket(buffer, type, saddr, daddr);
+}
+
+int32_t Socket::L4Tx(uint8_t *buffer, uint32_t length, uint16_t sport, uint16_t dport) {
+  return tcp_ctrl->GenerateHeader(buffer, length, sport, dport);
+}
+
+bool Socket::L4Rx(uint8_t *buffer, uint16_t sport, uint16_t dport) {
+  return tcp_ctrl->FilterPacket(buffer, sport, dport);
+}
+
 int32_t Socket::TransmitPacket(const uint8_t *data, uint32_t length) {
   // alloc buffer
-  uint32_t len = sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader) + length;
+  uint32_t len = L2HeaderLength() + L3HeaderLength() + L4HeaderLength() + length;
   uint8_t *packet = reinterpret_cast<uint8_t*>(virtmem_ctrl->Alloc(len));
 
+  // packet body
+  uint32_t offsetBody = L2HeaderLength() + L3HeaderLength() + L4HeaderLength();
+  memcpy(packet + offsetBody, data, length);
+
   // TCP header
-  uint32_t offsetTCP = sizeof(EthHeader) + sizeof(IPv4Header);
+  uint32_t offsetL4 = L2HeaderLength() + L3HeaderLength();
   uint16_t sport = 80; // TODO:
-  tcp_ctrl->GenerateHeader(packet + offsetTCP, len - offsetTCP, sport, _dport);
+  L4Tx(packet + offsetL4, len - offsetL4, sport, _dport);
 
   // IP header
-  uint32_t offsetIP = sizeof(EthHeader);
+  uint32_t offsetL3 = L2HeaderLength();
   uint32_t saddr = 0x0a00020f; // TODO:
-  ip_ctrl->GenerateHeader(packet + offsetIP, len - offsetIP, IPCtrl::kProtocolTCP, saddr, _daddr);
+  L3Tx(packet + offsetL3, len - offsetL3, L4Protocol(), saddr, _daddr);
 
   // Ethernet header
   uint8_t ethSaddr[6];
   uint8_t ethDaddr[6] = {0x08, 0x00, 0x27, 0xc1, 0x5b, 0x93}; // TODO:
   _dev->GetEthAddr(ethSaddr);
-  eth_ctrl->GenerateHeader(packet, ethSaddr, ethDaddr, EthCtrl::kProtocolIPv4);
+//  GetEthAddr(_daddr, ethDaddr);
+  L2Tx(packet, ethSaddr, ethDaddr, EthCtrl::kProtocolIPv4);
 
   // transmit
   _dev->TransmitPacket(packet, len);
@@ -74,7 +125,7 @@ int32_t Socket::TransmitPacket(const uint8_t *data, uint32_t length) {
 
 int32_t Socket::ReceivePacket(uint8_t *data, uint32_t length) {
   // alloc buffer
-  uint32_t len = sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader) + length;
+  uint32_t len = L2HeaderLength() + L3HeaderLength() + L4HeaderLength() + length;
   uint8_t *packet = reinterpret_cast<uint8_t*>(virtmem_ctrl->Alloc(len));
   uint8_t ethDaddr[6];
   uint32_t ipDaddr = 0x0a00020f; // TODO:
@@ -86,21 +137,21 @@ int32_t Socket::ReceivePacket(uint8_t *data, uint32_t length) {
     if(_dev->ReceivePacket(packet, length) < 0) continue;
 
     // filter Ethernet address
-	if(!eth_ctrl->FilterPacket(packet, nullptr, ethDaddr, EthCtrl::kProtocolIPv4)) continue;
+	if(!L2Rx(packet, nullptr, ethDaddr, EthCtrl::kProtocolIPv4)) continue;
 
     // filter IP address
-    uint32_t offsetIP = sizeof(EthHeader);
-    if(!ip_ctrl->FilterPacket(packet + offsetIP, IPCtrl::kProtocolTCP, _daddr, ipDaddr)) continue;
+    uint32_t offsetL3 = L2HeaderLength();
+    if(!L3Rx(packet + offsetL3 , L4Protocol(), _daddr, ipDaddr)) continue;
 
     // filter TCP port
-    uint32_t offsetTCP = sizeof(EthHeader) + sizeof(IPv4Header);
-    if(!tcp_ctrl->FilterPacket(packet + offsetTCP, 0, dport)) continue;
+    uint32_t offsetL4 = L2HeaderLength() + L3HeaderLength();
+    if(!L4Rx(packet + offsetL4, 0, dport)) continue;
 
     break;
   } while(1);
 
   // copy data
-  uint32_t offset = sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader);
+  uint32_t offset = L2HeaderLength() + L3HeaderLength() + L4HeaderLength();
   memcpy(data, packet + offset, length);
 
   // finalization
@@ -108,6 +159,26 @@ int32_t Socket::ReceivePacket(uint8_t *data, uint32_t length) {
 
   return len;
 }
+
+/*
+ * UDPSocket
+ */
+
+uint32_t UDPSocket::L4HeaderLength() { return sizeof(UDPHeader); }
+
+uint16_t UDPSocket::L4Protocol() { return IPCtrl::kProtocolUDP; }
+
+int32_t UDPSocket::L4Tx(uint8_t *buffer, uint32_t length, uint16_t sport, uint16_t dport) {
+  return udp_ctrl->GenerateHeader(buffer, length, sport, dport);
+}
+
+bool UDPSocket::L4Rx(uint8_t *buffer, uint16_t sport, uint16_t dport) {
+  return udp_ctrl->FilterPacket(buffer, sport, dport);
+}
+
+/*
+ * ARPSocket
+ */
 
 int32_t ARPSocket::TransmitPacket(uint16_t type, uint32_t tpa, uint8_t *tha) {
   uint32_t ipSaddr = 0x0a00020f; // TODO:

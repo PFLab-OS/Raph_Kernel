@@ -157,6 +157,16 @@ int32_t E1000::TransmitPacket(const uint8_t *packet, uint32_t length) {
                    "x", packet[42], "s", " ", "x", packet[43], "s", " ",
                    "x", packet[44], "s", " ", "x", packet[45], "s", " ",
                    "x", packet[46], "s", " ", "x", packet[47], "s", "\n");
+      gtty->Printf(
+                   "x", packet[48], "s", " ", "x", packet[49], "s", " ",
+                   "x", packet[50], "s", " ", "x", packet[51], "s", " ",
+                   "x", packet[52], "s", " ", "x", packet[53], "s", " ",
+                   "x", packet[53], "s", " ", "x", packet[55], "s", "\n");
+      gtty->Printf(
+                   "x", packet[56], "s", " ", "x", packet[57], "s", " ",
+                   "x", packet[58], "s", " ", "x", packet[59], "s", " ",
+                   "x", packet[60], "s", " ", "x", packet[61], "s", " ",
+                   "x", packet[62], "s", " ", "x", packet[63], "s", "\n");
 
       rval = length;
     } else {

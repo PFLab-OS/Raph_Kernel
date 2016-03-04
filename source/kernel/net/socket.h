@@ -39,12 +39,62 @@ class Socket : public NetSocket {
   uint32_t _daddr = 0x0a00020f;
   uint16_t _dport = 80;
 
+  int32_t GetEthAddr(uint32_t ipaddr, uint8_t *macaddr);
+
+protected:
+  // L[2/3/4][T/R]xをオーバーライドすることで特定のレイヤの処理を書き換えられる
+  virtual uint32_t L2HeaderLength();
+  virtual uint32_t L3HeaderLength();
+  virtual uint32_t L4HeaderLength();
+  virtual uint16_t L4Protocol();
+  virtual int32_t L2Tx(uint8_t *buffer,
+                       uint8_t *saddr,
+                       uint8_t *daddr,
+                       uint16_t type);
+  virtual bool L2Rx(uint8_t *packet,
+                    uint8_t *saddr,
+                    uint8_t *daddr,
+                    uint16_t type);
+  virtual int32_t L3Tx(uint8_t *buffer,
+                       uint32_t length,
+                       uint8_t type,
+                       uint32_t saddr,
+                       uint32_t daddr);
+  virtual bool L3Rx(uint8_t *packet,
+                    uint8_t type,
+                    uint32_t saddr,
+                    uint32_t daddr);
+  virtual int32_t L4Tx(uint8_t *header,
+                       uint32_t length,
+                       uint16_t sport,
+                       uint16_t dport);
+  virtual bool L4Rx(uint8_t *packet,
+                    uint16_t sport,
+                    uint16_t dport);
+
 public:
   Socket() {}
   void SetAddr(uint32_t addr) { _daddr = addr; }
   void SetPort(uint16_t port) { _dport = port; }
   virtual int32_t TransmitPacket(const uint8_t *data, uint32_t length);
   virtual int32_t ReceivePacket(uint8_t *data, uint32_t length);
+};
+
+// UDP Socket
+class UDPSocket : public Socket {
+protected:
+  virtual uint32_t L4HeaderLength();
+  virtual uint16_t L4Protocol();
+  virtual int32_t L4Tx(uint8_t *header,
+                       uint32_t length,
+                       uint16_t sport,
+                       uint16_t dport);
+  virtual bool L4Rx(uint8_t *packet,
+                    uint16_t sport,
+                    uint16_t dport);
+
+public:
+  UDPSocket() {}
 };
 
 // ARP Socket
