@@ -177,12 +177,7 @@ int32_t ARPSocket::ReceivePacket(uint16_t type) {
       arp_ctrl->RegisterAddress(packet + offsetARP);
       break;
     case kOpARPRequest:
-      {
-        // auto reply
-        ARPPacket * volatile req = reinterpret_cast<ARPPacket*>(packet + offsetARP);
-        TransmitPacket(kOpARPReply, req->protoSaddr, req->hwSaddr);
-        break;
-      }
+      break;
     default:
       virtmem_ctrl->Free(reinterpret_cast<virt_addr>(packet));
       return -1;
