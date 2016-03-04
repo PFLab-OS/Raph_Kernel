@@ -100,12 +100,12 @@ int32_t Socket::TransmitPacket(const uint8_t *data, uint32_t length) {
   // TCP header
   uint32_t offsetL4 = L2HeaderLength() + L3HeaderLength();
   uint16_t sport = 80; // TODO:
-  L4Tx(packet + offsetL4, len - offsetL4, sport, _dport);
+  L4Tx(packet + offsetL4, L4HeaderLength() + length, sport, _dport);
 
   // IP header
   uint32_t offsetL3 = L2HeaderLength();
   uint32_t saddr = 0x0a00020f; // TODO:
-  L3Tx(packet + offsetL3, len - offsetL3, L4Protocol(), saddr, _daddr);
+  L3Tx(packet + offsetL3, L4HeaderLength() + length, L4Protocol(), saddr, _daddr);
 
   // Ethernet header
   uint8_t ethSaddr[6];
