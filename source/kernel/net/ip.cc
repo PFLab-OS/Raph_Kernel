@@ -55,17 +55,21 @@ bool IPCtrl::FilterPacket(uint8_t *packet, uint8_t type, uint32_t saddr, uint32_
 }
 
 uint16_t IPCtrl::checkSum(uint8_t *buf, uint32_t size) {
-  uint16_t sum = 0;
+  uint64_t sum = 0;
 
-  while(size > 1) {
-    sum += *buf++;
+  while(size > 1){
+    sum += *reinterpret_cast<uint16_t*>(buf);
+    buf += 2;
+    if(sum & 0x80000000)   /* if high order bit set, fold */
+      sum = (sum & 0xFFFF) + (sum >> 16);
     size -= 2;
   }
-  if(size)
-    sum += *buf;
 
-  sum = (sum & 0xffff) + (sum >> 16);	/* add overflow counts */
-  sum = (sum & 0xffff) + (sum >> 16);	/* once again */
-  
+  if(size)  /* take care of left over byte */
+    sum += static_cast<uint16_t>(*buf);
+ 
+  while(sum >> 16)
+    sum = (sum & 0xFFFF) + (sum >> 16);
+
   return ~sum;
 }
