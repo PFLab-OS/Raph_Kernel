@@ -59,7 +59,7 @@ int main(int argc, char **argv) {
 
   DevRawEthernet eth;
 
-  UDPSocket socket;
+  Socket socket;
   if(socket.Open() < 0) {
 	  std::cerr << "cannot open socket" << std::endl;
   } else {

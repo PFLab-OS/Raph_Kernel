@@ -138,7 +138,7 @@ extern "C" int main() {
 //    socket.ReceivePacket(ARPSocket::kOpARPReply);
 //    gtty->Printf("s", "ARP reply received\n");
 //  }
-  UDPSocket socket;
+  Socket socket;
   if(socket.Open() < 0) {
     gtty->Printf("s", "cannot open socket\n");
   } else {

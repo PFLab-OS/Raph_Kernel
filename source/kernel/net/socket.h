@@ -83,15 +83,15 @@ public:
 // UDP Socket
 class UDPSocket : public Socket {
 protected:
-  virtual uint32_t L4HeaderLength();
-  virtual uint16_t L4Protocol();
+  virtual uint32_t L4HeaderLength() override;
+  virtual uint16_t L4Protocol() override;
   virtual int32_t L4Tx(uint8_t *header,
                        uint32_t length,
                        uint16_t sport,
-                       uint16_t dport);
+                       uint16_t dport) override;
   virtual bool L4Rx(uint8_t *packet,
                     uint16_t sport,
-                    uint16_t dport);
+                    uint16_t dport) override;
 
 public:
   UDPSocket() {}
