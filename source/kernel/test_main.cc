@@ -64,6 +64,8 @@ int main(int argc, char **argv) {
 	  std::cerr << "cannot open socket" << std::endl;
   } else {
     uint8_t data[5] = "ABCD";
+    socket.SetAddr(0x0a00020f);
+    socket.SetPort(4000);
     socket.TransmitPacket(data, 5);
   }
 

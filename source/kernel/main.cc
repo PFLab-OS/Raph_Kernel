@@ -142,10 +142,11 @@ extern "C" int main() {
   if(socket.Open() < 0) {
     gtty->Printf("s", "cannot open socket\n");
   } else {
-     uint8_t data[5] = "ABCD";
-     socket.SetAddr(0x0a00020f);
-     socket.SetPort(4000);
-     socket.TransmitPacket(data, 5);
+    uint8_t data[5] = "ABCD";
+    socket.SetAddr(0x0a00020f);
+    socket.SetPort(4000);
+    socket.TransmitPacket(data, 5);
+    gtty->Printf("s", "UDP sent\n");
   }
 
   polling_ctrl->HandleAll();
