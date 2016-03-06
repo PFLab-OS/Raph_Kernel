@@ -104,7 +104,7 @@ int32_t Socket::TransmitPacket(const uint8_t *data, uint32_t length) {
 
   // IP header
   uint32_t offsetL3 = L2HeaderLength();
-  uint32_t saddr = 0x0a00020f; // TODO:
+  uint32_t saddr = 0x0a000210; // TODO:
   L3Tx(packet + offsetL3, L4HeaderLength() + length, L4Protocol(), saddr, _daddr);
 
   // Ethernet header
@@ -128,7 +128,7 @@ int32_t Socket::ReceivePacket(uint8_t *data, uint32_t length) {
   uint32_t len = L2HeaderLength() + L3HeaderLength() + L4HeaderLength() + length;
   uint8_t *packet = reinterpret_cast<uint8_t*>(virtmem_ctrl->Alloc(len));
   uint8_t ethDaddr[6];
-  uint32_t ipDaddr = 0x0a00020f; // TODO:
+  uint32_t ipDaddr = 0x0a000210; // TODO:
   uint16_t dport = 80; // TODO:
   _dev->GetEthAddr(ethDaddr);
 
@@ -181,7 +181,7 @@ bool UDPSocket::L4Rx(uint8_t *buffer, uint16_t sport, uint16_t dport) {
  */
 
 int32_t ARPSocket::TransmitPacket(uint16_t type, uint32_t tpa, uint8_t *tha) {
-  uint32_t ipSaddr = 0x0a00020f; // TODO:
+  uint32_t ipSaddr = 0x0a000210; // TODO:
   uint32_t ipDaddr = tpa;
   uint8_t ethSaddr[6];
   uint8_t ethDaddr[6];
@@ -203,7 +203,6 @@ int32_t ARPSocket::TransmitPacket(uint16_t type, uint32_t tpa, uint8_t *tha) {
   uint32_t len = sizeof(EthHeader) + sizeof(ARPPacket);
   uint8_t *packet = reinterpret_cast<uint8_t*>(virtmem_ctrl->Alloc(len));
 
-
   // ARP header
   uint32_t offsetARP = sizeof(EthHeader);
   arp_ctrl->GeneratePacket(packet + offsetARP, type, ethSaddr, ipSaddr, ethDaddr, ipDaddr);
@@ -220,12 +219,12 @@ int32_t ARPSocket::TransmitPacket(uint16_t type, uint32_t tpa, uint8_t *tha) {
   return len;
 }
 
-int32_t ARPSocket::ReceivePacket(uint16_t type) {
+int32_t ARPSocket::ReceivePacket(uint16_t type, uint32_t *spa, uint8_t *sha) {
   // alloc buffer
   uint32_t length = sizeof(EthHeader) + sizeof(ARPPacket);
   uint8_t *packet = reinterpret_cast<uint8_t*>(virtmem_ctrl->Alloc(length));
+  uint8_t *arpPacket = packet + sizeof(EthHeader);
 
-  uint32_t offsetARP = sizeof(EthHeader);
   uint8_t ethDaddr[6];
   _dev->GetEthAddr(ethDaddr);
 
@@ -237,7 +236,7 @@ int32_t ARPSocket::ReceivePacket(uint16_t type) {
     if(!eth_ctrl->FilterPacket(packet, nullptr, ethDaddr, EthCtrl::kProtocolARP)) continue;
 
     // filter IP address
-    if(!arp_ctrl->FilterPacket(packet + offsetARP, type, nullptr, 0, ethDaddr, 0)) continue;
+    if(!arp_ctrl->FilterPacket(arpPacket, type, nullptr, 0, ethDaddr, 0)) continue;
 
     break;
   } while(1);
@@ -245,9 +244,11 @@ int32_t ARPSocket::ReceivePacket(uint16_t type) {
   // handle received ARP request/reply
   switch(type) {
     case kOpARPReply:
-      arp_ctrl->RegisterAddress(packet + offsetARP);
+      arp_ctrl->RegisterAddress(arpPacket);
       break;
     case kOpARPRequest:
+      if(spa) *spa = arp_ctrl->GetSourceIPAddress(arpPacket);
+      if(sha) arp_ctrl->GetSourceMACAddress(sha, arpPacket);
       break;
     default:
       virtmem_ctrl->Free(reinterpret_cast<virt_addr>(packet));

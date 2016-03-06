@@ -64,6 +64,8 @@ public:
                             uint8_t *dmacaddr,
                             uint32_t dipaddr);
   bool RegisterAddress(uint8_t *packet);
+  void GetSourceMACAddress(uint8_t *buffer, uint8_t *packet);
+  uint32_t GetSourceIPAddress(uint8_t *packet);
 
   static const uint16_t kHWEthernet = 0x0001;
   static const uint16_t kProtocolIPv4 = 0x0800;

@@ -23,6 +23,7 @@
  */
 
 #include <iostream>
+#include <cstdio>
 #include "spinlock.h"
 #include "mem/virtmem.h"
 #include "global.h"
@@ -59,14 +60,21 @@ int main(int argc, char **argv) {
 
   DevRawEthernet eth;
 
-  Socket socket;
+  ARPSocket socket;
   if(socket.Open() < 0) {
 	  std::cerr << "cannot open socket" << std::endl;
   } else {
-    uint8_t data[5] = "ABCD";
-    socket.SetAddr(0x0a00020f);
-    socket.SetPort(4000);
-    socket.TransmitPacket(data, 5);
+    uint32_t ipaddr;
+    uint8_t macaddr[6];
+    socket.ReceivePacket(ARPSocket::kOpARPRequest, &ipaddr, macaddr);
+	std::printf("ARP Request received from %u.%u.%u.%u (%.2x:%.2x:%.2x:%.2x:%.2x:%.2x)\n",
+	  (ipaddr >> 24), (ipaddr >> 16) & 0xff, (ipaddr >> 8) & 0xff, ipaddr & 0xff,
+	  macaddr[0], macaddr[1], macaddr[2], macaddr[3], macaddr[4], macaddr[5]);
+    // need to wait a little
+    // because Linux kernel cannot handle packet too quick
+    usleep(100);
+    // ARP reply
+    socket.TransmitPacket(ARPSocket::kOpARPReply, ipaddr, macaddr);
   }
 
   std::cout << "test passed" << std::endl;

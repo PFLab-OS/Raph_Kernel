@@ -72,6 +72,16 @@ bool ARPCtrl::RegisterAddress(uint8_t *packet) {
   return arp_table->Add(arp->protoSaddr, arp->hwSaddr);
 }
 
+void ARPCtrl::GetSourceMACAddress(uint8_t *buffer, uint8_t *packet) {
+  ARPPacket * volatile arp = reinterpret_cast<ARPPacket*>(packet);
+  memcpy(buffer, arp->hwSaddr, 6);
+}
+
+uint32_t ARPCtrl::GetSourceIPAddress(uint8_t *packet) {
+  ARPPacket * volatile arp = reinterpret_cast<ARPPacket*>(packet);
+  return ntohl(arp->protoSaddr);
+}
+
 /*
  * ARPTable
  */
