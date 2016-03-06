@@ -62,7 +62,9 @@ void DevGbeIch8::SetupHw(uint16_t did) {
       break;
     }
   }
+  gtty->Printf("s","<");
   _mmioAddr[kRegCtrl] |= kRegCtrlRstFlag | kRegCtrlPhyRstFlag;
+  gtty->Printf("s",">");
 
   // after global reset, interrupts must be disabled again
   _mmioAddr[kRegImc] = 0xffffffff;
