@@ -99,14 +99,14 @@ bool PagingCtrl::Map4KPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr
   if ((entry & PML4E_PRESENT_BIT) == 0) {
     PhysAddr tpaddr;
     physmem_ctrl->Alloc(tpaddr, kPageSize);
-    _pml4t->entry[GetPML4TIndex(vaddr)] = tpaddr.GetAddr() & pst_flag & PML4E_PRESENT_BIT;
+    _pml4t->entry[GetPML4TIndex(vaddr)] = tpaddr.GetAddr() | pst_flag | PML4E_PRESENT_BIT;
   }
   PageTable *pdpt = reinterpret_cast<PageTable *>(p2v(GetPML4EMaskedAddr(entry)));
   entry = pdpt->entry[GetPDPTIndex(vaddr)];
   if ((entry & PDPTE_PRESENT_BIT) == 0) {
     PhysAddr tpaddr;
     physmem_ctrl->Alloc(tpaddr, kPageSize);
-    pdpt->entry[GetPDPTIndex(vaddr)] = tpaddr.GetAddr() & pst_flag & PDPTE_PRESENT_BIT;
+    pdpt->entry[GetPDPTIndex(vaddr)] = tpaddr.GetAddr() | pst_flag | PDPTE_PRESENT_BIT;
   }
   if ((entry & PDPTE_1GPAGE_BIT) != 0) {
     return false;
@@ -116,7 +116,7 @@ bool PagingCtrl::Map4KPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr
   if ((entry & PDE_PRESENT_BIT) == 0) {
     PhysAddr tpaddr;
     physmem_ctrl->Alloc(tpaddr, kPageSize);
-    pd->entry[GetPDIndex(vaddr)] = tpaddr.GetAddr() & pst_flag & PDE_PRESENT_BIT;
+    pd->entry[GetPDIndex(vaddr)] = tpaddr.GetAddr() | pst_flag | PDE_PRESENT_BIT;
   }
   if ((entry & PDE_2MPAGE_BIT) != 0) {
     return false;
@@ -124,7 +124,7 @@ bool PagingCtrl::Map4KPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr
   PageTable *pt = reinterpret_cast<PageTable *>(p2v(GetPDEMaskedAddr(entry)));
   entry = pt->entry[GetPTIndex(vaddr)];
   if ((entry & PTE_PRESENT_BIT) == 0) {
-    pt->entry[GetPTIndex(vaddr)] = paddr.GetAddr() & page_flag & PTE_PRESENT_BIT;
+    pt->entry[GetPTIndex(vaddr)] = paddr.GetAddr() | page_flag | PTE_PRESENT_BIT;
     return true;
   } else {
     return false;
