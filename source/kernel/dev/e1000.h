@@ -23,14 +23,15 @@
  * 
  */
 
-#ifndef __RAPH_KERNEL_E1000_H__
-#define __RAPH_KERNEL_E1000_H__
+#ifndef __RAPH_KERNEL_DEV_E1000_H__
+#define __RAPH_KERNEL_DEV_E1000_H__
 
 #include <stdint.h>
 #include "../mem/physmem.h"
 #include "../mem/virtmem.h"
 #include "../polling.h"
 #include "../global.h"
+#include "eth.h"
 #include "pci.h"
 
 /*
@@ -88,9 +89,9 @@ struct E1000TxDesc {
   uint16_t special;
 } __attribute__ ((packed));
 
-class E1000 : public DevPCI, Polling {
+class E1000 : public DevEthernet, Polling {
 public:
- E1000(uint8_t bus, uint8_t device, bool mf) : DevPCI(bus, device, mf) {}
+  E1000(uint8_t bus, uint8_t device, bool mf) : DevEthernet(bus, device, mf) {}
   static void InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf);
   // from Polling
   void Handle() override;
@@ -356,4 +357,4 @@ class DevGbeIch8 : public E1000 {
 };
 
 
-#endif /* __RAPH_KERNEL_E1000_H__ */
+#endif /* __RAPH_KERNEL_DEV_E1000_H__ */

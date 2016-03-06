@@ -1,7 +1,8 @@
 KERNEL = kernel.elf
-DEV_OBJ = dev/pci.o dev/e1000.o dev/i8254.o dev/i8257.o dev/ich8.o
-OBJ = boot/boot.o boot/bootap.o main.o spinlock.o apic.o acpi.o idt.o int.o mem/virtmem.o mem/paging.o mem/physmem.o $(DEV_OBJ)
-TEST_OBJ = test_main.o spinlock.o list.o mem/virtmem.o mem/paging.o mem/physmem.o
+DEV_OBJ = dev/pci.o dev/e1000.o dev/netdev.o dev/i8254.o dev/i8257.o dev/ich8.o
+NET_OBJ = net/segment.o net/layer.o net/eth.o net/arp.o net/ip.o net/tcp.o net/udp.o net/socket.o net/netctrl.o
+OBJ = boot/boot.o boot/bootap.o main.o spinlock.o apic.o acpi.o idt.o int.o mem/virtmem.o mem/paging.o mem/physmem.o $(DEV_OBJ) $(NET_OBJ)
+TEST_OBJ = test_main.o spinlock.o list.o mem/virtmem.o mem/physmem.o dev/raw.o dev/netdev.o $(NET_OBJ)
 BUILD = ../../build/
 DEPS= $(OBJ:%.o=%.d) $(TEST_OBJ:%.o=%.d)
 
@@ -22,7 +23,7 @@ test:
 testrun:
 	make clean
 	make test
-	$(TEST)
+	sudo $(TEST)
 
 $(TEST): $(TEST_OBJ)
 	g++ -pedantic -pthread -static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive -o $@ $^

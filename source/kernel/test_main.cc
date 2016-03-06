@@ -18,12 +18,17 @@
  *
  * Author: Liva
  * 
+ * User level unit test
+ *
  */
 
 #include <iostream>
 #include "spinlock.h"
 #include "mem/virtmem.h"
 #include "global.h"
+#include "dev/raw.h"
+#include "net/netctrl.h"
+#include "net/socket.h"
 
 SpinLockCtrl *spinlock_ctrl;
 VirtmemCtrl *virtmem_ctrl;
@@ -37,18 +42,41 @@ void virtmem_test();
 void physmem_test();
 void paging_test();
 
-int main() {
+int main(int argc, char **argv) {
   //spinlock_test();
-  SpinLockCtrlTest _spinlock_ctrl;
-  spinlock_ctrl = &_spinlock_ctrl;
-  virtmem_ctrl = nullptr;
-  paging_test();
-  physmem_test();
-  list_test();
+  //SpinLockCtrlTest _spinlock_ctrl;
+  //spinlock_ctrl = &_spinlock_ctrl;
+  //virtmem_ctrl = nullptr;
+  //paging_test();
+  //physmem_test();
+  //list_test();
   //virtmem_test();
-  VirtmemCtrl _virtmem_ctrl;
-  virtmem_ctrl = &_virtmem_ctrl;
+  //VirtmemCtrl _virtmem_ctrl;
+  //virtmem_ctrl = &_virtmem_ctrl;
   //memory_test();
-  std::cout << "test passed" << std::endl;
+
+  InitNetCtrl();
+
+  DevRawEthernet eth;
+
+  ARPSocket socket;
+  if(socket.Open() < 0) {
+	  std::cerr << "cannot open socket" << std::endl;
+  } else {
+    uint32_t ipaddr;
+    uint8_t macaddr[6];
+    socket.ReceivePacket(ARPSocket::kOpARPRequest, &ipaddr, macaddr);
+	std::printf("ARP Request received from %u.%u.%u.%u (%.2x:%.2x:%.2x:%.2x:%.2x:%.2x)\n",
+	  (ipaddr >> 24), (ipaddr >> 16) & 0xff, (ipaddr >> 8) & 0xff, ipaddr & 0xff,
+	  macaddr[0], macaddr[1], macaddr[2], macaddr[3], macaddr[4], macaddr[5]);
+    // need to wait a little
+    // because Linux kernel cannot handle packet too quick
+    usleep(100);
+    // ARP reply
+   socket.TransmitPacket(ARPSocket::kOpARPReply, ipaddr, macaddr);
+  }
+
+  DismissNetCtrl();
+
   return 0;
 }

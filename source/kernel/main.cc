@@ -38,6 +38,9 @@
 #include "dev/vga.h"
 #include "dev/pci.h"
 
+#include "net/netctrl.h"
+#include "net/socket.h"
+
 SpinLockCtrl *spinlock_ctrl;
 MultibootCtrl *multiboot_ctrl;
 AcpiCtrl *acpi_ctrl;
@@ -52,6 +55,8 @@ Timer *timer;
 Tty *gtty;
 
 PCICtrl *pci_ctrl;
+
+static uint32_t rnd_next = 1;
 
 extern "C" int main() {
   SpinLockCtrl _spinlock_ctrl;
@@ -103,11 +108,15 @@ extern "C" int main() {
     gtty->Printf("s","[timer] info: HPET supported.\n");
   }
 
+  rnd_next = timer->ReadMainCnt();
+
   // timer->Sertup()より後
   apic_ctrl->Setup();
   
   idt->Setup();
-  
+
+  InitNetCtrl();
+
   InitDevices<PCICtrl, Device>();
 
   gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
@@ -124,10 +133,32 @@ extern "C" int main() {
   kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 4) + 1));
   kassert(!paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - 4096 * 5));
 
+//  ARPSocket socket;
+//  if(socket.Open() < 0) {
+//    gtty->Printf("s", "cannot open socket\n");
+//  } else {
+//    socket.TransmitPacket(ARPSocket::kOpARPRequest, 0x0a000203);
+//    socket.ReceivePacket(ARPSocket::kOpARPReply);
+//    gtty->Printf("s", "ARP reply received\n");
+//  }
+  Socket socket;
+  if(socket.Open() < 0) {
+    gtty->Printf("s", "cannot open socket\n");
+  } else {
+    uint8_t data[5] = "ABCD";
+    socket.SetAddr(0x0a00020f);
+    socket.SetPort(4000);
+    socket.TransmitPacket(data, 5);
+    gtty->Printf("s", "UDP sent\n");
+  }
+
   polling_ctrl->HandleAll();
   while(true) {
     asm volatile("hlt;nop;hlt;");
   }
+
+  DismissNetCtrl();
+
   return 0;
 }
 
@@ -151,4 +182,12 @@ void kernel_panic(char *class_name, char *err_str) {
 extern "C" void __cxa_pure_virtual()
 {
   kernel_panic("", "");
+}
+
+#define RAND_MAX 0x7fff
+
+uint32_t rand() {
+  rnd_next = rnd_next * 1103515245 + 12345;
+  /* return (unsigned int)(rnd_next / 65536) % 32768;*/
+  return (uint32_t)(rnd_next >> 16) & RAND_MAX;
 }

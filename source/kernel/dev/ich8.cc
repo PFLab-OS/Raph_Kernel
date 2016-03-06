@@ -28,6 +28,9 @@
 #include "../timer.h"
 #include "../global.h"
 
+#define __NETCTRL__
+#include "../net/global.h"
+
 void DevGbeIch8::Setup(uint16_t did) {
   _did = did;
 
@@ -78,6 +81,9 @@ void DevGbeIch8::Setup(uint16_t did) {
   this->SetupRx();
   this->SetupTx();
 
+  // register device to network device table
+  kassert(netdev_ctrl->RegisterDevice(this));
+
   // enable interrupts
   // TODO: does this truely affect?
   _mmioAddr[kRegImc] = 0;
@@ -88,9 +94,18 @@ void DevGbeIch8::Setup(uint16_t did) {
 void DevGbeIch8::SetupRx() {
   // see 14.6
   // program the Receive address register(s) per the station address
-  _mmioAddr[kRegRal0] = this->NvmRead(kEepromEthAddrLo);
-  _mmioAddr[kRegRal0] |= this->NvmRead(kEepromEthAddrMd) << 16;
-  _mmioAddr[kRegRah0] = this->NvmRead(kEepromEthAddrHi);
+  uint16_t ethAddrLo = this->NvmRead(kEepromEthAddrLo);
+  uint16_t ethAddrMd = this->NvmRead(kEepromEthAddrMd);
+  uint16_t ethAddrHi = this->NvmRead(kEepromEthAddrHi);
+  _ethAddr[0] = ethAddrHi & 0xff;
+  _ethAddr[1] = ethAddrHi >> 8;
+  _ethAddr[2] = ethAddrMd & 0xff;
+  _ethAddr[3] = ethAddrMd >> 8;
+  _ethAddr[4] = ethAddrLo & 0xff;
+  _ethAddr[5] = ethAddrLo >> 8;
+  _mmioAddr[kRegRal0] = ethAddrLo;
+  _mmioAddr[kRegRal0] |= ethAddrMd << 16;
+  _mmioAddr[kRegRah0] = ethAddrHi;
   _mmioAddr[kRegRah0] |= (kRegRahAselDestAddr | kRegRahAvFlag);
 
   // initialize the MTA (Multicast Table Array) to 0
