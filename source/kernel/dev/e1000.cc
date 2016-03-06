@@ -100,7 +100,7 @@ int32_t E1000::ReceivePacket(uint8_t *buffer, uint32_t size) {
     _mmioAddr[kRegRdt0] = (rdt + 1) % kRxdescNumber;
     return length;
   } else {
-    // if rx_desc_buf_ is full, fails
+    // if rx_desc_buf_ is empty, fails
 	// please retry again
     return -1;
   }
