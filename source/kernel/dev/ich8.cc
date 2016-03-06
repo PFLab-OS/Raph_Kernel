@@ -56,7 +56,6 @@ void DevGbeIch8::Setup(uint16_t did) {
   // software reset & general config (see ich8-gbe-controllers 11.4.2.1)
   _mmioAddr[kRegPba] = kRegPbaValue8K;
   _mmioAddr[kRegPbs] = kRegPbsValue16K;
-  gtty->Printf("s","<");
   while(true) {
     volatile uint32_t v = _mmioAddr[kRegFwsm];
       if ((v & kRegFwsmFlagRspciphy) != 0) {
@@ -64,7 +63,6 @@ void DevGbeIch8::Setup(uint16_t did) {
     }
   }
   _mmioAddr[kRegCtrl] |= kRegCtrlRstFlag | kRegCtrlPhyRstFlag;
-  gtty->Printf("s",">");
 
   // after global reset, interrupts must be disabled again
   _mmioAddr[kRegImc] = 0xffffffff;

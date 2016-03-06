@@ -100,7 +100,7 @@ extern "C" int main() {
   timer->Setup();
   if (_htimer.Setup()) {
     timer = &_htimer;
-    gtty->Printf("s","[timer] HPET supported.\n");
+    gtty->Printf("s","[timer] info: HPET supported.\n");
   }
 
   // timer->Sertup()より後
@@ -110,10 +110,10 @@ extern "C" int main() {
   
   InitDevices<PCICtrl, Device>();
 
-  gtty->Printf("s", "cpu #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
+  gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
   apic_ctrl->StartAPs();
 
-  gtty->Printf("s", "\n\nkernel initialization completed\n");
+  gtty->Printf("s", "\n\n[kernel] info: initialization completed\n");
 
   extern int kKernelEndAddr;
   // stackは16K
@@ -134,7 +134,7 @@ extern "C" int main() {
 extern "C" int main_of_others() {
   // according to mp spec B.3, system should switch over to Symmetric I/O mode
   apic_ctrl->BootAP();
-  gtty->Printf("s", "cpu #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
+  gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
   while(1) {
     asm volatile("hlt;");
   }
@@ -142,7 +142,7 @@ extern "C" int main_of_others() {
 }
 
 void kernel_panic(char *class_name, char *err_str) {
-  gtty->Printf("s", "Kernel Panic!");
+  gtty->Printf("s", "[kernel] error: fatal error occured!");
   while(1) {
     asm volatile("hlt;");
   }

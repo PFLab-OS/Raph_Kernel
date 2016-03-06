@@ -184,7 +184,7 @@ void E1000::TxTest() {
 
   uint32_t len = sizeof(data)/sizeof(uint8_t);
   this->TransmitPacket(data, len);
-  gtty->Printf("s", "Packet sent (length = ", "d", len, "s", ")\n");
+  gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
 }
 
 void E1000::Handle() {
@@ -199,7 +199,7 @@ void E1000::Handle() {
   if(buf[12] == 0x08 && buf[13] == 0x06) {
     // ARP packet
     gtty->Printf(
-                 "s", "ARP Reply received; ",
+                 "s", "[debug] info: ARP Reply received; ",
                  "x", buf[6], "s", ":",
                  "x", buf[7], "s", ":",
                  "x", buf[8], "s", ":",

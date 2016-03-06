@@ -32,7 +32,6 @@ extern "C" void entry();
 
 void ApicCtrl::Setup() {
   kassert(_madt != nullptr);
-  gtty->Printf("s","setup\n");
   int ncpu = 0;
   for(uint32_t offset = 0; offset < _madt->header.Length - sizeof(MADT);) {
     virt_addr ptr = ptr2virtaddr(_madt->table) + offset;
