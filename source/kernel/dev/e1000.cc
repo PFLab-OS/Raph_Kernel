@@ -99,7 +99,7 @@ int32_t E1000::ReceivePacket(uint8_t *buffer, uint32_t size) {
     _mmioAddr[kRegRdt0] = (rdt + 1) % kRxdescNumber;
     return length;
   } else {
-    // if rx_desc_buf_ is full, fails
+    // if rx_desc_buf_ is empty, fails
 	// please retry again
     return -1;
   }
@@ -122,6 +122,11 @@ int32_t E1000::TransmitPacket(const uint8_t *packet, uint32_t length) {
     txdesc->special = 0;
     txdesc->cso = 0;
     _mmioAddr[kRegTdt] = (tdt + 1) % kTxdescNumber;
+
+    for(int i = 0; i < 5; i++) {
+      gtty->Printf("d",txdesc->sta, "s", " ");
+      timer->BusyUwait(1000);
+    }
 
     return length;
   } else {

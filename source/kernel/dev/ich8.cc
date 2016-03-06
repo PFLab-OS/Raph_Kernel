@@ -149,9 +149,9 @@ void DevGbeIch8::SetupRx() {
 void DevGbeIch8::SetupTx() {
   // see 14.7
   // set TXDCTL register (following value is suggested)
-  /*  _mmioAddr[kRegTxdctl] = (kRegTxdctlWthresh | kRegTxdctlGranDescriptor);
-      _mmioAddr[kRegTxdctl1] = (kRegTxdctlWthresh | kRegTxdctlGranDescriptor);*/
-  _mmioAddr[kRegTxdctl] = 0x1f | (1 << 8) | (1 << 16) | (1 << 22) | (1 << 25) | (kRegTxdctlGranDescriptor);
+  _mmioAddr[kRegTxdctl] = (kRegTxdctlWthresh | kRegTxdctlGranDescriptor);
+    /*    _mmioAddr[kRegTxdctl1] = (kRegTxdctlWthresh | kRegTxdctlGranDescriptor);
+  _mmioAddr[kRegTxdctl] = 0x1f | (1 << 8) | (1 << 16) | (1 << 22) | (1 << 25) | (kRegTxdctlGranDescriptor);*/
 
   // set TCTL register
   _mmioAddr[kRegTctl] = (kRegTctlEnFlag | kRegTctlPsp |
