@@ -90,6 +90,7 @@ int32_t E1000::ReceivePacket(uint8_t *buffer, uint32_t size) {
 
   if(rx_available > 0) {
     // if the packet is on the wire
+    gtty->Printf("s", "o");
     rxdesc = rx_desc_buf_ + (rdt % kRxdescNumber);
     length = size < rxdesc->length ? size : rxdesc->length;
     memcpy(buffer, reinterpret_cast<uint8_t *>(p2v(rxdesc->bufAddr)), length);
