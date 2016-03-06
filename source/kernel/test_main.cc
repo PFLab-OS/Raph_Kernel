@@ -71,7 +71,7 @@ int main(int argc, char **argv) {
 	  macaddr[0], macaddr[1], macaddr[2], macaddr[3], macaddr[4], macaddr[5]);
     // need to wait a little
     // because Linux kernel cannot handle packet too quick
-    usleep(100);
+    usleep(500);
     // ARP reply
    socket.TransmitPacket(ARPSocket::kOpARPReply, ipaddr, macaddr);
   }
