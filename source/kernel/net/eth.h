@@ -44,6 +44,7 @@ class EthCtrl : public L2Ctrl {
   static const uint32_t kDstAddrOffset      = 0;
   static const uint32_t kSrcAddrOffset      = 6;
   static const uint32_t kProtocolTypeOffset = 12;
+  static const uint8_t kBcastAddress[6];
 
 public:
   EthCtrl() {}

@@ -31,7 +31,7 @@
 #define __NETCTRL__
 #include "global.h"
 
-const uint8_t ARPCtrl::kBcastMACAddr[] = {0xff};
+const uint8_t ARPCtrl::kBcastMACAddr[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 
 int32_t ARPCtrl::GeneratePacket(uint8_t *buffer, uint16_t op, uint8_t *smacaddr, uint32_t sipaddr, uint8_t *dmacaddr, uint32_t dipaddr) {
   ARPPacket * volatile packet = reinterpret_cast<ARPPacket*>(buffer);
@@ -63,7 +63,7 @@ bool ARPCtrl::FilterPacket(uint8_t *packet, uint16_t op, uint8_t *smacaddr, uint
   return (ntohs(data->op) == op)
       && (!smacaddr || !memcmp(data->hwSaddr, smacaddr, 6))
       && (!sipaddr  || data->protoSaddr == sipaddr)
-      && (!dmacaddr || !memcmp(data->hwDaddr, dmacaddr, 6) || !memcmp(data->hwDaddr, kBcastMACAddr, 6))
+      && (op == ARPSocket::kOpARPRequest || !dmacaddr || !memcmp(data->hwDaddr, dmacaddr, 6) || !memcmp(data->hwDaddr, kBcastMACAddr, 6))
       && (!dipaddr  || data->protoDaddr == dipaddr);
 }
 
