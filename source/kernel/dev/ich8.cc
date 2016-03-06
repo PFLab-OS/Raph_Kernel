@@ -28,7 +28,7 @@
 #include "../timer.h"
 #include "../global.h"
 
-void DevGbeIch8::Setup(uint16_t did) {
+void DevGbeIch8::SetupHw(uint16_t did) {
   _did = did;
 
   // the following sequence is indicated in ich8-gbe-controllers 11.4

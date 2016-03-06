@@ -133,15 +133,7 @@ int32_t E1000::TransmitPacket(const uint8_t *packet, uint32_t length) {
 }
 
 void E1000::GetEthAddr(uint8_t *buffer) {
-  uint16_t ethaddr_lo = this->NvmRead(kEepromEthAddrLo);
-  uint16_t ethaddr_md = this->NvmRead(kEepromEthAddrMd);
-  uint16_t ethaddr_hi = this->NvmRead(kEepromEthAddrHi);
-  buffer[0] = ethaddr_hi & 0xff;
-  buffer[1] = (ethaddr_hi >> 8) & 0xff;
-  buffer[2] = ethaddr_md & 0xff;
-  buffer[3] = (ethaddr_md >> 8) & 0xff;
-  buffer[4] = ethaddr_lo & 0xff;
-  buffer[5] = (ethaddr_lo >> 8) & 0xff;
+  memcpy(buffer, _ethAddr, 6);
 }
 
 uint32_t E1000::Crc32b(uint8_t *message) {
