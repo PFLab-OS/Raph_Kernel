@@ -29,7 +29,7 @@ $(IMAGE):
 cpimg: image
 	cp $(IMAGE) /vagrant
 
-hd: image
+hd: image /dev/sdb
 	sudo dd if=$(IMAGE) of=/dev/sdb
 
 disk: $(IMAGE)

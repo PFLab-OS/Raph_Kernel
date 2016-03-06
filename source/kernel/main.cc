@@ -93,9 +93,9 @@ extern "C" int main() {
   gtty = &_vga;
   
   PhysAddr paddr;
-  physmem_ctrl->Alloc(paddr, PagingCtrl::kPageSize);
+  physmem_ctrl->Alloc(paddr, PagingCtrl::kPageSize * 1);
   extern int kKernelEndAddr;
-  kassert(paging_ctrl->MapPhysAddrToVirtAddr(reinterpret_cast<virt_addr>(&kKernelEndAddr) - PagingCtrl::kPageSize * 3, paddr, PagingCtrl::kPageSize, PDE_WRITE_BIT, PTE_WRITE_BIT || PTE_GLOBAL_BIT));
+  kassert(paging_ctrl->MapPhysAddrToVirtAddr(reinterpret_cast<virt_addr>(&kKernelEndAddr) - PagingCtrl::kPageSize * 3, paddr, PagingCtrl::kPageSize * 1, PDE_WRITE_BIT, PTE_WRITE_BIT | PTE_GLOBAL_BIT));
 
   multiboot_ctrl->Setup();
   
@@ -104,7 +104,7 @@ extern "C" int main() {
   timer->Setup();
   if (_htimer.Setup()) {
     timer = &_htimer;
-    gtty->Printf("s","[timer] HPET supported.\n");
+    gtty->Printf("s","[timer] info: HPET supported.\n");
   }
 
   // timer->Sertup()より後
@@ -116,16 +116,19 @@ extern "C" int main() {
   
   InitDevices<PCICtrl, Device>();
 
-  gtty->Printf("s", "cpu #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
+  gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
   apic_ctrl->StartAPs();
 
-  gtty->Printf("s", "\n\nkernel initialization completed\n");
+  gtty->Printf("s", "\n\n[kernel] info: initialization completed\n");
 
   extern int kKernelEndAddr;
-  // stackは12K
+  // stackは16K
   kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr)));
+  kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 1) + 1));
+  kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 2) + 1));
   kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 3) + 1));
-  kassert(!paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - 4096 * 3));
+  kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 4) + 1));
+  kassert(!paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - 4096 * 5));
 
   cnt = timer->ReadMainCnt();
   eth->TxTest();
@@ -140,7 +143,7 @@ extern "C" int main() {
 extern "C" int main_of_others() {
   // according to mp spec B.3, system should switch over to Symmetric I/O mode
   apic_ctrl->BootAP();
-  gtty->Printf("s", "cpu #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
+  gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
   while(1) {
     asm volatile("hlt;");
   }
@@ -148,7 +151,7 @@ extern "C" int main_of_others() {
 }
 
 void kernel_panic(char *class_name, char *err_str) {
-  gtty->Printf("s", "Kernel Panic!");
+  gtty->Printf("s", "[kernel] error: fatal error occured!");
   while(1) {
     asm volatile("hlt;");
   }
