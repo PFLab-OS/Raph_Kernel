@@ -123,11 +123,6 @@ int32_t E1000::TransmitPacket(const uint8_t *packet, uint32_t length) {
     txdesc->cso = 0;
     _mmioAddr[kRegTdt] = (tdt + 1) % kTxdescNumber;
 
-    for(int i = 0; i < 5; i++) {
-      gtty->Printf("d",txdesc->sta, "s", " ");
-      timer->BusyUwait(1000);
-    }
-
     return length;
   } else {
     // if tx_desc_buf_ is full, fails
