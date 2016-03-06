@@ -53,6 +53,9 @@ class Timer {
       }
     }
   }
+  int64_t GetUsecFromCnt(int32_t cnt) {
+    return (static_cast<int64_t>(cnt) * _cnt_clk_period) / 1000;
+  }
  protected:
   // １カウントが何ナノ秒か
   uint32_t _cnt_clk_period = 1;
