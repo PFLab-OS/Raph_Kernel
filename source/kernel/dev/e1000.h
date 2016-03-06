@@ -107,6 +107,7 @@ public:
   static const int kBufSize = 2048;
   // allocate 6 byte before call
   void GetEthAddr(uint8_t *buffer);
+  void TxTest();
  protected:
   // Memory Mapped I/O Base Address
   volatile uint32_t *_mmioAddr = nullptr;
