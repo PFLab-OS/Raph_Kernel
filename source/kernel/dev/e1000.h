@@ -80,10 +80,8 @@ struct E1000TxDesc {
   uint8_t  cso;
   // command
   uint8_t  cmd;
-  // status
+  // status & reserved
   uint8_t  sta;
-  // reserved (set to be 0x0)
-  uint8_t  rsv;
   // checksum start
   uint8_t  css;
   // special field
@@ -115,12 +113,24 @@ public:
     // see 11.2 (ich8-gbe-controllers)
     _mmioAddr[kRegCtrl] |= kRegCtrlRstFlag;
   }
+  void Acquire() {
+    _mmioAddr[kRegExtcnfCtrl] |= kRegExtcnfCtrlFlagSw;
+    while(true) {
+      volatile uint32_t v = _mmioAddr[kRegExtcnfCtrl];
+      if ((v & kRegExtcnfCtrlFlagSw) != 0) {
+        return;
+      }
+    }
+  }
+  void Release() {
+    _mmioAddr[kRegExtcnfCtrl] &= kRegExtcnfCtrlFlagSw;
+  }
   void WritePhy(uint16_t addr, uint16_t value);
-  uint16_t ReadPhy(uint16_t addr);
+  volatile uint16_t ReadPhy(uint16_t addr);
   // initialize receiver
-  void SetupRx();
+  virtual void SetupRx() = 0;
   // initialize transmitter
-  void SetupTx();
+  virtual void SetupTx() = 0;
   virtual uint16_t NvmRead(uint16_t addr) = 0;
 
   // packet transmit/receive test
@@ -137,11 +147,11 @@ public:
   static const uint16_t kI8257x = 0x105e;
 
   // the number of receiver descriptors
-  static const int kRxdescNumber = 8;
+  static const int kRxdescNumber = 16;
   // the buffer for receiver descriptors
   E1000RxDesc *rx_desc_buf_;
   // the number of transmit descriptors
-  static const int kTxdescNumber = 8;
+  static const int kTxdescNumber = 16;
   // the buffer for transmit descriptors
   E1000TxDesc *tx_desc_buf_;
 
@@ -154,6 +164,7 @@ public:
 
   // Ethernet Controller Register Summary (see pcie-gbe-controllers Table 13-3)
   static const int kRegCtrl = 0x00000 / sizeof(uint32_t);
+  static const int kRegStatus = 0x00008 / sizeof(uint32_t);
   static const int kRegEerd = 0x00014 / sizeof(uint32_t);
   static const int kRegCtrlExt = 0x00018 / sizeof(uint32_t);
   static const int kRegMdic = 0x00020 / sizeof(uint32_t);
@@ -162,6 +173,7 @@ public:
   static const int kRegRctl = 0x00100 / sizeof(uint32_t);
   static const int kRegTctl = 0x00400 / sizeof(uint32_t);
   static const int kRegTipg = 0x00410 / sizeof(uint32_t);
+  static const int kRegExtcnfCtrl = 0x00F00 / sizeof(uint32_t);
   static const int kRegRdbal0 = 0x02800 / sizeof(uint32_t);
   static const int kRegRdbah0 = 0x02804 / sizeof(uint32_t);
   static const int kRegRdlen0 = 0x02808 / sizeof(uint32_t);
@@ -178,6 +190,7 @@ public:
   static const int kRegMta = 0x05200 / sizeof(uint32_t);
   static const int kRegRal0 = 0x05400 / sizeof(uint32_t);
   static const int kRegRah0 = 0x05404 / sizeof(uint32_t);
+  static const int kRegFwsm = 0x05B54 / sizeof(uint32_t);
 
   // CTRL Register Bit Description (see pcie-gbe-controllers Table 13-4)
   static const uint32_t kRegCtrlSluFlag = 1 << 6;
@@ -208,19 +221,25 @@ public:
   static const uint32_t kRegImsRxoFlag = 1 << 6;
   static const uint32_t kRegImsRxt0Flag = 1 << 7;
 
+  // Extended Configuration Control Register Bit Description (see ich8-geb-controllers Table 65)
+  static const uint32_t kRegExtcnfCtrlFlagSw = 1 << 5;
+
   // RCTL Register Bit Description (see pcie-gbe-controllers Table 13-104)
-  static const uint32_t kRegRctlEnFlag = 1 << 2;
+  static const uint32_t kRegRctlEnFlag = 1 << 1;
+  static const uint32_t kRegRctlUnicast = 1 << 3;
+  static const uint32_t kRegRctlMulticast = 1 << 4;
   static const uint32_t kRegRctlRdmts = 0 << 8; // half of RDLEN
   static const uint32_t kRegRctlDtyp = 0 << 10; // legacy description type
-  static const uint32_t kRegRctlVfeFlag = 1 << 18;
+  static const uint32_t kRegRctlBam = 1 << 15;
   static const uint32_t kRegRctlBsize = 0 << 16; // if BSEX=0 => 2048[Bytes]
+  static const uint32_t kRegRctlVfeFlag = 1 << 18;
   static const uint32_t kRegRctlBsex = 0 << 25;
+  static const uint32_t kRegRctlSecrc = 1 << 26;
 
   // TCTL Register Bit Description (see pcie-gbe-controllers Table 13-123)
   static const uint32_t kRegTctlEnFlag = 1 << 1;
   static const uint32_t kRegTctlPsp = 1 << 3;
   static const uint32_t kRegTctlCt = 0x0f << 4; // suggested
-  static const uint32_t kRegTctlCold = 0x3f << 12; // suggested for full-duplex
 
   // TXDCTL Register Bit Description (see pcie-gbe-controllers Table 13-132)
   static const uint32_t kRegTxdctlWthresh = 0x01 << 16;
@@ -231,6 +250,9 @@ public:
   static const uint32_t kRegRahAselDestAddr = 0 << 16;
   static const uint32_t kRegRahAselSourceAddr = 1 << 16;
   static const uint32_t kRegRahAvFlag = 1 << 31;
+
+  // Firmware Semaphore Register Bit Description (see ich8-gbe-controllers 10.6.10)
+  static const uint32_t kRegFwsmFlagRspciphy = 1 << 6;
 };
 
 class DevGbeI8254 : public E1000 {
@@ -243,6 +265,11 @@ class DevGbeI8254 : public E1000 {
   // read data from EEPROM
   uint16_t EepromRead(uint16_t addr);
   virtual void Setup(uint16_t did) override;
+  virtual void SetupRx() override;
+  virtual void SetupTx() override;
+
+  // TCTL Register Bit Description (see pci-gbe-controllers Table 13-123)
+  static const uint32_t kRegTctlCold = 0x40 << 12; // suggested for full-duplex
 };
 
 class DevGbeI8257 : public E1000 {
@@ -255,6 +282,11 @@ class DevGbeI8257 : public E1000 {
   // read data from EEPROM
   uint16_t EepromRead(uint16_t addr);
   virtual void Setup(uint16_t did) override;
+  virtual void SetupRx() override;
+  virtual void SetupTx() override;
+
+  // TCTL Register Bit Description (see pcie-gbe-controllers Table 13-123)
+  static const uint32_t kRegTctlCold = 0x3f << 12; // suggested for full-duplex
 };
 
 class DevGbeIch8 : public E1000 {
@@ -267,10 +299,15 @@ class DevGbeIch8 : public E1000 {
   // read data from Flash
   uint16_t FlashRead(uint16_t addr);
   virtual void Setup(uint16_t did) override;
+  virtual void SetupRx() override;
+  virtual void SetupTx() override;
 
   // spi flash mmio
   volatile uint32_t *_flashAddr = nullptr;
   volatile uint16_t *_flashAddr16 = nullptr;
+
+  // TCTL Register Bit Description (see ich8-gbe-controllers Table 10.4.52.0.1)
+  static const uint32_t kRegTctlCold = 0x3f << 12; // suggested for full-duplex
 
   // Ethernet Controller Register Summary (see ich8-gbe-controllers Table 55)
   static const int kRegPba = 0x01000 / sizeof(uint32_t);
