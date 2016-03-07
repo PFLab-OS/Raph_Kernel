@@ -50,14 +50,14 @@ int32_t IPCtrl::GenerateHeader(uint8_t *buffer, uint32_t length, uint8_t type, u
 bool IPCtrl::FilterPacket(uint8_t *packet, uint8_t type, uint32_t saddr, uint32_t daddr) {
   IPv4Header * volatile header = reinterpret_cast<IPv4Header*>(packet);
   return (header->protoId == type)
-      && (!saddr || header->saddr == saddr)
-      && (!daddr || header->daddr == daddr);
+      && (!saddr || ntohl(header->saddr) == saddr)
+      && (!daddr || ntohl(header->daddr) == daddr);
 }
 
 uint16_t IPCtrl::checkSum(uint8_t *buf, uint32_t size) {
   uint64_t sum = 0;
 
-  while(size > 1){
+  while(size > 1) {
     sum += *reinterpret_cast<uint16_t*>(buf);
     buf += 2;
     if(sum & 0x80000000)   /* if high order bit set, fold */

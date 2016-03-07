@@ -55,7 +55,7 @@ void E1000::InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, boo
     if (e1000 != nullptr) {
       e1000->Setup(did);
       polling_ctrl->Register(e1000);
-      e1000->TxTest();
+//      e1000->TxTest();
     }
   }
 }

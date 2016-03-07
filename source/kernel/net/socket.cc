@@ -145,7 +145,7 @@ int32_t Socket::ReceivePacket(uint8_t *data, uint32_t length) {
 
     // filter TCP port
     uint32_t offsetL4 = L2HeaderLength() + L3HeaderLength();
-    if(!L4Rx(packet + offsetL4, 0, dport)) continue;
+    if(!L4Rx(packet + offsetL4, dport, _dport)) continue;
 
     break;
   } while(1);
