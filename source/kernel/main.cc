@@ -133,24 +133,30 @@ extern "C" int main() {
   kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 4) + 1));
   kassert(!paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - 4096 * 5));
 
-//  ARPSocket socket;
-//  if(socket.Open() < 0) {
-//    gtty->Printf("s", "cannot open socket\n");
-//  } else {
-//    socket.TransmitPacket(ARPSocket::kOpARPRequest, 0x0a000203);
-//    socket.ReceivePacket(ARPSocket::kOpARPReply);
-//    gtty->Printf("s", "ARP reply received\n");
-//  }
-  Socket socket;
+  ARPSocket socket;
   if(socket.Open() < 0) {
     gtty->Printf("s", "cannot open socket\n");
   } else {
-    uint8_t data[5] = "ABCD";
-    socket.SetAddr(0x0a00020f);
-    socket.SetPort(4000);
-    socket.TransmitPacket(data, 5);
-    gtty->Printf("s", "UDP sent\n");
+    while(1) {
+      gtty->Printf("s", "wating ... ");
+      uint32_t ipaddr;
+      uint8_t macaddr[6];
+      socket.ReceivePacket(ARPSocket::kOpARPRequest, &ipaddr, macaddr);
+      timer->BusyUwait(500);
+      socket.TransmitPacket(ARPSocket::kOpARPReply, ipaddr, macaddr);
+      gtty->Printf("s", "ARP request received; and replied\n");
+    }
   }
+//  Socket socket;
+//  if(socket.Open() < 0) {
+//    gtty->Printf("s", "cannot open socket\n");
+//  } else {
+//    uint8_t data[0x400];
+//    socket.SetAddr(0x0a00020f);
+//    socket.SetPort(4000);
+//    socket.ReceivePacket(data, 0x400);
+//    gtty->Printf("s", "### tx test end\n");
+//  }
 
   polling_ctrl->HandleAll();
   while(true) {

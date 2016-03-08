@@ -73,7 +73,7 @@ int main(int argc, char **argv) {
     // because Linux kernel cannot handle packet too quick
     usleep(500);
     // ARP reply
-   socket.TransmitPacket(ARPSocket::kOpARPReply, ipaddr, macaddr);
+    socket.TransmitPacket(ARPSocket::kOpARPReply, ipaddr, macaddr);
   }
 
   DismissNetCtrl();

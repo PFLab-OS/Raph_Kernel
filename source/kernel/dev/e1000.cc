@@ -99,6 +99,21 @@ int32_t E1000::ReceivePacket(uint8_t *buffer, uint32_t size) {
     length = size < rxdesc->length ? size : rxdesc->length;
     memcpy(buffer, reinterpret_cast<uint8_t *>(p2v(rxdesc->bufAddr)), length);
     _mmioAddr[kRegRdt0] = (rdt + 1) % kRxdescNumber;
+
+    gtty->Printf("s", "e1000 rx dump; (",
+                 "d", rdh, "s", " ~ ", "d", rdt,
+                 "s", ") 0x",
+                 "x", reinterpret_cast<uint64_t>(rxdesc->bufAddr),
+                 "s", "\n");
+    for(uint32_t i = 0; i < length; i++) {
+	  if(buffer[i] < 0x10) gtty->Printf("d", 0);
+	  gtty->Printf("x", buffer[i]);
+	  if((i+1) % 16 == 0) gtty->Printf("s", "\n");
+	  else if((i+1) % 16 == 8) gtty->Printf("s", ":");
+	  else                gtty->Printf("s", " ");
+	}
+	gtty->Printf("s", "\n");
+
     return length;
   } else {
     // if rx_desc_buf_ is empty, fails
@@ -125,47 +140,17 @@ int32_t E1000::TransmitPacket(const uint8_t *packet, uint32_t length) {
     txdesc->cso = 0;
     _mmioAddr[kRegTdt] = (tdt + 1) % kTxdescNumber;
 
-    gtty->Printf(
-      "s", "e1000 tx dump;\n",
-      "x", packet[0], "s", " ", "x", packet[1], "s", " ",
-      "x", packet[2], "s", " ", "x", packet[3], "s", " ",
-      "x", packet[4], "s", " ", "x", packet[5], "s", " ",
-      "x", packet[6], "s", " ", "x", packet[7], "s", "\n");
-    gtty->Printf(
-      "x", packet[8], "s", " ", "x", packet[9], "s", " ",
-      "x", packet[10], "s", " ", "x", packet[11], "s", " ",
-      "x", packet[12], "s", " ", "x", packet[13], "s", " ",
-      "x", packet[14], "s", " ", "x", packet[15], "s", "\n");
-    gtty->Printf(
-      "x", packet[16], "s", " ", "x", packet[17], "s", " ",
-      "x", packet[18], "s", " ", "x", packet[19], "s", " ",
-      "x", packet[20], "s", " ", "x", packet[21], "s", " ",
-      "x", packet[22], "s", " ", "x", packet[23], "s", "\n");
-    gtty->Printf(
-      "x", packet[24], "s", " ", "x", packet[25], "s", " ",
-      "x", packet[26], "s", " ", "x", packet[27], "s", " ",
-      "x", packet[28], "s", " ", "x", packet[29], "s", " ",
-      "x", packet[30], "s", " ", "x", packet[31], "s", "\n");
-    gtty->Printf(
-      "x", packet[32], "s", " ", "x", packet[33], "s", " ",
-      "x", packet[34], "s", " ", "x", packet[35], "s", " ",
-      "x", packet[36], "s", " ", "x", packet[37], "s", " ",
-      "x", packet[38], "s", " ", "x", packet[39], "s", "\n");
-    gtty->Printf(
-      "x", packet[40], "s", " ", "x", packet[41], "s", " ",
-      "x", packet[42], "s", " ", "x", packet[43], "s", " ",
-      "x", packet[44], "s", " ", "x", packet[45], "s", " ",
-      "x", packet[46], "s", " ", "x", packet[47], "s", "\n");
-    gtty->Printf(
-      "x", packet[48], "s", " ", "x", packet[49], "s", " ",
-      "x", packet[50], "s", " ", "x", packet[51], "s", " ",
-      "x", packet[52], "s", " ", "x", packet[53], "s", " ",
-      "x", packet[53], "s", " ", "x", packet[55], "s", "\n");
-    gtty->Printf(
-      "x", packet[56], "s", " ", "x", packet[57], "s", " ",
-      "x", packet[58], "s", " ", "x", packet[59], "s", " ",
-      "x", packet[60], "s", " ", "x", packet[61], "s", " ",
-      "x", packet[62], "s", " ", "x", packet[63], "s", "\n");
+    gtty->Printf("s", "e1000 tx dump; 0x",
+                 "x", reinterpret_cast<uint64_t>(txdesc->bufAddr),
+                 "s", "\n");
+    for(uint32_t i = 0; i < length; i++) {
+	  if(packet[i] < 0x10) gtty->Printf("d", 0);
+	  gtty->Printf("x", packet[i]);
+	  if((i+1) % 16 == 0) gtty->Printf("s", "\n");
+	  else if((i+1) % 16 == 8) gtty->Printf("s", ":");
+	  else                gtty->Printf("s", " ");
+	}
+	gtty->Printf("s", "\n");
 
     return length;
   } else {
