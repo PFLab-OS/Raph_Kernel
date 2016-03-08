@@ -88,7 +88,7 @@ bool Socket::L4Rx(uint8_t *buffer, uint16_t sport, uint16_t dport) {
   return tcp_ctrl->FilterPacket(buffer, sport, dport, _type, _seq, _ack);
 }
 
-int32_t Socket::TransmitPacket(const uint8_t *data, uint32_t length) {
+int32_t Socket::Transmit(const uint8_t *data, uint32_t length) {
   // alloc buffer
   uint32_t len = L2HeaderLength() + L3HeaderLength() + L4HeaderLength() + length;
   uint8_t *packet = reinterpret_cast<uint8_t*>(virtmem_ctrl->Alloc(len));
@@ -122,7 +122,11 @@ int32_t Socket::TransmitPacket(const uint8_t *data, uint32_t length) {
   return length;
 }
 
-int32_t Socket::_ReceivePacket(uint8_t *data, uint32_t length, bool returnRaw) {
+int32_t Socket::TransmitPacket(const uint8_t *data, uint32_t length) {
+  return Transmit(data, length);
+}
+
+int32_t Socket::Receive(uint8_t *data, uint32_t length, bool returnRaw) {
   // alloc buffer
   uint32_t len;
   uint8_t *packet = nullptr;
@@ -168,11 +172,11 @@ int32_t Socket::_ReceivePacket(uint8_t *data, uint32_t length, bool returnRaw) {
 }
 
 int32_t Socket::ReceivePacket(uint8_t *data, uint32_t length) {
-  return _ReceivePacket(data, length, false);
+  return Receive(data, length, false);
 }
 
 int32_t Socket::ReceiveRawPacket(uint8_t *data, uint32_t length) {
-  return _ReceivePacket(data, length, true);
+  return Receive(data, length, true);
 }
 
 int32_t Socket::Listen() {
@@ -208,7 +212,8 @@ int32_t Socket::Listen() {
   }
 
   // connection established
-  // TODO:
+  SetSequenceNumber(t + 1);
+  SetAcknowledgeNumber(s + 1);
 
   return 0;
 }
@@ -246,7 +251,8 @@ int32_t Socket::Connect() {
   }
 
   // connection established
-  // TODO:
+  SetSequenceNumber(s + 1);
+  SetAcknowledgeNumber(t + 1);
 
   return 0;
 }
@@ -265,6 +271,14 @@ int32_t UDPSocket::L4Tx(uint8_t *buffer, uint32_t length, uint16_t sport, uint16
 
 bool UDPSocket::L4Rx(uint8_t *buffer, uint16_t sport, uint16_t dport) {
   return udp_ctrl->FilterPacket(buffer, sport, dport);
+}
+
+int32_t UDPSocket::ReceivePacket(uint8_t *data, uint32_t length) {
+  return Receive(data, length, false);
+}
+
+int32_t UDPSocket::TransmitPacket(const uint8_t *data, uint32_t length) {
+  return Transmit(data, length);
 }
 
 /*

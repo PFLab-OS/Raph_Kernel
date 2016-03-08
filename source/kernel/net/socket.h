@@ -91,7 +91,8 @@ protected:
   virtual bool L4Rx(uint8_t *packet,
                     uint16_t sport,
                     uint16_t dport);
-  int32_t _ReceivePacket(uint8_t *data, uint32_t length, bool returnRaw);
+  int32_t Receive(uint8_t *data, uint32_t length, bool returnRaw);
+  int32_t Transmit(const uint8_t *data, uint32_t length);
 
 public:
   Socket() {}
@@ -118,6 +119,8 @@ protected:
   virtual bool L4Rx(uint8_t *packet,
                     uint16_t sport,
                     uint16_t dport) override;
+  virtual int32_t TransmitPacket(const uint8_t *data, uint32_t length) override;
+  virtual int32_t ReceivePacket(uint8_t *data, uint32_t length) override;
 
 public:
   UDPSocket() {}

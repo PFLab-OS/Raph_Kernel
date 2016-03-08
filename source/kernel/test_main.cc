@@ -90,10 +90,10 @@ int main(int argc, char **argv) {
 
     if(!strncmp(argv[2], "server", 6)) {
       socket.Listen();
-	  std::cerr << "TCP server: connection established" << std::endl;
+	  std::cerr << "[server] connection established" << std::endl;
 	} else if(!strncmp(argv[2], "client", 6)) {
       socket.Connect();
-	  std::cerr << "TCP client: connection established" << std::endl;
+	  std::cerr << "[client] connection established" << std::endl;
 	} 
   }
 
