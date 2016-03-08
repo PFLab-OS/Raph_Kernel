@@ -53,6 +53,12 @@ public:
   virtual SpinLockId getLockId() {
     return SpinLockId::kNull;
   }
+  void Lock();
+  void Unlock();
+  int Trylock();
+  bool IsLocked() {
+    return ((_flag % 2) == 1);
+  }
 private:
   volatile unsigned int _flag;
 };

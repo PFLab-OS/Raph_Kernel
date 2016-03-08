@@ -1,5 +1,5 @@
 KERNEL = kernel.elf
-DEV_OBJ = dev/pci.o dev/e1000.o dev/i8254.o dev/i8257.o dev/ich8.o
+DEV_OBJ = dev/pci.o dev/e1000/e1000.o dev/e1000/e1000_api.o dev/e1000/e1000_nvm.o dev/e1000/e1000_mac.o dev/e1000/e1000_phy.o dev/e1000/e1000_manage.o dev/e1000/e1000_80003es2lan.o dev/e1000/e1000_82540.o dev/e1000/e1000_82541.o dev/e1000/e1000_82542.o dev/e1000/e1000_82543.o dev/e1000/e1000_82571.o dev/e1000/e1000_ich8lan.o dev/e1000/e1000_osdep.o 
 OBJ = boot/boot.o boot/bootap.o main.o spinlock.o apic.o acpi.o idt.o int.o mem/virtmem.o mem/paging.o mem/physmem.o $(DEV_OBJ)
 TEST_OBJ = test_main.o spinlock.o list.o mem/virtmem.o mem/paging.o mem/physmem.o
 BUILD = ../../build/

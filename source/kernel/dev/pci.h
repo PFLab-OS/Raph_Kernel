@@ -47,6 +47,10 @@ class DevPCI;
 
 class PCICtrl : public Device {
  public:
+  enum class CapabilityId : uint8_t {
+   kPcie = 0x10,
+  };
+
   static void Init() {
     PCICtrl *addr = reinterpret_cast<PCICtrl *>(virtmem_ctrl->Alloc(sizeof(PCICtrl)));
     pci_ctrl = new(addr) PCICtrl; 
@@ -63,15 +67,35 @@ class PCICtrl : public Device {
     void WriteReg(uint8_t bus, uint8_t device, uint8_t func, uint16_t reg, T value) override {
     *(reinterpret_cast<T *>(GetVaddr(bus, device, func, reg))) = value;
   }
+  // Capabilityへのオフセットを返す
+  // 見つからなかった時は0
+  uint16_t FindCapability(uint8_t bus, uint8_t device, uint8_t func, CapabilityId id);
   static const uint16_t kDevIdentifyReg = 0x2;
   static const uint16_t kVendorIDReg = 0x00;
   static const uint16_t kDeviceIDReg = 0x02;
   static const uint16_t kCommandReg = 0x04;
-  static const uint16_t kCommandRegBusMasterEnableFlag = 1 << 2;
+  static const uint16_t kStatusReg = 0x06;
   static const uint16_t kHeaderTypeReg = 0x0E;
   static const uint16_t kBaseAddressReg0 = 0x10;
   static const uint16_t kBaseAddressReg1 = 0x14;
-  static const uint8_t kHeaderTypeMultiFunction = 0x80;
+  static const uint16_t kSubVendorIdReg = 0x2c;
+  static const uint16_t kSubsystemIdReg = 0x2e;
+  static const uint16_t kCapPtrReg = 0x34;
+
+  // Capability Registers
+  static const uint16_t kCapRegId = 0x0;
+  static const uint16_t kCapRegNext = 0x1;
+
+  static const uint16_t kCommandRegBusMasterEnableFlag = 1 << 2;
+  static const uint16_t kCommandRegMemWriteInvalidateFlag = 1 << 4;
+
+  static const uint8_t kHeaderTypeRegFlagMultiFunction = 1 << 7;
+  static const uint8_t kHeaderTypeRegMaskDeviceType = (1 << 7) - 1;
+  static const uint8_t kHeaderTypeRegValueDeviceTypeNormal = 0x00;
+  static const uint8_t kHeaderTypeRegValueDeviceTypeBridge = 0x01;
+  static const uint8_t kHeaderTypeRegValueDeviceTypeCardbus = 0x02;
+
+  static const uint16_t kStatusRegFlagCapListAvailable = 1 << 4;
  private:
   void _Init();
   MCFG *_mcfg = nullptr;
@@ -86,11 +110,15 @@ class DevPCI : public Device {
   static void InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {} // dummy
   template<class T> T ReadReg(uint16_t reg) {
     kassert(pci_ctrl != nullptr);
-    return pci_ctrl->ReadReg<T>(_bus, _device, _mf, reg);
+    return pci_ctrl->ReadReg<T>(_bus, _device, 0, reg);
   }
   template<class T> void WriteReg(uint16_t reg, T value) {
     kassert(pci_ctrl != nullptr);
-    pci_ctrl->WriteReg<T>(_bus, _device, _mf, reg, value);
+    pci_ctrl->WriteReg<T>(_bus, _device, 0, reg, value);
+  }
+  uint16_t FindCapability(PCICtrl::CapabilityId id) {
+    kassert(pci_ctrl != nullptr);
+    return pci_ctrl->FindCapability(_bus, _device, 0, id);
   }
  private:
   const uint8_t _bus;

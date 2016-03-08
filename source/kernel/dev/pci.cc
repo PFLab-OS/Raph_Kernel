@@ -26,7 +26,7 @@
 #include "../tty.h"
 #include "pci.h"
 
-#include "e1000.h"
+#include "e1000/e1000.h"
 
 void PCICtrl::_Init() {
   _mcfg = acpi_ctrl->GetMCFG();
@@ -51,7 +51,7 @@ void PCICtrl::_Init() {
           continue;
         }
         uint16_t did = ReadReg<uint16_t>(j, k, 0, kDeviceIDReg);
-        bool mf = ReadReg<uint8_t>(j, k, 0, kHeaderTypeReg) & kHeaderTypeMultiFunction;
+        bool mf = ReadReg<uint8_t>(j, k, 0, kHeaderTypeReg) & kHeaderTypeRegFlagMultiFunction;
 
         InitPCIDevices<E1000, DevPCI>(vid, did, j, k, mf);
       }
@@ -59,3 +59,33 @@ void PCICtrl::_Init() {
   }
 }
 
+uint16_t PCICtrl::FindCapability(uint8_t bus, uint8_t device, uint8_t func, CapabilityId id) {
+  if ((ReadReg<uint16_t>(bus, device, func, kStatusReg) | kStatusRegFlagCapListAvailable) == 0) {
+    return 0;
+  }
+  
+  uint8_t ptr = 0;
+
+  switch(ReadReg<uint8_t>(bus, device, func, kHeaderTypeReg)
+         & kHeaderTypeRegMaskDeviceType) {
+  case kHeaderTypeRegValueDeviceTypeNormal:
+  case kHeaderTypeRegValueDeviceTypeBridge:
+    ptr = kCapPtrReg;
+    break;
+  case kHeaderTypeRegValueDeviceTypeCardbus:
+  default:
+    kassert(false);
+  }
+
+  ptr = ReadReg<uint8_t>(bus, device, func, ptr);
+
+  while (true) {
+    if (ptr == 0) {
+      return 0;
+    }
+    if (ReadReg<uint8_t>(bus, device, func, ptr + kCapRegId) == static_cast<uint8_t>(id)) {
+      return ptr;
+    }
+    ptr = ReadReg<uint8_t>(bus, device, func, ptr + kCapRegNext);
+  }
+}

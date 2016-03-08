@@ -417,6 +417,27 @@ void spinlock_test() {
 
 #endif // __UNIT_TEST__
 
+void SpinLock::Lock() {
+  volatile unsigned int flag = GetFlag();
+  while((flag % 2) == 1 || !SetFlag(flag, flag + 1)) {
+    flag = GetFlag();
+  }
+}
+
+void SpinLock::Unlock() {
+  kassert((_flag % 2) == 0);
+  _flag++;
+}
+
+int SpinLock::Trylock() {
+  volatile unsigned int flag = GetFlag();
+  if (((flag % 2) == 0) && SetFlag(flag, flag + 1)) {
+    return 0;
+  } else {
+    return -1;
+  }
+}
+
 ReadLock::ReadLock(SpinLock &lock) : _lock(lock), _tried(false) {
   _tmp_spid = spinlock_ctrl->getCurrentLock();
   assert(static_cast<int>(_tmp_spid)

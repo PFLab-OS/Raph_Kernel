@@ -42,11 +42,18 @@ static inline int strcmp(const char *s1, const char *s2) {
   return *s1 - *s2;
 }
 
-static void * memcpy(void *dest, const void *src, size_t n) {
+static inline void *memcpy(void *dest, const void *src, size_t n) {
   uint8_t *d = reinterpret_cast<uint8_t *>(dest);
   const uint8_t *s = reinterpret_cast<const uint8_t *>(src);
   while(n--) *(d++) = *(s++);
   return dest;
+}
+
+static inline void *memset(void *buf, int ch, size_t n) {
+  for (size_t i = 0; i < n; i++) {
+    reinterpret_cast<uint8_t *>(buf)[i] = ch;
+  }
+  return buf;
 }
 
 #endif // __RAPH_LIB_STRING_H__

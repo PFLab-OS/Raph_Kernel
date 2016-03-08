@@ -25,6 +25,8 @@
 #ifndef __RAPH_KERNEL_TIMER_H__
 #define __RAPH_KERNEL_TIMER_H__
 
+#include <stdint.h>
+
 class Timer {
  public:
   virtual bool Setup() = 0;
