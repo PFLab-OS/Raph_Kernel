@@ -130,6 +130,7 @@ extern "C" int main() {
   kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 4) + 1));
   kassert(!paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - 4096 * 5));
 
+  timer->BusyUwait(3*1000*1000);
   cnt = timer->ReadMainCnt();
   eth->TxTest();
 
