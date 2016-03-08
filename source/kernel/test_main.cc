@@ -23,6 +23,7 @@
  */
 
 #include <iostream>
+#include <time.h>
 #include "spinlock.h"
 #include "mem/virtmem.h"
 #include "global.h"
@@ -43,6 +44,9 @@ void physmem_test();
 void paging_test();
 
 int main(int argc, char **argv) {
+
+  srand((unsigned) time(NULL));
+
   //spinlock_test();
   //SpinLockCtrlTest _spinlock_ctrl;
   //spinlock_ctrl = &_spinlock_ctrl;
