@@ -239,7 +239,7 @@ void E1000::Handle() {
       0x00, 0x00, 0x00, 0x00, // Target Protocol Address
     };
     memcpy(data, buf + 6, 6);
-    GetEthAddr(data + 6);
+    memcpy(data + 6, _ethAddr, 6);
     memcpy(data + 22, data + 6, 6);
     memcpy(data + 28, buf + 38, 4);
     memcpy(data + 32, buf + 22, 6);
