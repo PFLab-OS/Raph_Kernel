@@ -81,11 +81,11 @@ bool Socket::L3Rx(uint8_t *buffer, uint8_t type, uint32_t saddr, uint32_t daddr)
 }
 
 int32_t Socket::L4Tx(uint8_t *buffer, uint32_t length, uint16_t sport, uint16_t dport) {
-  return tcp_ctrl->GenerateHeader(buffer, length, sport, dport);
+  return tcp_ctrl->GenerateHeader(buffer, length, sport, dport, _type, _seq, _ack);
 }
 
 bool Socket::L4Rx(uint8_t *buffer, uint16_t sport, uint16_t dport) {
-  return tcp_ctrl->FilterPacket(buffer, sport, dport);
+  return tcp_ctrl->FilterPacket(buffer, sport, dport, _type, _seq, _ack);
 }
 
 int32_t Socket::TransmitPacket(const uint8_t *data, uint32_t length) {
@@ -99,12 +99,11 @@ int32_t Socket::TransmitPacket(const uint8_t *data, uint32_t length) {
 
   // TCP header
   uint32_t offsetL4 = L2HeaderLength() + L3HeaderLength();
-  uint16_t sport = 80; // TODO:
-  L4Tx(packet + offsetL4, L4HeaderLength() + length, sport, _dport);
+  L4Tx(packet + offsetL4, L4HeaderLength() + length, _sport, _dport);
 
   // IP header
   uint32_t offsetL3 = L2HeaderLength();
-  uint32_t saddr = 0x0a000210; // TODO:
+  uint32_t saddr = _ipaddr;
   L3Tx(packet + offsetL3, L4HeaderLength() + length, L4Protocol(), saddr, _daddr);
 
   // Ethernet header
@@ -123,13 +122,19 @@ int32_t Socket::TransmitPacket(const uint8_t *data, uint32_t length) {
   return length;
 }
 
-int32_t Socket::ReceivePacket(uint8_t *data, uint32_t length) {
+int32_t Socket::_ReceivePacket(uint8_t *data, uint32_t length, bool returnRaw) {
   // alloc buffer
-  uint32_t len = L2HeaderLength() + L3HeaderLength() + L4HeaderLength() + length;
-  uint8_t *packet = reinterpret_cast<uint8_t*>(virtmem_ctrl->Alloc(len));
+  uint32_t len;
+  uint8_t *packet = nullptr;
+  if(returnRaw) {
+    len = length;
+    packet = data;
+  } else {
+    len = L2HeaderLength() + L3HeaderLength() + L4HeaderLength() + length;
+    packet = reinterpret_cast<uint8_t*>(virtmem_ctrl->Alloc(len));
+  }
   uint8_t ethDaddr[6];
-  uint32_t ipDaddr = 0x0a000210; // TODO:
-  uint16_t dport = 80; // TODO:
+  uint32_t ipDaddr = _ipaddr;
   _dev->GetEthAddr(ethDaddr);
 
   do {
@@ -145,19 +150,105 @@ int32_t Socket::ReceivePacket(uint8_t *data, uint32_t length) {
 
     // filter TCP port
     uint32_t offsetL4 = L2HeaderLength() + L3HeaderLength();
-    if(!L4Rx(packet + offsetL4, dport, _dport)) continue;
+    if(!L4Rx(packet + offsetL4, _sport, _dport)) continue;
 
     break;
   } while(1);
 
-  // copy data
-  uint32_t offset = L2HeaderLength() + L3HeaderLength() + L4HeaderLength();
-  memcpy(data, packet + offset, length);
+  if(!returnRaw) {
+    // copy data
+    uint32_t offset = L2HeaderLength() + L3HeaderLength() + L4HeaderLength();
+    memcpy(data, packet + offset, length);
 
-  // finalization
-  virtmem_ctrl->Free(reinterpret_cast<virt_addr>(packet));
+    // finalization
+    virtmem_ctrl->Free(reinterpret_cast<virt_addr>(packet));
+  }
 
   return len;
+}
+
+int32_t Socket::ReceivePacket(uint8_t *data, uint32_t length) {
+  return _ReceivePacket(data, length, false);
+}
+
+int32_t Socket::ReceiveRawPacket(uint8_t *data, uint32_t length) {
+  return _ReceivePacket(data, length, true);
+}
+
+int32_t Socket::Listen() {
+  uint32_t kBufSize = sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader);
+  uint8_t buffer[kBufSize];
+  uint8_t *tcp = buffer + sizeof(EthHeader) + sizeof(IPv4Header);
+  uint32_t s, t;
+
+  while(1) {
+    // receive SYN packet
+    SetSessionType(kFlagSYN);
+    if(ReceiveRawPacket(buffer, kBufSize) < 0) continue;
+    t = tcp_ctrl->GetSequenceNumber(tcp);
+
+    // transmit SYN+ACK packet
+    SetSessionType(kFlagSYN | kFlagACK);
+    s = rand();
+    SetSequenceNumber(s);
+    SetAcknowledgeNumber(++t);
+    if(TransmitPacket(buffer, 0) < 0) continue;
+
+    // receive ACK packet
+    SetSessionType(kFlagACK);
+    if(ReceiveRawPacket(buffer, kBufSize) < 0) continue;
+
+    // check sequence number
+    if(tcp_ctrl->GetSequenceNumber(tcp) != t + 1) continue;
+
+    // check acknowledge number
+    if(tcp_ctrl->GetAcknowledgeNumber(tcp) != s + 1) continue;
+
+    break;
+  }
+
+  // connection established
+  // TODO:
+
+  return 0;
+}
+
+int32_t Socket::Connect() {
+  uint32_t kBufSize = sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader);
+  uint8_t buffer[kBufSize];
+  uint8_t *tcp = buffer + sizeof(EthHeader) + sizeof(IPv4Header);
+  uint32_t s, t;
+
+  while(1) {
+    // transmit SYN packet
+    t = rand();
+    SetSessionType(kFlagSYN);
+    SetSequenceNumber(t);
+    SetAcknowledgeNumber(0);
+    if(TransmitPacket(buffer, 0) < 0) continue;
+
+    // receive SYN+ACK packet
+    SetSessionType(kFlagSYN | kFlagACK);
+    if(ReceiveRawPacket(buffer, kBufSize) < 0) continue;
+
+    // check acknowledge number
+    s = tcp_ctrl->GetAcknowledgeNumber(tcp);
+    if(s != t + 1) continue;
+
+    // transmit ACK packet
+    t = tcp_ctrl->GetSequenceNumber(tcp);
+    SetSessionType(kFlagACK);
+    SetSequenceNumber(s + 1);
+    SetAcknowledgeNumber(t + 1);
+    if(TransmitPacket(buffer, 0) < 0) continue;
+
+    break;
+  }
+
+  // connection established
+  // TODO:
+
+  return 0;
 }
 
 /*

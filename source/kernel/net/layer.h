@@ -41,17 +41,6 @@ public:
 class L4Ctrl {
 protected:
   L4Ctrl() {}
-
-  static const uint16_t kPortHTTP = 80;
-
-public:
-  virtual int32_t GenerateHeader(uint8_t *header,
-                                 uint32_t length,
-                                 uint16_t sport,
-                                 uint16_t dport) = 0;
-  virtual bool FilterPacket(uint8_t *packet,
-                            uint16_t sport,
-                            uint16_t dport) = 0;
 };
 
 #endif // __RAPH_KERNEL_NET_L2_H__

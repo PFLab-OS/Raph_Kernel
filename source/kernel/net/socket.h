@@ -36,10 +36,30 @@ public:
 
 // TCP/IP Socket
 class Socket : public NetSocket {
-  uint32_t _daddr = 0x0a00020f;
-  uint16_t _dport = 80;
+public:
+  static const uint16_t kPortTelnet = 23;
+  static const uint16_t kPortHTTP = 80;
+
+private:
+  static const uint8_t kFlagFIN           = 1 << 0;
+  static const uint8_t kFlagSYN           = 1 << 1;
+  static const uint8_t kFlagRST           = 1 << 2;
+  static const uint8_t kFlagPSH           = 1 << 3;
+  static const uint8_t kFlagACK           = 1 << 4;
+  static const uint8_t kFlagURG           = 1 << 5;
+
+  uint32_t _ipaddr = 0x0a000210;
+  uint32_t _daddr = 0x0a000210;
+  uint16_t _dport = kPortHTTP;
+  uint16_t _sport = kPortHTTP;
+  uint8_t _type   = kFlagRST; // TCP session type
+  uint32_t _seq   = 0; // TCP sequence number
+  uint32_t _ack   = 0; // TCP acknowledge number
 
   int32_t GetEthAddr(uint32_t ipaddr, uint8_t *macaddr);
+  void SetSessionType(uint8_t type) { _type = type; }
+  void SetSequenceNumber(uint32_t seq) { _seq = seq; }
+  void SetAcknowledgeNumber(uint32_t ack) { _ack = ack; }
 
 protected:
   // L[2/3/4][T/R]xをオーバーライドすることで特定のレイヤの処理を書き換えられる
@@ -71,13 +91,19 @@ protected:
   virtual bool L4Rx(uint8_t *packet,
                     uint16_t sport,
                     uint16_t dport);
+  int32_t _ReceivePacket(uint8_t *data, uint32_t length, bool returnRaw);
 
 public:
   Socket() {}
   void SetAddr(uint32_t addr) { _daddr = addr; }
   void SetPort(uint16_t port) { _dport = port; }
+  void SetListenPort(uint16_t port) { _sport = port; }
   virtual int32_t TransmitPacket(const uint8_t *data, uint32_t length);
   virtual int32_t ReceivePacket(uint8_t *data, uint32_t length);
+  virtual int32_t ReceiveRawPacket(uint8_t *data, uint32_t length);
+
+  int32_t Listen();
+  int32_t Connect();
 };
 
 // UDP Socket

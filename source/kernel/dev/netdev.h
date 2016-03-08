@@ -26,9 +26,6 @@
 #include <stdint.h>
 #include <string.h>
 #include "../spinlock.h"
-#include "../list.h"
-
-#include "../global.h"
 
 class NetDev {
   static const uint32_t kNetworkInterfaceNameLen = 8;
@@ -64,8 +61,6 @@ class NetDevCtrl {
 
 public:
   NetDevCtrl() {}
-
-  void d() { gtty->Printf("s", "\ndevice number ", "d", _curDevNumber, "s", "\n"); }
 
   bool RegisterDevice(NetDev *dev, const char *name = kDefaultNetworkInterfaceName);
   NetDev *GetDevice(const char *name = kDefaultNetworkInterfaceName);

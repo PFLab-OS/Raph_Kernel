@@ -51,10 +51,6 @@ struct TCPHeader {
 } __attribute__ ((packed));
 
 class TCPCtrl : public L4Ctrl {
-  uint8_t _tcpSessionType;
-  uint32_t _sequence;
-  uint32_t _ack;
-
   static const uint32_t kBasicBufsize     = 0x10;
   static const uint8_t kSrcPortOffset     = 0;
   static const uint8_t kDstPortOffset     = 2;
@@ -62,24 +58,24 @@ class TCPCtrl : public L4Ctrl {
   static const uint8_t kAckOffset         = 8;
   static const uint8_t kSessionTypeOffset = 13;
   static const uint8_t kWindowSizeOffset  = 14;
-  static const uint8_t kFlagFIN           = 1 << 0;
-  static const uint8_t kFlagSYN           = 1 << 1;
-  static const uint8_t kFlagRST           = 1 << 2;
-  static const uint8_t kFlagPSH           = 1 << 3;
-  static const uint8_t kFlagACK           = 1 << 4;
-  static const uint8_t kFlagURG           = 1 << 5;
-
-  inline void InitSequence() { _sequence = rand(); }
 
 public:
-  TCPCtrl() : _tcpSessionType(kFlagRST), _sequence(0), _ack(0) {}
+  TCPCtrl() {}
   virtual int32_t GenerateHeader(uint8_t *header,
                                  uint32_t length,
                                  uint16_t sport,
-                                 uint16_t dport);
+                                 uint16_t dport,
+                                 uint8_t type,
+                                 uint32_t seq,
+                                 uint32_t ack);
   virtual bool FilterPacket(uint8_t *packet,
                             uint16_t sport,
-                            uint16_t dport);
+                            uint16_t dport,
+                            uint8_t type,
+                            uint32_t seq,
+                            uint32_t ack);
+  uint32_t GetSequenceNumber(uint8_t *packet);
+  uint32_t GetAcknowledgeNumber(uint8_t *packet);
 };
 
 #endif // __RAPH_KERNEL_NET_TCP_H__
