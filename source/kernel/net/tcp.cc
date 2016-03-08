@@ -45,7 +45,7 @@ bool TCPCtrl::FilterPacket(uint8_t *packet, uint16_t sport, uint16_t dport, uint
   TCPHeader * volatile header = reinterpret_cast<TCPHeader*>(packet);
   return (!sport || ntohs(header->sport) == sport)
       && (!dport || ntohs(header->dport) == dport)
-      && (header->flag == type);
+      && ((header->flag & Socket::kFlagFIN) || header->flag == type);
 }
 
 uint8_t TCPCtrl::GetSessionType(uint8_t *packet) {

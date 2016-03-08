@@ -40,7 +40,6 @@ public:
   static const uint16_t kPortTelnet = 23;
   static const uint16_t kPortHTTP = 80;
 
-private:
   static const uint8_t kFlagFIN           = 1 << 0;
   static const uint8_t kFlagSYN           = 1 << 1;
   static const uint8_t kFlagRST           = 1 << 2;
@@ -48,6 +47,9 @@ private:
   static const uint8_t kFlagACK           = 1 << 4;
   static const uint8_t kFlagURG           = 1 << 5;
 
+  static const int32_t kConnectionClosed  = - 0x100;
+
+private:
   uint32_t _ipaddr = 0x0a000210;
   uint32_t _daddr = 0x0a000210;
   uint16_t _dport = kPortHTTP;
@@ -94,6 +96,9 @@ protected:
   int32_t Receive(uint8_t *data, uint32_t length, bool returnRaw);
   int32_t Transmit(const uint8_t *data, uint32_t length);
 
+  // respond to FIN+ACK
+  int32_t CloseAck(uint8_t flag);
+
 public:
   Socket() {}
   void SetAddr(uint32_t addr) { _daddr = addr; }
@@ -105,6 +110,7 @@ public:
 
   int32_t Listen();
   int32_t Connect();
+  int32_t Close();
 };
 
 // UDP Socket

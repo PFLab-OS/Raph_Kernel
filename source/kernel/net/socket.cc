@@ -123,7 +123,6 @@ int32_t Socket::Transmit(const uint8_t *data, uint32_t length) {
 }
 
 int32_t Socket::TransmitPacket(const uint8_t *data, uint32_t length) {
-  printf("TX: seq = %x; ack = %x;\n", _seq, _ack);
   int32_t rval = Transmit(data, length);
   if(_type == kFlagACK) {
     // TCP acknowledgement
@@ -189,10 +188,15 @@ int32_t Socket::ReceivePacket(uint8_t *data, uint32_t length) {
     uint8_t *tcp = packet + sizeof(EthHeader) + sizeof(IPv4Header);
 
     if((rval = Receive(packet, length, true)) >= 0) {
+      uint8_t type = tcp_ctrl->GetSessionType(tcp);
       uint32_t seq = tcp_ctrl->GetSequenceNumber(tcp);
       uint32_t ack = tcp_ctrl->GetAcknowledgeNumber(tcp);
-      printf("RX: seq = %x; ack = %x;\n", seq, ack);
-      if(_ack == seq || (_seq == seq && _ack == ack)) {
+      if(type & kFlagFIN) {
+        SetSequenceNumber(ack);
+        SetAcknowledgeNumber(seq + 1);
+        CloseAck(type);
+        rval = kConnectionClosed;
+      } else if(_ack == seq || (_seq == seq && _ack == ack)) {
         // acknowledge number = the expected next sequence number
         // (but the packet receiving right after 3-way handshake is not the case)
         SetSequenceNumber(ack);
@@ -292,6 +296,86 @@ int32_t Socket::Connect() {
   return 0;
 }
 
+int32_t Socket::Close() {
+  uint32_t kBufSize = sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader);
+  uint8_t buffer[kBufSize];
+  uint8_t *tcp = buffer + sizeof(EthHeader) + sizeof(IPv4Header);
+  uint32_t savedSeq = _seq;
+  uint32_t savedAck = _ack;
+  uint32_t s = _seq;
+  uint32_t t = _ack;
+
+  while(1) {
+    SetSequenceNumber(savedSeq);
+    SetAcknowledgeNumber(savedAck);
+
+    // transmit FIN+ACK packet
+    SetSessionType(kFlagFIN | kFlagACK);
+    if(Transmit(buffer, 0) < 0) continue;
+
+    // receive ACK packet
+    SetSessionType(kFlagACK);
+    if(ReceiveRawPacket(buffer, kBufSize) < 0) continue;
+
+    // check sequence number
+    if(tcp_ctrl->GetSequenceNumber(tcp) != t) continue;
+
+    // check acknowledge number
+    if(tcp_ctrl->GetAcknowledgeNumber(tcp) != s + 1) continue;
+
+    // receive FIN+ACK packet
+    SetSessionType(kFlagFIN | kFlagACK);
+    if(ReceiveRawPacket(buffer, kBufSize) < 0) continue;
+
+    // check sequence number
+    if(tcp_ctrl->GetSequenceNumber(tcp) != t) continue;
+
+    // check acknowledge number
+    if(tcp_ctrl->GetAcknowledgeNumber(tcp) != s + 1) continue;
+
+    // transmit ACK packet
+    SetSessionType(kFlagACK);
+    SetSequenceNumber(s + 1);
+    SetAcknowledgeNumber(t + 1);
+    if(Transmit(buffer, 0) < 0) continue;
+
+    break;
+  }
+ 
+  return 0;
+}
+
+int32_t Socket::CloseAck(uint8_t flag) {
+  uint32_t kBufSize = sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader);
+  uint8_t buffer[kBufSize];
+  uint8_t *tcp = buffer + sizeof(EthHeader) + sizeof(IPv4Header);
+
+  if(flag == (kFlagFIN | kFlagACK)) {
+    while(1) {
+      // transmit ACK packet
+      SetSessionType(kFlagACK);
+      if(Transmit(buffer, 0) < 0) continue;
+
+      // transmit FIN+ACK packet
+      SetSessionType(kFlagFIN | kFlagACK);
+      if(Transmit(buffer, 0) < 0) continue;
+
+      // receive ACK packet
+      SetSessionType(kFlagACK);
+      if(ReceiveRawPacket(buffer, kBufSize) < 0) continue;
+
+      // check sequence number
+      if(tcp_ctrl->GetSequenceNumber(tcp) != _ack) continue;
+
+      // check acknowledge number
+      if(tcp_ctrl->GetAcknowledgeNumber(tcp) != _seq + 1) continue;
+
+      break;
+    }
+  }
+ 
+  return 0;
+}
 /*
  * UDPSocket
  */
