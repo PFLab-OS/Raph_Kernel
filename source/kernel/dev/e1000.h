@@ -29,6 +29,7 @@
 #include <stdint.h>
 #include "../mem/physmem.h"
 #include "../mem/virtmem.h"
+#include "../mem/paging.h"
 #include "../polling.h"
 #include "../global.h"
 #include "pci.h"
@@ -109,6 +110,8 @@ public:
     _ethAddr[3] = (ethaddr_md >> 8) & 0xff;
     _ethAddr[4] = ethaddr_lo & 0xff;
     _ethAddr[5] = (ethaddr_lo >> 8) & 0xff;
+
+    _tmpbuf = reinterpret_cast<uint8_t *>(k2p(virtmem_ctrl->Alloc(sizeof(uint8_t) * kTmpBufSize)));
   }
   // init sequence of e1000 device (see pcie-gbe-controllers 14.3)
   virtual void SetupHw(uint16_t did) = 0;
@@ -271,6 +274,9 @@ public:
 
   // Firmware Semaphore Register Bit Description (see ich8-gbe-controllers 10.6.10)
   static const uint32_t kRegFwsmFlagRspciphy = 1 << 6;
+
+  uint8_t *_tmpbuf;
+  static const uint32_t kTmpBufSize = 256;
 };
 
 class DevGbeI8254 : public E1000 {

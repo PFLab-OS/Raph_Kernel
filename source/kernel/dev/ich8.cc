@@ -67,6 +67,8 @@ void DevGbeIch8::SetupHw(uint16_t did) {
   // after global reset, interrupts must be disabled again
   _mmioAddr[kRegImc] = 0xffffffff;
 
+  timer->BusyUwait(15 * 1000);
+
   // PHY Initialization (see ich8-gbe-controllers 11.4.3.1)
   this->WritePhy(kPhyRegCtrl, this->ReadPhy(kPhyRegCtrl) | kPhyRegCtrlFlagReset);
   timer->BusyUwait(15 * 1000);

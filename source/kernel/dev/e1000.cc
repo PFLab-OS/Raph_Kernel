@@ -181,47 +181,43 @@ void E1000::TxTest() {
 }
 
 void E1000::Handle() {
-  const uint32_t kBufsize = 256;
-  virt_addr vaddr = virtmem_ctrl->Alloc(sizeof(uint8_t) * kBufsize);
-  uint8_t *buf = reinterpret_cast<uint8_t*>(k2p(vaddr));
-  if(this->ReceivePacket(buf, kBufsize) == -1) {
-    virtmem_ctrl->Free(vaddr);
+  if(this->ReceivePacket(_tmpbuf, kTmpBufSize) == -1) {
     return;
   } 
   // received packet
-  if(buf[12] == 0x08 && buf[13] == 0x06 && buf[21] == 0x02) {
+  if(_tmpbuf[12] == 0x08 && _tmpbuf[13] == 0x06 && _tmpbuf[21] == 0x02) {
     if (cnt != 0) {
       // ARP packet
       gtty->Printf(
                    "s", "ARP Reply received; ",
-                   "x", buf[22], "s", ":",
-                   "x", buf[23], "s", ":",
-                   "x", buf[24], "s", ":",
-                   "x", buf[25], "s", ":",
-                   "x", buf[26], "s", ":",
-                   "x", buf[27], "s", " -> ",
-                   "d", buf[28], "s", ".",
-                   "d", buf[29], "s", ".",
-                   "d", buf[30], "s", ".",
-                   "d", buf[31], "s", "\n");
+                   "x", _tmpbuf[22], "s", ":",
+                   "x", _tmpbuf[23], "s", ":",
+                   "x", _tmpbuf[24], "s", ":",
+                   "x", _tmpbuf[25], "s", ":",
+                   "x", _tmpbuf[26], "s", ":",
+                   "x", _tmpbuf[27], "s", " -> ",
+                   "d", _tmpbuf[28], "s", ".",
+                   "d", _tmpbuf[29], "s", ".",
+                   "d", _tmpbuf[30], "s", ".",
+                   "d", _tmpbuf[31], "s", "\n");
       gtty->Printf("s", "laytency:","d", ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000,"s","us\n");
       cnt = 0;
     }
   }
-  if(buf[12] == 0x08 && buf[13] == 0x06 && buf[21] == 0x01) {
+  if(_tmpbuf[12] == 0x08 && _tmpbuf[13] == 0x06 && _tmpbuf[21] == 0x01) {
     // ARP packet
     gtty->Printf(
                  "s", "ARP Request received; ",
-                 "x", buf[22], "s", ":",
-                 "x", buf[23], "s", ":",
-                 "x", buf[24], "s", ":",
-                 "x", buf[25], "s", ":",
-                 "x", buf[26], "s", ":",
-                 "x", buf[27], "s", " ? ",
-                 "d", buf[38], "s", ".",
-                 "d", buf[39], "s", ".",
-                 "d", buf[40], "s", ".",
-                 "d", buf[41], "s", "\n");
+                 "x", _tmpbuf[22], "s", ":",
+                 "x", _tmpbuf[23], "s", ":",
+                 "x", _tmpbuf[24], "s", ":",
+                 "x", _tmpbuf[25], "s", ":",
+                 "x", _tmpbuf[26], "s", ":",
+                 "x", _tmpbuf[27], "s", " ? ",
+                 "d", _tmpbuf[38], "s", ".",
+                 "d", _tmpbuf[39], "s", ".",
+                 "d", _tmpbuf[40], "s", ".",
+                 "d", _tmpbuf[41], "s", "\n");
 
     uint8_t data[] = {
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target MAC Address
@@ -238,16 +234,15 @@ void E1000::Handle() {
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
       0x00, 0x00, 0x00, 0x00, // Target Protocol Address
     };
-    memcpy(data, buf + 6, 6);
+    memcpy(data, _tmpbuf + 6, 6);
     GetEthAddr(data + 6);
     memcpy(data + 22, data + 6, 6);
-    memcpy(data + 28, buf + 38, 4);
-    memcpy(data + 32, buf + 22, 6);
-    memcpy(data + 38, buf + 28, 4);
+    memcpy(data + 28, _tmpbuf + 38, 4);
+    memcpy(data + 32, _tmpbuf + 22, 6);
+    memcpy(data + 38, _tmpbuf + 28, 4);
 
     uint32_t len = sizeof(data)/sizeof(uint8_t);
     this->TransmitPacket(data, len);
     gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
   }
-  virtmem_ctrl->Free(vaddr);
 }
