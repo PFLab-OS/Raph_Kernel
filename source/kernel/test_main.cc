@@ -88,12 +88,31 @@ int main(int argc, char **argv) {
     socket.SetListenPort(Socket::kPortTelnet);
     socket.SetPort(Socket::kPortTelnet);
 
+    const uint32_t size = 0x100;
+    uint8_t data[size] = "Hello, world\n";
+
     if(!strncmp(argv[2], "server", 6)) {
       socket.Listen();
 	  std::cerr << "[server] connection established" << std::endl;
+
+      while(1) {
+        if(socket.ReceivePacket(data, size) >= 0) break;
+      }
+	  std::cerr << "[server] received; " << data << std::endl;
+
+      socket.TransmitPacket(data, strlen(reinterpret_cast<char*>(data)) + 1);
+	  std::cerr << "[server] loopback" << std::endl;
 	} else if(!strncmp(argv[2], "client", 6)) {
       socket.Connect();
 	  std::cerr << "[client] connection established" << std::endl;
+
+      socket.TransmitPacket(data, strlen(reinterpret_cast<char*>(data)) + 1);
+	  std::cerr << "[client] sent; " << data << std::endl;
+
+      while(1) {
+        if(socket.ReceivePacket(data, size) >= 0) break;
+      }
+	  std::cerr << "[client] received; " << data << std::endl;
 	} 
   }
 

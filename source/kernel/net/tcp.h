@@ -74,6 +74,7 @@ public:
                             uint8_t type,
                             uint32_t seq,
                             uint32_t ack);
+  uint8_t GetSessionType(uint8_t *packet);
   uint32_t GetSequenceNumber(uint8_t *packet);
   uint32_t GetAcknowledgeNumber(uint8_t *packet);
 };

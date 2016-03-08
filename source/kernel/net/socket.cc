@@ -114,21 +114,30 @@ int32_t Socket::Transmit(const uint8_t *data, uint32_t length) {
   L2Tx(packet, ethSaddr, ethDaddr, EthCtrl::kProtocolIPv4);
 
   // transmit
-  _dev->TransmitPacket(packet, len);
+  int32_t sentLength = _dev->TransmitPacket(packet, len);
 
   // finalization
   virtmem_ctrl->Free(reinterpret_cast<virt_addr>(packet));
 
-  return length;
+  return sentLength < 0 ? sentLength : sentLength - (sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader));
 }
 
 int32_t Socket::TransmitPacket(const uint8_t *data, uint32_t length) {
-  return Transmit(data, length);
+  printf("TX: seq = %x; ack = %x;\n", _seq, _ack);
+  int32_t rval = Transmit(data, length);
+  if(_type == kFlagACK) {
+    // TCP acknowledgement
+    if(rval >= 0) {
+	  SetSequenceNumber(_seq + rval);
+    }
+  }
+  return rval;
 }
 
 int32_t Socket::Receive(uint8_t *data, uint32_t length, bool returnRaw) {
   // alloc buffer
   uint32_t len;
+  int32_t receivedLength;
   uint8_t *packet = nullptr;
   if(returnRaw) {
     len = length;
@@ -143,7 +152,7 @@ int32_t Socket::Receive(uint8_t *data, uint32_t length, bool returnRaw) {
 
   do {
     // receive
-    if(_dev->ReceivePacket(packet, length) < 0) continue;
+    if((receivedLength = _dev->ReceivePacket(packet, length)) < 0) continue;
 
     // filter Ethernet address
 	if(!L2Rx(packet, nullptr, ethDaddr, EthCtrl::kProtocolIPv4)) continue;
@@ -168,11 +177,37 @@ int32_t Socket::Receive(uint8_t *data, uint32_t length, bool returnRaw) {
     virtmem_ctrl->Free(reinterpret_cast<virt_addr>(packet));
   }
 
-  return len;
+  return receivedLength < 0 ? receivedLength : receivedLength - (sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader));
 }
 
 int32_t Socket::ReceivePacket(uint8_t *data, uint32_t length) {
-  return Receive(data, length, false);
+  if(_type == kFlagACK) {
+    // TCP acknowledgement
+    uint32_t pktSize = sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader) + length;
+    int32_t rval;
+    uint8_t *packet = reinterpret_cast<uint8_t*>(virtmem_ctrl->Alloc(pktSize));
+    uint8_t *tcp = packet + sizeof(EthHeader) + sizeof(IPv4Header);
+
+    if((rval = Receive(packet, length, true)) >= 0) {
+      uint32_t seq = tcp_ctrl->GetSequenceNumber(tcp);
+      uint32_t ack = tcp_ctrl->GetAcknowledgeNumber(tcp);
+      printf("RX: seq = %x; ack = %x;\n", seq, ack);
+      if(_ack == seq || (_seq == seq && _ack == ack)) {
+        // acknowledge number = the expected next sequence number
+        // (but the packet receiving right after 3-way handshake is not the case)
+        SetSequenceNumber(ack);
+        SetAcknowledgeNumber(seq + rval);
+        memcpy(data, packet + pktSize - length, length);
+      } else {
+        // something is wrong with the received sequence number
+        rval = -1;
+      }
+    }
+    virtmem_ctrl->Free(reinterpret_cast<virt_addr>(packet));
+    return rval;
+  } else {
+    return Receive(data, length, false);
+  }
 }
 
 int32_t Socket::ReceiveRawPacket(uint8_t *data, uint32_t length) {
@@ -196,7 +231,7 @@ int32_t Socket::Listen() {
     s = rand();
     SetSequenceNumber(s);
     SetAcknowledgeNumber(++t);
-    if(TransmitPacket(buffer, 0) < 0) continue;
+    if(Transmit(buffer, 0) < 0) continue;
 
     // receive ACK packet
     SetSessionType(kFlagACK);
@@ -230,7 +265,7 @@ int32_t Socket::Connect() {
     SetSessionType(kFlagSYN);
     SetSequenceNumber(t);
     SetAcknowledgeNumber(0);
-    if(TransmitPacket(buffer, 0) < 0) continue;
+    if(Transmit(buffer, 0) < 0) continue;
 
     // receive SYN+ACK packet
     SetSessionType(kFlagSYN | kFlagACK);
@@ -245,7 +280,7 @@ int32_t Socket::Connect() {
     SetSessionType(kFlagACK);
     SetSequenceNumber(s + 1);
     SetAcknowledgeNumber(t + 1);
-    if(TransmitPacket(buffer, 0) < 0) continue;
+    if(Transmit(buffer, 0) < 0) continue;
 
     break;
   }

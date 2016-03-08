@@ -48,6 +48,11 @@ bool TCPCtrl::FilterPacket(uint8_t *packet, uint16_t sport, uint16_t dport, uint
       && (header->flag == type);
 }
 
+uint8_t TCPCtrl::GetSessionType(uint8_t *packet) {
+  TCPHeader * volatile header = reinterpret_cast<TCPHeader*>(packet);
+  return header->flag;
+}
+
 uint32_t TCPCtrl::GetSequenceNumber(uint8_t *packet) {
   TCPHeader * volatile header = reinterpret_cast<TCPHeader*>(packet);
   return ntohl(header->seqNumber);
