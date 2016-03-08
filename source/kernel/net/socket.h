@@ -93,10 +93,10 @@ protected:
   virtual bool L4Rx(uint8_t *packet,
                     uint16_t sport,
                     uint16_t dport);
-  int32_t Receive(uint8_t *data, uint32_t length, bool returnRaw);
-  int32_t Transmit(const uint8_t *data, uint32_t length);
+  int32_t Receive(uint8_t *data, uint32_t length, bool isRawPacket);
+  int32_t Transmit(const uint8_t *data, uint32_t length, bool isRawPacket);
 
-  // respond to FIN+ACK
+  // respond to FIN+ACK (4-way handshake)
   int32_t CloseAck(uint8_t flag);
 
 public:
@@ -104,12 +104,26 @@ public:
   void SetAddr(uint32_t addr) { _daddr = addr; }
   void SetPort(uint16_t port) { _dport = port; }
   void SetListenPort(uint16_t port) { _sport = port; }
+
+  // transmit TCP data (header will be attached)
   virtual int32_t TransmitPacket(const uint8_t *data, uint32_t length);
+
+  // transmit raw packet (Ethernet/IPv4/TCP header will not be attached)
+  virtual int32_t TransmitRawPacket(const uint8_t *data, uint32_t length);
+
+  // receive TCP data (header will be detached)
   virtual int32_t ReceivePacket(uint8_t *data, uint32_t length);
+
+  // receive raw packet (Ethernet/IPv4/TCP header will not be detached)
   virtual int32_t ReceiveRawPacket(uint8_t *data, uint32_t length);
 
+  // server: wait for client connection (3-way handshake)
   int32_t Listen();
+
+  // client: connect to server (3-way handshake)
   int32_t Connect();
+
+  // close TCP connection (4-way handshake)
   int32_t Close();
 };
 

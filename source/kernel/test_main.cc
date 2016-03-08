@@ -66,12 +66,12 @@ int main(int argc, char **argv) {
   if(!strncmp(argv[1], "arp", 3)) {
     ARPSocket socket;
     if(socket.Open() < 0) {
-        std::cerr << "cannot open socket" << std::endl;
+        std::cerr << "[open] cannot open socket" << std::endl;
     } else {
       uint32_t ipaddr;
       uint8_t macaddr[6];
       socket.ReceivePacket(ARPSocket::kOpARPRequest, &ipaddr, macaddr);
-      std::printf("ARP Request received from %u.%u.%u.%u (%.2x:%.2x:%.2x:%.2x:%.2x:%.2x)\n",
+      std::printf("[arp] request received from %u.%u.%u.%u (%.2x:%.2x:%.2x:%.2x:%.2x:%.2x)\n",
         (ipaddr >> 24), (ipaddr >> 16) & 0xff, (ipaddr >> 8) & 0xff, ipaddr & 0xff,
         macaddr[0], macaddr[1], macaddr[2], macaddr[3], macaddr[4], macaddr[5]);
       // need to wait a little
@@ -83,44 +83,54 @@ int main(int argc, char **argv) {
   } else if(!strncmp(argv[1], "tcp", 3)) {
     Socket socket;
     if(socket.Open() < 0) {
-        std::cerr << "cannot open socket" << std::endl;
+        std::cerr << "[error] cannot open socket" << std::endl;
     }
     socket.SetListenPort(Socket::kPortTelnet);
     socket.SetPort(Socket::kPortTelnet);
 
     const uint32_t size = 0x100;
-    uint8_t data[size] = "Hello, world\n";
+    uint8_t data[size];
     int32_t rval;
 
     if(!strncmp(argv[2], "server", 6)) {
+      // TCP server 
       socket.Listen();
-	  std::cerr << "[server] connection established" << std::endl;
+	  std::cerr << "[TCP:server] connection established" << std::endl;
 
+      // loopback
       while(1) {
         if((rval = socket.ReceivePacket(data, size)) >= 0) {
-          std::cerr << "[server] received; " << data << std::endl;
+          std::cerr << "[TCP:server] received; " << data << std::endl;
           socket.TransmitPacket(data, strlen(reinterpret_cast<char*>(data)) + 1);
-          std::cerr << "[server] loopback" << std::endl;
+          std::cerr << "[TCP:server] loopback" << std::endl;
         } else if(rval == Socket::kConnectionClosed) {
           break;
         }
       }
-      std::cerr << "[server] closed" << std::endl;
+      std::cerr << "[TCP:server] closed" << std::endl;
 	} else if(!strncmp(argv[2], "client", 6)) {
+      // TCP client
       socket.Connect();
-	  std::cerr << "[client] connection established" << std::endl;
-
-      socket.TransmitPacket(data, strlen(reinterpret_cast<char*>(data)) + 1);
-	  std::cerr << "[client] sent; " << data << std::endl;
+      std::cerr << "[TCP:client] connection established" << std::endl;
 
       while(1) {
-        if(socket.ReceivePacket(data, size) >= 0) break;
+        std::cin >> data;
+        if(!strncmp(reinterpret_cast<char*>(data), "q", 1)) break;
+
+        socket.TransmitPacket(data, strlen(reinterpret_cast<char*>(data)) + 1);
+        std::cerr << "[TCP:client] sent; " << data << std::endl;
+  
+        while(1) {
+          if(socket.ReceivePacket(data, size) >= 0) break;
+        }
+        std::cerr << "[TCP:client] received; " << data << std::endl;
       }
-	  std::cerr << "[client] received; " << data << std::endl;
 
 	  socket.Close();
-	  std::cerr << "[client] closed" << std::endl;
+	  std::cerr << "[TCP:client] closed" << std::endl;
 	} 
+  } else {
+    std::cerr << "[error] specify protocol" << std::endl;
   }
 
   DismissNetCtrl();

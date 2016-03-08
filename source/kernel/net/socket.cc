@@ -88,42 +88,51 @@ bool Socket::L4Rx(uint8_t *buffer, uint16_t sport, uint16_t dport) {
   return tcp_ctrl->FilterPacket(buffer, sport, dport, _type, _seq, _ack);
 }
 
-int32_t Socket::Transmit(const uint8_t *data, uint32_t length) {
+int32_t Socket::Transmit(const uint8_t *data, uint32_t length, bool isRawPacket) {
   // alloc buffer
   uint32_t len = L2HeaderLength() + L3HeaderLength() + L4HeaderLength() + length;
   uint8_t *packet = reinterpret_cast<uint8_t*>(virtmem_ctrl->Alloc(len));
+  if(isRawPacket) {
+    len = length;
+    packet = const_cast<uint8_t*>(data);
+  } else {
+    len = L2HeaderLength() + L3HeaderLength() + L4HeaderLength() + length;
+    packet = reinterpret_cast<uint8_t*>(virtmem_ctrl->Alloc(len));
 
-  // packet body
-  uint32_t offsetBody = L2HeaderLength() + L3HeaderLength() + L4HeaderLength();
-  memcpy(packet + offsetBody, data, length);
+    // packet body
+    uint32_t offsetBody = L2HeaderLength() + L3HeaderLength() + L4HeaderLength();
+    memcpy(packet + offsetBody, data, length);
 
-  // TCP header
-  uint32_t offsetL4 = L2HeaderLength() + L3HeaderLength();
-  L4Tx(packet + offsetL4, L4HeaderLength() + length, _sport, _dport);
+    // TCP header
+    uint32_t offsetL4 = L2HeaderLength() + L3HeaderLength();
+    L4Tx(packet + offsetL4, L4HeaderLength() + length, _sport, _dport);
 
-  // IP header
-  uint32_t offsetL3 = L2HeaderLength();
-  uint32_t saddr = _ipaddr;
-  L3Tx(packet + offsetL3, L4HeaderLength() + length, L4Protocol(), saddr, _daddr);
+    // IP header
+    uint32_t offsetL3 = L2HeaderLength();
+    uint32_t saddr = _ipaddr;
+    L3Tx(packet + offsetL3, L4HeaderLength() + length, L4Protocol(), saddr, _daddr);
 
-  // Ethernet header
-  uint8_t ethSaddr[6];
-  uint8_t ethDaddr[6] = {0x08, 0x00, 0x27, 0xc1, 0x5b, 0x93}; // TODO:
-  _dev->GetEthAddr(ethSaddr);
-//  GetEthAddr(_daddr, ethDaddr);
-  L2Tx(packet, ethSaddr, ethDaddr, EthCtrl::kProtocolIPv4);
+    // Ethernet header
+    uint8_t ethSaddr[6];
+    uint8_t ethDaddr[6] = {0x08, 0x00, 0x27, 0xc1, 0x5b, 0x93}; // TODO:
+    _dev->GetEthAddr(ethSaddr);
+//    GetEthAddr(_daddr, ethDaddr);
+    L2Tx(packet, ethSaddr, ethDaddr, EthCtrl::kProtocolIPv4);
+  }
 
   // transmit
   int32_t sentLength = _dev->TransmitPacket(packet, len);
 
-  // finalization
-  virtmem_ctrl->Free(reinterpret_cast<virt_addr>(packet));
+  if(!isRawPacket) {
+    // finalization
+    virtmem_ctrl->Free(reinterpret_cast<virt_addr>(packet));
+  }
 
   return sentLength < 0 ? sentLength : sentLength - (sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader));
 }
 
 int32_t Socket::TransmitPacket(const uint8_t *data, uint32_t length) {
-  int32_t rval = Transmit(data, length);
+  int32_t rval = Transmit(data, length, false);
   if(_type == kFlagACK) {
     // TCP acknowledgement
     if(rval >= 0) {
@@ -133,12 +142,16 @@ int32_t Socket::TransmitPacket(const uint8_t *data, uint32_t length) {
   return rval;
 }
 
-int32_t Socket::Receive(uint8_t *data, uint32_t length, bool returnRaw) {
+int32_t Socket::TransmitRawPacket(const uint8_t *data, uint32_t length) {
+  return Transmit(data, length, true);
+}
+
+int32_t Socket::Receive(uint8_t *data, uint32_t length, bool isRawPacket) {
   // alloc buffer
   uint32_t len;
   int32_t receivedLength;
   uint8_t *packet = nullptr;
-  if(returnRaw) {
+  if(isRawPacket) {
     len = length;
     packet = data;
   } else {
@@ -167,7 +180,7 @@ int32_t Socket::Receive(uint8_t *data, uint32_t length, bool returnRaw) {
     break;
   } while(1);
 
-  if(!returnRaw) {
+  if(!isRawPacket) {
     // copy data
     uint32_t offset = L2HeaderLength() + L3HeaderLength() + L4HeaderLength();
     memcpy(data, packet + offset, length);
@@ -235,7 +248,7 @@ int32_t Socket::Listen() {
     s = rand();
     SetSequenceNumber(s);
     SetAcknowledgeNumber(++t);
-    if(Transmit(buffer, 0) < 0) continue;
+    if(TransmitPacket(buffer, 0) < 0) continue;
 
     // receive ACK packet
     SetSessionType(kFlagACK);
@@ -269,7 +282,7 @@ int32_t Socket::Connect() {
     SetSessionType(kFlagSYN);
     SetSequenceNumber(t);
     SetAcknowledgeNumber(0);
-    if(Transmit(buffer, 0) < 0) continue;
+    if(TransmitPacket(buffer, 0) < 0) continue;
 
     // receive SYN+ACK packet
     SetSessionType(kFlagSYN | kFlagACK);
@@ -284,7 +297,7 @@ int32_t Socket::Connect() {
     SetSessionType(kFlagACK);
     SetSequenceNumber(s + 1);
     SetAcknowledgeNumber(t + 1);
-    if(Transmit(buffer, 0) < 0) continue;
+    if(TransmitPacket(buffer, 0) < 0) continue;
 
     break;
   }
@@ -311,7 +324,7 @@ int32_t Socket::Close() {
 
     // transmit FIN+ACK packet
     SetSessionType(kFlagFIN | kFlagACK);
-    if(Transmit(buffer, 0) < 0) continue;
+    if(TransmitPacket(buffer, 0) < 0) continue;
 
     // receive ACK packet
     SetSessionType(kFlagACK);
@@ -337,7 +350,7 @@ int32_t Socket::Close() {
     SetSessionType(kFlagACK);
     SetSequenceNumber(s + 1);
     SetAcknowledgeNumber(t + 1);
-    if(Transmit(buffer, 0) < 0) continue;
+    if(TransmitPacket(buffer, 0) < 0) continue;
 
     break;
   }
@@ -354,11 +367,11 @@ int32_t Socket::CloseAck(uint8_t flag) {
     while(1) {
       // transmit ACK packet
       SetSessionType(kFlagACK);
-      if(Transmit(buffer, 0) < 0) continue;
+      if(TransmitPacket(buffer, 0) < 0) continue;
 
       // transmit FIN+ACK packet
       SetSessionType(kFlagFIN | kFlagACK);
-      if(Transmit(buffer, 0) < 0) continue;
+      if(TransmitPacket(buffer, 0) < 0) continue;
 
       // receive ACK packet
       SetSessionType(kFlagACK);
@@ -397,7 +410,7 @@ int32_t UDPSocket::ReceivePacket(uint8_t *data, uint32_t length) {
 }
 
 int32_t UDPSocket::TransmitPacket(const uint8_t *data, uint32_t length) {
-  return Transmit(data, length);
+  return Transmit(data, length, false);
 }
 
 /*
