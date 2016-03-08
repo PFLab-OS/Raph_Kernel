@@ -106,10 +106,57 @@ class E1000;
 static inline void device_printf(E1000 *dev, char *str) {
 }
 
+typedef DevPCI *device_t;
+
+uint16_t pci_get_vendor(device_t dev) {
+  return dev->ReadReg<uint16_t>(PCICtrl::kVendorIdReg);
+}
+
+uint16_t pci_get_device(device_t dev) {
+  return dev->ReadReg<uint16_t>(PCICtrl::kDeviceIdReg);
+}
+
+uint16_t pci_get_subvendor(device_t dev) {
+  kassert((pci.ReadReg<uint8_t>(PCICtrl::kHeaderTypeReg) & PCICtrl::kHeaderTypeRegMaskDeviceType) == PCICtrl::kHeaderTypeRegValueDeviceTypeNormal);
+  return pci.ReadReg<uint16_t>(PCICtrl::kSubVendorIdReg);
+}
+
+uint16_t pci_get_subdevice(device_t dev) {
+  kassert((pci.ReadReg<uint8_t>(PCICtrl::kHeaderTypeReg) & PCICtrl::kHeaderTypeRegMaskDeviceType) == PCICtrl::kHeaderTypeRegValueDeviceTypeNormal);
+  return pci.ReadReg<uint16_t>(PCICtrl::kSubsystemIdReg);
+}
+
+struct adapter *device_get_softc(device_t dev) {
+  struct adapter *adapter = reinterpret_cast<struct adapter *>(virtmem_ctrl->Alloc(sizeof(struct adapter)));
+  dev->adapter = adapter;
+  return adapter;
+}
+
 static const int ENXIO = 6;
 static const int ENOMEM = 12;
 
 static const int TRUE = 1;
 static const int FALSE = 0;
+
+enum device_method {
+  device_probe = 0,
+  device_attach,
+  device_detach,
+  device_shutdown,
+  device_suspend,
+  device_resume,
+  device_end
+};
+
+#define DEVMETHOD(method, func) [method] = func
+#define DEVMETHOD_END [device_end] = nullptr
+
+typedef int (*device_method_t)(device_t);
+
+struct driver_t {
+  char *name;
+  device_method_t method;
+  int size;
+};
 
 #endif /* __RAPH_KERNEL_E1000_RAPH_H__ */
