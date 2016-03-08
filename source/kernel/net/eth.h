@@ -58,11 +58,11 @@ public:
   virtual int32_t GenerateHeader(uint8_t *buffer,
                                  uint8_t *saddr,
                                  uint8_t *daddr,
-                                 uint16_t type);
+                                 uint16_t type) override;
   virtual bool FilterPacket(uint8_t *packet,
                             uint8_t *saddr,
                             uint8_t *daddr,
-                            uint16_t type);
+                            uint16_t type) override;
 };
 
 #endif // __RAPH_KERNEL_NET_ETH_H__
