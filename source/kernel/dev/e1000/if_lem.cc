@@ -43,57 +43,59 @@
 ** See http://info.iet.unipi.it/~luigi/netmap/
 */
 
-#ifndef EM_STANDALONE_BUILD
-#include "opt_inet.h"
-#include "opt_inet6.h"
-#endif
+// #ifndef EM_STANDALONE_BUILD
+// #include "opt_inet.h"
+// #include "opt_inet6.h"
+// #endif
 
-#ifdef HAVE_KERNEL_OPTION_HEADERS
-#include "opt_device_polling.h"
-#endif
+// #ifdef HAVE_KERNEL_OPTION_HEADERS
+// #include "opt_device_polling.h"
+// #endif
 
-#include <sys/param.h>
-#include <sys/systm.h>
-#include <sys/bus.h>
-#include <sys/endian.h>
-#include <sys/kernel.h>
-#include <sys/kthread.h>
-#include <sys/malloc.h>
-#include <sys/mbuf.h>
-#include <sys/module.h>
-#include <sys/rman.h>
-#include <sys/socket.h>
-#include <sys/sockio.h>
-#include <sys/sysctl.h>
-#include <sys/taskqueue.h>
-#include <sys/eventhandler.h>
-#include <machine/bus.h>
-#include <machine/resource.h>
+// #include <sys/param.h>
+// #include <sys/systm.h>
+// #include <sys/bus.h>
+// #include <sys/endian.h>
+// #include <sys/kernel.h>
+// #include <sys/kthread.h>
+// #include <sys/malloc.h>
+// #include <sys/mbuf.h>
+// #include <sys/module.h>
+// #include <sys/rman.h>
+// #include <sys/socket.h>
+// #include <sys/sockio.h>
+// #include <sys/sysctl.h>
+// #include <sys/taskqueue.h>
+// #include <sys/eventhandler.h>
+// #include <machine/bus.h>
+// #include <machine/resource.h>
 
-#include <net/bpf.h>
-#include <net/ethernet.h>
-#include <net/if.h>
-#include <net/if_var.h>
-#include <net/if_arp.h>
-#include <net/if_dl.h>
-#include <net/if_media.h>
+// #include <net/bpf.h>
+// #include <net/ethernet.h>
+// #include <net/if.h>
+// #include <net/if_var.h>
+// #include <net/if_arp.h>
+// #include <net/if_dl.h>
+// #include <net/if_media.h>
 
-#include <net/if_types.h>
-#include <net/if_vlan_var.h>
+// #include <net/if_types.h>
+// #include <net/if_vlan_var.h>
 
-#include <netinet/in_systm.h>
-#include <netinet/in.h>
-#include <netinet/if_ether.h>
-#include <netinet/ip.h>
-#include <netinet/ip6.h>
-#include <netinet/tcp.h>
-#include <netinet/udp.h>
+// #include <netinet/in_systm.h>
+// #include <netinet/in.h>
+// #include <netinet/if_ether.h>
+// #include <netinet/ip.h>
+// #include <netinet/ip6.h>
+// #include <netinet/tcp.h>
+// #include <netinet/udp.h>
 
-#include <machine/in_cksum.h>
-#include <dev/led/led.h>
-#include <dev/pci/pcivar.h>
-#include <dev/pci/pcireg.h>
+// #include <machine/in_cksum.h>
+// #include <dev/led/led.h>
+// #include <dev/pci/pcivar.h>
+// #include <dev/pci/pcireg.h>
 
+#include "e1000_raph.h"
+#include "e1000_osdep.h"
 #include "e1000_api.h"
 #include "if_lem.h"
 
@@ -384,11 +386,11 @@ lem_probe(device_t dev)
 
 		    ((pci_subdevice_id == ent->subdevice_id) ||
 		    (ent->subdevice_id == PCI_ANY_ID))) {
-                  /*			sprintf(adapter_name, "%s %s",
-				lem_strings[ent->index],
-				lem_driver_version);*/
-                  /*device_set_desc_copy(dev, adapter_name);*/
-			return (BUS_PROBE_DEFAULT);
+                  sprintf(adapter_name, "%s %s",
+                          lem_strings[ent->index],
+                          lem_driver_version);
+                  device_set_desc_copy(dev, adapter_name);
+                  return (BUS_PROBE_DEFAULT);
 		}
 		ent++;
 	}
@@ -415,7 +417,7 @@ lem_attach(device_t dev)
 
 	INIT_DEBUGOUT("lem_attach: begin");
 
-	adapter = device_get_softc(dev);
+	adapter = reinterpret_cast<struct adapter *>(device_get_softc(dev));
 	adapter->dev = adapter->osdep.dev = dev;
 	EM_CORE_LOCK_INIT(adapter, device_get_nameunit(dev));
 	EM_TX_LOCK_INIT(adapter, device_get_nameunit(dev));
@@ -496,7 +498,7 @@ lem_attach(device_t dev)
         /* Sysctl for setting the interface flow control */
 	lem_set_flow_cntrl(adapter, "flow_control",
 	    "flow control setting",
-	    &adapter->fc_setting, lem_fc_setting);
+                           reinterpret_cast<int *>(&adapter->fc_setting), lem_fc_setting);
 
 	/*
 	 * Validate number of transmit and receive descriptors. It
@@ -781,7 +783,7 @@ err_pci:
 static int
 lem_detach(device_t dev)
 {
-	struct adapter	*adapter = device_get_softc(dev);
+  struct adapter	*adapter = reinterpret_cast<struct adapter *>(device_get_softc(dev));
 	if_t ifp = adapter->ifp;
 
 	INIT_DEBUGOUT("em_detach: begin");
@@ -876,7 +878,7 @@ lem_shutdown(device_t dev)
 static int
 lem_suspend(device_t dev)
 {
-	struct adapter *adapter = device_get_softc(dev);
+  struct adapter *adapter = reinterpret_cast<struct adapter *>(device_get_softc(dev));
 
 	EM_CORE_LOCK(adapter);
 
@@ -892,7 +894,7 @@ lem_suspend(device_t dev)
 static int
 lem_resume(device_t dev)
 {
-	struct adapter *adapter = device_get_softc(dev);
+  struct adapter *adapter = reinterpret_cast<struct adapter *>(device_get_softc(dev));
 	if_t ifp = adapter->ifp;
 
 	EM_CORE_LOCK(adapter);
@@ -4115,7 +4117,7 @@ lem_is_valid_ether_addr(u8 *addr)
 static void
 lem_get_wakeup(device_t dev)
 {
-	struct adapter	*adapter = device_get_softc(dev);
+  struct adapter	*adapter = reinterpret_cast<struct adapter *>(device_get_softc(dev));
 	u16		eeprom_data = 0, device_id, apme_mask;
 
 	adapter->has_manage = e1000_enable_mng_pass_thru(&adapter->hw);
@@ -4184,7 +4186,7 @@ lem_get_wakeup(device_t dev)
 static void
 lem_enable_wakeup(device_t dev)
 {
-	struct adapter	*adapter = device_get_softc(dev);
+  struct adapter	*adapter = reinterpret_cast<struct adapter *>(device_get_softc(dev));
 	if_t ifp = adapter->ifp;
 	u32		pmc, ctrl, ctrl_ext, rctl;
 	u16     	status;
@@ -4510,7 +4512,7 @@ lem_sysctl_reg_handler(SYSCTL_HANDLER_ARGS)
 	struct adapter *adapter;
 	u_int val;
 
-	adapter = oidp->oid_arg1;
+	adapter = reinterpret_cast<struct adapter *>(oiadp->oid_arg1);
 	val = E1000_READ_REG(&adapter->hw, oidp->oid_arg2);
 	return (sysctl_handle_int(oidp, &val, 0, req));
 }

@@ -44,25 +44,25 @@
 void
 e1000_write_pci_cfg(struct e1000_hw *hw, u32 reg, u16 *value)
 {
-  ((struct e1000_osdep *)hw->back)->dev->WriteReg<uint16_t>(static_cast<uint16_t>(reg), *value);
+  ((struct e1000_osdep *)hw->back)->dev->parent->WriteReg<uint16_t>(static_cast<uint16_t>(reg), *value);
 }
 
 void
 e1000_read_pci_cfg(struct e1000_hw *hw, u32 reg, u16 *value)
 {
-  *value = ((struct e1000_osdep *)hw->back)->dev->ReadReg<uint16_t>(static_cast<uint16_t>(reg));
+  *value = ((struct e1000_osdep *)hw->back)->dev->parent->ReadReg<uint16_t>(static_cast<uint16_t>(reg));
 }
 
 void
 e1000_pci_set_mwi(struct e1000_hw *hw)
 {
-  ((struct e1000_osdep *)hw->back)->dev->WriteReg<uint16_t>(PCICtrl::kCommandReg, (hw->bus.pci_cmd_word | PCICtrl::kCommandRegMemWriteInvalidateFlag));
+  ((struct e1000_osdep *)hw->back)->dev->parent->WriteReg<uint16_t>(PCICtrl::kCommandReg, (hw->bus.pci_cmd_word | PCICtrl::kCommandRegMemWriteInvalidateFlag));
 }
 
 void
 e1000_pci_clear_mwi(struct e1000_hw *hw)
 {
-  ((struct e1000_osdep *)hw->back)->dev->WriteReg<uint16_t>(PCICtrl::kCommandReg, (hw->bus.pci_cmd_word & ~PCICtrl::kCommandRegMemWriteInvalidateFlag));
+  ((struct e1000_osdep *)hw->back)->dev->parent->WriteReg<uint16_t>(PCICtrl::kCommandReg, (hw->bus.pci_cmd_word & ~PCICtrl::kCommandRegMemWriteInvalidateFlag));
 }
 
 /*
@@ -71,7 +71,7 @@ e1000_pci_clear_mwi(struct e1000_hw *hw)
 int32_t
 e1000_read_pcie_cap_reg(struct e1000_hw *hw, u32 reg, u16 *value)
 {
-  E1000 *dev = ((struct e1000_osdep *)hw->back)->dev;
+  DevPCI *dev = ((struct e1000_osdep *)hw->back)->dev->parent;
   uint16_t offset = dev->FindCapability(PCICtrl::CapabilityId::kPcie);
 
   *value = dev->ReadReg<uint16_t>(static_cast<uint16_t>(offset + reg));
@@ -84,7 +84,7 @@ e1000_read_pcie_cap_reg(struct e1000_hw *hw, u32 reg, u16 *value)
 int32_t
 e1000_write_pcie_cap_reg(struct e1000_hw *hw, u32 reg, u16 *value)
 {
-  E1000 *dev = ((struct e1000_osdep *)hw->back)->dev;
+  DevPCI *dev = ((struct e1000_osdep *)hw->back)->dev->parent;
   uint16_t offset = dev->FindCapability(PCICtrl::CapabilityId::kPcie);
 
   dev->WriteReg<uint16_t>(static_cast<uint16_t>(offset + reg), *value);

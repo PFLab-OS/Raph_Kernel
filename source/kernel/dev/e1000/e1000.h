@@ -90,13 +90,22 @@ struct E1000TxDesc {
   uint16_t special;
 } __attribute__ ((packed));
 
+struct driver;
+
+class E1000;
+struct BsdDriver {
+  E1000 *parent;
+  struct adapter *adapter;
+  struct driver *driver;
+};
+
 class E1000 : public DevPCI, Polling {
 public:
  E1000(uint8_t bus, uint8_t device, bool mf) : DevPCI(bus, device, mf) {}
   static void InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf);
   // from Polling
   void Handle() override;
-  struct adapter *adapter;
+  BsdDriver bsd;
  protected:
 };
 

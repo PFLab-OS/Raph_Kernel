@@ -509,7 +509,6 @@ struct em_buffer {
         bus_dmamap_t    map;         /* bus_dma map for packet */
 };
 
-
 /*
 ** Find the number of unrefreshed RX descriptors
 */

@@ -339,7 +339,7 @@ static device_method_t em_methods[] = {
 	DEVMETHOD_END
 };
 
-static driver_t em_driver = {
+driver_t em_driver = {
 	"em", em_methods, sizeof(struct adapter),
 };
 

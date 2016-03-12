@@ -28,13 +28,22 @@
 #include "../../tty.h"
 #include "../../global.h"
 
+#include "./e1000_raph.h"
+
+driver_t em_driver;
 
 void E1000::InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {
-  DevPCI pci(bus, device, mf);
-  if (lem_probe(&pci) == BUS_PROBE_DEFAULT) {
+  BsdDriver bsd;
+  E1000 tmp_e1000 = E1000(bus, device, mf);
+  bsd.parent = &tmp_e1000;
+  bsd.driver = &em_driver;
+  if (em_driver.methods[device_probe](&bsd) == BUS_PROBE_DEFAULT) {
     E1000 *addr = reinterpret_cast<E1000 *>(virtmem_ctrl->Alloc(sizeof(E1000)));
-    e1000 = new(addr) E1000(bus, device, mf);
-    kassert(lem_attach(e1000) == 0);
+    addr = new(addr) E1000(bus, device, mf);
+    addr->bsd.parent = addr;
+    addr->bsd.driver = &em_driver;
+    addr->bsd.driver->methods[device_probe](&addr->bsd);
+    kassert(addr->bsd.driver->methods[device_attach](&addr->bsd) == 0);
   }
 }
 
