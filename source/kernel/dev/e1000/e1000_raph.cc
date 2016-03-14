@@ -23,6 +23,7 @@
 #include "e1000_raph.h"
 #include "e1000.h"
 #include "../pci.h"
+#include "../../mem/virtmem.h"
 
 uint16_t pci_get_vendor(device_t dev) {
   return dev->parent->ReadReg<uint16_t>(PCICtrl::kVendorIDReg);
@@ -42,10 +43,19 @@ uint16_t pci_get_subdevice(device_t dev) {
   return dev->parent->ReadReg<uint16_t>(PCICtrl::kSubsystemIdReg);
 }
 
-void *device_get_softc(device_t dev) {
-  void *adapter = reinterpret_cast<void *>(virtmem_ctrl->Alloc(dev->driver->size));
-  dev->adapter = reinterpret_cast<struct adapter *>(adapter);
-  return adapter;
+struct resource *bus_alloc_resource_from_bar(device_t dev, int bar) {
+  struct resource *r = reinterpret_cast<struct resource *>(virtmem_ctrl->Alloc(sizeof(struct resource)));
+  uint32_t addr = dev->parent->ReadReg<uint32_t>(static_cast<uint32_t>(bar));
+  if ((bar & PCICtrl::kRegBaseAddrFlagIo) != 0) {
+    r->type = BUS_SPACE_PIO;
+    r->addr = addr & PCICtrl::kRegBaseAddrMaskIoAddr;
+  } else {
+    r->type = BUS_SPACE_MEMIO;
+    r->data.mem.is_prefetchable =  ((bar & PCICtrl::kRegBaseAddrIsPrefetchable) != 0);
+    r->addr = addr & PCICtrl::kRegBaseAddrMaskMemAddr;
+    if ((bar & PCICtrl::kRegBaseAddrMaskMemType) == PCICtrl::kRegBaseAddrValueMemType64) {
+      r->addr |= static_cast<uint64_t>(dev->parent->ReadReg<uint32_t>(static_cast<uint32_t>(bar + 4))) << 32;
+    }
+  }
+  return r;
 }
-
-

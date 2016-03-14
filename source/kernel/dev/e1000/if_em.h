@@ -322,7 +322,7 @@ struct em_int_delay_info {
  */
 struct tx_ring {
         struct adapter          *adapter;
-        SpinLock              tx_mtx;
+        struct mtx              tx_mtx;
         char                    mtx_name[16];
         u32                     me;
         u32                     msix;
@@ -361,7 +361,7 @@ struct rx_ring {
         u32                     me;
         u32                     msix;
 	u32			ims;
-        SpinLock              rx_mtx;
+        struct mtx              rx_mtx;
         char                    mtx_name[16];
         u32                     payload;
         struct task             rx_task;
@@ -413,7 +413,7 @@ struct adapter {
 	int		if_flags;
 	int		max_frame_size;
 	int		min_frame_size;
-	SpinLock	core_mtx;
+	struct mtx	core_mtx;
 	int		em_insert_vlan_header;
 	u32		ims;
 	bool		in_detach;

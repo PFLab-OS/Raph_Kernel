@@ -75,6 +75,7 @@ class PCICtrl : public Device {
   static const uint16_t kDeviceIDReg = 0x02;
   static const uint16_t kCommandReg = 0x04;
   static const uint16_t kStatusReg = 0x06;
+  static const uint16_t kRegRevisionId = 0x08;
   static const uint16_t kHeaderTypeReg = 0x0E;
   static const uint16_t kBaseAddressReg0 = 0x10;
   static const uint16_t kBaseAddressReg1 = 0x14;
@@ -96,6 +97,14 @@ class PCICtrl : public Device {
   static const uint8_t kHeaderTypeRegValueDeviceTypeCardbus = 0x02;
 
   static const uint16_t kStatusRegFlagCapListAvailable = 1 << 4;
+
+  static const uint32_t kRegBaseAddrFlagIo = 1 << 0;
+  static const uint32_t kRegBaseAddrMaskMemType = 3 << 1;
+  static const uint32_t kRegBaseAddrValueMemType32 = 0 << 1;
+  static const uint32_t kRegBaseAddrValueMemType64 = 2 << 1;
+  static const uint32_t kRegBaseAddrIsPrefetchable = 1 << 3;
+  static const uint32_t kRegBaseAddrMaskMemAddr = 0xFFFFFFF0;
+  static const uint32_t kRegBaseAddrMaskIoAddr = 0xFFFFFFFC;
  private:
   void _Init();
   MCFG *_mcfg = nullptr;

@@ -262,12 +262,12 @@
 #define PICOSECS_PER_TICK	20833
 #define TSYNC_PORT		319 /* UDP port for the protocol */
 
-#ifdef NIC_PARAVIRT
-#define	E1000_PARA_SUBDEV	0x1101		/* special id */
-#define	E1000_CSBAL		0x02830		/* csb phys. addr. low */
-#define	E1000_CSBAH		0x02834		/* csb phys. addr. hi */
-#include <net/paravirt.h>
-#endif /* NIC_PARAVIRT */
+/* #ifdef NIC_PARAVIRT */
+/* #define	E1000_PARA_SUBDEV	0x1101		/\* special id *\/ */
+/* #define	E1000_CSBAL		0x02830		/\* csb phys. addr. low *\/ */
+/* #define	E1000_CSBAH		0x02834		/\* csb phys. addr. hi *\/ */
+/* #include <net/paravirt.h> */
+/* #endif /\* NIC_PARAVIRT *\/ */
 
 /*
  * Bus dma allocation structure used by
@@ -321,9 +321,9 @@ struct adapter {
 	int		if_flags;
 	int		max_frame_size;
 	int		min_frame_size;
-	SpinLock	core_mtx;
-	SpinLock	tx_mtx;
-	SpinLock	rx_mtx;
+	struct mtx	core_mtx;
+	struct mtx	tx_mtx;
+	struct mtx	rx_mtx;
 	int		em_insert_vlan_header;
 
 	/* Task for FAST handling */

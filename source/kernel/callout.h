@@ -84,4 +84,24 @@ class Callout : public Function, Polling {
   uint32_t _cnt;
 };
 
+#include "spinlock.h"
+
+class LckCallout : public Callout {
+ public:
+  void SetLock(SpinLock *lock) {
+    _lock = lock;
+  }
+  virtual void Handle() override {
+    if (_lock != nullptr) {
+      _lock->Lock();
+    }
+    Callout::Handle();
+    if (_lock != nullptr) {
+      _lock->Unlock();
+    }
+  }
+ private:
+  SpinLock *_lock = nullptr;
+};
+
 #endif // __RAPH_KERNEL_CALLOUT_H__

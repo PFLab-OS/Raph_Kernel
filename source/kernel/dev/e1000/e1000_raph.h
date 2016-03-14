@@ -26,8 +26,11 @@
 #include "../../raph.h"
 #include <stdint.h>
 #include "../../callout.h"
+#include "../pci.h"
 #include "../../freebsd/sys/errno.h"
+#include "../../freebsd/sys/param.h"
 #include "../../freebsd/sys/bus_dma.h"
+#include "../../freebsd/dev/pci/pcireg.h"
 #include "e1000.h"
 
 #define NULL nullptr
@@ -129,6 +132,11 @@ static inline uint32_t pci_read_config(device_t dev, int reg, int width) {
   return dev->parent->ReadReg<uint16_t>(static_cast<uint16_t>(reg));
 }
 
+static inline int pci_enable_busmaster(device_t dev) {
+  dev->parent->WriteReg<uint16_t>(PCICtrl::kCommandReg, dev->parent->ReadReg<uint16_t>(PCICtrl::kCommandReg) | PCICtrl::kCommandRegBusMasterEnableFlag);
+  return 0;
+}
+
 #define device_printf(...)
 
 static inline void device_set_desc_copy(device_t dev, const char* desc) {
@@ -139,39 +147,12 @@ uint16_t pci_get_device(device_t dev);
 uint16_t pci_get_subvendor(device_t dev);
 uint16_t pci_get_subdevice(device_t dev);
 
-void *device_get_softc(device_t dev);
-
 static const int TRUE = 1;
 static const int FALSE = 0;
-
-enum device_method {
-  device_probe = 0,
-  device_attach,
-  device_detach,
-  device_shutdown,
-  device_suspend,
-  device_resume,
-  device_end
-};
-
-#define DEVMETHOD(method, func) [method] = func
-#define DEVMETHOD_END [device_end] = nullptr
 
 #define DRIVER_MODULE(...) 
 #define MODULE_DEPEND(...)
 #define TUNABLE_INT(...)
-
-typedef int (*device_method_t)(device_t);
-
-typedef struct driver {
-  const char *name;
-  const device_method_t *methods;
-  int size;
-} driver_t;
-
-typedef struct devclass {
-  driver_t *driver;
-} devclass_t;
 
 typedef unsigned long u_long;
 typedef unsigned int u_int;
@@ -189,11 +170,11 @@ typedef int64_t intmax_t;
   }
 
 
-SLIST_HEAD(sysctl_oid_list, sysctl_oid);
+//SLIST_HEAD(sysctl_oid_list, sysctl_oid);
 
 #define SYSCTL_HANDLER_ARGS struct sysctl_oid *oidp, void *arg1,  \
     intmax_t arg2, struct sysctl_req *req
-
+/*
 struct sysctl_oid {
   struct sysctl_oid_list oid_children;
   struct sysctl_oid_list *oid_parent;
@@ -208,7 +189,7 @@ struct sysctl_oid {
   int    oid_refcnt;
   u_int    oid_running;
   const char  *oid_descr;
-};
+  };*/
 
 #define SYSCTL_ADD_PROC(...)
 
@@ -217,16 +198,24 @@ struct sysctl_oid {
 typedef void timeout_t (void *);
 
 struct callout {
-  Callout callout;
+  LckCallout callout;
 };
 
-int callout_stop(struct callout *c) {
+struct mtx {
+  SpinLock lock;
+};
+
+static inline void callout_init_mtx(struct callout *c, struct mtx *mtx, int flags) {
+  c->callout.SetLock(&mtx->lock);
+}
+
+static inline int callout_stop(struct callout *c) {
   bool flag = c->callout.CanExecute();
   c->callout.Cancel();
   return flag ? 1 : 0;
 }
 
-int callout_drain(struct callout *c) {
+static inline int callout_drain(struct callout *c) {
   int r = callout_stop(c);
   while(true) {
     volatile bool flag = c->callout.IsHandling();
@@ -237,7 +226,7 @@ int callout_drain(struct callout *c) {
   return r;
 }
 
-void callout_reset(struct callout *c, int ticks, timeout_t *func, void *arg) {
+static inline void callout_reset(struct callout *c, int ticks, timeout_t *func, void *arg) {
   c->callout.Cancel();
   if (ticks < 0) {
     ticks = 1;
@@ -260,5 +249,40 @@ void callout_reset(struct callout *c, int ticks, timeout_t *func, void *arg) {
 
 #define EVENTHANDLER_REGISTER(...)
 #define EVENTHANDLER_DEREGISTER(...)
+
+struct resource {
+  phys_addr addr;
+  bus_space_tag_t type;
+  union {
+    struct {
+      bool is_prefetchable;
+    } mem;
+  } data;
+};
+
+// original function
+struct resource *bus_alloc_resource_from_bar(device_t dev, int bar);
+
+static inline bus_space_tag_t rman_get_bustag(struct resource *r) {
+  return r->type;
+}
+
+static inline bus_space_handle_t rman_get_bushandle(struct resource *r) {
+  bus_space_handle_t h;
+  switch(r->type) {
+  case BUS_SPACE_PIO:
+    h.ioport = static_cast<uint32_t>(r->addr);
+    break;
+  case BUS_SPACE_MEMIO:
+    h.maddr = reinterpret_cast<volatile uint8_t *>(r->addr);
+    break;
+  default:
+    kassert(false);
+  }
+  return h;
+}
+
+#include <string.h>
+#define bcmp(b1, b2, len) (memcmp((b1), (b2), (len)) != 0)
 
 #endif /* __RAPH_KERNEL_E1000_RAPH_H__ */

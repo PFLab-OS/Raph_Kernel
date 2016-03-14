@@ -56,4 +56,16 @@ static inline void *memset(void *buf, int ch, size_t n) {
   return buf;
 }
 
+static inline int memcmp(const void *buf1, const void *buf2,size_t n) {
+  const unsigned char *b1 = reinterpret_cast<const unsigned char *>(buf1);
+  const unsigned char *b2 = reinterpret_cast<const unsigned char *>(buf2);
+  for (size_t i = 0; i < n; i++, b1++, b2++) {
+    int j;
+    if ((j = *b1 - *b2) != 0) {
+      return j;
+    }
+  }
+  return 0;
+}
+
 #endif // __RAPH_LIB_STRING_H__

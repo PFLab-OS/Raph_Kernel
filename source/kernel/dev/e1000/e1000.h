@@ -90,13 +90,10 @@ struct E1000TxDesc {
   uint16_t special;
 } __attribute__ ((packed));
 
-struct driver;
-
 class E1000;
 struct BsdDriver {
   E1000 *parent;
   struct adapter *adapter;
-  struct driver *driver;
 };
 
 class E1000 : public DevPCI, Polling {
