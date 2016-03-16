@@ -7,7 +7,7 @@ DEPS= $(OBJ:%.o=%.d) $(TEST_OBJ:%.o=%.d)
 
 TEST = ./unit_test
 
-CXXFLAGS += -Wall -Wshadow -nostdinc -nostdlib -fno-exceptions -fno-rtti -mcmodel=large -D__KERNEL__ -std=c++11 -I../lib/ -MMD -MP
+CXXFLAGS += -Wall -Wshadow -nostdinc -nostdlib -fno-exceptions -fno-rtti -mcmodel=large -D__KERNEL__ -std=c++11 -I../lib/ -I. -MMD -MP
 
 .PHONY: clean test
 

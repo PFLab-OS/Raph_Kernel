@@ -1,11 +1,6 @@
 /*-
  * Copyright (c) 1982, 1986, 1989, 1993
  *	The Regents of the University of California.  All rights reserved.
- * (c) UNIX System Laboratories, Inc.
- * All or some portions of this file are derived from material licensed
- * to the University of California by American Telephone and Telegraph
- * Co. or Unix System Laboratories, Inc. and are reproduced herein with
- * the permission of UNIX System Laboratories, Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,37 +26,52 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	@(#)param.h	8.3 (Berkeley) 4/4/95
+ *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD$
  */
 
-#ifndef _FREEBSD_PARAM_H_
-#define _FREEBSD_PARAM_H_
+#ifndef _FREEBSD_NET_IF_VAR_H_
+#define _FREEBSD_NET_IF_VAR_H_
 
-#define nitems(x) (sizeof((x)) / sizeof((x)[0]))
-#define rounddown(x, y) (((x)/(y))*(y))
-#define rounddown2(x, y) ((x)&(~((y)-1)))          /* if y is power of two */
-#define roundup(x, y) ((((x)+((y)-1))/(y))*(y))  /* to any y */
-#define roundup2(x, y)  (((x)+((y)-1))&(~((y)-1))) /* if y is powers of two */
-#define powerof2(x) ((((x)-1)&(x))==0)
-
-/* Macros for min/max. */
-#define MIN(a,b) (((a)<(b))?(a):(b))
-#define MAX(a,b) (((a)>(b))?(a):(b))
-
-/*
- * Constants related to network buffer management.
- * MCLBYTES must be no larger than PAGE_SIZE.
- */
-#ifndef	MSIZE
-#define	MSIZE		256		/* size of an mbuf */
-#endif
-
-#ifndef	MCLSHIFT
-#define MCLSHIFT	11		/* convert bytes to mbuf clusters */
-#endif	/* MCLSHIFT */
-
-#define MCLBYTES	(1 << MCLSHIFT)	/* size of an mbuf cluster */
+#include <mem/virtmem.h>
+#include <global.h>
 
 
-#endif /* _FREEBSD_PARAM_H_ */
+struct ifnet {
+  int	if_drv_flags;		/* driver-managed status flags */
+  void *if_softc;
+};
+typedef struct ifnet * if_t;
+
+static inline int if_setdrvflagbits(if_t ifp, int set_flags, int clear_flags)
+{
+  ((struct ifnet *)ifp)->if_drv_flags |= set_flags;
+  ((struct ifnet *)ifp)->if_drv_flags &= ~clear_flags;
+
+  return (0);
+}
+
+static inline int if_getdrvflags(if_t ifp) {
+  return ((struct ifnet *)ifp)->if_drv_flags;
+}
+
+static inline int if_setdrvflags(if_t ifp, int flags) {
+  ((struct ifnet *)ifp)->if_drv_flags = flags;
+  return (0);
+}
+
+static inline void *if_getsoftc(if_t ifp) {
+  return ((struct ifnet *)ifp)->if_softc;
+}
+
+static inline int if_setsoftc(if_t ifp, void *softc)
+{
+  ((struct ifnet *)ifp)->if_softc = softc;
+  return (0);
+}
+
+static inline if_t if_gethandle(uint8_t type) {
+  return reinterpret_cast<if_t>(virtmem_ctrl->Alloc(sizeof(struct ifnet)));
+}
+
+#endif /* _FREEBSD_NET_IF_VAR_H_ */

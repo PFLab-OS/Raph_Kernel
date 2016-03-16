@@ -502,15 +502,15 @@ typedef struct _DESCRIPTOR_PAIR
 #define	EM_CORE_LOCK_DESTROY(_sc)	
 #define	EM_TX_LOCK_DESTROY(_sc)		
 #define	EM_RX_LOCK_DESTROY(_sc)		
-#define	EM_CORE_LOCK(_sc)		(&(_sc)->core_mtx)->Lock()
-#define	EM_TX_LOCK(_sc)			(&(_sc)->tx_mtx)->Lock()
-#define	EM_TX_TRYLOCK(_sc)		(&(_sc)->tx_mtx)->TryLock()
-#define	EM_RX_LOCK(_sc)			(&(_sc)->rx_mtx)->Lock()
-#define	EM_CORE_UNLOCK(_sc)		(&(_sc)->core_mtx)->Unlock()
-#define	EM_TX_UNLOCK(_sc)		(&(_sc)->tx_mtx)->Unlock()
-#define	EM_RX_UNLOCK(_sc)		(&(_sc)->rx_mtx)->Unlock()
-#define	EM_CORE_LOCK_ASSERT(_sc)	kassert((&(_sc)->core_mtx)->IsLocked());
-#define	EM_TX_LOCK_ASSERT(_sc)		(&(_sc)->tx_mtx)->IsLocked()
-#define	EM_RX_LOCK_ASSERT(_sc)		(&(_sc)->rx_mtx)->IsLocked()
+#define	EM_CORE_LOCK(_sc)		(&(_sc)->core_mtx)->lock.Lock()
+#define	EM_TX_LOCK(_sc)			(&(_sc)->tx_mtx)->lock.Lock()
+#define	EM_TX_TRYLOCK(_sc)		(&(_sc)->tx_mtx)->lock.TryLock()
+#define	EM_RX_LOCK(_sc)			(&(_sc)->rx_mtx)->lock.Lock()
+#define	EM_CORE_UNLOCK(_sc)		(&(_sc)->core_mtx)->lock.Unlock()
+#define	EM_TX_UNLOCK(_sc)		(&(_sc)->tx_mtx)->lock.Unlock()
+#define	EM_RX_UNLOCK(_sc)		(&(_sc)->rx_mtx)->lock.Unlock()
+#define	EM_CORE_LOCK_ASSERT(_sc)	kassert((&(_sc)->core_mtx)->lock.IsLocked());
+#define	EM_TX_LOCK_ASSERT(_sc)		kassert((&(_sc)->tx_mtx)->lock.IsLocked());
+#define	EM_RX_LOCK_ASSERT(_sc)		kassert((&(_sc)->rx_mtx)->lock.IsLocked());
 
 #endif /* _LEM_H_DEFINED_ */

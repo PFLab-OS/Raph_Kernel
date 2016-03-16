@@ -23,7 +23,7 @@
 #ifndef __RAPH_LIB_STRING_H__
 #define __RAPH_LIB_STRING_H__
 
-#include <stdint.h>
+#include <stddef.h>
 
 static inline int strncmp(const char *s1, const char *s2, size_t n) {
   for (size_t i = 0; i < n; i++, s1++, s2++) {
@@ -56,7 +56,7 @@ static inline void *memset(void *buf, int ch, size_t n) {
   return buf;
 }
 
-static inline int memcmp(const void *buf1, const void *buf2,size_t n) {
+static inline int memcmp(const void *buf1, const void *buf2, size_t n) {
   const unsigned char *b1 = reinterpret_cast<const unsigned char *>(buf1);
   const unsigned char *b2 = reinterpret_cast<const unsigned char *>(buf2);
   for (size_t i = 0; i < n; i++, b1++, b2++) {
@@ -67,5 +67,14 @@ static inline int memcmp(const void *buf1, const void *buf2,size_t n) {
   }
   return 0;
 }
+
+static inline int bcmp(const void *s1, const void *s2, size_t n) {
+  return memcmp(s1, s2, n);
+}
+
+static inline void bzero(void *s, size_t n) {
+  memset(s, 0, n);
+}
+
 
 #endif // __RAPH_LIB_STRING_H__

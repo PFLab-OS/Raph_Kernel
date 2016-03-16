@@ -23,15 +23,22 @@
 #ifndef __RAPH_KERNEL_E1000_RAPH_H__
 #define __RAPH_KERNEL_E1000_RAPH_H__
 
-#include "../../raph.h"
 #include <stdint.h>
-#include "../../callout.h"
-#include "../pci.h"
-#include "../../freebsd/sys/errno.h"
-#include "../../freebsd/sys/param.h"
-#include "../../freebsd/sys/bus_dma.h"
-#include "../../freebsd/dev/pci/pcireg.h"
-#include "e1000.h"
+#include <raph.h>
+#include <callout.h>
+#include <dev/pci.h>
+#include <buf.h>
+#include <mem/virtmem.h>
+#include <global.h>
+#include <freebsd/sys/errno.h>
+#include <freebsd/sys/param.h>
+#include <freebsd/sys/bus_dma.h>
+#include <freebsd/sys/endian.h>
+#include <freebsd/dev/pci/pcireg.h>
+#include <freebsd/net/if.h>
+#include <freebsd/net/if_var.h>
+#include <freebsd/net/if_types.h>
+#include "./e1000.h"
 
 #define NULL nullptr
 
@@ -82,10 +89,9 @@ typedef struct bus_dma_segment
 
 struct task {};
 
-struct inet {};
-typedef struct ifnet * if_t;
-
 struct ifmedia {};
+
+struct mbuf {};
 
 typedef struct {} eventhandler_tag;
 
@@ -193,7 +199,7 @@ struct sysctl_oid {
 
 #define SYSCTL_ADD_PROC(...)
 
-#define hz 1
+#define hz 1000
 
 typedef void timeout_t (void *);
 
@@ -282,7 +288,19 @@ static inline bus_space_handle_t rman_get_bushandle(struct resource *r) {
   return h;
 }
 
-#include <string.h>
-#define bcmp(b1, b2, len) (memcmp((b1), (b2), (len)) != 0)
+struct adapter *device_get_softc(device_t dev);
+
+#define bootverbose 0
+
+static inline int if_getmtu(if_t ifp) {
+  return ETHERMTU;
+}
+
+// replacement of ticks
+static inline int get_ticks() {
+  return (timer->GetUsecFromCnt(timer->ReadMainCnt()) * hz) / 1000000;
+}
+
+#define KASSERT(cmp, comment) kassert(cmp)
 
 #endif /* __RAPH_KERNEL_E1000_RAPH_H__ */

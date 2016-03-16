@@ -78,5 +78,10 @@
 #define BUS_DMA_NOWRITE   0x100
 #define BUS_DMA_NOCACHE   0x200
 
+#define bus_dma_tag_create(...) 0
+#define bus_dmamap_create(...) 0
+#define bus_dmamap_sync(...) 
+#define bus_dmamap_unload(...) 
+
 
 #endif /* _FREEBSD_BUS_DMA_H_ */

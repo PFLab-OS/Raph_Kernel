@@ -21,6 +21,9 @@
  */
 
 #include "e1000_raph.h"
+#include "e1000_api.h"
+#include "e1000_osdep.h"
+#include "if_lem.h"
 #include "e1000.h"
 #include "../pci.h"
 #include "../../mem/virtmem.h"
@@ -58,4 +61,8 @@ struct resource *bus_alloc_resource_from_bar(device_t dev, int bar) {
     }
   }
   return r;
+}
+
+struct adapter *device_get_softc(device_t dev) {
+  return dev->adapter;
 }

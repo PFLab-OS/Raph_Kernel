@@ -32,23 +32,22 @@ List<T>::List() : _list(&_first) {}
 
 template <typename T>
 void List<T>::Free(T *data) {
-  WRITE_LOCK(_lock) {
-    Container *before = nullptr;
-    Container *cur = _list;
-    while(cur != nullptr) {
-      if (cur->_entry <= data && data <= cur->_entry + 63) {
-        if (~cur->_flag == 0 && before != nullptr) {
-          before->_next = cur->_next;
-          cur->_next = _list;
-          _list = cur;
-        }
-        assert(((reinterpret_cast<size_t>(data) - reinterpret_cast<size_t>(cur->_entry)) % sizeof(T)) == 0);
-        cur->_flag &= ~(1 << (data - cur->_entry));
-        return;
+  Locker locker(_lock);
+  Container *before = nullptr;
+  Container *cur = _list;
+  while(cur != nullptr) {
+    if (cur->_entry <= data && data <= cur->_entry + 63) {
+      if (~cur->_flag == 0 && before != nullptr) {
+        before->_next = cur->_next;
+        cur->_next = _list;
+        _list = cur;
       }
-      before = cur;
-      cur = cur->_next;
+      assert(((reinterpret_cast<size_t>(data) - reinterpret_cast<size_t>(cur->_entry)) % sizeof(T)) == 0);
+      cur->_flag &= ~(1 << (data - cur->_entry));
+      return;
     }
+    before = cur;
+    cur = cur->_next;
   }
   assert(false);
 }
@@ -64,7 +63,8 @@ T *List<T>::Alloc() {
       _list_ptr = const_cast<volatile size_t *>(reinterpret_cast<size_t *>(&this->_list));
       asm volatile ("nop");
     }
-    WRITE_LOCK(_lock) {
+    {
+      Locker locker(_lock);
       int i;
       for (i = 0; i < 64; i++) {
         uint64_t bit = static_cast<uint64_t>(1) << i;
@@ -113,10 +113,9 @@ T *List<T>::Extend(T *entry) {
     tmp = new Container();
   }
 #endif
-  WRITE_LOCK(_lock) {
-    tmp->_next = _list;
-    _list = tmp;
-  }
+  Locker locker(_lock);
+  tmp->_next = _list;
+  _list = tmp;
   return entry;
 }
 

@@ -16,79 +16,23 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
- * Author: Levelfour
+ * Author: Liva
  *
- * 16/01/15: created by Levelfour
- * 16/02/28: add Ich8 support by Liva
- * 
  */
 
 #ifndef __RAPH_KERNEL_E1000_H__
 #define __RAPH_KERNEL_E1000_H__
 
 #include <stdint.h>
-#include "../../mem/physmem.h"
-#include "../../mem/virtmem.h"
-#include "../../polling.h"
-#include "../../global.h"
-#include "../pci.h"
+#include <mem/physmem.h>
+#include <mem/virtmem.h>
+#include <polling.h>
+#include <global.h>
+#include <dev/pci.h>
+#include <buf.h>
+#include <freebsd/sys/param.h>
 
 struct adapter;
-
-/*
- * e1000 is the driver for Intel 8254x/8256x/8257x and so on.
- * This implementation mainly takes care of 8257x.
- * These chipsets is loaded on Intel PRO/1000 series NIC,
- * and provide the way to receive/transmit packets.
- *
- * Main reference is PCIe* GbE Controllers Open Source Software Developer’s Manual.
- *   URL: http://www.intel.com/content/www/us/en/embedded/products/networking/pcie-gbe-controllers-open-source-manual.html
- * "pcie-gbe-controllers" in the source codes refers to this reference.
- * (if there's no notations, this means the reference of i8257x, not i8254x)
- */
-
-/*
- * Receiver Descriptor (legacy type)
- *   data structure that contains the receiver data buffer address
- *   and fields for hardware to store packet information
- *   see pcie-gbe-controllers 3.2.4
- */
-struct E1000RxDesc {
-  // buffer address
-  phys_addr bufAddr;
-  // buffer length
-  uint16_t length;
-  // check sum
-  uint16_t checkSum;
-  // see Table 3-2
-  uint8_t  status;
-  // see Table 3-3
-  uint8_t  errors;
-  // additional information for VLAN
-  uint16_t vlanTag;
-} __attribute__ ((packed));
-
-/*
- * Transmit Descriptor (legacy type)
- *   data structure that contains the transmit data buffer address
- *   see pcie-gbe-controllers 3.4.2
- */
-struct E1000TxDesc {
-  // buffer address
-  phys_addr bufAddr;
-  // segment length
-  uint16_t length;
-  // checksum offset
-  uint8_t  cso;
-  // command
-  uint8_t  cmd;
-  // status & reserved
-  uint8_t  sta;
-  // checksum start
-  uint8_t  css;
-  // special field
-  uint16_t special;
-} __attribute__ ((packed));
 
 class E1000;
 struct BsdDriver {
@@ -103,7 +47,63 @@ public:
   // from Polling
   void Handle() override;
   BsdDriver bsd;
- protected:
+
+  struct Packet {
+    size_t len;
+    uint8_t buf[MCLBYTES];
+  };
+  // rxパケットの処理の流れ
+  // 0. rx_reservedを初期化、バッファを満タンにしておく
+  // 1. Recieveハンドラがパケットを受信すると、rx_reservedから一つ取り出し、
+  //    memcpyの上、rx_bufferedに詰む
+  // 2. プロトコル・スタックはRecievePacket関数を呼ぶ
+  // 3. RecievePacket関数はrx_bufferedからパケットを取得する
+  // 4. プロトコル・スタックは取得したパケットを処理した上でReuseRxBufferを呼ぶ
+  // 5. ReuseRxBufferはrx_reservedにバッファを返す
+  // 6. 1に戻る
+  //
+  // プロトコル・スタックがReuseRxBufferを呼ばないと
+  // そのうちrx_reservedが枯渇して、一切のパケットの受信ができなくなるるよ♪
+  RingBuffer<Packet *, 300> _rx_reserved;
+  RingBuffer<Packet *, 300> _rx_buffered;
+
+  // txパケットの処理の流れ
+  // 0. tx_reservedを初期化、バッファを満タンにしておく
+  // 1. プロトコル・スタックはGetTxBufferを呼び出す
+  // 2. GetTxBufferはtx_reservedからバッファを取得する
+  // 3. プロトコル・スタックはバッファにmemcpyして、TransmitPacket関数を呼ぶ
+  // 4. TransmitPacket関数はtx_bufferedにパケットを詰む
+  // 5. Transmitハンドラがパケットを処理した上でtx_reservedに返す
+  // 6. 1に戻る
+  //
+  // プロトコル・スタックはGetTxBufferで確保したバッファを必ずTransmitPacketするか
+  // ReuseTxBufferで開放しなければならない。サボるとそのうちtx_reservedが枯渇
+  // して、一切のパケットの送信ができなくなるよ♪
+  RingBuffer<Packet *, 300> _tx_reserved;
+  RingBuffer<Packet *, 300> _tx_buffered;
+
+  void ReuseRxBuffer(Packet *packet) {
+    kassert(_rx_reserved.Push(packet));
+  }
+  void ReuseTxBuffer(Packet *packet) {
+    kassert(_tx_reserved.Push(packet));
+  }
+  // 戻り値がfalseの時はバッファが枯渇しているので、要リトライ
+  bool GetTxPacket(Packet *&packet) {
+    if (_tx_reserved.Pop(packet)) {
+      packet->len = 0;
+      return true;
+    } else {
+      return false;
+    }
+  }
+  bool TransmitPacket(Packet *packet) {
+    return _tx_buffered.Push(packet);
+  }
+  bool RecievePacket(Packet *&packet) {
+    return _rx_buffered.Pop(packet);
+  }
+ private:
 };
 
 #endif /* __RAPH_KERNEL_E1000_H__ */

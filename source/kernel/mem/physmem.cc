@@ -59,7 +59,8 @@ void PhysmemCtrl::Alloc(PhysAddr &paddr, size_t size) {
   phys_addr allocated_addr = 0;
   AllocatedArea *allocated_area = nullptr;
   AllocatedArea *fraged_area = nullptr;
-  WRITE_LOCK(_lock) {
+  {
+    Locker lock(_lock);
     allocated_area = _allocated_area;
     while(allocated_area->next) {
       if (fraged_area == nullptr &&
@@ -100,7 +101,8 @@ void PhysmemCtrl::Free(PhysAddr &paddr, size_t size) {
   phys_addr addr = paddr.GetAddr();
   paddr.Reset();
   AllocatedArea *allocated_area = nullptr;
-  WRITE_LOCK(_lock) {
+  {
+    Locker locker(_lock);
     allocated_area = _allocated_area;
     while(allocated_area) {
       if (allocated_area->start_addr <= addr &&
@@ -109,24 +111,23 @@ void PhysmemCtrl::Free(PhysAddr &paddr, size_t size) {
       }
       allocated_area = allocated_area->next;
     }
-    if (!allocated_area) {
-      break;
-    }
-    if (allocated_area->start_addr == addr) {
-      newarea_notused = true;
-      allocated_area->start_addr += size;
-    } else if (allocated_area->end_addr == addr + size) {
-      newarea_notused = true;
-      allocated_area->end_addr = addr;
-    } else {
-      newarea_notused = false;
-      newarea->start_addr = addr + size;
-      newarea->end_addr = allocated_area->end_addr;
-      newarea->next = allocated_area->next;
-      allocated_area->end_addr = addr;
-      // allocated_area->nextの書き込みは最後にする事
-      // 他のプロセスのReadで事故る可能性があるので
-      allocated_area->next = newarea;
+    if (allocated_area) {
+      if (allocated_area->start_addr == addr) {
+        newarea_notused = true;
+        allocated_area->start_addr += size;
+      } else if (allocated_area->end_addr == addr + size) {
+        newarea_notused = true;
+        allocated_area->end_addr = addr;
+      } else {
+        newarea_notused = false;
+        newarea->start_addr = addr + size;
+        newarea->end_addr = allocated_area->end_addr;
+        newarea->next = allocated_area->next;
+        allocated_area->end_addr = addr;
+        // allocated_area->nextの書き込みは最後にする事
+        // 他のプロセスのReadで事故る可能性があるので
+        allocated_area->next = newarea;
+      }
     }
   }
   if (newarea_notused) {

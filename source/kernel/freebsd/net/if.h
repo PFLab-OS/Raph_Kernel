@@ -1,11 +1,6 @@
 /*-
  * Copyright (c) 1982, 1986, 1989, 1993
  *	The Regents of the University of California.  All rights reserved.
- * (c) UNIX System Laboratories, Inc.
- * All or some portions of this file are derived from material licensed
- * to the University of California by American Telephone and Telegraph
- * Co. or Unix System Laboratories, Inc. and are reproduced herein with
- * the permission of UNIX System Laboratories, Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,37 +26,35 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	@(#)param.h	8.3 (Berkeley) 4/4/95
+ *	@(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD$
  */
 
-#ifndef _FREEBSD_PARAM_H_
-#define _FREEBSD_PARAM_H_
+#ifndef _FREEBSD_NET_IF_H_
+#define	_FREEBSD_NET_IF_H_
 
-#define nitems(x) (sizeof((x)) / sizeof((x)[0]))
-#define rounddown(x, y) (((x)/(y))*(y))
-#define rounddown2(x, y) ((x)&(~((y)-1)))          /* if y is power of two */
-#define roundup(x, y) ((((x)+((y)-1))/(y))*(y))  /* to any y */
-#define roundup2(x, y)  (((x)+((y)-1))&(~((y)-1))) /* if y is powers of two */
-#define powerof2(x) ((((x)-1)&(x))==0)
+#define	IFF_UP		0x1		/* (n) interface is up */
+#define	IFF_BROADCAST	0x2		/* (i) broadcast address valid */
+#define	IFF_DEBUG	0x4		/* (n) turn on debugging */
+#define	IFF_LOOPBACK	0x8		/* (i) is a loopback net */
+#define	IFF_POINTOPOINT	0x10		/* (i) is a point-to-point link */
+/*			0x20		   was IFF_SMART */
+#define	IFF_DRV_RUNNING	0x40		/* (d) resources allocated */
+#define	IFF_NOARP	0x80		/* (n) no address resolution protocol */
+#define	IFF_PROMISC	0x100		/* (n) receive all packets */
+#define	IFF_ALLMULTI	0x200		/* (n) receive all multicast packets */
+#define	IFF_DRV_OACTIVE	0x400		/* (d) tx hardware queue is full */
+#define	IFF_SIMPLEX	0x800		/* (i) can't hear own transmissions */
+#define	IFF_LINK0	0x1000		/* per link layer defined bit */
+#define	IFF_LINK1	0x2000		/* per link layer defined bit */
+#define	IFF_LINK2	0x4000		/* per link layer defined bit */
+#define	IFF_ALTPHYS	IFF_LINK2	/* use alternate physical connection */
+#define	IFF_MULTICAST	0x8000		/* (i) supports multicast */
+#define	IFF_CANTCONFIG	0x10000		/* (i) unconfigurable using ioctl(2) */
+#define	IFF_PPROMISC	0x20000		/* (n) user-requested promisc mode */
+#define	IFF_MONITOR	0x40000		/* (n) user-requested monitor mode */
+#define	IFF_STATICARP	0x80000		/* (n) static ARP */
+#define	IFF_DYING	0x200000	/* (n) interface is winding down */
+#define	IFF_RENAMING	0x400000	/* (n) interface is being renamed */
 
-/* Macros for min/max. */
-#define MIN(a,b) (((a)<(b))?(a):(b))
-#define MAX(a,b) (((a)>(b))?(a):(b))
-
-/*
- * Constants related to network buffer management.
- * MCLBYTES must be no larger than PAGE_SIZE.
- */
-#ifndef	MSIZE
-#define	MSIZE		256		/* size of an mbuf */
-#endif
-
-#ifndef	MCLSHIFT
-#define MCLSHIFT	11		/* convert bytes to mbuf clusters */
-#endif	/* MCLSHIFT */
-
-#define MCLBYTES	(1 << MCLSHIFT)	/* size of an mbuf cluster */
-
-
-#endif /* _FREEBSD_PARAM_H_ */
+#endif /* _FREEBSD_NET_IF_H_ */
