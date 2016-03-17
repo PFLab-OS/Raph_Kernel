@@ -129,13 +129,34 @@ struct BsdDriver;
 typedef BsdDriver *device_t;
 
 static inline void pci_write_config(device_t dev, int reg, uint32_t val, int width) {
-  kassert(width == 2);
-  dev->parent->WriteReg<uint16_t>(static_cast<uint16_t>(reg), static_cast<uint16_t>(val));
+  switch (width) {
+  case 1:
+    dev->parent->WriteReg<uint8_t>(static_cast<uint16_t>(reg), static_cast<uint8_t>(val));
+    return;
+  case 2:
+    dev->parent->WriteReg<uint16_t>(static_cast<uint16_t>(reg), static_cast<uint16_t>(val));
+    return;
+  case 4:
+    dev->parent->WriteReg<uint32_t>(static_cast<uint16_t>(reg), static_cast<uint32_t>(val));
+    return;
+  default:
+    kassert(false);
+    return;
+  }
 }
 
 static inline uint32_t pci_read_config(device_t dev, int reg, int width) {
-  kassert(width == 2);
-  return dev->parent->ReadReg<uint16_t>(static_cast<uint16_t>(reg));
+  switch (width) {
+  case 1:
+    return dev->parent->ReadReg<uint8_t>(static_cast<uint16_t>(reg));
+  case 2:
+    return dev->parent->ReadReg<uint16_t>(static_cast<uint16_t>(reg));
+  case 4:
+    return dev->parent->ReadReg<uint32_t>(static_cast<uint16_t>(reg));
+  default:
+    kassert(false);
+    return 0;
+  };
 }
 
 static inline int pci_enable_busmaster(device_t dev) {

@@ -30,6 +30,7 @@ extern int virt_memory_start;
 extern int virt_memory_end;
 extern int virt_allocatedmemory_end;
 extern int phys_memory_end;
+extern int kLinearAddrOffset;
 extern int kHeapEndAddr;
 
 #ifdef __UNIT_TEST__
@@ -347,8 +348,8 @@ VirtmemCtrl::VirtmemCtrl() {
   _first = new(_first) AreaManager(_first, _first, tmp2 - tmp1);
 
   // 2MB allocated by boot.S
-  virt_addr tmp3 = p2v(reinterpret_cast<phys_addr>(&phys_memory_end));
-  virt_addr tmp4 = p2v(0x200000);
+  virt_addr tmp3 = reinterpret_cast<virt_addr>(&kLinearAddrOffset) + reinterpret_cast<virt_addr>(&phys_memory_end);
+  virt_addr tmp4 = reinterpret_cast<virt_addr>(&kLinearAddrOffset) + 0x200000;
   kassert(tmp3 + AreaManager::GetAreaManagerSize() < tmp4);
   AreaManager *second = reinterpret_cast<AreaManager *>(tmp3);
   _first->Append(second, tmp4 - tmp3);

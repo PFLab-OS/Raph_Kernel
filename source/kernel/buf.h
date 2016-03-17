@@ -115,7 +115,7 @@ class RingBuffer {
     Locker locker(_lock);
     if (_head != _tail) {
       data = _buffer[_head];
-      _head = (_head + 1) & S;
+      _head = (_head + 1) % S;
       return true;
     } else {
       return false;

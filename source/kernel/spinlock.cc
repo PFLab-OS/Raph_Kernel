@@ -425,7 +425,7 @@ void SpinLock::Lock() {
 }
 
 void SpinLock::Unlock() {
-  kassert((_flag % 2) == 0);
+  kassert((_flag % 2) == 1);
   _flag++;
 }
 

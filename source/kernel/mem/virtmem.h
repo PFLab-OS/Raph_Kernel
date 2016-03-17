@@ -109,8 +109,7 @@ private:
     }
     // areaは未初期化でOK
     void Append(AreaManager *area, size_t size) {
-      // thisは理解しやすくするために付加
-      area = new(area) AreaManager(this, this->_next, size);
+      area = new(area) AreaManager(this->_next, this, size);
       this->_next->_prev = area;
       this->_next = area;
     }

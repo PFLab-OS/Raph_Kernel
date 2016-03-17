@@ -252,6 +252,7 @@ TUNABLE_INT("hw.em.fc_setting", &lem_fc_setting);
 /* Global used in WOL setup with multiport cards */
 static int global_quad_port_a = 0;
 
+extern E1000 *eth;
 void E1000::InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {
   E1000 *addr = reinterpret_cast<E1000 *>(virtmem_ctrl->Alloc(sizeof(E1000)));
   addr = new(addr) E1000(bus, device, mf);
@@ -266,17 +267,22 @@ void E1000::InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, boo
     kassert(lem_attach(&addr->bsd) == 0);
     lem_init(addr->bsd.adapter);
     polling_ctrl->Register(addr);
+    eth = addr;
   } else {
     virtmem_ctrl->Free(ptr2virtaddr(addr->bsd.adapter));
     virtmem_ctrl->Free(ptr2virtaddr(addr));
   }  
 }
 
-
 void E1000::Handle() {
   lem_poll(this->bsd.adapter->ifp);
   lem_start(this->bsd.adapter->ifp);
 }
+
+void E1000::GetEthAddr(uint8_t *buffer) {
+  memcpy(buffer, bsd.adapter->hw.mac.addr, 6);
+}
+
 
 static int
 lem_probe(device_t dev)
@@ -914,7 +920,7 @@ lem_allocate_transmit_structures(struct adapter *adapter)
 
         while(!e1000->_tx_reserved.IsFull()) {
           E1000::Packet *packet = reinterpret_cast<E1000::Packet *>(virtmem_ctrl->Alloc(sizeof(E1000::Packet)));
-          e1000->_tx_reserved.Push(packet);
+          kassert(e1000->_tx_reserved.Push(packet));
         }
 
 	return (0);
@@ -983,7 +989,7 @@ lem_allocate_receive_structures(struct adapter *adapter)
 
         while(!e1000->_rx_reserved.IsFull()) {
           E1000::Packet *packet = reinterpret_cast<E1000::Packet *>(virtmem_ctrl->Alloc(sizeof(E1000::Packet)));
-          e1000->_rx_reserved.Push(packet);
+          kassert(e1000->_rx_reserved.Push(packet));
         }
 
 	return (0);

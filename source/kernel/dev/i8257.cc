@@ -26,7 +26,7 @@
 #include "e1000.h"
 #include "../mem/paging.h"
 
-void DevGbeI8257::Setup(uint16_t did) {
+void DevGbeI8257::SetupHw(uint16_t did) {
   _did = did;
 
   // the following sequence is indicated in pcie-gbe-controllers 14.3
