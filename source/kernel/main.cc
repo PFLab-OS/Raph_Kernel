@@ -53,8 +53,8 @@ Tty *gtty;
 
 PCICtrl *pci_ctrl;
 
-#include <dev/e1000/e1000.h>
-E1000 *eth;
+#include <dev/e1000/lem.h>
+lE1000 *eth;
 uint32_t cnt;
 
 extern "C" int main() {
@@ -165,14 +165,14 @@ extern "C" int main_of_others() {
     eth->GetEthAddr(data + 6);
     memcpy(data + 22, data + 6, 6);
     uint32_t len = sizeof(data)/sizeof(uint8_t);
-    E1000::Packet *tpacket;
+    lE1000::Packet *tpacket;
     kassert(eth->GetTxPacket(tpacket));
     memcpy(tpacket->buf, data, len);
     tpacket->len = len;
     eth->TransmitPacket(tpacket);
     gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
     while(true) {
-      E1000::Packet *rpacket;
+      lE1000::Packet *rpacket;
       if(!eth->RecievePacket(rpacket)) {
         continue;
       }
@@ -234,7 +234,7 @@ extern "C" int main_of_others() {
         memcpy(data + 38, rpacket->buf + 28, 4);
 
         uint32_t len = sizeof(data)/sizeof(uint8_t);
-        E1000::Packet *tpacket;
+        lE1000::Packet *tpacket;
         memcpy(tpacket->buf, data, len);
         tpacket->len = len;
         eth->TransmitPacket(tpacket);

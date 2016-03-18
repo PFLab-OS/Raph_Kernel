@@ -23,8 +23,6 @@
 #include "e1000_raph.h"
 #include "e1000_api.h"
 #include "e1000_osdep.h"
-#include "if_lem.h"
-#include "e1000.h"
 #include "../pci.h"
 #include "../../mem/virtmem.h"
 

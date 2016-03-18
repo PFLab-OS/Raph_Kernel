@@ -59,7 +59,6 @@
 #include "../../timer.h"
 #include "../../spinlock.h"
 #include "e1000_raph.h"
-#include "e1000.h"
 #include <string.h>
 
 #define ASSERT(x) (kassert(x))

@@ -38,7 +38,7 @@
 #include <freebsd/net/if.h>
 #include <freebsd/net/if_var.h>
 #include <freebsd/net/if_types.h>
-#include "./e1000.h"
+#include "./lem.h"
 
 #define NULL nullptr
 
@@ -287,8 +287,8 @@ struct resource {
   } data;
 };
 
-// original function
 struct resource *bus_alloc_resource_from_bar(device_t dev, int bar);
+#define bus_alloc_resource_any(dev, dummy1, bar, dummy2) bus_alloc_resource_from_bar(dev, *(bar))
 
 static inline bus_space_tag_t rman_get_bustag(struct resource *r) {
   return r->type;
@@ -323,5 +323,8 @@ static inline int get_ticks() {
 }
 
 #define KASSERT(cmp, comment) kassert(cmp)
+
+#define __NO_STRICT_ALIGNMENT
+#define DEVICE_POLLING
 
 #endif /* __RAPH_KERNEL_E1000_RAPH_H__ */

@@ -116,7 +116,9 @@ class PCICtrl : public Device {
 class DevPCI : public Device {
  public:
  DevPCI(uint8_t bus, uint8_t device, bool mf) : _bus(bus), _device(device), _mf(mf) {}
-  static bool InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {} // dummy
+  static bool InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {
+    return false;
+  } // dummy
   template<class T> T ReadReg(uint16_t reg) {
     kassert(pci_ctrl != nullptr);
     return pci_ctrl->ReadReg<T>(_bus, _device, 0, reg);
