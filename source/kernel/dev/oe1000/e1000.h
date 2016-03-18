@@ -27,11 +27,11 @@
 #define __RAPH_KERNEL_E1000_H__
 
 #include <stdint.h>
-#include "../mem/physmem.h"
-#include "../mem/virtmem.h"
-#include "../polling.h"
-#include "../global.h"
-#include "pci.h"
+#include <mem/physmem.h>
+#include <mem/virtmem.h>
+#include <polling.h>
+#include <global.h>
+#include <dev/pci.h>
 
 /*
  * e1000 is the driver for Intel 8254x/8256x/8257x and so on.
@@ -88,10 +88,10 @@ struct E1000TxDesc {
   uint16_t special;
 } __attribute__ ((packed));
 
-class E1000 : public DevPCI, Polling {
+class oE1000 : public DevPCI, Polling {
 public:
- E1000(uint8_t bus, uint8_t device, bool mf) : DevPCI(bus, device, mf) {}
-  static void InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf);
+ oE1000(uint8_t bus, uint8_t device, bool mf) : DevPCI(bus, device, mf) {}
+  static bool InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf);
   // from Polling
   void Handle() override;
   // init sequence of e1000 device (see pcie-gbe-controllers 14.3)
@@ -255,9 +255,9 @@ public:
   static const uint32_t kRegFwsmFlagRspciphy = 1 << 6;
 };
 
-class DevGbeI8254 : public E1000 {
+class DevGbeI8254 : public oE1000 {
  public:
- DevGbeI8254(uint8_t bus, uint8_t device, bool mf) : E1000(bus, device, mf) {}
+ DevGbeI8254(uint8_t bus, uint8_t device, bool mf) : oE1000(bus, device, mf) {}
  private:
   virtual uint16_t NvmRead(uint16_t addr) override {
     return this->EepromRead(addr);
@@ -272,9 +272,9 @@ class DevGbeI8254 : public E1000 {
   static const uint32_t kRegTctlCold = 0x40 << 12; // suggested for full-duplex
 };
 
-class DevGbeI8257 : public E1000 {
+class DevGbeI8257 : public oE1000 {
  public:
- DevGbeI8257(uint8_t bus, uint8_t device, bool mf) : E1000(bus, device, mf) {}
+ DevGbeI8257(uint8_t bus, uint8_t device, bool mf) : oE1000(bus, device, mf) {}
  private:
   virtual uint16_t NvmRead(uint16_t addr) override {
     return this->EepromRead(addr);
@@ -289,9 +289,9 @@ class DevGbeI8257 : public E1000 {
   static const uint32_t kRegTctlCold = 0x3f << 12; // suggested for full-duplex
 };
 
-class DevGbeIch8 : public E1000 {
+class DevGbeIch8 : public oE1000 {
  public:
- DevGbeIch8(uint8_t bus, uint8_t device, bool mf) : E1000(bus, device, mf) {}
+ DevGbeIch8(uint8_t bus, uint8_t device, bool mf) : oE1000(bus, device, mf) {}
  private:
   virtual uint16_t NvmRead(uint16_t addr) override {
     return this->FlashRead(addr);

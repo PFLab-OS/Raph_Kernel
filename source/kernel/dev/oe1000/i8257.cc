@@ -24,7 +24,7 @@
 
 #include <stdint.h>
 #include "e1000.h"
-#include "../mem/paging.h"
+#include <mem/paging.h>
 
 void DevGbeI8257::SetupHw(uint16_t did) {
   _did = did;

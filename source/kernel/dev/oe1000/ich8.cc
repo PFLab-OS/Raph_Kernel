@@ -24,12 +24,14 @@
 
 #include <stdint.h>
 #include "e1000.h"
-#include "../mem/paging.h"
+#include <mem/paging.h>
+#include <timer.h>
+#include <global.h>
 
-void DevGbeI8254::SetupHw(uint16_t did) {
+void DevGbeIch8::SetupHw(uint16_t did) {
   _did = did;
 
-  // the following sequence is indicated in pcie-gbe-controllers 14.3
+  // the following sequence is indicated in ich8-gbe-controllers 11.4
 
   // get PCI Base Address Registers
   phys_addr bar = this->ReadReg<uint32_t>(PCICtrl::kBaseAddressReg0);
@@ -37,23 +39,42 @@ void DevGbeI8254::SetupHw(uint16_t did) {
   phys_addr mmio_addr = bar & 0xFFFFFFF0;
   _mmioAddr = reinterpret_cast<uint32_t*>(p2v(mmio_addr));
 
+  bar = this->ReadReg<uint32_t>(PCICtrl::kBaseAddressReg1);
+  kassert((bar & 0xF) == 0);
+  mmio_addr = bar & 0xFFFFFFF0;
+  _flashAddr = reinterpret_cast<uint32_t*>(p2v(mmio_addr));
+  _flashAddr16 = reinterpret_cast<uint16_t*>(p2v(mmio_addr));
+
   // Enable BusMaster
   this->WriteReg<uint16_t>(PCICtrl::kCommandReg, this->ReadReg<uint16_t>(PCICtrl::kCommandReg) | PCICtrl::kCommandRegBusMasterEnableFlag | (1 << 10));
 
-  // disable interrupts (see 13.3.32)
+  this->Acquire();
+
+  // disable interrupts
   _mmioAddr[kRegImc] = 0xffffffff;
 
-  // software reset
-  this->Reset();
+  // software reset & general config (see ich8-gbe-controllers 11.4.2.1)
+  _mmioAddr[kRegPba] = kRegPbaValue8K;
+  _mmioAddr[kRegPbs] = kRegPbsValue16K;
+  while(true) {
+    volatile uint32_t v = _mmioAddr[kRegFwsm];
+      if ((v & kRegFwsmFlagRspciphy) != 0) {
+      break;
+    }
+  }
+  _mmioAddr[kRegCtrl] |= kRegCtrlRstFlag | kRegCtrlPhyRstFlag;
 
-  // after global reset, interrupts must be disabled again (see 14.4)
+  // after global reset, interrupts must be disabled again
   _mmioAddr[kRegImc] = 0xffffffff;
 
-  // enable link (connection between L1(PHY) and L2(MAC), see 14.8)
-  _mmioAddr[kRegCtrl] |= kRegCtrlSluFlag;
+  timer->BusyUwait(15 * 1000);
 
-  // general config (82571x -> 14.5, 8254x -> 14.3)
-  _mmioAddr[kRegCtrl] &= (~kRegCtrlPhyRstFlag | ~kRegCtrlVmeFlag | ~kRegCtrlIlosFlag);
+  // PHY Initialization (see ich8-gbe-controllers 11.4.3.1)
+  this->WritePhy(kPhyRegCtrl, this->ReadPhy(kPhyRegCtrl) | kPhyRegCtrlFlagReset);
+  timer->BusyUwait(15 * 1000);
+
+  // TODO: MAC/PHY Link Setup (see ich8-gbe-controllers 11.4.3.2
+  // also see ich8-gbe-controllers 9.5.2 & Table 50
 
   // initialize receiver/transmitter ring buffer
   this->SetupRx();
@@ -62,9 +83,11 @@ void DevGbeI8254::SetupHw(uint16_t did) {
   // enable interrupts
   // TODO: does this truely affect?
   _mmioAddr[kRegImc] = 0;
+
+  this->Release();
 }
 
-void DevGbeI8254::SetupRx() {
+void DevGbeIch8::SetupRx() {
   // see 14.6
   // program the Receive address register(s) per the station address
   _mmioAddr[kRegRal0] = this->NvmRead(kEepromEthAddrLo);
@@ -78,7 +101,7 @@ void DevGbeI8254::SetupRx() {
 
   // set appropriate value to IMS (this value is suggested value)
   _mmioAddr[kRegIms] = (
-    kRegImsLscFlag | kRegImsRxseqFlag | kRegImsRxdmt0Flag |
+    kRegImsLscFlag | kRegImsRxdmt0Flag |
     kRegImsRxoFlag | kRegImsRxt0Flag);
 
   // set appropriate value to RXDCTL
@@ -123,15 +146,17 @@ void DevGbeI8254::SetupRx() {
   _mmioAddr[kRegRctl] |= kRegRctlEnFlag;
 }
 
-void DevGbeI8254::SetupTx() {
+void DevGbeIch8::SetupTx() {
   // see 14.7
   // set TXDCTL register (following value is suggested)
   _mmioAddr[kRegTxdctl] = (kRegTxdctlWthresh | kRegTxdctlGranDescriptor);
+    /*    _mmioAddr[kRegTxdctl1] = (kRegTxdctlWthresh | kRegTxdctlGranDescriptor);
+  _mmioAddr[kRegTxdctl] = 0x1f | (1 << 8) | (1 << 16) | (1 << 22) | (1 << 25) | (kRegTxdctlGranDescriptor);*/
 
   // set TCTL register
-  _mmioAddr[kRegTctl] = (
-    kRegTctlEnFlag | kRegTctlPsp |
-    kRegTctlCold | kRegTctlCt);
+  _mmioAddr[kRegTctl] = (kRegTctlEnFlag | kRegTctlPsp |
+                         kRegTctlCold | kRegTctlCt |
+                         0x10000000);
 
   // allocate a region of memory for the transmit descriptor list
   // MEMO: at the moment, E1000 class has static array for this purpose
@@ -141,9 +166,11 @@ void DevGbeI8254::SetupTx() {
   virt_addr tx_desc_buf_addr = ((virtmem_ctrl->Alloc(sizeof(E1000TxDesc) * kTxdescNumber + 15) + 15) / 16) * 16;
   tx_desc_buf_ = reinterpret_cast<E1000TxDesc *>(tx_desc_buf_addr);
 
+  kassert((_mmioAddr[kRegTdbal] & 0xF) == 0);
   _mmioAddr[kRegTdbal] = k2p(tx_desc_buf_addr) & 0xffffffff;
   _mmioAddr[kRegTdbah] = k2p(tx_desc_buf_addr) >> 32;
   
+  kassert(((kTxdescNumber * sizeof(E1000TxDesc)) % 128) == 0);
   // set the size of the desc ring
   _mmioAddr[kRegTdlen] = kTxdescNumber * sizeof(E1000TxDesc);
 
@@ -151,7 +178,15 @@ void DevGbeI8254::SetupTx() {
   _mmioAddr[kRegTdh] = 0;
   _mmioAddr[kRegTdt] = 0;
 
-   _mmioAddr[kRegTipg] = 0x00A0280A;
+  // set TIPG register (see 13.3.60)
+  _mmioAddr[kRegTipg] = 0x00702008;
+
+  _mmioAddr[kRegTxdctl] |= (1 << 22);
+
+  // for i217 packet loss issue
+  _mmioAddr[0x24 / sizeof(uint32_t)] &= ~7;
+  _mmioAddr[0x24 / sizeof(uint32_t)] |= 7;
+    
 
   // initialize the tx desc registers (TDBAL, TDBAH, TDL, TDH, TDT)
   for(int i = 0; i < kTxdescNumber; i++) {
@@ -166,19 +201,35 @@ void DevGbeI8254::SetupTx() {
   }
 }
 
-uint16_t DevGbeI8254::EepromRead(uint16_t addr) {
-  // EEPROM is a kind of non-volatile memory storing config info
-  // see pcie-gbe-controllers 5.3.1 (i8254x)
+uint16_t DevGbeIch8::FlashRead(uint16_t addr) {
+  // see ich8-chipset datasheet 20.3 & official E1000 driver source code
 
-  _mmioAddr[kRegEerd] = (((addr & 0xff) << 8) | 1);
-  // polling
   while(true) {
-    // busy-wait
-    volatile uint32_t data = _mmioAddr[kRegEerd];
-    if ((data & (1 << 4)) != 0) {
-      break;
+    // init flash cycle
+
+    // clear status
+    kassert((_flashAddr16[kReg16Hsfs] & kReg16HsfsFlagFdv) != 0);
+    _flashAddr16[kReg16Hsfs] |= kReg16HsfsFlagAel | kReg16HsfsFlagFcerr;
+
+    // check no running cycle
+    kassert((_flashAddr16[kReg16Hsfs] & kReg16HsfsFlagScip) == 0);
+    _flashAddr16[kReg16Hsfs] |= kReg16HsfsFlagFdone;
+  
+    _flashAddr16[kReg16Hsfc] |= kReg16HsfcFlagFdbc16 | kReg16HsfcFlagFcycleRead;
+  
+    _flashAddr[kRegFaddr] = GetPrb() + addr * 2;
+
+    // start cycle
+    _flashAddr16[kReg16Hsfc] |= kReg16HsfcFlagFgo;
+    // polling
+    for (int i = 0; i < 1000; i++) {
+      // busy-wait
+      volatile uint16_t data = _flashAddr16[kReg16Hsfs];
+      if ((data & kReg16HsfsFlagFdone) != 0) {
+        return _flashAddr[kRegFdata0] & 0xFFFF;
+      }
+      kassert((data & kReg16HsfsFlagFcerr) == 0);
+      timer->BusyUwait(1);
     }
   }
-  
-  return (_mmioAddr[kRegEerd] >> 16) & 0xffff;
 }

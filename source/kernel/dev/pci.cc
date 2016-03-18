@@ -27,6 +27,7 @@
 #include "pci.h"
 
 #include "e1000/lem.h"
+#include "oe1000/e1000.h"
 
 void PCICtrl::_Init() {
   _mcfg = acpi_ctrl->GetMCFG();
@@ -53,7 +54,7 @@ void PCICtrl::_Init() {
         uint16_t did = ReadReg<uint16_t>(j, k, 0, kDeviceIDReg);
         bool mf = ReadReg<uint8_t>(j, k, 0, kHeaderTypeReg) & kHeaderTypeRegFlagMultiFunction;
 
-        InitPCIDevices<lE1000, DevPCI>(vid, did, j, k, mf);
+        InitPCIDevices<lE1000, oE1000, DevPCI>(vid, did, j, k, mf);
       }
     }
   }

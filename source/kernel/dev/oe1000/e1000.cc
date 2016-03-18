@@ -22,12 +22,12 @@
 
 #include <stdint.h>
 #include "e1000.h"
-#include "../timer.h"
-#include "../mem/paging.h"
-#include "../tty.h"
-#include "../global.h"
+#include <timer.h>
+#include <mem/paging.h>
+#include <tty.h>
+#include <global.h>
 
-void oE1000::InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {
+bool oE1000::InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {
   if (vid == kVendorId) {
     oE1000 *e1000 = nullptr;
     switch(did) {
@@ -49,16 +49,19 @@ void oE1000::InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bo
         e1000 = new(addr) DevGbeIch8(bus, device, mf);
       }
       break;
+    default:
+      return false;
     }
-    if (e1000 != nullptr) {
-      e1000->Setup(did);
-      polling_ctrl->Register(e1000);
-      e1000->TxTest();
-    }
+    kassert(e1000 != nullptr);
+    e1000->Setup(did);
+    polling_ctrl->Register(e1000);
+    e1000->TxTest();
+    return true;
   }
+  return false;
 }
 
-void E1000::WritePhy(uint16_t addr, uint16_t value) {
+void oE1000::WritePhy(uint16_t addr, uint16_t value) {
   // TODO: check register and set page if need
   _mmioAddr[kRegMdic] = kRegMdicValueOpcWrite | (addr << kRegMdicOffsetAddr) | (value << kRegMdicOffsetData);
   while(true) {
@@ -71,7 +74,7 @@ void E1000::WritePhy(uint16_t addr, uint16_t value) {
   }
 }
 
-volatile uint16_t E1000::ReadPhy(uint16_t addr) {
+volatile uint16_t oE1000::ReadPhy(uint16_t addr) {
   // TODO: check register and set page if need
   _mmioAddr[kRegMdic] = kRegMdicValueOpcRead | (addr << kRegMdicOffsetAddr);
   while(true) {
@@ -84,7 +87,7 @@ volatile uint16_t E1000::ReadPhy(uint16_t addr) {
   }
 }
 
-int32_t E1000::ReceivePacket(uint8_t *buffer, uint32_t size) {
+int32_t oE1000::ReceivePacket(uint8_t *buffer, uint32_t size) {
   E1000RxDesc *rxdesc;
   uint32_t rdh = _mmioAddr[kRegRdh0];
   uint32_t rdt = _mmioAddr[kRegRdt0];
@@ -105,7 +108,7 @@ int32_t E1000::ReceivePacket(uint8_t *buffer, uint32_t size) {
   }
 }
 
-int32_t E1000::TransmitPacket(const uint8_t *packet, uint32_t length) {
+int32_t oE1000::TransmitPacket(const uint8_t *packet, uint32_t length) {
   E1000TxDesc *txdesc;
   uint32_t tdh = _mmioAddr[kRegTdh];
   uint32_t tdt = _mmioAddr[kRegTdt];
@@ -131,7 +134,7 @@ int32_t E1000::TransmitPacket(const uint8_t *packet, uint32_t length) {
   }
 }
 
-void E1000::GetEthAddr(uint8_t *buffer) {
+void oE1000::GetEthAddr(uint8_t *buffer) {
   uint16_t ethaddr_lo = this->NvmRead(kEepromEthAddrLo);
   uint16_t ethaddr_md = this->NvmRead(kEepromEthAddrMd);
   uint16_t ethaddr_hi = this->NvmRead(kEepromEthAddrHi);
@@ -143,7 +146,7 @@ void E1000::GetEthAddr(uint8_t *buffer) {
   buffer[5] = (ethaddr_lo >> 8) & 0xff;
 }
 
-uint32_t E1000::Crc32b(uint8_t *message) {
+uint32_t oE1000::Crc32b(uint8_t *message) {
   int32_t i, j;
   uint32_t byte, crc, mask;
 
@@ -161,7 +164,7 @@ uint32_t E1000::Crc32b(uint8_t *message) {
   return ~crc;
 }
 
-void E1000::TxTest() {
+void oE1000::TxTest() {
   uint8_t data[] = {
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, // Target MAC Address
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source MAC Address
@@ -187,7 +190,7 @@ void E1000::TxTest() {
   gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
 }
 
-void E1000::Handle() {
+void oE1000::Handle() {
   const uint32_t kBufsize = 256;
   virt_addr vaddr = virtmem_ctrl->Alloc(sizeof(uint8_t) * kBufsize);
   uint8_t *buf = reinterpret_cast<uint8_t*>(k2p(vaddr));
