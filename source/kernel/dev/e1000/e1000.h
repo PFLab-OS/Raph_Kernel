@@ -43,7 +43,7 @@ struct BsdDriver {
 class E1000 : public DevPCI, Polling {
 public:
  E1000(uint8_t bus, uint8_t device, bool mf) : DevPCI(bus, device, mf) {}
-  static void InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf);
+  static bool InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf);
   // from Polling
   void Handle() override;
   BsdDriver bsd;
@@ -64,8 +64,8 @@ public:
   //
   // プロトコル・スタックがReuseRxBufferを呼ばないと
   // そのうちrx_reservedが枯渇して、一切のパケットの受信ができなくなるるよ♪
-  RingBuffer<Packet *, 30> _rx_reserved;
-  RingBuffer<Packet *, 30> _rx_buffered;
+  RingBuffer<Packet *, 300> _rx_reserved;
+  RingBuffer<Packet *, 300> _rx_buffered;
 
   // txパケットの処理の流れ
   // 0. tx_reservedを初期化、バッファを満タンにしておく
@@ -79,8 +79,8 @@ public:
   // プロトコル・スタックはGetTxBufferで確保したバッファを必ずTransmitPacketするか
   // ReuseTxBufferで開放しなければならない。サボるとそのうちtx_reservedが枯渇
   // して、一切のパケットの送信ができなくなるよ♪
-  RingBuffer<Packet *, 30> _tx_reserved;
-  RingBuffer<Packet *, 30> _tx_buffered;
+  RingBuffer<Packet *, 300> _tx_reserved;
+  RingBuffer<Packet *, 300> _tx_buffered;
 
   void ReuseRxBuffer(Packet *packet) {
     kassert(_rx_reserved.Push(packet));

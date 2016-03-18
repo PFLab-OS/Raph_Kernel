@@ -253,7 +253,7 @@ TUNABLE_INT("hw.em.fc_setting", &lem_fc_setting);
 static int global_quad_port_a = 0;
 
 extern E1000 *eth;
-void E1000::InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {
+bool E1000::InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {
   E1000 *addr = reinterpret_cast<E1000 *>(virtmem_ctrl->Alloc(sizeof(E1000)));
   addr = new(addr) E1000(bus, device, mf);
   addr->bsd.parent = addr;
@@ -268,9 +268,11 @@ void E1000::InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, boo
     lem_init(addr->bsd.adapter);
     polling_ctrl->Register(addr);
     eth = addr;
+    return true;
   } else {
     virtmem_ctrl->Free(ptr2virtaddr(addr->bsd.adapter));
     virtmem_ctrl->Free(ptr2virtaddr(addr));
+    return false;
   }  
 }
 

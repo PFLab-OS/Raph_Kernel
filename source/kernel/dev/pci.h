@@ -116,7 +116,7 @@ class PCICtrl : public Device {
 class DevPCI : public Device {
  public:
  DevPCI(uint8_t bus, uint8_t device, bool mf) : _bus(bus), _device(device), _mf(mf) {}
-  static void InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {} // dummy
+  static bool InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {} // dummy
   template<class T> T ReadReg(uint16_t reg) {
     kassert(pci_ctrl != nullptr);
     return pci_ctrl->ReadReg<T>(_bus, _device, 0, reg);
@@ -142,8 +142,9 @@ static inline void InitPCIDevices(uint16_t vid, uint16_t did, uint8_t bus, uint8
 
 template<class T1, class T2, class... Rest>
 static inline void InitPCIDevices(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {
-  T1::InitPCI(vid, did, bus, device, mf);
-  InitPCIDevices<T2, Rest...>(vid, did, bus, device, mf);
+  if (!T1::InitPCI(vid, did, bus, device, mf)) {
+    InitPCIDevices<T2, Rest...>(vid, did, bus, device, mf);
+  }
 }
 
 
