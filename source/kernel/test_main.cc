@@ -96,9 +96,6 @@ int main(int argc, char **argv) {
           i+1,
           (ipaddr >> 24), (ipaddr >> 16) & 0xff, (ipaddr >> 8) & 0xff, ipaddr & 0xff,
           macaddr[0], macaddr[1], macaddr[2], macaddr[3], macaddr[4], macaddr[5]);
-
-	    // change IP address
-	    ipRequest++; ipReply++;
       }
     } else if(!strncmp(argv[2], "request", 7)) {
       double elapsed_time = 0;
@@ -123,8 +120,6 @@ int main(int argc, char **argv) {
 	      macaddr[0], macaddr[1], macaddr[2], macaddr[3], macaddr[4], macaddr[5],
 	      t);
 
-	    // change IP address
-	    ipRequest++; ipReply++;
         usleep(1000);
 	  }
 
