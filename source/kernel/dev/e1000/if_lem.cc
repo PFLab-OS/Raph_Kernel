@@ -2799,10 +2799,7 @@ lem_allocate_transmit_structures(struct adapter *adapter)
 		tx_buffer->next_eop = -1;
 	}
 
-        while(!e1000->_tx_reserved.IsFull()) {
-          lE1000::Packet *packet = reinterpret_cast<lE1000::Packet *>(virtmem_ctrl->Alloc(sizeof(lE1000::Packet)));
-          kassert(e1000->_tx_reserved.Push(packet));
-        }
+        e1000->InitTxPacketBuffer();
 
 	return (0);
 fail:
@@ -3392,10 +3389,7 @@ lem_allocate_receive_structures(struct adapter *adapter)
 		}
 	}
 
-        while(!e1000->_rx_reserved.IsFull()) {
-          lE1000::Packet *packet = reinterpret_cast<lE1000::Packet *>(virtmem_ctrl->Alloc(sizeof(lE1000::Packet)));
-          kassert(e1000->_rx_reserved.Push(packet));
-        }
+        e1000->InitRxPacketBuffer();
 
 	return (0);
 

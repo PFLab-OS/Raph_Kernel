@@ -105,6 +105,18 @@ public:
   }
   // allocate 6 byte before call
   void GetEthAddr(uint8_t *buffer);
+  void InitTxPacketBuffer() {
+    while(!_tx_reserved.IsFull()) {
+      Packet *packet = reinterpret_cast<Packet *>(virtmem_ctrl->Alloc(sizeof(Packet)));
+      kassert(_tx_reserved.Push(packet));
+    }
+  }
+  void InitRxPacketBuffer() {
+    while(!_rx_reserved.IsFull()) {
+      Packet *packet = reinterpret_cast<Packet *>(virtmem_ctrl->Alloc(sizeof(Packet)));
+      kassert(_rx_reserved.Push(packet));
+    }
+  }
  private:
 };
 
