@@ -62,9 +62,9 @@ bool ARPCtrl::FilterPacket(uint8_t *packet, uint16_t op, uint8_t *smacaddr, uint
   ARPPacket * volatile data = reinterpret_cast<ARPPacket*>(packet);
   return (ntohs(data->op) == op)
       && (!smacaddr || !memcmp(data->hwSaddr, smacaddr, 6))
-      && (!sipaddr  || data->protoSaddr == sipaddr)
+      && (!sipaddr  || ntohl(data->protoSaddr) == sipaddr)
       && (op == ARPSocket::kOpARPRequest || !dmacaddr || !memcmp(data->hwDaddr, dmacaddr, 6) || !memcmp(data->hwDaddr, kBcastMACAddr, 6))
-      && (!dipaddr  || data->protoDaddr == dipaddr);
+      && (!dipaddr  || ntohl(data->protoDaddr) == dipaddr);
 }
 
 bool ARPCtrl::RegisterAddress(uint8_t *packet) {
