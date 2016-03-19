@@ -76,13 +76,13 @@ int main(int argc, char **argv) {
     uint8_t macaddr[6];
 
     struct timeval t1, t2;
-    const uint32_t kRetryCount = 100;
+    const int32_t kRetryCount = 500;
 
     if(!strncmp(argv[2], "reply", 5)) {
-      for(uint32_t i = 0; i < kRetryCount; i++) {
-        // wait for ARP request
-        socket.SetIPAddr(ipReply);
+      // wait for ARP request
+      socket.SetIPAddr(ipReply);
 
+      for(int32_t i = 0; i < kRetryCount; i++) {
         socket.ReceivePacket(ARPSocket::kOpARPRequest, &ipaddr, macaddr);
 
         // need to wait a little
@@ -91,39 +91,27 @@ int main(int argc, char **argv) {
 
         // ARP reply
         socket.TransmitPacket(ARPSocket::kOpARPReply, ipaddr, macaddr);
-
-        std::printf("[ARP] (#%u) request from %u.%u.%u.%u (%.2x:%.2x:%.2x:%.2x:%.2x:%.2x)\n",
-          i+1,
-          (ipaddr >> 24), (ipaddr >> 16) & 0xff, (ipaddr >> 8) & 0xff, ipaddr & 0xff,
-          macaddr[0], macaddr[1], macaddr[2], macaddr[3], macaddr[4], macaddr[5]);
       }
     } else if(!strncmp(argv[2], "request", 7)) {
       double elapsed_time = 0;
       double t = 0;
 
+      socket.SetIPAddr(ipRequest);
 
-      for(uint32_t i = 0; i < kRetryCount; i++) {
+      for(int32_t i = 0; i < kRetryCount; i++) {
 	    // send ARP request
-        socket.SetIPAddr(ipRequest);
+        socket.TransmitPacket(ARPSocket::kOpARPRequest, ipReply); 
 
         // measure elapsed time for ARP reply
         gettimeofday(&t1, NULL);
-        socket.TransmitPacket(ARPSocket::kOpARPRequest, ipReply); 
         socket.ReceivePacket(ARPSocket::kOpARPReply, &ipaddr, macaddr);
         gettimeofday(&t2, NULL);
+
         t = (t2.tv_sec-t1.tv_sec)*1e+06+(t2.tv_usec-t1.tv_usec);
         elapsed_time += t;
-
-	    std::printf("[ARP] (#%u) reply from %u.%u.%u.%u (%.2x:%.2x:%.2x:%.2x:%.2x:%.2x) %.1lf[us]\n",
-          i+1,
-	      (ipaddr >> 24), (ipaddr >> 16) & 0xff, (ipaddr >> 8) & 0xff, ipaddr & 0xff,
-	      macaddr[0], macaddr[1], macaddr[2], macaddr[3], macaddr[4], macaddr[5],
-	      t);
-
-        usleep(1000);
 	  }
 
-      std::printf("[ARP] elapsed time = %.1lf[us]\n", elapsed_time);
+      std::printf("[ARP] elapsed time = %.1lf[us/times]\n", elapsed_time / kRetryCount);
     }
   } else if(!strncmp(argv[1], "tcp", 3)) {
     Socket socket;
