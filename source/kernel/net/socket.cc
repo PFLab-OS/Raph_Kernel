@@ -417,8 +417,11 @@ int32_t UDPSocket::TransmitPacket(const uint8_t *data, uint32_t length) {
  * ARPSocket
  */
 
+void ARPSocket::SetIPAddr(uint32_t ipaddr) {
+  _ipaddr = ipaddr;
+}
+
 int32_t ARPSocket::TransmitPacket(uint16_t type, uint32_t tpa, uint8_t *tha) {
-  uint32_t ipSaddr = 0x0a000210; // TODO:
   uint32_t ipDaddr = tpa;
   uint8_t ethSaddr[6];
   uint8_t ethDaddr[6];
@@ -442,7 +445,7 @@ int32_t ARPSocket::TransmitPacket(uint16_t type, uint32_t tpa, uint8_t *tha) {
 
   // ARP header
   uint32_t offsetARP = sizeof(EthHeader);
-  arp_ctrl->GeneratePacket(packet + offsetARP, type, ethSaddr, ipSaddr, ethDaddr, ipDaddr);
+  arp_ctrl->GeneratePacket(packet + offsetARP, type, ethSaddr, _ipaddr, ethDaddr, ipDaddr);
 
   // Ethernet header
   eth_ctrl->GenerateHeader(packet, ethSaddr, ethDaddr, EthCtrl::kProtocolARP);
@@ -473,7 +476,7 @@ int32_t ARPSocket::ReceivePacket(uint16_t type, uint32_t *spa, uint8_t *sha) {
     if(!eth_ctrl->FilterPacket(packet, nullptr, ethDaddr, EthCtrl::kProtocolARP)) continue;
 
     // filter IP address
-    if(!arp_ctrl->FilterPacket(arpPacket, type, nullptr, 0, ethDaddr, 0)) continue;
+    if(!arp_ctrl->FilterPacket(arpPacket, type, nullptr, 0, ethDaddr, _ipaddr)) continue;
 
     break;
   } while(1);
@@ -482,7 +485,6 @@ int32_t ARPSocket::ReceivePacket(uint16_t type, uint32_t *spa, uint8_t *sha) {
   switch(type) {
     case kOpARPReply:
       arp_ctrl->RegisterAddress(arpPacket);
-      break;
     case kOpARPRequest:
       if(spa) *spa = arp_ctrl->GetSourceIPAddress(arpPacket);
       if(sha) arp_ctrl->GetSourceMACAddress(sha, arpPacket);
