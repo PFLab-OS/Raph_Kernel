@@ -76,36 +76,59 @@ int main(int argc, char **argv) {
     uint8_t macaddr[6];
 
     struct timeval t1, t2;
+    const uint32_t kRetryCount = 100;
 
     if(!strncmp(argv[2], "reply", 5)) {
-      // wait for ARP request
-      socket.SetIPAddr(ipReply);
-      socket.ReceivePacket(ARPSocket::kOpARPRequest, &ipaddr, macaddr);
+      for(uint32_t i = 0; i < kRetryCount; i++) {
+        // wait for ARP request
+        socket.SetIPAddr(ipReply);
 
-      // need to wait a little
-      // because Linux kernel cannot handle packet too quick
-      usleep(570);
+        socket.ReceivePacket(ARPSocket::kOpARPRequest, &ipaddr, macaddr);
 
-      // ARP reply
-      socket.TransmitPacket(ARPSocket::kOpARPReply, ipaddr, macaddr);
+        // need to wait a little
+        // because Linux kernel cannot handle packet too quick
+//        usleep(570);
 
-      std::printf("[ARP] request from %u.%u.%u.%u (%.2x:%.2x:%.2x:%.2x:%.2x:%.2x)\n",
-        (ipaddr >> 24), (ipaddr >> 16) & 0xff, (ipaddr >> 8) & 0xff, ipaddr & 0xff,
-        macaddr[0], macaddr[1], macaddr[2], macaddr[3], macaddr[4], macaddr[5]);
+        // ARP reply
+        socket.TransmitPacket(ARPSocket::kOpARPReply, ipaddr, macaddr);
+
+        std::printf("[ARP] (#%u) request from %u.%u.%u.%u (%.2x:%.2x:%.2x:%.2x:%.2x:%.2x)\n",
+          i+1,
+          (ipaddr >> 24), (ipaddr >> 16) & 0xff, (ipaddr >> 8) & 0xff, ipaddr & 0xff,
+          macaddr[0], macaddr[1], macaddr[2], macaddr[3], macaddr[4], macaddr[5]);
+
+	    // change IP address
+	    ipRequest++; ipReply++;
+      }
     } else if(!strncmp(argv[2], "request", 7)) {
-	  // send ARP request
-      socket.SetIPAddr(ipRequest);
+      double elapsed_time = 0;
+      double t = 0;
 
-      gettimeofday(&t1, NULL);
-      socket.TransmitPacket(ARPSocket::kOpARPRequest, ipReply); 
-      socket.ReceivePacket(ARPSocket::kOpARPReply, &ipaddr, macaddr);
-      gettimeofday(&t2, NULL);
 
-	  std::printf("[ARP] reply from %u.%u.%u.%u (%.2x:%.2x:%.2x:%.2x:%.2x:%.2x)\n",
-	    (ipaddr >> 24), (ipaddr >> 16) & 0xff, (ipaddr >> 8) & 0xff, ipaddr & 0xff,
-	    macaddr[0], macaddr[1], macaddr[2], macaddr[3], macaddr[4], macaddr[5]);
+      for(uint32_t i = 0; i < kRetryCount; i++) {
+	    // send ARP request
+        socket.SetIPAddr(ipRequest);
 
-      std::printf("elapsed time = %u[us]\n", (t2.tv_sec-t1.tv_sec)*1e+06+(t2.tv_usec-t1.tv_usec));
+        // measure elapsed time for ARP reply
+        gettimeofday(&t1, NULL);
+        socket.TransmitPacket(ARPSocket::kOpARPRequest, ipReply); 
+        socket.ReceivePacket(ARPSocket::kOpARPReply, &ipaddr, macaddr);
+        gettimeofday(&t2, NULL);
+        t = (t2.tv_sec-t1.tv_sec)*1e+06+(t2.tv_usec-t1.tv_usec);
+        elapsed_time += t;
+
+	    std::printf("[ARP] (#%u) reply from %u.%u.%u.%u (%.2x:%.2x:%.2x:%.2x:%.2x:%.2x) %.1lf[us]\n",
+          i+1,
+	      (ipaddr >> 24), (ipaddr >> 16) & 0xff, (ipaddr >> 8) & 0xff, ipaddr & 0xff,
+	      macaddr[0], macaddr[1], macaddr[2], macaddr[3], macaddr[4], macaddr[5],
+	      t);
+
+	    // change IP address
+	    ipRequest++; ipReply++;
+        usleep(1000);
+	  }
+
+      std::printf("[ARP] elapsed time = %.1lf[us]\n", elapsed_time);
     }
   } else if(!strncmp(argv[1], "tcp", 3)) {
     Socket socket;

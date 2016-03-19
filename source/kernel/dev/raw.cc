@@ -75,12 +75,12 @@ int32_t DevRawEthernet::TransmitPacket(const uint8_t *packet, uint32_t length) {
   sll.sll_ifindex = _ifindex;
   int32_t rval = static_cast<int32_t>(sendto(_pd, packet, length, 0, (struct sockaddr *)&sll, sizeof(sll)));
 
-  printf("RAW TX DUMP;\n");
-  for(uint32_t i = 0; i < length; i++) {
-    if(i % 16 == 0) printf("# ");
-    printf("%.2x%s", packet[i], ((i+1) % 16 == 0) ? "\n" : ((i%2) ? " ": ""));
-  }
-  printf("\n");
+//  printf("RAW TX DUMP;\n");
+//  for(uint32_t i = 0; i < length; i++) {
+//    if(i % 16 == 0) printf("# ");
+//    printf("%.2x%s", packet[i], ((i+1) % 16 == 0) ? "\n" : ((i%2) ? " ": ""));
+//  }
+//  printf("\n");
 
   return rval;
 }
