@@ -24,6 +24,7 @@
 
 #include <iostream>
 #include <time.h>
+#include <sys/time.h>
 #include "spinlock.h"
 #include "mem/virtmem.h"
 #include "global.h"
@@ -74,6 +75,8 @@ int main(int argc, char **argv) {
     uint32_t ipReply = 0x0a000211;
     uint8_t macaddr[6];
 
+    struct timeval t1, t2;
+
     if(!strncmp(argv[2], "reply", 5)) {
       // wait for ARP request
       socket.SetIPAddr(ipReply);
@@ -92,12 +95,17 @@ int main(int argc, char **argv) {
     } else if(!strncmp(argv[2], "request", 7)) {
 	  // send ARP request
       socket.SetIPAddr(ipRequest);
+
+      gettimeofday(&t1, NULL);
       socket.TransmitPacket(ARPSocket::kOpARPRequest, ipReply); 
       socket.ReceivePacket(ARPSocket::kOpARPReply, &ipaddr, macaddr);
+      gettimeofday(&t2, NULL);
 
 	  std::printf("[ARP] reply from %u.%u.%u.%u (%.2x:%.2x:%.2x:%.2x:%.2x:%.2x)\n",
 	    (ipaddr >> 24), (ipaddr >> 16) & 0xff, (ipaddr >> 8) & 0xff, ipaddr & 0xff,
 	    macaddr[0], macaddr[1], macaddr[2], macaddr[3], macaddr[4], macaddr[5]);
+
+      std::printf("elapsed time = %u[us]\n", (t2.tv_sec-t1.tv_sec)*1e+06+(t2.tv_usec-t1.tv_usec));
     }
   } else if(!strncmp(argv[1], "tcp", 3)) {
     Socket socket;
