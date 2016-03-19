@@ -29,6 +29,7 @@
 #include <stdint.h>
 #include <mem/physmem.h>
 #include <mem/virtmem.h>
+#include <mem/paging.h>
 #include <polling.h>
 #include <global.h>
 #include <dev/pci.h>
@@ -88,14 +89,30 @@ struct E1000TxDesc {
   uint16_t special;
 } __attribute__ ((packed));
 
+class oE1000;
+
 class oE1000 : public DevPCI, Polling {
 public:
  oE1000(uint8_t bus, uint8_t device, bool mf) : DevPCI(bus, device, mf) {}
   static bool InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf);
   // from Polling
   void Handle() override;
+  void Setup(uint16_t did) {
+    this->SetupHw(did);
+    // fetch ethernet address from EEPROM
+    uint16_t ethaddr_lo = this->NvmRead(kEepromEthAddrLo);
+    uint16_t ethaddr_md = this->NvmRead(kEepromEthAddrMd);
+    uint16_t ethaddr_hi = this->NvmRead(kEepromEthAddrHi);
+    _ethAddr[0] = ethaddr_hi & 0xff;
+    _ethAddr[1] = (ethaddr_hi >> 8) & 0xff;
+    _ethAddr[2] = ethaddr_md & 0xff;
+    _ethAddr[3] = (ethaddr_md >> 8) & 0xff;
+    _ethAddr[4] = ethaddr_lo & 0xff;
+    _ethAddr[5] = (ethaddr_lo >> 8) & 0xff;
+
+  }
   // init sequence of e1000 device (see pcie-gbe-controllers 14.3)
-  virtual void Setup(uint16_t did) = 0;
+  virtual void SetupHw(uint16_t did) = 0;
   // see pcie-gbe-controllers 3.2
   int32_t ReceivePacket(uint8_t *buffer, uint32_t size);
   // see pcie-gbe-controllers 3.3, 3.4
@@ -135,7 +152,6 @@ public:
 
   // packet transmit/receive test
   uint32_t Crc32b(uint8_t *message);
-  void TxTest();
 
   static const uint16_t kVendorId = 0x8086;
 
@@ -154,6 +170,8 @@ public:
   static const int kTxdescNumber = 16;
   // the buffer for transmit descriptors
   E1000TxDesc *tx_desc_buf_;
+  // ethernet address
+  uint8_t _ethAddr[6];
 
   // Ethernet Controller EEPROM Map (see pcie-gbe-controllers Table 5-2)
   static const int kEepromEthAddrHi = 0x00;
@@ -264,7 +282,7 @@ class DevGbeI8254 : public oE1000 {
   }
   // read data from EEPROM
   uint16_t EepromRead(uint16_t addr);
-  virtual void Setup(uint16_t did) override;
+  virtual void SetupHw(uint16_t did) override;
   virtual void SetupRx() override;
   virtual void SetupTx() override;
 
@@ -281,7 +299,7 @@ class DevGbeI8257 : public oE1000 {
   }
   // read data from EEPROM
   uint16_t EepromRead(uint16_t addr);
-  virtual void Setup(uint16_t did) override;
+  virtual void SetupHw(uint16_t did) override;
   virtual void SetupRx() override;
   virtual void SetupTx() override;
 
@@ -298,7 +316,7 @@ class DevGbeIch8 : public oE1000 {
   }
   // read data from Flash
   uint16_t FlashRead(uint16_t addr);
-  virtual void Setup(uint16_t did) override;
+  virtual void SetupHw(uint16_t did) override;
   virtual void SetupRx() override;
   virtual void SetupTx() override;
 

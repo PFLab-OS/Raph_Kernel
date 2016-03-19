@@ -26,6 +26,7 @@
 #include <mem/paging.h>
 #include <tty.h>
 #include <global.h>
+extern uint32_t cnt;
 
 bool oE1000::InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {
   if (vid == kVendorId) {
@@ -55,7 +56,6 @@ bool oE1000::InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bo
     kassert(e1000 != nullptr);
     e1000->Setup(did);
     polling_ctrl->Register(e1000);
-    e1000->TxTest();
     return true;
   }
   return false;
@@ -135,15 +135,7 @@ int32_t oE1000::TransmitPacket(const uint8_t *packet, uint32_t length) {
 }
 
 void oE1000::GetEthAddr(uint8_t *buffer) {
-  uint16_t ethaddr_lo = this->NvmRead(kEepromEthAddrLo);
-  uint16_t ethaddr_md = this->NvmRead(kEepromEthAddrMd);
-  uint16_t ethaddr_hi = this->NvmRead(kEepromEthAddrHi);
-  buffer[0] = ethaddr_hi & 0xff;
-  buffer[1] = (ethaddr_hi >> 8) & 0xff;
-  buffer[2] = ethaddr_md & 0xff;
-  buffer[3] = (ethaddr_md >> 8) & 0xff;
-  buffer[4] = ethaddr_lo & 0xff;
-  buffer[5] = (ethaddr_lo >> 8) & 0xff;
+  memcpy(buffer, _ethAddr, 6);
 }
 
 uint32_t oE1000::Crc32b(uint8_t *message) {
@@ -164,55 +156,5 @@ uint32_t oE1000::Crc32b(uint8_t *message) {
   return ~crc;
 }
 
-void oE1000::TxTest() {
-  uint8_t data[] = {
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, // Target MAC Address
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source MAC Address
-    0x08, 0x06, // Type: ARP
-    // ARP Packet
-    0x00, 0x01, // HardwareType: Ethernet
-    0x08, 0x00, // ProtocolType: IPv4
-    0x06, // HardwareLength
-    0x04, // ProtocolLength
-    0x00, 0x01, // Operation: ARP Request
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source Hardware Address
-    0xC0, 0xA8, 0x64, 0x74, // Source Protocol Address
-    //0x0A, 0x00, 0x02, 0x05,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
-    0xC0, 0xA8, 0x64, 0x64, // Target Protocol Address
-    //0x0A, 0x00, 0x02, 0x0F,
-  };
-  GetEthAddr(data + 6);
-  memcpy(data + 22, data + 6, 6);
-
-  uint32_t len = sizeof(data)/sizeof(uint8_t);
-  this->TransmitPacket(data, len);
-  gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
-}
-
 void oE1000::Handle() {
-  const uint32_t kBufsize = 256;
-  virt_addr vaddr = virtmem_ctrl->Alloc(sizeof(uint8_t) * kBufsize);
-  uint8_t *buf = reinterpret_cast<uint8_t*>(k2p(vaddr));
-  if(this->ReceivePacket(buf, kBufsize) == -1) {
-    virtmem_ctrl->Free(vaddr);
-    return;
-  } 
-  // received packet
-  if(buf[12] == 0x08 && buf[13] == 0x06) {
-    // ARP packet
-    gtty->Printf(
-                 "s", "[debug] info: ARP Reply received; ",
-                 "x", buf[6], "s", ":",
-                 "x", buf[7], "s", ":",
-                 "x", buf[8], "s", ":",
-                 "x", buf[9], "s", ":",
-                 "x", buf[10], "s", ":",
-                 "x", buf[11], "s", " -> ",
-                 "d", buf[28], "s", ".",
-                 "d", buf[29], "s", ".",
-                 "d", buf[30], "s", ".",
-                 "d", buf[31], "s", "\n");
-  }
-  virtmem_ctrl->Free(vaddr);
 }
