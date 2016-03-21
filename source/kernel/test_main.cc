@@ -44,6 +44,12 @@ void virtmem_test();
 void physmem_test();
 void paging_test();
 
+void ARPReply(uint32_t ipRequest, uint32_t ipReply, int32_t retryCount);
+void ARPRequest(uint32_t ipRequest, uint32_t ipReply, int32_t retryCount);
+
+void TCPServer();
+void TCPClient();
+
 int main(int argc, char **argv) {
 
   srand((unsigned) time(NULL));
@@ -65,103 +71,25 @@ int main(int argc, char **argv) {
   DevRawEthernet eth;
 
   if(!strncmp(argv[1], "arp", 3)) {
-    ARPSocket socket;
-    if(socket.Open() < 0) {
-        std::cerr << "[open] cannot open socket" << std::endl;
-    }
-
-    uint32_t ipaddr;
     uint32_t ipRequest = 0x0a000210;
     uint32_t ipReply = 0x0a000211;
-    uint8_t macaddr[6];
-
-    struct timeval t1, t2;
     const int32_t kRetryCount = 500;
 
     if(!strncmp(argv[2], "reply", 5)) {
-      // wait for ARP request
-      socket.SetIPAddr(ipReply);
-
-      for(int32_t i = 0; i < kRetryCount; i++) {
-        socket.ReceivePacket(ARPSocket::kOpARPRequest, &ipaddr, macaddr);
-
-        // need to wait a little
-        // because Linux kernel cannot handle packet too quick
-//        usleep(570);
-
-        // ARP reply
-        socket.TransmitPacket(ARPSocket::kOpARPReply, ipaddr, macaddr);
-      }
-    } else if(!strncmp(argv[2], "request", 7)) {
-      double elapsed_time = 0;
-      double t = 0;
-
-      socket.SetIPAddr(ipRequest);
-
-      for(int32_t i = 0; i < kRetryCount; i++) {
-	    // send ARP request
-        socket.TransmitPacket(ARPSocket::kOpARPRequest, ipReply); 
-
-        // measure elapsed time for ARP reply
-        gettimeofday(&t1, NULL);
-        socket.ReceivePacket(ARPSocket::kOpARPReply, &ipaddr, macaddr);
-        gettimeofday(&t2, NULL);
-
-        t = (t2.tv_sec-t1.tv_sec)*1e+06+(t2.tv_usec-t1.tv_usec);
-        elapsed_time += t;
-	  }
-
-      std::printf("[ARP] elapsed time = %.1lf[us/times]\n", elapsed_time / kRetryCount);
-    }
+      ARPReply(ipRequest, ipReply, kRetryCount);
+	} else if(!strncmp(argv[2], "request", 7)) {
+	  ARPRequest(ipRequest, ipReply, kRetryCount);
+	} else {
+      std::cerr << "[error] specify ARP command" << std::endl;
+	}
   } else if(!strncmp(argv[1], "tcp", 3)) {
-    Socket socket;
-    if(socket.Open() < 0) {
-        std::cerr << "[error] cannot open socket" << std::endl;
-    }
-    socket.SetListenPort(Socket::kPortTelnet);
-    socket.SetPort(Socket::kPortTelnet);
-
-    const uint32_t size = 0x100;
-    uint8_t data[size];
-    int32_t rval;
-
     if(!strncmp(argv[2], "server", 6)) {
-      // TCP server 
-      socket.Listen();
-	  std::cerr << "[TCP:server] connection established" << std::endl;
-
-      // loopback
-      while(1) {
-        if((rval = socket.ReceivePacket(data, size)) >= 0) {
-          std::cerr << "[TCP:server] received; " << data << std::endl;
-          socket.TransmitPacket(data, strlen(reinterpret_cast<char*>(data)) + 1);
-          std::cerr << "[TCP:server] loopback" << std::endl;
-        } else if(rval == Socket::kConnectionClosed) {
-          break;
-        }
-      }
-      std::cerr << "[TCP:server] closed" << std::endl;
+      TCPServer();
 	} else if(!strncmp(argv[2], "client", 6)) {
-      // TCP client
-      socket.Connect();
-      std::cerr << "[TCP:client] connection established" << std::endl;
-
-      while(1) {
-        std::cin >> data;
-        if(!strncmp(reinterpret_cast<char*>(data), "q", 1)) break;
-
-        socket.TransmitPacket(data, strlen(reinterpret_cast<char*>(data)) + 1);
-        std::cerr << "[TCP:client] sent; " << data << std::endl;
-  
-        while(1) {
-          if(socket.ReceivePacket(data, size) >= 0) break;
-        }
-        std::cerr << "[TCP:client] received; " << data << std::endl;
-      }
-
-	  socket.Close();
-	  std::cerr << "[TCP:client] closed" << std::endl;
-	} 
+	  TCPClient();
+	} else {
+      std::cerr << "[error] specify TCP command" << std::endl;
+	}
   } else {
     std::cerr << "[error] specify protocol" << std::endl;
   }
@@ -169,4 +97,121 @@ int main(int argc, char **argv) {
   DismissNetCtrl();
 
   return 0;
+}
+
+void ARPReply(uint32_t ipRequest, uint32_t ipReply, int32_t retryCount) {
+  ARPSocket socket;
+  if(socket.Open() < 0) {
+      std::cerr << "[open] cannot open socket" << std::endl;
+  }
+
+  uint32_t ipaddr;
+  uint8_t macaddr[6];
+
+  // wait for ARP request
+  socket.SetIPAddr(ipReply);
+
+  for(int32_t i = 0; i < retryCount; i++) {
+    socket.ReceivePacket(ARPSocket::kOpARPRequest, &ipaddr, macaddr);
+
+    // need to wait a little
+    // because Linux kernel cannot handle packet too quick
+//    usleep(570);
+
+    // ARP reply
+    socket.TransmitPacket(ARPSocket::kOpARPReply, ipaddr, macaddr);
+  }
+}
+
+void ARPRequest(uint32_t ipRequest, uint32_t ipReply, int32_t retryCount) {
+  ARPSocket socket;
+  if(socket.Open() < 0) {
+      std::cerr << "[open] cannot open socket" << std::endl;
+  }
+
+  uint32_t ipaddr;
+  uint8_t macaddr[6];
+
+  // send ARP request
+  struct timeval t1, t2;
+  double elapsed_time = 0;
+  double t = 0;
+
+  socket.SetIPAddr(ipRequest);
+
+  for(int32_t i = 0; i < retryCount; i++) {
+    // send ARP request
+    socket.TransmitPacket(ARPSocket::kOpARPRequest, ipReply); 
+
+    // measure elapsed time for ARP reply
+    gettimeofday(&t1, NULL);
+    socket.ReceivePacket(ARPSocket::kOpARPReply, &ipaddr, macaddr);
+    gettimeofday(&t2, NULL);
+
+    t = (t2.tv_sec-t1.tv_sec)*1e+06+(t2.tv_usec-t1.tv_usec);
+    elapsed_time += t;
+  }
+
+  std::printf("[ARP] elapsed time = %.1lf[us/times]\n", elapsed_time / retryCount);
+}
+
+void TCPServer() {
+  Socket socket;
+  if(socket.Open() < 0) {
+      std::cerr << "[error] cannot open socket" << std::endl;
+  }
+  socket.SetListenPort(Socket::kPortTelnet);
+  socket.SetPort(Socket::kPortTelnet);
+
+  const uint32_t size = 0x100;
+  uint8_t data[size];
+  int32_t rval;
+
+  // TCP server 
+  socket.Listen();
+  std::cerr << "[TCP:server] connection established" << std::endl;
+
+  // loopback
+  while(1) {
+    if((rval = socket.ReceivePacket(data, size)) >= 0) {
+      std::cerr << "[TCP:server] received; " << data << std::endl;
+      socket.TransmitPacket(data, strlen(reinterpret_cast<char*>(data)) + 1);
+      std::cerr << "[TCP:server] loopback" << std::endl;
+    } else if(rval == Socket::kConnectionClosed) {
+      break;
+    }
+  }
+  std::cerr << "[TCP:server] closed" << std::endl;
+}
+
+void TCPClient() {
+  Socket socket;
+  if(socket.Open() < 0) {
+      std::cerr << "[error] cannot open socket" << std::endl;
+  }
+  socket.SetListenPort(Socket::kPortTelnet);
+  socket.SetPort(Socket::kPortTelnet);
+
+  const uint32_t size = 0x100;
+  uint8_t data[size];
+
+  // TCP client
+  socket.Connect();
+  std::cerr << "[TCP:client] connection established" << std::endl;
+
+  while(1) {
+    std::cin >> data;
+    if(!strncmp(reinterpret_cast<char*>(data), "q", 1)) break;
+
+    socket.TransmitPacket(data, strlen(reinterpret_cast<char*>(data)) + 1);
+    std::cerr << "[TCP:client] sent; " << data << std::endl;
+
+    while(1) {
+      if(socket.ReceivePacket(data, size) >= 0) break;
+    }
+    std::cerr << "[TCP:client] received; " << data << std::endl;
+  }
+
+  socket.Close();
+  std::cerr << "[TCP:client] closed" << std::endl;
 }
