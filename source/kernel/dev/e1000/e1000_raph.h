@@ -32,13 +32,14 @@
 #include <global.h>
 #include <freebsd/sys/errno.h>
 #include <freebsd/sys/param.h>
+#include <freebsd/sys/bus.h>
 #include <freebsd/sys/bus_dma.h>
 #include <freebsd/sys/endian.h>
 #include <freebsd/dev/pci/pcireg.h>
 #include <freebsd/net/if.h>
 #include <freebsd/net/if_var.h>
 #include <freebsd/net/if_types.h>
-#include "./lem.h"
+#include "bem.h"
 
 #define NULL nullptr
 
@@ -47,19 +48,6 @@ typedef bool boolean_t;
 static inline int sprintf(const char *s, const char *format, ...) {
   return 0;
 }
-
-typedef enum {
-  BUS_SPACE_MEMIO,
-  BUS_SPACE_PIO
-} bus_space_tag_t;
-
-typedef union {
-  uint32_t            ioport;
-  volatile uint8_t *maddr;
-} bus_space_handle_t;
-
-typedef void *bus_addr_t;
-typedef int bus_size_t;
 
 #define BUS_PROBE_SPECIFIC  0 /* Only I can use this device */
 #define BUS_PROBE_VENDOR  (-10) /* Vendor supplied driver */
@@ -95,39 +83,6 @@ struct mbuf {};
 
 typedef struct {} eventhandler_tag;
 
-static inline uint8_t bus_space_read_1(bus_space_tag_t space, bus_space_handle_t handle, bus_size_t offset) {
-  kassert(space == BUS_SPACE_MEMIO);
-  return reinterpret_cast<volatile uint8_t *>(handle.maddr)[offset / sizeof(uint8_t)];
-}
-
-static inline uint16_t bus_space_read_2(bus_space_tag_t space, bus_space_handle_t handle, bus_size_t offset) {
-  kassert(space == BUS_SPACE_MEMIO);
-  return reinterpret_cast<volatile uint16_t *>(handle.maddr)[offset / sizeof(uint32_t)];
-}
-
-static inline uint32_t bus_space_read_4(bus_space_tag_t space, bus_space_handle_t handle, bus_size_t offset) {
-  kassert(space == BUS_SPACE_MEMIO);
-  return reinterpret_cast<volatile uint32_t *>(handle.maddr)[offset / sizeof(uint32_t)];
-}
-
-static inline void bus_space_write_1(bus_space_tag_t space, bus_space_handle_t handle, bus_size_t offset, uint8_t value) {
-  kassert(space == BUS_SPACE_MEMIO);
-  reinterpret_cast<volatile uint8_t *>(handle.maddr)[offset / sizeof(uint8_t)] = value;
-}
-
-static inline void bus_space_write_2(bus_space_tag_t space, bus_space_handle_t handle, bus_size_t offset, uint16_t value) {
-  kassert(space == BUS_SPACE_MEMIO);
-  reinterpret_cast<volatile uint16_t *>(handle.maddr)[offset / sizeof(uint16_t)] = value;
-}
-
-static inline void bus_space_write_4(bus_space_tag_t space, bus_space_handle_t handle, bus_size_t offset, uint32_t value) {
-  kassert(space == BUS_SPACE_MEMIO);
-  reinterpret_cast<volatile uint32_t *>(handle.maddr)[offset / sizeof(uint32_t)] = value;
-}
-
-struct BsdDriver;
-typedef BsdDriver *device_t;
-
 static inline void pci_write_config(device_t dev, int reg, uint32_t val, int width) {
   switch (width) {
   case 1:
@@ -162,6 +117,25 @@ static inline uint32_t pci_read_config(device_t dev, int reg, int width) {
 static inline int pci_enable_busmaster(device_t dev) {
   dev->parent->WriteReg<uint16_t>(PCICtrl::kCommandReg, dev->parent->ReadReg<uint16_t>(PCICtrl::kCommandReg) | PCICtrl::kCommandRegBusMasterEnableFlag);
   return 0;
+}
+
+static inline int pci_find_cap(device_t dev, int capability, int *capreg)
+{
+  PCICtrl::CapabilityId id;
+  switch(capability) {
+  case PCIY_EXPRESS:
+    id = PCICtrl::CapabilityId::kPcie;
+    break;
+  default:
+    kassert(false);
+  }
+  uint16_t cap;
+  if ((cap = dev->parent->FindCapability(id)) != 0) {
+    *capreg = cap;
+    return 0;
+  } else {
+    return -1;
+  }
 }
 
 #define device_printf(...)
@@ -233,6 +207,7 @@ struct mtx {
 };
 
 static inline void callout_init_mtx(struct callout *c, struct mtx *mtx, int flags) {
+  new(&c->callout) Callout;
   c->callout.SetLock(&mtx->lock);
 }
 
@@ -298,10 +273,8 @@ static inline bus_space_handle_t rman_get_bushandle(struct resource *r) {
   bus_space_handle_t h;
   switch(r->type) {
   case BUS_SPACE_PIO:
-    h.ioport = static_cast<uint32_t>(r->addr);
-    break;
   case BUS_SPACE_MEMIO:
-    h.maddr = reinterpret_cast<volatile uint8_t *>(r->addr);
+    h = r->addr;
     break;
   default:
     kassert(false);

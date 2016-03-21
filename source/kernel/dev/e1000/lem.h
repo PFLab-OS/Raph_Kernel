@@ -31,92 +31,18 @@
 #include <dev/pci.h>
 #include <buf.h>
 #include <freebsd/sys/param.h>
+#include "bem.h"
 
-struct adapter;
-
-class lE1000;
-struct BsdDriver {
-  lE1000 *parent;
-  struct adapter *adapter;
-};
-
-class lE1000 : public DevPCI, Polling {
+class lE1000 : public bE1000, Polling {
 public:
- lE1000(uint8_t bus, uint8_t device, bool mf) : DevPCI(bus, device, mf) {}
+ lE1000(uint8_t bus, uint8_t device, bool mf) : bE1000(bus, device, mf) {}
   static bool InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf);
   // from Polling
   void Handle() override;
   BsdDriver bsd;
 
-  struct Packet {
-    size_t len;
-    uint8_t buf[MCLBYTES];
-  };
-  // rxパケットの処理の流れ
-  // 0. rx_reservedを初期化、バッファを満タンにしておく
-  // 1. Recieveハンドラがパケットを受信すると、rx_reservedから一つ取り出し、
-  //    memcpyの上、rx_bufferedに詰む
-  // 2. プロトコル・スタックはRecievePacket関数を呼ぶ
-  // 3. RecievePacket関数はrx_bufferedからパケットを取得する
-  // 4. プロトコル・スタックは取得したパケットを処理した上でReuseRxBufferを呼ぶ
-  // 5. ReuseRxBufferはrx_reservedにバッファを返す
-  // 6. 1に戻る
-  //
-  // プロトコル・スタックがReuseRxBufferを呼ばないと
-  // そのうちrx_reservedが枯渇して、一切のパケットの受信ができなくなるるよ♪
-  RingBuffer<Packet *, 300> _rx_reserved;
-  RingBuffer<Packet *, 300> _rx_buffered;
-
-  // txパケットの処理の流れ
-  // 0. tx_reservedを初期化、バッファを満タンにしておく
-  // 1. プロトコル・スタックはGetTxBufferを呼び出す
-  // 2. GetTxBufferはtx_reservedからバッファを取得する
-  // 3. プロトコル・スタックはバッファにmemcpyして、TransmitPacket関数を呼ぶ
-  // 4. TransmitPacket関数はtx_bufferedにパケットを詰む
-  // 5. Transmitハンドラがパケットを処理した上でtx_reservedに返す
-  // 6. 1に戻る
-  //
-  // プロトコル・スタックはGetTxBufferで確保したバッファを必ずTransmitPacketするか
-  // ReuseTxBufferで開放しなければならない。サボるとそのうちtx_reservedが枯渇
-  // して、一切のパケットの送信ができなくなるよ♪
-  RingBuffer<Packet *, 300> _tx_reserved;
-  RingBuffer<Packet *, 300> _tx_buffered;
-
-  void ReuseRxBuffer(Packet *packet) {
-    kassert(_rx_reserved.Push(packet));
-  }
-  void ReuseTxBuffer(Packet *packet) {
-    kassert(_tx_reserved.Push(packet));
-  }
-  // 戻り値がfalseの時はバッファが枯渇しているので、要リトライ
-  bool GetTxPacket(Packet *&packet) {
-    if (_tx_reserved.Pop(packet)) {
-      packet->len = 0;
-      return true;
-    } else {
-      return false;
-    }
-  }
-  bool TransmitPacket(Packet *packet) {
-    return _tx_buffered.Push(packet);
-  }
-  bool RecievePacket(Packet *&packet) {
-    return _rx_buffered.Pop(packet);
-  }
   // allocate 6 byte before call
   void GetEthAddr(uint8_t *buffer);
-  void InitTxPacketBuffer() {
-    while(!_tx_reserved.IsFull()) {
-      Packet *packet = reinterpret_cast<Packet *>(virtmem_ctrl->Alloc(sizeof(Packet)));
-      kassert(_tx_reserved.Push(packet));
-    }
-  }
-  void InitRxPacketBuffer() {
-    while(!_rx_reserved.IsFull()) {
-      Packet *packet = reinterpret_cast<Packet *>(virtmem_ctrl->Alloc(sizeof(Packet)));
-      kassert(_rx_reserved.Push(packet));
-    }
-  }
  private:
 };
 

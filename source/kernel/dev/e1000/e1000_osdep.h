@@ -56,10 +56,13 @@
 /* #include <dev/pci/pcivar.h> */
 /* #include <dev/pci/pcireg.h> */
 
-#include "../../timer.h"
-#include "../../spinlock.h"
-#include "e1000_raph.h"
 #include <string.h>
+#include <timer.h>
+#include <spinlock.h>
+#include <freebsd/sys/bus.h>
+#include "bem.h"
+
+#define NULL nullptr
 
 #define ASSERT(x) (kassert(x))
 
@@ -88,7 +91,7 @@
 
 /* Mutex used in the shared code */
 #define E1000_MUTEX                     SpinLock
-#define E1000_MUTEX_INIT(mutex)         
+#define E1000_MUTEX_INIT(mutex)         new(mutex) SpinLock;
 #define E1000_MUTEX_DESTROY(mutex)      
 #define E1000_MUTEX_LOCK(mutex)         (mutex)->Lock()
 #define E1000_MUTEX_TRYLOCK(mutex)      (mutex)->TryLock()

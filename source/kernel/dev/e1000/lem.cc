@@ -37,11 +37,6 @@ bool lE1000::InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bo
   addr = new(addr) lE1000(bus, device, mf);
   addr->bsd.parent = addr;
   addr->bsd.adapter = reinterpret_cast<struct adapter *>(virtmem_ctrl->Alloc(sizeof(adapter)));
-  new(&addr->bsd.adapter->timer.callout) Callout;
-  new(&addr->bsd.adapter->tx_fifo_timer.callout) Callout;
-  new(&addr->bsd.adapter->core_mtx.lock) SpinLock;
-  new(&addr->bsd.adapter->tx_mtx.lock) SpinLock;
-  new(&addr->bsd.adapter->rx_mtx.lock) SpinLock;
   if (lem_probe(&addr->bsd) == BUS_PROBE_DEFAULT) {
     kassert(lem_attach(&addr->bsd) == 0);
     lem_init(addr->bsd.adapter);

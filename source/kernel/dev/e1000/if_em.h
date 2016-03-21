@@ -509,36 +509,37 @@ struct em_buffer {
         bus_dmamap_t    map;         /* bus_dma map for packet */
 };
 
+
 /*
 ** Find the number of unrefreshed RX descriptors
 */
-static inline u16
-e1000_rx_unrefreshed(struct rx_ring *rxr)
-{
-	struct adapter	*adapter = rxr->adapter;
+/* static inline u16 */
+/* e1000_rx_unrefreshed(struct rx_ring *rxr) */
+/* { */
+/* 	struct adapter	*adapter = rxr->adapter; */
 
-	if (rxr->next_to_check > rxr->next_to_refresh)
-		return (rxr->next_to_check - rxr->next_to_refresh - 1);
-	else
-		return ((adapter->num_rx_desc + rxr->next_to_check) -
-		    rxr->next_to_refresh - 1); 
-}
+/* 	if (rxr->next_to_check > rxr->next_to_refresh) */
+/* 		return (rxr->next_to_check - rxr->next_to_refresh - 1); */
+/* 	else */
+/* 		return ((adapter->num_rx_desc + rxr->next_to_check) - */
+/* 		    rxr->next_to_refresh - 1);  */
+/* } */
 
-#define	EM_CORE_LOCK_INIT(_sc, _name) 
-#define	EM_TX_LOCK_INIT(_sc, _name) 
-#define	EM_RX_LOCK_INIT(_sc, _name) 
+#define	EM_CORE_LOCK_INIT(_sc, _name)   new(&(_sc)->core_mtx.lock) SpinLock;
+#define	EM_TX_LOCK_INIT(_sc, _name)     new(&(_sc)->tx_mtx.lock) SpinLock;
+#define	EM_RX_LOCK_INIT(_sc, _name)     new(&(_sc)->rx_mtx.lock) SpinLock;
 #define	EM_CORE_LOCK_DESTROY(_sc)	
 #define	EM_TX_LOCK_DESTROY(_sc)		
 #define	EM_RX_LOCK_DESTROY(_sc)		
-#define	EM_CORE_LOCK(_sc)		(&(_sc)->core_mtx)->Lock()
-#define	EM_TX_LOCK(_sc)			(&(_sc)->tx_mtx)->Lock()
-#define	EM_TX_TRYLOCK(_sc)		(&(_sc)->tx_mtx)->TryLock()
-#define	EM_RX_LOCK(_sc)			(&(_sc)->rx_mtx)->Lock()
-#define	EM_CORE_UNLOCK(_sc)		(&(_sc)->core_mtx)->Unlock()
-#define	EM_TX_UNLOCK(_sc)		(&(_sc)->tx_mtx)->Unlock()
-#define	EM_RX_UNLOCK(_sc)		(&(_sc)->rx_mtx)->Unlock()
-#define	EM_CORE_LOCK_ASSERT(_sc)	kassert((&(_sc)->core_mtx)->IsLocked());
-#define	EM_TX_LOCK_ASSERT(_sc)		(&(_sc)->tx_mtx)->IsLocked()
-#define	EM_RX_LOCK_ASSERT(_sc)		(&(_sc)->rx_mtx)->IsLocked()
+#define	EM_CORE_LOCK(_sc)		(&(_sc)->core_mtx)->lock.Lock()
+#define	EM_TX_LOCK(_sc)			(&(_sc)->tx_mtx)->lock.Lock()
+#define	EM_TX_TRYLOCK(_sc)		(&(_sc)->tx_mtx)->lock.TryLock()
+#define	EM_RX_LOCK(_sc)			(&(_sc)->rx_mtx)->lock.Lock()
+#define	EM_CORE_UNLOCK(_sc)		(&(_sc)->core_mtx)->lock.Unlock()
+#define	EM_TX_UNLOCK(_sc)		(&(_sc)->tx_mtx)->lock.Unlock()
+#define	EM_RX_UNLOCK(_sc)		(&(_sc)->rx_mtx)->lock.Unlock()
+#define	EM_CORE_LOCK_ASSERT(_sc)	kassert((&(_sc)->core_mtx)->lock.IsLocked());
+#define	EM_TX_LOCK_ASSERT(_sc)		kassert((&(_sc)->tx_mtx)->lock.IsLocked());
+#define	EM_RX_LOCK_ASSERT(_sc)		kassert((&(_sc)->rx_mtx)->lock.IsLocked());
 
 #endif /* _EM_H_DEFINED_ */

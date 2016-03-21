@@ -103,6 +103,7 @@
 #include "../../tty.h"
 #include "../../global.h"
 
+#include "lem.h"
 #include "e1000_raph.h"
 #include "e1000_osdep.h"
 #include "e1000_api.h"
@@ -239,7 +240,7 @@ static void	lem_update_link_status(struct adapter *);
 // static void	lem_register_vlan(void *, if_t, u16);
 // static void	lem_unregister_vlan(void *, if_t, u16);
 // static void	lem_setup_vlan_hw_support(struct adapter *);
-static int	lem_xmit(struct adapter *, lE1000::Packet *);
+static int	lem_xmit(struct adapter *, bE1000::Packet *);
 static void	lem_smartspeed(struct adapter *);
 // static int	lem_82547_fifo_workaround(struct adapter *, int);
 // static void	lem_82547_update_fifo_head(struct adapter *, int);
@@ -923,7 +924,7 @@ static void
 lem_start_locked(if_t ifp)
 {
   struct adapter	*adapter = reinterpret_cast<struct adapter *>(if_getsoftc(ifp));
-  lE1000 *e1000 = adapter->dev->parent;
+  bE1000 *e1000 = adapter->dev->parent;
 	struct mbuf	*m_head;
 
 	EM_TX_LOCK_ASSERT(adapter);
@@ -964,7 +965,7 @@ lem_start_locked(if_t ifp)
 		// 	if_sendq_prepend(ifp, m_head);
 		// 	break;
 		// }
-          lE1000::Packet *packet;
+          bE1000::Packet *packet;
           kassert(e1000->_tx_buffered.Pop(packet));
           lem_xmit(adapter, packet);
 
@@ -1352,7 +1353,7 @@ int
 lem_poll(if_t ifp)
 {
   struct adapter *adapter = reinterpret_cast<struct adapter *>(if_getsoftc(ifp));
-  lE1000 *e1000 = adapter->dev->parent;
+  bE1000 *e1000 = adapter->dev->parent;
   u32		reg_icr;
   int rx_done = 0;
 
@@ -1381,6 +1382,7 @@ lem_poll(if_t ifp)
 	EM_TX_LOCK(adapter);
 	lem_txeof(adapter);
 	// if(!if_sendq_empty(ifp))
+        if (!e1000->_tx_buffered.IsEmpty())
 		lem_start_locked(ifp);
 	EM_TX_UNLOCK(adapter);
 	return (rx_done);
@@ -1646,7 +1648,7 @@ lem_poll(if_t ifp)
  **********************************************************************/
 
 static int
-lem_xmit(struct adapter *adapter, lE1000::Packet *packet)
+lem_xmit(struct adapter *adapter, bE1000::Packet *packet)
 {
 	bus_dma_segment_t	segs[EM_MAX_SCATTER];
 	bus_dmamap_t		map;
@@ -1655,7 +1657,7 @@ lem_xmit(struct adapter *adapter, lE1000::Packet *packet)
 	struct mbuf		*m_head;
 	u32			txd_upper, txd_lower, txd_used, txd_saved;
 	int			error, nsegs, i, j, first, last = 0;
-        lE1000 *e1000 = adapter->dev->parent;
+        bE1000 *e1000 = adapter->dev->parent;
 
 	// m_head = *m_headp;
 	txd_upper = txd_lower = txd_used = txd_saved = 0;
@@ -2514,9 +2516,9 @@ lem_setup_interface(device_t dev, struct adapter *adapter)
 	// if_setstartfn(ifp, lem_start);
 	// if_setsendqlen(ifp, adapter->num_tx_desc - 1);
 	// if_setsendqready(ifp);
-#if __FreeBSD_version >= 1100036
-	if_setgetcounterfn(ifp, lem_get_counter);
-#endif
+// #if __FreeBSD_version >= 1100036
+// 	if_setgetcounterfn(ifp, lem_get_counter);
+// #endif
 
 	// ether_ifattach(ifp, adapter->hw.mac.addr);
 
@@ -2758,7 +2760,7 @@ lem_allocate_transmit_structures(struct adapter *adapter)
 	device_t dev = adapter->dev;
 	struct em_buffer *tx_buffer;
 	int error;
-        lE1000 *e1000 = dev->parent;
+        bE1000 *e1000 = dev->parent;
 
 	/*
 	 * Create DMA tags for tx descriptors
@@ -2815,7 +2817,7 @@ fail:
 static void
 lem_setup_transmit_structures(struct adapter *adapter)
 {
-  lE1000 *e1000 = adapter->dev->parent;
+  bE1000 *e1000 = adapter->dev->parent;
 	struct em_buffer *tx_buffer;
 #ifdef DEV_NETMAP
 	/* we are already locked */
@@ -2851,7 +2853,7 @@ lem_setup_transmit_structures(struct adapter *adapter)
 // 		tx_buffer->next_eop = -1;
 // 	}
 
-        lE1000::Packet *packet;
+        bE1000::Packet *packet;
         while(e1000->_tx_buffered.Pop(packet)) {
           kassert(e1000->_tx_reserved.Push(packet));
         }
@@ -3343,7 +3345,7 @@ lem_allocate_receive_structures(struct adapter *adapter)
 	device_t dev = adapter->dev;
 	struct em_buffer *rx_buffer;
 	int i, error;
-        lE1000 *e1000 = dev->parent;
+        bE1000 *e1000 = dev->parent;
 
 	adapter->rx_buffer_area = reinterpret_cast<struct em_buffer *>(virtmem_ctrl->Alloc(sizeof(struct em_buffer) * adapter->num_rx_desc));
 	// adapter->rx_buffer_area = malloc(sizeof(struct em_buffer) *
@@ -3406,7 +3408,7 @@ fail:
 static int
 lem_setup_receive_structures(struct adapter *adapter)
 {
-  lE1000 *e1000 = adapter->dev->parent;
+  bE1000 *e1000 = adapter->dev->parent;
 
 	struct em_buffer *rx_buffer;
 	int i, error;
@@ -3431,7 +3433,7 @@ lem_setup_receive_structures(struct adapter *adapter)
 	// 		rx_buffer->m_head = NULL;
 	// 	}
         // }
-        lE1000::Packet *packet;
+        bE1000::Packet *packet;
         while(e1000->_rx_buffered.Pop(packet)) {
           kassert(e1000->_rx_reserved.Push(packet));
         }
@@ -3647,7 +3649,7 @@ lem_rxeof(struct adapter *adapter, int count, int *done)
 	u16 		len, desc_len, prev_len_adj;
 	int		i, rx_sent = 0;
 	struct e1000_rx_desc   *current_desc;
-        lE1000 *e1000 = adapter->dev->parent;
+        bE1000 *e1000 = adapter->dev->parent;
 
 #ifdef BATCH_DISPATCH
 	struct mbuf *mh = NULL, *mt = NULL;
@@ -3766,7 +3768,7 @@ lem_rxeof(struct adapter *adapter, int count, int *done)
 		}
 
 		if (accept_frame) {
-                  lE1000::Packet *packet;
+                  bE1000::Packet *packet;
                   if (e1000->_rx_reserved.Pop(packet)) {
                     memcpy(packet->buf, reinterpret_cast<void *>(p2v(adapter->rx_desc_base[i].buffer_addr)), len);
                     packet->len = len;
