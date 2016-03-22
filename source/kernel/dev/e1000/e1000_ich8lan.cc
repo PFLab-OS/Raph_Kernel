@@ -453,7 +453,6 @@ static s32 e1000_init_phy_params_pchlan(struct e1000_hw *hw)
 	s32 ret_val;
 
 	DEBUGFUNC("e1000_init_phy_params_pchlan");
-
 	phy->addr		= 1;
 	phy->reset_delay_us	= 100;
 
@@ -3685,6 +3684,7 @@ static s32 e1000_flash_cycle_init_ich8lan(struct e1000_hw *hw)
 	 */
 
 	if (!hsfsts.hsf_status.flcinprog) {
+
 		/* There is no cycle running at present,
 		 * so we can start a cycle.
 		 * Begin by setting Flash Cycle Done.
@@ -3713,6 +3713,7 @@ static s32 e1000_flash_cycle_init_ich8lan(struct e1000_hw *hw)
 			usec_delay(1);
 		}
 		if (ret_val == E1000_SUCCESS) {
+
 			/* Successful in waiting for previous cycle to timeout,
 			 * now set the Flash Cycle Done.
 			 */
@@ -3724,6 +3725,7 @@ static s32 e1000_flash_cycle_init_ich8lan(struct e1000_hw *hw)
 				E1000_WRITE_FLASH_REG16(hw, ICH_FLASH_HSFSTS,
 							hsfsts.regval);
 		} else {
+
 			DEBUGOUT("Flash controller busy, cannot get access\n");
 		}
 	}
@@ -3870,7 +3872,7 @@ static s32 e1000_read_flash_data_ich8lan(struct e1000_hw *hw, u32 offset,
 
 	DEBUGFUNC("e1000_read_flash_data_ich8lan");
 
-	if (size < 1 || size > 2 || offset > ICH_FLASH_LINEAR_ADDR_MASK)
+ 	if (size < 1 || size > 2 || offset > ICH_FLASH_LINEAR_ADDR_MASK)
 		return -E1000_ERR_NVM;
 	flash_linear_addr = ((ICH_FLASH_LINEAR_ADDR_MASK & offset) +
 			     hw->nvm.flash_base_addr);
@@ -3905,6 +3907,7 @@ static s32 e1000_read_flash_data_ich8lan(struct e1000_hw *hw, u32 offset,
 				*data = (u16)(flash_data & 0x0000FFFF);
 			break;
 		} else {
+
 			/* If we've gotten here, then things are probably
 			 * completely hosed, but if the error condition is
 			 * detected, it won't hurt to give it another try...

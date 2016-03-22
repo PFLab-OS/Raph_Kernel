@@ -303,7 +303,6 @@ s32 e1000_set_mac_type(struct e1000_hw *hw)
 s32 e1000_setup_init_funcs(struct e1000_hw *hw, bool init_device)
 {
 	s32 ret_val;
-
 	/* Can't do much good without knowing the MAC type. */
 	ret_val = e1000_set_mac_type(hw);
 	if (ret_val) {
@@ -381,7 +380,7 @@ s32 e1000_setup_init_funcs(struct e1000_hw *hw, bool init_device)
 	 * register reads/writes in some cases.
 	 */
 	if (!(ret_val) && init_device) {
-		ret_val = e1000_init_mac_params(hw);
+ 		ret_val = e1000_init_mac_params(hw);
 		if (ret_val)
 			goto out;
 

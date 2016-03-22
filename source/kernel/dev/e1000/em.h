@@ -20,8 +20,8 @@
  *
  */
 
-#ifndef __RAPH_KERNEL_E1000_LEM_H__
-#define __RAPH_KERNEL_E1000_LEM_H__
+#ifndef __RAPH_KERNEL_E1000_EM_H__
+#define __RAPH_KERNEL_E1000_EM_H__
 
 #include <stdint.h>
 #include <mem/physmem.h>
@@ -29,13 +29,11 @@
 #include <polling.h>
 #include <global.h>
 #include <dev/pci.h>
-#include <buf.h>
-#include <freebsd/sys/param.h>
 #include "bem.h"
 
-class lE1000 : public bE1000, Polling {
+class E1000 : public bE1000, Polling {
 public:
- lE1000(uint8_t bus, uint8_t device, bool mf) : bE1000(bus, device, mf) {}
+ E1000(uint8_t bus, uint8_t device, bool mf) : bE1000(bus, device, mf) {}
   static bool InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf);
   // from Polling
   virtual void Handle() override;
@@ -46,4 +44,4 @@ public:
  private:
 };
 
-#endif /* __RAPH_KERNEL_E1000_LEM_H__ */
+#endif /* __RAPH_KERNEL_E1000_EM_H__ */

@@ -53,8 +53,8 @@ Tty *gtty;
 
 PCICtrl *pci_ctrl;
 
-#include <dev/e1000/lem.h>
-lE1000 *eth;
+#include <dev/e1000/bem.h>
+bE1000 *eth;
 uint32_t cnt;
 
 extern "C" int main() {
@@ -142,7 +142,11 @@ extern "C" int main_of_others() {
   apic_ctrl->BootAP();
   gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
   if (apic_ctrl->GetApicId() == 1) {
-    cnt = timer->ReadMainCnt();
+    kassert(eth != nullptr);
+    uint8_t ip[] = {
+      192, 168, 100, 117,
+      //10, 0, 2, 5,
+    };
     uint8_t data[] = {
       0xff, 0xff, 0xff, 0xff, 0xff, 0xff, // Target MAC Address
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source MAC Address
@@ -154,49 +158,53 @@ extern "C" int main_of_others() {
       0x04, // ProtocolLength
       0x00, 0x01, // Operation: ARP Request
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source Hardware Address
-      0xC0, 0xA8, 0x64, 0x74, // Source Protocol Address
-      //0x0A, 0x00, 0x02, 0x05,
+      0x00, 0x00, 0x00, 0x00, // Source Protocol Address
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
       // Target Protocol Address
-      0xC0, 0xA8, 0x64, 0x78,
-      //0x0A, 0x00, 0x02, 0x0F,
+      192, 168, 100, 100,
+      //10, 0, 2, 15,
       //0x85, 0x0B, 0x1E, 0x49
     };
     eth->GetEthAddr(data + 6);
     memcpy(data + 22, data + 6, 6);
+    memcpy(data + 28, ip, 4);
     uint32_t len = sizeof(data)/sizeof(uint8_t);
-    lE1000::Packet *tpacket;
+    bE1000::Packet *tpacket;
+    kassert(eth->GetTxPacket(tpacket));
+    memcpy(tpacket->buf, data, len);
+    tpacket->len = len;
+    cnt = timer->ReadMainCnt();
+    eth->TransmitPacket(tpacket);
+
     kassert(eth->GetTxPacket(tpacket));
     memcpy(tpacket->buf, data, len);
     tpacket->len = len;
     eth->TransmitPacket(tpacket);
+
     gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
     while(true) {
-      lE1000::Packet *rpacket;
+      bE1000::Packet *rpacket;
       if(!eth->RecievePacket(rpacket)) {
         continue;
-      }
+      } 
       // received packet
       if(rpacket->buf[12] == 0x08 && rpacket->buf[13] == 0x06 && rpacket->buf[21] == 0x02) {
-        if (cnt != 0) {
-          // ARP packet
-          gtty->Printf(
-                       "s", "ARP Reply received; ",
-                       "x", rpacket->buf[22], "s", ":",
-                       "x", rpacket->buf[23], "s", ":",
-                       "x", rpacket->buf[24], "s", ":",
-                       "x", rpacket->buf[25], "s", ":",
-                       "x", rpacket->buf[26], "s", ":",
-                       "x", rpacket->buf[27], "s", " -> ",
-                       "d", rpacket->buf[28], "s", ".",
-                       "d", rpacket->buf[29], "s", ".",
-                       "d", rpacket->buf[30], "s", ".",
-                       "d", rpacket->buf[31], "s", "\n");
-          gtty->Printf("s", "laytency:","d", ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000,"s","us\n");
-          cnt = 0;
-        }
+        // ARP packet
+        gtty->Printf(
+                     "s", "ARP Reply received; ",
+                     "x", rpacket->buf[22], "s", ":",
+                     "x", rpacket->buf[23], "s", ":",
+                     "x", rpacket->buf[24], "s", ":",
+                     "x", rpacket->buf[25], "s", ":",
+                     "x", rpacket->buf[26], "s", ":",
+                     "x", rpacket->buf[27], "s", " -> ",
+                     "d", rpacket->buf[28], "s", ".",
+                     "d", rpacket->buf[29], "s", ".",
+                     "d", rpacket->buf[30], "s", ".",
+                     "d", rpacket->buf[31], "s", "\n");
+        gtty->Printf("s", "laytency:","d", ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000,"s","us\n");
       }
-      if(rpacket->buf[12] == 0x08 && rpacket->buf[13] == 0x06 && rpacket->buf[21] == 0x01) {
+      if(rpacket->buf[12] == 0x08 && rpacket->buf[13] == 0x06 && rpacket->buf[21] == 0x01 && (memcmp(rpacket->buf + 38, ip, 4) == 0)) {
         // ARP packet
         gtty->Printf(
                      "s", "ARP Request received; ",
@@ -229,17 +237,19 @@ extern "C" int main_of_others() {
         memcpy(data, rpacket->buf + 6, 6);
         eth->GetEthAddr(data + 6);
         memcpy(data + 22, data + 6, 6);
-        memcpy(data + 28, rpacket->buf + 38, 4);
+        memcpy(data + 28, ip, 4);
         memcpy(data + 32, rpacket->buf + 22, 6);
         memcpy(data + 38, rpacket->buf + 28, 4);
 
         uint32_t len = sizeof(data)/sizeof(uint8_t);
-        lE1000::Packet *tpacket;
+        bE1000::Packet *tpacket;
+        kassert(eth->GetTxPacket(tpacket));
         memcpy(tpacket->buf, data, len);
         tpacket->len = len;
         eth->TransmitPacket(tpacket);
-        gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
+        //gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
       }
+      eth->ReuseRxBuffer(rpacket);
     }
   } else {
     while(1) {

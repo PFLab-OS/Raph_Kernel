@@ -203,7 +203,6 @@ void DevGbeIch8::SetupTx() {
 
 uint16_t DevGbeIch8::FlashRead(uint16_t addr) {
   // see ich8-chipset datasheet 20.3 & official E1000 driver source code
-
   while(true) {
     // init flash cycle
 

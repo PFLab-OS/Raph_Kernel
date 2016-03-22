@@ -20,26 +20,26 @@
  * 
  */
 
-#include "lem.h"
+#include "em.h"
 #include "e1000_raph.h"
 #include "e1000_hw.h"
-#include "if_lem.h"
+#include "if_em.h"
 
-int	lem_probe(device_t);
-int	lem_attach(device_t);
-void	lem_init(struct adapter *);
-void	lem_start(if_t);
-int lem_poll(if_t ifp);
+int	em_probe(device_t);
+int	em_attach(device_t);
+void	em_init(struct adapter *);
+void	em_start(if_t);
+int em_poll(if_t ifp);
 
 extern bE1000 *eth;
-bool lE1000::InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {
-  lE1000 *addr = reinterpret_cast<lE1000 *>(virtmem_ctrl->Alloc(sizeof(lE1000)));
-  addr = new(addr) lE1000(bus, device, mf);
+bool E1000::InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {
+  E1000 *addr = reinterpret_cast<E1000 *>(virtmem_ctrl->Alloc(sizeof(E1000)));
+  addr = new(addr) E1000(bus, device, mf);
   addr->bsd.parent = addr;
   addr->bsd.adapter = reinterpret_cast<struct adapter *>(virtmem_ctrl->Alloc(sizeof(adapter)));
-  if (lem_probe(&addr->bsd) == BUS_PROBE_DEFAULT) {
-    kassert(lem_attach(&addr->bsd) == 0);
-    lem_init(addr->bsd.adapter);
+  if (em_probe(&addr->bsd) == BUS_PROBE_DEFAULT) {
+    kassert(em_attach(&addr->bsd) == 0);
+    em_init(addr->bsd.adapter);
     polling_ctrl->Register(addr);
     eth = addr;
     return true;
@@ -50,11 +50,11 @@ bool lE1000::InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bo
   }  
 }
 
-void lE1000::Handle() {
-  lem_poll(this->bsd.adapter->ifp);
-  lem_start(this->bsd.adapter->ifp);
+void E1000::Handle() {
+  em_poll(this->bsd.adapter->ifp);
+  em_start(this->bsd.adapter->ifp);
 }
 
-void lE1000::GetEthAddr(uint8_t *buffer) {
+void E1000::GetEthAddr(uint8_t *buffer) {
   memcpy(buffer, bsd.adapter->hw.mac.addr, 6);
 }

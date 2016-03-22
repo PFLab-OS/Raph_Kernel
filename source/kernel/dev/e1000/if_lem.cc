@@ -100,8 +100,6 @@
 #include "../../mem/paging.h"
 #include "../../mem/virtmem.h"
 #include "../../mem/physmem.h"
-#include "../../tty.h"
-#include "../../global.h"
 
 #include "lem.h"
 #include "e1000_raph.h"
@@ -1688,6 +1686,7 @@ lem_xmit(struct adapter *adapter, bE1000::Packet *packet)
 	tx_buffer_mapped = tx_buffer;
 	map = tx_buffer->map;
 
+        error = 0;
 	// error = bus_dmamap_load_mbuf_sg(adapter->txtag, map,
 	//     *m_headp, segs, &nsegs, BUS_DMA_NOWAIT);
 
