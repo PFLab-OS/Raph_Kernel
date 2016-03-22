@@ -152,8 +152,8 @@ extern "C" int main_of_others() {
     }
     kassert(eth != nullptr);
     uint8_t ip[] = {
-      192, 168, 100, 117,
-      //10, 0, 2, 5,
+      //192, 168, 100, 117,
+      10, 0, 2, 5,
     };
     uint8_t data[] = {
       0xff, 0xff, 0xff, 0xff, 0xff, 0xff, // Target MAC Address
@@ -169,8 +169,8 @@ extern "C" int main_of_others() {
       0x00, 0x00, 0x00, 0x00, // Source Protocol Address
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
       // Target Protocol Address
-      192, 168, 100, 100,
-      //10, 0, 2, 15,
+      //192, 168, 100, 100,
+      10, 0, 2, 15,
       //0x85, 0x0B, 0x1E, 0x49
     };
     eth->GetEthAddr(data + 6);

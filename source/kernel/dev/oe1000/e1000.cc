@@ -28,6 +28,8 @@
 #include <global.h>
 extern uint32_t cnt;
 
+extern bE1000 *eth;
+
 bool oE1000::InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {
   if (vid == kVendorId) {
     oE1000 *e1000 = nullptr;
@@ -56,6 +58,7 @@ bool oE1000::InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bo
     kassert(e1000 != nullptr);
     e1000->Setup(did);
     polling_ctrl->Register(e1000);
+    eth = e1000;
     return true;
   }
   return false;
@@ -87,7 +90,7 @@ volatile uint16_t oE1000::ReadPhy(uint16_t addr) {
   }
 }
 
-int32_t oE1000::ReceivePacket(uint8_t *buffer, uint32_t size) {
+int32_t oE1000::Receive(uint8_t *buffer, uint32_t size) {
   E1000RxDesc *rxdesc;
   uint32_t rdh = _mmioAddr[kRegRdh0];
   uint32_t rdt = _mmioAddr[kRegRdt0];
@@ -108,7 +111,7 @@ int32_t oE1000::ReceivePacket(uint8_t *buffer, uint32_t size) {
   }
 }
 
-int32_t oE1000::TransmitPacket(const uint8_t *packet, uint32_t length) {
+int32_t oE1000::Transmit(const uint8_t *packet, uint32_t length) {
   E1000TxDesc *txdesc;
   uint32_t tdh = _mmioAddr[kRegTdh];
   uint32_t tdt = _mmioAddr[kRegTdt];
@@ -157,4 +160,23 @@ uint32_t oE1000::Crc32b(uint8_t *message) {
 }
 
 void oE1000::Handle() {
+  uint8_t buf[kBufSize];
+  int32_t len;
+  if ((len = this->Receive(buf, kBufSize)) != -1) {
+    bE1000::Packet *packet;
+    if (this->_rx_reserved.Pop(packet)) {
+      memcpy(packet->buf, buf, len);
+      packet->len = len;
+      if (!this->_rx_buffered.Push(packet)) {
+        kassert(this->_rx_reserved.Push(packet));
+      }
+    }
+  }
+
+  if (!this->_tx_buffered.IsEmpty()) {
+    bE1000::Packet *packet;
+    kassert(this->_tx_buffered.Pop(packet));
+    this->Transmit(packet->buf, packet->len);
+    this->ReuseTxBuffer(packet);
+  }
 }

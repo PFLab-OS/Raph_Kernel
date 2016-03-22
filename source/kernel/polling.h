@@ -22,7 +22,8 @@
 
 #ifndef __RAPH_KERNEL_DEV_POLLING_H__
 #define __RAPH_KERNEL_DEV_POLLING_H__
-
+#include "timer.h"
+#include "global.h"
 #include "raph.h"
 
 class Polling {
@@ -62,6 +63,7 @@ class PollingCtrl {
         }
         _handlers[i]->Handle();
       }
+      timer->BusyUwait(1000);
     }
   }
  private:

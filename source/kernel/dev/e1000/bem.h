@@ -99,6 +99,7 @@ public:
       kassert(_rx_reserved.Push(packet));
     }
   }
+  // allocate 6 byte before call
   virtual void GetEthAddr(uint8_t *buffer) = 0;
 };
 

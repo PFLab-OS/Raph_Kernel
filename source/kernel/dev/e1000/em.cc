@@ -52,7 +52,6 @@ bool E1000::InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, boo
 
 void E1000::Handle() {
   em_poll(this->bsd.adapter->ifp);
-  em_start(this->bsd.adapter->ifp);
 }
 
 void E1000::GetEthAddr(uint8_t *buffer) {
