@@ -116,11 +116,6 @@ extern "C" int main() {
 
   InitDevices<PCICtrl, Device>();
 
-  gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
-  apic_ctrl->StartAPs();
-
-  gtty->Printf("s", "\n\n[kernel] info: initialization completed\n");
-
   extern int kKernelEndAddr;
   // stackは16K
   kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr)));
@@ -129,6 +124,12 @@ extern "C" int main() {
   kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 3) + 1));
   kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 4) + 1));
   kassert(!paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - 4096 * 5));
+
+  gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
+
+  apic_ctrl->StartAPs();
+
+  gtty->Printf("s", "\n\n[kernel] info: initialization completed\n");
 
   polling_ctrl->HandleAll();
   while(true) {
@@ -142,6 +143,13 @@ extern "C" int main_of_others() {
   apic_ctrl->BootAP();
   gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
   if (apic_ctrl->GetApicId() == 1) {
+    volatile bool ready;
+    while(true) {
+      ready = apic_ctrl->IsBootupAll();
+      if (ready) {
+        break;
+      }
+    }
     kassert(eth != nullptr);
     uint8_t ip[] = {
       192, 168, 100, 117,

@@ -104,6 +104,7 @@ check_longmode_exist:
 setup_paging:
   // clear page structure tables
   mov $initial_PML4T, %edi
+        or $(PML4E_CACHEDISABLE_BIT | PML4E_WRITETHROUGH_BIT), %edi
   mov %edi, %cr3
 
   // clear page tables

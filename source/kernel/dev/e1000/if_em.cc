@@ -2174,6 +2174,7 @@ retry:
 	// }
         bus_size_t seg_len;
         bus_addr_t seg_addr;
+        gtty->Printf("s","<","d",i,"s",">");
         tx_buffer = &txr->tx_buffers[i];
         ctxd = &txr->tx_base[i];
         seg_len = packet->len;
@@ -2224,6 +2225,7 @@ retry:
 	bus_dmamap_sync(txr->txdma.dma_tag, txr->txdma.dma_map,
 	    BUS_DMASYNC_PREREAD | BUS_DMASYNC_PREWRITE);
 	E1000_WRITE_REG(&adapter->hw, E1000_TDT(txr->me), i);
+        gtty->Printf("s","<","d",i,"s",">");
 
 	return (0);
 }
@@ -4810,7 +4812,6 @@ em_rxeof(struct rx_ring *rxr, int count, int *done)
 
 		if ((status & E1000_RXD_STAT_DD) == 0)
 			break;
-
 		len = le16toh(cur->length);
 		eop = (status & E1000_RXD_STAT_EOP) != 0;
 
