@@ -101,6 +101,20 @@ public:
   }
   // allocate 6 byte before call
   virtual void GetEthAddr(uint8_t *buffer) = 0;
+
+  enum class LinkStatus {
+    Up,
+    Down
+  };
+  void SetStatus(LinkStatus status) {
+    _status = status;
+  }
+  volatile LinkStatus GetStatus() {
+    return _status;
+  }
+  virtual void UpdateLinkStatus() = 0;
+ protected:
+  volatile LinkStatus _status = LinkStatus::Down;
 };
 
 struct adapter;

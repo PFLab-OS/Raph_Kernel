@@ -360,6 +360,7 @@ VirtmemCtrl::VirtmemCtrl() {
 #endif // __UNIT_TEST__
 
 virt_addr VirtmemCtrl::Alloc(size_t size) {
+  Locker locker(_lock);
   size = alignUp(size, 8);
   if (_last_freed != nullptr && _last_freed->GetSize() >= size) {
     AreaManager *best = _last_freed;
@@ -408,9 +409,9 @@ virt_addr VirtmemCtrl::Alloc(size_t size) {
     AreaManager *end = _first->GetPrev();
     virt_addr allocated_addr_end = end->GetAddr() + end->GetSize() + end->GetAreaManagerSize();
     kassert(allocated_addr_end == align(allocated_addr_end, PagingCtrl::kPageSize));
-    if (allocated_addr_end + size < _heap_end) {
+    size_t psize = alignUp(size + AreaManager::GetAreaManagerSize(), PagingCtrl::kPageSize);
+    if (allocated_addr_end + psize < _heap_end) {
       PhysAddr paddr;
-      size_t psize = alignUp(size, PagingCtrl::kPageSize);
       physmem_ctrl->Alloc(paddr, psize);
       kassert(paging_ctrl->MapPhysAddrToVirtAddr(allocated_addr_end, paddr, psize, PDE_WRITE_BIT, PTE_WRITE_BIT || PTE_GLOBAL_BIT));
       AreaManager *next = reinterpret_cast<AreaManager *>(allocated_addr_end);
@@ -429,6 +430,7 @@ virt_addr VirtmemCtrl::Alloc(size_t size) {
 }
 
 void VirtmemCtrl::Free(virt_addr addr) {
+  Locker locker(_lock);
   AreaManager *area = GetAreaManager(addr);
   area->Free();
   AreaManager *tmp = area->GetNext();

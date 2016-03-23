@@ -34,6 +34,7 @@ PagingCtrl::PagingCtrl() {
 }
 
 void PagingCtrl::ConvertVirtMemToPhysMem(virt_addr vaddr, PhysAddr &paddr) {
+  Locker locker(_lock);
   entry_type entry = _pml4t->entry[GetPML4TIndex(vaddr)];
   if ((entry & PML4E_PRESENT_BIT) == 0) {
     return;
@@ -66,6 +67,7 @@ void PagingCtrl::ConvertVirtMemToPhysMem(virt_addr vaddr, PhysAddr &paddr) {
 }
 
 bool PagingCtrl::IsVirtAddrMapped(virt_addr vaddr) {
+  Locker locker(_lock);
   entry_type entry = _pml4t->entry[GetPML4TIndex(vaddr)];
   if ((entry & PML4E_PRESENT_BIT) == 0) {
     return false;
@@ -95,6 +97,7 @@ bool PagingCtrl::IsVirtAddrMapped(virt_addr vaddr) {
 }
 
 bool PagingCtrl::Map4KPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr pst_flag, phys_addr page_flag) {
+  Locker locker(_lock);
   entry_type entry = _pml4t->entry[GetPML4TIndex(vaddr)];
   if ((entry & PML4E_PRESENT_BIT) == 0) {
     PhysAddr tpaddr;
@@ -134,26 +137,3 @@ bool PagingCtrl::Map4KPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr
   }
 }
 
-extern int kHeapEndAddr;
-
-//TODO deprecated
-/*virt_addr PagingCtrl::SearchUnmappedArea(size_t size) {
-  kassert(false);
-  kassert(size == align(size, kPageSize));
-  virt_addr addr = ptr2virtaddr(&kHeapEndAddr);
-  while(true) {
-    size_t i = 0;
-    for(; i < size; i += kPageSize, addr += kPageSize) {
-      if (!IsVirtAddrMapped(addr)) {
-        addr += kPageSize;
-        break;
-      }
-    }
-    if (i == size) {
-      break;
-    }
-  }
-  return addr;
-}
-
-*/

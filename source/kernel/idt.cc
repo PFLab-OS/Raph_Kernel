@@ -20,12 +20,16 @@
  * 
  */
 
-#include "idt.h"
-#include "mem/virtmem.h"
-#include "mem/physmem.h"
+#include <idt.h>
+#include <mem/virtmem.h>
+#include <mem/physmem.h>
+#include <global.h>
 
 extern "C" void dummy_int(Regs *rs) {
-  asm volatile("hlt; nop; nop; hlt; nop; hlt;"::"a"(rs->n),"c"(rs->rbx));
+  if (gtty != nullptr) {
+    gtty->Printf("s","\n[kernel] error: unimplemented interrupt #","d",rs->n);
+  }
+  asm volatile("hlt; nop; nop; hlt; nop; hlt;"::"a"(rs->n));
 }
 
 extern void (*vectors[256])(Regs *rs);

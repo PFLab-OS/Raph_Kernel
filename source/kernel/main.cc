@@ -32,7 +32,6 @@
 #include "timer.h"
 
 #include "tty.h"
-#include "dev/acpipmtmr.h"
 #include "dev/hpet.h"
 
 #include "dev/vga.h"
@@ -55,7 +54,7 @@ PCICtrl *pci_ctrl;
 
 #include <dev/e1000/bem.h>
 bE1000 *eth;
-uint32_t cnt;
+uint64_t cnt;
 
 extern "C" int main() {
   SpinLockCtrl _spinlock_ctrl;
@@ -85,9 +84,8 @@ extern "C" int main() {
   PollingCtrl _polling_ctrl;
   polling_ctrl = &_polling_ctrl;
   
-  AcpiPmTimer _atimer;
   Hpet _htimer;
-  timer = &_atimer;
+  timer = &_htimer;
 
   Vga _vga;
   gtty = &_vga;
@@ -101,10 +99,10 @@ extern "C" int main() {
   
   // acpi_ctl->Setup() は multiboot_ctrl->Setup()から呼ばれる
 
-  timer->Setup();
-  if (_htimer.Setup()) {
-    timer = &_htimer;
+  if (timer->Setup()) {
     gtty->Printf("s","[timer] info: HPET supported.\n");
+  } else {
+    kernel_panic("timer", "HPET not supported.\n");
   }
 
   // timer->Sertup()より後
@@ -113,7 +111,6 @@ extern "C" int main() {
   cnt = 0;
 
   idt->Setup();
-
   InitDevices<PCICtrl, Device>();
 
   extern int kKernelEndAddr;
@@ -142,54 +139,12 @@ extern "C" int main_of_others() {
   // according to mp spec B.3, system should switch over to Symmetric I/O mode
   apic_ctrl->BootAP();
   gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
+  uint8_t ip[] = {
+    192, 168, 100, 117,
+    //10, 0, 2, 5,
+  };
   if (apic_ctrl->GetApicId() == 1) {
-    volatile bool ready;
-    while(true) {
-      ready = apic_ctrl->IsBootupAll();
-      if (ready) {
-        break;
-      }
-    }
     kassert(eth != nullptr);
-    uint8_t ip[] = {
-      //192, 168, 100, 117,
-      10, 0, 2, 5,
-    };
-    uint8_t data[] = {
-      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, // Target MAC Address
-      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source MAC Address
-      0x08, 0x06, // Type: ARP
-      // ARP Packet
-      0x00, 0x01, // HardwareType: Ethernet
-      0x08, 0x00, // ProtocolType: IPv4
-      0x06, // HardwareLength
-      0x04, // ProtocolLength
-      0x00, 0x01, // Operation: ARP Request
-      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source Hardware Address
-      0x00, 0x00, 0x00, 0x00, // Source Protocol Address
-      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
-      // Target Protocol Address
-      //192, 168, 100, 100,
-      10, 0, 2, 15,
-      //0x85, 0x0B, 0x1E, 0x49
-    };
-    eth->GetEthAddr(data + 6);
-    memcpy(data + 22, data + 6, 6);
-    memcpy(data + 28, ip, 4);
-    uint32_t len = sizeof(data)/sizeof(uint8_t);
-    bE1000::Packet *tpacket;
-    kassert(eth->GetTxPacket(tpacket));
-    memcpy(tpacket->buf, data, len);
-    tpacket->len = len;
-    cnt = timer->ReadMainCnt();
-    eth->TransmitPacket(tpacket);
-
-    kassert(eth->GetTxPacket(tpacket));
-    memcpy(tpacket->buf, data, len);
-    tpacket->len = len;
-    eth->TransmitPacket(tpacket);
-
-    gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
     while(true) {
       bE1000::Packet *rpacket;
       if(!eth->RecievePacket(rpacket)) {
@@ -259,16 +214,59 @@ extern "C" int main_of_others() {
       }
       eth->ReuseRxBuffer(rpacket);
     }
-  } else {
-    while(1) {
-      asm volatile("hlt;");
+  } else if (apic_ctrl->GetApicId() == 2) {
+    volatile bool ready;
+    while(true) {
+      ready = apic_ctrl->IsBootupAll();
+      if (ready) {
+        break;
+      }
     }
+    while(true) {
+      eth->UpdateLinkStatus();
+      volatile bE1000::LinkStatus status = eth->GetStatus();
+      if (status == bE1000::LinkStatus::Up) {
+        break;
+      }
+    }
+    kassert(eth != nullptr);
+    uint8_t data[] = {
+      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, // Target MAC Address
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source MAC Address
+      0x08, 0x06, // Type: ARP
+      // ARP Packet
+      0x00, 0x01, // HardwareType: Ethernet
+      0x08, 0x00, // ProtocolType: IPv4
+      0x06, // HardwareLength
+      0x04, // ProtocolLength
+      0x00, 0x01, // Operation: ARP Request
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source Hardware Address
+      0x00, 0x00, 0x00, 0x00, // Source Protocol Address
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
+      // Target Protocol Address
+      192, 168, 100, 103,
+      //10, 0, 2, 15,
+    };
+    eth->GetEthAddr(data + 6);
+    memcpy(data + 22, data + 6, 6);
+    memcpy(data + 28, ip, 4);
+    uint32_t len = sizeof(data)/sizeof(uint8_t);
+    bE1000::Packet *tpacket;
+    kassert(eth->GetTxPacket(tpacket));
+    memcpy(tpacket->buf, data, len);
+    tpacket->len = len;
+    cnt = timer->ReadMainCnt();
+    eth->TransmitPacket(tpacket);
+    gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
+  }
+  while(1) {
+    asm volatile("hlt;");
   }
   return 0;
 }
 
 void kernel_panic(char *class_name, char *err_str) {
-  gtty->Printf("s", "[kernel] error: fatal error occured!");
+  gtty->Printf("s", "\n[","s",class_name,"s","] error: ","s",err_str);
   while(1) {
     asm volatile("hlt;");
   }

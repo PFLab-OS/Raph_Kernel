@@ -58,6 +58,7 @@ bool oE1000::InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bo
     kassert(e1000 != nullptr);
     e1000->Setup(did);
     polling_ctrl->Register(e1000);
+    timer->BusyUwait(3000*1000);
     eth = e1000;
     return true;
   }
@@ -128,7 +129,6 @@ int32_t oE1000::Transmit(const uint8_t *packet, uint32_t length) {
     txdesc->special = 0;
     txdesc->cso = 0;
     _mmioAddr[kRegTdt] = (tdt + 1) % kTxdescNumber;
-
     return length;
   } else {
     // if tx_desc_buf_ is full, fails

@@ -93,16 +93,18 @@
 */
 #include <stdint.h>
 #include <string.h>
-#include "../../timer.h"
-#include "../../mem/paging.h"
-#include "../../mem/virtmem.h"
-#include "../../mem/physmem.h"
+#include <mem/paging.h>
+#include <mem/virtmem.h>
+#include <mem/physmem.h>
 
 #include "em.h"
 #include "e1000_raph.h"
 #include "e1000_osdep.h"
 #include "e1000_api.h"
 #include "if_em.h"
+
+#include <timer.h>
+#include <global.h>
 /*********************************************************************
  *  Driver version: this version is specifically for FreeBSD 11 and later
  *********************************************************************/
@@ -279,7 +281,7 @@ static int	em_fixup_rx(struct rx_ring *);
 // static void	em_set_promisc(struct adapter *);
 // static void	em_disable_promisc(struct adapter *);
 static void	em_set_multi(struct adapter *);
-static void	em_update_link_status(struct adapter *);
+void	em_update_link_status(struct adapter *);
 // static void	em_refresh_mbufs(struct rx_ring *, int);
 // static void	em_register_vlan(void *, if_t, u16);
 // static void	em_unregister_vlan(void *, if_t, u16);
@@ -2174,11 +2176,10 @@ retry:
 	// }
         bus_size_t seg_len;
         bus_addr_t seg_addr;
-        gtty->Printf("s","<","d",i,"s",">");
         tx_buffer = &txr->tx_buffers[i];
         ctxd = &txr->tx_base[i];
         seg_len = packet->len;
-        memcpy(reinterpret_cast<void *>(ctxd->buffer_addr), packet->buf, seg_len);
+        memcpy(reinterpret_cast<void *>(p2v(ctxd->buffer_addr)), packet->buf, seg_len);
         e1000->ReuseTxBuffer(packet);
         ctxd->lower.data = htole32(adapter->txd_cmd | txd_lower | seg_len);
         ctxd->upper.data = htole32(txd_upper);
@@ -2225,7 +2226,6 @@ retry:
 	bus_dmamap_sync(txr->txdma.dma_tag, txr->txdma.dma_map,
 	    BUS_DMASYNC_PREREAD | BUS_DMASYNC_PREWRITE);
 	E1000_WRITE_REG(&adapter->hw, E1000_TDT(txr->me), i);
-        gtty->Printf("s","<","d",i,"s",">");
 
 	return (0);
 }
@@ -2389,7 +2389,7 @@ hung:
 }
 
 
-static void
+void
 em_update_link_status(struct adapter *adapter)
 {
 	struct e1000_hw *hw = &adapter->hw;
@@ -2397,6 +2397,7 @@ em_update_link_status(struct adapter *adapter)
 	device_t dev = adapter->dev;
 	struct tx_ring *txr = adapter->tx_rings;
 	u32 link_check = 0;
+        bE1000 *e1000 = dev->parent;
 
 	/* Get the cached link value or read phy for real */
 	switch (hw->phy.media_type) {
@@ -2448,6 +2449,7 @@ em_update_link_status(struct adapter *adapter)
 		adapter->smartspeed = 0;
 		// if_setbaudrate(ifp, adapter->link_speed * 1000000);
 		// if_link_state_change(ifp, LINK_STATE_UP);
+                e1000->SetStatus(bE1000::LinkStatus::Up);
 	} else if (!link_check && (adapter->link_active == 1)) {
 		// if_setbaudrate(ifp, 0);
 		adapter->link_speed = 0;
@@ -2459,6 +2461,7 @@ em_update_link_status(struct adapter *adapter)
 		for (int i = 0; i < adapter->num_queues; i++, txr++)
 			txr->busy = EM_TX_IDLE;
 		// if_link_state_change(ifp, LINK_STATE_DOWN);
+                e1000->SetStatus(bE1000::LinkStatus::Down);
 	}
 }
 
@@ -3404,10 +3407,9 @@ em_allocate_queues(struct adapter *adapter)
 	int rsize, tsize, error = E1000_SUCCESS;
 	int txconf = 0, rxconf = 0;
 
-
 	/* Allocate the TX ring struct memory */
 	if (!(adapter->tx_rings =
-              (struct tx_ring *)reinterpret_cast<u8 *>(virtmem_ctrl->Alloc(sizeof(struct tx_ring) * adapter->num_queues))
+              (struct tx_ring *)reinterpret_cast<u8 *>(virtmem_ctrl->AllocZ(sizeof(struct tx_ring) * adapter->num_queues))
               /* malloc(sizeof(struct tx_ring) *
                  adapter->num_queues, M_DEVBUF, M_NOWAIT | M_ZERO) */)) {
 		device_printf(dev, "Unable to allocate TX ring memory\n");
@@ -3417,7 +3419,7 @@ em_allocate_queues(struct adapter *adapter)
 
 	/* Now allocate the RX */
 	if (!(adapter->rx_rings =
-              (struct rx_ring *)reinterpret_cast<u8 *>(virtmem_ctrl->Alloc(sizeof(struct rx_ring) *adapter->num_queues))
+              (struct rx_ring *)reinterpret_cast<u8 *>(virtmem_ctrl->AllocZ(sizeof(struct rx_ring) *adapter->num_queues))
               /*malloc(sizeof(struct rx_ring) *
                 adapter->num_queues, M_DEVBUF, M_NOWAIT | M_ZERO)*/)) {
 		device_printf(dev, "Unable to allocate RX ring memory\n");
@@ -3553,7 +3555,7 @@ em_allocate_transmit_buffers(struct tx_ring *txr)
 	}
 
 	if (!(txr->tx_buffers =
-              reinterpret_cast<struct em_buffer *>(virtmem_ctrl->Alloc(sizeof(struct em_buffer) * adapter->num_tx_desc))
+              reinterpret_cast<struct em_buffer *>(virtmem_ctrl->AllocZ(sizeof(struct em_buffer) * adapter->num_tx_desc))
               /*(struct em_buffer *) malloc(sizeof(struct em_buffer) *
                 adapter->num_tx_desc, M_DEVBUF, M_NOWAIT | M_ZERO)*/)) {
 		device_printf(dev, "Unable to allocate tx_buffer memory\n");
@@ -4312,7 +4314,7 @@ em_allocate_receive_buffers(struct rx_ring *rxr)
 	int			error;
         bE1000 *e1000 = dev->parent;
 
-	rxr->rx_buffers = reinterpret_cast<struct em_buffer *>(virtmem_ctrl->Alloc(sizeof(struct em_buffer) * adapter->num_rx_desc));
+	rxr->rx_buffers = reinterpret_cast<struct em_buffer *>(virtmem_ctrl->AllocZ(sizeof(struct em_buffer) * adapter->num_rx_desc));
 	// rxr->rx_buffers = malloc(sizeof(struct em_buffer) *
 	//     adapter->num_rx_desc, M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (rxr->rx_buffers == NULL) {

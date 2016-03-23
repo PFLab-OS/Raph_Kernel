@@ -37,7 +37,9 @@ public:
   static bool InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf);
   // from Polling
   virtual void Handle() override;
+
   BsdDriver bsd;
+  virtual void UpdateLinkStatus() override;
 
   // allocate 6 byte before call
   virtual void GetEthAddr(uint8_t *buffer) override;

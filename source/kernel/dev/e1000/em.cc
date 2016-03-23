@@ -30,13 +30,14 @@ int	em_attach(device_t);
 void	em_init(struct adapter *);
 void	em_start(if_t);
 int em_poll(if_t ifp);
+void em_update_link_status(struct adapter *adapter);
 
 extern bE1000 *eth;
 bool E1000::InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {
   E1000 *addr = reinterpret_cast<E1000 *>(virtmem_ctrl->Alloc(sizeof(E1000)));
   addr = new(addr) E1000(bus, device, mf);
   addr->bsd.parent = addr;
-  addr->bsd.adapter = reinterpret_cast<struct adapter *>(virtmem_ctrl->Alloc(sizeof(adapter)));
+  addr->bsd.adapter = reinterpret_cast<struct adapter *>(virtmem_ctrl->AllocZ(sizeof(adapter)));
   if (em_probe(&addr->bsd) == BUS_PROBE_DEFAULT) {
     kassert(em_attach(&addr->bsd) == 0);
     em_init(addr->bsd.adapter);
@@ -56,4 +57,9 @@ void E1000::Handle() {
 
 void E1000::GetEthAddr(uint8_t *buffer) {
   memcpy(buffer, bsd.adapter->hw.mac.addr, 6);
+}
+
+void E1000::UpdateLinkStatus() {
+  this->bsd.adapter->hw.mac.get_link_status = 1;
+  em_update_link_status(this->bsd.adapter);
 }

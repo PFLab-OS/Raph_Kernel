@@ -81,7 +81,7 @@ class Callout : public Function, Polling {
   }
  private:
   volatile int _status = 0;
-  uint32_t _cnt;
+  uint64_t _cnt;
 };
 
 #include "spinlock.h"

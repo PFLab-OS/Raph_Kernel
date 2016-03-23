@@ -114,6 +114,7 @@ public:
   // buffer size
   static const int kBufSize = 2048;
   virtual void GetEthAddr(uint8_t *buffer) override;
+  virtual void UpdateLinkStatus() override {}
  protected:
   // Memory Mapped I/O Base Address
   volatile uint32_t *_mmioAddr = nullptr;

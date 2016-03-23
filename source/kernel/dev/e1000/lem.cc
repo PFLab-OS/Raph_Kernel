@@ -30,13 +30,14 @@ int	lem_attach(device_t);
 void	lem_init(struct adapter *);
 void	lem_start(if_t);
 int lem_poll(if_t ifp);
+void lem_update_link_status(struct adapter *adapter);
 
 extern bE1000 *eth;
 bool lE1000::InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {
   lE1000 *addr = reinterpret_cast<lE1000 *>(virtmem_ctrl->Alloc(sizeof(lE1000)));
   addr = new(addr) lE1000(bus, device, mf);
   addr->bsd.parent = addr;
-  addr->bsd.adapter = reinterpret_cast<struct adapter *>(virtmem_ctrl->Alloc(sizeof(adapter)));
+  addr->bsd.adapter = reinterpret_cast<struct adapter *>(virtmem_ctrl->AllocZ(sizeof(adapter)));
   if (lem_probe(&addr->bsd) == BUS_PROBE_DEFAULT) {
     kassert(lem_attach(&addr->bsd) == 0);
     lem_init(addr->bsd.adapter);
@@ -57,4 +58,9 @@ void lE1000::Handle() {
 
 void lE1000::GetEthAddr(uint8_t *buffer) {
   memcpy(buffer, bsd.adapter->hw.mac.addr, 6);
+}
+
+void lE1000::UpdateLinkStatus() {
+  this->bsd.adapter->hw.mac.get_link_status = 1;
+  lem_update_link_status(this->bsd.adapter);
 }

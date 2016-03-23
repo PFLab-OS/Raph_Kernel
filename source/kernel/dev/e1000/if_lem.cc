@@ -233,7 +233,7 @@ static int	lem_fixup_rx(struct adapter *);
 // static void	lem_set_promisc(struct adapter *);
 // static void	lem_disable_promisc(struct adapter *);
 static void	lem_set_multi(struct adapter *);
-static void	lem_update_link_status(struct adapter *);
+void	lem_update_link_status(struct adapter *);
 // static int	lem_get_buf(struct adapter *, int);
 // static void	lem_register_vlan(void *, if_t, u16);
 // static void	lem_unregister_vlan(void *, if_t, u16);
@@ -1803,7 +1803,7 @@ lem_xmit(struct adapter *adapter, bE1000::Packet *packet)
         tx_buffer = &adapter->tx_buffer_area[i];
         ctxd = &adapter->tx_desc_base[i];
         seg_len = packet->len;
-        memcpy(reinterpret_cast<void *>(ctxd->buffer_addr), packet->buf, seg_len);
+        memcpy(reinterpret_cast<void *>(p2v(ctxd->buffer_addr)), packet->buf, seg_len);
         e1000->ReuseTxBuffer(packet);
         ctxd->lower.data = htole32(
                                    adapter->txd_cmd | txd_lower | seg_len);
@@ -2162,13 +2162,15 @@ hung:
 	lem_init_locked(adapter);
 }
 
-static void
+void
 lem_update_link_status(struct adapter *adapter)
 {
 	struct e1000_hw *hw = &adapter->hw;
 	if_t ifp = adapter->ifp;
 	device_t dev = adapter->dev;
 	u32 link_check = 0;
+        bE1000 *e1000 = dev->parent;
+        kassert(hw->mac.get_link_status);
 
 	/* Get the cached link value or read phy for real */
 	switch (hw->phy.media_type) {
@@ -2195,7 +2197,6 @@ lem_update_link_status(struct adapter *adapter)
 	case e1000_media_type_unknown:
 		break;
 	}
-
 	/* Now check for a transition */
 	if (link_check && (adapter->link_active == 0)) {
 		e1000_get_speed_and_duplex(hw, &adapter->link_speed,
@@ -2209,6 +2210,7 @@ lem_update_link_status(struct adapter *adapter)
 		adapter->smartspeed = 0;
 		// if_setbaudrate(ifp, adapter->link_speed * 1000000);
 		// if_link_state_change(ifp, LINK_STATE_UP);
+                e1000->SetStatus(bE1000::LinkStatus::Up);
 	} else if (!link_check && (adapter->link_active == 1)) {
 		// if_setbaudrate(ifp, 0);
 		adapter->link_speed = 0;
@@ -2219,6 +2221,7 @@ lem_update_link_status(struct adapter *adapter)
 		/* Link down, disable watchdog */
 		adapter->watchdog_check = FALSE;
 		// if_link_state_change(ifp, LINK_STATE_DOWN);
+                e1000->SetStatus(bE1000::LinkStatus::Down);
 	}
 }
 
@@ -2780,7 +2783,7 @@ lem_allocate_transmit_structures(struct adapter *adapter)
 		goto fail;
 	}
 
-	adapter->tx_buffer_area = reinterpret_cast<struct em_buffer *>(virtmem_ctrl->Alloc(sizeof(struct em_buffer) * adapter->num_tx_desc));
+	adapter->tx_buffer_area = reinterpret_cast<struct em_buffer *>(virtmem_ctrl->AllocZ(sizeof(struct em_buffer) * adapter->num_tx_desc));
 	// adapter->tx_buffer_area = malloc(sizeof(struct em_buffer) *
 	//     adapter->num_tx_desc, M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (adapter->tx_buffer_area == NULL) {
@@ -3346,7 +3349,7 @@ lem_allocate_receive_structures(struct adapter *adapter)
 	int i, error;
         bE1000 *e1000 = dev->parent;
 
-	adapter->rx_buffer_area = reinterpret_cast<struct em_buffer *>(virtmem_ctrl->Alloc(sizeof(struct em_buffer) * adapter->num_rx_desc));
+	adapter->rx_buffer_area = reinterpret_cast<struct em_buffer *>(virtmem_ctrl->AllocZ(sizeof(struct em_buffer) * adapter->num_rx_desc));
 	// adapter->rx_buffer_area = malloc(sizeof(struct em_buffer) *
 	//     adapter->num_rx_desc, M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (adapter->rx_buffer_area == NULL) {

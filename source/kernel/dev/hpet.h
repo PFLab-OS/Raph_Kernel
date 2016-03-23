@@ -60,7 +60,7 @@ class Hpet : public Timer {
     _reg[kRegGenConfig] |= kRegGenConfigFlagEnable;
     return true;
   }
-  virtual volatile uint32_t ReadMainCnt() override {
+  virtual volatile uint64_t ReadMainCnt() override {
     return _reg[kRegMainCnt];
   }
  private:
