@@ -190,7 +190,7 @@ int	lem_attach(device_t);
 // static int	lem_shutdown(device_t);
 // static int	lem_suspend(device_t);
 // static int	lem_resume(device_t);
-void	lem_start(if_t);
+static void	lem_start(if_t);
 static void	lem_start_locked(if_t ifp);
 // static int	lem_ioctl(if_t, u_long, caddr_t);
 #if __FreeBSD_version >= 1100036
@@ -990,7 +990,7 @@ lem_start_locked(if_t ifp)
 	return;
 }
 
-void
+static void
 lem_start(if_t ifp)
 {
   struct adapter *adapter = reinterpret_cast<struct adapter *>(if_getsoftc(ifp));
@@ -1687,6 +1687,7 @@ lem_xmit(struct adapter *adapter, bE1000::Packet *packet)
 	map = tx_buffer->map;
 
         error = 0;
+        nsegs = 1;
 	// error = bus_dmamap_load_mbuf_sg(adapter->txtag, map,
 	//     *m_headp, segs, &nsegs, BUS_DMA_NOWAIT);
 
@@ -1727,11 +1728,11 @@ lem_xmit(struct adapter *adapter, bE1000::Packet *packet)
 		return (error);
 	}
 
-        // if (nsegs > (adapter->num_tx_desc_avail - 2)) {
-        //         adapter->no_tx_desc_avail2++;
-	// 	bus_dmamap_unload(adapter->txtag, map);
-	// 	return (ENOBUFS);
-        // }
+        if (nsegs > (adapter->num_tx_desc_avail - 2)) {
+                adapter->no_tx_desc_avail2++;
+		bus_dmamap_unload(adapter->txtag, map);
+		return (ENOBUFS);
+        }
 	// m_head = *m_headp;
 
 	/* Do hardware assists */

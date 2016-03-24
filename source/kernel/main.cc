@@ -161,7 +161,7 @@ extern "C" int main_of_others() {
                      "x", rpacket->buf[24], "s", ":",
                      "x", rpacket->buf[25], "s", ":",
                      "x", rpacket->buf[26], "s", ":",
-                     "x", rpacket->buf[27], "s", " -> ",
+                     "x", rpacket->buf[27], "s", " is ",
                      "d", rpacket->buf[28], "s", ".",
                      "d", rpacket->buf[29], "s", ".",
                      "d", rpacket->buf[30], "s", ".",
@@ -177,7 +177,11 @@ extern "C" int main_of_others() {
                      "x", rpacket->buf[24], "s", ":",
                      "x", rpacket->buf[25], "s", ":",
                      "x", rpacket->buf[26], "s", ":",
-                     "x", rpacket->buf[27], "s", " ? ",
+                     "x", rpacket->buf[27], "s", ",",
+                     "d", rpacket->buf[28], "s", ".",
+                     "d", rpacket->buf[29], "s", ".",
+                     "d", rpacket->buf[30], "s", ".",
+                     "d", rpacket->buf[31], "s", " says who's ",
                      "d", rpacket->buf[38], "s", ".",
                      "d", rpacket->buf[39], "s", ".",
                      "d", rpacket->buf[40], "s", ".",
@@ -258,6 +262,49 @@ extern "C" int main_of_others() {
     tpacket->len = len;
     cnt = timer->ReadMainCnt();
     eth->TransmitPacket(tpacket);
+
+    timer->BusyUwait(100);
+
+    kassert(eth->GetTxPacket(tpacket));
+    memcpy(tpacket->buf, data, len);
+    tpacket->len = len;
+    eth->TransmitPacket(tpacket);
+
+    kassert(eth->GetTxPacket(tpacket));
+    memcpy(tpacket->buf, data, len);
+    tpacket->len = len;
+    eth->TransmitPacket(tpacket);
+
+    kassert(eth->GetTxPacket(tpacket));
+    memcpy(tpacket->buf, data, len);
+    tpacket->len = len;
+    eth->TransmitPacket(tpacket);
+
+    kassert(eth->GetTxPacket(tpacket));
+    memcpy(tpacket->buf, data, len);
+    tpacket->len = len;
+    eth->TransmitPacket(tpacket);
+
+    kassert(eth->GetTxPacket(tpacket));
+    memcpy(tpacket->buf, data, len);
+    tpacket->len = len;
+    eth->TransmitPacket(tpacket);
+
+    kassert(eth->GetTxPacket(tpacket));
+    memcpy(tpacket->buf, data, len);
+    tpacket->len = len;
+    eth->TransmitPacket(tpacket);
+
+    kassert(eth->GetTxPacket(tpacket));
+    memcpy(tpacket->buf, data, len);
+    tpacket->len = len;
+    eth->TransmitPacket(tpacket);
+
+    kassert(eth->GetTxPacket(tpacket));
+    memcpy(tpacket->buf, data, len);
+    tpacket->len = len;
+    eth->TransmitPacket(tpacket);
+
     gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
   }
   while(1) {

@@ -228,7 +228,7 @@ static int	em_mq_start_locked(if_t,
 		    struct tx_ring *);
 // static void	em_qflush(if_t);
 #else
-void	em_start(if_t);
+static void	em_start(if_t);
 static void	em_start_locked(if_t, struct tx_ring *);
 #endif
 // static int	em_ioctl(if_t, u_long, caddr_t);
@@ -282,7 +282,7 @@ static int	em_fixup_rx(struct rx_ring *);
 // static void	em_disable_promisc(struct adapter *);
 static void	em_set_multi(struct adapter *);
 void	em_update_link_status(struct adapter *);
-// static void	em_refresh_mbufs(struct rx_ring *, int);
+static void	em_refresh_mbufs(struct rx_ring *, int);
 // static void	em_register_vlan(void *, if_t, u16);
 // static void	em_unregister_vlan(void *, if_t, u16);
 // static void	em_setup_vlan_hw_support(struct adapter *);
@@ -996,6 +996,7 @@ em_start_locked(if_t ifp, struct tx_ring *txr)
                 bE1000::Packet *packet;
                 kassert(e1000->_tx_buffered.Pop(packet));
                 em_xmit(txr, packet);
+                e1000->ReuseTxBuffer(packet);
 
 		/* Mark the queue as having work */
 		if (txr->busy == EM_TX_IDLE)
@@ -1009,7 +1010,7 @@ em_start_locked(if_t ifp, struct tx_ring *txr)
 	return;
 }
 
-void
+static void
 em_start(if_t ifp)
 {
   struct adapter	*adapter = reinterpret_cast<struct adapter *>(if_getsoftc(ifp));
@@ -1533,7 +1534,7 @@ em_poll(if_t ifp)
 	em_rxeof(rxr, count, &rx_done);
 
 	EM_TX_LOCK(txr);
-	em_txeof(txr);
+        em_txeof(txr);
 #ifdef EM_MULTIQUEUE
 	if (!drbr_empty(ifp, txr->br))
 		em_mq_start_locked(ifp, txr);
@@ -1924,6 +1925,7 @@ em_xmit(struct tx_ring *txr, bE1000::Packet *packet)
 
 	// m_head = *m_headp;
 	txd_upper = txd_lower = txd_used = txd_saved = 0;
+        do_tso = 0;
 	// do_tso = ((m_head->m_pkthdr.csum_flags & CSUM_TSO) != 0);
 	ip_off = poff = 0;
 
@@ -2049,6 +2051,7 @@ em_xmit(struct tx_ring *txr, bE1000::Packet *packet)
 
 retry:
         error = 0;
+        nsegs = 1;
 	// error = bus_dmamap_load_mbuf_sg(txr->txtag, map,
 	//     *m_headp, segs, &nsegs, BUS_DMA_NOWAIT);
 
@@ -2093,17 +2096,17 @@ retry:
 	 * it follows a TSO burst, then we need to add a
 	 * sentinel descriptor to prevent premature writeback.
 	 */
-	// if ((do_tso == 0) && (txr->tx_tso == TRUE)) {
-	// 	if (nsegs == 1)
-	// 		tso_desc = TRUE;
-	// 	txr->tx_tso = FALSE;
-	// }
+	if ((do_tso == 0) && (txr->tx_tso == TRUE)) {
+		if (nsegs == 1)
+			tso_desc = TRUE;
+		txr->tx_tso = FALSE;
+	}
 
-        // if (nsegs > (txr->tx_avail - 2)) {
-        //         txr->no_desc_avail++;
-	// 	bus_dmamap_unload(txr->txtag, map);
-	// 	return (ENOBUFS);
-        // }
+        if (nsegs > (txr->tx_avail - 2)) {
+                txr->no_desc_avail++;
+		bus_dmamap_unload(txr->txtag, map);
+		return (ENOBUFS);
+        }
 	// m_head = *m_headp;
 
 	/* Do hardware assists */
@@ -2180,7 +2183,6 @@ retry:
         ctxd = &txr->tx_base[i];
         seg_len = packet->len;
         memcpy(reinterpret_cast<void *>(p2v(ctxd->buffer_addr)), packet->buf, seg_len);
-        e1000->ReuseTxBuffer(packet);
         ctxd->lower.data = htole32(adapter->txd_cmd | txd_lower | seg_len);
         ctxd->upper.data = htole32(txd_upper);
         last = i;
@@ -4223,78 +4225,78 @@ em_txeof(struct tx_ring *txr)
  *  Refresh RX descriptor mbufs from system mbuf buffer pool.
  *
  **********************************************************************/
-// static void
-// em_refresh_mbufs(struct rx_ring *rxr, int limit)
-// {
-// 	struct adapter		*adapter = rxr->adapter;
-// 	struct mbuf		*m;
-// 	bus_dma_segment_t	segs[1];
-// 	struct em_buffer	*rxbuf;
-// 	int			i, j, error, nsegs;
-// 	bool			cleaned = FALSE;
+static void
+em_refresh_mbufs(struct rx_ring *rxr, int limit)
+{
+	struct adapter		*adapter = rxr->adapter;
+	struct mbuf		*m;
+	bus_dma_segment_t	segs[1];
+	struct em_buffer	*rxbuf;
+	int			i, j, error, nsegs;
+	bool			cleaned = FALSE;
 
-// 	i = j = rxr->next_to_refresh;
-// 	/*
-// 	** Get one descriptor beyond
-// 	** our work mark to control
-// 	** the loop.
-// 	*/
-// 	if (++j == adapter->num_rx_desc)
-// 		j = 0;
+	i = j = rxr->next_to_refresh;
+	/*
+	** Get one descriptor beyond
+	** our work mark to control
+	** the loop.
+	*/
+	if (++j == adapter->num_rx_desc)
+		j = 0;
 
-// 	while (j != limit) {
-// 		rxbuf = &rxr->rx_buffers[i];
-// 		if (rxbuf->m_head == NULL) {
-// 			m = m_getjcl(M_NOWAIT, MT_DATA,
-// 			    M_PKTHDR, adapter->rx_mbuf_sz);
-// 			/*
-// 			** If we have a temporary resource shortage
-// 			** that causes a failure, just abort refresh
-// 			** for now, we will return to this point when
-// 			** reinvoked from em_rxeof.
-// 			*/
-// 			if (m == NULL)
-// 				goto update;
-// 		} else
-// 			m = rxbuf->m_head;
+	while (j != limit) {
+		rxbuf = &rxr->rx_buffers[i];
+		// if (rxbuf->m_head == NULL) {
+		// 	m = m_getjcl(M_NOWAIT, MT_DATA,
+		// 	    M_PKTHDR, adapter->rx_mbuf_sz);
+		// 	/*
+		// 	** If we have a temporary resource shortage
+		// 	** that causes a failure, just abort refresh
+		// 	** for now, we will return to this point when
+		// 	** reinvoked from em_rxeof.
+		// 	*/
+		// 	if (m == NULL)
+		// 		goto update;
+		// } else
+		// 	m = rxbuf->m_head;
 
-// 		m->m_len = m->m_pkthdr.len = adapter->rx_mbuf_sz;
-// 		m->m_flags |= M_PKTHDR;
-// 		m->m_data = m->m_ext.ext_buf;
+		// m->m_len = m->m_pkthdr.len = adapter->rx_mbuf_sz;
+		// m->m_flags |= M_PKTHDR;
+		// m->m_data = m->m_ext.ext_buf;
 
-// 		/* Use bus_dma machinery to setup the memory mapping  */
-// 		error = bus_dmamap_load_mbuf_sg(rxr->rxtag, rxbuf->map,
-// 		    m, segs, &nsegs, BUS_DMA_NOWAIT);
-// 		if (error != 0) {
-// 			printf("Refresh mbufs: hdr dmamap load"
-// 			    " failure - %d\n", error);
-// 			m_free(m);
-// 			rxbuf->m_head = NULL;
-// 			goto update;
-// 		}
-// 		rxbuf->m_head = m;
-// 		bus_dmamap_sync(rxr->rxtag,
-// 		    rxbuf->map, BUS_DMASYNC_PREREAD);
-// 		rxr->rx_base[i].buffer_addr = htole64(segs[0].ds_addr);
-// 		cleaned = TRUE;
+		// /* Use bus_dma machinery to setup the memory mapping  */
+		// error = bus_dmamap_load_mbuf_sg(rxr->rxtag, rxbuf->map,
+		//     m, segs, &nsegs, BUS_DMA_NOWAIT);
+		// if (error != 0) {
+		// 	printf("Refresh mbufs: hdr dmamap load"
+		// 	    " failure - %d\n", error);
+		// 	m_free(m);
+		// 	rxbuf->m_head = NULL;
+		// 	goto update;
+		// }
+		// rxbuf->m_head = m;
+		// bus_dmamap_sync(rxr->rxtag,
+		//     rxbuf->map, BUS_DMASYNC_PREREAD);
+		// rxr->rx_base[i].buffer_addr = htole64(segs[0].ds_addr);
+		cleaned = TRUE;
 
-// 		i = j; /* Next is precalulated for us */
-// 		rxr->next_to_refresh = i;
-// 		/* Calculate next controlling index */
-// 		if (++j == adapter->num_rx_desc)
-// 			j = 0;
-// 	}
-// update:
-// 	/*
-// 	** Update the tail pointer only if,
-// 	** and as far as we have refreshed.
-// 	*/
-// 	if (cleaned)
-// 		E1000_WRITE_REG(&adapter->hw,
-// 		    E1000_RDT(rxr->me), rxr->next_to_refresh);
+		i = j; /* Next is precalulated for us */
+		rxr->next_to_refresh = i;
+		/* Calculate next controlling index */
+		if (++j == adapter->num_rx_desc)
+			j = 0;
+	}
+update:
+	/*
+	** Update the tail pointer only if,
+	** and as far as we have refreshed.
+	*/
+	if (cleaned)
+		E1000_WRITE_REG(&adapter->hw,
+		    E1000_RDT(rxr->me), rxr->next_to_refresh);
 
-// 	return;
-// }
+	return;
+}
 
 
 /*********************************************************************
@@ -4914,8 +4916,8 @@ next_desc:
 	}
 
 	/* Catch any remaining refresh work */
-	// if (e1000_rx_unrefreshed(rxr))
-	// 	em_refresh_mbufs(rxr, i);
+        if (e1000_rx_unrefreshed(rxr))
+          em_refresh_mbufs(rxr, i);
 
 	rxr->next_to_check = i;
 	if (done != NULL)

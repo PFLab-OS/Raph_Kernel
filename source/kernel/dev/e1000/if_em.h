@@ -513,17 +513,17 @@ struct em_buffer {
 /*
 ** Find the number of unrefreshed RX descriptors
 */
-/* static inline u16 */
-/* e1000_rx_unrefreshed(struct rx_ring *rxr) */
-/* { */
-/* 	struct adapter	*adapter = rxr->adapter; */
+static inline u16
+e1000_rx_unrefreshed(struct rx_ring *rxr)
+{
+	struct adapter	*adapter = rxr->adapter;
 
-/* 	if (rxr->next_to_check > rxr->next_to_refresh) */
-/* 		return (rxr->next_to_check - rxr->next_to_refresh - 1); */
-/* 	else */
-/* 		return ((adapter->num_rx_desc + rxr->next_to_check) - */
-/* 		    rxr->next_to_refresh - 1);  */
-/* } */
+	if (rxr->next_to_check > rxr->next_to_refresh)
+		return (rxr->next_to_check - rxr->next_to_refresh - 1);
+	else
+		return ((adapter->num_rx_desc + rxr->next_to_check) -
+		    rxr->next_to_refresh - 1);
+}
 
 #define	EM_CORE_LOCK_INIT(_sc, _name)   new(&(_sc)->core_mtx.lock) SpinLock;
 #define	EM_TX_LOCK_INIT(_sc, _name)     new(&(_sc)->tx_mtx.lock) SpinLock;

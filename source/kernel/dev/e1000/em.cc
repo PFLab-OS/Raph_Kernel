@@ -28,7 +28,6 @@
 int	em_probe(device_t);
 int	em_attach(device_t);
 void	em_init(struct adapter *);
-void	em_start(if_t);
 int em_poll(if_t ifp);
 void em_update_link_status(struct adapter *adapter);
 

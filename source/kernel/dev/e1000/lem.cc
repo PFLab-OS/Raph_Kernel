@@ -28,7 +28,6 @@
 int	lem_probe(device_t);
 int	lem_attach(device_t);
 void	lem_init(struct adapter *);
-void	lem_start(if_t);
 int lem_poll(if_t ifp);
 void lem_update_link_status(struct adapter *adapter);
 
@@ -53,7 +52,6 @@ bool lE1000::InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bo
 
 void lE1000::Handle() {
   lem_poll(this->bsd.adapter->ifp);
-  lem_start(this->bsd.adapter->ifp);
 }
 
 void lE1000::GetEthAddr(uint8_t *buffer) {
