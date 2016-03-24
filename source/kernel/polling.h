@@ -63,7 +63,6 @@ class PollingCtrl {
         }
         _handlers[i]->Handle();
       }
-      timer->BusyUwait(1000);
     }
   }
  private:

@@ -152,6 +152,7 @@ extern "C" int main_of_others() {
       } 
       // received packet
       if(rpacket->buf[12] == 0x08 && rpacket->buf[13] == 0x06 && rpacket->buf[21] == 0x02) {
+        uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;
         // ARP packet
         gtty->Printf(
                      "s", "ARP Reply received; ",
@@ -165,7 +166,7 @@ extern "C" int main_of_others() {
                      "d", rpacket->buf[29], "s", ".",
                      "d", rpacket->buf[30], "s", ".",
                      "d", rpacket->buf[31], "s", "\n");
-        gtty->Printf("s", "laytency:","d", ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000,"s","us\n");
+        gtty->Printf("s","laytency:","d",l,"s","us\n");
       }
       if(rpacket->buf[12] == 0x08 && rpacket->buf[13] == 0x06 && rpacket->buf[21] == 0x01 && (memcmp(rpacket->buf + 38, ip, 4) == 0)) {
         // ARP packet
@@ -244,7 +245,7 @@ extern "C" int main_of_others() {
       0x00, 0x00, 0x00, 0x00, // Source Protocol Address
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
       // Target Protocol Address
-      192, 168, 100, 103,
+      192, 168, 100, 120,
       //10, 0, 2, 15,
     };
     eth->GetEthAddr(data + 6);
