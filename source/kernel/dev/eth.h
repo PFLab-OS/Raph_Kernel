@@ -29,6 +29,7 @@
 class DevEthernet : public DevPCI, public NetDev {
 public:
   DevEthernet(uint8_t bus, uint8_t device, bool mf) : DevPCI(bus, device, mf) {}
+  // allocate 6 byte before call
   virtual void GetEthAddr(uint8_t *buffer) = 0;
 };
 
