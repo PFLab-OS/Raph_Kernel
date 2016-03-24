@@ -42,10 +42,10 @@ public:
 
   // rxパケットの処理の流れ
   // 0. rx_reservedを初期化、バッファを満タンにしておく
-  // 1. Recieveハンドラがパケットを受信すると、rx_reservedから一つ取り出し、
+  // 1. Receiveハンドラがパケットを受信すると、rx_reservedから一つ取り出し、
   //    memcpyの上、rx_bufferedに詰む
-  // 2. プロトコル・スタックはRecievePacket関数を呼ぶ
-  // 3. RecievePacket関数はrx_bufferedからパケットを取得する
+  // 2. プロトコル・スタックはReceivePacket関数を呼ぶ
+  // 3. ReceivePacket関数はrx_bufferedからパケットを取得する
   // 4. プロトコル・スタックは取得したパケットを処理した上でReuseRxBufferを呼ぶ
   // 5. ReuseRxBufferはrx_reservedにバッファを返す
   // 6. 1に戻る
@@ -88,7 +88,7 @@ public:
   bool TransmitPacket(Packet *packet) {
     return _tx_buffered.Push(packet);
   }
-  bool RecievePacket(Packet *&packet) {
+  bool ReceivePacket(Packet *&packet) {
     return _rx_buffered.Pop(packet);
   }
 
@@ -131,17 +131,20 @@ public:
 };
 
 class NetDevCtrl {
-  static const uint32_t kNetworkInterfaceNameLen = 8;
-  static const uint32_t kMaxDevNumber = 32;
-  static const char *kDefaultNetworkInterfaceName;
-  uint32_t _curDevNumber = 0;
-  NetDev *_devTable[kMaxDevNumber] = {nullptr};
-
 public:
   NetDevCtrl() {}
 
   bool RegisterDevice(NetDev *dev, const char *name = kDefaultNetworkInterfaceName);
   NetDev *GetDevice(const char *name = kDefaultNetworkInterfaceName);
+
+protected:
+  static const uint32_t kMaxDevNumber = 32;
+
+private:
+  static const uint32_t kNetworkInterfaceNameLen = 8;
+  static const char *kDefaultNetworkInterfaceName;
+  uint32_t _curDevNumber = 0;
+  NetDev *_devTable[kMaxDevNumber] = {nullptr};
 };
 
 #endif /* __RAPH_KERNEL_NETDEV_H__ */

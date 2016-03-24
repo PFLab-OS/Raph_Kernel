@@ -34,7 +34,7 @@
 #include "global.h"
 
 int32_t NetSocket::Open() {
-  _dev = netdev_ctrl->GetDevice();
+  _dev = reinterpret_cast<DevEthernet*>(netdev_ctrl->GetDevice());
   if(!_dev) {
     return -1;
   } else {
@@ -90,43 +90,41 @@ bool Socket::L4Rx(uint8_t *buffer, uint16_t sport, uint16_t dport) {
 
 int32_t Socket::Transmit(const uint8_t *data, uint32_t length, bool isRawPacket) {
   // alloc buffer
-  uint32_t len = L2HeaderLength() + L3HeaderLength() + L4HeaderLength() + length;
-  uint8_t *packet = reinterpret_cast<uint8_t*>(virtmem_ctrl->Alloc(len));
+  NetDev::Packet *packet;
+  if(!_dev->GetTxPacket(packet)) {
+    return -1;
+  }
+
   if(isRawPacket) {
-    len = length;
-    packet = const_cast<uint8_t*>(data);
+    packet->len = length;
+    memcpy(packet->buf, data, length);
   } else {
-    len = L2HeaderLength() + L3HeaderLength() + L4HeaderLength() + length;
-    packet = reinterpret_cast<uint8_t*>(virtmem_ctrl->Alloc(len));
+    packet->len = L2HeaderLength() + L3HeaderLength() + L4HeaderLength() + length;
 
     // packet body
     uint32_t offsetBody = L2HeaderLength() + L3HeaderLength() + L4HeaderLength();
-    memcpy(packet + offsetBody, data, length);
+    memcpy(packet->buf + offsetBody, data, length);
 
     // TCP header
     uint32_t offsetL4 = L2HeaderLength() + L3HeaderLength();
-    L4Tx(packet + offsetL4, L4HeaderLength() + length, _sport, _dport);
+    L4Tx(packet->buf + offsetL4, L4HeaderLength() + length, _sport, _dport);
 
     // IP header
     uint32_t offsetL3 = L2HeaderLength();
     uint32_t saddr = _ipaddr;
-    L3Tx(packet + offsetL3, L4HeaderLength() + length, L4Protocol(), saddr, _daddr);
+    L3Tx(packet->buf + offsetL3, L4HeaderLength() + length, L4Protocol(), saddr, _daddr);
 
     // Ethernet header
     uint8_t ethSaddr[6];
     uint8_t ethDaddr[6] = {0x08, 0x00, 0x27, 0xc1, 0x5b, 0x93}; // TODO:
     _dev->GetEthAddr(ethSaddr);
 //    GetEthAddr(_daddr, ethDaddr);
-    L2Tx(packet, ethSaddr, ethDaddr, EthCtrl::kProtocolIPv4);
+    L2Tx(packet->buf, ethSaddr, ethDaddr, EthCtrl::kProtocolIPv4);
   }
 
   // transmit
-  int32_t sentLength = _dev->TransmitPacket(packet, len);
-
-  if(!isRawPacket) {
-    // finalization
-    virtmem_ctrl->Free(reinterpret_cast<virt_addr>(packet));
-  }
+  _dev->TransmitPacket(packet);
+  int32_t sentLength = packet->len;
 
   return sentLength < 0 ? sentLength : sentLength - (sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader));
 }
@@ -148,45 +146,39 @@ int32_t Socket::TransmitRawPacket(const uint8_t *data, uint32_t length) {
 
 int32_t Socket::Receive(uint8_t *data, uint32_t length, bool isRawPacket) {
   // alloc buffer
-  uint32_t len;
   int32_t receivedLength;
-  uint8_t *packet = nullptr;
-  if(isRawPacket) {
-    len = length;
-    packet = data;
-  } else {
-    len = L2HeaderLength() + L3HeaderLength() + L4HeaderLength() + length;
-    packet = reinterpret_cast<uint8_t*>(virtmem_ctrl->Alloc(len));
-  }
+  DevEthernet::Packet *packet;
   uint8_t ethDaddr[6];
   uint32_t ipDaddr = _ipaddr;
   _dev->GetEthAddr(ethDaddr);
 
   do {
     // receive
-    if((receivedLength = _dev->ReceivePacket(packet, length)) < 0) continue;
+    if(!_dev->ReceivePacket(packet)) continue;
 
     // filter Ethernet address
-	if(!L2Rx(packet, nullptr, ethDaddr, EthCtrl::kProtocolIPv4)) continue;
+	if(!L2Rx(packet->buf, nullptr, ethDaddr, EthCtrl::kProtocolIPv4)) continue;
 
     // filter IP address
     uint32_t offsetL3 = L2HeaderLength();
-    if(!L3Rx(packet + offsetL3 , L4Protocol(), _daddr, ipDaddr)) continue;
+    if(!L3Rx(packet->buf + offsetL3 , L4Protocol(), _daddr, ipDaddr)) continue;
 
     // filter TCP port
     uint32_t offsetL4 = L2HeaderLength() + L3HeaderLength();
-    if(!L4Rx(packet + offsetL4, _sport, _dport)) continue;
+    if(!L4Rx(packet->buf + offsetL4, _sport, _dport)) continue;
 
     break;
   } while(1);
 
+  receivedLength = packet->len;
+
   if(!isRawPacket) {
     // copy data
     uint32_t offset = L2HeaderLength() + L3HeaderLength() + L4HeaderLength();
-    memcpy(data, packet + offset, length);
+    memcpy(data, packet->buf + offset, length);
 
     // finalization
-    virtmem_ctrl->Free(reinterpret_cast<virt_addr>(packet));
+    _dev->ReuseRxBuffer(packet);
   }
 
   return receivedLength < 0 ? receivedLength : receivedLength - (sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader));
@@ -437,40 +429,45 @@ int32_t ARPSocket::TransmitPacket(uint16_t type, uint32_t tpa, uint8_t *tha) {
   }
 
   // alloc buffer
+  DevEthernet::Packet *packet;
+  if(!_dev->GetTxPacket(packet)) {
+    return -1;
+  }
   uint32_t len = sizeof(EthHeader) + sizeof(ARPPacket);
-  uint8_t *packet = reinterpret_cast<uint8_t*>(virtmem_ctrl->Alloc(len));
+  packet->len = len;
 
   // ARP header
   uint32_t offsetARP = sizeof(EthHeader);
-  arp_ctrl->GeneratePacket(packet + offsetARP, type, ethSaddr, ipSaddr, ethDaddr, ipDaddr);
+  arp_ctrl->GeneratePacket(packet->buf + offsetARP, type, ethSaddr, ipSaddr, ethDaddr, ipDaddr);
 
   // Ethernet header
-  eth_ctrl->GenerateHeader(packet, ethSaddr, ethDaddr, EthCtrl::kProtocolARP);
+  eth_ctrl->GenerateHeader(packet->buf, ethSaddr, ethDaddr, EthCtrl::kProtocolARP);
 
   // transmit
-  _dev->TransmitPacket(packet, len);
-
-  // finalization
-  virtmem_ctrl->Free(reinterpret_cast<virt_addr>(packet));
+  _dev->TransmitPacket(packet);
 
   return len;
 }
 
 int32_t ARPSocket::ReceivePacket(uint16_t type, uint32_t *spa, uint8_t *sha) {
   // alloc buffer
+  DevEthernet::Packet *packet;
+  if(!_dev->GetTxPacket(packet)) {
+    return -1;
+  }
   uint32_t length = sizeof(EthHeader) + sizeof(ARPPacket);
-  uint8_t *packet = reinterpret_cast<uint8_t*>(virtmem_ctrl->Alloc(length));
-  uint8_t *arpPacket = packet + sizeof(EthHeader);
+  packet->len = length;
+  uint8_t *arpPacket = packet->buf + sizeof(EthHeader);
 
   uint8_t ethDaddr[6];
   _dev->GetEthAddr(ethDaddr);
 
   do {
     // receive
-    if(_dev->ReceivePacket(packet, length) < 0) continue;
+    if(!_dev->ReceivePacket(packet)) continue;
 
     // filter Ethernet address
-    if(!eth_ctrl->FilterPacket(packet, nullptr, ethDaddr, EthCtrl::kProtocolARP)) continue;
+    if(!eth_ctrl->FilterPacket(packet->buf, nullptr, ethDaddr, EthCtrl::kProtocolARP)) continue;
 
     // filter IP address
     if(!arp_ctrl->FilterPacket(arpPacket, type, nullptr, 0, ethDaddr, 0)) continue;
@@ -488,12 +485,12 @@ int32_t ARPSocket::ReceivePacket(uint16_t type, uint32_t *spa, uint8_t *sha) {
       if(sha) arp_ctrl->GetSourceMACAddress(sha, arpPacket);
       break;
     default:
-      virtmem_ctrl->Free(reinterpret_cast<virt_addr>(packet));
+      _dev->ReuseRxBuffer(packet);
       return -1;
   }
 
   // finalization
-  virtmem_ctrl->Free(reinterpret_cast<virt_addr>(packet));
+  _dev->ReuseRxBuffer(packet);
 
   return length;
 }

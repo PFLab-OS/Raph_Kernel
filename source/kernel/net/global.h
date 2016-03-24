@@ -29,8 +29,8 @@
 #ifdef __NETCTRL__
 
 // Network Devices
-class NetDevCtrl;
-extern NetDevCtrl *netdev_ctrl;
+class DevEthernetCtrl;
+extern DevEthernetCtrl *netdev_ctrl;
 
 // ARP Table
 class ARPTable;

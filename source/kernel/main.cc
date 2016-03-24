@@ -153,14 +153,14 @@ extern "C" int main_of_others() {
   apic_ctrl->BootAP();
   gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
   uint8_t ip[] = {
-    192, 168, 100, 120,
-    //10, 0, 2, 5,
+    //192, 168, 100, 120,
+    10, 0, 2, 5,
   };
   if (apic_ctrl->GetApicId() == 1) {
     kassert(eth != nullptr);
     while(true) {
       bE1000::Packet *rpacket;
-      if(!eth->RecievePacket(rpacket)) {
+      if(!eth->ReceivePacket(rpacket)) {
         continue;
       } 
       // received packet
@@ -262,8 +262,8 @@ extern "C" int main_of_others() {
       0x00, 0x00, 0x00, 0x00, // Source Protocol Address
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
       // Target Protocol Address
-      192, 168, 100, 117,
-      //10, 0, 2, 15,
+      //192, 168, 100, 117,
+      10, 0, 2, 15,
     };
     eth->GetEthAddr(data + 6);
     memcpy(data + 22, data + 6, 6);

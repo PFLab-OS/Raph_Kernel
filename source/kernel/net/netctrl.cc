@@ -33,7 +33,7 @@
 #define __NETCTRL__
 #include "global.h"
 
-NetDevCtrl *netdev_ctrl;
+DevEthernetCtrl *netdev_ctrl;
 ARPTable *arp_table;
 
 EthCtrl *eth_ctrl;
@@ -43,7 +43,7 @@ UDPCtrl *udp_ctrl;
 TCPCtrl *tcp_ctrl;
 
 void InitNetCtrl() {
-  netdev_ctrl = new(reinterpret_cast<NetDevCtrl*>(virtmem_ctrl->Alloc(sizeof(NetDevCtrl)))) NetDevCtrl();
+  netdev_ctrl = new(reinterpret_cast<DevEthernetCtrl*>(virtmem_ctrl->Alloc(sizeof(DevEthernetCtrl)))) DevEthernetCtrl();
 
   arp_table = new(reinterpret_cast<ARPTable*>(virtmem_ctrl->Alloc(sizeof(ARPTable)))) ARPTable();
 
