@@ -24,12 +24,12 @@
 
 #include <stdint.h>
 #include "e1000.h"
-#include "../mem/paging.h"
+#include <mem/paging.h>
 
 #define __NETCTRL__
-#include "../net/global.h"
+#include <net/global.h>
 
-void DevGbeI8254::Setup(uint16_t did) {
+void DevGbeI8257::SetupHw(uint16_t did) {
   _did = did;
 
   // the following sequence is indicated in pcie-gbe-controllers 14.3
@@ -56,7 +56,10 @@ void DevGbeI8254::Setup(uint16_t did) {
   _mmioAddr[kRegCtrl] |= kRegCtrlSluFlag;
 
   // general config (82571x -> 14.5, 8254x -> 14.3)
-  _mmioAddr[kRegCtrl] &= (~kRegCtrlPhyRstFlag | ~kRegCtrlVmeFlag | ~kRegCtrlIlosFlag);
+  _mmioAddr[kRegCtrlExt] &= (~kRegCtrlExtLinkModeMask);
+  _mmioAddr[kRegCtrl] &= (~kRegCtrlIlosFlag);
+  _mmioAddr[kRegTxdctl] |= (1 << 22);
+  _mmioAddr[kRegTxdctl1] |= (1 << 22);
 
   // initialize receiver/transmitter ring buffer
   this->SetupRx();
@@ -70,8 +73,9 @@ void DevGbeI8254::Setup(uint16_t did) {
   _mmioAddr[kRegImc] = 0;
 }
 
-void DevGbeI8254::SetupRx() {
+void DevGbeI8257::SetupRx() {
   // see 14.6
+  // program the Receive address register(s) per the station address
   uint16_t ethAddrLo = this->EepromRead(kEepromEthAddrLo); 
   uint16_t ethAddrMd = this->EepromRead(kEepromEthAddrMd); 
   uint16_t ethAddrHi = this->EepromRead(kEepromEthAddrHi); 
@@ -137,7 +141,7 @@ void DevGbeI8254::SetupRx() {
   _mmioAddr[kRegRctl] |= kRegRctlEnFlag;
 }
 
-void DevGbeI8254::SetupTx() {
+void DevGbeI8257::SetupTx() {
   // see 14.7
   // set TXDCTL register (following value is suggested)
   _mmioAddr[kRegTxdctl] = (kRegTxdctlWthresh | kRegTxdctlGranDescriptor);
@@ -165,7 +169,8 @@ void DevGbeI8254::SetupTx() {
   _mmioAddr[kRegTdh] = 0;
   _mmioAddr[kRegTdt] = 0;
 
-   _mmioAddr[kRegTipg] = 0x00A0280A;
+  // set TIPG register (see 13.3.60)
+  _mmioAddr[kRegTipg] = 0x00702008;
 
   // initialize the tx desc registers (TDBAL, TDBAH, TDL, TDH, TDT)
   for(int i = 0; i < kTxdescNumber; i++) {
@@ -180,19 +185,19 @@ void DevGbeI8254::SetupTx() {
   }
 }
 
-uint16_t DevGbeI8254::EepromRead(uint16_t addr) {
+uint16_t DevGbeI8257::EepromRead(uint16_t addr) {
   // EEPROM is a kind of non-volatile memory storing config info
-  // see pcie-gbe-controllers 5.3.1 (i8254x)
+  // see pcie-gbe-controllers 5.2.1 (i8257x)
 
-  _mmioAddr[kRegEerd] = (((addr & 0xff) << 8) | 1);
+  _mmioAddr[kRegEerd] = (((addr & 0x3fff) << 2) | 1);
   // polling
   while(true) {
     // busy-wait
     volatile uint32_t data = _mmioAddr[kRegEerd];
-    if ((data & (1 << 4)) != 0) {
+    if ((data & (1 << 1)) != 0) {
       break;
     }
   }
-  
+
   return (_mmioAddr[kRegEerd] >> 16) & 0xffff;
 }

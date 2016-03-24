@@ -25,8 +25,8 @@
 
 #include <stdint.h>
 #include <assert.h>
-#include "../spinlock.h"
-#include "../list.h"
+#include <spinlock.h>
+#include <list.h>
 #include "virtmem.h"
 
 typedef uint64_t phys_addr;

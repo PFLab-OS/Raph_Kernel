@@ -58,6 +58,22 @@ class Vga : public Tty {
         _cy++;
       }
     }
+    Scroll();
+  }
+  void Scroll() {
+    if (_cy == _y) {
+      _cy--;
+      for(int y = 1; y < _y; y++) {
+        for(int x = 0; x < _x; x++) {
+          _vga_addr[((y - 1) * _x + x) * 2] = _vga_addr[(y * _x + x) * 2];
+          _vga_addr[((y - 1) * _x + x) * 2 + 1] = _vga_addr[(y * _x + x) * 2 + 1];
+        }
+      }
+      for (int x = 0; x < _x; x++) {
+        _vga_addr[(_cy * _x + x) * 2] = ' ';
+        _vga_addr[(_cy * _x + x) * 2 + 1] = 0x0f;
+      }
+    }
   }
   uint8_t *_vga_addr;
   static const int _x = 80;

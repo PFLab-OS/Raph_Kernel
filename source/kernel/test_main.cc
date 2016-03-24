@@ -38,7 +38,6 @@ PagingCtrl *paging_ctrl;
 
 
 void spinlock_test();
-void list_test();
 void virtmem_test();
 void physmem_test();
 void paging_test();
@@ -53,7 +52,6 @@ int main(int argc, char **argv) {
   //virtmem_ctrl = nullptr;
   //paging_test();
   //physmem_test();
-  //list_test();
   //virtmem_test();
   //VirtmemCtrl _virtmem_ctrl;
   //virtmem_ctrl = &_virtmem_ctrl;

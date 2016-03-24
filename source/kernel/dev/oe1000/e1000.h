@@ -27,12 +27,13 @@
 #define __RAPH_KERNEL_DEV_E1000_H__
 
 #include <stdint.h>
-#include "../mem/physmem.h"
-#include "../mem/virtmem.h"
-#include "../polling.h"
-#include "../global.h"
-#include "eth.h"
-#include "pci.h"
+#include <mem/physmem.h>
+#include <mem/virtmem.h>
+#include <mem/paging.h>
+#include <polling.h>
+#include <global.h>
+#include <dev/pci.h>
+#include "../e1000/bem.h"
 
 /*
  * e1000 is the driver for Intel 8254x/8256x/8257x and so on.
@@ -89,25 +90,42 @@ struct E1000TxDesc {
   uint16_t special;
 } __attribute__ ((packed));
 
-class E1000 : public DevEthernet, Polling {
+class oE1000 : public bE1000, Polling {
 public:
-  E1000(uint8_t bus, uint8_t device, bool mf) : DevEthernet(bus, device, mf) {}
-  static void InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf);
+ oE1000(uint8_t bus, uint8_t device, bool mf) : bE1000(bus, device, mf) {}
+  static bool InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf);
   // from Polling
   void Handle() override;
-  // init sequence of e1000 device (see pcie-gbe-controllers 14.3)
-  virtual void Setup(uint16_t did) = 0;
-  // see pcie-gbe-controllers 3.2
-  int32_t ReceivePacket(uint8_t *buffer, uint32_t size);
-  // see pcie-gbe-controllers 3.3, 3.4
-  int32_t TransmitPacket(const uint8_t *packet, uint32_t length);
+  void Setup(uint16_t did) {
+    this->SetupHw(did);
+    this->InitTxPacketBuffer();
+    this->InitRxPacketBuffer();
+    // fetch ethernet address from EEPROM
+    uint16_t ethaddr_lo = this->NvmRead(kEepromEthAddrLo);
+    uint16_t ethaddr_md = this->NvmRead(kEepromEthAddrMd);
+    uint16_t ethaddr_hi = this->NvmRead(kEepromEthAddrHi);
+    _ethAddr[0] = ethaddr_hi & 0xff;
+    _ethAddr[1] = (ethaddr_hi >> 8) & 0xff;
+    _ethAddr[2] = ethaddr_md & 0xff;
+    _ethAddr[3] = (ethaddr_md >> 8) & 0xff;
+    _ethAddr[4] = ethaddr_lo & 0xff;
+    _ethAddr[5] = (ethaddr_lo >> 8) & 0xff;
+  }
   // buffer size
   static const int kBufSize = 2048;
-  // allocate 6 byte before call
-  void GetEthAddr(uint8_t *buffer);
+  virtual void GetEthAddr(uint8_t *buffer) override;
+  virtual void UpdateLinkStatus() override {}
  protected:
   // Memory Mapped I/O Base Address
   volatile uint32_t *_mmioAddr = nullptr;
+
+  // see pcie-gbe-controllers 3.2
+  int32_t Receive(uint8_t *buffer, uint32_t size);
+  // see pcie-gbe-controllers 3.3, 3.4
+  int32_t Transmit(const uint8_t *packet, uint32_t length);
+
+  // init sequence of e1000 device (see pcie-gbe-controllers 14.3)
+  virtual void SetupHw(uint16_t did) = 0;
   // software reset of e1000 device
   void Reset() {
     // see 14.9
@@ -128,15 +146,10 @@ public:
   }
   void WritePhy(uint16_t addr, uint16_t value);
   volatile uint16_t ReadPhy(uint16_t addr);
-  // initialize receiver
-  virtual void SetupRx() = 0;
-  // initialize transmitter
-  virtual void SetupTx() = 0;
   virtual uint16_t NvmRead(uint16_t addr) = 0;
 
   // packet transmit/receive test
   uint32_t Crc32b(uint8_t *message);
-  void TxTest();
 
   static const uint16_t kVendorId = 0x8086;
 
@@ -155,6 +168,8 @@ public:
   static const int kTxdescNumber = 16;
   // the buffer for transmit descriptors
   E1000TxDesc *tx_desc_buf_;
+  // ethernet address
+  uint8_t _ethAddr[6];
 
   // Ethernet Controller EEPROM Map (see pcie-gbe-controllers Table 5-2)
   static const int kEepromEthAddrHi = 0x00;
@@ -256,52 +271,52 @@ public:
   static const uint32_t kRegFwsmFlagRspciphy = 1 << 6;
 };
 
-class DevGbeI8254 : public E1000 {
+class DevGbeI8254 : public oE1000 {
  public:
- DevGbeI8254(uint8_t bus, uint8_t device, bool mf) : E1000(bus, device, mf) {}
+ DevGbeI8254(uint8_t bus, uint8_t device, bool mf) : oE1000(bus, device, mf) {}
  private:
   virtual uint16_t NvmRead(uint16_t addr) override {
     return this->EepromRead(addr);
   }
   // read data from EEPROM
   uint16_t EepromRead(uint16_t addr);
-  virtual void Setup(uint16_t did) override;
-  virtual void SetupRx() override;
-  virtual void SetupTx() override;
+  virtual void SetupHw(uint16_t did) override;
+  void SetupRx();
+  void SetupTx();
 
   // TCTL Register Bit Description (see pci-gbe-controllers Table 13-123)
   static const uint32_t kRegTctlCold = 0x40 << 12; // suggested for full-duplex
 };
 
-class DevGbeI8257 : public E1000 {
+class DevGbeI8257 : public oE1000 {
  public:
- DevGbeI8257(uint8_t bus, uint8_t device, bool mf) : E1000(bus, device, mf) {}
+ DevGbeI8257(uint8_t bus, uint8_t device, bool mf) : oE1000(bus, device, mf) {}
  private:
   virtual uint16_t NvmRead(uint16_t addr) override {
     return this->EepromRead(addr);
   }
   // read data from EEPROM
   uint16_t EepromRead(uint16_t addr);
-  virtual void Setup(uint16_t did) override;
-  virtual void SetupRx() override;
-  virtual void SetupTx() override;
+  virtual void SetupHw(uint16_t did) override;
+  void SetupRx();
+  void SetupTx();
 
   // TCTL Register Bit Description (see pcie-gbe-controllers Table 13-123)
   static const uint32_t kRegTctlCold = 0x3f << 12; // suggested for full-duplex
 };
 
-class DevGbeIch8 : public E1000 {
+class DevGbeIch8 : public oE1000 {
  public:
- DevGbeIch8(uint8_t bus, uint8_t device, bool mf) : E1000(bus, device, mf) {}
+ DevGbeIch8(uint8_t bus, uint8_t device, bool mf) : oE1000(bus, device, mf) {}
  private:
   virtual uint16_t NvmRead(uint16_t addr) override {
     return this->FlashRead(addr);
   }
   // read data from Flash
   uint16_t FlashRead(uint16_t addr);
-  virtual void Setup(uint16_t did) override;
-  virtual void SetupRx() override;
-  virtual void SetupTx() override;
+  virtual void SetupHw(uint16_t did) override;
+  void SetupRx();
+  void SetupTx();
 
   // spi flash mmio
   volatile uint32_t *_flashAddr = nullptr;

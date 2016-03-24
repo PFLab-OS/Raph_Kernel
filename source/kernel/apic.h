@@ -82,6 +82,9 @@ public:
   volatile uint8_t GetApicId() {
     return _lapic.GetApicId();
   }
+  volatile bool IsBootupAll() {
+    return _all_bootup;
+  }
 private:
   MADT *_madt = nullptr;
   static const uint32_t kMadtFlagLapicEnable = 1;
@@ -197,6 +200,7 @@ private:
     static const uint32_t kRegRedTblMask = 1 << 16;
   } _ioapic;
   volatile bool _started = false;
+  volatile bool _all_bootup = false;
 };
 
 #endif /* __RAPH_KERNEL_APIC_H__ */

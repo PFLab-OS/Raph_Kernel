@@ -24,14 +24,14 @@
 
 #include <stdint.h>
 #include "e1000.h"
-#include "../mem/paging.h"
-#include "../timer.h"
-#include "../global.h"
+#include <mem/paging.h>
+#include <timer.h>
+#include <global.h>
 
 #define __NETCTRL__
-#include "../net/global.h"
+#include <net/global.h>
 
-void DevGbeIch8::Setup(uint16_t did) {
+void DevGbeIch8::SetupHw(uint16_t did) {
   _did = did;
 
   // the following sequence is indicated in ich8-gbe-controllers 11.4
@@ -69,6 +69,8 @@ void DevGbeIch8::Setup(uint16_t did) {
 
   // after global reset, interrupts must be disabled again
   _mmioAddr[kRegImc] = 0xffffffff;
+
+  timer->BusyUwait(15 * 1000);
 
   // PHY Initialization (see ich8-gbe-controllers 11.4.3.1)
   this->WritePhy(kPhyRegCtrl, this->ReadPhy(kPhyRegCtrl) | kPhyRegCtrlFlagReset);
@@ -216,7 +218,6 @@ void DevGbeIch8::SetupTx() {
 
 uint16_t DevGbeIch8::FlashRead(uint16_t addr) {
   // see ich8-chipset datasheet 20.3 & official E1000 driver source code
-
   while(true) {
     // init flash cycle
 
