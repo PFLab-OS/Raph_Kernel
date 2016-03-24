@@ -18,7 +18,7 @@ default: $(BUILD)$(KERNEL)
 -include $(DEPS)
 
 test: 
-	make $(TEST) CXX=g++ LD=ld "CXXFLAGS= -O3 -g -Wall -Wshadow -D__UNIT_TEST__ -std=c++11"
+	make $(TEST) CXX=g++ LD=ld "CXXFLAGS= -O3 -g -Wall -Wshadow -D__UNIT_TEST__ -std=c++11 -I."
 	rm $(TEST_OBJ)
 
 testrun:
