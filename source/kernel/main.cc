@@ -140,7 +140,7 @@ extern "C" int main_of_others() {
   apic_ctrl->BootAP();
   gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
   uint8_t ip[] = {
-    192, 168, 100, 117,
+    192, 168, 100, 120,
     //10, 0, 2, 5,
   };
   if (apic_ctrl->GetApicId() == 1) {
@@ -166,7 +166,7 @@ extern "C" int main_of_others() {
                      "d", rpacket->buf[29], "s", ".",
                      "d", rpacket->buf[30], "s", ".",
                      "d", rpacket->buf[31], "s", "\n");
-        gtty->Printf("s","laytency:","d",l,"s","us\n");
+        gtty->Printf("s","latency:","d",l,"s","us\n");
       }
       if(rpacket->buf[12] == 0x08 && rpacket->buf[13] == 0x06 && rpacket->buf[21] == 0x01 && (memcmp(rpacket->buf + 38, ip, 4) == 0)) {
         // ARP packet
@@ -249,7 +249,7 @@ extern "C" int main_of_others() {
       0x00, 0x00, 0x00, 0x00, // Source Protocol Address
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
       // Target Protocol Address
-      192, 168, 100, 120,
+      192, 168, 100, 117,
       //10, 0, 2, 15,
     };
     eth->GetEthAddr(data + 6);
