@@ -263,48 +263,6 @@ extern "C" int main_of_others() {
     cnt = timer->ReadMainCnt();
     eth->TransmitPacket(tpacket);
 
-    timer->BusyUwait(100);
-
-    kassert(eth->GetTxPacket(tpacket));
-    memcpy(tpacket->buf, data, len);
-    tpacket->len = len;
-    eth->TransmitPacket(tpacket);
-
-    kassert(eth->GetTxPacket(tpacket));
-    memcpy(tpacket->buf, data, len);
-    tpacket->len = len;
-    eth->TransmitPacket(tpacket);
-
-    kassert(eth->GetTxPacket(tpacket));
-    memcpy(tpacket->buf, data, len);
-    tpacket->len = len;
-    eth->TransmitPacket(tpacket);
-
-    kassert(eth->GetTxPacket(tpacket));
-    memcpy(tpacket->buf, data, len);
-    tpacket->len = len;
-    eth->TransmitPacket(tpacket);
-
-    kassert(eth->GetTxPacket(tpacket));
-    memcpy(tpacket->buf, data, len);
-    tpacket->len = len;
-    eth->TransmitPacket(tpacket);
-
-    kassert(eth->GetTxPacket(tpacket));
-    memcpy(tpacket->buf, data, len);
-    tpacket->len = len;
-    eth->TransmitPacket(tpacket);
-
-    kassert(eth->GetTxPacket(tpacket));
-    memcpy(tpacket->buf, data, len);
-    tpacket->len = len;
-    eth->TransmitPacket(tpacket);
-
-    kassert(eth->GetTxPacket(tpacket));
-    memcpy(tpacket->buf, data, len);
-    tpacket->len = len;
-    eth->TransmitPacket(tpacket);
-
     gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
   }
   while(1) {
