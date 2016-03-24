@@ -23,8 +23,6 @@
 #ifndef __RAPH_KERNEL_E1000_BEM_H__
 #define __RAPH_KERNEL_E1000_BEM_H__
 
-#include <buf.h>
-#include <dev/pci.h>
 #include <dev/eth.h>
 
 class bE1000 : public DevEthernet {

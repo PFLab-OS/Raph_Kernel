@@ -25,6 +25,7 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <buf.h>
 #include <spinlock.h>
 #include <freebsd/sys/param.h>
 
@@ -84,10 +85,10 @@ public:
       return false;
     }
   }
-  virtual bool TransmitPacket(Packet *packet) override {
+  bool TransmitPacket(Packet *packet) {
     return _tx_buffered.Push(packet);
   }
-  virtual bool RecievePacket(Packet *&packet) override {
+  bool RecievePacket(Packet *&packet) {
     return _rx_buffered.Pop(packet);
   }
 
@@ -103,8 +104,6 @@ public:
       kassert(_rx_reserved.Push(packet));
     }
   }
-  virtual bool TransmitPacket(Packet *packet) = 0;
-  virtual bool RecievePacket(Packet *&packet) = 0;
 
   virtual void UpdateLinkStatus() = 0;
   void SetStatus(LinkStatus status) {
