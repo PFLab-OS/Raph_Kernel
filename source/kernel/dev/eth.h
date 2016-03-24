@@ -29,9 +29,12 @@
 class DevEthernet : public DevPCI, public NetDev {
 public:
   DevEthernet(uint8_t bus, uint8_t device, bool mf) : DevPCI(bus, device, mf) {}
-  // TODO : 割り込みベースのインターフェースに変更
-  virtual int32_t ReceivePacket(uint8_t *buffer, uint32_t size) = 0;
-  virtual int32_t TransmitPacket(const uint8_t *packet, uint32_t length) = 0;
+  // allocate 6 byte before call
+  virtual void GetEthAddr(uint8_t *buffer) = 0;
+};
+
+class DevEthernetCtrl : public NetDevCtrl {
+  DevEthernet *_devTable[kMaxDevNumber] = {nullptr};
 };
 
 #endif /* __RAPH_KERNEL_DEV_ETH_H__ */

@@ -86,6 +86,7 @@ void ApicCtrl::StartAPs() {
     _lapic.Start(_lapic._apicIds[i], reinterpret_cast<uint64_t>(entryothers));
     while(!_started) {}
   }
+  _all_bootup = true;
 }
 
 void ApicCtrl::Lapic::Setup() {
