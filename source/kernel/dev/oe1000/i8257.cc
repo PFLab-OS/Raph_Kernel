@@ -25,9 +25,7 @@
 #include <stdint.h>
 #include "e1000.h"
 #include <mem/paging.h>
-
-#define __NETCTRL__
-#include <net/global.h>
+#include <global.h>
 
 void DevGbeI8257::SetupHw(uint16_t did) {
   _did = did;

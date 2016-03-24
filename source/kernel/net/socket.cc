@@ -20,6 +20,7 @@
  * 
  */
 
+#include "../global.h"
 #include "../mem/physmem.h"
 #include "../mem/virtmem.h"
 
@@ -29,9 +30,6 @@
 #include "ip.h"
 #include "udp.h"
 #include "tcp.h"
-
-#define __NETCTRL__
-#include "global.h"
 
 int32_t NetSocket::Open() {
   _dev = reinterpret_cast<DevEthernet*>(netdev_ctrl->GetDevice());

@@ -21,6 +21,7 @@
  */
 
 #include "../raph.h"
+#include "../global.h"
 #include "../mem/physmem.h"
 #include "../mem/virtmem.h"
 #include "../dev/netdev.h"
@@ -29,9 +30,6 @@
 #include "ip.h"
 #include "udp.h"
 #include "tcp.h"
-
-#define __NETCTRL__
-#include "global.h"
 
 DevEthernetCtrl *netdev_ctrl;
 ARPTable *arp_table;

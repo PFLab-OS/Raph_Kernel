@@ -27,9 +27,6 @@
 #include "../global.h"
 #include "raw.h"
 
-#define __NETCTRL__
-#include "../net/global.h"
-
 const char DevRawEthernet::kNetworkInterfaceName[] = "br0";
 
 DevRawEthernet::DevRawEthernet() : DevEthernet(0, 0, 0) {
