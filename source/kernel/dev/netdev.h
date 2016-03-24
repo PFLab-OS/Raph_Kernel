@@ -25,31 +25,32 @@
 
 #include <stdint.h>
 #include <string.h>
-#include "../spinlock.h"
+#include <spinlock.h>
+#include <freebsd/sys/param.h>
 
 class NetDev {
-  static const uint32_t kNetworkInterfaceNameLen = 8;
-  // network interface name
-  char _name[kNetworkInterfaceNameLen];
-
 public:
-  virtual int32_t ReceivePacket(uint8_t *buffer, uint32_t size) = 0;
-  virtual int32_t TransmitPacket(const uint8_t *packet, uint32_t length) = 0;
-  virtual void GetEthAddr(uint8_t *buffer) {
-    memcpy(buffer, _ethAddr, 6);
-  }
+  struct Packet {
+    size_t len;
+    uint8_t buf[MCLBYTES];
+  };
+
+  virtual bool TransmitPacket(Packet *packet) = 0;
+  virtual bool RecievePacket(Packet *&packet) = 0;
   void SetName(const char *name) {
     strncpy(_name, name, kNetworkInterfaceNameLen);
   }
   const char *GetName() { return _name; }
-protected:
+ protected:
   NetDev() {}
   SpinLock _lock;
 
-  // ethernet address
-  uint8_t _ethAddr[6] = {0};
   // IP address
   uint32_t _ipAddr = 0;
+ private:
+  static const uint32_t kNetworkInterfaceNameLen = 8;
+  // network interface name
+  char _name[kNetworkInterfaceNameLen];
 };
 
 class NetDevCtrl {
