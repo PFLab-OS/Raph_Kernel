@@ -140,16 +140,21 @@ void ARPRequest(uint32_t ipRequest, uint32_t ipReply, int32_t retryCount) {
   socket.SetIPAddr(ipRequest);
 
   for(int32_t i = 0; i < retryCount; i++) {
+    gettimeofday(&t1, NULL);
+
     // send ARP request
     socket.TransmitPacket(ARPSocket::kOpARPRequest, ipReply); 
 
     // measure elapsed time for ARP reply
-    gettimeofday(&t1, NULL);
     socket.ReceivePacket(ARPSocket::kOpARPReply, &ipaddr, macaddr);
+
     gettimeofday(&t2, NULL);
 
     t = (t2.tv_sec-t1.tv_sec)*1e+06+(t2.tv_usec-t1.tv_usec);
     elapsed_time += t;
+
+    // wait for the opponent
+    usleep(1000);
   }
 
   std::printf("[ARP] elapsed time = %.1lf[us/times]\n", elapsed_time / retryCount);
