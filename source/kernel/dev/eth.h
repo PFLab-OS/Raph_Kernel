@@ -25,13 +25,19 @@
 
 #include "netdev.h"
 #include "pci.h"
+#include <freebsd/sys/param.h>
 
 class DevEthernet : public DevPCI, public NetDev {
 public:
+  struct Packet {
+    size_t len;
+    uint8_t buf[MCLBYTES];
+  };
+
   DevEthernet(uint8_t bus, uint8_t device, bool mf) : DevPCI(bus, device, mf) {}
   // TODO : 割り込みベースのインターフェースに変更
-  virtual int32_t ReceivePacket(uint8_t *buffer, uint32_t size) = 0;
-  virtual int32_t TransmitPacket(const uint8_t *packet, uint32_t length) = 0;
+  virtual bool TransmitPacket(Packet *packet) = 0;
+  virtual bool RecievePacket(Packet *&packet) = 0;
 };
 
 #endif /* __RAPH_KERNEL_DEV_ETH_H__ */

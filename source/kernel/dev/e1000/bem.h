@@ -25,16 +25,11 @@
 
 #include <buf.h>
 #include <dev/pci.h>
-#include <freebsd/sys/param.h>
 #include <dev/eth.h>
 
 class bE1000 : public DevEthernet {
 public:
  bE1000(uint8_t bus, uint8_t device, bool mf) : DevEthernet(bus, device, mf) {}
-  struct Packet {
-    size_t len;
-    uint8_t buf[MCLBYTES];
-  };
 
   // rxパケットの処理の流れ
   // 0. rx_reservedを初期化、バッファを満タンにしておく
@@ -81,10 +76,10 @@ public:
       return false;
     }
   }
-  bool TransmitPacket(Packet *packet) {
+  virtual bool TransmitPacket(Packet *packet) override {
     return _tx_buffered.Push(packet);
   }
-  bool RecievePacket(Packet *&packet) {
+  virtual bool RecievePacket(Packet *&packet) override {
     return _rx_buffered.Pop(packet);
   }
 
