@@ -430,7 +430,7 @@ virt_addr VirtmemCtrl::Alloc(size_t size) {
 }
 #else
 virt_addr VirtmemCtrl::Alloc(size_t size) {
-  return new virt_addr[size];
+  return reinterpret_cast<virt_addr>(new uint8_t[size]);
 }
 #endif
 
