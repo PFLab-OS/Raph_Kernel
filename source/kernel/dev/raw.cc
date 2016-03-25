@@ -26,7 +26,6 @@
 
 #include "../global.h"
 #include "raw.h"
-#include <thread>
 
 const char DevRawEthernet::kNetworkInterfaceName[] = "br0";
 
@@ -79,10 +78,19 @@ DevRawEthernet::DevRawEthernet() : DevEthernet(0, 0, 0) {
       }
     });
 
+  _thTx = std::move(t1);
+  _thRx = std::move(t2);
+
   if(!netdev_ctrl->RegisterDevice(this)) {
     // cannot register device
     kassert(false);
   }
+}
+
+DevRawEthernet::~DevRawEthernet() {
+  close(_pd);
+  _thTx.detach();
+  _thRx.detach();
 }
 
 int32_t DevRawEthernet::Receive(uint8_t *buffer, uint32_t size) {

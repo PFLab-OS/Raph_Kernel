@@ -41,11 +41,12 @@
 #include <linux/if_packet.h>
 #include <sys/ioctl.h>
 #include <arpa/inet.h>
+#include <thread>
 
 class DevRawEthernet : public DevEthernet {
 public:
   DevRawEthernet();
-  virtual ~DevRawEthernet() { close(_pd); }
+  virtual ~DevRawEthernet();
   void FetchAddress();
   void FlushSocket();
   void PrintAddrInfo();
@@ -64,7 +65,11 @@ private:
   uint32_t _ipAddr;
   uint8_t _ethAddr[6] = {0};
 
+  std::thread _thTx;
+  std::thread _thRx;
+
   static const char kNetworkInterfaceName[];
+
   int32_t Receive(uint8_t *buffer, uint32_t size);
   int32_t Transmit(const uint8_t *packet, uint32_t length);
 };
