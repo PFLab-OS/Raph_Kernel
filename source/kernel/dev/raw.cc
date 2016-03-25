@@ -26,6 +26,7 @@
 
 #include "../global.h"
 #include "raw.h"
+#include <thread>
 
 const char DevRawEthernet::kNetworkInterfaceName[] = "br0";
 
@@ -54,18 +55,41 @@ DevRawEthernet::DevRawEthernet() : DevEthernet(0, 0, 0) {
   FetchAddress();
   FlushSocket();
 
+  DevRawEthernet *that = this;
+  std::thread t1([&that]{
+      while (true) {
+        while (!that->_tx_buffered.IsEmpty()) {
+          Packet *packet;
+          assert(that->_tx_buffered.Pop(packet));
+          that->Transmit(packet->buf, packet->len);
+          that->ReuseTxBuffer(packet);
+        }
+      }
+    });
+
+  std::thread t2([&that]{
+      while (true) {
+        Packet *packet;
+        if (that->_rx_reserved.Pop(packet)) {
+          packet->len = that->Receive(packet->buf, MCLBYTES);
+          if (!that->_rx_buffered.Push(packet)) {
+            assert(that->_rx_reserved.Push(packet));
+          }
+        }
+      }
+    });
+
   if(!netdev_ctrl->RegisterDevice(this)) {
     // cannot register device
     kassert(false);
   }
 }
 
-int32_t DevRawEthernet::ReceivePacket(uint8_t *buffer, uint32_t size) {
-  // TODO: ブロックしてしまうため、本来の挙動とは少し異なるのを修正
+int32_t DevRawEthernet::Receive(uint8_t *buffer, uint32_t size) {
   return static_cast<int32_t>(recv(_pd, buffer, size, 0));
 }
 
-int32_t DevRawEthernet::TransmitPacket(const uint8_t *packet, uint32_t length) {
+int32_t DevRawEthernet::Transmit(const uint8_t *packet, uint32_t length) {
   struct sockaddr_ll sll;
 
   memset(&sll, 0, sizeof(sll));
@@ -140,7 +164,11 @@ void DevRawEthernet::TestRawARP() {
     0x0a, 0x00, 0x02, 0x03, // Target Protocol Address
   };
   uint32_t len = sizeof(data)/sizeof(uint8_t);
-  this->TransmitPacket(data, len);
+  Packet *tpacket;
+  kassert(this->GetTxPacket(tpacket));
+  memcpy(tpacket->buf, data, len);
+  tpacket->len = len;
+  this->TransmitPacket(tpacket);
   printf("ARP Request sent\n");
 
   const uint32_t kBufsize = 256;
@@ -149,17 +177,20 @@ void DevRawEthernet::TestRawARP() {
   int tryCnt = kInitTryCnt;
   while(tryCnt--) {
     // polling
+    Packet *rpacket;
+    if(!this->ReceivePacket(rpacket)) {
+      continue;
+    } 
     printf("#%d receiving ... ", kInitTryCnt - tryCnt);
-    if(this->ReceivePacket(buf, kBufsize) != -1) {
-      // received packet
-      if(((buf[12] << 8) | buf[13]) == 0x0806) {
-        // ARP packet
-        printf("\n");
-        break;
-      } else {
-        printf("%04x\n", (buf[12] << 8) | buf[13]);
-      }
+    // received packet
+    if(((rpacket->buf[12] << 8) | rpacket->buf[13]) == 0x0806) {
+      // ARP packet
+      printf("\n");
+      break;
+    } else {
+      printf("%04x\n", (rpacket->buf[12] << 8) | rpacket->buf[13]);
     }
+    this->ReuseRxBuffer(rpacket);
   }
 
   assert(((buf[12] << 8) | buf[13]) == 0x0806); // Packet should be ARP
@@ -207,7 +238,11 @@ void DevRawEthernet::TestRawUDP() {
     0x41, 0x42, 0x43, 0x44,
   };
   uint32_t len = sizeof(data)/sizeof(uint8_t);
-  this->TransmitPacket(data, len);
+  Packet *tpacket;
+  kassert(this->GetTxPacket(tpacket));
+  memcpy(tpacket->buf, data, len);
+  tpacket->len = len;
+  this->TransmitPacket(tpacket);
   printf("UDP message sent\n");
 }
 

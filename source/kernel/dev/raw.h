@@ -35,6 +35,7 @@
 #include "../global.h"
 #include <string.h>
 #include <sys/socket.h>
+#include <unistd.h>
 #include <net/if.h>
 #include <net/ethernet.h>
 #include <linux/if_packet.h>
@@ -47,18 +48,25 @@ public:
   virtual ~DevRawEthernet() { close(_pd); }
   void FetchAddress();
   void FlushSocket();
-  virtual int32_t ReceivePacket(uint8_t *buffer, uint32_t size) override;
-  virtual int32_t TransmitPacket(const uint8_t *packet, uint32_t length) override;
   void PrintAddrInfo();
   void TestRawARP();
   void TestRawUDP();
+
+  // allocate 6 byte before call
+  virtual void GetEthAddr(uint8_t *buffer) override {
+    memcpy(buffer, _ethAddr, 6);
+  }
+  virtual void UpdateLinkStatus() override {}
 
 private:
   int _pd;
   int _ifindex;
   uint32_t _ipAddr;
+  uint8_t _ethAddr[6] = {0};
 
   static const char kNetworkInterfaceName[];
+  int32_t Receive(uint8_t *buffer, uint32_t size);
+  int32_t Transmit(const uint8_t *packet, uint32_t length);
 };
 
 #endif // __UNIT_TEST__
