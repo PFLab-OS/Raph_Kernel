@@ -430,7 +430,7 @@ virt_addr VirtmemCtrl::Alloc(size_t size) {
 }
 #else
 virt_addr VirtmemCtrl::Alloc(size_t size) {
-  new virt_addr[size];
+  return new virt_addr[size];
 }
 #endif
 
