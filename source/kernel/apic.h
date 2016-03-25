@@ -85,6 +85,9 @@ public:
   volatile bool IsBootupAll() {
     return _all_bootup;
   }
+  int GetHowManyCpus() {
+    return _lapic._ncpu;
+  }
 private:
   MADT *_madt = nullptr;
   static const uint32_t kMadtFlagLapicEnable = 1;
@@ -121,7 +124,7 @@ private:
     volatile uint8_t GetApicId() {
       return _ctrlAddr[kRegId] >> 24;
     }
-    //  private:
+  private:
     uint32_t *_ctrlAddr = nullptr;
     static const int kIa32ApicBaseMsr = 0x1B;
     static const uint32_t kApicGlobalEnableFlag = 1 << 11;

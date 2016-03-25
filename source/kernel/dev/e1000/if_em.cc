@@ -209,7 +209,7 @@ static em_vendor_info_t em_vendor_info_array[] =
  *  Table of branding strings for all supported NICs.
  *********************************************************************/
 
-static char *em_strings[] = {
+static const char *em_strings[] = {
 	"Intel(R) PRO/1000 Network Connection"
 };
 
@@ -228,7 +228,7 @@ static int	em_mq_start_locked(if_t,
 		    struct tx_ring *);
 // static void	em_qflush(if_t);
 #else
-static void	em_start(if_t);
+// static void	em_start(if_t);
 static void	em_start_locked(if_t, struct tx_ring *);
 #endif
 // static int	em_ioctl(if_t, u_long, caddr_t);
@@ -323,8 +323,8 @@ static void	em_disable_aspm(struct adapter *);
 static void	em_enable_vectors_82574(struct adapter *);
 #endif
 
-static void	em_set_sysctl_value(struct adapter *, const char *,
-		    const char *, int *, int);
+// static void	em_set_sysctl_value(struct adapter *, const char *,
+// 		    const char *, int *, int);
 // static int	em_set_flowcntl(SYSCTL_HANDLER_ARGS);
 // static int	em_sysctl_eee(SYSCTL_HANDLER_ARGS);
 
@@ -376,15 +376,15 @@ int em_poll(if_t ifp);
 
 // static SYSCTL_NODE(_hw, OID_AUTO, em, CTLFLAG_RD, 0, "EM driver parameters");
 
-static int em_tx_int_delay_dflt = EM_TICKS_TO_USECS(EM_TIDV);
-static int em_rx_int_delay_dflt = EM_TICKS_TO_USECS(EM_RDTR);
+// static int em_tx_int_delay_dflt = EM_TICKS_TO_USECS(EM_TIDV);
+// static int em_rx_int_delay_dflt = EM_TICKS_TO_USECS(EM_RDTR);
 // SYSCTL_INT(_hw_em, OID_AUTO, tx_int_delay, CTLFLAG_RDTUN, &em_tx_int_delay_dflt,
 //     0, "Default transmit interrupt delay in usecs");
 // SYSCTL_INT(_hw_em, OID_AUTO, rx_int_delay, CTLFLAG_RDTUN, &em_rx_int_delay_dflt,
 //     0, "Default receive interrupt delay in usecs");
 
-static int em_tx_abs_int_delay_dflt = EM_TICKS_TO_USECS(EM_TADV);
-static int em_rx_abs_int_delay_dflt = EM_TICKS_TO_USECS(EM_RADV);
+// static int em_tx_abs_int_delay_dflt = EM_TICKS_TO_USECS(EM_TADV);
+// static int em_rx_abs_int_delay_dflt = EM_TICKS_TO_USECS(EM_RADV);
 // SYSCTL_INT(_hw_em, OID_AUTO, tx_abs_int_delay, CTLFLAG_RDTUN,
 //     &em_tx_abs_int_delay_dflt, 0,
 //     "Default transmit interrupt delay limit in usecs");
@@ -404,11 +404,11 @@ static int em_smart_pwr_down = FALSE;
 //     0, "Set to true to leave smart power down enabled on newer adapters");
 
 /* Controls whether promiscuous also shows bad packets */
-static int em_debug_sbp = FALSE;
+// static int em_debug_sbp = FALSE;
 // SYSCTL_INT(_hw_em, OID_AUTO, sbp, CTLFLAG_RDTUN, &em_debug_sbp, 0,
 //     "Show bad packets in promiscuous mode");
 
-static int em_enable_msix = TRUE;
+// static int em_enable_msix = TRUE;
 // SYSCTL_INT(_hw_em, OID_AUTO, enable_msix, CTLFLAG_RDTUN, &em_enable_msix, 0,
 //     "Enable MSI-X interrupts");
 
@@ -423,10 +423,10 @@ SYSCTL_INT(_hw_em, OID_AUTO, num_queues, CTLFLAG_RDTUN, &em_num_queues, 0,
 ** to CPUs in igb_allocate_msix.  Starts at CPU_FIRST and increments when a
 ** queue is bound to a cpu.
 */
-static int em_last_bind_cpu = -1;
+// static int em_last_bind_cpu = -1;
 
 /* How many packets rxeof tries to clean at a time */
-static int em_rx_process_limit = 100;
+// static int em_rx_process_limit = 100;
 // SYSCTL_INT(_hw_em, OID_AUTO, rx_process_limit, CTLFLAG_RDTUN,
 //     &em_rx_process_limit, 0,
 //     "Maximum number of received packets to process "
@@ -960,7 +960,7 @@ em_start_locked(if_t ifp, struct tx_ring *txr)
 {
   struct adapter	*adapter = reinterpret_cast<struct adapter *>(if_getsoftc(ifp));
   bE1000 *e1000 = adapter->dev->parent;
-	struct mbuf	*m_head;
+	// struct mbuf	*m_head;
 
 	EM_TX_LOCK_ASSERT(txr);
 
@@ -1010,19 +1010,19 @@ em_start_locked(if_t ifp, struct tx_ring *txr)
 	return;
 }
 
-static void
-em_start(if_t ifp)
-{
-  struct adapter	*adapter = reinterpret_cast<struct adapter *>(if_getsoftc(ifp));
-	struct tx_ring	*txr = adapter->tx_rings;
+// static void
+// em_start(if_t ifp)
+// {
+//   struct adapter	*adapter = reinterpret_cast<struct adapter *>(if_getsoftc(ifp));
+// 	struct tx_ring	*txr = adapter->tx_rings;
 
-	if (if_getdrvflags(ifp) & IFF_DRV_RUNNING) {
-		EM_TX_LOCK(txr);
-		em_start_locked(ifp, txr);
-		EM_TX_UNLOCK(txr);
-	}
-	return;
-}
+// 	if (if_getdrvflags(ifp) & IFF_DRV_RUNNING) {
+// 		EM_TX_LOCK(txr);
+// 		em_start_locked(ifp, txr);
+// 		EM_TX_UNLOCK(txr);
+// 	}
+// 	return;
+// }
 #else /* EM_MULTIQUEUE */
 /*********************************************************************
  *  Multiqueue Transmit routines 
@@ -1227,8 +1227,7 @@ em_mq_start_locked(if_t ifp, struct tx_ring *txr)
 // 		break;
 // 	    }
 // 	case SIOCSIFFLAGS:
-// 		IOCTL_DEBUGOUT("ioctl rcv'd:\
-// 		    SIOCSIFFLAGS (Set Interface Flags)");
+// 		IOCTL_DEBUGOUT("ioctl rcv'd: SIOCSIFFLAGS (Set Interface Flags)");
 // 		EM_CORE_LOCK(adapter);
 // 		if (if_getflags(ifp) & IFF_UP) {
 // 			if (if_getdrvflags(ifp) & IFF_DRV_RUNNING) {
@@ -1271,8 +1270,7 @@ em_mq_start_locked(if_t ifp, struct tx_ring *txr)
 // 		EM_CORE_UNLOCK(adapter);
 // 		/* falls thru */
 // 	case SIOCGIFMEDIA:
-// 		IOCTL_DEBUGOUT("ioctl rcv'd: \
-// 		    SIOCxIFMEDIA (Get/Set Interface Media)");
+// 		IOCTL_DEBUGOUT("ioctl rcv'd: SIOCxIFMEDIA (Get/Set Interface Media)");
 // 		error = ifmedia_ioctl(ifp, ifr, &adapter->media, command);
 // 		break;
 // 	case SIOCSIFCAP:
@@ -1359,7 +1357,7 @@ static void
 em_init_locked(struct adapter *adapter)
 {
 	if_t ifp = adapter->ifp;
-	device_t	dev = adapter->dev;
+	// device_t	dev = adapter->dev;
 
 	INIT_DEBUGOUT("em_init: begin");
 
@@ -1509,7 +1507,7 @@ em_poll(if_t ifp)
   bE1000 *e1000 = adapter->dev->parent;
 	struct tx_ring	*txr = adapter->tx_rings;
 	struct rx_ring	*rxr = adapter->rx_rings;
-	u32		reg_icr;
+	// u32		reg_icr;
 	int		rx_done;
 
 	EM_CORE_LOCK(adapter);
@@ -1909,25 +1907,24 @@ static int
 em_xmit(struct tx_ring *txr, bE1000::Packet *packet)
 {
 	struct adapter		*adapter = txr->adapter;
-	bus_dma_segment_t	segs[EM_MAX_SCATTER];
+	// bus_dma_segment_t	segs[EM_MAX_SCATTER];
 	bus_dmamap_t		map;
 	struct em_buffer	*tx_buffer, *tx_buffer_mapped;
 	struct e1000_tx_desc	*ctxd = NULL;
-	struct mbuf		*m_head;
-	struct ether_header	*eh;
-	struct ip		*ip = NULL;
-	struct tcphdr		*tp = NULL;
+	// struct mbuf		*m_head;
+	// struct ether_header	*eh;
+	// struct ip		*ip = NULL;
+	// struct tcphdr		*tp = NULL;
 	u32			txd_upper, txd_lower, txd_used, txd_saved;
-	int			ip_off, poff;
-	int			nsegs, i, j, first, last = 0;
+	int			/* ip_off, */ poff;
+	int			nsegs, i, /* j, */ first, last = 0;
 	int			error, do_tso, tso_desc = 0, remap = 1;
-        bE1000 *e1000 = adapter->dev->parent;
 
 	// m_head = *m_headp;
 	txd_upper = txd_lower = txd_used = txd_saved = 0;
         do_tso = 0;
 	// do_tso = ((m_head->m_pkthdr.csum_flags & CSUM_TSO) != 0);
-	ip_off = poff = 0;
+	/* ip_off = */ poff = 0;
 
 	/*
 	 * Intel recommends entire IP/TCP header length reside in a single
@@ -2049,7 +2046,7 @@ em_xmit(struct tx_ring *txr, bE1000::Packet *packet)
 	tx_buffer_mapped = tx_buffer;
 	map = tx_buffer->map;
 
-retry:
+// retry:
         error = 0;
         nsegs = 1;
 	// error = bus_dmamap_load_mbuf_sg(txr->txtag, map,
@@ -2178,7 +2175,7 @@ retry:
 	// 	tx_buffer->next_eop = -1;
 	// }
         bus_size_t seg_len;
-        bus_addr_t seg_addr;
+        // bus_addr_t seg_addr;
         tx_buffer = &txr->tx_buffers[i];
         ctxd = &txr->tx_base[i];
         seg_len = packet->len;
@@ -2188,7 +2185,7 @@ retry:
         last = i;
         if (++i == adapter->num_tx_desc)
           i = 0;
-        tx_buffer->m_head = NULL;
+        // tx_buffer->m_head = NULL;
         tx_buffer->next_eop = -1;
 
 	txr->next_avail_desc = i;
@@ -2196,7 +2193,7 @@ retry:
 	if (tso_desc) /* TSO used an extra for sentinel */
 		txr->tx_avail -= txd_used;
 
-        tx_buffer->m_head = m_head;
+        // tx_buffer->m_head = m_head;
 	/*
 	** Here we swap the map so the last descriptor,
 	** which gets the completion interrupt has the
@@ -2284,7 +2281,7 @@ retry:
 static void
 em_set_multi(struct adapter *adapter)
 {
-	if_t ifp = adapter->ifp;
+	// if_t ifp = adapter->ifp;
 	u32 reg_rctl = 0;
 	u8  *mta; /* Multicast array memory */
 	int mcnt = 0;
@@ -2338,8 +2335,8 @@ em_local_timer(void *arg)
   struct adapter	*adapter = reinterpret_cast<struct adapter *>(arg);
 	if_t ifp = adapter->ifp;
 	struct tx_ring	*txr = adapter->tx_rings;
-	struct rx_ring	*rxr = adapter->rx_rings;
-	u32		trigger = 0;
+	// struct rx_ring	*rxr = adapter->rx_rings;
+        // u32		trigger = 0;
 
 	EM_CORE_LOCK_ASSERT(adapter);
 
@@ -2357,7 +2354,7 @@ em_local_timer(void *arg)
 	// 		trigger |= rxr->ims;
 	// 	rxr = adapter->rx_rings;
 	// } else
-		trigger = E1000_ICS_RXDMT0;
+		// trigger = E1000_ICS_RXDMT0;
 
 	/*
 	** Check on the state of the TX queue(s), this 
@@ -2395,7 +2392,7 @@ void
 em_update_link_status(struct adapter *adapter)
 {
 	struct e1000_hw *hw = &adapter->hw;
-	if_t ifp = adapter->ifp;
+	// if_t ifp = adapter->ifp;
 	device_t dev = adapter->dev;
 	struct tx_ring *txr = adapter->tx_rings;
 	u32 link_check = 0;
@@ -2575,8 +2572,8 @@ int
 em_allocate_legacy(struct adapter *adapter)
 {
 	device_t dev = adapter->dev;
-	struct tx_ring	*txr = adapter->tx_rings;
-	int error, rid = 0;
+	// struct tx_ring	*txr = adapter->tx_rings;
+	int /* error, */ rid = 0;
 
 	/* Manually turn off all interrupts */
 	E1000_WRITE_REG(&adapter->hw, E1000_IMC, 0xffffffff);
@@ -3036,7 +3033,7 @@ em_flush_desc_rings(struct adapter *adapter)
 static void
 em_reset(struct adapter *adapter)
 {
-	device_t	dev = adapter->dev;
+	// device_t	dev = adapter->dev;
 	if_t ifp = adapter->ifp;
 	struct e1000_hw	*hw = &adapter->hw;
 	u16		rx_buffer_size;
@@ -3403,7 +3400,7 @@ em_dma_malloc(struct adapter *adapter, bus_size_t size,
 static int
 em_allocate_queues(struct adapter *adapter)
 {
-	device_t		dev = adapter->dev;
+	// device_t		dev = adapter->dev;
 	struct tx_ring		*txr = NULL;
 	struct rx_ring		*rxr = NULL;
 	int rsize, tsize, error = E1000_SUCCESS;
@@ -3644,10 +3641,10 @@ em_setup_transmit_ring(struct tx_ring *txr)
           kassert(e1000->_tx_reserved.Push(packet));
         }
 
-	for (int i = 0; i < adapter->num_tx_desc; i++) {
+	for (int j = 0; j < adapter->num_tx_desc; j++) {
           PhysAddr paddr;
           physmem_ctrl->Alloc(paddr, PagingCtrl::ConvertNumToPageSize(MCLBYTES));
-          txr->tx_base[i].buffer_addr = htole64(paddr.GetAddr());
+          txr->tx_base[j].buffer_addr = htole64(paddr.GetAddr());
         }
 
 	/* Set number of descriptors available */
@@ -4157,15 +4154,15 @@ em_txeof(struct tx_ring *txr)
                 	++txr->tx_avail;
 			++processed;
 
-			if (tx_buffer->m_head) {
-				bus_dmamap_sync(txr->txtag,
-				    tx_buffer->map,
-				    BUS_DMASYNC_POSTWRITE);
-				bus_dmamap_unload(txr->txtag,
-				    tx_buffer->map);
-                        	// m_freem(tx_buffer->m_head);
-                        	tx_buffer->m_head = NULL;
-                	}
+			// if (tx_buffer->m_head) {
+			// 	bus_dmamap_sync(txr->txtag,
+			// 	    tx_buffer->map,
+			// 	    BUS_DMASYNC_POSTWRITE);
+			// 	bus_dmamap_unload(txr->txtag,
+			// 	    tx_buffer->map);
+                        //	 m_freem(tx_buffer->m_head);
+                        // 	tx_buffer->m_head = NULL;
+                	// }
 			tx_buffer->next_eop = -1;
 
 	                if (++first == adapter->num_tx_desc)
@@ -4229,10 +4226,10 @@ static void
 em_refresh_mbufs(struct rx_ring *rxr, int limit)
 {
 	struct adapter		*adapter = rxr->adapter;
-	struct mbuf		*m;
-	bus_dma_segment_t	segs[1];
-	struct em_buffer	*rxbuf;
-	int			i, j, error, nsegs;
+	// struct mbuf		*m;
+	// bus_dma_segment_t	segs[1];
+	// struct em_buffer	*rxbuf;
+	int			i, j/*, error, nsegs */;
 	bool			cleaned = FALSE;
 
 	i = j = rxr->next_to_refresh;
@@ -4245,7 +4242,7 @@ em_refresh_mbufs(struct rx_ring *rxr, int limit)
 		j = 0;
 
 	while (j != limit) {
-		rxbuf = &rxr->rx_buffers[i];
+		// rxbuf = &rxr->rx_buffers[i];
 		// if (rxbuf->m_head == NULL) {
 		// 	m = m_getjcl(M_NOWAIT, MT_DATA,
 		// 	    M_PKTHDR, adapter->rx_mbuf_sz);
@@ -4286,7 +4283,7 @@ em_refresh_mbufs(struct rx_ring *rxr, int limit)
 		if (++j == adapter->num_rx_desc)
 			j = 0;
 	}
-update:
+// update:
 	/*
 	** Update the tail pointer only if,
 	** and as far as we have refreshed.
@@ -4372,9 +4369,9 @@ em_setup_receive_ring(struct rx_ring *rxr)
 {
 	struct	adapter 	*adapter = rxr->adapter;
         bE1000 *e1000 = adapter->dev->parent;
-	struct em_buffer	*rxbuf;
-	bus_dma_segment_t	seg[1];
-	int			rsize, nsegs, error = 0;
+        // struct em_buffer	*rxbuf;
+	// bus_dma_segment_t	seg[1];
+	int			rsize, /* nsegs, */ error = 0;
 #ifdef DEV_NETMAP
 	struct netmap_slot *slot;
 	struct netmap_adapter *na = netmap_getna(adapter->ifp);
@@ -4410,7 +4407,7 @@ em_setup_receive_ring(struct rx_ring *rxr)
 
 	/* Now replenish the mbufs */
         for (int j = 0; j != adapter->num_rx_desc; ++j) {
-		rxbuf = &rxr->rx_buffers[j];
+		// rxbuf = &rxr->rx_buffers[j];
 #ifdef DEV_NETMAP
 		if (slot) {
 			int si = netmap_idx_n2k(&na->rx_rings[rxr->me], j);
@@ -4457,7 +4454,7 @@ em_setup_receive_ring(struct rx_ring *rxr)
 	bus_dmamap_sync(rxr->rxdma.dma_tag, rxr->rxdma.dma_map,
 	    BUS_DMASYNC_PREREAD | BUS_DMASYNC_PREWRITE);
 
-fail:
+// fail:
 	EM_RX_UNLOCK(rxr);
 	return (error);
 }
@@ -4486,17 +4483,17 @@ fail:
 	 */
 	for (int i = 0; i < q; ++i) {
 		rxr = &adapter->rx_rings[i];
-		for (int n = 0; n < adapter->num_rx_desc; n++) {
-			struct em_buffer *rxbuf;
-			rxbuf = &rxr->rx_buffers[n];
-			if (rxbuf->m_head != NULL) {
-				bus_dmamap_sync(rxr->rxtag, rxbuf->map,
-			  	  BUS_DMASYNC_POSTREAD);
-				bus_dmamap_unload(rxr->rxtag, rxbuf->map);
-				// m_freem(rxbuf->m_head);
-				rxbuf->m_head = NULL;
-			}
-		}
+		// for (int n = 0; n < adapter->num_rx_desc; n++) {
+			// struct em_buffer *rxbuf;
+			// rxbuf = &rxr->rx_buffers[n];
+			// if (rxbuf->m_head != NULL) {
+			// 	bus_dmamap_sync(rxr->rxtag, rxbuf->map,
+			//   	  BUS_DMASYNC_POSTREAD);
+			// 	bus_dmamap_unload(rxr->rxtag, rxbuf->map);
+			// 	 m_freem(rxbuf->m_head);
+			// 	rxbuf->m_head = NULL;
+			// }
+		// }
 		rxr->next_to_check = 0;
 		rxr->next_to_refresh = 0;
 	}
@@ -4783,7 +4780,7 @@ em_rxeof(struct rx_ring *rxr, int count, int *done)
 {
 	struct adapter		*adapter = rxr->adapter;
 	if_t ifp = adapter->ifp;
-	struct mbuf		*mp, *sendmp;
+	struct mbuf		/* *mp, */ *sendmp;
 	u8			status = 0;
 	u16 			len;
 	int			i, processed, rxdone = 0;
@@ -4812,7 +4809,7 @@ em_rxeof(struct rx_ring *rxr, int count, int *done)
 
 		cur = &rxr->rx_base[i];
 		status = cur->status;
-		mp = sendmp = NULL;
+		/* mp = */ sendmp = NULL;
 
 		if ((status & E1000_RXD_STAT_DD) == 0)
 			break;
@@ -4930,10 +4927,10 @@ next_desc:
 static __inline void
 em_rx_discard(struct rx_ring *rxr, int i)
 {
-	struct em_buffer	*rbuf;
+	// struct em_buffer	*rbuf;
 
-	rbuf = &rxr->rx_buffers[i];
-	bus_dmamap_unload(rxr->rxtag, rbuf->map);
+	// rbuf = &rxr->rx_buffers[i];
+	// bus_dmamap_unload(rxr->rxtag, rbuf->map);
 
 	/* Free any previous pieces */
 	if (rxr->fmp != NULL) {
@@ -4946,10 +4943,10 @@ em_rx_discard(struct rx_ring *rxr, int i)
 	** Free buffer and allow em_refresh_mbufs()
 	** to clean up and recharge buffer.
 	*/
-	if (rbuf->m_head) {
-		// m_free(rbuf->m_head);
-		rbuf->m_head = NULL;
-	}
+	// if (rbuf->m_head) {
+        //   m_free(rbuf->m_head);
+        //   rbuf->m_head = NULL;
+	// }
 	return;
 }
 

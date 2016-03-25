@@ -23,6 +23,8 @@
 #ifndef __RAPH_KERNEL_GLOBAL_H__
 #define __RAPH_KERNEL_GLOBAL_H__
 
+// TODO: global namespace
+
 class SpinLockCtrl;
 class AcpiCtrl;
 class ApicCtrl;
@@ -31,6 +33,7 @@ class PagingCtrl;
 class PhysmemCtrl;
 class VirtmemCtrl;
 class PollingCtrl;
+class TaskCtrl;
 class Idt;
 
 class Tty;
@@ -46,6 +49,7 @@ extern PagingCtrl *paging_ctrl;
 extern PhysmemCtrl *physmem_ctrl;
 extern VirtmemCtrl *virtmem_ctrl;
 extern PollingCtrl *polling_ctrl;
+extern TaskCtrl *task_ctrl;
 extern Idt *idt;
 
 extern Tty *gtty;

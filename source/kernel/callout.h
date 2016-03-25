@@ -27,32 +27,8 @@
 #include "polling.h"
 #include "timer.h"
 #include "global.h"
+#include "task.h"
 
-class Function {
- public:
-  Function() {
-  }
-  void Init(void (*func)(void *), void *arg) {
-    _func = func;
-    _arg = arg;
-  }
-  void Execute() {
-    if (_func != nullptr) {
-      void (*func)(void *) = _func;
-      _func = nullptr;
-      func(_arg);
-    }
-  }
-  volatile bool CanExecute() {
-    return (_func != nullptr);
-  }
-  void Clear() {
-    _func = nullptr;
-  }
- private:
-  void (*_func)(void *) = nullptr;
-  void *_arg;
-};
 
 class Callout : public Function, Polling {
  public:

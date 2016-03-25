@@ -17,7 +17,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * Author: Liva
- * リスト
+ * 動的データ確保アロケータ
+ * ある程度の数の同種のオブジェクトを、頻繁に確保、開放する時に使う
  * 領域が足りなくなりそうになったら足りなくなる前に自動で伸ばす
  * 
  */
@@ -31,9 +32,9 @@
 #include <mem/virtmem.h>
 
 template <typename T>
-class List {
+class Allocator {
 public:
-  List();
+  Allocator();
   T *Alloc();
   void Free(T *data);
 private:
@@ -50,10 +51,10 @@ private:
 };
 
 template <typename T>
-List<T>::List() : _list(&_first) {}
+Allocator<T>::Allocator() : _list(&_first) {}
 
 template <typename T>
-void List<T>::Free(T *data) {
+void Allocator<T>::Free(T *data) {
   Locker locker(_lock);
   Container *before = nullptr;
   Container *cur = _list;
@@ -75,7 +76,7 @@ void List<T>::Free(T *data) {
 }
 
 template <typename T>
-T *List<T>::Alloc() {
+T *Allocator<T>::Alloc() {
   bool extend = false;
   T* rval = nullptr;
   while(true) {
@@ -125,7 +126,7 @@ T *List<T>::Alloc() {
 }
 
 template <typename T>
-T *List<T>::Extend(T *entry) {
+T *Allocator<T>::Extend(T *entry) {
   Container *tmp = nullptr;
   kassert(virtmem_ctrl != nullptr);
   tmp = reinterpret_cast<Container *>(virtmem_ctrl->Alloc(sizeof(Container)));

@@ -177,7 +177,7 @@ static em_vendor_info_t lem_vendor_info_array[] =
  *  Table of branding strings for all supported NICs.
  *********************************************************************/
 
-static char *lem_strings[] = {
+static const char *lem_strings[] = {
 	"Intel(R) PRO/1000 Legacy Network Connection"
 };
 
@@ -190,7 +190,7 @@ int	lem_attach(device_t);
 // static int	lem_shutdown(device_t);
 // static int	lem_suspend(device_t);
 // static int	lem_resume(device_t);
-static void	lem_start(if_t);
+// static void	lem_start(if_t);
 static void	lem_start_locked(if_t ifp);
 // static int	lem_ioctl(if_t, u_long, caddr_t);
 #if __FreeBSD_version >= 1100036
@@ -312,10 +312,10 @@ int lem_poll(if_t ifp);
 #define MAX_INTS_PER_SEC	8000
 #define DEFAULT_ITR		(1000000000/(MAX_INTS_PER_SEC * 256))
 
-static int lem_tx_int_delay_dflt = EM_TICKS_TO_USECS(EM_TIDV);
-static int lem_rx_int_delay_dflt = EM_TICKS_TO_USECS(EM_RDTR);
-static int lem_tx_abs_int_delay_dflt = EM_TICKS_TO_USECS(EM_TADV);
-static int lem_rx_abs_int_delay_dflt = EM_TICKS_TO_USECS(EM_RADV);
+// static int lem_tx_int_delay_dflt = EM_TICKS_TO_USECS(EM_TIDV);
+// static int lem_rx_int_delay_dflt = EM_TICKS_TO_USECS(EM_RDTR);
+// static int lem_tx_abs_int_delay_dflt = EM_TICKS_TO_USECS(EM_TADV);
+// static int lem_rx_abs_int_delay_dflt = EM_TICKS_TO_USECS(EM_RADV);
 /*
  * increase lem_rxd and lem_txd to at least 2048 in netmap mode
  * for better performance.
@@ -923,7 +923,7 @@ lem_start_locked(if_t ifp)
 {
   struct adapter	*adapter = reinterpret_cast<struct adapter *>(if_getsoftc(ifp));
   bE1000 *e1000 = adapter->dev->parent;
-	struct mbuf	*m_head;
+	// struct mbuf	*m_head;
 
 	EM_TX_LOCK_ASSERT(adapter);
 
@@ -990,16 +990,16 @@ lem_start_locked(if_t ifp)
 	return;
 }
 
-static void
-lem_start(if_t ifp)
-{
-  struct adapter *adapter = reinterpret_cast<struct adapter *>(if_getsoftc(ifp));
+// static void
+// lem_start(if_t ifp)
+// {
+//   struct adapter *adapter = reinterpret_cast<struct adapter *>(if_getsoftc(ifp));
 
-	EM_TX_LOCK(adapter);
-	if (if_getdrvflags(ifp) & IFF_DRV_RUNNING)
-		lem_start_locked(ifp);
-	EM_TX_UNLOCK(adapter);
-}
+// 	EM_TX_LOCK(adapter);
+// 	if (if_getdrvflags(ifp) & IFF_DRV_RUNNING)
+// 		lem_start_locked(ifp);
+// 	EM_TX_UNLOCK(adapter);
+// }
 
 /*********************************************************************
  *  Ioctl entry point
@@ -1078,8 +1078,7 @@ lem_start(if_t ifp)
 // 		break;
 // 	    }
 // 	case SIOCSIFFLAGS:
-// 		IOCTL_DEBUGOUT("ioctl rcv'd:\
-// 		    SIOCSIFFLAGS (Set Interface Flags)");
+// 		IOCTL_DEBUGOUT("ioctl rcv'd: SIOCSIFFLAGS (Set Interface Flags)");
 // 		EM_CORE_LOCK(adapter);
 // 		if (if_getflags(ifp) & IFF_UP) {
 // 			if ((if_getdrvflags(ifp) & IFF_DRV_RUNNING)) {
@@ -1128,8 +1127,7 @@ lem_start(if_t ifp)
 // 		}
 // 		EM_CORE_UNLOCK(adapter);
 // 	case SIOCGIFMEDIA:
-// 		IOCTL_DEBUGOUT("ioctl rcv'd: \
-// 		    SIOCxIFMEDIA (Get/Set Interface Media)");
+// 		IOCTL_DEBUGOUT("ioctl rcv'd: SIOCxIFMEDIA (Get/Set Interface Media)");
 // 		error = ifmedia_ioctl(ifp, ifr, &adapter->media, command);
 // 		break;
 // 	case SIOCSIFCAP:
@@ -1204,7 +1202,7 @@ static void
 lem_init_locked(struct adapter *adapter)
 {
 	if_t ifp = adapter->ifp;
-	device_t	dev = adapter->dev;
+	// device_t	dev = adapter->dev;
 	u32		pba;
 
 	INIT_DEBUGOUT("lem_init: begin");
@@ -1352,7 +1350,7 @@ lem_poll(if_t ifp)
 {
   struct adapter *adapter = reinterpret_cast<struct adapter *>(if_getsoftc(ifp));
   bE1000 *e1000 = adapter->dev->parent;
-  u32		reg_icr;
+  // u32		reg_icr;
   int rx_done = 0;
 
 	EM_CORE_LOCK(adapter);
@@ -1648,13 +1646,13 @@ lem_poll(if_t ifp)
 static int
 lem_xmit(struct adapter *adapter, bE1000::Packet *packet)
 {
-	bus_dma_segment_t	segs[EM_MAX_SCATTER];
+	// bus_dma_segment_t	segs[EM_MAX_SCATTER];
 	bus_dmamap_t		map;
 	struct em_buffer	*tx_buffer, *tx_buffer_mapped;
 	struct e1000_tx_desc	*ctxd = NULL;
-	struct mbuf		*m_head;
+	// struct mbuf		*m_head;
 	u32			txd_upper, txd_lower, txd_used, txd_saved;
-	int			error, nsegs, i, j, first, last = 0;
+	int			error, nsegs, i, /* j, */ first, last = 0;
         bE1000 *e1000 = adapter->dev->parent;
 
 	// m_head = *m_headp;
@@ -1800,7 +1798,6 @@ lem_xmit(struct adapter *adapter, bE1000::Packet *packet)
 	// }
 
         bus_size_t seg_len;
-        bus_addr_t seg_addr;
         tx_buffer = &adapter->tx_buffer_area[i];
         ctxd = &adapter->tx_desc_base[i];
         seg_len = packet->len;
@@ -1813,7 +1810,7 @@ lem_xmit(struct adapter *adapter, bE1000::Packet *packet)
         last = i;
         if (++i == adapter->num_tx_desc)
           i = 0;
-        tx_buffer->m_head = NULL;
+        // tx_buffer->m_head = NULL;
         tx_buffer->next_eop = -1;
 
 	adapter->next_avail_tx_desc = i;
@@ -1831,7 +1828,7 @@ lem_xmit(struct adapter *adapter, bE1000::Packet *packet)
         //         ctxd->lower.data |= htole32(E1000_TXD_CMD_VLE);
         // }
 
-        tx_buffer->m_head = m_head;
+        // tx_buffer->m_head = m_head;
 	tx_buffer_mapped->map = tx_buffer->map;
 	tx_buffer->map = map;
         bus_dmamap_sync(adapter->txtag, map, BUS_DMASYNC_PREWRITE);
@@ -2071,7 +2068,7 @@ lem_xmit(struct adapter *adapter, bE1000::Packet *packet)
 static void
 lem_set_multi(struct adapter *adapter)
 {
-	if_t ifp = adapter->ifp;
+	// if_t ifp = adapter->ifp;
 	u32 reg_rctl = 0;
 	u8  *mta; /* Multicast array memory */
 	int mcnt = 0;
@@ -2167,7 +2164,7 @@ void
 lem_update_link_status(struct adapter *adapter)
 {
 	struct e1000_hw *hw = &adapter->hw;
-	if_t ifp = adapter->ifp;
+	// if_t ifp = adapter->ifp;
 	device_t dev = adapter->dev;
 	u32 link_check = 0;
         bE1000 *e1000 = dev->parent;
@@ -2357,7 +2354,7 @@ int
 lem_allocate_irq(struct adapter *adapter)
 {
 	device_t dev = adapter->dev;
-	int error, rid = 0;
+	int /* error, */ rid = 0;
 
 	/* Manually turn off all interrupts */
 	E1000_WRITE_REG(&adapter->hw, E1000_IMC, 0xffffffff);
@@ -2373,6 +2370,7 @@ lem_allocate_irq(struct adapter *adapter)
 
 	/* Do Legacy setup? */
 	if (lem_use_legacy_irq) {
+          kassert(false);
 		// if ((error = bus_setup_intr(dev, adapter->res[0],
 	    	//     INTR_TYPE_NET | INTR_MPSAFE, NULL, lem_intr, adapter,
 	    	//     &adapter->tag[0])) != 0) {
@@ -2443,7 +2441,7 @@ lem_allocate_irq(struct adapter *adapter)
 static int
 lem_hardware_init(struct adapter *adapter)
 {
-	device_t dev = adapter->dev;
+	// device_t dev = adapter->dev;
 	u16 	rx_buffer_size;
 
 	INIT_DEBUGOUT("lem_hardware_init: begin");
@@ -2821,7 +2819,7 @@ static void
 lem_setup_transmit_structures(struct adapter *adapter)
 {
   bE1000 *e1000 = adapter->dev->parent;
-	struct em_buffer *tx_buffer;
+	// struct em_buffer *tx_buffer;
 #ifdef DEV_NETMAP
 	/* we are already locked */
 	struct netmap_adapter *na = netmap_getna(adapter->ifp);
@@ -3196,17 +3194,17 @@ lem_txeof(struct adapter *adapter)
                 	tx_desc->buffer_addr = 0;
                 	++num_avail;
 
-			if (tx_buffer->m_head) {
-				// if_inc_counter(ifp, IFCOUNTER_OPACKETS, 1);
-				bus_dmamap_sync(adapter->txtag,
-				    tx_buffer->map,
-				    BUS_DMASYNC_POSTWRITE);
-				bus_dmamap_unload(adapter->txtag,
-				    tx_buffer->map);
+			// if (tx_buffer->m_head) {
+			// 	if_inc_counter(ifp, IFCOUNTER_OPACKETS, 1);
+			// 	bus_dmamap_sync(adapter->txtag,
+			// 	    tx_buffer->map,
+			// 	    BUS_DMASYNC_POSTWRITE);
+			// 	bus_dmamap_unload(adapter->txtag,
+			// 	    tx_buffer->map);
 
-                        	// m_freem(tx_buffer->m_head);
-                        	tx_buffer->m_head = NULL;
-                	}
+                        // 	m_freem(tx_buffer->m_head);
+                        // 	tx_buffer->m_head = NULL;
+                	// }
 			tx_buffer->next_eop = -1;
 			adapter->watchdog_time = get_ticks();
 
@@ -3723,7 +3721,7 @@ lem_rxeof(struct adapter *adapter, int count, int *done)
 		}
 #endif /* NIC_PARAVIRT */
 
-		mp = adapter->rx_buffer_area[i].m_head;
+		// mp = adapter->rx_buffer_area[i].m_head;
 		/*
 		 * Can't defer bus_dmamap_sync(9) because TBI_ACCEPT
 		 * needs to access the last received byte in the mbuf.

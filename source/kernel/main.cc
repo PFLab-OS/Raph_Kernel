@@ -20,22 +20,23 @@
  * 
  */
 
-#include "global.h"
-#include "spinlock.h"
-#include "acpi.h"
-#include "apic.h"
-#include "multiboot.h"
-#include "polling.h"
-#include "mem/physmem.h"
-#include "mem/paging.h"
-#include "idt.h"
-#include "timer.h"
+#include <global.h>
+#include <spinlock.h>
+#include <acpi.h>
+#include <apic.h>
+#include <multiboot.h>
+#include <polling.h>
+#include <task.h>
+#include <mem/physmem.h>
+#include <mem/paging.h>
+#include <idt.h>
+#include <timer.h>
 
-#include "tty.h"
-#include "dev/hpet.h"
+#include <tty.h>
+#include <dev/hpet.h>
 
-#include "dev/vga.h"
-#include "dev/pci.h"
+#include <dev/vga.h>
+#include <dev/pci.h>
 
 SpinLockCtrl *spinlock_ctrl;
 MultibootCtrl *multiboot_ctrl;
@@ -45,6 +46,7 @@ PhysmemCtrl *physmem_ctrl;
 PagingCtrl *paging_ctrl;
 VirtmemCtrl *virtmem_ctrl;
 PollingCtrl *polling_ctrl;
+TaskCtrl *task_ctrl;
 Idt *idt;
 Timer *timer;
 
@@ -83,6 +85,9 @@ extern "C" int main() {
 
   PollingCtrl _polling_ctrl;
   polling_ctrl = &_polling_ctrl;
+
+  TaskCtrl _task_ctrl;
+  task_ctrl = &_task_ctrl;
   
   Hpet _htimer;
   timer = &_htimer;
@@ -105,8 +110,11 @@ extern "C" int main() {
     kernel_panic("timer", "HPET not supported.\n");
   }
 
-  // timer->Sertup()より後
+  // timer->Setup()より後
   apic_ctrl->Setup();
+
+  // apic_ctrl->Setup()より後
+  task_ctrl->Setup();
   
   cnt = 0;
 
@@ -129,8 +137,10 @@ extern "C" int main() {
   gtty->Printf("s", "\n\n[kernel] info: initialization completed\n");
 
   polling_ctrl->HandleAll();
+
   while(true) {
-    asm volatile("hlt;nop;hlt;");
+    task_ctrl->Run();
+    asm volatile("hlt");
   }
   return 0;
 }
@@ -265,8 +275,9 @@ extern "C" int main_of_others() {
 
     gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
   }
-  while(1) {
-    asm volatile("hlt;");
+  while(true) {
+    task_ctrl->Run();
+    asm volatile("hlt");
   }
   return 0;
 }
