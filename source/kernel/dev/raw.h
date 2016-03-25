@@ -65,8 +65,8 @@ private:
   uint32_t _ipAddr;
   uint8_t _ethAddr[6] = {0};
 
-  std::thread _thTx;
-  std::thread _thRx;
+  std::thread *_thTx;
+  std::thread *_thRx;
 
   static const char kNetworkInterfaceName[];
 

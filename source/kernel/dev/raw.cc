@@ -54,8 +54,12 @@ DevRawEthernet::DevRawEthernet() : DevEthernet(0, 0, 0) {
   FetchAddress();
   FlushSocket();
 
+  // init packet buffer
+  InitTxPacketBuffer();
+  InitRxPacketBuffer();
+
   DevRawEthernet *that = this;
-  std::thread t1([&that]{
+  _thTx = new std::thread ([&that]{
       while (true) {
         while (!that->_tx_buffered.IsEmpty()) {
           Packet *packet;
@@ -66,7 +70,7 @@ DevRawEthernet::DevRawEthernet() : DevEthernet(0, 0, 0) {
       }
     });
 
-  std::thread t2([&that]{
+  _thRx = new std::thread ([&that]{
       while (true) {
         Packet *packet;
         if (that->_rx_reserved.Pop(packet)) {
@@ -78,9 +82,6 @@ DevRawEthernet::DevRawEthernet() : DevEthernet(0, 0, 0) {
       }
     });
 
-  _thTx = std::move(t1);
-  _thRx = std::move(t2);
-
   if(!netdev_ctrl->RegisterDevice(this)) {
     // cannot register device
     kassert(false);
@@ -89,8 +90,10 @@ DevRawEthernet::DevRawEthernet() : DevEthernet(0, 0, 0) {
 
 DevRawEthernet::~DevRawEthernet() {
   close(_pd);
-  _thTx.detach();
-  _thRx.detach();
+  _thTx->detach();
+  _thRx->detach();
+  delete _thTx;
+  delete _thRx;
 }
 
 int32_t DevRawEthernet::Receive(uint8_t *buffer, uint32_t size) {
