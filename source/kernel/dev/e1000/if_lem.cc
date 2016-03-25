@@ -322,10 +322,10 @@ int lem_poll(if_t ifp);
  */
 static int lem_rxd = EM_DEFAULT_RXD;
 static int lem_txd = EM_DEFAULT_TXD;
-static int lem_smart_pwr_down = FALSE;
+// static int lem_smart_pwr_down = FALSE;
 
 /* Controls whether promiscuous also shows bad packets */
-static int lem_debug_sbp = FALSE;
+// static int lem_debug_sbp = FALSE;
 
 TUNABLE_INT("hw.em.tx_int_delay", &lem_tx_int_delay_dflt);
 TUNABLE_INT("hw.em.rx_int_delay", &lem_rx_int_delay_dflt);
@@ -341,8 +341,8 @@ static int lem_use_legacy_irq = 0;
 TUNABLE_INT("hw.em.use_legacy_irq", &lem_use_legacy_irq);
 
 /* How many packets rxeof tries to clean at a time */
-static int lem_rx_process_limit = 100;
-TUNABLE_INT("hw.em.rx_process_limit", &lem_rx_process_limit);
+// static int lem_rx_process_limit = 100;
+// TUNABLE_INT("hw.em.rx_process_limit", &lem_rx_process_limit);
 
 /* Flow control setting - default to FULL */
 static int lem_fc_setting = e1000_fc_full;
@@ -3411,8 +3411,8 @@ lem_setup_receive_structures(struct adapter *adapter)
 {
   bE1000 *e1000 = adapter->dev->parent;
 
-	struct em_buffer *rx_buffer;
-	int i, error;
+  // struct em_buffer *rx_buffer;
+  int i/* , error */;
 #ifdef DEV_NETMAP
 	/* we are already under lock */
 	struct netmap_adapter *na = netmap_getna(adapter->ifp);
@@ -3482,7 +3482,7 @@ lem_initialize_receive_unit(struct adapter *adapter)
 {
 	if_t ifp = adapter->ifp;
 	u64	bus_addr;
-	u32	rctl, rxcsum;
+	u32	rctl /* , rxcsum */;
 
 	INIT_DEBUGOUT("lem_initialize_receive_unit: begin");
 
@@ -3645,9 +3645,9 @@ static bool
 lem_rxeof(struct adapter *adapter, int count, int *done)
 {
 	if_t ifp = adapter->ifp;
-	struct mbuf	*mp;
-	u8		status = 0, accept_frame = 0, eop = 0;
-	u16 		len, desc_len, prev_len_adj;
+	// struct mbuf	*mp;
+	u8		status = 0, accept_frame = 0 /* , eop = 0 */;
+	u16 		len, desc_len /*, prev_len_adj */;
 	int		i, rx_sent = 0;
 	struct e1000_rx_desc   *current_desc;
         bE1000 *e1000 = adapter->dev->parent;
@@ -3730,18 +3730,18 @@ lem_rxeof(struct adapter *adapter, int count, int *done)
 		    BUS_DMASYNC_POSTREAD);
 
 		accept_frame = 1;
-		prev_len_adj = 0;
+		// prev_len_adj = 0;
 		desc_len = le16toh(current_desc->length);
 		if (status & E1000_RXD_STAT_EOP) {
 			count--;
-			eop = 1;
+			// eop = 1;
 			if (desc_len < ETHER_CRC_LEN) {
 				len = 0;
-				prev_len_adj = ETHER_CRC_LEN - desc_len;
+				// prev_len_adj = ETHER_CRC_LEN - desc_len;
 			} else
 				len = desc_len - ETHER_CRC_LEN;
 		} else {
-			eop = 0;
+			// eop = 0;
 			len = desc_len;
 		}
 

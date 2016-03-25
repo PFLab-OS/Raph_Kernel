@@ -26,7 +26,7 @@
 #include "global.h"
 #include "tty.h"
 
-void kernel_panic(char *class_name, char *err_str);
+void kernel_panic(const char *class_name, const char *err_str);
 
 template<class T>
 static inline T align(T val, int base) {

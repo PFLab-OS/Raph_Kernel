@@ -1916,7 +1916,7 @@ em_xmit(struct tx_ring *txr, bE1000::Packet *packet)
 	// struct ip		*ip = NULL;
 	// struct tcphdr		*tp = NULL;
 	u32			txd_upper, txd_lower, txd_used, txd_saved;
-	int			/* ip_off, */ poff;
+	// int			ip_off, poff;
 	int			nsegs, i, /* j, */ first, last = 0;
 	int			error, do_tso, tso_desc = 0, remap = 1;
 
@@ -1924,7 +1924,7 @@ em_xmit(struct tx_ring *txr, bE1000::Packet *packet)
 	txd_upper = txd_lower = txd_used = txd_saved = 0;
         do_tso = 0;
 	// do_tso = ((m_head->m_pkthdr.csum_flags & CSUM_TSO) != 0);
-	/* ip_off = */ poff = 0;
+        // ip_off = poff = 0;
 
 	/*
 	 * Intel recommends entire IP/TCP header length reside in a single

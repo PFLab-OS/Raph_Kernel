@@ -282,7 +282,7 @@ extern "C" int main_of_others() {
   return 0;
 }
 
-void kernel_panic(char *class_name, char *err_str) {
+void kernel_panic(const char *class_name, const char *err_str) {
   gtty->Printf("s", "\n[","s",class_name,"s","] error: ","s",err_str);
   while(1) {
     asm volatile("hlt;");
