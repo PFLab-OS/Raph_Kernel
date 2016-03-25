@@ -24,11 +24,11 @@
 #define __RAPH_KERNEL_NET_SOCKET_H__
 
 #include <stdint.h>
-#include "../dev/netdev.h"
+#include "../dev/eth.h"
 
 class NetSocket {
 protected:
-  NetDev *_dev = nullptr;
+  DevEthernet *_dev = nullptr;
 
 public:
   int32_t Open();

@@ -33,4 +33,8 @@ public:
   virtual void GetEthAddr(uint8_t *buffer) = 0;
 };
 
+class DevEthernetCtrl : public NetDevCtrl {
+  DevEthernet *_devTable[kMaxDevNumber] = {nullptr};
+};
+
 #endif /* __RAPH_KERNEL_DEV_ETH_H__ */

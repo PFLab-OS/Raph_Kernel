@@ -28,9 +28,6 @@
 #include <timer.h>
 #include <global.h>
 
-#define __NETCTRL__
-#include <net/global.h>
-
 void DevGbeIch8::SetupHw(uint16_t did) {
   _did = did;
 
