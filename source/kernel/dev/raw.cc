@@ -66,6 +66,7 @@ DevRawEthernet::DevRawEthernet() : DevEthernet(0, 0, 0) {
           that->Transmit(packet->buf, packet->len);
           that->ReuseTxBuffer(packet);
         }
+        usleep(10000);
       }
     });
 
@@ -76,6 +77,7 @@ DevRawEthernet::DevRawEthernet() : DevEthernet(0, 0, 0) {
           packet->len = that->Receive(packet->buf, MCLBYTES);
           assert(that->_rx_buffered.Push(packet));
         }
+        usleep(10000);
       }
     });
 
@@ -86,9 +88,6 @@ DevRawEthernet::DevRawEthernet() : DevEthernet(0, 0, 0) {
 }
 
 DevRawEthernet::~DevRawEthernet() {
-  close(_pd);
-  puts("~DevRawEthernet()");
-
   // transmit packets left in buffer
   Packet *packet;
   while (_tx_buffered.Pop(packet)) {
@@ -100,6 +99,8 @@ DevRawEthernet::~DevRawEthernet() {
   _thRx->detach();
   delete _thTx;
   delete _thRx;
+
+  close(_pd);
 }
 
 int32_t DevRawEthernet::Receive(uint8_t *buffer, uint32_t size) {
