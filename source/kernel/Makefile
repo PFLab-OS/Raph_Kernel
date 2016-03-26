@@ -3,7 +3,7 @@ DEV_OBJ = dev/pci.o dev/netdev.o dev/e1000/lem.o dev/e1000/em.o dev/e1000/e1000_
 # dev/oe1000/e1000.o dev/oe1000/i8254.o dev/oe1000/i8257.o dev/oe1000/ich8.o
 NET_OBJ = net/segment.o net/layer.o net/eth.o net/arp.o net/ip.o net/tcp.o net/udp.o net/socket.o net/netctrl.o
 OBJ = boot/boot.o boot/bootap.o main.o spinlock.o apic.o acpi.o idt.o int.o mem/virtmem.o mem/paging.o mem/physmem.o $(DEV_OBJ) $(NET_OBJ)
-TEST_OBJ = test_main.o spinlock.o mem/virtmem.o mem/paging.o mem/physmem.o dev/raw.o dev/netdev.o $(NET_OBJ)
+TEST_OBJ = test_main.o spinlock.o mem/virtmem.o dev/raw.o dev/netdev.o $(NET_OBJ)
 BUILD = ../../build/
 DEPS= $(OBJ:%.o=%.d) $(TEST_OBJ:%.o=%.d)
 

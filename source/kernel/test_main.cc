@@ -112,11 +112,14 @@ void ARPReply(uint32_t ipRequest, uint32_t ipReply) {
   usleep(570);
 
   // ARP reply
-  socket.TransmitPacket(ARPSocket::kOpARPReply, ipaddr, macaddr);
-
-  std::printf("[ARP] request from %u.%u.%u.%u (%.2x:%.2x:%.2x:%.2x:%.2x:%.2x)\n",
-    (ipaddr >> 24), (ipaddr >> 16) & 0xff, (ipaddr >> 8) & 0xff, ipaddr & 0xff,
-    macaddr[0], macaddr[1], macaddr[2], macaddr[3], macaddr[4], macaddr[5]);
+  if(socket.TransmitPacket(ARPSocket::kOpARPReply, ipaddr, macaddr) < 0) {
+    std::cerr << "[ARP] failed to send reply packet" << std::endl;
+  } else {
+    std::printf("[ARP] request from %u.%u.%u.%u (%.2x:%.2x:%.2x:%.2x:%.2x:%.2x)\n",
+      (ipaddr >> 24), (ipaddr >> 16) & 0xff, (ipaddr >> 8) & 0xff, ipaddr & 0xff,
+      macaddr[0], macaddr[1], macaddr[2], macaddr[3], macaddr[4], macaddr[5]);
+    std::fflush(stdout);
+  }
 }
 
 void ARPRequest(uint32_t ipRequest, uint32_t ipReply) {
@@ -130,12 +133,16 @@ void ARPRequest(uint32_t ipRequest, uint32_t ipReply) {
 
   // send ARP request
   socket.SetIPAddr(ipRequest);
-  socket.TransmitPacket(ARPSocket::kOpARPRequest, ipReply); 
-  socket.ReceivePacket(ARPSocket::kOpARPReply, &ipaddr, macaddr);
-
-  std::printf("[ARP] reply from %u.%u.%u.%u (%.2x:%.2x:%.2x:%.2x:%.2x:%.2x)\n",
-    (ipaddr >> 24), (ipaddr >> 16) & 0xff, (ipaddr >> 8) & 0xff, ipaddr & 0xff,
-    macaddr[0], macaddr[1], macaddr[2], macaddr[3], macaddr[4], macaddr[5]);
+  if(socket.TransmitPacket(ARPSocket::kOpARPRequest, ipReply) < 0) {
+    std::cerr << "[ARP] failed to send request packet" << std::endl;
+  } else {
+    socket.ReceivePacket(ARPSocket::kOpARPReply, &ipaddr, macaddr);
+  
+    std::printf("[ARP] reply from %u.%u.%u.%u (%.2x:%.2x:%.2x:%.2x:%.2x:%.2x)\n",
+      (ipaddr >> 24), (ipaddr >> 16) & 0xff, (ipaddr >> 8) & 0xff, ipaddr & 0xff,
+      macaddr[0], macaddr[1], macaddr[2], macaddr[3], macaddr[4], macaddr[5]);
+    std::fflush(stdout);
+  }
 }
 
 void TCPServer() {

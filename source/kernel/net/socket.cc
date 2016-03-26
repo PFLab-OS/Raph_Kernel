@@ -439,7 +439,7 @@ int32_t ARPSocket::TransmitPacket(uint16_t type, uint32_t tpa, uint8_t *tha) {
 
   // ARP header
   uint32_t offsetARP = sizeof(EthHeader);
-  arp_ctrl->GeneratePacket(packet->buf + offsetARP, type, ethSaddr, ipSaddr, ethDaddr, ipDaddr);
+  arp_ctrl->GeneratePacket(packet->buf + offsetARP, type, ethSaddr, _ipaddr, ethDaddr, ipDaddr);
 
   // Ethernet header
   eth_ctrl->GenerateHeader(packet->buf, ethSaddr, ethDaddr, EthCtrl::kProtocolARP);
@@ -453,12 +453,7 @@ int32_t ARPSocket::TransmitPacket(uint16_t type, uint32_t tpa, uint8_t *tha) {
 int32_t ARPSocket::ReceivePacket(uint16_t type, uint32_t *spa, uint8_t *sha) {
   // alloc buffer
   DevEthernet::Packet *packet;
-  if(!_dev->GetTxPacket(packet)) {
-    return -1;
-  }
   uint32_t length = sizeof(EthHeader) + sizeof(ARPPacket);
-  packet->len = length;
-  uint8_t *arpPacket = packet->buf + sizeof(EthHeader);
 
   uint8_t ethDaddr[6];
   _dev->GetEthAddr(ethDaddr);
@@ -471,7 +466,7 @@ int32_t ARPSocket::ReceivePacket(uint16_t type, uint32_t *spa, uint8_t *sha) {
     if(!eth_ctrl->FilterPacket(packet->buf, nullptr, ethDaddr, EthCtrl::kProtocolARP)) continue;
 
     // filter IP address
-    if(!arp_ctrl->FilterPacket(arpPacket, type, nullptr, 0, ethDaddr, _ipaddr)) continue;
+    if(!arp_ctrl->FilterPacket(packet->buf + sizeof(EthHeader), type, nullptr, 0, ethDaddr, _ipaddr)) continue;
 
     break;
   } while(1);
@@ -479,10 +474,10 @@ int32_t ARPSocket::ReceivePacket(uint16_t type, uint32_t *spa, uint8_t *sha) {
   // handle received ARP request/reply
   switch(type) {
     case kOpARPReply:
-      arp_ctrl->RegisterAddress(arpPacket);
+      arp_ctrl->RegisterAddress(packet->buf + sizeof(EthHeader));
     case kOpARPRequest:
-      if(spa) *spa = arp_ctrl->GetSourceIPAddress(arpPacket);
-      if(sha) arp_ctrl->GetSourceMACAddress(sha, arpPacket);
+      if(spa) *spa = arp_ctrl->GetSourceIPAddress(packet->buf + sizeof(EthHeader));
+      if(sha) arp_ctrl->GetSourceMACAddress(sha, packet->buf + sizeof(EthHeader));
       break;
     default:
       _dev->ReuseRxBuffer(packet);
