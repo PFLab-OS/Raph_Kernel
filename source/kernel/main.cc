@@ -163,8 +163,7 @@ extern "C" int main_of_others() {
     if(socket.Open() < 0) {
       gtty->Printf("s", "[error] failed to open socket\n");
     }
-    socket.SetIPAddr(0x0a000205);
-//    socket.SetIPAddr(0xc0a86475);
+    socket.SetIPAddr(0xc0a86475);
 
     while(true) {
       int32_t rval = socket.ReceivePacket(0, &ipaddr, macaddr);
@@ -224,8 +223,7 @@ extern "C" int main_of_others() {
     if(socket.Open() < 0) {
       gtty->Printf("s", "[error] failed to open socket\n");
     } else {
-      socket.SetIPAddr(0x0a000205);
-//      socket.SetIPAddr(0xc0a86475);
+      socket.SetIPAddr(0xc0a86475);
       cnt = timer->ReadMainCnt();
       if(socket.TransmitPacket(ARPSocket::kOpARPRequest, /*0xc0a86475*/0x0a00020f) < 0) {
 	    gtty->Printf("s", "[arp] failed to transmit request\n");
