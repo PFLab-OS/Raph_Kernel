@@ -57,7 +57,7 @@ bool oE1000::InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bo
     }
     kassert(e1000 != nullptr);
     e1000->Setup(did);
-    polling_ctrl->Register(e1000);
+    e1000->RegisterPolling();
     timer->BusyUwait(3000*1000);
     eth = e1000;
     return true;

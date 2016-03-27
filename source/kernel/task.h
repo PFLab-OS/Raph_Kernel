@@ -21,16 +21,21 @@
  */
 
 #ifndef __RAPH_KERNEL_DEV_TASK_H__
-#define __RAPH_KERNEL_DEV_POLLING_H__
+#define __RAPH_KERNEL_DEV_TASK_H__
 
 #include <allocator.h>
 #include <apic.h>
 #include <mem/virtmem.h>
 #include <global.h>
+#include <spinlock.h>
 
 class Function {
  public:
   Function() {
+  }
+  Function(const Function &func) {
+    _func = func._func;
+    _arg = func._arg;
   }
   void Init(void (*func)(void *), void *arg) {
     _func = func;
@@ -49,6 +54,9 @@ class Function {
   void Clear() {
     _func = nullptr;
   }
+  bool Equal(const Function &func) {
+    return (_func == func._func) && (_arg == func._arg);
+  }
  private:
   void (*_func)(void *) = nullptr;
   void *_arg;
@@ -61,15 +69,69 @@ class TaskCtrl {
   }
   void Setup() {
     int cpus = apic_ctrl->GetHowManyCpus();
-    _task_list = reinterpret_cast<Allocator<Function> *>(virtmem_ctrl->Alloc(sizeof(Allocator<Function>) * cpus));
+    _task_list = reinterpret_cast<Task **>(virtmem_ctrl->Alloc(sizeof(Task *) * cpus));
     for (int i = 0; i < cpus; i++) {
-      new(&_task_list[i]) Allocator<Function>;
+      _task_list[i] = nullptr;
+    }
+  }
+  void Register(const Function &func) {
+    Task *task = _allocator.Alloc();
+    task->func = func;
+    task->next = nullptr;
+    Locker locker(_lock);
+    Task *t = _task_list[apic_ctrl->GetApicId()];
+    if (t == nullptr) {
+      _task_list[apic_ctrl->GetApicId()] = task;
+      return;
+    }
+    while(t->next) {
+      t = t->next;
+    }
+    t->next = task;
+  }
+  void Remove(const Function &func) {
+    Locker locker(_lock);
+    Task *t = _task_list[apic_ctrl->GetApicId()];
+    if (t == nullptr) {
+      return;
+    }
+    if (t->func.Equal(func)) {
+      _task_list[apic_ctrl->GetApicId()] = t->next;
+      t = t->next;
+    }
+
+    while(t->next) {
+      if (t->next->func.Equal(func)) {
+        t->next = t->next->next;
+      }
+
+      t = t->next;
     }
   }
   void Run() {
+    Function f;
+    while (true){
+      {
+        Locker locker(_lock);
+        Task *t = _task_list[apic_ctrl->GetApicId()];
+        if (t == nullptr) {
+          return;
+        }
+        _task_list[apic_ctrl->GetApicId()] = t->next;
+        _allocator.Free(t);
+        f = t->func;
+      }
+      f.Execute();
+    }
   }
  private:
-  Allocator<Function> *_task_list;
+  struct Task {
+    Function func;
+    Task *next;
+  };
+  Task **_task_list;
+  Allocator<Task> _allocator;
+  SpinLock _lock;
 };
 
 

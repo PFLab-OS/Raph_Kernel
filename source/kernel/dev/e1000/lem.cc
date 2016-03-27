@@ -37,10 +37,11 @@ bool lE1000::InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bo
   addr = new(addr) lE1000(bus, device, mf);
   addr->bsd.parent = addr;
   addr->bsd.adapter = reinterpret_cast<struct adapter *>(virtmem_ctrl->AllocZ(sizeof(adapter)));
+
   if (lem_probe(&addr->bsd) == BUS_PROBE_DEFAULT) {
     kassert(lem_attach(&addr->bsd) == 0);
     lem_init(addr->bsd.adapter);
-    polling_ctrl->Register(addr);
+    addr->RegisterPolling();
     eth = addr;
     return true;
   } else {

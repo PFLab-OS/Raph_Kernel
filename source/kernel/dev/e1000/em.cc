@@ -40,7 +40,7 @@ bool E1000::InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, boo
   if (em_probe(&addr->bsd) == BUS_PROBE_DEFAULT) {
     kassert(em_attach(&addr->bsd) == 0);
     em_init(addr->bsd.adapter);
-    polling_ctrl->Register(addr);
+    addr->RegisterPolling();
     eth = addr;
     return true;
   } else {

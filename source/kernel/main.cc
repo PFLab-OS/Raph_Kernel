@@ -25,16 +25,15 @@
 #include <acpi.h>
 #include <apic.h>
 #include <multiboot.h>
-#include <polling.h>
 #include <task.h>
 #include <mem/physmem.h>
 #include <mem/paging.h>
 #include <idt.h>
 #include <timer.h>
-
+#include <polling.h>
 #include <tty.h>
-#include <dev/hpet.h>
 
+#include <dev/hpet.h>
 #include <dev/vga.h>
 #include <dev/pci.h>
 
@@ -45,7 +44,6 @@ ApicCtrl *apic_ctrl;
 PhysmemCtrl *physmem_ctrl;
 PagingCtrl *paging_ctrl;
 VirtmemCtrl *virtmem_ctrl;
-PollingCtrl *polling_ctrl;
 TaskCtrl *task_ctrl;
 Idt *idt;
 Timer *timer;
@@ -82,9 +80,6 @@ extern "C" int main() {
   
   PagingCtrl _paging_ctrl;
   paging_ctrl = &_paging_ctrl;
-
-  PollingCtrl _polling_ctrl;
-  polling_ctrl = &_polling_ctrl;
 
   TaskCtrl _task_ctrl;
   task_ctrl = &_task_ctrl;
@@ -136,8 +131,6 @@ extern "C" int main() {
 
   gtty->Printf("s", "\n\n[kernel] info: initialization completed\n");
 
-  polling_ctrl->HandleAll();
-
   while(true) {
     task_ctrl->Run();
     asm volatile("hlt");
@@ -145,60 +138,107 @@ extern "C" int main() {
   return 0;
 }
 
+uint8_t ip[] = {
+  //192, 168, 100, 120,
+  10, 0, 2, 5,
+};
+
+PollingFunc tp;
+
 extern "C" int main_of_others() {
   // according to mp spec B.3, system should switch over to Symmetric I/O mode
   apic_ctrl->BootAP();
   gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
-  uint8_t ip[] = {
-    192, 168, 100, 120,
-    //10, 0, 2, 5,
-  };
   if (apic_ctrl->GetApicId() == 1) {
     kassert(eth != nullptr);
-    while(true) {
-      bE1000::Packet *rpacket;
-      if(!eth->RecievePacket(rpacket)) {
-        continue;
-      } 
-      // received packet
-      if(rpacket->buf[12] == 0x08 && rpacket->buf[13] == 0x06 && rpacket->buf[21] == 0x02) {
-        uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;
-        // ARP packet
-        gtty->Printf(
-                     "s", "ARP Reply received; ",
-                     "x", rpacket->buf[22], "s", ":",
-                     "x", rpacket->buf[23], "s", ":",
-                     "x", rpacket->buf[24], "s", ":",
-                     "x", rpacket->buf[25], "s", ":",
-                     "x", rpacket->buf[26], "s", ":",
-                     "x", rpacket->buf[27], "s", " is ",
-                     "d", rpacket->buf[28], "s", ".",
-                     "d", rpacket->buf[29], "s", ".",
-                     "d", rpacket->buf[30], "s", ".",
-                     "d", rpacket->buf[31], "s", "\n");
-        gtty->Printf("s","latency:","d",l,"s","us\n");
-      }
-      if(rpacket->buf[12] == 0x08 && rpacket->buf[13] == 0x06 && rpacket->buf[21] == 0x01 && (memcmp(rpacket->buf + 38, ip, 4) == 0)) {
-        // ARP packet
-        gtty->Printf(
-                     "s", "ARP Request received; ",
-                     "x", rpacket->buf[22], "s", ":",
-                     "x", rpacket->buf[23], "s", ":",
-                     "x", rpacket->buf[24], "s", ":",
-                     "x", rpacket->buf[25], "s", ":",
-                     "x", rpacket->buf[26], "s", ":",
-                     "x", rpacket->buf[27], "s", ",",
-                     "d", rpacket->buf[28], "s", ".",
-                     "d", rpacket->buf[29], "s", ".",
-                     "d", rpacket->buf[30], "s", ".",
-                     "d", rpacket->buf[31], "s", " says who's ",
-                     "d", rpacket->buf[38], "s", ".",
-                     "d", rpacket->buf[39], "s", ".",
-                     "d", rpacket->buf[40], "s", ".",
-                     "d", rpacket->buf[41], "s", "\n");
+    PollingFunc p;
+    p.RegisterFunc([]{
+        bE1000::Packet *rpacket;
+        if(!eth->RecievePacket(rpacket)) {
+          return;
+        } 
 
+        // received packet
+        if(rpacket->buf[12] == 0x08 && rpacket->buf[13] == 0x06 && rpacket->buf[21] == 0x02) {
+          uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;
+          // ARP packet
+          gtty->Printf(
+                       "s", "ARP Reply received; ",
+                       "x", rpacket->buf[22], "s", ":",
+                       "x", rpacket->buf[23], "s", ":",
+                       "x", rpacket->buf[24], "s", ":",
+                       "x", rpacket->buf[25], "s", ":",
+                       "x", rpacket->buf[26], "s", ":",
+                       "x", rpacket->buf[27], "s", " is ",
+                       "d", rpacket->buf[28], "s", ".",
+                       "d", rpacket->buf[29], "s", ".",
+                       "d", rpacket->buf[30], "s", ".",
+                       "d", rpacket->buf[31], "s", "\n");
+          gtty->Printf("s","latency:","d",l,"s","us\n");
+        }
+        if(rpacket->buf[12] == 0x08 && rpacket->buf[13] == 0x06 && rpacket->buf[21] == 0x01 && (memcmp(rpacket->buf + 38, ip, 4) == 0)) {
+          // ARP packet
+          gtty->Printf(
+                       "s", "ARP Request received; ",
+                       "x", rpacket->buf[22], "s", ":",
+                       "x", rpacket->buf[23], "s", ":",
+                       "x", rpacket->buf[24], "s", ":",
+                       "x", rpacket->buf[25], "s", ":",
+                       "x", rpacket->buf[26], "s", ":",
+                       "x", rpacket->buf[27], "s", ",",
+                       "d", rpacket->buf[28], "s", ".",
+                       "d", rpacket->buf[29], "s", ".",
+                       "d", rpacket->buf[30], "s", ".",
+                       "d", rpacket->buf[31], "s", " says who's ",
+                       "d", rpacket->buf[38], "s", ".",
+                       "d", rpacket->buf[39], "s", ".",
+                       "d", rpacket->buf[40], "s", ".",
+                       "d", rpacket->buf[41], "s", "\n");
+
+          uint8_t data[] = {
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target MAC Address
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source MAC Address
+            0x08, 0x06, // Type: ARP
+            // ARP Packet
+            0x00, 0x01, // HardwareType: Ethernet
+            0x08, 0x00, // ProtocolType: IPv4
+            0x06, // HardwareLength
+            0x04, // ProtocolLength
+            0x00, 0x02, // Operation: ARP Reply
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source Hardware Address
+            0x00, 0x00, 0x00, 0x00, // Source Protocol Address
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
+            0x00, 0x00, 0x00, 0x00, // Target Protocol Address
+          };
+          memcpy(data, rpacket->buf + 6, 6);
+          eth->GetEthAddr(data + 6);
+          memcpy(data + 22, data + 6, 6);
+          memcpy(data + 28, ip, 4);
+          memcpy(data + 32, rpacket->buf + 22, 6);
+          memcpy(data + 38, rpacket->buf + 28, 4);
+
+          uint32_t len = sizeof(data)/sizeof(uint8_t);
+          bE1000::Packet *tpacket;
+          kassert(eth->GetTxPacket(tpacket));
+          memcpy(tpacket->buf, data, len);
+          tpacket->len = len;
+          eth->TransmitPacket(tpacket);
+          //gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
+        }
+        eth->ReuseRxBuffer(rpacket);
+      });
+  } else if (apic_ctrl->GetApicId() == 2) {
+    tp.RegisterFunc([]{
+        if (!apic_ctrl->IsBootupAll()) {
+          return;
+        }
+        eth->UpdateLinkStatus();
+        if (eth->GetStatus() != bE1000::LinkStatus::Up) {
+          return;
+        }
+        kassert(eth != nullptr);
         uint8_t data[] = {
-          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target MAC Address
+          0xff, 0xff, 0xff, 0xff, 0xff, 0xff, // Target MAC Address
           0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source MAC Address
           0x08, 0x06, // Type: ARP
           // ARP Packet
@@ -206,74 +246,28 @@ extern "C" int main_of_others() {
           0x08, 0x00, // ProtocolType: IPv4
           0x06, // HardwareLength
           0x04, // ProtocolLength
-          0x00, 0x02, // Operation: ARP Reply
+          0x00, 0x01, // Operation: ARP Request
           0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source Hardware Address
           0x00, 0x00, 0x00, 0x00, // Source Protocol Address
           0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
-          0x00, 0x00, 0x00, 0x00, // Target Protocol Address
+          // Target Protocol Address
+          //192, 168, 100, 117,
+          10, 0, 2, 15,
         };
-        memcpy(data, rpacket->buf + 6, 6);
         eth->GetEthAddr(data + 6);
         memcpy(data + 22, data + 6, 6);
         memcpy(data + 28, ip, 4);
-        memcpy(data + 32, rpacket->buf + 22, 6);
-        memcpy(data + 38, rpacket->buf + 28, 4);
-
         uint32_t len = sizeof(data)/sizeof(uint8_t);
         bE1000::Packet *tpacket;
         kassert(eth->GetTxPacket(tpacket));
         memcpy(tpacket->buf, data, len);
         tpacket->len = len;
+        cnt = timer->ReadMainCnt();
         eth->TransmitPacket(tpacket);
-        //gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
-      }
-      eth->ReuseRxBuffer(rpacket);
-    }
-  } else if (apic_ctrl->GetApicId() == 2) {
-    volatile bool ready;
-    while(true) {
-      ready = apic_ctrl->IsBootupAll();
-      if (ready) {
-        break;
-      }
-    }
-    while(true) {
-      eth->UpdateLinkStatus();
-      volatile bE1000::LinkStatus status = eth->GetStatus();
-      if (status == bE1000::LinkStatus::Up) {
-        break;
-      }
-    }
-    kassert(eth != nullptr);
-    uint8_t data[] = {
-      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, // Target MAC Address
-      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source MAC Address
-      0x08, 0x06, // Type: ARP
-      // ARP Packet
-      0x00, 0x01, // HardwareType: Ethernet
-      0x08, 0x00, // ProtocolType: IPv4
-      0x06, // HardwareLength
-      0x04, // ProtocolLength
-      0x00, 0x01, // Operation: ARP Request
-      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source Hardware Address
-      0x00, 0x00, 0x00, 0x00, // Source Protocol Address
-      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
-      // Target Protocol Address
-      192, 168, 100, 117,
-      //10, 0, 2, 15,
-    };
-    eth->GetEthAddr(data + 6);
-    memcpy(data + 22, data + 6, 6);
-    memcpy(data + 28, ip, 4);
-    uint32_t len = sizeof(data)/sizeof(uint8_t);
-    bE1000::Packet *tpacket;
-    kassert(eth->GetTxPacket(tpacket));
-    memcpy(tpacket->buf, data, len);
-    tpacket->len = len;
-    cnt = timer->ReadMainCnt();
-    eth->TransmitPacket(tpacket);
 
-    gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
+        gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
+        tp.RemoveFunc();
+      });
   }
   while(true) {
     task_ctrl->Run();

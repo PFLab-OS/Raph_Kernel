@@ -23,8 +23,8 @@
  * 
  */
 
-#ifndef __RAPH_KERNEL_LIST_H__
-#define __RAPH_KERNEL_LIST_H__
+#ifndef __RAPH_KERNEL_ALLOCATOR_H__
+#define __RAPH_KERNEL_ALLOCATOR_H__
 
 #include <spinlock.h>
 #include <raph.h>
@@ -137,4 +137,4 @@ T *Allocator<T>::Extend(T *entry) {
   return entry;
 }
 
-#endif // __RAPH_KERNEL_LIST_H__
+#endif // __RAPH_KERNEL_ALLOCATOR_H__

@@ -2244,6 +2244,7 @@ lem_stop(struct adapter *arg)
 	INIT_DEBUGOUT("lem_stop: begin");
 
 	lem_disable_intr(adapter);
+
 	callout_stop(&adapter->timer);
 	callout_stop(&adapter->tx_fifo_timer);
 
@@ -2783,6 +2784,7 @@ lem_allocate_transmit_structures(struct adapter *adapter)
 	}
 
 	adapter->tx_buffer_area = reinterpret_cast<struct em_buffer *>(virtmem_ctrl->AllocZ(sizeof(struct em_buffer) * adapter->num_tx_desc));
+
 	// adapter->tx_buffer_area = malloc(sizeof(struct em_buffer) *
 	//     adapter->num_tx_desc, M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (adapter->tx_buffer_area == NULL) {

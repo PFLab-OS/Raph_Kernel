@@ -37,7 +37,7 @@ class Callout : public Function, Polling {
   void SetHandler(uint32_t us) {
     if (this->CanExecute()) {
       _cnt = timer->GetCntAfterPeriod(timer->ReadMainCnt(), us);
-      polling_ctrl->Register(this);
+      this->RegisterPolling();
     }
   }
   volatile bool IsHandling() {
@@ -51,8 +51,9 @@ class Callout : public Function, Polling {
       _status = 0;
     }
   }
+  // calloutを登録したprocessorで実行する事
   void Cancel() {
-    polling_ctrl->Remove(this);
+    this->RemovePolling();
     this->Clear();
   }
  private:

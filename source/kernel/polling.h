@@ -22,52 +22,56 @@
 
 #ifndef __RAPH_KERNEL_DEV_POLLING_H__
 #define __RAPH_KERNEL_DEV_POLLING_H__
-#include "timer.h"
-#include "global.h"
-#include "raph.h"
+#include <timer.h>
+#include <global.h>
+#include <raph.h>
+#include <task.h>
 
 class Polling {
- public:
+ protected:
+  void RegisterPolling() {
+    Function func;
+    func.Init(HandleSub, reinterpret_cast<void *>(this));
+    _poll = true;
+    task_ctrl->Register(func);
+  }
+  // pollingを登録したprocessorで実行する事
+  void RemovePolling() {
+    Function func;
+    func.Init(HandleSub, reinterpret_cast<void *>(this));
+    _poll = false;
+    task_ctrl->Remove(func);
+  }
   virtual void Handle() = 0;
+ private:
+  static void HandleSub(void *p) {
+    Polling *that = reinterpret_cast<Polling *>(p);
+    that->Handle();
+    if (that->_poll) {
+      Function func;
+      func.Init(HandleSub, p);
+      task_ctrl->Register(func);
+    }
+  }
+  bool _poll = false;
 };
 
-class PollingCtrl {
+class PollingFunc : public Polling {
  public:
-  PollingCtrl() {
-    for(int i = 0; i < 100; i++) {
-      _handlers[i] = nullptr;
-    }
+  void RegisterFunc(void (*f)()) {
+    _f = f;
+    this->RegisterPolling();
   }
-  void Register(Polling *p) {
-    for(int i = 0; i < 100; i++) {
-      if (_handlers[i] == nullptr) {
-        _handlers[i] = p;
-        return;
-      }
-    }
-    kassert(false);
-  }
-  void Remove(Polling *p) {
-    for(int i = 0; i < 100; i++) {
-      if (_handlers[i] == p) {
-        _handlers[i] = nullptr;
-        return;
-      }
-    }
-  }
-  void HandleAll() {
-    while(true) {
-      for(int i = 0; i < 100; i++) {
-        if (_handlers[i] == nullptr) {
-          continue;
-        }
-        _handlers[i]->Handle();
-      }
-    }
+  void RemoveFunc() {
+    this->RemovePolling();
   }
  private:
-  Polling *_handlers[100]; // TODO なんとかする
+  virtual void Handle() override {
+    if (_f != nullptr) {
+      _f();
+    }
+  }
+  void (*_f)() = nullptr;
 };
-
 
 #endif /* __RAPH_KERNEL_DEV_POLLING_H__ */
