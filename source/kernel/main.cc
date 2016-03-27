@@ -163,9 +163,12 @@ extern "C" int main_of_others() {
     if(socket.Open() < 0) {
       gtty->Printf("s", "[error] failed to open socket\n");
     }
+    socket.SetIPAddr(0x0a000205);
+//    socket.SetIPAddr(0xc0a86475);
 
     while(true) {
-      if(socket.ReceivePacket(ARPSocket::kOpARPReply, &ipaddr, macaddr) >= 0) {
+      int32_t rval = socket.ReceivePacket(0, &ipaddr, macaddr);
+      if(rval == ARPSocket::kOpARPReply) {
         uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;
         gtty->Printf(
                      "s", "[arp] reply received; ",
@@ -180,82 +183,26 @@ extern "C" int main_of_others() {
                      "d", (ipaddr >> 8) & 0xff, "s", ".",
                      "d", (ipaddr >> 0) & 0xff, "s", "\n");
         gtty->Printf("s", "latency:", "d", l, "s", "us\n");
-      }
-      socket.SetIPAddr(0x0a00020f);
-//      socket.SetIPAddr(0xc0a86475);
+      } else if(rval == ARPSocket::kOpARPRequest) {
+        gtty->Printf(
+                     "s", "[arp] request received; ",
+                     "x", macaddr[0], "s", ":",
+                     "x", macaddr[1], "s", ":",
+                     "x", macaddr[2], "s", ":",
+                     "x", macaddr[3], "s", ":",
+                     "x", macaddr[4], "s", ":",
+                     "x", macaddr[5], "s", " is ",
+                     "d", (ipaddr >> 24) & 0xff, "s", ".",
+                     "d", (ipaddr >> 16) & 0xff, "s", ".",
+                     "d", (ipaddr >> 8) & 0xff, "s", ".",
+                     "d", (ipaddr >> 0) & 0xff, "s", "\n");
 
-//      bE1000::Packet *rpacket;
-//      if(!eth->ReceivePacket(rpacket)) {
-//        continue;
-//      } 
-//      // received packet
-//      if(rpacket->buf[12] == 0x08 && rpacket->buf[13] == 0x06 && rpacket->buf[21] == 0x02) {
-//        uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;
-//        // ARP packet
-//        gtty->Printf(
-//                     "s", "ARP Reply received; ",
-//                     "x", rpacket->buf[22], "s", ":",
-//                     "x", rpacket->buf[23], "s", ":",
-//                     "x", rpacket->buf[24], "s", ":",
-//                     "x", rpacket->buf[25], "s", ":",
-//                     "x", rpacket->buf[26], "s", ":",
-//                     "x", rpacket->buf[27], "s", " is ",
-//                     "d", rpacket->buf[28], "s", ".",
-//                     "d", rpacket->buf[29], "s", ".",
-//                     "d", rpacket->buf[30], "s", ".",
-//                     "d", rpacket->buf[31], "s", "\n");
-//        gtty->Printf("s","latency:","d",l,"s","us\n");
-//      }
-//      if(rpacket->buf[12] == 0x08 && rpacket->buf[13] == 0x06 && rpacket->buf[21] == 0x01 && (memcmp(rpacket->buf + 38, ip, 4) == 0)) {
-//        // ARP packet
-//        gtty->Printf(
-//                     "s", "ARP Request received; ",
-//                     "x", rpacket->buf[22], "s", ":",
-//                     "x", rpacket->buf[23], "s", ":",
-//                     "x", rpacket->buf[24], "s", ":",
-//                     "x", rpacket->buf[25], "s", ":",
-//                     "x", rpacket->buf[26], "s", ":",
-//                     "x", rpacket->buf[27], "s", ",",
-//                     "d", rpacket->buf[28], "s", ".",
-//                     "d", rpacket->buf[29], "s", ".",
-//                     "d", rpacket->buf[30], "s", ".",
-//                     "d", rpacket->buf[31], "s", " says who's ",
-//                     "d", rpacket->buf[38], "s", ".",
-//                     "d", rpacket->buf[39], "s", ".",
-//                     "d", rpacket->buf[40], "s", ".",
-//                     "d", rpacket->buf[41], "s", "\n");
-//
-//        uint8_t data[] = {
-//          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target MAC Address
-//          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source MAC Address
-//          0x08, 0x06, // Type: ARP
-//          // ARP Packet
-//          0x00, 0x01, // HardwareType: Ethernet
-//          0x08, 0x00, // ProtocolType: IPv4
-//          0x06, // HardwareLength
-//          0x04, // ProtocolLength
-//          0x00, 0x02, // Operation: ARP Reply
-//          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source Hardware Address
-//          0x00, 0x00, 0x00, 0x00, // Source Protocol Address
-//          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
-//          0x00, 0x00, 0x00, 0x00, // Target Protocol Address
-//        };
-//        memcpy(data, rpacket->buf + 6, 6);
-//        eth->GetEthAddr(data + 6);
-//        memcpy(data + 22, data + 6, 6);
-//        memcpy(data + 28, ip, 4);
-//        memcpy(data + 32, rpacket->buf + 22, 6);
-//        memcpy(data + 38, rpacket->buf + 28, 4);
-//
-//        uint32_t len = sizeof(data)/sizeof(uint8_t);
-//        bE1000::Packet *tpacket;
-//        kassert(eth->GetTxPacket(tpacket));
-//        memcpy(tpacket->buf, data, len);
-//        tpacket->len = len;
-//        eth->TransmitPacket(tpacket);
-//        gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
-//      }
-//      eth->ReuseRxBuffer(rpacket);
+        if(socket.TransmitPacket(ARPSocket::kOpARPReply, ipaddr, macaddr) < 0) {
+	      gtty->Printf("s", "[arp] failed to transmit reply\n");
+	    } else {
+	      gtty->Printf("s", "[arp] reply sent\n");
+	    }
+      }
     }
   } else if (apic_ctrl->GetApicId() == 2) {
     volatile bool ready;
@@ -277,6 +224,8 @@ extern "C" int main_of_others() {
     if(socket.Open() < 0) {
       gtty->Printf("s", "[error] failed to open socket\n");
     } else {
+      socket.SetIPAddr(0x0a000205);
+//      socket.SetIPAddr(0xc0a86475);
       cnt = timer->ReadMainCnt();
       if(socket.TransmitPacket(ARPSocket::kOpARPRequest, /*0xc0a86475*/0x0a00020f) < 0) {
 	    gtty->Printf("s", "[arp] failed to transmit request\n");

@@ -453,7 +453,7 @@ int32_t ARPSocket::TransmitPacket(uint16_t type, uint32_t tpa, uint8_t *tha) {
 int32_t ARPSocket::ReceivePacket(uint16_t type, uint32_t *spa, uint8_t *sha) {
   // alloc buffer
   DevEthernet::Packet *packet;
-  uint32_t length = sizeof(EthHeader) + sizeof(ARPPacket);
+  int16_t op = 0;
 
   uint8_t ethDaddr[6];
   _dev->GetEthAddr(ethDaddr);
@@ -471,8 +471,10 @@ int32_t ARPSocket::ReceivePacket(uint16_t type, uint32_t *spa, uint8_t *sha) {
     break;
   } while(1);
 
+  op = ntohs(*reinterpret_cast<uint16_t*>(packet->buf + sizeof(EthHeader) + kOperationOffset));
+
   // handle received ARP request/reply
-  switch(type) {
+  switch(op) {
     case kOpARPReply:
       arp_ctrl->RegisterAddress(packet->buf + sizeof(EthHeader));
     case kOpARPRequest:
@@ -487,5 +489,5 @@ int32_t ARPSocket::ReceivePacket(uint16_t type, uint32_t *spa, uint8_t *sha) {
   // finalization
   _dev->ReuseRxBuffer(packet);
 
-  return length;
+  return op;
 }

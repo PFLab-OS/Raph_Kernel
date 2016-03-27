@@ -57,10 +57,10 @@ int32_t ARPCtrl::GeneratePacket(uint8_t *buffer, uint16_t op, uint8_t *smacaddr,
 
 bool ARPCtrl::FilterPacket(uint8_t *packet, uint16_t op, uint8_t *smacaddr, uint32_t sipaddr, uint8_t *dmacaddr, uint32_t dipaddr) {
   ARPPacket * volatile data = reinterpret_cast<ARPPacket*>(packet);
-  return (ntohs(data->op) == op)
+  return (!op || ntohs(data->op) == op)
       && (!smacaddr || !memcmp(data->hwSaddr, smacaddr, 6))
       && (!sipaddr  || ntohl(data->protoSaddr) == sipaddr)
-      && (op == ARPSocket::kOpARPRequest || !dmacaddr || !memcmp(data->hwDaddr, dmacaddr, 6) || !memcmp(data->hwDaddr, kBcastMACAddr, 6))
+      && (ntohs(data->op) == ARPSocket::kOpARPRequest || !dmacaddr || !memcmp(data->hwDaddr, dmacaddr, 6) || !memcmp(data->hwDaddr, kBcastMACAddr, 6))
       && (!dipaddr  || ntohl(data->protoDaddr) == dipaddr);
 }
 

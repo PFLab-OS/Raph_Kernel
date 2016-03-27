@@ -148,15 +148,23 @@ public:
 
 // ARP Socket
 class ARPSocket : public NetSocket {
-  uint32_t _ipaddr = 0x0a000210;
-
 public:
-  virtual int32_t TransmitPacket(uint16_t type, uint32_t tpa, uint8_t *tha = nullptr);
-  virtual int32_t ReceivePacket(uint16_t type, uint32_t *spa = nullptr, uint8_t *sha = nullptr);
-  virtual void SetIPAddr(uint32_t ipaddr);
-
   static const int16_t kOpARPRequest = 0x0001;
   static const int16_t kOpARPReply = 0x0002;
+
+  // tha:nullptr => does not care tha (usually used in request packet)
+  virtual int32_t TransmitPacket(uint16_t type, uint32_t tpa, uint8_t *tha = nullptr);
+  // type:0 spa:nullptr sha:nullptr => does not filter by these parameters
+  // # return value is
+  //   * ARP operation (if succeed)
+  //   * -1            (otherwise)
+  virtual int32_t ReceivePacket(uint16_t type = 0, uint32_t *spa = nullptr, uint8_t *sha = nullptr);
+  virtual void SetIPAddr(uint32_t ipaddr);
+
+private:
+  static const uint32_t kOperationOffset = 6;
+
+  uint32_t _ipaddr = 0x0a000210;
 };
 
 #endif // __RAPH_KERNEL_NET_SOCKET_H__
