@@ -407,8 +407,11 @@ int32_t UDPSocket::TransmitPacket(const uint8_t *data, uint32_t length) {
  * ARPSocket
  */
 
+void ARPSocket::SetIPAddr(uint32_t ipaddr) {
+  _ipaddr = ipaddr;
+}
+
 int32_t ARPSocket::TransmitPacket(uint16_t type, uint32_t tpa, uint8_t *tha) {
-  uint32_t ipSaddr = 0x0a000210; // TODO:
   uint32_t ipDaddr = tpa;
   uint8_t ethSaddr[6];
   uint8_t ethDaddr[6];
@@ -436,7 +439,7 @@ int32_t ARPSocket::TransmitPacket(uint16_t type, uint32_t tpa, uint8_t *tha) {
 
   // ARP header
   uint32_t offsetARP = sizeof(EthHeader);
-  arp_ctrl->GeneratePacket(packet->buf + offsetARP, type, ethSaddr, ipSaddr, ethDaddr, ipDaddr);
+  arp_ctrl->GeneratePacket(packet->buf + offsetARP, type, ethSaddr, _ipaddr, ethDaddr, ipDaddr);
 
   // Ethernet header
   eth_ctrl->GenerateHeader(packet->buf, ethSaddr, ethDaddr, EthCtrl::kProtocolARP);
@@ -450,7 +453,7 @@ int32_t ARPSocket::TransmitPacket(uint16_t type, uint32_t tpa, uint8_t *tha) {
 int32_t ARPSocket::ReceivePacket(uint16_t type, uint32_t *spa, uint8_t *sha) {
   // alloc buffer
   DevEthernet::Packet *packet;
-  uint32_t length = sizeof(EthHeader) + sizeof(ARPPacket);
+  int16_t op = 0;
 
   uint8_t ethDaddr[6];
   _dev->GetEthAddr(ethDaddr);
@@ -463,16 +466,17 @@ int32_t ARPSocket::ReceivePacket(uint16_t type, uint32_t *spa, uint8_t *sha) {
     if(!eth_ctrl->FilterPacket(packet->buf, nullptr, ethDaddr, EthCtrl::kProtocolARP)) continue;
 
     // filter IP address
-    if(!arp_ctrl->FilterPacket(packet->buf + sizeof(EthHeader), type, nullptr, 0, ethDaddr, 0)) continue;
+    if(!arp_ctrl->FilterPacket(packet->buf + sizeof(EthHeader), type, nullptr, 0, ethDaddr, _ipaddr)) continue;
 
     break;
   } while(1);
 
+  op = ntohs(*reinterpret_cast<uint16_t*>(packet->buf + sizeof(EthHeader) + kOperationOffset));
+
   // handle received ARP request/reply
-  switch(type) {
+  switch(op) {
     case kOpARPReply:
       arp_ctrl->RegisterAddress(packet->buf + sizeof(EthHeader));
-      break;
     case kOpARPRequest:
       if(spa) *spa = arp_ctrl->GetSourceIPAddress(packet->buf + sizeof(EthHeader));
       if(sha) arp_ctrl->GetSourceMACAddress(sha, packet->buf + sizeof(EthHeader));
@@ -485,5 +489,5 @@ int32_t ARPSocket::ReceivePacket(uint16_t type, uint32_t *spa, uint8_t *sha) {
   // finalization
   _dev->ReuseRxBuffer(packet);
 
-  return length;
+  return op;
 }
