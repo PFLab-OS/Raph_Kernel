@@ -228,7 +228,7 @@ extern "C" int main_of_others() {
         memcpy(tpacket->buf, data, len);
         tpacket->len = len;
         eth->TransmitPacket(tpacket);
-        //gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
+        gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
       }
       eth->ReuseRxBuffer(rpacket);
     }
@@ -248,35 +248,18 @@ extern "C" int main_of_others() {
       }
     }
     kassert(eth != nullptr);
-    uint8_t data[] = {
-      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, // Target MAC Address
-      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source MAC Address
-      0x08, 0x06, // Type: ARP
-      // ARP Packet
-      0x00, 0x01, // HardwareType: Ethernet
-      0x08, 0x00, // ProtocolType: IPv4
-      0x06, // HardwareLength
-      0x04, // ProtocolLength
-      0x00, 0x01, // Operation: ARP Request
-      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source Hardware Address
-      0x00, 0x00, 0x00, 0x00, // Source Protocol Address
-      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
-      // Target Protocol Address
-      //192, 168, 100, 117,
-      10, 0, 2, 15,
-    };
-    eth->GetEthAddr(data + 6);
-    memcpy(data + 22, data + 6, 6);
-    memcpy(data + 28, ip, 4);
-    uint32_t len = sizeof(data)/sizeof(uint8_t);
-    bE1000::Packet *tpacket;
-    kassert(eth->GetTxPacket(tpacket));
-    memcpy(tpacket->buf, data, len);
-    tpacket->len = len;
-    cnt = timer->ReadMainCnt();
-    eth->TransmitPacket(tpacket);
 
-    gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
+    ARPSocket socket;
+    if(socket.Open() < 0) {
+      gtty->Printf("[error] failed to open socket\n");
+    } else {
+      cnt = timer->ReadMainCnt();
+      if(socket.TransmitPacket(ARPSocket::kOpARPRequest, /*0xc0a86475*/0x0a00020f) < 0) {
+	    gtty->Printf("[ARP] failed to transmit request\n");
+	  } else {
+	    gtty->Printf("[ARP] request sent\n");
+	  }
+    }
   }
   while(1) {
     asm volatile("hlt;");
