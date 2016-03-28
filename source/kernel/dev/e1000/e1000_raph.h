@@ -207,7 +207,7 @@ struct mtx {
 };
 
 static inline void callout_init_mtx(struct callout *c, struct mtx *mtx, int flags) {
-  new(&c->callout) Callout;
+  new(&c->callout) LckCallout;
   c->callout.SetLock(&mtx->lock);
 }
 

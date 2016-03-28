@@ -44,6 +44,7 @@ class Tty {
   }
   template<class T>
     void Printf_sub(T /* arg */) {
+    Printf_sub("s", "(invalid format)");
   }
   template<class... T2>
     void Printf_sub(const char *arg1, const char arg2, const T2& ...args) {

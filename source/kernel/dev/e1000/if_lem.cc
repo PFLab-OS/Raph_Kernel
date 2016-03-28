@@ -2151,7 +2151,7 @@ lem_local_timer(void *arg)
 	    (get_ticks() - adapter->watchdog_time > EM_WATCHDOG))
 		goto hung;
 
-	callout_reset(&adapter->timer, hz, lem_local_timer, adapter);
+	// callout_reset(&adapter->timer, hz, lem_local_timer, adapter);
 	return;
 hung:
 	device_printf(adapter->dev, "Watchdog timeout -- resetting\n");
@@ -2168,7 +2168,6 @@ lem_update_link_status(struct adapter *adapter)
 	device_t dev = adapter->dev;
 	u32 link_check = 0;
         bE1000 *e1000 = dev->parent;
-        kassert(hw->mac.get_link_status);
 
 	/* Get the cached link value or read phy for real */
 	switch (hw->phy.media_type) {

@@ -30,7 +30,6 @@
 #include <mem/paging.h>
 #include <idt.h>
 #include <timer.h>
-#include <polling.h>
 #include <tty.h>
 
 #include <dev/hpet.h>
@@ -55,6 +54,10 @@ PCICtrl *pci_ctrl;
 #include <dev/e1000/bem.h>
 bE1000 *eth;
 uint64_t cnt;
+int time;
+
+#include <callout.h>
+Callout tt;
 
 extern "C" int main() {
   SpinLockCtrl _spinlock_ctrl;
@@ -139,11 +142,9 @@ extern "C" int main() {
 }
 
 uint8_t ip[] = {
-  //192, 168, 100, 120,
+  //192, 168, 100, 117,
   10, 0, 2, 5,
 };
-
-PollingFunc tp;
 
 extern "C" int main_of_others() {
   // according to mp spec B.3, system should switch over to Symmetric I/O mode
@@ -152,7 +153,7 @@ extern "C" int main_of_others() {
   if (apic_ctrl->GetApicId() == 1) {
     kassert(eth != nullptr);
     PollingFunc p;
-    p.RegisterFunc([]{
+    p.Init([](void *){
         bE1000::Packet *rpacket;
         if(!eth->RecievePacket(rpacket)) {
           return;
@@ -178,22 +179,6 @@ extern "C" int main_of_others() {
         }
         if(rpacket->buf[12] == 0x08 && rpacket->buf[13] == 0x06 && rpacket->buf[21] == 0x01 && (memcmp(rpacket->buf + 38, ip, 4) == 0)) {
           // ARP packet
-          gtty->Printf(
-                       "s", "ARP Request received; ",
-                       "x", rpacket->buf[22], "s", ":",
-                       "x", rpacket->buf[23], "s", ":",
-                       "x", rpacket->buf[24], "s", ":",
-                       "x", rpacket->buf[25], "s", ":",
-                       "x", rpacket->buf[26], "s", ":",
-                       "x", rpacket->buf[27], "s", ",",
-                       "d", rpacket->buf[28], "s", ".",
-                       "d", rpacket->buf[29], "s", ".",
-                       "d", rpacket->buf[30], "s", ".",
-                       "d", rpacket->buf[31], "s", " says who's ",
-                       "d", rpacket->buf[38], "s", ".",
-                       "d", rpacket->buf[39], "s", ".",
-                       "d", rpacket->buf[40], "s", ".",
-                       "d", rpacket->buf[41], "s", "\n");
 
           uint8_t data[] = {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target MAC Address
@@ -223,20 +208,41 @@ extern "C" int main_of_others() {
           memcpy(tpacket->buf, data, len);
           tpacket->len = len;
           eth->TransmitPacket(tpacket);
+          gtty->Printf(
+                       "s", "ARP Request received; ",
+                       "x", rpacket->buf[22], "s", ":",
+                       "x", rpacket->buf[23], "s", ":",
+                       "x", rpacket->buf[24], "s", ":",
+                       "x", rpacket->buf[25], "s", ":",
+                       "x", rpacket->buf[26], "s", ":",
+                       "x", rpacket->buf[27], "s", ",",
+                       "d", rpacket->buf[28], "s", ".",
+                       "d", rpacket->buf[29], "s", ".",
+                       "d", rpacket->buf[30], "s", ".",
+                       "d", rpacket->buf[31], "s", " says who's ",
+                       "d", rpacket->buf[38], "s", ".",
+                       "d", rpacket->buf[39], "s", ".",
+                       "d", rpacket->buf[40], "s", ".",
+                       "d", rpacket->buf[41], "s", "\n");
           //gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
         }
         eth->ReuseRxBuffer(rpacket);
-      });
+      }, nullptr);
+    p.Register();
   } else if (apic_ctrl->GetApicId() == 2) {
-    tp.RegisterFunc([]{
+    new(&tt) Callout;
+    time = 3;
+    tt.Init([](void *){
         if (!apic_ctrl->IsBootupAll()) {
-          return;
-        }
-        eth->UpdateLinkStatus();
-        if (eth->GetStatus() != bE1000::LinkStatus::Up) {
+          tt.SetHandler(10);
           return;
         }
         kassert(eth != nullptr);
+        eth->UpdateLinkStatus();
+        if (eth->GetStatus() != bE1000::LinkStatus::Up) {
+          tt.SetHandler(1000*1000);
+          return;
+        }
         uint8_t data[] = {
           0xff, 0xff, 0xff, 0xff, 0xff, 0xff, // Target MAC Address
           0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source MAC Address
@@ -251,7 +257,7 @@ extern "C" int main_of_others() {
           0x00, 0x00, 0x00, 0x00, // Source Protocol Address
           0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
           // Target Protocol Address
-          //192, 168, 100, 117,
+          //192, 168, 100, 120,
           10, 0, 2, 15,
         };
         eth->GetEthAddr(data + 6);
@@ -266,8 +272,12 @@ extern "C" int main_of_others() {
         eth->TransmitPacket(tpacket);
 
         gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
-        tp.RemoveFunc();
-      });
+        time--;
+        if (time != 0) {
+          tt.SetHandler(1000*1000);
+        }
+      }, nullptr);
+    tt.SetHandler(10);
   }
   while(true) {
     task_ctrl->Run();

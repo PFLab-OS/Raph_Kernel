@@ -30,35 +30,58 @@
 #include "task.h"
 
 
-class Callout : public Function, Polling {
+class Callout : public Polling {
  public:
+  enum class CalloutState {
+    kWaiting,
+    kNull,
+  };
+  enum class CalloutHandleState {
+    kHandling,
+    kStopped,
+  };
   Callout() {
   }
+  void Init(void (*func)(void *), void *arg) {
+    _func.Init(func, arg);
+  }
   void SetHandler(uint32_t us) {
-    if (this->CanExecute()) {
+    if (_state == CalloutState::kNull) {
+      _state = CalloutState::kWaiting;
       _cnt = timer->GetCntAfterPeriod(timer->ReadMainCnt(), us);
       this->RegisterPolling();
     }
   }
   volatile bool IsHandling() {
-    return (_status == 1);
+    return (_hstate == CalloutHandleState::kHandling);
   }
-  virtual void Handle() override {
-    if (timer->IsTimePassed(_cnt)) {
-      this->Cancel();
-      _status = 1;
-      this->Execute();
-      _status = 0;
-    }
+  volatile bool CanExecute() {
+    return _func.CanExecute();
   }
   // calloutを登録したprocessorで実行する事
   void Cancel() {
+    _state = CalloutState::kNull;
     this->RemovePolling();
-    this->Clear();
+  }
+ protected:
+  virtual void Handle() override {
+    if (_state == CalloutState::kNull) {
+      this->RemovePolling();
+      return;
+    }
+    if (timer->IsTimePassed(_cnt)) {
+      _state = CalloutState::kNull;
+      _hstate = CalloutHandleState::kHandling;
+      _func.Execute();
+      _hstate = CalloutHandleState::kStopped;
+    }
   }
  private:
   volatile int _status = 0;
   uint64_t _cnt;
+  Function _func;
+  CalloutState _state = CalloutState::kNull;
+  CalloutHandleState _hstate = CalloutHandleState::kStopped;
 };
 
 #include "spinlock.h"

@@ -81,8 +81,8 @@ void ApicCtrl::StartAPs() {
       continue;
     }
     _started = false;
-    static const int stack_size = 8192 + 8;
-    *stack_of_others = ((virtmem_ctrl->Alloc(stack_size) + stack_size + 7) / 8) * 8 - 8;
+    static const int stack_size = 4096*5;
+    *stack_of_others = ((virtmem_ctrl->Alloc(stack_size + 8) + stack_size + 7) / 8) * 8 - 8;
     _lapic.Start(_lapic._apicIds[i], reinterpret_cast<uint64_t>(entryothers));
     while(!_started) {}
   }

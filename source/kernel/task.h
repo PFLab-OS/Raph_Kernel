@@ -43,9 +43,7 @@ class Function {
   }
   void Execute() {
     if (_func != nullptr) {
-      void (*func)(void *) = _func;
-      _func = nullptr;
-      func(_arg);
+      _func(_arg);
     }
   }
   volatile bool CanExecute() {
@@ -62,74 +60,101 @@ class Function {
   void *_arg;
 };
 
+class Polling;
+// TODO: Functionベースでなく、Taskベースでの登録にすべき
 class TaskCtrl {
  public:
   TaskCtrl() {
-    _task_list = nullptr;
+    _task_queue_top = nullptr;
+    _task_queue_bottom = nullptr;
   }
   void Setup() {
     int cpus = apic_ctrl->GetHowManyCpus();
-    _task_list = reinterpret_cast<Task **>(virtmem_ctrl->Alloc(sizeof(Task *) * cpus));
+    _task_queue_top = reinterpret_cast<Task **>(virtmem_ctrl->Alloc(sizeof(Task *) * cpus));
+    _task_queue_bottom = reinterpret_cast<Task **>(virtmem_ctrl->Alloc(sizeof(Task *) * cpus));
     for (int i = 0; i < cpus; i++) {
-      _task_list[i] = nullptr;
+      Task *t = reinterpret_cast<Task *>(virtmem_ctrl->Alloc(sizeof(Task)));
+      new(&t->func) Function;
+      t->next = nullptr;
+      _task_queue_top[i] = t;
+      _task_queue_bottom[i] = t;
     }
   }
   void Register(const Function &func) {
-    Task *task = _allocator.Alloc();
-    task->func = func;
-    task->next = nullptr;
-    Locker locker(_lock);
-    Task *t = _task_list[apic_ctrl->GetApicId()];
-    if (t == nullptr) {
-      _task_list[apic_ctrl->GetApicId()] = task;
-      return;
-    }
-    while(t->next) {
-      t = t->next;
-    }
-    t->next = task;
+    RegisterSub(func, TaskType::kNormal);
   }
   void Remove(const Function &func) {
     Locker locker(_lock);
-    Task *t = _task_list[apic_ctrl->GetApicId()];
-    if (t == nullptr) {
-      return;
-    }
-    if (t->func.Equal(func)) {
-      _task_list[apic_ctrl->GetApicId()] = t->next;
-      t = t->next;
-    }
-
+    Task *t = _task_queue_top[apic_ctrl->GetApicId()];
     while(t->next) {
       if (t->next->func.Equal(func)) {
+        Task *tt = t->next;
         t->next = t->next->next;
+        if (tt == _task_queue_bottom[apic_ctrl->GetApicId()]) {
+          kassert(tt->next == nullptr);
+          _task_queue_bottom[apic_ctrl->GetApicId()] = t;
+        }
+        virtmem_ctrl->Free(reinterpret_cast<virt_addr>(tt));
+        //        _allocator.Free(tt);
       }
-
       t = t->next;
+      
     }
   }
   void Run() {
     Function f;
     while (true){
+      Task *t;
       {
         Locker locker(_lock);
-        Task *t = _task_list[apic_ctrl->GetApicId()];
+        Task *tt = _task_queue_top[apic_ctrl->GetApicId()];
+        t = tt->next;
         if (t == nullptr) {
           return;
         }
-        _task_list[apic_ctrl->GetApicId()] = t->next;
-        _allocator.Free(t);
-        f = t->func;
+        tt->next = t->next;
+        if (t->next == nullptr) {
+          kassert(_task_queue_bottom[apic_ctrl->GetApicId()] == t);
+          _task_queue_bottom[apic_ctrl->GetApicId()] = tt;
+        }
       }
-      f.Execute();
+      t->func.Execute();
+      if (t->type == TaskType::kPolling) {
+        Locker locker(_lock);
+        _task_queue_bottom[apic_ctrl->GetApicId()]->next = t;
+        t->next = nullptr;
+        _task_queue_bottom[apic_ctrl->GetApicId()] = t;
+      } else {
+        virtmem_ctrl->Free(reinterpret_cast<virt_addr>(t));
+        //      _allocator.Free(t);
+      }
     }
   }
  private:
+  friend Polling;
+  enum class TaskType {
+    kNormal,
+    kPolling,
+  };
   struct Task {
     Function func;
     Task *next;
+    TaskType type;
   };
-  Task **_task_list;
+  void RegisterPolling(const Function &func) {
+    RegisterSub(func, TaskType::kPolling);
+  }
+  void RegisterSub(const Function &func, TaskType type) {
+    Task *task = reinterpret_cast<Task *>(virtmem_ctrl->Alloc(sizeof(Task)));//_allocator.Alloc();
+    task->func = func;
+    task->next = nullptr;
+    task->type = type;
+    Locker locker(_lock);
+    _task_queue_bottom[apic_ctrl->GetApicId()]->next = task;
+    _task_queue_bottom[apic_ctrl->GetApicId()] = task;
+  }
+  Task **_task_queue_top;
+  Task **_task_queue_bottom;
   Allocator<Task> _allocator;
   SpinLock _lock;
 };

@@ -29,49 +29,58 @@
 
 class Polling {
  protected:
+  enum class PollingState {
+    kPolling,
+    kStopped,
+  };
   void RegisterPolling() {
+    if (_state == PollingState::kPolling) {
+      return;
+    }
     Function func;
     func.Init(HandleSub, reinterpret_cast<void *>(this));
-    _poll = true;
-    task_ctrl->Register(func);
+    _state = PollingState::kPolling;
+    task_ctrl->RegisterPolling(func);
   }
   // pollingを登録したprocessorで実行する事
   void RemovePolling() {
+    if (_state == PollingState::kStopped) {
+      return;
+    }
     Function func;
     func.Init(HandleSub, reinterpret_cast<void *>(this));
-    _poll = false;
+    _state = PollingState::kStopped;
     task_ctrl->Remove(func);
   }
   virtual void Handle() = 0;
  private:
   static void HandleSub(void *p) {
     Polling *that = reinterpret_cast<Polling *>(p);
-    that->Handle();
-    if (that->_poll) {
-      Function func;
-      func.Init(HandleSub, p);
-      task_ctrl->Register(func);
+    if (that->_state == PollingState::kPolling) {
+      that->Handle();
+    } else {
+      that->RemovePolling();
     }
   }
-  bool _poll = false;
+  PollingState _state = PollingState::kStopped;
 };
 
 class PollingFunc : public Polling {
  public:
-  void RegisterFunc(void (*f)()) {
-    _f = f;
+  void Register() {
     this->RegisterPolling();
   }
-  void RemoveFunc() {
+  void Remove() {
     this->RemovePolling();
+  }
+  void Init(void (*func)(void *), void *arg) {
+    _func.Init(func, arg);
   }
  private:
   virtual void Handle() override {
-    if (_f != nullptr) {
-      _f();
-    }
+    _func.Execute();
   }
-  void (*_f)() = nullptr;
+  Function _func;
 };
 
 #endif /* __RAPH_KERNEL_DEV_POLLING_H__ */
