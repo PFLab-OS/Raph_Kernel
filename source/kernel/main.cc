@@ -229,18 +229,18 @@ extern "C" int main_of_others() {
         eth->ReuseRxBuffer(rpacket);
       }, nullptr);
     p.Register();
-  } else if (apic_ctrl->GetApicId() == 2) {
+  // } else if (apic_ctrl->GetApicId() == 2) {
     new(&tt) Callout;
     time = 3;
     tt.Init([](void *){
         if (!apic_ctrl->IsBootupAll()) {
-          tt.SetHandler(10);
+          tt.SetHandler(1000);
           return;
         }
         kassert(eth != nullptr);
         eth->UpdateLinkStatus();
         if (eth->GetStatus() != bE1000::LinkStatus::Up) {
-          tt.SetHandler(1000*1000);
+          tt.SetHandler(1000);
           return;
         }
         uint8_t data[] = {
@@ -274,7 +274,7 @@ extern "C" int main_of_others() {
         gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
         time--;
         if (time != 0) {
-          tt.SetHandler(1000*1000);
+          tt.SetHandler(1000);
         }
       }, nullptr);
     tt.SetHandler(10);

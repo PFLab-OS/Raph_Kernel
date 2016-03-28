@@ -2121,11 +2121,10 @@ lem_local_timer(void *arg)
 {
   struct adapter	*adapter = reinterpret_cast<struct adapter *>(arg);
 
-	EM_CORE_LOCK_ASSERT(adapter);
+  EM_CORE_LOCK_ASSERT(adapter);
 
 	lem_update_link_status(adapter);
 	lem_update_stats_counters(adapter);
-
 	lem_smartspeed(adapter);
 
 #ifdef NIC_PARAVIRT
@@ -2151,7 +2150,7 @@ lem_local_timer(void *arg)
 	    (get_ticks() - adapter->watchdog_time > EM_WATCHDOG))
 		goto hung;
 
-	// callout_reset(&adapter->timer, hz, lem_local_timer, adapter);
+        callout_reset(&adapter->timer, hz, lem_local_timer, adapter);
 	return;
 hung:
 	device_printf(adapter->dev, "Watchdog timeout -- resetting\n");
@@ -2602,7 +2601,6 @@ static void
 lem_smartspeed(struct adapter *adapter)
 {
 	u16 phy_tmp;
-
 	if (adapter->link_active || (adapter->hw.phy.type != e1000_phy_igp) ||
 	    adapter->hw.mac.autoneg == 0 ||
 	    (adapter->hw.phy.autoneg_advertised & ADVERTISE_1000_FULL) == 0)

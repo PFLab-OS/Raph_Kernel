@@ -86,7 +86,7 @@ class TaskCtrl {
   void Remove(const Function &func) {
     Locker locker(_lock);
     Task *t = _task_queue_top[apic_ctrl->GetApicId()];
-    while(t->next) {
+    while(t->next != nullptr) {
       if (t->next->func.Equal(func)) {
         Task *tt = t->next;
         t->next = t->next->next;
@@ -96,9 +96,9 @@ class TaskCtrl {
         }
         virtmem_ctrl->Free(reinterpret_cast<virt_addr>(tt));
         //        _allocator.Free(tt);
+      } else {
+        t = t->next;
       }
-      t = t->next;
-      
     }
   }
   void Run() {
