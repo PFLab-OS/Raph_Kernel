@@ -471,7 +471,8 @@ int32_t ARPSocket::ReceivePacket(uint16_t type, uint32_t *spa, uint8_t *sha) {
     break;
   } while(1);
 
-  op = ntohs(*reinterpret_cast<uint16_t*>(packet->buf + sizeof(EthHeader) + kOperationOffset));
+  uint8_t *p = packet->buf + sizeof(EthHeader) + kOperationOffset;
+  op = ntohs(p[0] << 8 | p[1]);
 
   // handle received ARP request/reply
   switch(op) {
