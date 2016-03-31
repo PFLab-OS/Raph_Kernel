@@ -59,6 +59,8 @@ public:
   }
   virtual void UpdateLinkStatus() override {}
 
+  virtual void SetupNetInterface() override {}
+
 private:
   int _pd;
   int _ifindex;
