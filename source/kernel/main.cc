@@ -152,10 +152,6 @@ extern "C" int main_of_others() {
   // according to mp spec B.3, system should switch over to Symmetric I/O mode
   apic_ctrl->BootAP();
   gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
-  uint8_t ip[] = {
-    //192, 168, 100, 120,
-    10, 0, 2, 5,
-  };
   if (apic_ctrl->GetApicId() == 1) {
     ARPSocket socket;
     uint32_t ipaddr;
@@ -225,7 +221,7 @@ extern "C" int main_of_others() {
     } else {
       socket.SetIPAddr(0xc0a86475);
       cnt = timer->ReadMainCnt();
-      if(socket.TransmitPacket(ARPSocket::kOpARPRequest, /*0xc0a86475*/0x0a00020f) < 0) {
+      if(socket.TransmitPacket(ARPSocket::kOpARPRequest, /*0xc0a86475*/0x0a00020f, nullptr) < 0) {
 	    gtty->Printf("s", "[arp] failed to transmit request\n");
 	  } else {
 	    gtty->Printf("s", "[arp] request sent\n");

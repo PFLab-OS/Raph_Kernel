@@ -56,7 +56,7 @@ int32_t Socket::GetEthAddr(uint32_t ipaddr, uint8_t *macaddr) {
     if(socket.Open() < 0) {
       return -1;
     } else {
-      socket.TransmitPacket(ARPSocket::kOpARPRequest, ipaddr);
+      socket.TransmitPacket(ARPSocket::kOpARPRequest, ipaddr, nullptr);
     }
   }
   return 0;
@@ -449,7 +449,7 @@ int32_t ARPSocket::TransmitPacket(uint16_t type, uint32_t tpa, uint8_t *tha) {
   // transmit
   _dev->TransmitPacket(packet);
 
-  return len;
+  return type;
 }
 
 int32_t ARPSocket::ReceivePacket(uint16_t type, uint32_t *spa, uint8_t *sha) {

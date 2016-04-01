@@ -133,7 +133,7 @@ void ARPRequest(uint32_t ipRequest, uint32_t ipReply) {
 
   // send ARP request
   socket.SetIPAddr(ipRequest);
-  if(socket.TransmitPacket(ARPSocket::kOpARPRequest, ipReply) < 0) {
+  if(socket.TransmitPacket(ARPSocket::kOpARPRequest, ipReply, nullptr) < 0) {
     std::cerr << "[ARP] failed to send request packet" << std::endl;
   } else {
     socket.ReceivePacket(ARPSocket::kOpARPReply, &ipaddr, macaddr);
