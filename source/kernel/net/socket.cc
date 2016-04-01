@@ -177,6 +177,8 @@ int32_t Socket::Receive(uint8_t *data, uint32_t length, bool isRawPacket) {
 
     // finalization
     _dev->ReuseRxBuffer(packet);
+  } else {
+    memcpy(data, packet->buf, packet->len < length ? packet->len : length);
   }
 
   return receivedLength < 0 ? receivedLength : receivedLength - (sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader));

@@ -58,26 +58,23 @@ DevRawEthernet::DevRawEthernet() : DevEthernet(0, 0, 0) {
   InitTxPacketBuffer();
   InitRxPacketBuffer();
 
-  DevRawEthernet *that = this;
-  _thTx = new std::thread ([&that]{
+  _thTx = new std::thread ([this]{
       while (true) {
         Packet *packet;
-        if (that->_tx_buffered.Pop(packet)) {
-          that->Transmit(packet->buf, packet->len);
-          that->ReuseTxBuffer(packet);
+        if (this->_tx_buffered.Pop(packet)) {
+          this->Transmit(packet->buf, packet->len);
+          this->ReuseTxBuffer(packet);
         }
-        usleep(10000);
       }
     });
 
-  _thRx = new std::thread ([&that]{
+  _thRx = new std::thread ([this]{
       while (true) {
         Packet *packet;
-        if (that->_rx_reserved.Pop(packet)) {
-          packet->len = that->Receive(packet->buf, MCLBYTES);
-          assert(that->_rx_buffered.Push(packet));
+        if (this->_rx_reserved.Pop(packet)) {
+          packet->len = this->Receive(packet->buf, MCLBYTES);
+          assert(this->_rx_buffered.Push(packet));
         }
-        usleep(10000);
       }
     });
 
