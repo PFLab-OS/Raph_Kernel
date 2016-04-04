@@ -116,7 +116,9 @@ private:
 #else
 #define UTEST_VIRTUAL
 #undef kassert
-#define kassert(flag) if (!(flag)) {if (gtty != nullptr) {gtty->Printf("s", "assertion failed at ", "s", __FILE__, "s", " l.", "d", __LINE__, "s", " (", "s", __func__, "s", ") Kernel stopped!");} while(true){asm volatile("hlt");}}
+#define kassert(flag) if (!(flag)) {if (gtty != nullptr) {gtty->PrintfRaw("s", "assertion failed at ", "s", __FILE__, "s", " l.", "d", __LINE__, "s", " (", "s", __func__, "s", ") Kernel stopped!");} while(true){asm volatile("hlt");}}
+
+#define MASK(val, ebit, sbit) ((val) & (((1 << ((ebit) - (sbit) + 1)) - 1) << (sbit)))
 
 #define checkpoint(id,str) if (id < 0 || apic_ctrl->GetApicId() == id) {gtty->Printf("s",str);}
 #define measure for(uint64_t t1 = 0, t2 = timer->ReadMainCnt(); ({if (t1 != 0) gtty->Printf("s","<","d",(timer->ReadMainCnt() - t2) * timer->GetCntClkPeriod(),"s","ns>"); (t1 == 0);}) ; t1++)

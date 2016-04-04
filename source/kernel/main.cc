@@ -28,6 +28,7 @@
 #include <task.h>
 #include <mem/physmem.h>
 #include <mem/paging.h>
+#include <gdt.h>
 #include <idt.h>
 #include <timer.h>
 #include <tty.h>
@@ -44,6 +45,7 @@ PhysmemCtrl *physmem_ctrl;
 PagingCtrl *paging_ctrl;
 VirtmemCtrl *virtmem_ctrl;
 TaskCtrl *task_ctrl;
+Gdt *gdt;
 Idt *idt;
 Timer *timer;
 
@@ -71,6 +73,9 @@ extern "C" int main() {
 
   ApicCtrl _apic_ctrl;
   apic_ctrl = &_apic_ctrl;
+
+  Gdt _gdt;
+  gdt = &_gdt;
   
   Idt _idt;
   idt = &_idt;
@@ -94,9 +99,9 @@ extern "C" int main() {
   gtty = &_vga;
   
   PhysAddr paddr;
-  physmem_ctrl->Alloc(paddr, PagingCtrl::kPageSize * 1);
+  physmem_ctrl->Alloc(paddr, PagingCtrl::kPageSize * 2);
   extern int kKernelEndAddr;
-  kassert(paging_ctrl->MapPhysAddrToVirtAddr(reinterpret_cast<virt_addr>(&kKernelEndAddr) - PagingCtrl::kPageSize * 3, paddr, PagingCtrl::kPageSize * 1, PDE_WRITE_BIT, PTE_WRITE_BIT | PTE_GLOBAL_BIT));
+  kassert(paging_ctrl->MapPhysAddrToVirtAddr(reinterpret_cast<virt_addr>(&kKernelEndAddr) - PagingCtrl::kPageSize * 4, paddr, PagingCtrl::kPageSize * 2, PDE_WRITE_BIT, PTE_WRITE_BIT | PTE_GLOBAL_BIT));
 
   multiboot_ctrl->Setup();
   
@@ -116,7 +121,13 @@ extern "C" int main() {
   
   cnt = 0;
 
-  idt->Setup();
+  gdt->SetupGeneric();
+
+  idt->SetupGeneric();
+
+  apic_ctrl->BootBSP();
+  idt->SetupProc();
+
   InitDevices<PCICtrl, Device>();
 
   extern int kKernelEndAddr;
@@ -126,9 +137,17 @@ extern "C" int main() {
   kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 2) + 1));
   kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 3) + 1));
   kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 4) + 1));
-  kassert(!paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - 4096 * 5));
+  kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 5) + 1));
+  kassert(!paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - 4096 * 6));
 
   gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
+  apic_ctrl->SetupTimer(32 + 10);
+  int cnt = 0;
+  while(true) {
+    asm volatile("hlt");
+    gtty->Printf("d",cnt);
+    cnt++;
+  }
 
   apic_ctrl->StartAPs();
 
@@ -141,14 +160,27 @@ extern "C" int main() {
   return 0;
 }
 
+#define FLAG 0
+#if FLAG == 2
+#define IP1 192, 168, 100, 117
+#define IP2 192, 168, 100, 104
+#elif FLAG == 1
+#define IP1 192, 168, 100, 104
+#define IP2 192, 168, 100, 117
+#elif FLAG == 0
+#define IP1 10, 0, 2, 5
+#define IP2 10, 0, 2, 15
+#endif
+
 uint8_t ip[] = {
-  //192, 168, 100, 117,
-  10, 0, 2, 5,
+  IP1,
 };
 
 extern "C" int main_of_others() {
-  // according to mp spec B.3, system should switch over to Symmetric I/O mode
+// according to mp spec B.3, system should switch over to Symmetric I/O mode
   apic_ctrl->BootAP();
+  idt->SetupProc();
+
   gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
   if (apic_ctrl->GetApicId() == 1) {
     kassert(eth != nullptr);
@@ -162,6 +194,7 @@ extern "C" int main_of_others() {
         // received packet
         if(rpacket->buf[12] == 0x08 && rpacket->buf[13] == 0x06 && rpacket->buf[21] == 0x02) {
           uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;
+          cnt = 0;
           // ARP packet
           gtty->Printf(
                        "s", "ARP Reply received; ",
@@ -174,12 +207,11 @@ extern "C" int main_of_others() {
                        "d", rpacket->buf[28], "s", ".",
                        "d", rpacket->buf[29], "s", ".",
                        "d", rpacket->buf[30], "s", ".",
-                       "d", rpacket->buf[31], "s", "\n");
+                       "d", rpacket->buf[31], "s", " ");
           gtty->Printf("s","latency:","d",l,"s","us\n");
         }
         if(rpacket->buf[12] == 0x08 && rpacket->buf[13] == 0x06 && rpacket->buf[21] == 0x01 && (memcmp(rpacket->buf + 38, ip, 4) == 0)) {
           // ARP packet
-
           uint8_t data[] = {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target MAC Address
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source MAC Address
@@ -229,9 +261,10 @@ extern "C" int main_of_others() {
         eth->ReuseRxBuffer(rpacket);
       }, nullptr);
     p.Register();
-  // } else if (apic_ctrl->GetApicId() == 2) {
+  } else if (apic_ctrl->GetApicId() == 2) {
+    cnt = 0;
     new(&tt) Callout;
-    time = 3;
+    time = 10;
     tt.Init([](void *){
         if (!apic_ctrl->IsBootupAll()) {
           tt.SetHandler(1000);
@@ -241,6 +274,10 @@ extern "C" int main_of_others() {
         eth->UpdateLinkStatus();
         if (eth->GetStatus() != bE1000::LinkStatus::Up) {
           tt.SetHandler(1000);
+          return;
+        }
+        if (cnt != 0) {
+          tt.SetHandler(10);
           return;
         }
         uint8_t data[] = {
@@ -257,8 +294,7 @@ extern "C" int main_of_others() {
           0x00, 0x00, 0x00, 0x00, // Source Protocol Address
           0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
           // Target Protocol Address
-          //192, 168, 100, 120,
-          10, 0, 2, 15,
+          IP2,
         };
         eth->GetEthAddr(data + 6);
         memcpy(data + 22, data + 6, 6);
@@ -270,11 +306,10 @@ extern "C" int main_of_others() {
         tpacket->len = len;
         cnt = timer->ReadMainCnt();
         eth->TransmitPacket(tpacket);
-
         gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
         time--;
         if (time != 0) {
-          tt.SetHandler(1000);
+          tt.SetHandler(3000);
         }
       }, nullptr);
     tt.SetHandler(10);
@@ -287,13 +322,16 @@ extern "C" int main_of_others() {
 }
 
 void kernel_panic(const char *class_name, const char *err_str) {
-  gtty->Printf("s", "\n[","s",class_name,"s","] error: ","s",err_str);
+  gtty->PrintfRaw("s", "\n[","s",class_name,"s","] error: ","s",err_str);
   while(1) {
     asm volatile("hlt;");
   }
 }
 
-extern "C" void __cxa_pure_virtual()
-{
+extern "C" void __cxa_pure_virtual() {
+  kernel_panic("", "");
+}
+
+extern "C" void __stack_chk_fail() {
   kernel_panic("", "");
 }

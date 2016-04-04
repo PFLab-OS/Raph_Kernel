@@ -24,7 +24,8 @@
 #define __RAPH_KERNEL_APIC_H__
 
 #include <stdint.h>
-#include "acpi.h"
+#include <raph.h>
+#include <acpi.h>
 
 struct MADT {
   ACPISDTHeader header;
@@ -54,13 +55,13 @@ struct MADTStLAPIC {
 // see acpi spec
 struct MADTStIOAPIC {
   MADTSt st;
-  uint8_t length;
   uint8_t ioapicId;
   uint8_t reserved;
   uint32_t ioapicAddr;
   uint32_t glblIntBase;
 } __attribute__ ((packed));
 
+class Regs;
 
 class ApicCtrl {
 public:
@@ -71,6 +72,9 @@ public:
     _madt = table;
   }
   void StartAPs();
+  void BootBSP() {
+    _lapic.Setup();
+  }
   void BootAP() {
     _started = true;
     _lapic.Setup();
@@ -88,9 +92,20 @@ public:
   int GetHowManyCpus() {
     return _lapic._ncpu;
   }
+  bool SetupIoInt(uint32_t irq, uint8_t lapicid, uint8_t vector) {
+    kassert(vector >= 32);
+    return _ioapic.SetupInt(irq, lapicid, vector);
+  }
+  void SendEoi() {
+    _lapic.SendEoi();
+  }
+  void SetupTimer(uint32_t irq) {
+    _lapic.SetupTimer(irq);
+  }
 private:
-  MADT *_madt = nullptr;
-  static const uint32_t kMadtFlagLapicEnable = 1;
+  static void TmrCallback(Regs *rs) {
+    apic_ctrl->SendEoi();
+  }
   class Lapic {
   public:
     // setup local APIC respond to specified index
@@ -124,15 +139,21 @@ private:
     volatile uint8_t GetApicId() {
       return _ctrlAddr[kRegId] >> 24;
     }
+    void SendEoi() {
+      _ctrlAddr[kRegEoi] = 0;
+    }
+    void SetupTimer(uint32_t irq);
   private:
-    uint32_t *_ctrlAddr = nullptr;
+    volatile uint32_t *_ctrlAddr = nullptr;
     static const int kIa32ApicBaseMsr = 0x1B;
     static const uint32_t kApicGlobalEnableFlag = 1 << 11;
     // see intel64 manual vol3 Table 10-1 (Local APIC Register Address Map)
     static const int kRegId = 0x20 / sizeof(uint32_t);
+    static const int kRegEoi = 0xB0 / sizeof(uint32_t);
     static const int kRegSvr = 0xF0 / sizeof(uint32_t);
     static const int kRegIcrLo = 0x300 / sizeof(uint32_t);
     static const int kRegIcrHi = 0x310 / sizeof(uint32_t);
+    static const int kRegLvtCmci = 0x2F0 / sizeof(uint32_t);
     static const int kRegLvtTimer = 0x320 / sizeof(uint32_t);
     static const int kRegLvtThermalSensor = 0x330 / sizeof(uint32_t);
     static const int kRegLvtPerformanceCnt = 0x340 / sizeof(uint32_t);
@@ -140,10 +161,12 @@ private:
     static const int kRegLvtLint1 = 0x360 / sizeof(uint32_t);
     static const int kRegLvtErr = 0x370 / sizeof(uint32_t);
     static const int kRegTimerInitCnt = 0x380 / sizeof(uint32_t);
+    static const int kRegTimerCurCnt = 0x390 / sizeof(uint32_t);
     static const int kRegDivConfig = 0x3E0 / sizeof(uint32_t);
 
     // see intel64 manual vol3 Figure 10-10 (Divide Configuration Register)
     static const uint32_t kDivVal1 = 0xB;
+    static const uint32_t kDivVal16 = 0x3;
 
     // see intel64 manual vol3 Figure 10-8 (Local Vector Table)
     static const int kRegLvtMask = 1 << 16;
@@ -184,6 +207,19 @@ private:
     void SetReg(uint32_t *reg) {
       _reg = reg;
     }
+    bool SetupInt(uint32_t irq, uint8_t lapicid, uint8_t vector) {
+      kassert(irq <= this->GetMaxIntr());
+      if ((Read(kRegRedTbl + 2 * irq) | kRegRedTblFlagMask) == 0) {
+        return false;
+      }
+      Write(kRegRedTbl + 2 * irq,
+            kRegRedTblFlagValueDeliveryLow |
+            kRegRedTblFlagDestModePhys |
+            kRegRedTblFlagTriggerModeEdge |
+            vector);
+      Write(kRegRedTbl + 2 * irq + 1, lapicid << kRegRedTblOffsetDest);
+      return true;
+    }
   private:
     uint32_t GetMaxIntr() {
       // see IOAPIC manual 3.2.2 (IOAPIC Version Register)
@@ -200,8 +236,16 @@ private:
     static const uint32_t kRegRedTbl = 0x10;
 
     // see IOAPIC manual 3.2.4 (I/O Redirection Table Registers)
-    static const uint32_t kRegRedTblMask = 1 << 16;
+    static const uint32_t kRegRedTblFlagValueDeliveryLow = 1 << 8;
+    static const uint32_t kRegRedTblFlagDestModePhys = 0 << 11;
+    static const uint32_t kRegRedTblFlagDestModeLogical = 1 << 11;
+    static const uint32_t kRegRedTblFlagTriggerModeEdge = 0 << 15;
+    static const uint32_t kRegRedTblFlagTriggerModeLevel = 1 << 15;
+    static const uint32_t kRegRedTblFlagMask = 1 << 16;
+    static const int kRegRedTblOffsetDest = 24;
   } _ioapic;
+  MADT *_madt = nullptr;
+  static const uint32_t kMadtFlagLapicEnable = 1;
   volatile bool _started = false;
   volatile bool _all_bootup = false;
 };

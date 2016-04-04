@@ -21,11 +21,12 @@
  */
 
 #include <assert.h>
-#include "mem/virtmem.h"
-#include "acpi.h"
-#include "apic.h"
-#include "timer.h"
-#include "global.h"
+#include <mem/virtmem.h>
+#include <acpi.h>
+#include <apic.h>
+#include <timer.h>
+#include <global.h>
+#include <idt.h>
 
 extern "C" void entryothers();
 extern "C" void entry();
@@ -104,18 +105,15 @@ void ApicCtrl::Lapic::Setup() {
 
   _ctrlAddr[kRegSvr] = kRegSvrApicEnableFlag | (32 + 31); // TODO
 
-  // setup timer
-  _ctrlAddr[kRegDivConfig] = kDivVal1;
-  _ctrlAddr[kRegTimerInitCnt] = 1448895600;
-
   // disable all local interrupt sources
-  _ctrlAddr[kRegLvtTimer] = kRegTimerPeriodic | (32 + 10);
+  _ctrlAddr[kRegLvtTimer] = kRegLvtMask | kRegTimerPeriodic;
   // TODO : check APIC version before mask tsensor & pcnt
+  _ctrlAddr[kRegLvtCmci] = kRegLvtMask;
   _ctrlAddr[kRegLvtThermalSensor] = kRegLvtMask;
   _ctrlAddr[kRegLvtPerformanceCnt] = kRegLvtMask;
   _ctrlAddr[kRegLvtLint0] = kRegLvtMask;
   _ctrlAddr[kRegLvtLint1] = kRegLvtMask;
-  _ctrlAddr[kRegLvtErr] = 32 + 19; // TODO
+  _ctrlAddr[kRegLvtErr] = kRegLvtMask | (32 + 19); // TODO
 }
 
 void ApicCtrl::Lapic::Start(uint8_t apicId, uint64_t entryPoint) {
@@ -151,15 +149,41 @@ void ApicCtrl::Lapic::WriteIcr(uint32_t hi, uint32_t lo) {
   GetApicId();
 }
 
+void ApicCtrl::Lapic::SetupTimer(uint32_t irq) {
+  _ctrlAddr[kRegDivConfig] = kDivVal16;
+  _ctrlAddr[kRegTimerInitCnt] = 0xFFFFFFFF;
+  uint64_t timer1 = timer->ReadMainCnt();
+  while(true) {
+    volatile uint32_t cur = _ctrlAddr[kRegTimerCurCnt];
+    if (cur < 0xFFF00000) {
+      break;
+    }
+  }
+  uint64_t timer2 = timer->ReadMainCnt();
+  kassert((timer2 - timer1) > 0);
+  uint32_t base_cnt = 0xFFFFF / ((timer2 - timer1) * timer->GetCntClkPeriod() / 1000);
+  kassert(base_cnt > 0);
+
+  kassert(idt != nullptr);
+  idt->SetIntCallback(irq, TmrCallback);
+  _ctrlAddr[kRegTimerInitCnt] = base_cnt * 1000;
+      
+  _ctrlAddr[kRegLvtTimer] = kRegTimerPeriodic | irq;
+}
+
+
 void ApicCtrl::Ioapic::Setup() {
   if (_reg == nullptr) {
     return;
   }
 
-  uint32_t intr = GetMaxIntr();
+  // disable 8259 PIC
+  asm volatile("mov $0xff, %al; out %al, $0xa1; out %al, $0x21;");
+
+  uint32_t intr = this->GetMaxIntr();
   // disable all external I/O interrupts
-  for (uint32_t i = 0; i < intr; i++) {
-    Write(kRegRedTbl + 2 * i, kRegRedTblMask);
-    Write(kRegRedTbl + 2 * i + 1, 0);
+  for (uint32_t i = 0; i <= intr; i++) {
+    this->Write(kRegRedTbl + 2 * i, kRegRedTblFlagMask);
+    this->Write(kRegRedTbl + 2 * i + 1, 0);
   }
 }

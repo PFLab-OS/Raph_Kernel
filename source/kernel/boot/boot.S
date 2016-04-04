@@ -22,15 +22,15 @@
 
 #define ASM_FILE
 #include "multiboot2.h"
-#include "../mem/virtmem.h"
-#include "../mem/paging.h"
-#include "../idt.h"
+#include <mem/virtmem.h>
+#include <mem/paging.h>
+#include <gdt.h>
 
 #define MULTIBOOTHEADER_SIZE (multibootheader_end - multibootheader_start)
 
 .global entry
 .global multiboot_info
-.global gdt
+.global gdt_desc
 .global gdtr
 .code32
 .section .bootstrap
@@ -250,7 +250,7 @@ trampoline:
   mov %ax, %fs
   mov %ax, %gs
   mov %ax, %ss
-  mov $kKernelEndAddr - 3, %rsp
+  mov $kKernelEndAddr - 7, %rsp
   pushq $0   // return addr
   pushq $KERNEL_CS
   mov $main, %rax
@@ -266,17 +266,19 @@ multiboot_info:
   .long 0
 
 .balign 8
-gdt:
+gdt_desc:
   // null descriptor
   .quad 0
   .quad 0
   .quad 0x00209a0000000000  // code descriptor
   .quad 0x0000920000000000  // data descriptor
+  .quad 0                   // tss1 (set by Gdt::SetupGeneric())
+  .quad 0                   // tss2
   
   .word 0
 gdtr:
-  .word 8*4 - 1
-  .quad gdt
+  .word 8*6 - 1
+  .quad gdt_desc
 
 .bss
 tmp_stack: 

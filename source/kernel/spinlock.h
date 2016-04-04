@@ -60,6 +60,7 @@ public:
   }
 private:
   volatile unsigned int _flag;
+  int _id;
 };
 
 // コンストラクタ、デストラクタでlock,unlockができるラッパー

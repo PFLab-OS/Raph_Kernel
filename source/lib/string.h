@@ -43,30 +43,10 @@ static inline int strcmp(const char *s1, const char *s2) {
   return *s1 - *s2;
 }
 
-static inline void *memcpy_b(uint8_t *d, const uint8_t *s, size_t n) {
-  while(n--) *(d++) = *(s++);
-  return d;
-}
-
-static inline void *memcpy_q(uint64_t *d, const uint64_t *s, size_t n) {
-  while(n--) *(d++) = *(s++);
-  return d;
-}
-
 static inline void *memcpy(void *dest, const void *src, size_t n) {
-  size_t d = reinterpret_cast<size_t>(dest);
-  size_t s = reinterpret_cast<size_t>(src);
-  /* if ((d % 8) == (s % 8)) { */
-  /*   size_t d2 = (d + 7) / 8 * 8; */
-  /*   size_t s2 = (s + 7) / 8 * 8; */
-  /*   size_t d3 = (d + n) / 8 * 8; */
-  /*   size_t s3 = (s + n) / 8 * 8; */
-  /*   memcpy_b(reinterpret_cast<uint8_t *>(dest), reinterpret_cast<const uint8_t *>(src), d2 - d); */
-  /*   memcpy_q(reinterpret_cast<uint64_t *>(d2), reinterpret_cast<const uint64_t *>(s2), (d3 - d2) / 8); */
-  /*   memcpy_b(reinterpret_cast<uint8_t *>(d3), reinterpret_cast<const uint8_t *>(s3), (d + n - d3)); */
-  /* } else { */
-    memcpy_b(reinterpret_cast<uint8_t *>(dest), reinterpret_cast<const uint8_t *>(src), n);
-  /* } */
+  uint8_t *d = reinterpret_cast<uint8_t *>(dest);
+  const uint8_t *s = reinterpret_cast<const uint8_t *>(src);
+  while(n--) *(d++) = *(s++);
   return dest;
 }
 

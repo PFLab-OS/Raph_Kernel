@@ -386,6 +386,7 @@ lem_probe(device_t dev)
 
 	ent = lem_vendor_info_array;
 	while (ent->vendor_id != 0) {
+
 		if ((pci_vendor_id == ent->vendor_id) &&
 		    (pci_device_id == ent->device_id) &&
 

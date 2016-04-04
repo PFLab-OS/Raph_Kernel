@@ -33,6 +33,7 @@ class PagingCtrl;
 class PhysmemCtrl;
 class VirtmemCtrl;
 class TaskCtrl;
+class Gdt;
 class Idt;
 
 class Tty;
@@ -48,6 +49,7 @@ extern PagingCtrl *paging_ctrl;
 extern PhysmemCtrl *physmem_ctrl;
 extern VirtmemCtrl *virtmem_ctrl;
 extern TaskCtrl *task_ctrl;
+extern Gdt *gdt;
 extern Idt *idt;
 
 extern Tty *gtty;

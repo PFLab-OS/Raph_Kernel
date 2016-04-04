@@ -30,6 +30,8 @@
 class Tty {
  public:
   Tty() {
+    _cx = 0;
+    _cy = 0;
   }
   void Printf() {
   }
@@ -38,6 +40,21 @@ class Tty {
     Locker locker(_lock);
     Printf_sub(args...);
   }
+  // use to print error message
+  template<class... T>
+    void PrintfRaw(const T& ...args) {
+    int tx = _cx;
+    int ty = _cy;
+    _cx = 0;
+    _cy = 0;
+    Printf_sub(args...);
+    _cx = tx;
+    _cy = ty;
+  }
+ protected:
+  virtual void Write(uint8_t c) = 0;
+  int _cx;
+  int _cy;
  private:
   SpinLock _lock;
   void Printf_sub() {
@@ -155,7 +172,6 @@ class Tty {
     }
     Printf_sub(args...);
   } 
-  virtual void Write(uint8_t c) = 0;
 };
 
 #endif // __RAPH_KERNEL_TTY_H__

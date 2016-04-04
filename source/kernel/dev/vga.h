@@ -23,10 +23,11 @@
 #ifndef __RAPH_KERNEL_VGA_H__
 #define __RAPH_KERNEL_VGA_H__
 
-#include "../global.h"
-#include "../mem/physmem.h"
-#include "../mem/paging.h"
-#include "../raph.h"
+#include <global.h>
+#include <mem/physmem.h>
+#include <mem/paging.h>
+#include <raph.h>
+#include <tty.h>
 
 class Vga : public Tty {
  public:
@@ -38,12 +39,9 @@ class Vga : public Tty {
     // TODO : サイズ適当
     physmem_ctrl->Reserve(PagingCtrl::RoundAddrOnPageBoundary(vga_addr), PagingCtrl::RoundUpAddrOnPageBoundary(0x1000));
     _vga_addr = reinterpret_cast<uint8_t *>(p2v(vga_addr));
-    _cx = 0;
-    _cy = 0;
   }
  private:
   virtual void Write(uint8_t c) override {
-    // TODO ページ送り
     switch(c) {
     case '\n':
       _cx = 0;
@@ -78,8 +76,6 @@ class Vga : public Tty {
   uint8_t *_vga_addr;
   static const int _x = 80;
   static const int _y = 25;
-  int _cx;
-  int _cy;
 };
 
 #endif // __RAPH_KERNEL_VGA_H__

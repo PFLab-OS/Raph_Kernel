@@ -22,12 +22,18 @@
 
 #include <spinlock.h>
 #include <raph.h>
+#include <idt.h>
+#include <apic.h>
 
 void SpinLock::Lock() {
+  if ((_flag % 2) == 1) {
+    kassert(_id != apic_ctrl->GetApicId());
+  }
   volatile unsigned int flag = GetFlag();
   while((flag % 2) == 1 || !SetFlag(flag, flag + 1)) {
     flag = GetFlag();
   }
+  _id = apic_ctrl->GetApicId();
 }
 
 void SpinLock::Unlock() {

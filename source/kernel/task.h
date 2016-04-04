@@ -29,6 +29,8 @@
 #include <global.h>
 #include <spinlock.h>
 
+#include <timer.h>
+
 class Function {
  public:
   Function() {
@@ -67,17 +69,27 @@ class TaskCtrl {
   TaskCtrl() {
     _task_queue_top = nullptr;
     _task_queue_bottom = nullptr;
+    _task_queue_top_sub = nullptr;
+    _task_queue_bottom_sub = nullptr;
   }
   void Setup() {
     int cpus = apic_ctrl->GetHowManyCpus();
     _task_queue_top = reinterpret_cast<Task **>(virtmem_ctrl->Alloc(sizeof(Task *) * cpus));
     _task_queue_bottom = reinterpret_cast<Task **>(virtmem_ctrl->Alloc(sizeof(Task *) * cpus));
+    _task_queue_top_sub = reinterpret_cast<Task **>(virtmem_ctrl->Alloc(sizeof(Task *) * cpus));
+    _task_queue_bottom_sub = reinterpret_cast<Task **>(virtmem_ctrl->Alloc(sizeof(Task *) * cpus));
     for (int i = 0; i < cpus; i++) {
       Task *t = reinterpret_cast<Task *>(virtmem_ctrl->Alloc(sizeof(Task)));
       new(&t->func) Function;
       t->next = nullptr;
       _task_queue_top[i] = t;
       _task_queue_bottom[i] = t;
+
+      t = reinterpret_cast<Task *>(virtmem_ctrl->Alloc(sizeof(Task)));
+      new(&t->func) Function;
+      t->next = nullptr;
+      _task_queue_top_sub[i] = t;
+      _task_queue_bottom_sub[i] = t;
     }
   }
   void Register(const Function &func) {
@@ -100,6 +112,21 @@ class TaskCtrl {
         t = t->next;
       }
     }
+    t = _task_queue_top_sub[apic_ctrl->GetApicId()];
+    while(t->next != nullptr) {
+      if (t->next->func.Equal(func)) {
+        Task *tt = t->next;
+        t->next = t->next->next;
+        if (tt == _task_queue_bottom_sub[apic_ctrl->GetApicId()]) {
+          kassert(tt->next == nullptr);
+          _task_queue_bottom_sub[apic_ctrl->GetApicId()] = t;
+        }
+        virtmem_ctrl->Free(reinterpret_cast<virt_addr>(tt));
+        //        _allocator.Free(tt);
+      } else {
+        t = t->next;
+      }
+    }
   }
   void Run() {
     Function f;
@@ -110,7 +137,8 @@ class TaskCtrl {
         Task *tt = _task_queue_top[apic_ctrl->GetApicId()];
         t = tt->next;
         if (t == nullptr) {
-          return;
+          kassert(tt == _task_queue_bottom[apic_ctrl->GetApicId()]);
+          break;
         }
         tt->next = t->next;
         if (t->next == nullptr) {
@@ -121,14 +149,23 @@ class TaskCtrl {
       t->func.Execute();
       if (t->type == TaskType::kPolling) {
         Locker locker(_lock);
-        _task_queue_bottom[apic_ctrl->GetApicId()]->next = t;
+        _task_queue_bottom_sub[apic_ctrl->GetApicId()]->next = t;
         t->next = nullptr;
-        _task_queue_bottom[apic_ctrl->GetApicId()] = t;
+        _task_queue_bottom_sub[apic_ctrl->GetApicId()] = t;
       } else {
         virtmem_ctrl->Free(reinterpret_cast<virt_addr>(t));
         //      _allocator.Free(t);
       }
     }
+    Locker locker(_lock);
+    Task **tmp;
+    tmp = _task_queue_top;
+    _task_queue_top = _task_queue_top_sub;
+    _task_queue_top_sub = tmp;
+
+    tmp = _task_queue_bottom;
+    _task_queue_bottom = _task_queue_bottom_sub;
+    _task_queue_bottom_sub = tmp;
   }
  private:
   friend Polling;
@@ -155,6 +192,8 @@ class TaskCtrl {
   }
   Task **_task_queue_top;
   Task **_task_queue_bottom;
+  Task **_task_queue_top_sub;
+  Task **_task_queue_bottom_sub;
   Allocator<Task> _allocator;
   SpinLock _lock;
 };
