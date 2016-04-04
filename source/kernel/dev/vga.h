@@ -44,6 +44,10 @@ class Vga : public Tty {
   virtual void Write(uint8_t c) override {
     switch(c) {
     case '\n':
+      for (int x = _cx; x < _x; x++) {
+        _vga_addr[(_cy * _x + x) * 2] = ' ';
+        _vga_addr[(_cy * _x + x) * 2 + 1] = 0x0f;
+      }
       _cx = 0;
       _cy++;
       break;

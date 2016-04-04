@@ -7,7 +7,7 @@ DEPS= $(OBJ:%.o=%.d) $(TEST_OBJ:%.o=%.d)
 
 TEST = ./unit_test
 
-CXXFLAGS += -Wall -Wshadow -nostdinc -nostdlib -fno-exceptions -fno-rtti -mcmodel=large -D__KERNEL__ -std=c++11 -I../lib/ -I. -MMD -MP --save-temps
+CXXFLAGS += -Wall -Wshadow -nostdinc -nostdlib -fno-exceptions -fno-rtti -mcmodel=large -D__KERNEL__ -std=c++11 -I../lib/ -I. -MMD -MP
 
 ASFLAGS += -I.
 
@@ -33,4 +33,4 @@ $(BUILD)$(KERNEL): $(OBJ) kernel.ld
 	$(LD) -nostdinc -nostdlib -Tkernel.ld $(OBJ) -o $@
 
 clean:
-	-rm -f $(OBJ) $(TEST) $(DEPS)
+	-rm -f $(OBJ) $(TEST) $(DEPS) *.s *.ii

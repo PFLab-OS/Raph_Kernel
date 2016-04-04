@@ -85,7 +85,7 @@ trampoline_of_others:
   .word 0
 gdtr_of_others:
   .word 8*4 - 1
-  .quad gdt
+  .quad gdt_desc
 
 stack_of_others:
   .quad 0

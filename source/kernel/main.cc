@@ -118,15 +118,16 @@ extern "C" int main() {
 
   // apic_ctrl->Setup()より後
   task_ctrl->Setup();
-  
-  cnt = 0;
-
-  gdt->SetupGeneric();
 
   idt->SetupGeneric();
-
+  
   apic_ctrl->BootBSP();
+
+  gdt->SetupProc();
+
   idt->SetupProc();
+
+  cnt = 0;
 
   InitDevices<PCICtrl, Device>();
 
@@ -142,12 +143,6 @@ extern "C" int main() {
 
   gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
   apic_ctrl->SetupTimer(32 + 10);
-  int cnt = 0;
-  while(true) {
-    asm volatile("hlt");
-    gtty->Printf("d",cnt);
-    cnt++;
-  }
 
   apic_ctrl->StartAPs();
 
@@ -179,9 +174,14 @@ uint8_t ip[] = {
 extern "C" int main_of_others() {
 // according to mp spec B.3, system should switch over to Symmetric I/O mode
   apic_ctrl->BootAP();
+
+  gdt->SetupProc();
   idt->SetupProc();
 
   gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
+
+  apic_ctrl->SetupTimer(32 + 10);
+
   if (apic_ctrl->GetApicId() == 1) {
     kassert(eth != nullptr);
     PollingFunc p;

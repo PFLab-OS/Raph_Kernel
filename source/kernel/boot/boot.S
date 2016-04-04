@@ -272,12 +272,10 @@ gdt_desc:
   .quad 0
   .quad 0x00209a0000000000  // code descriptor
   .quad 0x0000920000000000  // data descriptor
-  .quad 0                   // tss1 (set by Gdt::SetupGeneric())
-  .quad 0                   // tss2
   
   .word 0
 gdtr:
-  .word 8*6 - 1
+  .word 8*4 - 1
   .quad gdt_desc
 
 .bss
