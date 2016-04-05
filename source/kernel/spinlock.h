@@ -41,9 +41,12 @@ enum class SpinLockId : int {
 
 class SpinLock {
 public:
-  SpinLock() : _flag(0) {}
+  SpinLock() {}
   volatile unsigned int GetFlag() {
     return _flag;
+  }
+  volatile int GetProcId() {
+    return _id;
   }
   // WriteLockを通じてのみアクセスする事!!!!!
   bool SetFlag(unsigned int old_flag, unsigned int new_flag) {
@@ -59,8 +62,8 @@ public:
     return ((_flag % 2) == 1);
   }
 private:
-  volatile unsigned int _flag;
-  int _id;
+  volatile unsigned int _flag = 0;
+  volatile int _id;
 };
 
 // コンストラクタ、デストラクタでlock,unlockができるラッパー

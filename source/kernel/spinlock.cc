@@ -38,6 +38,7 @@ void SpinLock::Lock() {
 
 void SpinLock::Unlock() {
   kassert((_flag % 2) == 1);
+  _id = -1;
   _flag++;
 }
 
@@ -49,4 +50,3 @@ int SpinLock::Trylock() {
     return -1;
   }
 }
-

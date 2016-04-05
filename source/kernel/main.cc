@@ -142,7 +142,7 @@ extern "C" int main() {
   kassert(!paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - 4096 * 6));
 
   gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
-  apic_ctrl->SetupTimer(32 + 10);
+  // apic_ctrl->SetupTimer(32 + 10);
 
   apic_ctrl->StartAPs();
 
@@ -150,12 +150,12 @@ extern "C" int main() {
 
   while(true) {
     task_ctrl->Run();
-    asm volatile("hlt");
+    // asm volatile("hlt");
   }
   return 0;
 }
 
-#define FLAG 0
+#define FLAG 1
 #if FLAG == 2
 #define IP1 192, 168, 100, 117
 #define IP2 192, 168, 100, 104
@@ -180,7 +180,7 @@ extern "C" int main_of_others() {
 
   gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
 
-  apic_ctrl->SetupTimer(32 + 10);
+  // apic_ctrl->SetupTimer(32 + 10);
 
   if (apic_ctrl->GetApicId() == 1) {
     kassert(eth != nullptr);
@@ -316,7 +316,7 @@ extern "C" int main_of_others() {
   }
   while(true) {
     task_ctrl->Run();
-    asm volatile("hlt");
+    // asm volatile("hlt");
   }
   return 0;
 }
