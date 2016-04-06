@@ -112,7 +112,6 @@ extern "C" int main() {
 
   // timer->Sertup()より後
   apic_ctrl->Setup();
-  
   idt->Setup();
 
   InitNetCtrl();
@@ -123,6 +122,10 @@ extern "C" int main() {
   apic_ctrl->StartAPs();
 
   gtty->Printf("s", "\n\n[kernel] info: initialization completed\n");
+
+  //
+  apic_ctrl->Enable(1,0);//KBD
+
 
   extern int kKernelEndAddr;
   // stackは16K

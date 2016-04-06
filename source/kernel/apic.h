@@ -25,6 +25,7 @@
 
 #include <stdint.h>
 #include "acpi.h"
+#include "raph.h"
 
 struct MADT {
   ACPISDTHeader header;
@@ -79,6 +80,11 @@ public:
   void SendIpi() {
     _lapic.SendIpi();
   }
+
+  void Enable(int irq,int cpunum){
+    _pic.Enable(irq);
+    _ioapic.Enable(irq,cpunum);
+  }
   volatile uint8_t GetApicId() {
     return _lapic.GetApicId();
   }
@@ -115,6 +121,7 @@ private:
       // debug
       WriteIcr(0 << 24, kTriggerModeLevel | kLevelAssert | 0x32);  
     }
+
     volatile uint8_t GetApicId() {
       return _ctrlAddr[kRegId] >> 24;
     }
@@ -178,6 +185,11 @@ private:
     void SetReg(uint32_t *reg) {
       _reg = reg;
     }
+    void Enable(int irq,int cpunum){
+      Write(kRegRedTbl + 2 * irq,32+irq); //32 trap:IRQ0
+      Write(kRegRedTbl + 2 * irq+1, cpunum<<24);
+
+    }
   private:
     uint32_t GetMaxIntr() {
       // see IOAPIC manual 3.2.2 (IOAPIC Version Register)
@@ -196,6 +208,27 @@ private:
     // see IOAPIC manual 3.2.4 (I/O Redirection Table Registers)
     static const uint32_t kRegRedTblMask = 1 << 16;
   } _ioapic;
+  class Pic {
+  public:
+    void Setup();
+    void Enable(int irq);
+  private:
+    uint16_t _irqMask = 0xFFFF; //the initial value masks all the irqs.
+    static const int IO_PIC_Master = 0x20;
+    static const int IO_PIC_Slave = 0xA0;
+    static const int IRQ_SLAVE = 2;
+
+    static const int MasterCommand =IO_PIC_Master;
+    static const int MasterStatus =IO_PIC_Master;
+    static const int MasterMask =IO_PIC_Master+1;
+    static const int MasterData =IO_PIC_Master+1;
+    static const int SlaveCommand =IO_PIC_Slave;
+    static const int SlaveStatus =IO_PIC_Slave;
+    static const int SlaveMask =IO_PIC_Slave+1;
+    static const int SlaveData =IO_PIC_Slave+1;
+    //koko kakitotyuu
+  }_pic;
+  static const int T_IRQ0=0x20;
   volatile bool _started = false;
 };
 

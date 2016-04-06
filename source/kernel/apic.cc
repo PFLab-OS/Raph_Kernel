@@ -62,6 +62,7 @@ void ApicCtrl::Setup() {
   _lapic.Setup();
   _ioapic.Setup();
   _lapic._ncpu = ncpu;
+  _ioapic.Enable(1,0);
 }
 
 extern uint64_t boot16_start;
@@ -158,7 +159,38 @@ void ApicCtrl::Ioapic::Setup() {
   uint32_t intr = GetMaxIntr();
   // disable all external I/O interrupts
   for (uint32_t i = 0; i < intr; i++) {
-    Write(kRegRedTbl + 2 * i, kRegRedTblMask);
+    Write(kRegRedTbl + 2 * i, kRegRedTblMask|(32+i)); //32 trap:IRQ0
     Write(kRegRedTbl + 2 * i + 1, 0);
   }
+}
+
+void ApicCtrl::Pic::Setup(){
+
+  //mask all
+  outb(MasterMask,0xFF);
+  outb(SlaveMask,0xFF); 
+
+  //Initial control word
+  outb(MasterCommand,0x11);
+  outb(MasterMask,T_IRQ0);
+  outb(MasterMask,1<<IRQ_SLAVE);
+  outb(MasterMask,0x3);
+  outb(SlaveCommand,0x11);
+  outb(SlaveMask,T_IRQ0+8);
+  outb(SlaveMask,IRQ_SLAVE);
+  outb(SlaveMask,0x3);
+
+  //OCW3
+  outb(MasterCommand,0x68);
+  outb(MasterCommand,0x0a);
+  outb(SlaveCommand,0x68);
+  outb(SlaveCommand,0x0a);
+  
+  Enable(IRQ_SLAVE);
+}
+
+void ApicCtrl::Pic::Enable(int irq){
+  _irqMask&=~(1<<irq);
+  outb(MasterMask,(uint8_t)_irqMask);
+  outb(MasterMask,(uint8_t)(_irqMask>>8));
 }
