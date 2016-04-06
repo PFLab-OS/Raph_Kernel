@@ -161,12 +161,12 @@ void ApicCtrl::Lapic::SetupTimer(uint32_t irq) {
   }
   uint64_t timer2 = timer->ReadMainCnt();
   kassert((timer2 - timer1) > 0);
-  uint32_t base_cnt = 0xFFFFF / ((timer2 - timer1) * timer->GetCntClkPeriod() / 5000);
+  uint32_t base_cnt = 0xFFFFF / ((timer2 - timer1) * timer->GetCntClkPeriod() / (10 * 1000));
   kassert(base_cnt > 0);
 
   kassert(idt != nullptr);
   idt->SetIntCallback(irq, TmrCallback);
-  _ctrlAddr[kRegTimerInitCnt] = base_cnt * 1000;
+  _ctrlAddr[kRegTimerInitCnt] = base_cnt;
       
   _ctrlAddr[kRegLvtTimer] = kRegTimerPeriodic | irq;
 }

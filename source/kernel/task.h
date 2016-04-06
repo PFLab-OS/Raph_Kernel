@@ -71,6 +71,8 @@ class TaskCtrl {
     int cpus = apic_ctrl->GetHowManyCpus();
     _task_queue = reinterpret_cast<TaskQueue *>(virtmem_ctrl->Alloc(sizeof(TaskQueue) * cpus));
     for (int i = 0; i < cpus; i++) {
+      new(&_task_queue[i].lock) SpinLock;
+
       Task *t = reinterpret_cast<Task *>(virtmem_ctrl->Alloc(sizeof(Task)));
       new(&t->func) Function;
       t->next = nullptr;
@@ -91,7 +93,7 @@ class TaskCtrl {
   }
   void Remove(const Function &func) {
     int apicid = apic_ctrl->GetApicId();
-    Locker locker(_lock);
+    Locker locker(_task_queue[apicid].lock);
     Task *t = _task_queue[apicid].top;
     while(t->next != nullptr) {
       if (t->next->func.Equal(func)) {
@@ -129,7 +131,7 @@ class TaskCtrl {
     while (true){
       Task *t;
       {
-        Locker locker(_lock);
+        Locker locker(_task_queue[apicid].lock);
         Task *tt = _task_queue[apicid].top;
         t = tt->next;
         if (t == nullptr) {
@@ -144,7 +146,7 @@ class TaskCtrl {
       }
       t->func.Execute();
       if (t->type == TaskType::kPolling) {
-        Locker locker(_lock);
+        Locker locker(_task_queue[apicid].lock);
         _task_queue[apicid].bottom_sub->next = t;
         t->next = nullptr;
         _task_queue[apicid].bottom_sub = t;
@@ -153,7 +155,7 @@ class TaskCtrl {
         //      _allocator.Free(t);
       }
     }
-    Locker locker(_lock);
+    Locker locker(_task_queue[apicid].lock);
     Task *tmp;
     tmp = _task_queue[apicid].top;
     _task_queue[apicid].top = _task_queue[apicid].top_sub;
@@ -183,7 +185,7 @@ class TaskCtrl {
     task->next = nullptr;
     task->type = type;
     int apicid = apic_ctrl->GetApicId();
-    Locker locker(_lock);
+    Locker locker(_task_queue[apicid].lock);
     _task_queue[apicid].bottom->next = task;
     _task_queue[apicid].bottom = task;
   }
@@ -192,9 +194,9 @@ class TaskCtrl {
     Task *bottom;
     Task *top_sub;
     Task *bottom_sub;
+    SpinLock lock;
   } *_task_queue;
   Allocator<Task> _allocator;
-  SpinLock _lock;  // TODO ID毎のロックにすべき
 };
 
 

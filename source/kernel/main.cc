@@ -142,7 +142,7 @@ extern "C" int main() {
   kassert(!paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - 4096 * 6));
 
   gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
-  // apic_ctrl->SetupTimer(32 + 10);
+  apic_ctrl->SetupTimer(32 + 10);
 
   apic_ctrl->StartAPs();
 
@@ -150,13 +150,16 @@ extern "C" int main() {
 
   while(true) {
     task_ctrl->Run();
-    // asm volatile("hlt");
+    asm volatile("hlt");
   }
   return 0;
 }
 
-#define FLAG 0
-#if FLAG == 2
+#define FLAG 3
+#if FLAG == 3
+#define IP1 192, 168, 100, 117
+#define IP2 192, 168, 100, 254
+#elif FLAG == 2
 #define IP1 192, 168, 100, 117
 #define IP2 192, 168, 100, 104
 #elif FLAG == 1
@@ -180,8 +183,20 @@ extern "C" int main_of_others() {
 
   gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
 
-  // apic_ctrl->SetupTimer(32 + 10);
+  apic_ctrl->SetupTimer(32 + 10);
+  // ループ性能測定用
+  // if (apic_ctrl->GetApicId() == 3) {
+  //   PollingFunc p;
+  //   static int hoge = 0;
+  //   p.Init([](void *){
+  //       int hoge2 = timer->GetUsecFromCnt(timer->ReadMainCnt()) - hoge;
+  //       gtty->Printf("d",hoge2,"s"," ");
+  //       hoge = timer->GetUsecFromCnt(timer->ReadMainCnt());
+  //     }, nullptr);
+  //   p.Register();
+  // }
 
+  
   if (apic_ctrl->GetApicId() == 1) {
     kassert(eth != nullptr);
     PollingFunc p;
@@ -316,7 +331,7 @@ extern "C" int main_of_others() {
   }
   while(true) {
     task_ctrl->Run();
-    // asm volatile("hlt");
+    asm volatile("hlt");
   }
   return 0;
 }
