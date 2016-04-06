@@ -40,23 +40,19 @@ namespace C {
 
 class Idt {
  public:
-  enum class HandlingStatus {
-    kHandling,
-    kNotHandling
-  };
   void SetupGeneric();
   void SetupProc();
   void SetIntCallback(int n, idt_callback callback);
-  // is cpu handling interrupt?
-  volatile HandlingStatus IsHandling() {
-    return _is_handling[apic_ctrl->GetApicId()];
+  // if 0, cpu is not handling interrupt
+  volatile int GetHandlingCnt() {
+    return _handling_cnt[apic_ctrl->GetApicId()];
   }
  private:
   void SetGate(void (*gate)(Regs *rs), int n, uint8_t dpl, bool trap, uint8_t ist);
   static const uint32_t kIdtPresent = 1 << 15;
   volatile uint16_t _idtr[5];
   idt_callback **_callback;
-  HandlingStatus *_is_handling;
+  int *_handling_cnt;
   friend void C::handle_int(Regs *rs);
 };
 

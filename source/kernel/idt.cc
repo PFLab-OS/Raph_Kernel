@@ -29,7 +29,9 @@
 
 namespace C {
 extern "C" void handle_int(Regs *rs) {
-  idt->_is_handling[apic_ctrl->GetApicId()] = Idt::HandlingStatus::kHandling;
+  // TODO 二重割り込みの際どうするか
+  //      割り込みカウント方式にすべき？
+  idt->_handling_cnt[apic_ctrl->GetApicId()]++;
   if (idt->_callback[apic_ctrl->GetApicId()][rs->n] == nullptr) {
     if (gtty != nullptr) {
       gtty->PrintfRaw("s","[kernel] error: unimplemented interrupt ", "d", rs->n, "s", " ");
@@ -38,7 +40,7 @@ extern "C" void handle_int(Regs *rs) {
   } else {
     idt->_callback[apic_ctrl->GetApicId()][rs->n](rs);
   }
-  idt->_is_handling[apic_ctrl->GetApicId()] = Idt::HandlingStatus::kNotHandling;
+  idt->_handling_cnt[apic_ctrl->GetApicId()]--;
 }
 }
 
@@ -81,10 +83,10 @@ void Idt::SetupGeneric() {
   kassert(virtmem_ctrl != nullptr);
   kassert(apic_ctrl != nullptr);
   _callback = reinterpret_cast<idt_callback **>(virtmem_ctrl->Alloc(sizeof(idt_callback *) * apic_ctrl->GetHowManyCpus()));
-  _is_handling = reinterpret_cast<HandlingStatus *>(virtmem_ctrl->Alloc(sizeof(HandlingStatus) * apic_ctrl->GetHowManyCpus()));
+  _handling_cnt = reinterpret_cast<int *>(virtmem_ctrl->Alloc(sizeof(int) * apic_ctrl->GetHowManyCpus()));
   for (int i = 0; i < apic_ctrl->GetHowManyCpus(); i++) {
     _callback[i] = reinterpret_cast<idt_callback *>(virtmem_ctrl->Alloc(sizeof(idt_callback) * 256));
-    _is_handling[i] = HandlingStatus::kNotHandling;
+    _handling_cnt[i] = 0;
     for (int j = 0; j < 256; j++) {
       _callback[i][j] = nullptr;
     }
