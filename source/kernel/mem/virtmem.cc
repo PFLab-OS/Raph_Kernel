@@ -359,6 +359,8 @@ VirtmemCtrl::VirtmemCtrl() {
 
 #endif // __UNIT_TEST__
 
+#ifndef __UNIT_TEST__
+
 virt_addr VirtmemCtrl::Alloc(size_t size) {
   Locker locker(_lock);
   size = alignUp(size, 8);
@@ -428,7 +430,13 @@ virt_addr VirtmemCtrl::Alloc(size_t size) {
   kassert(best != _last_freed);
   return best->GetAreaStartAddr();
 }
+#else
+virt_addr VirtmemCtrl::Alloc(size_t size) {
+  return reinterpret_cast<virt_addr>(new uint8_t[size]);
+}
+#endif
 
+#ifndef __UNIT_TEST__
 void VirtmemCtrl::Free(virt_addr addr) {
   Locker locker(_lock);
   AreaManager *area = GetAreaManager(addr);
@@ -448,3 +456,8 @@ void VirtmemCtrl::Free(virt_addr addr) {
     }
   }
 }
+#else
+void VirtmemCtrl::Free(virt_addr addr) {
+  delete [] reinterpret_cast<uint64_t*>(addr);
+}
+#endif

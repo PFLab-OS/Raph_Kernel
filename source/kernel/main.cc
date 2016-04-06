@@ -37,6 +37,9 @@
 #include <dev/vga.h>
 #include <dev/pci.h>
 
+#include "net/netctrl.h"
+#include "net/socket.h"
+
 SpinLockCtrl *spinlock_ctrl;
 MultibootCtrl *multiboot_ctrl;
 AcpiCtrl *acpi_ctrl;
@@ -52,6 +55,8 @@ Timer *timer;
 Tty *gtty;
 
 PCICtrl *pci_ctrl;
+
+static uint32_t rnd_next = 1;
 
 #include <dev/e1000/bem.h>
 bE1000 *eth;
@@ -113,8 +118,11 @@ extern "C" int main() {
     kernel_panic("timer", "HPET not supported.\n");
   }
 
-  // timer->Setup()より後
+
+  // timer->Sertup()より後
   apic_ctrl->Setup();
+
+  rnd_next = timer->ReadMainCnt();
 
   // apic_ctrl->Setup()より後
   task_ctrl->Setup();
@@ -127,7 +135,7 @@ extern "C" int main() {
 
   idt->SetupProc();
 
-  cnt = 0;
+  InitNetCtrl();
 
   InitDevices<PCICtrl, Device>();
 
@@ -141,6 +149,8 @@ extern "C" int main() {
   kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 5) + 1));
   kassert(!paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - 4096 * 6));
 
+  cnt = 0;
+
   gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
   apic_ctrl->SetupTimer(32 + 10);
 
@@ -152,6 +162,9 @@ extern "C" int main() {
     task_ctrl->Run();
     asm volatile("hlt");
   }
+
+  DismissNetCtrl();
+
   return 0;
 }
 
@@ -349,4 +362,12 @@ extern "C" void __cxa_pure_virtual() {
 
 extern "C" void __stack_chk_fail() {
   kernel_panic("", "");
+}
+
+#define RAND_MAX 0x7fff
+
+uint32_t rand() {
+  rnd_next = rnd_next * 1103515245 + 12345;
+  /* return (unsigned int)(rnd_next / 65536) % 32768;*/
+  return (uint32_t)(rnd_next >> 16) & RAND_MAX;
 }

@@ -1,7 +1,9 @@
 KERNEL = kernel.elf
-DEV_OBJ = dev/pci.o dev/e1000/lem.o dev/e1000/em.o dev/e1000/e1000_api.o dev/e1000/e1000_nvm.o dev/e1000/e1000_mac.o dev/e1000/e1000_phy.o dev/e1000/e1000_manage.o dev/e1000/e1000_80003es2lan.o dev/e1000/e1000_82540.o dev/e1000/e1000_82541.o dev/e1000/e1000_82542.o dev/e1000/e1000_82543.o dev/e1000/e1000_82571.o dev/e1000/e1000_ich8lan.o dev/e1000/e1000_osdep.o dev/e1000/e1000_raph.o dev/e1000/if_lem.o dev/e1000/if_em.o dev/oe1000/e1000.o dev/oe1000/i8254.o dev/oe1000/i8257.o dev/oe1000/ich8.o
-OBJ = boot/boot.o boot/bootap.o main.o spinlock.o apic.o acpi.o gdt.o idt.o int.o mem/virtmem.o mem/paging.o mem/physmem.o $(DEV_OBJ)
-TEST_OBJ = test_main.o spinlock.o mem/virtmem.o mem/paging.o mem/physmem.o
+DEV_OBJ = dev/pci.o dev/netdev.o dev/e1000/lem.o dev/e1000/em.o dev/e1000/e1000_api.o dev/e1000/e1000_nvm.o dev/e1000/e1000_mac.o dev/e1000/e1000_phy.o dev/e1000/e1000_manage.o dev/e1000/e1000_80003es2lan.o dev/e1000/e1000_82540.o dev/e1000/e1000_82541.o dev/e1000/e1000_82542.o dev/e1000/e1000_82543.o dev/e1000/e1000_82571.o dev/e1000/e1000_ich8lan.o dev/e1000/e1000_osdep.o dev/e1000/e1000_raph.o dev/e1000/if_lem.o dev/e1000/if_em.o
+# dev/oe1000/e1000.o dev/oe1000/i8254.o dev/oe1000/i8257.o dev/oe1000/ich8.o
+NET_OBJ = net/segment.o net/layer.o net/eth.o net/arp.o net/ip.o net/tcp.o net/udp.o net/socket.o net/netctrl.o
+OBJ = boot/boot.o boot/bootap.o main.o spinlock.o apic.o acpi.o gdt.o idt.o int.o mem/virtmem.o mem/paging.o mem/physmem.o $(DEV_OBJ) $(NET_OBJ)
+TEST_OBJ = test_main.o spinlock.o mem/virtmem.o dev/raw.o dev/netdev.o $(NET_OBJ)
 BUILD = ../../build/
 DEPS= $(OBJ:%.o=%.d) $(TEST_OBJ:%.o=%.d)
 
@@ -18,13 +20,13 @@ default: $(BUILD)$(KERNEL)
 -include $(DEPS)
 
 test: 
-	make $(TEST) CXX=g++ LD=ld "CXXFLAGS= -O3 -g -Wall -Wshadow -D__UNIT_TEST__ -std=c++11"
+	make $(TEST) CXX=g++ LD=ld "CXXFLAGS= -O3 -g -Wall -Wshadow -D__UNIT_TEST__ -std=c++11 -I."
 	rm $(TEST_OBJ)
 
 testrun:
 	make clean
 	make test
-	$(TEST)
+	sudo $(TEST)
 
 $(TEST): $(TEST_OBJ)
 	g++ -pedantic -pthread -static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive -o $@ $^

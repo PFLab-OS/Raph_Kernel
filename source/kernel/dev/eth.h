@@ -17,35 +17,25 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * Author: Liva
- *
+ * 
  */
 
-#ifndef __RAPH_KERNEL_E1000_EM_H__
-#define __RAPH_KERNEL_E1000_EM_H__
+#ifndef __RAPH_KERNEL_DEV_ETH_H__
+#define __RAPH_KERNEL_DEV_ETH_H__
 
-#include <stdint.h>
-#include <mem/physmem.h>
-#include <mem/virtmem.h>
-#include <polling.h>
-#include <global.h>
-#include <dev/pci.h>
-#include "bem.h"
+#include "netdev.h"
+#include "pci.h"
 
-class E1000 : public bE1000, Polling {
+class DevEthernet : public DevPCI, public NetDev {
 public:
- E1000(uint8_t bus, uint8_t device, bool mf) : bE1000(bus, device, mf) {}
-  static bool InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf);
-  // from Polling
-  virtual void Handle() override;
-
-  BsdDriver bsd;
-  virtual void UpdateLinkStatus() override;
-
-  virtual void SetupNetInterface() override;
-
+  DevEthernet(uint8_t bus, uint8_t device, bool mf) : DevPCI(bus, device, mf) {}
   // allocate 6 byte before call
-  virtual void GetEthAddr(uint8_t *buffer) override;
- private:
+  virtual void GetEthAddr(uint8_t *buffer) = 0;
+  virtual void SetupNetInterface() = 0;
 };
 
-#endif /* __RAPH_KERNEL_E1000_EM_H__ */
+class DevEthernetCtrl : public NetDevCtrl {
+  DevEthernet *_devTable[kMaxDevNumber] = {nullptr};
+};
+
+#endif /* __RAPH_KERNEL_DEV_ETH_H__ */

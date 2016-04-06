@@ -192,6 +192,7 @@ void PhysmemCtrl::Reserve(phys_addr addr, size_t size) {
 #include "physmem.h"
 #include <future>
 #include <random>
+#include <iostream>
 
 static void test1() {
   PhysmemCtrl _physmem_ctrl;

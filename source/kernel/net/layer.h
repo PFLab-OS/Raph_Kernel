@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2016 Raphine Project
+ * Copyright (c) 2016 Project Raphine
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -16,36 +16,31 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
- * Author: Liva
- *
+ * Author: Levelfour
+ * 
  */
 
-#ifndef __RAPH_KERNEL_E1000_EM_H__
-#define __RAPH_KERNEL_E1000_EM_H__
+#ifndef __RAPH_KERNEL_NET_L2_H__
+#define __RAPH_KERNEL_NET_L2_H__
 
 #include <stdint.h>
-#include <mem/physmem.h>
-#include <mem/virtmem.h>
-#include <polling.h>
-#include <global.h>
-#include <dev/pci.h>
-#include "bem.h"
+#include "../dev/netdev.h"
 
-class E1000 : public bE1000, Polling {
+class L2Ctrl {
 public:
- E1000(uint8_t bus, uint8_t device, bool mf) : bE1000(bus, device, mf) {}
-  static bool InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf);
-  // from Polling
-  virtual void Handle() override;
-
-  BsdDriver bsd;
-  virtual void UpdateLinkStatus() override;
-
-  virtual void SetupNetInterface() override;
-
-  // allocate 6 byte before call
-  virtual void GetEthAddr(uint8_t *buffer) override;
- private:
+  virtual int32_t GenerateHeader(uint8_t *header,
+                                 uint8_t *saddr,
+                                 uint8_t *daddr,
+                                 uint16_t type) = 0;
+  virtual bool FilterPacket(uint8_t *packet,
+                            uint8_t *saddr,
+                            uint8_t *daddr,
+                            uint16_t type) = 0;
 };
 
-#endif /* __RAPH_KERNEL_E1000_EM_H__ */
+class L4Ctrl {
+protected:
+  L4Ctrl() {}
+};
+
+#endif // __RAPH_KERNEL_NET_L2_H__

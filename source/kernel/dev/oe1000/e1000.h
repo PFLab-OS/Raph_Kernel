@@ -23,8 +23,8 @@
  * 
  */
 
-#ifndef __RAPH_KERNEL_E1000_H__
-#define __RAPH_KERNEL_E1000_H__
+#ifndef __RAPH_KERNEL_DEV_E1000_H__
+#define __RAPH_KERNEL_DEV_E1000_H__
 
 #include <stdint.h>
 #include <mem/physmem.h>
@@ -372,4 +372,4 @@ class DevGbeIch8 : public oE1000 {
 };
 
 
-#endif /* __RAPH_KERNEL_E1000_H__ */
+#endif /* __RAPH_KERNEL_DEV_E1000_H__ */

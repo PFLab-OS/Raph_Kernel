@@ -16,36 +16,34 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
- * Author: Liva
- *
+ * Author: Levelfour
+ * 
  */
 
-#ifndef __RAPH_KERNEL_E1000_EM_H__
-#define __RAPH_KERNEL_E1000_EM_H__
+#include "netdev.h"
 
-#include <stdint.h>
-#include <mem/physmem.h>
-#include <mem/virtmem.h>
-#include <polling.h>
-#include <global.h>
-#include <dev/pci.h>
-#include "bem.h"
+const char *NetDevCtrl::kDefaultNetworkInterfaceName = "eth0";
 
-class E1000 : public bE1000, Polling {
-public:
- E1000(uint8_t bus, uint8_t device, bool mf) : bE1000(bus, device, mf) {}
-  static bool InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf);
-  // from Polling
-  virtual void Handle() override;
+bool NetDevCtrl::RegisterDevice(NetDev *dev, const char *name) {
+  if(_curDevNumber < kMaxDevNumber) {
+    // succeed to register
+    dev->SetName(name);
+    _devTable[_curDevNumber++] = dev;
+    return true;
+  } else {
+    // fail to register
+    return false;
+  }
+}
 
-  BsdDriver bsd;
-  virtual void UpdateLinkStatus() override;
-
-  virtual void SetupNetInterface() override;
-
-  // allocate 6 byte before call
-  virtual void GetEthAddr(uint8_t *buffer) override;
- private:
-};
-
-#endif /* __RAPH_KERNEL_E1000_EM_H__ */
+NetDev *NetDevCtrl::GetDevice(const char *name) {
+  if(!name) name = kDefaultNetworkInterfaceName;
+  for(uint32_t i = _curDevNumber; i > 0; i--) {
+    NetDev *dev = _devTable[i - 1];
+    // search device by network interface name
+    if(!strncmp(dev->GetName(), name, strlen(name))) {
+      return dev;
+    }
+  }
+  return nullptr;
+}

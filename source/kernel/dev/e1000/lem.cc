@@ -43,6 +43,7 @@ bool lE1000::InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bo
     lem_init(addr->bsd.adapter);
     addr->RegisterPolling();
     eth = addr;
+    eth->SetupNetInterface();
     return true;
   } else {
     virtmem_ctrl->Free(ptr2virtaddr(addr->bsd.adapter));
@@ -53,6 +54,11 @@ bool lE1000::InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bo
 
 void lE1000::Handle() {
   lem_poll(this->bsd.adapter->ifp);
+}
+
+void lE1000::SetupNetInterface() {
+  netdev_ctrl->RegisterDevice(this);
+  polling_ctrl->Register(this);
 }
 
 void lE1000::GetEthAddr(uint8_t *buffer) {
