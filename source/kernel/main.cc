@@ -20,26 +20,28 @@
  * 
  */
 
-#include "global.h"
-#include "spinlock.h"
-#include "acpi.h"
-#include "apic.h"
-#include "multiboot.h"
-#include "polling.h"
-#include "mem/physmem.h"
-#include "mem/paging.h"
-#include "idt.h"
-#include "timer.h"
+#include <global.h>
+#include <spinlock.h>
+#include <acpi.h>
+#include <apic.h>
+#include <multiboot.h>
+#include <task.h>
+#include <mem/physmem.h>
+#include <mem/paging.h>
+#include <gdt.h>
+#include <idt.h>
+#include <timer.h>
+#include <tty.h>
 
-#include "tty.h"
-#include "dev/acpipmtmr.h"
-#include "dev/hpet.h"
-
-#include "dev/vga.h"
-#include "dev/pci.h"
+#include <dev/hpet.h>
+#include <dev/vga.h>
+#include <dev/pci.h>
 
 #include "net/netctrl.h"
 #include "net/socket.h"
+
+#include <keyboard.h>
+#include <int_handler.h>
 
 SpinLockCtrl *spinlock_ctrl;
 MultibootCtrl *multiboot_ctrl;
@@ -48,15 +50,25 @@ ApicCtrl *apic_ctrl;
 PhysmemCtrl *physmem_ctrl;
 PagingCtrl *paging_ctrl;
 VirtmemCtrl *virtmem_ctrl;
-PollingCtrl *polling_ctrl;
+TaskCtrl *task_ctrl;
+Gdt *gdt;
 Idt *idt;
 Timer *timer;
 
 Tty *gtty;
+Keyboard *keyboard;
 
 PCICtrl *pci_ctrl;
 
 static uint32_t rnd_next = 1;
+
+#include <dev/e1000/bem.h>
+bE1000 *eth;
+uint64_t cnt;
+int time;
+
+#include <callout.h>
+Callout tt;
 
 extern "C" int main() {
   SpinLockCtrl _spinlock_ctrl;
@@ -70,6 +82,9 @@ extern "C" int main() {
 
   ApicCtrl _apic_ctrl;
   apic_ctrl = &_apic_ctrl;
+
+  Gdt _gdt;
+  gdt = &_gdt;
   
   Idt _idt;
   idt = &_idt;
@@ -83,49 +98,57 @@ extern "C" int main() {
   PagingCtrl _paging_ctrl;
   paging_ctrl = &_paging_ctrl;
 
-  PollingCtrl _polling_ctrl;
-  polling_ctrl = &_polling_ctrl;
+  TaskCtrl _task_ctrl;
+  task_ctrl = &_task_ctrl;
   
-  AcpiPmTimer _atimer;
   Hpet _htimer;
-  timer = &_atimer;
+  timer = &_htimer;
 
   Vga _vga;
   gtty = &_vga;
+
+   Keyboard _keyboard;
+   keyboard = &_keyboard;
   
   PhysAddr paddr;
-  physmem_ctrl->Alloc(paddr, PagingCtrl::kPageSize * 1);
+  physmem_ctrl->Alloc(paddr, PagingCtrl::kPageSize * 2);
   extern int kKernelEndAddr;
-  kassert(paging_ctrl->MapPhysAddrToVirtAddr(reinterpret_cast<virt_addr>(&kKernelEndAddr) - PagingCtrl::kPageSize * 3, paddr, PagingCtrl::kPageSize * 1, PDE_WRITE_BIT, PTE_WRITE_BIT | PTE_GLOBAL_BIT));
+  kassert(paging_ctrl->MapPhysAddrToVirtAddr(reinterpret_cast<virt_addr>(&kKernelEndAddr) - PagingCtrl::kPageSize * 4, paddr, PagingCtrl::kPageSize * 2, PDE_WRITE_BIT, PTE_WRITE_BIT | PTE_GLOBAL_BIT));
 
   multiboot_ctrl->Setup();
   
   // acpi_ctl->Setup() は multiboot_ctrl->Setup()から呼ばれる
 
-  timer->Setup();
-  if (_htimer.Setup()) {
-    timer = &_htimer;
+  if (timer->Setup()) {
     gtty->Printf("s","[timer] info: HPET supported.\n");
+  } else {
+    kernel_panic("timer", "HPET not supported.\n");
   }
 
-  rnd_next = timer->ReadMainCnt();
 
   // timer->Sertup()より後
   apic_ctrl->Setup();
-  idt->Setup();
+
+  rnd_next = timer->ReadMainCnt();
+
+  // apic_ctrl->Setup()より後
+  task_ctrl->Setup();
+
+  idt->SetupGeneric();
+  
+  apic_ctrl->BootBSP();
+
+  gdt->SetupProc();
+
+  idt->SetupProc();
 
   InitNetCtrl();
 
   InitDevices<PCICtrl, Device>();
 
-  gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
-  apic_ctrl->StartAPs();
-
-  gtty->Printf("s", "\n\n[kernel] info: initialization completed\n");
-
   //
-  apic_ctrl->Enable(1,0);//KBD
-
+    apic_ctrl->Enable(1,0);//KBD
+    idt->SetIntCallback(0x20+1,intKeyboard);
 
   extern int kKernelEndAddr;
   // stackは16K
@@ -134,36 +157,26 @@ extern "C" int main() {
   kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 2) + 1));
   kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 3) + 1));
   kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 4) + 1));
-  kassert(!paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - 4096 * 5));
+  kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 5) + 1));
+  kassert(!paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - 4096 * 6));
 
-  ARPSocket socket;
-  if(socket.Open() < 0) {
-    gtty->Printf("s", "cannot open socket\n");
-  } else {
-    while(1) {
-      gtty->Printf("s", "wating ... ");
-      uint32_t ipaddr;
-      uint8_t macaddr[6];
-      socket.ReceivePacket(ARPSocket::kOpARPRequest, &ipaddr, macaddr);
-      timer->BusyUwait(500);
-      socket.TransmitPacket(ARPSocket::kOpARPReply, ipaddr, macaddr);
-      gtty->Printf("s", "ARP request received; and replied\n");
-    }
-  }
-//  Socket socket;
-//  if(socket.Open() < 0) {
-//    gtty->Printf("s", "cannot open socket\n");
-//  } else {
-//    uint8_t data[0x400];
-//    socket.SetAddr(0x0a00020f);
-//    socket.SetPort(4000);
-//    socket.ReceivePacket(data, 0x400);
-//    gtty->Printf("s", "### tx test end\n");
-//  }
+  cnt = 0;
 
-  polling_ctrl->HandleAll();
+  gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
+  apic_ctrl->SetupTimer(32 + 10);
+
+  apic_ctrl->StartAPs();
+
+  gtty->Printf("s", "\n\n[kernel] info: initialization completed\n");
+
   while(true) {
-    asm volatile("hlt;nop;hlt;");
+    while(keyboard->Count()>0){
+      char ch[2]={'\0','\0'};
+      ch[0]=keyboard->Getch();
+      gtty->Printf("s",ch);
+    }
+    task_ctrl->Run();
+    asm volatile("hlt");
   }
 
   DismissNetCtrl();
@@ -171,25 +184,199 @@ extern "C" int main() {
   return 0;
 }
 
+#define FLAG 2
+#if FLAG == 3
+#define IP1 192, 168, 100, 117
+#define IP2 192, 168, 100, 254
+#elif FLAG == 2
+#define IP1 192, 168, 100, 117
+#define IP2 192, 168, 100, 104
+#elif FLAG == 1
+#define IP1 192, 168, 100, 104
+#define IP2 192, 168, 100, 117
+#elif FLAG == 0
+#define IP1 10, 0, 2, 5
+#define IP2 10, 0, 2, 15
+#endif
+
+uint8_t ip[] = {
+  IP1,
+};
+
 extern "C" int main_of_others() {
-  // according to mp spec B.3, system should switch over to Symmetric I/O mode
+// according to mp spec B.3, system should switch over to Symmetric I/O mode
   apic_ctrl->BootAP();
+
+  gdt->SetupProc();
+  idt->SetupProc();
+
   gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
-  while(1) {
-    asm volatile("hlt;");
+
+  apic_ctrl->SetupTimer(32 + 10);
+  // ループ性能測定用
+  // if (apic_ctrl->GetApicId() == 3) {
+  //   PollingFunc p;
+  //   static int hoge = 0;
+  //   p.Init([](void *){
+  //       int hoge2 = timer->GetUsecFromCnt(timer->ReadMainCnt()) - hoge;
+  //       gtty->Printf("d",hoge2,"s"," ");
+  //       hoge = timer->GetUsecFromCnt(timer->ReadMainCnt());
+  //     }, nullptr);
+  //   p.Register();
+  // }
+
+  
+  if (apic_ctrl->GetApicId() == 1) {
+    kassert(eth != nullptr);
+    PollingFunc p;
+    p.Init([](void *){
+        bE1000::Packet *rpacket;
+        if(!eth->ReceivePacket(rpacket)) {
+          return;
+        } 
+        // received packet
+        if(rpacket->buf[12] == 0x08 && rpacket->buf[13] == 0x06 && rpacket->buf[21] == 0x02) {
+          uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;
+          cnt = 0;
+          // ARP packet
+          gtty->Printf(
+                       "s", "ARP Reply received; ",
+                       "x", rpacket->buf[22], "s", ":",
+                       "x", rpacket->buf[23], "s", ":",
+                       "x", rpacket->buf[24], "s", ":",
+                       "x", rpacket->buf[25], "s", ":",
+                       "x", rpacket->buf[26], "s", ":",
+                       "x", rpacket->buf[27], "s", " is ",
+                       "d", rpacket->buf[28], "s", ".",
+                       "d", rpacket->buf[29], "s", ".",
+                       "d", rpacket->buf[30], "s", ".",
+                       "d", rpacket->buf[31], "s", " ");
+          gtty->Printf("s","latency:","d",l,"s","us\n");
+        }
+        if(rpacket->buf[12] == 0x08 && rpacket->buf[13] == 0x06 && rpacket->buf[21] == 0x01 && (memcmp(rpacket->buf + 38, ip, 4) == 0)) {
+          // ARP packet
+          uint8_t data[] = {
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target MAC Address
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source MAC Address
+            0x08, 0x06, // Type: ARP
+            // ARP Packet
+            0x00, 0x01, // HardwareType: Ethernet
+            0x08, 0x00, // ProtocolType: IPv4
+            0x06, // HardwareLength
+            0x04, // ProtocolLength
+            0x00, 0x02, // Operation: ARP Reply
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source Hardware Address
+            0x00, 0x00, 0x00, 0x00, // Source Protocol Address
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
+            0x00, 0x00, 0x00, 0x00, // Target Protocol Address
+          };
+          memcpy(data, rpacket->buf + 6, 6);
+          eth->GetEthAddr(data + 6);
+          memcpy(data + 22, data + 6, 6);
+          memcpy(data + 28, ip, 4);
+          memcpy(data + 32, rpacket->buf + 22, 6);
+          memcpy(data + 38, rpacket->buf + 28, 4);
+
+          uint32_t len = sizeof(data)/sizeof(uint8_t);
+          bE1000::Packet *tpacket;
+          kassert(eth->GetTxPacket(tpacket));
+          memcpy(tpacket->buf, data, len);
+          tpacket->len = len;
+          eth->TransmitPacket(tpacket);
+          gtty->Printf(
+                       "s", "ARP Request received; ",
+                       "x", rpacket->buf[22], "s", ":",
+                       "x", rpacket->buf[23], "s", ":",
+                       "x", rpacket->buf[24], "s", ":",
+                       "x", rpacket->buf[25], "s", ":",
+                       "x", rpacket->buf[26], "s", ":",
+                       "x", rpacket->buf[27], "s", ",",
+                       "d", rpacket->buf[28], "s", ".",
+                       "d", rpacket->buf[29], "s", ".",
+                       "d", rpacket->buf[30], "s", ".",
+                       "d", rpacket->buf[31], "s", " says who's ",
+                       "d", rpacket->buf[38], "s", ".",
+                       "d", rpacket->buf[39], "s", ".",
+                       "d", rpacket->buf[40], "s", ".",
+                       "d", rpacket->buf[41], "s", "\n");
+          //gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
+        }
+        eth->ReuseRxBuffer(rpacket);
+      }, nullptr);
+    p.Register();
+  } else if (apic_ctrl->GetApicId() == 2) {
+    cnt = 0;
+    new(&tt) Callout;
+    time = 10;
+    tt.Init([](void *){
+        if (!apic_ctrl->IsBootupAll()) {
+          tt.SetHandler(1000);
+          return;
+        }
+        apic_ctrl->SendIpi(3);
+        kassert(eth != nullptr);
+        eth->UpdateLinkStatus();
+        if (eth->GetStatus() != bE1000::LinkStatus::Up) {
+          tt.SetHandler(1000);
+          return;
+        }
+        if (cnt != 0) {
+          tt.SetHandler(10);
+          return;
+        }
+        uint8_t data[] = {
+          0xff, 0xff, 0xff, 0xff, 0xff, 0xff, // Target MAC Address
+          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source MAC Address
+          0x08, 0x06, // Type: ARP
+          // ARP Packet
+          0x00, 0x01, // HardwareType: Ethernet
+          0x08, 0x00, // ProtocolType: IPv4
+          0x06, // HardwareLength
+          0x04, // ProtocolLength
+          0x00, 0x01, // Operation: ARP Request
+          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source Hardware Address
+          0x00, 0x00, 0x00, 0x00, // Source Protocol Address
+          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
+          // Target Protocol Address
+          IP2,
+        };
+        eth->GetEthAddr(data + 6);
+        memcpy(data + 22, data + 6, 6);
+        memcpy(data + 28, ip, 4);
+        uint32_t len = sizeof(data)/sizeof(uint8_t);
+        bE1000::Packet *tpacket;
+        kassert(eth->GetTxPacket(tpacket));
+        memcpy(tpacket->buf, data, len);
+        tpacket->len = len;
+        cnt = timer->ReadMainCnt();
+        eth->TransmitPacket(tpacket);
+        gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
+        time--;
+        if (time != 0) {
+          tt.SetHandler(3000);
+        }
+      }, nullptr);
+    tt.SetHandler(10);
+  }
+  while(true) {
+    task_ctrl->Run();
+    asm volatile("hlt");
   }
   return 0;
 }
 
-void kernel_panic(char *class_name, char *err_str) {
-  gtty->Printf("s", "[kernel] error: fatal error occured!");
+void kernel_panic(const char *class_name, const char *err_str) {
+  gtty->PrintfRaw("s", "\n[","s",class_name,"s","] error: ","s",err_str);
   while(1) {
     asm volatile("hlt;");
   }
 }
 
-extern "C" void __cxa_pure_virtual()
-{
+extern "C" void __cxa_pure_virtual() {
+  kernel_panic("", "");
+}
+
+extern "C" void __stack_chk_fail() {
   kernel_panic("", "");
 }
 

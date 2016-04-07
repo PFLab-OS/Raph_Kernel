@@ -21,8 +21,8 @@
  */
 
 #define ASM_FILE
-#include "../idt.h"
-#include "../mem/paging.h"
+#include <gdt.h>
+#include <mem/paging.h>
 
 # entry point of APs must be located on the align of 4KB
 # see intel MPspec Appendix B.4.2
@@ -72,6 +72,7 @@ trampoline_of_others:
   mov %ax, %gs
   mov %ax, %ss
   mov (stack_of_others), %rsp
+  sub $8, %rsp
   pushq $0   // return addr
   pushq $KERNEL_CS
   mov $main_of_others, %rax
@@ -84,7 +85,7 @@ trampoline_of_others:
   .word 0
 gdtr_of_others:
   .word 8*4 - 1
-  .quad gdt
+  .quad gdt_desc
 
 stack_of_others:
   .quad 0

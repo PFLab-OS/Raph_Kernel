@@ -24,6 +24,7 @@
 #define __RAPH_LIB_STRING_H__
 
 #include <stdint.h>
+#include <stddef.h>
 
 static inline size_t strlen(const char *str) {
   const char *s;
@@ -55,7 +56,8 @@ static inline char *strncpy(char *s1, const char *s2, size_t n) {
   return s1;
 }
 
-static void * memcpy(void *dest, const void *src, size_t n) {
+
+static inline void *memcpy(void *dest, const void *src, size_t n) {
   uint8_t *d = reinterpret_cast<uint8_t *>(dest);
   const uint8_t *s = reinterpret_cast<const uint8_t *>(src);
   while(n--) *(d++) = *(s++);
@@ -80,6 +82,14 @@ static int32_t memcmp(const void *s1, const void *s2, size_t n) {
   }
 
   return v;
+}
+
+static inline int bcmp(const void *s1, const void *s2, size_t n) {
+  return memcmp(s1, s2, n);
+}
+
+static inline void bzero(void *s, size_t n) {
+  memset(s, 0, n);
 }
 
 #endif // __RAPH_LIB_STRING_H__

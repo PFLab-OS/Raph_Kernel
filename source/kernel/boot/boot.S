@@ -22,15 +22,15 @@
 
 #define ASM_FILE
 #include "multiboot2.h"
-#include "../mem/virtmem.h"
-#include "../mem/paging.h"
-#include "../idt.h"
+#include <mem/virtmem.h>
+#include <mem/paging.h>
+#include <gdt.h>
 
 #define MULTIBOOTHEADER_SIZE (multibootheader_end - multibootheader_start)
 
 .global entry
 .global multiboot_info
-.global gdt
+.global gdt_desc
 .global gdtr
 .code32
 .section .bootstrap
@@ -104,8 +104,6 @@ check_longmode_exist:
 setup_paging:
   // clear page structure tables
   mov $initial_PML4T, %edi
-  // TODO : remove bits
-  or $(PML4E_WRITETHROUGH_BIT | PML4E_CACHEDISABLE_BIT), %edi
   mov %edi, %cr3
 
   // clear page tables
@@ -252,7 +250,7 @@ trampoline:
   mov %ax, %fs
   mov %ax, %gs
   mov %ax, %ss
-  mov $kKernelEndAddr - 3, %rsp
+  mov $kKernelEndAddr - 7, %rsp
   pushq $0   // return addr
   pushq $KERNEL_CS
   mov $main, %rax
@@ -268,7 +266,7 @@ multiboot_info:
   .long 0
 
 .balign 8
-gdt:
+gdt_desc:
   // null descriptor
   .quad 0
   .quad 0
@@ -278,7 +276,7 @@ gdt:
   .word 0
 gdtr:
   .word 8*4 - 1
-  .quad gdt
+  .quad gdt_desc
 
 .bss
 tmp_stack: 

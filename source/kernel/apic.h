@@ -24,8 +24,8 @@
 #define __RAPH_KERNEL_APIC_H__
 
 #include <stdint.h>
-#include "acpi.h"
-#include "raph.h"
+#include <raph.h>
+#include <acpi.h>
 
 struct MADT {
   ACPISDTHeader header;
@@ -36,11 +36,11 @@ struct MADT {
 
 enum class MADTStType : uint8_t {
   kLocalAPIC = 0,
-    kIOAPIC = 1,
+  kIOAPIC = 1,
 };
 
 struct MADTSt {
-  MADTStType type;
+ MADTStType type;
   uint8_t length;
 } __attribute__ ((packed));
 
@@ -55,13 +55,13 @@ struct MADTStLAPIC {
 // see acpi spec
 struct MADTStIOAPIC {
   MADTSt st;
-  uint8_t length;
   uint8_t ioapicId;
   uint8_t reserved;
   uint32_t ioapicAddr;
   uint32_t glblIntBase;
 } __attribute__ ((packed));
 
+class Regs;
 
 class ApicCtrl {
 public:
@@ -72,15 +72,14 @@ public:
     _madt = table;
   }
   void StartAPs();
+  void BootBSP() {
+    _lapic.Setup();
+  }
   void BootAP() {
     _started = true;
     _lapic.Setup();
   }
   static constexpr int lapicMaxNumber = 128;
-  void SendIpi() {
-    _lapic.SendIpi();
-  }
-
   void Enable(int irq,int cpunum){
     _pic.Enable(irq);
     _ioapic.Enable(irq,cpunum);
@@ -88,9 +87,30 @@ public:
   volatile uint8_t GetApicId() {
     return _lapic.GetApicId();
   }
+  volatile bool IsBootupAll() {
+    return _all_bootup;
+  }
+  int GetHowManyCpus() {
+    return _lapic._ncpu;
+  }
+  bool SetupIoInt(uint32_t irq, uint8_t lapicid, uint8_t vector) {
+    kassert(vector >= 32);
+    return _ioapic.SetupInt(irq, lapicid, vector);
+  }
+  void SendEoi() {
+    _lapic.SendEoi();
+  }
+  void SendIpi(uint8_t destid) {
+    _lapic.SendIpi(destid);
+  }
+  void SetupTimer(uint32_t irq) {
+    _lapic.SetupTimer(irq);
+  }
 private:
-  MADT *_madt = nullptr;
-  static const uint32_t kMadtFlagLapicEnable = 1;
+  static void TmrCallback(Regs *rs) {
+  }
+  static void IpiCallback(Regs *rs) {
+  }
   class Lapic {
   public:
     // setup local APIC respond to specified index
@@ -117,23 +137,25 @@ private:
     int _ncpu;
     uint8_t _apicIds[lapicMaxNumber];
 
-    void SendIpi() {
-      // debug
-      WriteIcr(0 << 24, kTriggerModeLevel | kLevelAssert | 0x32);  
-    }
-
     volatile uint8_t GetApicId() {
       return _ctrlAddr[kRegId] >> 24;
     }
-    //  private:
-    uint32_t *_ctrlAddr = nullptr;
+    void SendEoi() {
+      _ctrlAddr[kRegEoi] = 0;
+    }
+    void SendIpi(uint8_t destid);
+    void SetupTimer(uint32_t irq);
+  private:
+    volatile uint32_t *_ctrlAddr = nullptr;
     static const int kIa32ApicBaseMsr = 0x1B;
     static const uint32_t kApicGlobalEnableFlag = 1 << 11;
     // see intel64 manual vol3 Table 10-1 (Local APIC Register Address Map)
     static const int kRegId = 0x20 / sizeof(uint32_t);
+    static const int kRegEoi = 0xB0 / sizeof(uint32_t);
     static const int kRegSvr = 0xF0 / sizeof(uint32_t);
     static const int kRegIcrLo = 0x300 / sizeof(uint32_t);
     static const int kRegIcrHi = 0x310 / sizeof(uint32_t);
+    static const int kRegLvtCmci = 0x2F0 / sizeof(uint32_t);
     static const int kRegLvtTimer = 0x320 / sizeof(uint32_t);
     static const int kRegLvtThermalSensor = 0x330 / sizeof(uint32_t);
     static const int kRegLvtPerformanceCnt = 0x340 / sizeof(uint32_t);
@@ -141,10 +163,12 @@ private:
     static const int kRegLvtLint1 = 0x360 / sizeof(uint32_t);
     static const int kRegLvtErr = 0x370 / sizeof(uint32_t);
     static const int kRegTimerInitCnt = 0x380 / sizeof(uint32_t);
+    static const int kRegTimerCurCnt = 0x390 / sizeof(uint32_t);
     static const int kRegDivConfig = 0x3E0 / sizeof(uint32_t);
 
     // see intel64 manual vol3 Figure 10-10 (Divide Configuration Register)
     static const uint32_t kDivVal1 = 0xB;
+    static const uint32_t kDivVal16 = 0x3;
 
     // see intel64 manual vol3 Figure 10-8 (Local Vector Table)
     static const int kRegLvtMask = 1 << 16;
@@ -154,13 +178,21 @@ private:
     static const uint32_t kRegSvrApicEnableFlag = 1 << 8;
 
     // see intel64 manual vol3 10.5.1 (Delivery Mode)
-    static const uint32_t kDeliverModeInit    = 0x00000500;
-    static const uint32_t kDeliverModeStartup = 0x00000600;
+    static const uint32_t kDeliverModeFixed   = 0 << 8;
+    static const uint32_t kDeliverModeLowest  = 1 << 8;
+    static const uint32_t kDeliverModeSmi     = 2 << 8;
+    static const uint32_t kDeliverModeNmi     = 4 << 8;
+    static const uint32_t kDeliverModeInit    = 5 << 8;
+    static const uint32_t kDeliverModeStartup = 6 << 8;
 
     // see intel64 manual vol3 Figure 10-12 (Interrupt Command Register)
-    static const uint32_t kLevelAssert   = 0x00004000;
-    static const uint32_t kTriggerModeEdge  = 0x00000000;
-    static const uint32_t kTriggerModeLevel = 0x00008000;
+    static const uint32_t kRegIcrLevelAssert   = 1 << 14;
+    static const uint32_t kRegIcrTriggerModeEdge  = 0 << 15;
+    static const uint32_t kRegIcrTriggerModeLevel = 1 << 15;
+    static const uint32_t kRegIcrDestShorthandNoShortHand    = 0 << 18;
+    static const uint32_t kRegIcrDestShorthandSelf           = 1 << 18;
+    static const uint32_t kRegIcrDestShorthandAllIncludeSelf = 2 << 18;
+    static const uint32_t kRegIcrDestShorthandAllExcludeSelf = 3 << 18;
 
     // see intel MPspec Appendix B.5
     static const uint32_t kIoRtc = 0x70;
@@ -188,7 +220,20 @@ private:
     void Enable(int irq,int cpunum){
       Write(kRegRedTbl + 2 * irq,32+irq); //32 trap:IRQ0
       Write(kRegRedTbl + 2 * irq+1, cpunum<<24);
+    }
 
+    bool SetupInt(uint32_t irq, uint8_t lapicid, uint8_t vector) {
+      kassert(irq <= this->GetMaxIntr());
+      if ((Read(kRegRedTbl + 2 * irq) | kRegRedTblFlagMask) == 0) {
+        return false;
+      }
+      Write(kRegRedTbl + 2 * irq,
+            kRegRedTblFlagValueDeliveryLow |
+            kRegRedTblFlagDestModePhys |
+            kRegRedTblFlagTriggerModeEdge |
+            vector);
+      Write(kRegRedTbl + 2 * irq + 1, lapicid << kRegRedTblOffsetDest);
+      return true;
     }
   private:
     uint32_t GetMaxIntr() {
@@ -206,8 +251,14 @@ private:
     static const uint32_t kRegRedTbl = 0x10;
 
     // see IOAPIC manual 3.2.4 (I/O Redirection Table Registers)
-    static const uint32_t kRegRedTblMask = 1 << 16;
-  } _ioapic;
+    static const uint32_t kRegRedTblFlagValueDeliveryLow = 1 << 8;
+    static const uint32_t kRegRedTblFlagDestModePhys = 0 << 11;
+    static const uint32_t kRegRedTblFlagDestModeLogical = 1 << 11;
+    static const uint32_t kRegRedTblFlagTriggerModeEdge = 0 << 15;
+    static const uint32_t kRegRedTblFlagTriggerModeLevel = 1 << 15;
+    static const uint32_t kRegRedTblFlagMask = 1 << 16;
+    static const int kRegRedTblOffsetDest = 24;
+    } _ioapic;
   class Pic {
   public:
     void Setup();
@@ -229,7 +280,10 @@ private:
     //koko kakitotyuu
   }_pic;
   static const int T_IRQ0=0x20;
+  MADT *_madt = nullptr;
+  static const uint32_t kMadtFlagLapicEnable = 1;
   volatile bool _started = false;
+  volatile bool _all_bootup = false;
 };
 
 #endif /* __RAPH_KERNEL_APIC_H__ */
