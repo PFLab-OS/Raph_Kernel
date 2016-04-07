@@ -28,8 +28,6 @@
 class bE1000 : public DevEthernet {
 public:
  bE1000(uint8_t bus, uint8_t device, bool mf) : DevEthernet(bus, device, mf) {}
-
- protected:
 };
 
 struct adapter;

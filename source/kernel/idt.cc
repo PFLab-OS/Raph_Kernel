@@ -29,8 +29,6 @@
 
 namespace C {
 extern "C" void handle_int(Regs *rs) {
-  // TODO 二重割り込みの際どうするか
-  //      割り込みカウント方式にすべき？
   idt->_handling_cnt[apic_ctrl->GetApicId()]++;
   if (idt->_callback[apic_ctrl->GetApicId()][rs->n] == nullptr) {
     if (gtty != nullptr) {
@@ -41,6 +39,7 @@ extern "C" void handle_int(Regs *rs) {
     idt->_callback[apic_ctrl->GetApicId()][rs->n](rs);
   }
   idt->_handling_cnt[apic_ctrl->GetApicId()]--;
+  apic_ctrl->SendEoi();
 }
 }
 

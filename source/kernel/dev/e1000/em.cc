@@ -40,9 +40,8 @@ bool E1000::InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, boo
   if (em_probe(&addr->bsd) == BUS_PROBE_DEFAULT) {
     kassert(em_attach(&addr->bsd) == 0);
     em_init(addr->bsd.adapter);
-    addr->RegisterPolling();
+    addr->SetupNetInterface();
     eth = addr;
-    eth->SetupNetInterface();
     return true;
   } else {
     virtmem_ctrl->Free(ptr2virtaddr(addr->bsd.adapter));
@@ -57,7 +56,7 @@ void E1000::Handle() {
 
 void E1000::SetupNetInterface() {
   netdev_ctrl->RegisterDevice(this);
-  polling_ctrl->Register(this);
+  RegisterPolling();
 }
 
 void E1000::GetEthAddr(uint8_t *buffer) {

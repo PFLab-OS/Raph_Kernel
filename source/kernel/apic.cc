@@ -60,7 +60,6 @@ void ApicCtrl::Setup() {
     }
     offset += madtSt->length;
   }
-  _lapic.Setup();
   _ioapic.Setup();
   _lapic._ncpu = ncpu;
 }
@@ -103,7 +102,7 @@ void ApicCtrl::Lapic::Setup() {
     return;
   }
 
-  _ctrlAddr[kRegSvr] = kRegSvrApicEnableFlag | (32 + 31); // TODO
+  _ctrlAddr[kRegSvr] = kRegSvrApicEnableFlag | Idt::ReservedIntVector::kSpurious;
 
   // disable all local interrupt sources
   _ctrlAddr[kRegLvtTimer] = kRegLvtMask | kRegTimerPeriodic;
@@ -113,7 +112,10 @@ void ApicCtrl::Lapic::Setup() {
   _ctrlAddr[kRegLvtPerformanceCnt] = kRegLvtMask;
   _ctrlAddr[kRegLvtLint0] = kRegLvtMask;
   _ctrlAddr[kRegLvtLint1] = kRegLvtMask;
-  _ctrlAddr[kRegLvtErr] = kRegLvtMask | (32 + 19); // TODO
+  _ctrlAddr[kRegLvtErr] = kRegLvtMask | Idt::ReservedIntVector::kLapicErr;
+
+  kassert(idt != nullptr);
+  idt->SetIntCallback(Idt::ReservedIntVector::kIpi, IpiCallback);
 }
 
 void ApicCtrl::Lapic::Start(uint8_t apicId, uint64_t entryPoint) {
@@ -128,9 +130,9 @@ void ApicCtrl::Lapic::Start(uint8_t apicId, uint64_t entryPoint) {
 
   // Universal startup algorithm
   // see mp spec Appendix B.4.1
-  WriteIcr(apicId << 24, kDeliverModeInit | kTriggerModeLevel | kLevelAssert);
+  WriteIcr(apicId << 24, kDeliverModeInit | kRegIcrTriggerModeLevel | kRegIcrLevelAssert);
   timer->BusyUwait(200);
-  WriteIcr(apicId << 24, kDeliverModeInit | kTriggerModeLevel);
+  WriteIcr(apicId << 24, kDeliverModeInit | kRegIcrTriggerModeLevel);
   timer->BusyUwait(100);
 
   // Application Processor Setup (defined in mp spec Appendix B.4)
@@ -171,6 +173,9 @@ void ApicCtrl::Lapic::SetupTimer(uint32_t irq) {
   _ctrlAddr[kRegLvtTimer] = kRegTimerPeriodic | irq;
 }
 
+void ApicCtrl::Lapic::SendIpi(uint8_t destid) {
+  WriteIcr(destid << 24, kDeliverModeFixed | kRegIcrTriggerModeLevel | kRegIcrDestShorthandNoShortHand | Idt::ReservedIntVector::kIpi);
+}
 
 void ApicCtrl::Ioapic::Setup() {
   if (_reg == nullptr) {

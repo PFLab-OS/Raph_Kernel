@@ -215,7 +215,7 @@ extern "C" int main_of_others() {
     PollingFunc p;
     p.Init([](void *){
         bE1000::Packet *rpacket;
-        if(!eth->RecievePacket(rpacket)) {
+        if(!eth->ReceivePacket(rpacket)) {
           return;
         } 
 
@@ -298,6 +298,7 @@ extern "C" int main_of_others() {
           tt.SetHandler(1000);
           return;
         }
+        apic_ctrl->SendIpi(3);
         kassert(eth != nullptr);
         eth->UpdateLinkStatus();
         if (eth->GetStatus() != bE1000::LinkStatus::Up) {

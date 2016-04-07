@@ -47,6 +47,11 @@ class Idt {
   volatile int GetHandlingCnt() {
     return _handling_cnt[apic_ctrl->GetApicId()];
   }
+  struct ReservedIntVector {
+    static const int kIpi      = 32;
+    static const int kSpurious = 33;
+    static const int kLapicErr = 34;
+  };
  private:
   void SetGate(void (*gate)(Regs *rs), int n, uint8_t dpl, bool trap, uint8_t ist);
   static const uint32_t kIdtPresent = 1 << 15;

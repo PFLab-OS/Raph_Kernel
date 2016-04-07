@@ -36,7 +36,7 @@ struct MADT {
 
 enum class MADTStType : uint8_t {
   kLocalAPIC = 0,
-    kIOAPIC = 1,
+  kIOAPIC = 1,
 };
 
 struct MADTSt {
@@ -80,9 +80,6 @@ public:
     _lapic.Setup();
   }
   static constexpr int lapicMaxNumber = 128;
-  void SendIpi() {
-    _lapic.SendIpi();
-  }
   volatile uint8_t GetApicId() {
     return _lapic.GetApicId();
   }
@@ -99,12 +96,16 @@ public:
   void SendEoi() {
     _lapic.SendEoi();
   }
+  void SendIpi(uint8_t destid) {
+    _lapic.SendIpi(destid);
+  }
   void SetupTimer(uint32_t irq) {
     _lapic.SetupTimer(irq);
   }
 private:
   static void TmrCallback(Regs *rs) {
-    apic_ctrl->SendEoi();
+  }
+  static void IpiCallback(Regs *rs) {
   }
   class Lapic {
   public:
@@ -132,16 +133,13 @@ private:
     int _ncpu;
     uint8_t _apicIds[lapicMaxNumber];
 
-    void SendIpi() {
-      // debug
-      WriteIcr(0 << 24, kTriggerModeLevel | kLevelAssert | 0x32);  
-    }
     volatile uint8_t GetApicId() {
       return _ctrlAddr[kRegId] >> 24;
     }
     void SendEoi() {
       _ctrlAddr[kRegEoi] = 0;
     }
+    void SendIpi(uint8_t destid);
     void SetupTimer(uint32_t irq);
   private:
     volatile uint32_t *_ctrlAddr = nullptr;
@@ -176,13 +174,21 @@ private:
     static const uint32_t kRegSvrApicEnableFlag = 1 << 8;
 
     // see intel64 manual vol3 10.5.1 (Delivery Mode)
-    static const uint32_t kDeliverModeInit    = 0x00000500;
-    static const uint32_t kDeliverModeStartup = 0x00000600;
+    static const uint32_t kDeliverModeFixed   = 0 << 8;
+    static const uint32_t kDeliverModeLowest  = 1 << 8;
+    static const uint32_t kDeliverModeSmi     = 2 << 8;
+    static const uint32_t kDeliverModeNmi     = 4 << 8;
+    static const uint32_t kDeliverModeInit    = 5 << 8;
+    static const uint32_t kDeliverModeStartup = 6 << 8;
 
     // see intel64 manual vol3 Figure 10-12 (Interrupt Command Register)
-    static const uint32_t kLevelAssert   = 0x00004000;
-    static const uint32_t kTriggerModeEdge  = 0x00000000;
-    static const uint32_t kTriggerModeLevel = 0x00008000;
+    static const uint32_t kRegIcrLevelAssert   = 1 << 14;
+    static const uint32_t kRegIcrTriggerModeEdge  = 0 << 15;
+    static const uint32_t kRegIcrTriggerModeLevel = 1 << 15;
+    static const uint32_t kRegIcrDestShorthandNoShortHand    = 0 << 18;
+    static const uint32_t kRegIcrDestShorthandSelf           = 1 << 18;
+    static const uint32_t kRegIcrDestShorthandAllIncludeSelf = 2 << 18;
+    static const uint32_t kRegIcrDestShorthandAllExcludeSelf = 3 << 18;
 
     // see intel MPspec Appendix B.5
     static const uint32_t kIoRtc = 0x70;
