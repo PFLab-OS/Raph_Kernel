@@ -168,7 +168,7 @@ extern "C" int main() {
   return 0;
 }
 
-#define FLAG 0
+#define FLAG 2
 #if FLAG == 3
 #define IP1 192, 168, 100, 117
 #define IP2 192, 168, 100, 254
