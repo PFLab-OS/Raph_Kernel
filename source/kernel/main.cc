@@ -168,7 +168,7 @@ extern "C" int main() {
   return 0;
 }
 
-#define FLAG 2
+#define FLAG 0
 #if FLAG == 3
 #define IP1 192, 168, 100, 117
 #define IP2 192, 168, 100, 254
@@ -223,6 +223,7 @@ extern "C" int main_of_others() {
       int32_t rval = socket.ReceivePacket(0, &ipaddr, macaddr);
       if(rval == ARPSocket::kOpARPReply) {
         uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;
+        cnt = 0;
         gtty->Printf(
                      "s", "[arp] reply received; ",
                      "x", macaddr[0], "s", ":",
@@ -234,8 +235,8 @@ extern "C" int main_of_others() {
                      "d", (ipaddr >> 24) & 0xff, "s", ".",
                      "d", (ipaddr >> 16) & 0xff, "s", ".",
                      "d", (ipaddr >> 8) & 0xff, "s", ".",
-                     "d", (ipaddr >> 0) & 0xff, "s", "\n");
-        gtty->Printf("s", "latency:", "d", l, "s", "us\n");
+                     "d", (ipaddr >> 0) & 0xff, "s", " (");
+        gtty->Printf("s", "latency:", "d", l, "s", "us)\n");
       } else if(rval == ARPSocket::kOpARPRequest) {
         gtty->Printf(
                      "s", "[arp] request received; ",
