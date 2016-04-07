@@ -168,7 +168,7 @@ extern "C" int main() {
   return 0;
 }
 
-#define FLAG 3
+#define FLAG 0
 #if FLAG == 3
 #define IP1 192, 168, 100, 117
 #define IP2 192, 168, 100, 254
@@ -218,7 +218,6 @@ extern "C" int main_of_others() {
         if(!eth->ReceivePacket(rpacket)) {
           return;
         } 
-
         // received packet
         if(rpacket->buf[12] == 0x08 && rpacket->buf[13] == 0x06 && rpacket->buf[21] == 0x02) {
           uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;
