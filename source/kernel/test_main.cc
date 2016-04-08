@@ -24,18 +24,18 @@
 
 #include <iostream>
 #include <time.h>
-#include "spinlock.h"
-#include "mem/virtmem.h"
-#include "global.h"
-#include "dev/raw.h"
-#include "net/netctrl.h"
-#include "net/socket.h"
+#include <spinlock.h>
+#include <mem/virtmem.h>
+#include <global.h>
+#include <apic.h>
+#include <dev/raw.h>
+#include <net/netctrl.h>
+#include <net/socket.h>
 
 SpinLockCtrl *spinlock_ctrl;
 VirtmemCtrl *virtmem_ctrl;
 PhysmemCtrl *physmem_ctrl;
 PagingCtrl *paging_ctrl;
-
 
 void spinlock_test();
 void virtmem_test();
