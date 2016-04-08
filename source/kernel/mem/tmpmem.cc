@@ -22,3 +22,10 @@
 
 #include "tmpmem.h"
 
+TmpmemCtrl::TmpmemCtrl() {
+  
+}
+
+virt_addr TmpmemCtrl::Alloc(size_t size) {
+  
+}

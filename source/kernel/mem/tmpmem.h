@@ -25,10 +25,20 @@
 #ifndef __RAPH_KERNEL_MEM_TMPMEM_H__
 #define __RAPH_KERNEL_MEM_TMPMEM_H__
 
+#include <string.h>
+#include <mem/virtmem.h>
+
 class TmpmemCtrl {
  public:
-  TmpmemCtrl() {
+  TmpmemCtrl();
+  virt_addr Alloc(size_t size);
+  virt_addr AllocZ(size_t size) {
+    virt_addr addr = Alloc(size);
+    bzero(reinterpret_cast<void *>(addr), size);
+    return addr;
   }
+  // 仮想メモリ領域を開放するが、物理メモリ領域は解放しない
+  void Free(virt_addr addr);
  private:
 };
 

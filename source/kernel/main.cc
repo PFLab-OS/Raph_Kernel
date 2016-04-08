@@ -64,7 +64,8 @@ uint64_t cnt;
 int time;
 
 #include <callout.h>
-Callout tt;
+Callout tt1;
+Callout tt2;
 
 extern "C" int main() {
   SpinLockCtrl _spinlock_ctrl;
@@ -152,23 +153,19 @@ extern "C" int main() {
   cnt = 0;
 
   gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
-  apic_ctrl->SetupTimer(32 + 10);
 
   apic_ctrl->StartAPs();
 
   gtty->Printf("s", "\n\n[kernel] info: initialization completed\n");
 
-  while(true) {
-    task_ctrl->Run();
-    asm volatile("hlt");
-  }
+  task_ctrl->Run();
 
   DismissNetCtrl();
 
   return 0;
 }
 
-#define FLAG 2
+#define FLAG 3
 #if FLAG == 3
 #define IP1 192, 168, 100, 117
 #define IP2 192, 168, 100, 254
@@ -196,7 +193,6 @@ extern "C" int main_of_others() {
 
   gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
 
-  apic_ctrl->SetupTimer(32 + 10);
   // ループ性能測定用
   // if (apic_ctrl->GetApicId() == 3) {
   //   PollingFunc p;
@@ -209,6 +205,17 @@ extern "C" int main_of_others() {
   //   p.Register();
   // }
 
+  // ワンショット性能測定用
+  if (apic_ctrl->GetApicId() == 4) {
+    new(&tt1) Callout;
+    tt1.Init([](void *){
+        if (!apic_ctrl->IsBootupAll()) {
+          tt1.SetHandler(1000);
+          return;
+        }
+      }, nullptr);
+    tt1.SetHandler(10);
+  }
   
   if (apic_ctrl->GetApicId() == 1) {
     kassert(eth != nullptr);
@@ -290,22 +297,21 @@ extern "C" int main_of_others() {
     p.Register();
   } else if (apic_ctrl->GetApicId() == 2) {
     cnt = 0;
-    new(&tt) Callout;
+    new(&tt2) Callout;
     time = 10;
-    tt.Init([](void *){
+    tt2.Init([](void *){
         if (!apic_ctrl->IsBootupAll()) {
-          tt.SetHandler(1000);
+          tt2.SetHandler(1000);
           return;
         }
-        apic_ctrl->SendIpi(3);
         kassert(eth != nullptr);
         eth->UpdateLinkStatus();
         if (eth->GetStatus() != bE1000::LinkStatus::Up) {
-          tt.SetHandler(1000);
+          tt2.SetHandler(1000);
           return;
         }
         if (cnt != 0) {
-          tt.SetHandler(10);
+          tt2.SetHandler(10);
           return;
         }
         uint8_t data[] = {
@@ -337,15 +343,12 @@ extern "C" int main_of_others() {
         gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
         time--;
         if (time != 0) {
-          tt.SetHandler(3000);
+          tt2.SetHandler(3000);
         }
       }, nullptr);
-    tt.SetHandler(10);
+    tt2.SetHandler(10);
   }
-  while(true) {
-    task_ctrl->Run();
-    asm volatile("hlt");
-  }
+  task_ctrl->Run();
   return 0;
 }
 
