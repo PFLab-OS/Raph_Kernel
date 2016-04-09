@@ -99,12 +99,16 @@ public:
   void SendEoi() {
     _lapic.SendEoi();
   }
+  void SendPicEoi() {
+    _pic.SendEoi();
+  }
   void SendIpi(uint8_t destid) {
     _lapic.SendIpi(destid);
   }
   void SetupTimer(uint32_t irq) {
     _lapic.SetupTimer(irq);
   }
+  static const int kIrq0 = 0x20;
 private:
   static void TmrCallback(Regs *rs) {
   }
@@ -257,12 +261,12 @@ private:
   public:
     void Setup();
     void SetupInt(int irq);
+    void SendEoi();
   private:
     uint16_t _irqMask = 0xFFFF; //the initial value masks all the irqs.
     static const int kIopicMaster = 0x20;
     static const int kIopicSlave = 0xA0;
     static const int kIrqSlave = 2;
-
     static const int MasterCommand =kIopicMaster;
     static const int MasterStatus =kIopicMaster;
     static const int MasterMask =kIopicMaster+1;
@@ -271,8 +275,10 @@ private:
     static const int SlaveStatus =kIopicSlave;
     static const int SlaveMask =kIopicSlave+1;
     static const int SlaveData =kIopicSlave+1;
+
+    //see 8259A data sheet
+    static const uint8_t kEOI = 1 << 5;
   }_pic;
-  static const int kIrq0=0x20;
   MADT *_madt = nullptr;
   static const uint32_t kMadtFlagLapicEnable = 1;
   volatile bool _started = false;

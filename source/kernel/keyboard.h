@@ -31,7 +31,7 @@
 // this file should be put in dev/...?
 class Keyboard {
  public:
-  void Setup();
+  void Setup(int lapicid);
   void Write(uint8_t code);
   uint8_t Read();
   char Getch();
@@ -41,16 +41,18 @@ class Keyboard {
   void Reset();
 
   static void intKeyboard (Regs *reg);
+  static const int kIrqKeyboard = 1; //Every IRQ number needs to be unique. Should all the IRQ numbers be put in a same file?
  private:
-  static const int kbufSize=100;
-  int _count=0; 
-  uint8_t _buf[kbufSize];
-  bool _overflow=false;
-  bool _underflow=false;
-  int _next_w=0;
-  int _next_r=0;
-  
+  static const int kbufSize = 100;
   static const char kScanCode[256];
+  static const int kDataPort = 0x60;
+  int _count = 0; 
+  uint8_t _buf[kbufSize];
+  bool _overflow = false;
+  bool _underflow = false;
+  int _next_w = 0;
+  int _next_r = 0;
+
 };
 
 #endif // __RAPH_KERNEL_KEYBOARD_H__

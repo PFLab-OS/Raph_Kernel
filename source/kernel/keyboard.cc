@@ -3,10 +3,10 @@
 #include <apic.h>
 #include <idt.h>
 
-void Keyboard::Setup(){
-  apic_ctrl->SetupPicInt(1);
-  apic_ctrl->SetupIoInt(1,0,32+1);
-  idt->SetIntCallback(0x20+1,Keyboard::intKeyboard);
+void Keyboard::Setup(int lapicid){
+  apic_ctrl->SetupPicInt(kIrqKeyboard);
+  apic_ctrl->SetupIoInt(kIrqKeyboard,lapicid,ApicCtrl::kIrq0+kIrqKeyboard);
+  idt->SetIntCallback(ApicCtrl::kIrq0+kIrqKeyboard,Keyboard::intKeyboard);
 }
 
 void Keyboard::Write(uint8_t code){
@@ -41,21 +41,22 @@ int Keyboard::Count(){
 }
 
 void Keyboard::Reset(){
-  _overflow=false;
-  _underflow=false;
-  _count=_next_w=_next_r=0;
+  _overflow = false;
+  _underflow = false;
+  _count=_next_w = 0;
+  _next_r = 0;
 }
 
 
 void Keyboard::intKeyboard(Regs *reg){ //static
   uint8_t data;
-  data=inb(0x60);
-  if(data<(1<<7))  keyboard->Write(data);
+  data = inb(kDataPort);
+  if(data < (1 << 7))  keyboard->Write(data);
   //  gtty->Printf("d",(int)data,"s"," ");
-  outb(0xa0,0x061);
+  apic_ctrl->SendPicEoi();
 }
 
-const char Keyboard::kScanCode[256]={
+const char Keyboard::kScanCode[256] = {
     '!','!','1','2','3','4','5','6',
     '7','8','9','0','-','!','!','\t',
     'q','w','e','r','t','y','u','i',

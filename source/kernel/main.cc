@@ -145,7 +145,7 @@ extern "C" int main() {
 
   InitDevices<PCICtrl, Device>();
 
-  keyboard->Setup();
+  keyboard->Setup(0); //should we define kDefaultLapicid = 0 ?
 
   extern int kKernelEndAddr;
   // stackは16K

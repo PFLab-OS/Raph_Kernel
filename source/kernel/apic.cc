@@ -224,3 +224,9 @@ void ApicCtrl::Pic::SetupInt(int irq){
   outb(MasterMask,(uint8_t)_irqMask);
   outb(MasterMask,(uint8_t)(_irqMask>>8));
 }
+
+void ApicCtrl::Pic::SendEoi(){
+  outb(kIopicMaster,kEOI);
+  outb(kIopicSlave,kEOI);
+
+}
