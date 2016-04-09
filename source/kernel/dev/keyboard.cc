@@ -4,7 +4,7 @@
 #include <dev/keyboard.h>
 
 void Keyboard::Setup(int lapicid) {
-  apic_ctrl->SetupPicInt(kIrqKeyboard);
+  apic_ctrl->SetupPicInt(kIrqKeyboard); //for 8259 PIC compatible mode
   apic_ctrl->SetupIoInt(kIrqKeyboard, lapicid, Idt::ReservedIntVector::kKeyboard);
   idt->SetIntCallback(Idt::ReservedIntVector::kKeyboard, Keyboard::Handler);
 }
@@ -53,6 +53,7 @@ void Keyboard::Handler(Regs *reg) { //static
   data = inb(kDataPort);
   if(data < (1 << 7))  keyboard->Write(data);
   apic_ctrl->SendPicEoi();
+  apic_ctrl->SendEoi();
 }
 
 const char Keyboard::kScanCode[256] = {

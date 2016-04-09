@@ -201,11 +201,11 @@ void ApicCtrl::Pic::Setup() {
 
   //Initial control word 
   outb(MasterCommand, 0x11);
-  outb(MasterMask, kIrq0);
+  outb(MasterMask, Idt::ReservedIntVector::kIopicMaster);
   outb(MasterMask, 1 << kIrqSlave);
   outb(MasterMask, 0x3);
   outb(SlaveCommand, 0x11);
-  outb(SlaveMask, kIrq0 + 8);
+  outb(SlaveMask, Idt::ReservedIntVector::kIopicSlave);
   outb(SlaveMask, kIrqSlave);
   outb(SlaveMask, 0x3);
   

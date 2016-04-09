@@ -108,7 +108,6 @@ public:
   void SetupTimer(uint32_t irq) {
     _lapic.SetupTimer(irq);
   }
-  static const int kIrq0 = 0x20;
 private:
   static void TmrCallback(Regs *rs) {
   }
