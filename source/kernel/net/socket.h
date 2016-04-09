@@ -52,6 +52,7 @@ public:
   Socket() {}
   void SetAddr(uint32_t addr) { _daddr = addr; }
   void SetPort(uint16_t port) { _dport = port; }
+  void SetListenAddr(uint32_t addr) { _ipaddr = addr; }
   void SetListenPort(uint16_t port) { _sport = port; }
 
   // transmit TCP data (header will be attached)

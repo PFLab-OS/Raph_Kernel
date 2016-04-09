@@ -81,7 +81,9 @@ void TCPServer() {
   if(socket.Open() < 0) {
     fprintf(stderr, "[error] cannot open socket\n");
   }
+  socket.SetListenAddr(0x0a000206);
   socket.SetListenPort(Socket::kPortTelnet);
+  socket.SetAddr(0x0a000205);
   socket.SetPort(Socket::kPortTelnet);
 
   const uint32_t size = 0x100;
@@ -110,7 +112,9 @@ void TCPClient() {
   if(socket.Open() < 0) {
     fprintf(stderr, "[error] cannot open socket\n");
   }
+  socket.SetListenAddr(0x0a000205);
   socket.SetListenPort(Socket::kPortTelnet);
+  socket.SetAddr(0x0a000206);
   socket.SetPort(Socket::kPortTelnet);
 
   const uint32_t size = 0x100;

@@ -43,8 +43,9 @@ int32_t TCPCtrl::GenerateHeader(uint8_t *buffer, uint32_t length, uint16_t sport
 
 bool TCPCtrl::FilterPacket(uint8_t *packet, uint16_t sport, uint16_t dport, uint8_t type, uint32_t seq, uint32_t ack) {
   TCPHeader * volatile header = reinterpret_cast<TCPHeader*>(packet);
-  return (!sport || ntohs(header->sport) == sport)
-      && (!dport || ntohs(header->dport) == dport)
+  // NB: dport of packet sender == sport of packet receiver
+  return (!sport || ntohs(header->dport) == sport)
+      && (!dport || ntohs(header->sport) == dport)
       && ((header->flag & Socket::kFlagFIN) || header->flag == type);
 }
 
