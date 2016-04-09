@@ -1,7 +1,7 @@
 #include <global.h>
-#include <keyboard.h>
 #include <apic.h>
 #include <idt.h>
+#include <dev/keyboard.h>
 
 void Keyboard::Setup(int lapicid) {
   apic_ctrl->SetupPicInt(kIrqKeyboard);
@@ -52,7 +52,6 @@ void Keyboard::Handler(Regs *reg) { //static
   uint8_t data;
   data = inb(kDataPort);
   if(data < (1 << 7))  keyboard->Write(data);
-  //  gtty->Printf("d",(int)data,"s"," ");
   apic_ctrl->SendPicEoi();
 }
 

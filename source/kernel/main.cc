@@ -36,11 +36,11 @@
 #include <dev/hpet.h>
 #include <dev/vga.h>
 #include <dev/pci.h>
+#include <dev/keyboard.h>
 
 #include "net/netctrl.h"
 #include "net/socket.h"
 
-#include <keyboard.h>
 
 SpinLockCtrl *spinlock_ctrl;
 MultibootCtrl *multiboot_ctrl;
@@ -166,9 +166,9 @@ extern "C" int main() {
   gtty->Printf("s", "\n\n[kernel] info: initialization completed\n");
 
   // print keyboard_input
-  PollingFunc keyboardPolling;
+  PollingFunc keyboard_polling;
   keyboard->Setup(0); //should we define kDefaultLapicid = 0 ?
-  keyboardPolling.Init([](void *) {
+  keyboard_polling.Init([](void *) {
       while(keyboard->Count() > 0){
 	char ch[2] = {'\0','\0'};
 	ch[0] = keyboard->GetCh();
