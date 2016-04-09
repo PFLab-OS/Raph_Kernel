@@ -36,9 +36,11 @@
 #include <dev/hpet.h>
 #include <dev/vga.h>
 #include <dev/pci.h>
+#include <dev/keyboard.h>
 
 #include "net/netctrl.h"
 #include "net/socket.h"
+
 
 SpinLockCtrl *spinlock_ctrl;
 MultibootCtrl *multiboot_ctrl;
@@ -53,6 +55,7 @@ Idt *idt;
 Timer *timer;
 
 Tty *gtty;
+Keyboard *keyboard;
 
 PCICtrl *pci_ctrl;
 
@@ -102,6 +105,9 @@ extern "C" int main() {
 
   Vga _vga;
   gtty = &_vga;
+
+   Keyboard _keyboard;
+   keyboard = &_keyboard;
   
   PhysAddr paddr;
   physmem_ctrl->Alloc(paddr, PagingCtrl::kPageSize * 2);
@@ -139,6 +145,7 @@ extern "C" int main() {
 
   InitDevices<PCICtrl, Device>();
 
+
   extern int kKernelEndAddr;
   // stackは16K
   kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr)));
@@ -158,6 +165,18 @@ extern "C" int main() {
 
   gtty->Printf("s", "\n\n[kernel] info: initialization completed\n");
 
+  // print keyboard_input
+  PollingFunc _keyboard_polling;
+  keyboard->Setup(0); //should we define kDefaultLapicid = 0 ?
+  _keyboard_polling.Init([](void *) {
+      while(keyboard->Count() > 0){
+	char ch[2] = {'\0','\0'};
+	ch[0] = keyboard->GetCh();
+	gtty->Printf("s", ch);
+      }
+    }, nullptr);
+  _keyboard_polling.Register();
+  
   while(true) {
     task_ctrl->Run();
     asm volatile("hlt");
