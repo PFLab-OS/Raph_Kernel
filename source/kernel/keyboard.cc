@@ -5,8 +5,8 @@
 
 void Keyboard::Setup(int lapicid) {
   apic_ctrl->SetupPicInt(kIrqKeyboard);
-  apic_ctrl->SetupIoInt(kIrqKeyboard, lapicid, ApicCtrl::kIrq0 + kIrqKeyboard);
-  idt->SetIntCallback(ApicCtrl::kIrq0 + kIrqKeyboard, Keyboard::intKeyboard);
+  apic_ctrl->SetupIoInt(kIrqKeyboard, lapicid, Idt::ReservedIntVector::kKeyboard);
+  idt->SetIntCallback(Idt::ReservedIntVector::kKeyboard, Keyboard::intKeyboard);
 }
 
 void Keyboard::Write(uint8_t code){

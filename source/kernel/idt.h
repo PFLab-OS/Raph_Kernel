@@ -51,6 +51,11 @@ class Idt {
     static const int kIpi      = 32;
     static const int kSpurious = 33;
     static const int kLapicErr = 34;
+    static const int kIopicMaster = 64;
+    static const int kIopicSlave = 72;
+    static const int kTimer = 64;
+    static const int kKeyboard = 65;
+
   };
  private:
   void SetGate(void (*gate)(Regs *rs), int n, uint8_t dpl, bool trap, uint8_t ist);

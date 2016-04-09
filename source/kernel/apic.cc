@@ -219,6 +219,14 @@ void ApicCtrl::Pic::SetupInt(int irq) {
 }
 
 void ApicCtrl::Pic::SendEoi() {
-  outb(kIopicMaster, kEOI);
-  outb(kIopicSlave, kEOI);
+  outb(Idt::ReservedIntVector::kIopicMaster, kEoi);
+  outb(Idt::ReservedIntVector::kIopicSlave, kEoi);
 }
+const int ApicCtrl::Pic::MasterCommand = Idt::ReservedIntVector::kIopicMaster;
+const int ApicCtrl::Pic::MasterStatus = MasterCommand;
+const int ApicCtrl::Pic::MasterMask = Idt::ReservedIntVector::kIopicMaster + 1;
+const int ApicCtrl::Pic::MasterData = MasterMask;
+const int ApicCtrl::Pic::SlaveCommand = Idt::ReservedIntVector::kIopicSlave;
+const int ApicCtrl::Pic::SlaveStatus = SlaveCommand;
+const int ApicCtrl::Pic::SlaveMask = Idt::ReservedIntVector::kIopicSlave + 1;
+const int ApicCtrl::Pic::SlaveData = SlaveMask;
