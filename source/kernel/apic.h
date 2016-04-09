@@ -265,21 +265,21 @@ private:
     void Enable(int irq);
   private:
     uint16_t _irqMask = 0xFFFF; //the initial value masks all the irqs.
-    static const int IO_PIC_Master = 0x20;
-    static const int IO_PIC_Slave = 0xA0;
-    static const int IRQ_SLAVE = 2;
+    static const int kIopicMaster = 0x20;
+    static const int kIopicSlave = 0xA0;
+    static const int kIrqSlave = 2;
 
-    static const int MasterCommand =IO_PIC_Master;
-    static const int MasterStatus =IO_PIC_Master;
-    static const int MasterMask =IO_PIC_Master+1;
-    static const int MasterData =IO_PIC_Master+1;
-    static const int SlaveCommand =IO_PIC_Slave;
-    static const int SlaveStatus =IO_PIC_Slave;
-    static const int SlaveMask =IO_PIC_Slave+1;
-    static const int SlaveData =IO_PIC_Slave+1;
+    static const int MasterCommand =kIopicMaster;
+    static const int MasterStatus =kIopicMaster;
+    static const int MasterMask =kIopicMaster+1;
+    static const int MasterData =kIopicMaster+1;
+    static const int SlaveCommand =kIopicSlave;
+    static const int SlaveStatus =kIopicSlave;
+    static const int SlaveMask =kIopicSlave+1;
+    static const int SlaveData =kIopicSlave+1;
     //koko kakitotyuu
   }_pic;
-  static const int T_IRQ0=0x20;
+  static const int kIrq0=0x20;
   MADT *_madt = nullptr;
   static const uint32_t kMadtFlagLapicEnable = 1;
   volatile bool _started = false;

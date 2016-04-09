@@ -202,12 +202,12 @@ void ApicCtrl::Pic::Setup(){
 
   //Initial control word
   outb(MasterCommand,0x11);
-  outb(MasterMask,T_IRQ0);
-  outb(MasterMask,1<<IRQ_SLAVE);
+  outb(MasterMask,kIrq0);
+  outb(MasterMask,1<<kIrqSlave);
   outb(MasterMask,0x3);
   outb(SlaveCommand,0x11);
-  outb(SlaveMask,T_IRQ0+8);
-  outb(SlaveMask,IRQ_SLAVE);
+  outb(SlaveMask,kIrq0+8);
+  outb(SlaveMask,kIrqSlave);
   outb(SlaveMask,0x3);
 
   //OCW3
@@ -216,7 +216,7 @@ void ApicCtrl::Pic::Setup(){
   outb(SlaveCommand,0x68);
   outb(SlaveCommand,0x0a);
   
-  Enable(IRQ_SLAVE);
+  Enable(kIrqSlave);
 }
 
 void ApicCtrl::Pic::Enable(int irq){

@@ -7,20 +7,20 @@ void Keyboard::Write(uint8_t code){
   _buf[_next_w]=code;
   _next_w++;
   _count++;
-  _next_w%=bufSize;
+  _next_w%=kbufSize;
 }
 uint8_t Keyboard::Read(){
   uint8_t data=_buf[_next_r];
   if (_next_r==_next_w) _underflow=true;
   _next_r++;
   _count--;
-  _next_r%=bufSize;
+  _next_r%=kbufSize;
   return data;
 }
 
 char Keyboard::Getch(){
   uint8_t data=Read();
-  return ScanCode[data];
+  return kScanCode[data];
 }
 bool Keyboard::Overflow(){
   return _overflow;
@@ -48,7 +48,7 @@ void Keyboard::intKeyboard(Regs *reg){ //static
   outb(0xa0,0x061);
 }
 
-const char Keyboard::ScanCode[256]={
+const char Keyboard::kScanCode[256]={
     '!','!','1','2','3','4','5','6',
     '7','8','9','0','-','!','!','\t',
     'q','w','e','r','t','y','u','i',

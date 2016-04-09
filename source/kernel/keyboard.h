@@ -41,15 +41,15 @@ class Keyboard {
 
   static void intKeyboard (Regs *reg);
  private:
-  static const int bufSize=100;
+  static const int kbufSize=100;
   int _count=0; 
-  uint8_t _buf[bufSize];
+  uint8_t _buf[kbufSize];
   bool _overflow=false;
   bool _underflow=false;
   int _next_w=0;
   int _next_r=0;
   
-  static const char ScanCode[256];
+  static const char kScanCode[256];
 };
 
 #endif // __RAPH_KERNEL_KEYBOARD_H__
