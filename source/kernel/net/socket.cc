@@ -24,12 +24,12 @@
 #include "../mem/physmem.h"
 #include "../mem/virtmem.h"
 
-#include "socket.h"
-#include "eth.h"
-#include "arp.h"
-#include "ip.h"
-#include "udp.h"
-#include "tcp.h"
+#include <net/socket.h>
+#include <net/eth.h>
+#include <net/arp.h>
+#include <net/ip.h>
+#include <net/udp.h>
+#include <net/tcp.h>
 
 int32_t NetSocket::Open() {
   _dev = reinterpret_cast<DevEthernet*>(netdev_ctrl->GetDevice());
@@ -124,18 +124,33 @@ int32_t Socket::Transmit(const uint8_t *data, uint32_t length, bool isRawPacket)
   _dev->TransmitPacket(packet);
   int32_t sentLength = packet->len;
 
-  return sentLength < 0 ? sentLength : sentLength - (sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader));
+  return (sentLength < 0 || isRawPacket) ? sentLength : sentLength - (sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader));
 }
 
 int32_t Socket::TransmitPacket(const uint8_t *data, uint32_t length) {
-  int32_t rval = Transmit(data, length, false);
+  int32_t rval1 = Transmit(data, length, false);
+  int32_t rval2;
   if(_type == kFlagACK) {
     // TCP acknowledgement
-    if(rval >= 0) {
-	  SetSequenceNumber(_seq + rval);
+    uint8_t packet[sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader)];
+    uint8_t *tcp = packet + sizeof(EthHeader) + sizeof(IPv4Header);
+    if(rval1 >= 0 && _established) {
+      // receive acknowledgement
+      while(1) {
+        if((rval2 = Receive(packet, sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader), true)) >= 0) {
+          uint8_t type = tcp_ctrl->GetSessionType(tcp);
+          uint32_t seq = tcp_ctrl->GetSequenceNumber(tcp);
+          uint32_t ack = tcp_ctrl->GetAcknowledgeNumber(tcp);
+          if(type & kFlagACK && seq == _ack && ack == _seq + rval1) {
+            // packet transmission complete
+            SetSequenceNumber(_seq + rval1);
+            break;
+	      }
+        }
+      }
     }
   }
-  return rval;
+  return rval1;
 }
 
 int32_t Socket::TransmitRawPacket(const uint8_t *data, uint32_t length) {
@@ -174,25 +189,25 @@ int32_t Socket::Receive(uint8_t *data, uint32_t length, bool isRawPacket) {
     // copy data
     uint32_t offset = L2HeaderLength() + L3HeaderLength() + L4HeaderLength();
     memcpy(data, packet->buf + offset, length);
-
-    // finalization
-    _dev->ReuseRxBuffer(packet);
   } else {
     memcpy(data, packet->buf, packet->len < length ? packet->len : length);
   }
 
-  return receivedLength < 0 ? receivedLength : receivedLength - (sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader));
+  // finalization
+  _dev->ReuseRxBuffer(packet);
+
+  return (receivedLength < 0 || isRawPacket) ? receivedLength : receivedLength - (sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader));
 }
 
 int32_t Socket::ReceivePacket(uint8_t *data, uint32_t length) {
-  if(_type == kFlagACK) {
+  if(_type & kFlagACK) {
     // TCP acknowledgement
     uint32_t pktSize = sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader) + length;
     int32_t rval;
     uint8_t *packet = reinterpret_cast<uint8_t*>(virtmem_ctrl->Alloc(pktSize));
     uint8_t *tcp = packet + sizeof(EthHeader) + sizeof(IPv4Header);
 
-    if((rval = Receive(packet, length, true)) >= 0) {
+    if((rval = Receive(packet, pktSize, true)) >= 0) {
       uint8_t type = tcp_ctrl->GetSessionType(tcp);
       uint32_t seq = tcp_ctrl->GetSequenceNumber(tcp);
       uint32_t ack = tcp_ctrl->GetAcknowledgeNumber(tcp);
@@ -204,8 +219,11 @@ int32_t Socket::ReceivePacket(uint8_t *data, uint32_t length) {
       } else if(_ack == seq || (_seq == seq && _ack == ack)) {
         // acknowledge number = the expected next sequence number
         // (but the packet receiving right after 3-way handshake is not the case)
+        rval -= sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader);
         SetSequenceNumber(ack);
         SetAcknowledgeNumber(seq + rval);
+        // acknowledge
+        if(_established) Transmit(nullptr, 0, false);
         memcpy(data, packet + pktSize - length, length);
       } else {
         // something is wrong with the received sequence number
@@ -224,6 +242,9 @@ int32_t Socket::ReceiveRawPacket(uint8_t *data, uint32_t length) {
 }
 
 int32_t Socket::Listen() {
+  // connection already established
+  if(_established) return -1;
+
   uint32_t kBufSize = sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader);
   uint8_t buffer[kBufSize];
   uint8_t *tcp = buffer + sizeof(EthHeader) + sizeof(IPv4Header);
@@ -247,7 +268,7 @@ int32_t Socket::Listen() {
     if(ReceiveRawPacket(buffer, kBufSize) < 0) continue;
 
     // check sequence number
-    if(tcp_ctrl->GetSequenceNumber(tcp) != t + 1) continue;
+    if(tcp_ctrl->GetSequenceNumber(tcp) != t) continue;
 
     // check acknowledge number
     if(tcp_ctrl->GetAcknowledgeNumber(tcp) != s + 1) continue;
@@ -256,13 +277,17 @@ int32_t Socket::Listen() {
   }
 
   // connection established
-  SetSequenceNumber(t + 1);
+  SetSequenceNumber(t);
   SetAcknowledgeNumber(s + 1);
+  _established = true;
 
   return 0;
 }
 
 int32_t Socket::Connect() {
+  // connection already established
+  if(_established) return -1;
+
   uint32_t kBufSize = sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader);
   uint8_t buffer[kBufSize];
   uint8_t *tcp = buffer + sizeof(EthHeader) + sizeof(IPv4Header);
@@ -287,7 +312,7 @@ int32_t Socket::Connect() {
     // transmit ACK packet
     t = tcp_ctrl->GetSequenceNumber(tcp);
     SetSessionType(kFlagACK);
-    SetSequenceNumber(s + 1);
+    SetSequenceNumber(s);
     SetAcknowledgeNumber(t + 1);
     if(TransmitPacket(buffer, 0) < 0) continue;
 
@@ -295,8 +320,9 @@ int32_t Socket::Connect() {
   }
 
   // connection established
-  SetSequenceNumber(s + 1);
+  SetSequenceNumber(s);
   SetAcknowledgeNumber(t + 1);
+  _established = true;
 
   return 0;
 }
@@ -316,7 +342,7 @@ int32_t Socket::Close() {
 
     // transmit FIN+ACK packet
     SetSessionType(kFlagFIN | kFlagACK);
-    if(TransmitPacket(buffer, 0) < 0) continue;
+    if(Transmit(buffer, 0, false) < 0) continue;
 
     // receive ACK packet
     SetSessionType(kFlagACK);
@@ -342,11 +368,12 @@ int32_t Socket::Close() {
     SetSessionType(kFlagACK);
     SetSequenceNumber(s + 1);
     SetAcknowledgeNumber(t + 1);
-    if(TransmitPacket(buffer, 0) < 0) continue;
+    if(Transmit(buffer, 0, false) < 0) continue;
 
     break;
   }
- 
+
+  _established = false;
   return 0;
 }
 
@@ -359,11 +386,11 @@ int32_t Socket::CloseAck(uint8_t flag) {
     while(1) {
       // transmit ACK packet
       SetSessionType(kFlagACK);
-      if(TransmitPacket(buffer, 0) < 0) continue;
+      if(Transmit(buffer, 0, false) < 0) continue;
 
       // transmit FIN+ACK packet
       SetSessionType(kFlagFIN | kFlagACK);
-      if(TransmitPacket(buffer, 0) < 0) continue;
+      if(Transmit(buffer, 0, false) < 0) continue;
 
       // receive ACK packet
       SetSessionType(kFlagACK);
@@ -379,6 +406,7 @@ int32_t Socket::CloseAck(uint8_t flag) {
     }
   }
  
+  _established = false;
   return 0;
 }
 /*

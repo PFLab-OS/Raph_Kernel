@@ -121,6 +121,7 @@ void TCPClient() {
   fprintf(stderr, "[TCP:client] connection established\n");
 
   while(1) {
+    printf(">> ");
     if(scanf("%s", data) < 1) {
       // do nothing (just avoid warning)
     }

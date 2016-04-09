@@ -49,27 +49,31 @@ public:
 
   static const int32_t kConnectionClosed  = - 0x100;
 
-private:
-  // my IP address
-  uint32_t _ipaddr = 0x0a000210;
-  // destination IP address
-  uint32_t _daddr = 0x0a000210;
-  // destination port
-  uint16_t _dport = kPortHTTP;
-  // source port
-  uint16_t _sport = kPortHTTP;
-  // TCP session type
-  // set before both tx/rx by Socket::SetSessionType()
-  uint8_t _type   = kFlagRST;
-  // TCP sequence number
-  uint32_t _seq   = 0;
-  // TCP acknowledge number
-  uint32_t _ack   = 0;
+  Socket() {}
+  void SetAddr(uint32_t addr) { _daddr = addr; }
+  void SetPort(uint16_t port) { _dport = port; }
+  void SetListenPort(uint16_t port) { _sport = port; }
 
-  int32_t GetEthAddr(uint32_t ipaddr, uint8_t *macaddr);
-  void SetSessionType(uint8_t type) { _type = type; }
-  void SetSequenceNumber(uint32_t seq) { _seq = seq; }
-  void SetAcknowledgeNumber(uint32_t ack) { _ack = ack; }
+  // transmit TCP data (header will be attached)
+  virtual int32_t TransmitPacket(const uint8_t *data, uint32_t length);
+
+  // transmit raw packet (Ethernet/IPv4/TCP header will not be attached)
+  virtual int32_t TransmitRawPacket(const uint8_t *data, uint32_t length);
+
+  // receive TCP data (header will be detached)
+  virtual int32_t ReceivePacket(uint8_t *data, uint32_t length);
+
+  // receive raw packet (Ethernet/IPv4/TCP header will not be detached)
+  virtual int32_t ReceiveRawPacket(uint8_t *data, uint32_t length);
+
+  // server: wait for client connection (3-way handshake)
+  int32_t Listen();
+
+  // client: connect to server (3-way handshake)
+  int32_t Connect();
+
+  // close TCP connection (4-way handshake)
+  int32_t Close();
 
 protected:
   // L[2/3/4][T/R]xをオーバーライドすることで特定のレイヤの処理を書き換えられる
@@ -109,32 +113,29 @@ protected:
   // respond to FIN+ACK (4-way handshake)
   int32_t CloseAck(uint8_t flag);
 
-public:
-  Socket() {}
-  void SetAddr(uint32_t addr) { _daddr = addr; }
-  void SetPort(uint16_t port) { _dport = port; }
-  void SetListenPort(uint16_t port) { _sport = port; }
+private:
+  // my IP address
+  uint32_t _ipaddr = 0x0a000210;
+  // destination IP address
+  uint32_t _daddr = 0x0a000210;
+  // destination port
+  uint16_t _dport = kPortHTTP;
+  // source port
+  uint16_t _sport = kPortHTTP;
+  // TCP session type
+  // set before both tx/rx by Socket::SetSessionType()
+  uint8_t _type   = kFlagRST;
+  // TCP sequence number
+  uint32_t _seq   = 0;
+  // TCP acknowledge number
+  uint32_t _ack   = 0;
+  // flag for whether connection is established
+  bool _established = false;
 
-  // transmit TCP data (header will be attached)
-  virtual int32_t TransmitPacket(const uint8_t *data, uint32_t length);
-
-  // transmit raw packet (Ethernet/IPv4/TCP header will not be attached)
-  virtual int32_t TransmitRawPacket(const uint8_t *data, uint32_t length);
-
-  // receive TCP data (header will be detached)
-  virtual int32_t ReceivePacket(uint8_t *data, uint32_t length);
-
-  // receive raw packet (Ethernet/IPv4/TCP header will not be detached)
-  virtual int32_t ReceiveRawPacket(uint8_t *data, uint32_t length);
-
-  // server: wait for client connection (3-way handshake)
-  int32_t Listen();
-
-  // client: connect to server (3-way handshake)
-  int32_t Connect();
-
-  // close TCP connection (4-way handshake)
-  int32_t Close();
+  int32_t GetEthAddr(uint32_t ipaddr, uint8_t *macaddr);
+  void SetSessionType(uint8_t type) { _type = type; }
+  void SetSequenceNumber(uint32_t seq) { _seq = seq; }
+  void SetAcknowledgeNumber(uint32_t ack) { _ack = ack; }
 };
 
 // UDP Socket
