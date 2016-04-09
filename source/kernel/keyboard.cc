@@ -1,6 +1,12 @@
 #include <global.h>
 #include <keyboard.h>
 #include <apic.h>
+#include <idt.h>
+
+void Keyboard::Setup(){
+    apic_ctrl->Enable(1,0);
+    idt->SetIntCallback(0x20+1,Keyboard::intKeyboard);
+}
 
 void Keyboard::Write(uint8_t code){
   if (_next_w==_next_r+1) _overflow=true;

@@ -145,9 +145,7 @@ extern "C" int main() {
 
   InitDevices<PCICtrl, Device>();
 
-  //
-    apic_ctrl->Enable(1,0);//KBD
-    idt->SetIntCallback(0x20+1,Keyboard::intKeyboard);
+  keyboard->Setup();
 
   extern int kKernelEndAddr;
   // stackは16K

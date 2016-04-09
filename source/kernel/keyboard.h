@@ -31,6 +31,7 @@
 // this file should be put in dev/...?
 class Keyboard {
  public:
+  void Setup();
   void Write(uint8_t code);
   uint8_t Read();
   char Getch();
