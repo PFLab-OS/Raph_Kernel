@@ -51,7 +51,6 @@ void Keyboard::Handler(Regs *reg) { //static
   uint8_t data;
   data = inb(kDataPort);
   if(data < (1 << 7))  keyboard->Write(data);
-  apic_ctrl->SendEoi();
 }
 
 const char Keyboard::kScanCode[256] = {

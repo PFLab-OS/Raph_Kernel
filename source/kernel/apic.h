@@ -89,18 +89,12 @@ public:
   int GetHowManyCpus() {
     return _lapic._ncpu;
   }
-  void SetupPicInt(uint32_t irq){
-    _pic.SetupInt(irq);
-  }
   bool SetupIoInt(uint32_t irq, uint8_t lapicid, uint8_t vector) {
     kassert(vector >= 32);
     return _ioapic.SetupInt(irq, lapicid, vector);
   }
   void SendEoi() {
     _lapic.SendEoi();
-  }
-  void SendPicEoi() {
-    _pic.SendEoi();
   }
   void SendIpi(uint8_t destid) {
     _lapic.SendIpi(destid);
@@ -256,26 +250,6 @@ private:
     static const uint32_t kRegRedTblFlagMask = 1 << 16;
     static const int kRegRedTblOffsetDest = 24;
     } _ioapic;
-  class Pic {
-  public:
-    void Setup();
-    void SetupInt(int irq);
-    void SendEoi();
-  private:
-    uint16_t _irqMask = 0xFFFF; //the initial value masks all the irqs.
-    static const int kIrqSlave = 2;
-    static const int MasterCommand;
-    static const int MasterStatus;
-    static const int MasterMask;
-    static const int MasterData;
-    static const int SlaveCommand;
-    static const int SlaveStatus;
-    static const int SlaveMask;
-    static const int SlaveData;
-
-    //see 8259A data sheet
-    static const uint8_t kEoi = 1 << 5;
-  }_pic;
   MADT *_madt = nullptr;
   static const uint32_t kMadtFlagLapicEnable = 1;
   volatile bool _started = false;

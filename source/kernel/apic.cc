@@ -62,7 +62,6 @@ void ApicCtrl::Setup() {
   }
   _ioapic.Setup();
   _lapic._ncpu = ncpu;
-  _pic.Setup();
 }
 
 extern uint64_t boot16_start;
@@ -193,40 +192,3 @@ void ApicCtrl::Ioapic::Setup() {
     this->Write(kRegRedTbl + 2 * i + 1, 0);
   }
 }
-
-void ApicCtrl::Pic::Setup() {
-  //mask all
-  outb(MasterMask, 0xFF);
-  outb(SlaveMask, 0xFF); 
-
-  //Initial control word 
-  outb(MasterCommand, 0x11);
-  outb(MasterMask, Idt::ReservedIntVector::kIopicMaster);
-  outb(MasterMask, 1 << kIrqSlave);
-  outb(MasterMask, 0x3);
-  outb(SlaveCommand, 0x11);
-  outb(SlaveMask, Idt::ReservedIntVector::kIopicSlave);
-  outb(SlaveMask, kIrqSlave);
-  outb(SlaveMask, 0x3);
-  
-  SetupInt(kIrqSlave);
-}
-
-void ApicCtrl::Pic::SetupInt(int irq) {
-  _irqMask &= ~(1 << irq);
-  outb(MasterMask, (uint8_t)_irqMask);
-  outb(MasterMask, (uint8_t)(_irqMask >> 8));
-}
-
-void ApicCtrl::Pic::SendEoi() {
-  outb(Idt::ReservedIntVector::kIopicMaster, kEoi);
-  outb(Idt::ReservedIntVector::kIopicSlave, kEoi);
-}
-const int ApicCtrl::Pic::MasterCommand = Idt::ReservedIntVector::kIopicMaster;
-const int ApicCtrl::Pic::MasterStatus = MasterCommand;
-const int ApicCtrl::Pic::MasterMask = Idt::ReservedIntVector::kIopicMaster + 1;
-const int ApicCtrl::Pic::MasterData = MasterMask;
-const int ApicCtrl::Pic::SlaveCommand = Idt::ReservedIntVector::kIopicSlave;
-const int ApicCtrl::Pic::SlaveStatus = SlaveCommand;
-const int ApicCtrl::Pic::SlaveMask = Idt::ReservedIntVector::kIopicSlave + 1;
-const int ApicCtrl::Pic::SlaveData = SlaveMask;
