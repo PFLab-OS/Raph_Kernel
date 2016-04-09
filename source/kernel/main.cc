@@ -145,7 +145,6 @@ extern "C" int main() {
 
   InitDevices<PCICtrl, Device>();
 
-  keyboard->Setup(0); //should we define kDefaultLapicid = 0 ?
 
   extern int kKernelEndAddr;
   // stackは16K
@@ -166,12 +165,19 @@ extern "C" int main() {
 
   gtty->Printf("s", "\n\n[kernel] info: initialization completed\n");
 
+  // print keyboard_input
+  PollingFunc keyboardPolling;
+  keyboard->Setup(0); //should we define kDefaultLapicid = 0 ?
+  keyboardPolling.Init([](void *) {
+      while(keyboard->Count() > 0){
+	char ch[2] = {'\0','\0'};
+	ch[0] = keyboard->GetCh();
+	gtty->Printf("s", ch);
+      }
+    }, nullptr);
+  keyboardPolling.Register();
+  
   while(true) {
-    while(keyboard->Count()>0){
-      char ch[2]={'\0','\0'};
-      ch[0]=keyboard->GetCh();
-      gtty->Printf("s",ch);
-    }
     task_ctrl->Run();
     asm volatile("hlt");
   }
