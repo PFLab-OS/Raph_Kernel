@@ -25,6 +25,10 @@
 #include <net/test.h>
 #include <net/socket.h>
 
+void StripNewline(uint8_t *data) {
+  data[strcspn(reinterpret_cast<char*>(data), "\n")] = '%';
+}
+
 void ARPReply(uint32_t ipRequest, uint32_t ipReply) {
   ARPSocket socket;
   if(socket.Open() < 0) {
@@ -97,6 +101,9 @@ void TCPServer() {
   // loopback
   while(1) {
     if((rval = socket.ReceivePacket(data, size)) >= 0) {
+      // show newline as '%'
+      StripNewline(data);
+
       fprintf(stderr, "[TCP:server] received; %s\n", data);
       socket.TransmitPacket(data, strlen(reinterpret_cast<char*>(data)) + 1);
       fprintf(stderr, "[TCP:server] loopback\n");
@@ -126,12 +133,15 @@ void TCPClient() {
 
   while(1) {
     printf(">> ");
-    if(scanf("%s", data) < 1) {
+    if(fgets(reinterpret_cast<char*>(data), size, stdin)) {
       // do nothing (just avoid warning)
     }
     if(!strncmp(reinterpret_cast<char*>(data), "q", 1)) break;
 
     socket.TransmitPacket(data, strlen(reinterpret_cast<char*>(data)) + 1);
+
+    // show newline as '%'
+    StripNewline(data);
     fprintf(stderr, "[TCP:client] sent; %s\n", data);
 
     while(1) {
