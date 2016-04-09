@@ -6,7 +6,7 @@
 void Keyboard::Setup(int lapicid) {
   apic_ctrl->SetupPicInt(kIrqKeyboard);
   apic_ctrl->SetupIoInt(kIrqKeyboard, lapicid, Idt::ReservedIntVector::kKeyboard);
-  idt->SetIntCallback(Idt::ReservedIntVector::kKeyboard, Keyboard::intKeyboard);
+  idt->SetIntCallback(Idt::ReservedIntVector::kKeyboard, Keyboard::Handler);
 }
 
 void Keyboard::Write(uint8_t code){
@@ -48,7 +48,7 @@ void Keyboard::Reset() {
 }
 
 
-void Keyboard::intKeyboard(Regs *reg) { //static
+void Keyboard::Handler(Regs *reg) { //static
   uint8_t data;
   data = inb(kDataPort);
   if(data < (1 << 7))  keyboard->Write(data);
