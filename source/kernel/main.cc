@@ -169,7 +169,7 @@ extern "C" int main() {
   while(true) {
     while(keyboard->Count()>0){
       char ch[2]={'\0','\0'};
-      ch[0]=keyboard->Getch();
+      ch[0]=keyboard->GetCh();
       gtty->Printf("s",ch);
     }
     task_ctrl->Run();

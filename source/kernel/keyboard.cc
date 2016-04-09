@@ -3,44 +3,44 @@
 #include <apic.h>
 #include <idt.h>
 
-void Keyboard::Setup(int lapicid){
+void Keyboard::Setup(int lapicid) {
   apic_ctrl->SetupPicInt(kIrqKeyboard);
-  apic_ctrl->SetupIoInt(kIrqKeyboard,lapicid,ApicCtrl::kIrq0+kIrqKeyboard);
-  idt->SetIntCallback(ApicCtrl::kIrq0+kIrqKeyboard,Keyboard::intKeyboard);
+  apic_ctrl->SetupIoInt(kIrqKeyboard, lapicid, ApicCtrl::kIrq0 + kIrqKeyboard);
+  idt->SetIntCallback(ApicCtrl::kIrq0 + kIrqKeyboard, Keyboard::intKeyboard);
 }
 
 void Keyboard::Write(uint8_t code){
-  if (_next_w==_next_r+1) _overflow=true;
-  _buf[_next_w]=code;
+  if (_next_w == _next_r+1) _overflow = true;
+  _buf[_next_w] = code;
   _next_w++;
   _count++;
-  _next_w%=kbufSize;
+  _next_w %= kbufSize;
 }
-uint8_t Keyboard::Read(){
-  uint8_t data=_buf[_next_r];
-  if (_next_r==_next_w) _underflow=true;
+uint8_t Keyboard::Read() {
+  uint8_t data = _buf[_next_r];
+  if (_next_r == _next_w) _underflow = true;
   _next_r++;
   _count--;
-  _next_r%=kbufSize;
+  _next_r %= kbufSize;
   return data;
 }
 
-char Keyboard::Getch(){
-  uint8_t data=Read();
+char Keyboard::GetCh() {
+  uint8_t data = Read();
   return kScanCode[data];
 }
-bool Keyboard::Overflow(){
+bool Keyboard::Overflow() {
   return _overflow;
 }
-bool Keyboard::Underflow(){
+bool Keyboard::Underflow() {
   return _underflow;
 }
 
-int Keyboard::Count(){
+int Keyboard::Count() {
   return _count;
 }
 
-void Keyboard::Reset(){
+void Keyboard::Reset() {
   _overflow = false;
   _underflow = false;
   _count=_next_w = 0;
@@ -48,7 +48,7 @@ void Keyboard::Reset(){
 }
 
 
-void Keyboard::intKeyboard(Regs *reg){ //static
+void Keyboard::intKeyboard(Regs *reg) { //static
   uint8_t data;
   data = inb(kDataPort);
   if(data < (1 << 7))  keyboard->Write(data);
@@ -73,4 +73,4 @@ const char Keyboard::kScanCode[256] = {
     '!','!','!','!','!','!','!','!',
     '!','!','!','!','!','!','!','!',
     '!','!','!','!','!','!','!','!',
-  };
+};

@@ -267,14 +267,14 @@ private:
     static const int kIopicMaster = 0x20;
     static const int kIopicSlave = 0xA0;
     static const int kIrqSlave = 2;
-    static const int MasterCommand =kIopicMaster;
-    static const int MasterStatus =kIopicMaster;
-    static const int MasterMask =kIopicMaster+1;
-    static const int MasterData =kIopicMaster+1;
-    static const int SlaveCommand =kIopicSlave;
-    static const int SlaveStatus =kIopicSlave;
-    static const int SlaveMask =kIopicSlave+1;
-    static const int SlaveData =kIopicSlave+1;
+    static const int MasterCommand = kIopicMaster;
+    static const int MasterStatus = kIopicMaster;
+    static const int MasterMask = kIopicMaster + 1;
+    static const int MasterData = kIopicMaster + 1;
+    static const int SlaveCommand = kIopicSlave;
+    static const int SlaveStatus = kIopicSlave;
+    static const int SlaveMask = kIopicSlave + 1;
+    static const int SlaveData = kIopicSlave + 1;
 
     //see 8259A data sheet
     static const uint8_t kEOI = 1 << 5;

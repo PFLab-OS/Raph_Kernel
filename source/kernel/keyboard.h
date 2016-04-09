@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2015 Project Raphine
+ * Copyright (c) 2016 Project Raphine
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -16,11 +16,9 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
- * Author: Liva
+ * Author: Yuchiki
  * 
  */
-
-
 
 #ifndef __RAPH_KERNEL_KEYBOARD_H__
 #define __RAPH_KERNEL_KEYBOARD_H__
@@ -34,12 +32,11 @@ class Keyboard {
   void Setup(int lapicid);
   void Write(uint8_t code);
   uint8_t Read();
-  char Getch();
+  char GetCh();
   bool Overflow();
   bool Underflow();
   int Count();
   void Reset();
-
   static void intKeyboard (Regs *reg);
   static const int kIrqKeyboard = 1; //Every IRQ number needs to be unique. Should all the IRQ numbers be put in a same file?
  private:
@@ -52,7 +49,6 @@ class Keyboard {
   bool _underflow = false;
   int _next_w = 0;
   int _next_r = 0;
-
 };
 
 #endif // __RAPH_KERNEL_KEYBOARD_H__

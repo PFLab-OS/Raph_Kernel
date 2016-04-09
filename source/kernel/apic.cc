@@ -194,39 +194,31 @@ void ApicCtrl::Ioapic::Setup() {
   }
 }
 
-void ApicCtrl::Pic::Setup(){
-
+void ApicCtrl::Pic::Setup() {
   //mask all
-  outb(MasterMask,0xFF);
-  outb(SlaveMask,0xFF); 
+  outb(MasterMask, 0xFF);
+  outb(SlaveMask, 0xFF); 
 
-  //Initial control word
-  outb(MasterCommand,0x11);
-  outb(MasterMask,kIrq0);
-  outb(MasterMask,1<<kIrqSlave);
-  outb(MasterMask,0x3);
-  outb(SlaveCommand,0x11);
-  outb(SlaveMask,kIrq0+8);
-  outb(SlaveMask,kIrqSlave);
-  outb(SlaveMask,0x3);
-
-  //OCW3
-  outb(MasterCommand,0x68);
-  outb(MasterCommand,0x0a);
-  outb(SlaveCommand,0x68);
-  outb(SlaveCommand,0x0a);
+  //Initial control word 
+  outb(MasterCommand, 0x11);
+  outb(MasterMask, kIrq0);
+  outb(MasterMask, 1 << kIrqSlave);
+  outb(MasterMask, 0x3);
+  outb(SlaveCommand, 0x11);
+  outb(SlaveMask, kIrq0 + 8);
+  outb(SlaveMask, kIrqSlave);
+  outb(SlaveMask, 0x3);
   
   SetupInt(kIrqSlave);
 }
 
-void ApicCtrl::Pic::SetupInt(int irq){
-  _irqMask&=~(1<<irq);
-  outb(MasterMask,(uint8_t)_irqMask);
-  outb(MasterMask,(uint8_t)(_irqMask>>8));
+void ApicCtrl::Pic::SetupInt(int irq) {
+  _irqMask &= ~(1 << irq);
+  outb(MasterMask, (uint8_t)_irqMask);
+  outb(MasterMask, (uint8_t)(_irqMask >> 8));
 }
 
-void ApicCtrl::Pic::SendEoi(){
-  outb(kIopicMaster,kEOI);
-  outb(kIopicSlave,kEOI);
-
+void ApicCtrl::Pic::SendEoi() {
+  outb(kIopicMaster, kEOI);
+  outb(kIopicSlave, kEOI);
 }
