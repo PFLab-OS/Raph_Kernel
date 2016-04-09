@@ -62,7 +62,7 @@ void ApicCtrl::Setup() {
   }
   _ioapic.Setup();
   _lapic._ncpu = ncpu;
-  _ioapic.Enable(1,0);
+  _pic.Setup();
 }
 
 extern uint64_t boot16_start;
@@ -216,10 +216,10 @@ void ApicCtrl::Pic::Setup(){
   outb(SlaveCommand,0x68);
   outb(SlaveCommand,0x0a);
   
-  Enable(kIrqSlave);
+  SetupInt(kIrqSlave);
 }
 
-void ApicCtrl::Pic::Enable(int irq){
+void ApicCtrl::Pic::SetupInt(int irq){
   _irqMask&=~(1<<irq);
   outb(MasterMask,(uint8_t)_irqMask);
   outb(MasterMask,(uint8_t)(_irqMask>>8));

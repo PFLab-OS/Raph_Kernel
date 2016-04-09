@@ -80,10 +80,6 @@ public:
     _lapic.Setup();
   }
   static constexpr int lapicMaxNumber = 128;
-  void Enable(int irq,int cpunum){
-    _pic.Enable(irq);
-    _ioapic.Enable(irq,cpunum);
-  }
   volatile uint8_t GetApicId() {
     return _lapic.GetApicId();
   }
@@ -92,6 +88,9 @@ public:
   }
   int GetHowManyCpus() {
     return _lapic._ncpu;
+  }
+  void SetupPicInt(uint32_t irq){
+    _pic.SetupInt(irq);
   }
   bool SetupIoInt(uint32_t irq, uint8_t lapicid, uint8_t vector) {
     kassert(vector >= 32);
@@ -217,11 +216,6 @@ private:
     void SetReg(uint32_t *reg) {
       _reg = reg;
     }
-    void Enable(int irq,int cpunum){
-      Write(kRegRedTbl + 2 * irq,32+irq); //32 trap:IRQ0
-      Write(kRegRedTbl + 2 * irq+1, cpunum<<24);
-    }
-
     bool SetupInt(uint32_t irq, uint8_t lapicid, uint8_t vector) {
       kassert(irq <= this->GetMaxIntr());
       if ((Read(kRegRedTbl + 2 * irq) | kRegRedTblFlagMask) == 0) {
@@ -262,7 +256,7 @@ private:
   class Pic {
   public:
     void Setup();
-    void Enable(int irq);
+    void SetupInt(int irq);
   private:
     uint16_t _irqMask = 0xFFFF; //the initial value masks all the irqs.
     static const int kIopicMaster = 0x20;
@@ -277,7 +271,6 @@ private:
     static const int SlaveStatus =kIopicSlave;
     static const int SlaveMask =kIopicSlave+1;
     static const int SlaveData =kIopicSlave+1;
-    //koko kakitotyuu
   }_pic;
   static const int kIrq0=0x20;
   MADT *_madt = nullptr;

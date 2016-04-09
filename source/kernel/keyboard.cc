@@ -4,8 +4,9 @@
 #include <idt.h>
 
 void Keyboard::Setup(){
-    apic_ctrl->Enable(1,0);
-    idt->SetIntCallback(0x20+1,Keyboard::intKeyboard);
+  apic_ctrl->SetupPicInt(1);
+  apic_ctrl->SetupIoInt(1,0,32+1);
+  idt->SetIntCallback(0x20+1,Keyboard::intKeyboard);
 }
 
 void Keyboard::Write(uint8_t code){
