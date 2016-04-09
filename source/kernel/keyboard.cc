@@ -1,5 +1,6 @@
 #include <global.h>
 #include <keyboard.h>
+#include <apic.h>
 
 void Keyboard::Write(uint8_t code){
   if (_next_w==_next_r+1) _overflow=true;
@@ -32,13 +33,20 @@ int Keyboard::Count(){
   return _count;
 }
 
-
 void Keyboard::Reset(){
   _overflow=false;
   _underflow=false;
   _count=_next_w=_next_r=0;
 }
 
+
+void Keyboard::intKeyboard(Regs *reg){ //static
+  uint8_t data;
+  data=inb(0x60);
+  if(data<(1<<7))  keyboard->Write(data);
+  //  gtty->Printf("d",(int)data,"s"," ");
+  outb(0xa0,0x061);
+}
 
 const char Keyboard::ScanCode[256]={
     '!','!','1','2','3','4','5','6',

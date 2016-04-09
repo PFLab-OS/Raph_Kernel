@@ -25,8 +25,8 @@
 #ifndef __RAPH_KERNEL_KEYBOARD_H__
 #define __RAPH_KERNEL_KEYBOARD_H__
 
-#include <mem/physmem.h>
 #include <global.h>
+#include <apic.h>
 
 // this file should be put in dev/...?
 class Keyboard {
@@ -38,7 +38,8 @@ class Keyboard {
   bool Underflow();
   int Count();
   void Reset();
-   
+
+  static void intKeyboard (Regs *reg);
  private:
   static const int bufSize=100;
   int _count=0; 

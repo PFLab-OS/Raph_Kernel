@@ -41,7 +41,6 @@
 #include "net/socket.h"
 
 #include <keyboard.h>
-#include <int_handler.h>
 
 SpinLockCtrl *spinlock_ctrl;
 MultibootCtrl *multiboot_ctrl;
@@ -148,7 +147,7 @@ extern "C" int main() {
 
   //
     apic_ctrl->Enable(1,0);//KBD
-    idt->SetIntCallback(0x20+1,intKeyboard);
+    idt->SetIntCallback(0x20+1,Keyboard::intKeyboard);
 
   extern int kKernelEndAddr;
   // stackは16K
