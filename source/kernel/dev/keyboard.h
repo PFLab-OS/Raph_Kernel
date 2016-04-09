@@ -20,8 +20,8 @@
  * 
  */
 
-#ifndef __RAPH_KERNEL_KEYBOARD_H__
-#define __RAPH_KERNEL_KEYBOARD_H__
+#ifndef __RAPH_KERNEL_DEV_KEYBOARD_H__
+#define __RAPH_KERNEL_DEV_KEYBOARD_H__
 
 #include <global.h>
 #include <apic.h>
@@ -51,4 +51,4 @@ class Keyboard {
   int _next_r = 0;
 };
 
-#endif // __RAPH_KERNEL_KEYBOARD_H__
+#endif // __RAPH_KERNEL_DEV_KEYBOARD_H__

@@ -166,16 +166,16 @@ extern "C" int main() {
   gtty->Printf("s", "\n\n[kernel] info: initialization completed\n");
 
   // print keyboard_input
-  PollingFunc keyboard_polling;
+  PollingFunc _keyboard_polling;
   keyboard->Setup(0); //should we define kDefaultLapicid = 0 ?
-  keyboard_polling.Init([](void *) {
+  _keyboard_polling.Init([](void *) {
       while(keyboard->Count() > 0){
 	char ch[2] = {'\0','\0'};
 	ch[0] = keyboard->GetCh();
 	gtty->Printf("s", ch);
       }
     }, nullptr);
-  keyboardPolling.Register();
+  _keyboard_polling.Register();
   
   while(true) {
     task_ctrl->Run();
