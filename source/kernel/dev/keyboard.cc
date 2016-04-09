@@ -4,7 +4,7 @@
 #include <dev/keyboard.h>
 
 void Keyboard::Setup(int lapicid) {
-  apic_ctrl->SetupIoInt(kIrqKeyboard, lapicid, Idt::ReservedIntVector::kKeyboard);
+  apic_ctrl->SetupIoInt(ApicCtrl::Ioapic::kIrqKeyboard, lapicid, Idt::ReservedIntVector::kKeyboard);
   idt->SetIntCallback(Idt::ReservedIntVector::kKeyboard, Keyboard::Handler);
 }
 

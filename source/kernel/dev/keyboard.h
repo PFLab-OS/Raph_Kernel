@@ -38,7 +38,6 @@ class Keyboard {
   int Count();
   void Reset();
   static void Handler (Regs *reg);
-  static const int kIrqKeyboard = 1; //Every IRQ number needs to be unique. Should all the IRQ numbers be put in a same file?
  private:
   static const int kbufSize = 100;
   static const char kScanCode[256];
