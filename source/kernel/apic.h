@@ -249,7 +249,7 @@ private:
     static const uint32_t kRegRedTblFlagTriggerModeLevel = 1 << 15;
     static const uint32_t kRegRedTblFlagMask = 1 << 16;
     static const int kRegRedTblOffsetDest = 24;
-    } _ioapic;
+  } _ioapic;
   MADT *_madt = nullptr;
   static const uint32_t kMadtFlagLapicEnable = 1;
   volatile bool _started = false;
