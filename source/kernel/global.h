@@ -38,6 +38,7 @@ class Idt;
 
 class Tty;
 class Timer;
+class Keyboard;
 
 class PCICtrl;
 
@@ -54,8 +55,10 @@ extern TaskCtrl *task_ctrl;
 extern Gdt *gdt;
 extern Idt *idt;
 
+
 extern Tty *gtty;
 extern Timer *timer;
+extern Keyboard *keyboard;
 
 extern PCICtrl *pci_ctrl;
 
