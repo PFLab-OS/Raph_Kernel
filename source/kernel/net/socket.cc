@@ -127,30 +127,61 @@ int32_t Socket::Transmit(const uint8_t *data, uint32_t length, bool isRawPacket)
   return (sentLength < 0 || isRawPacket) ? sentLength : sentLength - (sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader));
 }
 
-int32_t Socket::TransmitPacket(const uint8_t *data, uint32_t length) {
-  int32_t rval1 = Transmit(data, length, false);
-  int32_t rval2;
-  if(_type == kFlagACK) {
-    // TCP acknowledgement
-    uint8_t packet[sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader)];
-    uint8_t *tcp = packet + sizeof(EthHeader) + sizeof(IPv4Header);
-    if(rval1 >= 0 && _established) {
-      // receive acknowledgement
-      while(1) {
-        if((rval2 = Receive(packet, sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader), true)) >= 0) {
-          uint8_t type = tcp_ctrl->GetSessionType(tcp);
-          uint32_t seq = tcp_ctrl->GetSequenceNumber(tcp);
-          uint32_t ack = tcp_ctrl->GetAcknowledgeNumber(tcp);
-          if(type & kFlagACK && seq == _ack && ack == _seq + rval1) {
-            // packet transmission complete
-            SetSequenceNumber(_seq + rval1);
-            break;
-	      }
+int32_t Socket::TransmitPacket(const uint8_t *packet, uint32_t length) {
+  // total sent length
+  int32_t sum = 0;
+
+  while(1) {
+    // length intended to be sent
+    uint32_t sendLength = length > kMSS ? kMSS : length;
+
+    // successfully sent length of packet
+    int32_t rval = Transmit(packet, sendLength, false);
+
+    if(_type & kFlagACK) {
+      // transmission mode is ACK
+      uint8_t packetAck[sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader)];
+      uint8_t *tcp = packetAck + sizeof(EthHeader) + sizeof(IPv4Header);
+
+      if(rval >= 0 && _established) {
+
+        while(1) {
+          // receive acknowledgement
+          if(Receive(packetAck, sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader), true) >= 0) {
+            // acknowledgement packet received
+            uint8_t type = tcp_ctrl->GetSessionType(tcp);
+            uint32_t seq = tcp_ctrl->GetSequenceNumber(tcp);
+            uint32_t ack = tcp_ctrl->GetAcknowledgeNumber(tcp);
+
+            if(type & kFlagACK && seq == _ack && ack == _seq + rval) {
+              // seqeuence & acknowledge number is valid
+              SetSequenceNumber(_seq + rval);
+
+              sum += rval;
+
+              break;
+            }
+          }
         }
+      } else if(rval < 0) {
+        // failed to transmit
+        sum = -1;
+        break;
       }
     }
+
+    // for remaining segment transmission
+    if(length > kMSS) {
+      packet += rval;
+      length -= rval;
+      continue;
+	} else {
+	  // transmission complete
+	  break;
+    }
   }
-  return rval1;
+
+  return sum;
 }
 
 int32_t Socket::TransmitRawPacket(const uint8_t *data, uint32_t length) {

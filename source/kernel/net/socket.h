@@ -37,9 +37,11 @@ public:
 // TCP/IP Socket
 class Socket : public NetSocket {
 public:
+  // frequently used port number
   static const uint16_t kPortTelnet = 23;
   static const uint16_t kPortHTTP = 80;
 
+  // TCP flag
   static const uint8_t kFlagFIN           = 1 << 0;
   static const uint8_t kFlagSYN           = 1 << 1;
   static const uint8_t kFlagRST           = 1 << 2;
@@ -47,6 +49,10 @@ public:
   static const uint8_t kFlagACK           = 1 << 4;
   static const uint8_t kFlagURG           = 1 << 5;
 
+  // maximum segment size
+  static const uint32_t kMSS = 1460;
+
+  // return code of ReceivePacket
   static const int32_t kConnectionClosed  = - 0x100;
 
   Socket() {}

@@ -27,10 +27,15 @@
 
 #include <stdint.h>
 
+// ARP request/reply test (1 turn around)
 void ARPReply(uint32_t ipRequest, uint32_t ipReply);
 void ARPRequest(uint32_t ipRequest, uint32_t ipReply);
+
+// TCP connection test (client loopback)
 void TCPServer();
 void TCPClient();
+
+// TCP congestion control test
 void TCPServer2();
 void TCPClient2();
 

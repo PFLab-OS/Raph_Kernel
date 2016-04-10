@@ -133,8 +133,8 @@ void TCPClient() {
 
   while(1) {
     printf(">> ");
-    if(fgets(reinterpret_cast<char*>(data), size, stdin)) {
-      // do nothing (just avoid warning)
+    if(fgets(reinterpret_cast<char*>(data), size-1, stdin)) {
+      data[size-1] = 0;
     }
     if(!strncmp(reinterpret_cast<char*>(data), "q", 1)) break;
 
@@ -155,7 +155,47 @@ void TCPClient() {
 }
 
 void TCPServer2() {
+  Socket socket;
+  if(socket.Open() < 0) {
+    fprintf(stderr, "[error] cannot open socket\n");
+  }
+  socket.SetListenAddr(0x0a000206);
+  socket.SetListenPort(Socket::kPortTelnet);
+  socket.SetAddr(0x0a000205);
+  socket.SetPort(Socket::kPortTelnet);
+
+  const uint32_t size = Socket::kMSS;
+  uint8_t data[size];
+  int32_t rval;
+
+  socket.Listen();
+
+  while((rval = socket.ReceivePacket(data, size)) >= 0) {
+    printf("return value = %d\n", rval);
+    if(rval == Socket::kConnectionClosed) {  
+      break;
+    }
+  }
 }
 
 void TCPClient2() {
+  Socket socket;
+  if(socket.Open() < 0) {
+    fprintf(stderr, "[error] cannot open socket\n");
+  }
+  socket.SetListenAddr(0x0a000205);
+  socket.SetListenPort(Socket::kPortTelnet);
+  socket.SetAddr(0x0a000206);
+  socket.SetPort(Socket::kPortTelnet);
+
+  const uint32_t size = 8000;
+  uint8_t data[size];
+  memset(data, 0x41, size-1);
+  data[size-1] = 0;
+
+  socket.Connect();
+
+  printf("return value = %d\n", socket.TransmitPacket(data, size));
+
+  socket.Close();
 }
