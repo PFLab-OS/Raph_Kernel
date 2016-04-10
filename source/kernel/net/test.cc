@@ -22,6 +22,7 @@
 
 #include <unistd.h>
 #include <cstdio>
+#include <posix.h>
 #include <net/test.h>
 #include <net/socket.h>
 
@@ -80,7 +81,7 @@ void ARPRequest(uint32_t ipRequest, uint32_t ipReply) {
   }
 }
 
-void TCPServer() {
+void TCPServer1() {
   Socket socket;
   if(socket.Open() < 0) {
     fprintf(stderr, "[error] cannot open socket\n");
@@ -107,14 +108,14 @@ void TCPServer() {
       fprintf(stderr, "[TCP:server] received; %s\n", data);
       socket.TransmitPacket(data, strlen(reinterpret_cast<char*>(data)) + 1);
       fprintf(stderr, "[TCP:server] loopback\n");
-    } else if(rval == Socket::kConnectionClosed) {
+    } else if(rval == Socket::kErrorConnectionClosed) {
       break;
     }
   }
   fprintf(stderr, "[TCP:server] closed\n");
 }
 
-void TCPClient() {
+void TCPClient1() {
   Socket socket;
   if(socket.Open() < 0) {
     fprintf(stderr, "[error] cannot open socket\n");
@@ -170,9 +171,10 @@ void TCPServer2() {
 
   socket.Listen();
 
-  while((rval = socket.ReceivePacket(data, size)) >= 0) {
+  while(true) {
+    rval = socket.ReceivePacket(data, size);
     printf("return value = %d\n", rval);
-    if(rval == Socket::kConnectionClosed) {  
+    if(rval < 0) {
       break;
     }
   }
@@ -198,4 +200,36 @@ void TCPClient2() {
   printf("return value = %d\n", socket.TransmitPacket(data, size));
 
   socket.Close();
+}
+
+void TCPServer3() {
+  Socket socket;
+  if(socket.Open() < 0) {
+    fprintf(stderr, "[error] cannot open socket\n");
+  }
+  socket.SetListenAddr(0x0a000206);
+  socket.SetListenPort(Socket::kPortTelnet);
+  socket.SetAddr(0x0a000205);
+  socket.SetPort(Socket::kPortTelnet);
+
+  const uint32_t size = Socket::kMSS;
+  uint8_t data[size];
+  int32_t rval;
+
+  socket.Listen();
+
+  while(true) {
+    // NB: stupid server!!! (test TCP restransmission)
+    timer->BusyUwait(5000000);
+
+    rval = socket.ReceivePacket(data, size);
+    printf("return value = %d\n", rval);
+    if(rval < 0) {
+      break;
+    }
+  }
+}
+
+void TCPClient3() {
+  TCPClient2();
 }

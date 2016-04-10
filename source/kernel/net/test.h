@@ -31,13 +31,41 @@
 void ARPReply(uint32_t ipRequest, uint32_t ipReply);
 void ARPRequest(uint32_t ipRequest, uint32_t ipReply);
 
-// TCP connection test (client loopback)
-void TCPServer();
-void TCPClient();
+/* 
+ * [TEST#1] TCP connection test (client loopback)
+ *
+ * Enter something to client prompt, then it will be sent to server
+ * and server will send back it to client.
+ * While these communications, acknowledgement is done correctly.
+ * By this test case, the following features can be checked.
+ *
+ *   * SYN-ACK 3-way handshake (connection establish)
+ *   * acknowledgement
+ *   * FIN-ACK 4-way handshake (connection closing)
+ */
+void TCPServer1();
+void TCPClient1();
 
-// TCP congestion control test
+/*
+ * [TEST#2] TCP packet segmentation test
+ *
+ * Client will send large packet (larger than MSS; maximum segment size),
+ * so the packet will be segmented before transmission.
+ * Through this test, it can be checked that both sender and receiver 
+ * can handle segmented packets appropriately.
+ */
 void TCPServer2();
 void TCPClient2();
+
+/*
+ * [TEST#3] TCP retransmission timeout test
+ *
+ * Client performs same as TEST#2. However, this server wait 5 secs,
+ * which is larger than RTO (Retransmission TimeOut), before receiving.
+ * Therefore client have to regard this as packet loss and retransmit.
+ */
+void TCPServer3();
+void TCPClient3();
 
 #endif // __UNIT_TEST__
 

@@ -42,18 +42,19 @@ public:
   static const uint16_t kPortHTTP = 80;
 
   // TCP flag
-  static const uint8_t kFlagFIN           = 1 << 0;
-  static const uint8_t kFlagSYN           = 1 << 1;
-  static const uint8_t kFlagRST           = 1 << 2;
-  static const uint8_t kFlagPSH           = 1 << 3;
-  static const uint8_t kFlagACK           = 1 << 4;
-  static const uint8_t kFlagURG           = 1 << 5;
+  static const uint8_t kFlagFIN = 1 << 0;
+  static const uint8_t kFlagSYN = 1 << 1;
+  static const uint8_t kFlagRST = 1 << 2;
+  static const uint8_t kFlagPSH = 1 << 3;
+  static const uint8_t kFlagACK = 1 << 4;
+  static const uint8_t kFlagURG = 1 << 5;
 
   // maximum segment size
   static const uint32_t kMSS = 1460;
 
   // return code of ReceivePacket
-  static const int32_t kConnectionClosed  = - 0x100;
+  static const int32_t kErrorConnectionClosed       = - 0x100;
+  static const int32_t kErrorRetransmissionTimeout  = - 0x101;
 
   Socket() {}
   void SetAddr(uint32_t addr) { _daddr = addr; }
@@ -116,9 +117,17 @@ protected:
 		  uint16_t dport);
 
   // low-level packet receive function
-  int32_t Receive(uint8_t *data, uint32_t length, bool isRawPacket);
+  //   @param buffer          buffer to store received data
+  //   @param length          length of buffer
+  //   @param is_raw_packet   whether to receive raw packet
+  //   @param wait_timeout    whether to wait for timeout
+  //   @param rto             timeout count (valid on wait_timeout == true)
+  int32_t Receive(uint8_t *buffer, uint32_t length, bool is_raw_packet, bool wait_timeout, uint64_t rto);
   // low-level packet transmit function
-  int32_t Transmit(const uint8_t *data, uint32_t length, bool isRawPacket);
+  //   @param data            data to be sent
+  //   @param length          length of data
+  //   @param is_raw_packet   whether data is raw packet
+  int32_t Transmit(const uint8_t *data, uint32_t length, bool is_raw_packet);
 
   // respond to FIN+ACK (4-way handshake)
   int32_t CloseAck(uint8_t flag);
@@ -142,10 +151,32 @@ private:
   // flag for whether connection is established
   bool _established = false;
 
+  /*
+   * TCP Restransmission Timeout Parameters
+   *   RTT: Round Trip Time
+   *   RTO: Retransmission TimeOut
+   */
+  // RTO upper bound [usec]
+  static const uint64_t kRtoUBound = 5000000;
+  // RTO lower bound [usec]
+  static const uint64_t kRtoLBound = 1000000;
+  // RTT [usec] (default is 3[sec])
+  uint64_t _rtt_usec = 3000000;
+
   int32_t GetEthAddr(uint32_t ipaddr, uint8_t *macaddr);
   void SetSessionType(uint8_t type) { _type = type; }
   void SetSequenceNumber(uint32_t seq) { _seq = seq; }
   void SetAcknowledgeNumber(uint32_t ack) { _ack = ack; }
+
+  uint64_t GetRetransmissionTimeout() {
+    // simple algorithm of RTO calculation
+    // recommended algorithm is
+    //   * RFC793[3.7] Smoothing RTO (https://tools.ietf.org/html/rfc793)
+    //   * Van Jacobson, Michael J. Karels, "Congestion Avoidance and Control", Proc. SIGCOMM'88., Appendix A
+    return _rtt_usec < kRtoUBound ? (
+        kRtoLBound < _rtt_usec ? _rtt_usec : kRtoLBound) :
+      kRtoUBound;
+  }
 };
 
 // UDP Socket

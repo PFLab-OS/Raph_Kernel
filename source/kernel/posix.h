@@ -23,31 +23,26 @@
 #ifndef __RAPH_KERNEL_POSIX_H__
 #define __RAPH_KERNEL_POSIX_H__
 
+#ifdef __UNIT_TEST__
+
 #include <stdint.h>
-#include <sys/time.h> 
+#include <time.h>
 #include <timer.h>
 
 class PosixTimer : public Timer {
 public:
   virtual bool Setup() {
     _cnt_clk_period = 1;
-
-    struct timeval tv;
-    gettimeofday(&tv, nullptr);
-    _boot_time_cnt = tv.tv_sec * 1e+06 + tv.tv_usec;
-
     return true;
   }
   virtual volatile uint64_t ReadMainCnt() {
-    // return the difference between current time and time on booting
-    struct timeval tv;
-    gettimeofday(&tv, nullptr);
-    uint64_t cnt = tv.tv_sec * 1e+06 + tv.tv_usec;
-    return cnt - _boot_time_cnt;
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    uint64_t t = ts.tv_sec * 1000000000 + ts.tv_nsec;
+    return t;
   }
-
-private:
-  uint64_t _boot_time_cnt = 0;
 };
+
+#endif // __UNIT_TEST__
 
 #endif /* __RAPH_KERNEL_POSIX_H__ */
