@@ -106,8 +106,8 @@ extern "C" int main() {
   Vga _vga;
   gtty = &_vga;
 
-   Keyboard _keyboard;
-   keyboard = &_keyboard;
+  Keyboard _keyboard;
+  keyboard = &_keyboard;
   
   PhysAddr paddr;
   physmem_ctrl->Alloc(paddr, PagingCtrl::kPageSize * 2);
