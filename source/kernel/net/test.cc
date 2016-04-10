@@ -100,7 +100,7 @@ void TCPServer1() {
   fprintf(stderr, "[TCP:server] connection established\n");
 
   // loopback
-  while(1) {
+  while(true) {
     if((rval = socket.ReceivePacket(data, size)) >= 0) {
       // show newline as '%'
       StripNewline(data);
@@ -132,7 +132,7 @@ void TCPClient1() {
   socket.Connect();
   fprintf(stderr, "[TCP:client] connection established\n");
 
-  while(1) {
+  while(true) {
     printf(">> ");
     if(fgets(reinterpret_cast<char*>(data), size-1, stdin)) {
       data[size-1] = 0;
@@ -145,7 +145,7 @@ void TCPClient1() {
     StripNewline(data);
     fprintf(stderr, "[TCP:client] sent; %s\n", data);
 
-    while(1) {
+    while(true) {
       if(socket.ReceivePacket(data, size) >= 0) break;
     }
     fprintf(stderr, "[TCP:client] received; %s\n", data);

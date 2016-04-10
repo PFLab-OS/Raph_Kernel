@@ -135,7 +135,7 @@ int32_t Socket::TransmitPacket(const uint8_t *packet, uint32_t length) {
   // base count of round trip time
   uint64_t t0 = 0;
 
-  while(1) {
+  while(true) {
     // length intended to be sent
     uint32_t send_length = length > kMSS ? kMSS : length;
 
@@ -153,7 +153,7 @@ int32_t Socket::TransmitPacket(const uint8_t *packet, uint32_t length) {
 
         uint64_t rto = timer->GetCntAfterPeriod(timer->ReadMainCnt(), GetRetransmissionTimeout());
 
-        while(1) {
+        while(true) {
           // receive acknowledgement
           rval_ack = Receive(packet_ack, sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader), true, true, rto);
           if(rval_ack >= 0) {
@@ -248,7 +248,7 @@ int32_t Socket::Receive(uint8_t *data, uint32_t length, bool is_raw_packet, bool
     if(!L4Rx(packet->buf + offset_l4, _sport, _dport)) continue;
 
     break;
-  } while(1);
+  } while(true);
 
   // received "RAW" packet length
   int32_t received_length = packet->len;
@@ -275,7 +275,7 @@ int32_t Socket::ReceivePacket(uint8_t *data, uint32_t length) {
     uint8_t *packet = reinterpret_cast<uint8_t*>(virtmem_ctrl->Alloc(pkt_size));
     uint8_t *tcp = packet + sizeof(EthHeader) + sizeof(IPv4Header);
 
-    while(1) {
+    while(true) {
       if((rval = Receive(packet, pkt_size, true, false, 0)) >= 0) {
         uint8_t type = tcp_ctrl->GetSessionType(tcp);
         uint32_t seq = tcp_ctrl->GetSequenceNumber(tcp);
@@ -326,7 +326,7 @@ int32_t Socket::Listen() {
   uint8_t *tcp = buffer + sizeof(EthHeader) + sizeof(IPv4Header);
   uint32_t s, t;
 
-  while(1) {
+  while(true) {
     // receive SYN packet
     SetSessionType(kFlagSYN);
     if(ReceiveRawPacket(buffer, kBufSize) < 0) continue;
@@ -369,7 +369,7 @@ int32_t Socket::Connect() {
   uint8_t *tcp = buffer + sizeof(EthHeader) + sizeof(IPv4Header);
   uint32_t s, t;
 
-  while(1) {
+  while(true) {
     // transmit SYN packet
     t = rand();
     SetSessionType(kFlagSYN);
@@ -412,7 +412,7 @@ int32_t Socket::Close() {
   uint32_t s = _seq;
   uint32_t t = _ack;
 
-  while(1) {
+  while(true) {
     SetSequenceNumber(saved_seq);
     SetAcknowledgeNumber(saved_ack);
 
@@ -459,7 +459,7 @@ int32_t Socket::CloseAck(uint8_t flag) {
   uint8_t *tcp = buffer + sizeof(EthHeader) + sizeof(IPv4Header);
 
   if(flag == (kFlagFIN | kFlagACK)) {
-    while(1) {
+    while(true) {
       // transmit ACK packet
       SetSessionType(kFlagACK);
       if(Transmit(buffer, 0, false) < 0) continue;
@@ -575,7 +575,7 @@ int32_t ARPSocket::ReceivePacket(uint16_t type, uint32_t *spa, uint8_t *sha) {
     if(!arp_ctrl->FilterPacket(packet->buf + sizeof(EthHeader), type, nullptr, 0, eth_daddr, _ipaddr)) continue;
 
     break;
-  } while(1);
+  } while(true);
 
   uint8_t *p = packet->buf + sizeof(EthHeader) + kOperationOffset;
   op = ntohs(*reinterpret_cast<uint16_t*>(p));
