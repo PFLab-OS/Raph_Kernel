@@ -20,16 +20,16 @@
  * 
  */
 
-#include "../raph.h"
-#include "../global.h"
-#include "../mem/physmem.h"
-#include "../mem/virtmem.h"
-#include "../dev/netdev.h"
-#include "eth.h"
-#include "arp.h"
-#include "ip.h"
-#include "udp.h"
-#include "tcp.h"
+#include <raph.h>
+#include <global.h>
+#include <mem/physmem.h>
+#include <mem/virtmem.h>
+#include <dev/netdev.h>
+#include <net/eth.h>
+#include <net/arp.h>
+#include <net/ip.h>
+#include <net/udp.h>
+#include <net/tcp.h>
 
 DevEthernetCtrl *netdev_ctrl;
 ARPTable *arp_table;

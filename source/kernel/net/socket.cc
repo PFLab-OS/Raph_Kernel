@@ -100,54 +100,54 @@ int32_t Socket::Transmit(const uint8_t *data, uint32_t length, bool is_raw_packe
     packet->len = L2HeaderLength() + L3HeaderLength() + L4HeaderLength() + length;
 
     // packet body
-    uint32_t offsetBody = L2HeaderLength() + L3HeaderLength() + L4HeaderLength();
-    memcpy(packet->buf + offsetBody, data, length);
+    uint32_t offset_body = L2HeaderLength() + L3HeaderLength() + L4HeaderLength();
+    memcpy(packet->buf + offset_body, data, length);
 
     // TCP header
-    uint32_t offsetL4 = L2HeaderLength() + L3HeaderLength();
-    L4Tx(packet->buf + offsetL4, L4HeaderLength() + length, _sport, _dport);
+    uint32_t offset_l4 = L2HeaderLength() + L3HeaderLength();
+    L4Tx(packet->buf + offset_l4, L4HeaderLength() + length, _sport, _dport);
 
     // IP header
-    uint32_t offsetL3 = L2HeaderLength();
+    uint32_t offset_l3 = L2HeaderLength();
     uint32_t saddr = _ipaddr;
-    L3Tx(packet->buf + offsetL3, L4HeaderLength() + length, L4Protocol(), saddr, _daddr);
+    L3Tx(packet->buf + offset_l3, L4HeaderLength() + length, L4Protocol(), saddr, _daddr);
 
     // Ethernet header
-    uint8_t ethSaddr[6];
-    uint8_t ethDaddr[6] = {0x08, 0x00, 0x27, 0xc1, 0x5b, 0x93}; // TODO:
-    _dev->GetEthAddr(ethSaddr);
-//    GetEthAddr(_daddr, ethDaddr);
-    L2Tx(packet->buf, ethSaddr, ethDaddr, EthCtrl::kProtocolIPv4);
+    uint8_t eth_saddr[6];
+    uint8_t eth_daddr[6] = {0x08, 0x00, 0x27, 0xc1, 0x5b, 0x93}; // TODO:
+    _dev->GetEthAddr(eth_saddr);
+//    GetEthAddr(_daddr, eth_daddr);
+    L2Tx(packet->buf, eth_saddr, eth_daddr, EthCtrl::kProtocolIPv4);
   }
 
   // transmit
   _dev->TransmitPacket(packet);
-  int32_t sentLength = packet->len;
+  int32_t sent_length = packet->len;
 
-  return (sentLength < 0 || is_raw_packet) ? sentLength : sentLength - (L2HeaderLength() + L3HeaderLength() + L4HeaderLength());
+  return (sent_length < 0 || is_raw_packet) ? sent_length : sent_length - (L2HeaderLength() + L3HeaderLength() + L4HeaderLength());
 }
 
 int32_t Socket::TransmitPacket(const uint8_t *packet, uint32_t length) {
   // total sent length
   int32_t sum = 0;
   // return value of receiving ack
-  int32_t rvalAck = 0;
+  int32_t rval_ack = 0;
   // base count of round trip time
   uint64_t t0 = 0;
 
   while(1) {
     // length intended to be sent
-    uint32_t sendLength = length > kMSS ? kMSS : length;
+    uint32_t send_length = length > kMSS ? kMSS : length;
 
-    if(rvalAck != kErrorRetransmissionTimeout) t0 = timer->ReadMainCnt();
+    if(rval_ack != kErrorRetransmissionTimeout) t0 = timer->ReadMainCnt();
 
     // successfully sent length of packet
-    int32_t rval = Transmit(packet, sendLength, false);
+    int32_t rval = Transmit(packet, send_length, false);
 
     if(_type & kFlagACK) {
       // transmission mode is ACK
-      uint8_t packetAck[sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader)];
-      uint8_t *tcp = packetAck + sizeof(EthHeader) + sizeof(IPv4Header);
+      uint8_t packet_ack[sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader)];
+      uint8_t *tcp = packet_ack + sizeof(EthHeader) + sizeof(IPv4Header);
 
       if(rval >= 0 && _established) {
 
@@ -155,8 +155,8 @@ int32_t Socket::TransmitPacket(const uint8_t *packet, uint32_t length) {
 
         while(1) {
           // receive acknowledgement
-          rvalAck = Receive(packetAck, sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader), true, true, rto);
-          if(rvalAck >= 0) {
+          rval_ack = Receive(packet_ack, sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader), true, true, rto);
+          if(rval_ack >= 0) {
             // acknowledgement packet received
             uint8_t type = tcp_ctrl->GetSessionType(tcp);
             uint32_t seq = tcp_ctrl->GetSequenceNumber(tcp);
@@ -175,7 +175,7 @@ int32_t Socket::TransmitPacket(const uint8_t *packet, uint32_t length) {
               sum += rval;
               break;
             }
-          } else if(rvalAck == kErrorRetransmissionTimeout) {
+          } else if(rval_ack == kErrorRetransmissionTimeout) {
             // retransmission timeout
             break;
           }
@@ -187,7 +187,7 @@ int32_t Socket::TransmitPacket(const uint8_t *packet, uint32_t length) {
       }
     }
 
-    if(rvalAck == kErrorRetransmissionTimeout) continue;
+    if(rval_ack == kErrorRetransmissionTimeout) continue;
 
     // for remaining segment transmission
     if(length > kMSS) {
@@ -209,11 +209,11 @@ int32_t Socket::TransmitRawPacket(const uint8_t *data, uint32_t length) {
 
 int32_t Socket::Receive(uint8_t *data, uint32_t length, bool is_raw_packet, bool wait_timeout, uint64_t rto) {
   // alloc buffer
-  int32_t receivedLength;
+  int32_t received_length;
   DevEthernet::Packet *packet;
-  uint8_t ethDaddr[6];
-  uint32_t ipDaddr = _ipaddr;
-  _dev->GetEthAddr(ethDaddr);
+  uint8_t eth_daddr[6];
+  uint32_t ip_daddr = _ipaddr;
+  _dev->GetEthAddr(eth_daddr);
 
   do {
     // receive
@@ -227,20 +227,20 @@ int32_t Socket::Receive(uint8_t *data, uint32_t length, bool is_raw_packet, bool
     }
 
     // filter Ethernet address
-    if(!L2Rx(packet->buf, nullptr, ethDaddr, EthCtrl::kProtocolIPv4)) continue;
+    if(!L2Rx(packet->buf, nullptr, eth_daddr, EthCtrl::kProtocolIPv4)) continue;
 
     // filter IP address
-    uint32_t offsetL3 = L2HeaderLength();
-    if(!L3Rx(packet->buf + offsetL3 , L4Protocol(), _daddr, ipDaddr)) continue;
+    uint32_t offset_l3 = L2HeaderLength();
+    if(!L3Rx(packet->buf + offset_l3 , L4Protocol(), _daddr, ip_daddr)) continue;
 
     // filter TCP port
-    uint32_t offsetL4 = L2HeaderLength() + L3HeaderLength();
-    if(!L4Rx(packet->buf + offsetL4, _sport, _dport)) continue;
+    uint32_t offset_l4 = L2HeaderLength() + L3HeaderLength();
+    if(!L4Rx(packet->buf + offset_l4, _sport, _dport)) continue;
 
     break;
   } while(1);
 
-  receivedLength = packet->len;
+  received_length = packet->len;
 
   if(!is_raw_packet) {
     // copy data
@@ -253,7 +253,7 @@ int32_t Socket::Receive(uint8_t *data, uint32_t length, bool is_raw_packet, bool
   // finalization
   _dev->ReuseRxBuffer(packet);
 
-  return (receivedLength < 0 || is_raw_packet) ? receivedLength : receivedLength - (L2HeaderLength() + L3HeaderLength() + L4HeaderLength());
+  return (received_length < 0 || is_raw_packet) ? received_length : received_length - (L2HeaderLength() + L3HeaderLength() + L4HeaderLength());
 }
 
 int32_t Socket::ReceivePacket(uint8_t *data, uint32_t length) {
@@ -396,14 +396,14 @@ int32_t Socket::Close() {
   uint32_t kBufSize = sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader);
   uint8_t buffer[kBufSize];
   uint8_t *tcp = buffer + sizeof(EthHeader) + sizeof(IPv4Header);
-  uint32_t savedSeq = _seq;
-  uint32_t savedAck = _ack;
+  uint32_t saved_seq = _seq;
+  uint32_t saved_ack = _ack;
   uint32_t s = _seq;
   uint32_t t = _ack;
 
   while(1) {
-    SetSequenceNumber(savedSeq);
-    SetAcknowledgeNumber(savedAck);
+    SetSequenceNumber(saved_seq);
+    SetAcknowledgeNumber(saved_ack);
 
     // transmit FIN+ACK packet
     SetSessionType(kFlagFIN | kFlagACK);
@@ -507,17 +507,17 @@ void ARPSocket::SetIPAddr(uint32_t ipaddr) {
 }
 
 int32_t ARPSocket::TransmitPacket(uint16_t type, uint32_t tpa, uint8_t *tha) {
-  uint32_t ipDaddr = tpa;
-  uint8_t ethSaddr[6];
-  uint8_t ethDaddr[6];
-  _dev->GetEthAddr(ethSaddr);
+  uint32_t ip_daddr = tpa;
+  uint8_t eth_saddr[6];
+  uint8_t eth_daddr[6];
+  _dev->GetEthAddr(eth_saddr);
 
   switch(type) {
     case kOpARPRequest:
-      memset(ethDaddr, 0xff, 6); // broadcast
+      memset(eth_daddr, 0xff, 6); // broadcast
       break;
     case kOpARPReply:
-      memcpy(ethDaddr, tha, 6);
+      memcpy(eth_daddr, tha, 6);
       break;
     default:
       // unknown ARP operation
@@ -534,10 +534,10 @@ int32_t ARPSocket::TransmitPacket(uint16_t type, uint32_t tpa, uint8_t *tha) {
 
   // ARP header
   uint32_t offsetARP = sizeof(EthHeader);
-  arp_ctrl->GeneratePacket(packet->buf + offsetARP, type, ethSaddr, _ipaddr, ethDaddr, ipDaddr);
+  arp_ctrl->GeneratePacket(packet->buf + offsetARP, type, eth_saddr, _ipaddr, eth_daddr, ip_daddr);
 
   // Ethernet header
-  eth_ctrl->GenerateHeader(packet->buf, ethSaddr, ethDaddr, EthCtrl::kProtocolARP);
+  eth_ctrl->GenerateHeader(packet->buf, eth_saddr, eth_daddr, EthCtrl::kProtocolARP);
 
   // transmit
   _dev->TransmitPacket(packet);
@@ -550,18 +550,18 @@ int32_t ARPSocket::ReceivePacket(uint16_t type, uint32_t *spa, uint8_t *sha) {
   DevEthernet::Packet *packet;
   int16_t op = 0;
 
-  uint8_t ethDaddr[6];
-  _dev->GetEthAddr(ethDaddr);
+  uint8_t eth_daddr[6];
+  _dev->GetEthAddr(eth_daddr);
 
   do {
     // receive
     if(!_dev->ReceivePacket(packet)) continue;
 
     // filter Ethernet address
-    if(!eth_ctrl->FilterPacket(packet->buf, nullptr, ethDaddr, EthCtrl::kProtocolARP)) continue;
+    if(!eth_ctrl->FilterPacket(packet->buf, nullptr, eth_daddr, EthCtrl::kProtocolARP)) continue;
 
     // filter IP address
-    if(!arp_ctrl->FilterPacket(packet->buf + sizeof(EthHeader), type, nullptr, 0, ethDaddr, _ipaddr)) continue;
+    if(!arp_ctrl->FilterPacket(packet->buf + sizeof(EthHeader), type, nullptr, 0, eth_daddr, _ipaddr)) continue;
 
     break;
   } while(1);

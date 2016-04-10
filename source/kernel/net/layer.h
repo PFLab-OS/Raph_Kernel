@@ -24,7 +24,7 @@
 #define __RAPH_KERNEL_NET_L2_H__
 
 #include <stdint.h>
-#include "../dev/netdev.h"
+#include <dev/netdev.h>
 
 class L2Ctrl {
 public:

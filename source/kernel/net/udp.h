@@ -24,8 +24,7 @@
 #define __RAPH_KERNEL_NET_UDP_H__
 
 #include <stdint.h>
-#include "layer.h"
-#include "ip.h"
+#include <net/layer.h>
 
 struct UDPHeader {
   // source port

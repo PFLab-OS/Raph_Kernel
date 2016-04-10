@@ -24,28 +24,28 @@
 #define __RAPH_KERNEL_NET_IP_H__
 
 #include <stdint.h>
-#include "layer.h"
+#include <net/layer.h>
 
 /*
  * IPv4 Header
  */
 struct IPv4Header {
   // IP Header Length (4bit) | Version (4bit)
-  uint8_t ipHdrLen_ver;
+  uint8_t ip_header_len_version;
   // TYPE of service
   uint8_t type;
   // Total Length
-  uint16_t totalLen;
+  uint16_t total_len;
   // Identification
   uint16_t id;
   // Fragment Offset High (5bit) | MF (1bit) | NF (1bit) | Reserved (1bit)
-  uint8_t fragOffsetHi_flag;
+  uint8_t frag_offset_hi_flag;
   // Fragment Offset Low (8bit)
-  uint8_t fragOffsetLo;
+  uint8_t frag_offset_lo;
   // Time to Live
   uint8_t ttl;
   // Layer 4 Protocol ID
-  uint8_t protoId;
+  uint8_t proto_id;
   // Header Checksum (NOTE: only on header)
   uint16_t checksum;
   // Source Address
@@ -69,12 +69,12 @@ class IPCtrl {
 
   const uint32_t kSourceIPAddress = 0x0a00020f;
 
-  uint16_t _idAutoIncrement;
+  uint16_t _id_auto_increment;
 
   uint16_t checkSum(uint8_t *buf, uint32_t size);
 
 public:
-  IPCtrl() : _idAutoIncrement(0) {}
+  IPCtrl() : _id_auto_increment(0) {}
   virtual int32_t GenerateHeader(uint8_t *buffer,
                                  uint32_t length,
                                  uint8_t type,
