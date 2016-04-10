@@ -84,39 +84,19 @@ public:
   int32_t Close();
 
 protected:
-  // L[2/3/4][T/R]xをオーバーライドすることで特定のレイヤの処理を書き換えられる
-  // Tx ... 送信時に該当レイヤのヘッダを付与する
-  // Rx ... 受信時に該当レイヤのヘッダを参照してフィルタリングを行う
+  // the process of each layer can be altered by overriding L[2/3/4][T/R]x
+  // L[2/3/4]Tx: attach header of each layer while transmission
+  // L[2/3/4]Rx: filter packet by referring header of each layer while reception
   virtual uint32_t L2HeaderLength();
   virtual uint32_t L3HeaderLength();
   virtual uint32_t L4HeaderLength();
   virtual uint16_t L4Protocol();
-  virtual int32_t L2Tx(uint8_t *buffer,
-                       uint8_t *saddr,
-                       uint8_t *daddr,
-                       uint16_t type);
-  virtual bool L2Rx(uint8_t *packet,
-                    uint8_t *saddr,
-                    uint8_t *daddr,
-                    uint16_t type);
-  virtual int32_t L3Tx(uint8_t *buffer,
-                       uint32_t length,
-                       uint8_t type,
-                       uint32_t saddr,
-                       uint32_t daddr);
-  virtual bool L3Rx(uint8_t *packet,
-  	  uint8_t type,
-  	  uint32_t saddr,
-  	  uint32_t daddr);
-  virtual int32_t L4Tx(uint8_t *header,
-		  uint32_t length,
-  	  uint32_t saddr,
-  	  uint32_t daddr,
-      uint16_t sport,
-      uint16_t dport);
-  virtual bool L4Rx(uint8_t *packet,
-  	  uint16_t sport,
-  	  uint16_t dport);
+  virtual int32_t L2Tx(uint8_t *buffer, uint8_t *saddr, uint8_t *daddr, uint16_t type);
+  virtual bool L2Rx(uint8_t *packet, uint8_t *saddr, uint8_t *daddr, uint16_t type);
+  virtual int32_t L3Tx(uint8_t *buffer, uint32_t length, uint8_t type, uint32_t saddr, uint32_t daddr);
+  virtual bool L3Rx(uint8_t *packet, uint8_t type, uint32_t saddr, uint32_t daddr);
+  virtual int32_t L4Tx(uint8_t *header, uint32_t length, uint32_t saddr, uint32_t daddr, uint16_t sport, uint16_t dport);
+  virtual bool L4Rx(uint8_t *packet, uint16_t sport, uint16_t dport);
 
   // low-level packet receive function
   //   @param buffer          buffer to store received data
@@ -186,15 +166,8 @@ class UDPSocket : public Socket {
 protected:
   virtual uint32_t L4HeaderLength() override;
   virtual uint16_t L4Protocol() override;
-  virtual int32_t L4Tx(uint8_t *header,
-                       uint32_t length,
-                       uint32_t saddr,
-                       uint32_t daddr,
-                       uint16_t sport,
-                       uint16_t dport) override;
-  virtual bool L4Rx(uint8_t *packet,
-                    uint16_t sport,
-                    uint16_t dport) override;
+  virtual int32_t L4Tx(uint8_t *header, uint32_t length, uint32_t saddr, uint32_t daddr, uint16_t sport, uint16_t dport) override;
+  virtual bool L4Rx(uint8_t *packet, uint16_t sport, uint16_t dport) override;
   virtual int32_t TransmitPacket(const uint8_t *data, uint32_t length) override;
   virtual int32_t ReceivePacket(uint8_t *data, uint32_t length) override;
 
