@@ -21,7 +21,7 @@
  */
 
 #include <global.h>
-#include <posix.h>
+#include <posixtimer.h>
 #include <mem/physmem.h>
 #include <mem/virtmem.h>
 #include <net/socket.h>

@@ -22,7 +22,7 @@
 
 #include <unistd.h>
 #include <cstdio>
-#include <posix.h>
+#include <posixtimer.h>
 #include <net/test.h>
 #include <net/socket.h>
 

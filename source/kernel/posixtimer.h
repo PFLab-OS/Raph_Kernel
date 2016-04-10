@@ -20,8 +20,8 @@
  * 
  */
 
-#ifndef __RAPH_KERNEL_POSIX_H__
-#define __RAPH_KERNEL_POSIX_H__
+#ifndef __RAPH_KERNEL_POSIXTIMER_H__
+#define __RAPH_KERNEL_POSIXTIMER_H__
 
 #ifdef __UNIT_TEST__
 
@@ -45,4 +45,4 @@ public:
 
 #endif // __UNIT_TEST__
 
-#endif /* __RAPH_KERNEL_POSIX_H__ */
+#endif /* __RAPH_KERNEL_POSIXTIMER_H__ */

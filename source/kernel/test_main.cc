@@ -26,7 +26,7 @@
 #include <mem/virtmem.h>
 #include <global.h>
 #include <apic.h>
-#include <posix.h>
+#include <posixtimer.h>
 #include <dev/raw.h>
 #include <net/test.h>
 #include <net/netctrl.h>
