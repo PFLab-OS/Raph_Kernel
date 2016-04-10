@@ -78,8 +78,8 @@ bool Socket::L3Rx(uint8_t *buffer, uint8_t type, uint32_t saddr, uint32_t daddr)
   return ip_ctrl->FilterPacket(buffer, type, saddr, daddr);
 }
 
-int32_t Socket::L4Tx(uint8_t *buffer, uint32_t length, uint16_t sport, uint16_t dport) {
-  return tcp_ctrl->GenerateHeader(buffer, length, sport, dport, _type, _seq, _ack);
+int32_t Socket::L4Tx(uint8_t *buffer, uint32_t length, uint32_t saddr, uint32_t daddr, uint16_t sport, uint16_t dport) {
+  return tcp_ctrl->GenerateHeader(buffer, length, saddr, daddr, sport, dport, _type, _seq, _ack);
 }
 
 bool Socket::L4Rx(uint8_t *buffer, uint16_t sport, uint16_t dport) {
@@ -105,11 +105,11 @@ int32_t Socket::Transmit(const uint8_t *data, uint32_t length, bool is_raw_packe
 
     // TCP header
     uint32_t offset_l4 = L2HeaderLength() + L3HeaderLength();
-    L4Tx(packet->buf + offset_l4, L4HeaderLength() + length, _sport, _dport);
+    uint32_t saddr = _ipaddr;
+    L4Tx(packet->buf + offset_l4, L4HeaderLength() + length, saddr, _daddr, _sport, _dport);
 
     // IP header
     uint32_t offset_l3 = L2HeaderLength();
-    uint32_t saddr = _ipaddr;
     L3Tx(packet->buf + offset_l3, L4HeaderLength() + length, L4Protocol(), saddr, _daddr);
 
     // Ethernet header
@@ -493,7 +493,7 @@ uint32_t UDPSocket::L4HeaderLength() { return sizeof(UDPHeader); }
 
 uint16_t UDPSocket::L4Protocol() { return IPCtrl::kProtocolUDP; }
 
-int32_t UDPSocket::L4Tx(uint8_t *buffer, uint32_t length, uint16_t sport, uint16_t dport) {
+int32_t UDPSocket::L4Tx(uint8_t *buffer, uint32_t length, uint32_t saddr, uint32_t daddr, uint16_t sport, uint16_t dport) {
   return udp_ctrl->GenerateHeader(buffer, length, sport, dport);
 }
 

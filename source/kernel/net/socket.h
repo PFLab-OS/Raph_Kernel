@@ -103,18 +103,20 @@ protected:
                        uint32_t length,
                        uint8_t type,
                        uint32_t saddr,
-					   uint32_t daddr);
+                       uint32_t daddr);
   virtual bool L3Rx(uint8_t *packet,
-		  uint8_t type,
-		  uint32_t saddr,
-		  uint32_t daddr);
+  	  uint8_t type,
+  	  uint32_t saddr,
+  	  uint32_t daddr);
   virtual int32_t L4Tx(uint8_t *header,
 		  uint32_t length,
-		  uint16_t sport,
-		  uint16_t dport);
+  	  uint32_t saddr,
+  	  uint32_t daddr,
+      uint16_t sport,
+      uint16_t dport);
   virtual bool L4Rx(uint8_t *packet,
-		  uint16_t sport,
-		  uint16_t dport);
+  	  uint16_t sport,
+  	  uint16_t dport);
 
   // low-level packet receive function
   //   @param buffer          buffer to store received data
@@ -186,6 +188,8 @@ protected:
   virtual uint16_t L4Protocol() override;
   virtual int32_t L4Tx(uint8_t *header,
                        uint32_t length,
+                       uint32_t saddr,
+                       uint32_t daddr,
                        uint16_t sport,
                        uint16_t dport) override;
   virtual bool L4Rx(uint8_t *packet,
