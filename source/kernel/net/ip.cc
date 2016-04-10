@@ -21,11 +21,11 @@
  */
 
 #include <string.h>
-#include "ip.h"
-#include "../raph.h"
-#include "../mem/physmem.h"
-#include "../mem/virtmem.h"
-#include "../global.h"
+#include <raph.h>
+#include <global.h>
+#include <mem/physmem.h>
+#include <mem/virtmem.h>
+#include <net/ip.h>
 
 int32_t IPCtrl::GenerateHeader(uint8_t *buffer, uint32_t length, uint8_t type, uint32_t saddr, uint32_t daddr) {
   IPv4Header * volatile header = reinterpret_cast<IPv4Header*>(buffer);
@@ -60,16 +60,21 @@ uint16_t IPCtrl::CheckSum(uint8_t *buf, uint32_t size) {
   while(size > 1) {
     sum += *reinterpret_cast<uint16_t*>(buf);
     buf += 2;
-    if(sum & 0x80000000)   /* if high order bit set, fold */
+    if(sum & 0x80000000) {
+      // if high order bit set, fold
       sum = (sum & 0xFFFF) + (sum >> 16);
+    }
     size -= 2;
   }
 
-  if(size)  /* take care of left over byte */
+  if(size) {
+    // take care of left over byte
     sum += static_cast<uint16_t>(*buf);
+  }
  
-  while(sum >> 16)
+  while(sum >> 16) {
     sum = (sum & 0xFFFF) + (sum >> 16);
+  }
 
   return ~sum;
 }
