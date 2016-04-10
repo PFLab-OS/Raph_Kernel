@@ -124,7 +124,7 @@ int32_t Socket::Transmit(const uint8_t *data, uint32_t length, bool isRawPacket)
   _dev->TransmitPacket(packet);
   int32_t sentLength = packet->len;
 
-  return (sentLength < 0 || isRawPacket) ? sentLength : sentLength - (sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader));
+  return (sentLength < 0 || isRawPacket) ? sentLength : sentLength - (L2HeaderLength() + L3HeaderLength() + L4HeaderLength());
 }
 
 int32_t Socket::TransmitPacket(const uint8_t *packet, uint32_t length) {
@@ -227,7 +227,7 @@ int32_t Socket::Receive(uint8_t *data, uint32_t length, bool isRawPacket) {
   // finalization
   _dev->ReuseRxBuffer(packet);
 
-  return (receivedLength < 0 || isRawPacket) ? receivedLength : receivedLength - (sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader));
+  return (receivedLength < 0 || isRawPacket) ? receivedLength : receivedLength - (L2HeaderLength() + L3HeaderLength() + L4HeaderLength());
 }
 
 int32_t Socket::ReceivePacket(uint8_t *data, uint32_t length) {

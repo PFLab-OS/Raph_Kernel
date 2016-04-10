@@ -114,7 +114,10 @@ protected:
   virtual bool L4Rx(uint8_t *packet,
 		  uint16_t sport,
 		  uint16_t dport);
+
+  // low-level packet receive function
   int32_t Receive(uint8_t *data, uint32_t length, bool isRawPacket);
+  // low-level packet transmit function
   int32_t Transmit(const uint8_t *data, uint32_t length, bool isRawPacket);
 
   // respond to FIN+ACK (4-way handshake)
