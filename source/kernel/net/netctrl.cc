@@ -20,20 +20,18 @@
  * 
  */
 
-#include "../raph.h"
-#include "../mem/physmem.h"
-#include "../mem/virtmem.h"
-#include "../dev/netdev.h"
-#include "eth.h"
-#include "arp.h"
-#include "ip.h"
-#include "udp.h"
-#include "tcp.h"
+#include <raph.h>
+#include <global.h>
+#include <mem/physmem.h>
+#include <mem/virtmem.h>
+#include <dev/netdev.h>
+#include <net/eth.h>
+#include <net/arp.h>
+#include <net/ip.h>
+#include <net/udp.h>
+#include <net/tcp.h>
 
-#define __NETCTRL__
-#include "global.h"
-
-NetDevCtrl *netdev_ctrl;
+DevEthernetCtrl *netdev_ctrl;
 ARPTable *arp_table;
 
 EthCtrl *eth_ctrl;
@@ -43,7 +41,7 @@ UDPCtrl *udp_ctrl;
 TCPCtrl *tcp_ctrl;
 
 void InitNetCtrl() {
-  netdev_ctrl = new(reinterpret_cast<NetDevCtrl*>(virtmem_ctrl->Alloc(sizeof(NetDevCtrl)))) NetDevCtrl();
+  netdev_ctrl = new(reinterpret_cast<DevEthernetCtrl*>(virtmem_ctrl->Alloc(sizeof(DevEthernetCtrl)))) DevEthernetCtrl();
 
   arp_table = new(reinterpret_cast<ARPTable*>(virtmem_ctrl->Alloc(sizeof(ARPTable)))) ARPTable();
 

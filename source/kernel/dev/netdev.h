@@ -25,45 +25,126 @@
 
 #include <stdint.h>
 #include <string.h>
-#include "../spinlock.h"
+#include <buf.h>
+#include <spinlock.h>
+#include <freebsd/sys/param.h>
 
 class NetDev {
-  static const uint32_t kNetworkInterfaceNameLen = 8;
-  // network interface name
-  char _name[kNetworkInterfaceNameLen];
-
 public:
-  virtual int32_t ReceivePacket(uint8_t *buffer, uint32_t size) = 0;
-  virtual int32_t TransmitPacket(const uint8_t *packet, uint32_t length) = 0;
-  virtual void GetEthAddr(uint8_t *buffer) {
-    memcpy(buffer, _ethAddr, 6);
+  struct Packet {
+    size_t len;
+    uint8_t buf[MCLBYTES];
+  };
+  enum class LinkStatus {
+    Up,
+    Down
+  };
+
+  // rxパケットの処理の流れ
+  // 0. rx_reservedを初期化、バッファを満タンにしておく
+  // 1. Receiveハンドラがパケットを受信すると、rx_reservedから一つ取り出し、
+  //    memcpyの上、rx_bufferedに詰む
+  // 2. プロトコル・スタックはReceivePacket関数を呼ぶ
+  // 3. ReceivePacket関数はrx_bufferedからパケットを取得する
+  // 4. プロトコル・スタックは取得したパケットを処理した上でReuseRxBufferを呼ぶ
+  // 5. ReuseRxBufferはrx_reservedにバッファを返す
+  // 6. 1に戻る
+  //
+  // プロトコル・スタックがReuseRxBufferを呼ばないと
+  // そのうちrx_reservedが枯渇して、一切のパケットの受信ができなくなるるよ♪
+  RingBuffer<Packet *, 300> _rx_reserved;
+  RingBuffer<Packet *, 300> _rx_buffered;
+
+  // txパケットの処理の流れ
+  // 0. tx_reservedを初期化、バッファを満タンにしておく
+  // 1. プロトコル・スタックはGetTxBufferを呼び出す
+  // 2. GetTxBufferはtx_reservedからバッファを取得する
+  // 3. プロトコル・スタックはバッファにmemcpyして、TransmitPacket関数を呼ぶ
+  // 4. TransmitPacket関数はtx_bufferedにパケットを詰む
+  // 5. Transmitハンドラがパケットを処理した上でtx_reservedに返す
+  // 6. 1に戻る
+  //
+  // プロトコル・スタックはGetTxBufferで確保したバッファを必ずTransmitPacketするか
+  // ReuseTxBufferで開放しなければならない。サボるとそのうちtx_reservedが枯渇
+  // して、一切のパケットの送信ができなくなるよ♪
+  RingBuffer<Packet *, 300> _tx_reserved;
+  RingBuffer<Packet *, 300> _tx_buffered;
+
+  void ReuseRxBuffer(Packet *packet) {
+    kassert(_rx_reserved.Push(packet));
   }
+  void ReuseTxBuffer(Packet *packet) {
+    kassert(_tx_reserved.Push(packet));
+  }
+  // 戻り値がfalseの時はバッファが枯渇しているので、要リトライ
+  bool GetTxPacket(Packet *&packet) {
+    if (_tx_reserved.Pop(packet)) {
+      packet->len = 0;
+      return true;
+    } else {
+      return false;
+    }
+  }
+  bool TransmitPacket(Packet *packet) {
+    return _tx_buffered.Push(packet);
+  }
+  bool ReceivePacket(Packet *&packet) {
+    return _rx_buffered.Pop(packet);
+  }
+
+  void InitTxPacketBuffer() {
+    while(!_tx_reserved.IsFull()) {
+      Packet *packet = reinterpret_cast<Packet *>(virtmem_ctrl->Alloc(sizeof(Packet)));
+      kassert(_tx_reserved.Push(packet));
+    }
+  }
+  void InitRxPacketBuffer() {
+    while(!_rx_reserved.IsFull()) {
+      Packet *packet = reinterpret_cast<Packet *>(virtmem_ctrl->Alloc(sizeof(Packet)));
+      kassert(_rx_reserved.Push(packet));
+    }
+  }
+
+  virtual void UpdateLinkStatus() = 0;
+  void SetStatus(LinkStatus status) {
+    _status = status;
+  }
+  volatile LinkStatus GetStatus() {
+    return _status;
+  }
+
   void SetName(const char *name) {
     strncpy(_name, name, kNetworkInterfaceNameLen);
   }
   const char *GetName() { return _name; }
-protected:
+ protected:
   NetDev() {}
   SpinLock _lock;
+  volatile LinkStatus _status = LinkStatus::Down;
 
-  // ethernet address
-  uint8_t _ethAddr[6] = {0};
   // IP address
   uint32_t _ipAddr = 0;
+ private:
+  static const uint32_t kNetworkInterfaceNameLen = 8;
+  // network interface name
+  char _name[kNetworkInterfaceNameLen];
 };
 
 class NetDevCtrl {
-  static const uint32_t kNetworkInterfaceNameLen = 8;
-  static const uint32_t kMaxDevNumber = 32;
-  static const char *kDefaultNetworkInterfaceName;
-  uint32_t _curDevNumber = 0;
-  NetDev *_devTable[kMaxDevNumber] = {nullptr};
-
 public:
   NetDevCtrl() {}
 
   bool RegisterDevice(NetDev *dev, const char *name = kDefaultNetworkInterfaceName);
   NetDev *GetDevice(const char *name = kDefaultNetworkInterfaceName);
+
+protected:
+  static const uint32_t kMaxDevNumber = 32;
+
+private:
+  static const uint32_t kNetworkInterfaceNameLen = 8;
+  static const char *kDefaultNetworkInterfaceName;
+  uint32_t _curDevNumber = 0;
+  NetDev *_devTable[kMaxDevNumber] = {nullptr};
 };
 
 #endif /* __RAPH_KERNEL_NETDEV_H__ */

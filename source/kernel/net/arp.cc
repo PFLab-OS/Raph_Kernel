@@ -21,15 +21,12 @@
  */
 
 #include <string.h>
-#include "socket.h"
-#include "arp.h"
-#include "../raph.h"
-#include "../mem/physmem.h"
-#include "../mem/virtmem.h"
-#include "../global.h"
-
-#define __NETCTRL__
-#include "global.h"
+#include <raph.h>
+#include <global.h>
+#include <mem/physmem.h>
+#include <mem/virtmem.h>
+#include <net/socket.h>
+#include <net/arp.h>
 
 const uint8_t ARPCtrl::kBcastMACAddr[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 
@@ -40,15 +37,15 @@ int32_t ARPCtrl::GeneratePacket(uint8_t *buffer, uint16_t op, uint8_t *smacaddr,
   packet->hlen = 6;
   packet->plen = 4;
   packet->op = htons(op);
-  memcpy(packet->hwSaddr, smacaddr, 6);
-  packet->protoSaddr = htonl(sipaddr);
-  packet->protoDaddr = htonl(dipaddr);
+  memcpy(packet->hw_saddr, smacaddr, 6);
+  packet->proto_saddr = htonl(sipaddr);
+  packet->proto_daddr = htonl(dipaddr);
   switch(op) {
     case ARPSocket::kOpARPRequest:
-      memset(packet->hwDaddr, 0, 6);
+      memset(packet->hw_daddr, 0, 6);
       break;
 	case ARPSocket::kOpARPReply:
-      memcpy(packet->hwDaddr, dmacaddr, 6);
+      memcpy(packet->hw_daddr, dmacaddr, 6);
       break;
     default:
       // unknown ARP operation
@@ -60,26 +57,26 @@ int32_t ARPCtrl::GeneratePacket(uint8_t *buffer, uint16_t op, uint8_t *smacaddr,
 
 bool ARPCtrl::FilterPacket(uint8_t *packet, uint16_t op, uint8_t *smacaddr, uint32_t sipaddr, uint8_t *dmacaddr, uint32_t dipaddr) {
   ARPPacket * volatile data = reinterpret_cast<ARPPacket*>(packet);
-  return (ntohs(data->op) == op)
-      && (!smacaddr || !memcmp(data->hwSaddr, smacaddr, 6))
-      && (!sipaddr  || data->protoSaddr == sipaddr)
-      && (op == ARPSocket::kOpARPRequest || !dmacaddr || !memcmp(data->hwDaddr, dmacaddr, 6) || !memcmp(data->hwDaddr, kBcastMACAddr, 6))
-      && (!dipaddr  || data->protoDaddr == dipaddr);
+  return (!op || ntohs(data->op) == op)
+      && (!smacaddr || !memcmp(data->hw_saddr, smacaddr, 6))
+      && (!sipaddr  || ntohl(data->proto_saddr) == sipaddr)
+      && (ntohs(data->op) == ARPSocket::kOpARPRequest || !dmacaddr || !memcmp(data->hw_daddr, dmacaddr, 6) || !memcmp(data->hw_daddr, kBcastMACAddr, 6))
+      && (!dipaddr  || ntohl(data->proto_daddr) == dipaddr);
 }
 
 bool ARPCtrl::RegisterAddress(uint8_t *packet) {
   ARPPacket * volatile arp = reinterpret_cast<ARPPacket*>(packet);
-  return arp_table->Add(arp->protoSaddr, arp->hwSaddr);
+  return arp_table->Add(arp->proto_saddr, arp->hw_saddr);
 }
 
 void ARPCtrl::GetSourceMACAddress(uint8_t *buffer, uint8_t *packet) {
   ARPPacket * volatile arp = reinterpret_cast<ARPPacket*>(packet);
-  memcpy(buffer, arp->hwSaddr, 6);
+  memcpy(buffer, arp->hw_saddr, 6);
 }
 
 uint32_t ARPCtrl::GetSourceIPAddress(uint8_t *packet) {
   ARPPacket * volatile arp = reinterpret_cast<ARPPacket*>(packet);
-  return ntohl(arp->protoSaddr);
+  return ntohl(arp->proto_saddr);
 }
 
 /*

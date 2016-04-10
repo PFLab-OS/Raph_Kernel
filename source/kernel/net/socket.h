@@ -24,11 +24,11 @@
 #define __RAPH_KERNEL_NET_SOCKET_H__
 
 #include <stdint.h>
-#include "../dev/netdev.h"
+#include "../dev/eth.h"
 
 class NetSocket {
 protected:
-  NetDev *_dev = nullptr;
+  DevEthernet *_dev = nullptr;
 
 public:
   int32_t Open();
@@ -37,72 +37,29 @@ public:
 // TCP/IP Socket
 class Socket : public NetSocket {
 public:
+  // frequently used port number
   static const uint16_t kPortTelnet = 23;
   static const uint16_t kPortHTTP = 80;
 
-  static const uint8_t kFlagFIN           = 1 << 0;
-  static const uint8_t kFlagSYN           = 1 << 1;
-  static const uint8_t kFlagRST           = 1 << 2;
-  static const uint8_t kFlagPSH           = 1 << 3;
-  static const uint8_t kFlagACK           = 1 << 4;
-  static const uint8_t kFlagURG           = 1 << 5;
+  // TCP flag
+  static const uint8_t kFlagFIN = 1 << 0;
+  static const uint8_t kFlagSYN = 1 << 1;
+  static const uint8_t kFlagRST = 1 << 2;
+  static const uint8_t kFlagPSH = 1 << 3;
+  static const uint8_t kFlagACK = 1 << 4;
+  static const uint8_t kFlagURG = 1 << 5;
 
-  static const int32_t kConnectionClosed  = - 0x100;
+  // maximum segment size
+  static const uint32_t kMSS = 1460;
 
-private:
-  uint32_t _ipaddr = 0x0a000210;
-  uint32_t _daddr = 0x0a000210;
-  uint16_t _dport = kPortHTTP;
-  uint16_t _sport = kPortHTTP;
-  uint8_t _type   = kFlagRST; // TCP session type
-  uint32_t _seq   = 0; // TCP sequence number
-  uint32_t _ack   = 0; // TCP acknowledge number
+  // return code of ReceivePacket
+  static const int32_t kErrorConnectionClosed       = - 0x100;
+  static const int32_t kErrorRetransmissionTimeout  = - 0x101;
 
-  int32_t GetEthAddr(uint32_t ipaddr, uint8_t *macaddr);
-  void SetSessionType(uint8_t type) { _type = type; }
-  void SetSequenceNumber(uint32_t seq) { _seq = seq; }
-  void SetAcknowledgeNumber(uint32_t ack) { _ack = ack; }
-
-protected:
-  // L[2/3/4][T/R]xをオーバーライドすることで特定のレイヤの処理を書き換えられる
-  virtual uint32_t L2HeaderLength();
-  virtual uint32_t L3HeaderLength();
-  virtual uint32_t L4HeaderLength();
-  virtual uint16_t L4Protocol();
-  virtual int32_t L2Tx(uint8_t *buffer,
-                       uint8_t *saddr,
-                       uint8_t *daddr,
-                       uint16_t type);
-  virtual bool L2Rx(uint8_t *packet,
-                    uint8_t *saddr,
-                    uint8_t *daddr,
-                    uint16_t type);
-  virtual int32_t L3Tx(uint8_t *buffer,
-                       uint32_t length,
-                       uint8_t type,
-                       uint32_t saddr,
-                       uint32_t daddr);
-  virtual bool L3Rx(uint8_t *packet,
-                    uint8_t type,
-                    uint32_t saddr,
-                    uint32_t daddr);
-  virtual int32_t L4Tx(uint8_t *header,
-                       uint32_t length,
-                       uint16_t sport,
-                       uint16_t dport);
-  virtual bool L4Rx(uint8_t *packet,
-                    uint16_t sport,
-                    uint16_t dport);
-  int32_t Receive(uint8_t *data, uint32_t length, bool isRawPacket);
-  int32_t Transmit(const uint8_t *data, uint32_t length, bool isRawPacket);
-
-  // respond to FIN+ACK (4-way handshake)
-  int32_t CloseAck(uint8_t flag);
-
-public:
   Socket() {}
   void SetAddr(uint32_t addr) { _daddr = addr; }
   void SetPort(uint16_t port) { _dport = port; }
+  void SetListenAddr(uint32_t addr) { _ipaddr = addr; }
   void SetListenPort(uint16_t port) { _sport = port; }
 
   // transmit TCP data (header will be attached)
@@ -125,6 +82,103 @@ public:
 
   // close TCP connection (4-way handshake)
   int32_t Close();
+
+protected:
+  // L[2/3/4][T/R]xをオーバーライドすることで特定のレイヤの処理を書き換えられる
+  // Tx ... 送信時に該当レイヤのヘッダを付与する
+  // Rx ... 受信時に該当レイヤのヘッダを参照してフィルタリングを行う
+  virtual uint32_t L2HeaderLength();
+  virtual uint32_t L3HeaderLength();
+  virtual uint32_t L4HeaderLength();
+  virtual uint16_t L4Protocol();
+  virtual int32_t L2Tx(uint8_t *buffer,
+                       uint8_t *saddr,
+                       uint8_t *daddr,
+                       uint16_t type);
+  virtual bool L2Rx(uint8_t *packet,
+                    uint8_t *saddr,
+                    uint8_t *daddr,
+                    uint16_t type);
+  virtual int32_t L3Tx(uint8_t *buffer,
+                       uint32_t length,
+                       uint8_t type,
+                       uint32_t saddr,
+                       uint32_t daddr);
+  virtual bool L3Rx(uint8_t *packet,
+  	  uint8_t type,
+  	  uint32_t saddr,
+  	  uint32_t daddr);
+  virtual int32_t L4Tx(uint8_t *header,
+		  uint32_t length,
+  	  uint32_t saddr,
+  	  uint32_t daddr,
+      uint16_t sport,
+      uint16_t dport);
+  virtual bool L4Rx(uint8_t *packet,
+  	  uint16_t sport,
+  	  uint16_t dport);
+
+  // low-level packet receive function
+  //   @param buffer          buffer to store received data
+  //   @param length          length of buffer
+  //   @param is_raw_packet   whether to receive raw packet
+  //   @param wait_timeout    whether to wait for timeout
+  //   @param rto             timeout count (valid on wait_timeout == true)
+  int32_t Receive(uint8_t *buffer, uint32_t length, bool is_raw_packet, bool wait_timeout, uint64_t rto);
+  // low-level packet transmit function
+  //   @param data            data to be sent
+  //   @param length          length of data
+  //   @param is_raw_packet   whether data is raw packet
+  int32_t Transmit(const uint8_t *data, uint32_t length, bool is_raw_packet);
+
+  // respond to FIN+ACK (4-way handshake)
+  int32_t CloseAck(uint8_t flag);
+
+private:
+  // my IP address
+  uint32_t _ipaddr = 0x0a000210;
+  // destination IP address
+  uint32_t _daddr = 0x0a000210;
+  // destination port
+  uint16_t _dport = kPortHTTP;
+  // source port
+  uint16_t _sport = kPortHTTP;
+  // TCP session type
+  // set before both tx/rx by Socket::SetSessionType()
+  uint8_t _type   = kFlagRST;
+  // TCP sequence number
+  uint32_t _seq   = 0;
+  // TCP acknowledge number
+  uint32_t _ack   = 0;
+  // flag for whether connection is established
+  bool _established = false;
+
+  /*
+   * TCP Restransmission Timeout Parameters
+   *   RTT: Round Trip Time
+   *   RTO: Retransmission TimeOut
+   */
+  // RTO upper bound [usec]
+  static const uint64_t kRtoUBound = 5000000;
+  // RTO lower bound [usec]
+  static const uint64_t kRtoLBound = 1000000;
+  // RTT [usec] (default is 3[sec])
+  uint64_t _rtt_usec = 3000000;
+
+  int32_t GetEthAddr(uint32_t ipaddr, uint8_t *macaddr);
+  void SetSessionType(uint8_t type) { _type = type; }
+  void SetSequenceNumber(uint32_t seq) { _seq = seq; }
+  void SetAcknowledgeNumber(uint32_t ack) { _ack = ack; }
+
+  uint64_t GetRetransmissionTimeout() {
+    // simple algorithm of RTO calculation
+    // recommended algorithm is
+    //   * RFC793[3.7] Smoothing RTO (https://tools.ietf.org/html/rfc793)
+    //   * Van Jacobson, Michael J. Karels, "Congestion Avoidance and Control", Proc. SIGCOMM'88., Appendix A
+    return _rtt_usec < kRtoUBound ? (
+        kRtoLBound < _rtt_usec ? _rtt_usec : kRtoLBound) :
+      kRtoUBound;
+  }
 };
 
 // UDP Socket
@@ -134,6 +188,8 @@ protected:
   virtual uint16_t L4Protocol() override;
   virtual int32_t L4Tx(uint8_t *header,
                        uint32_t length,
+                       uint32_t saddr,
+                       uint32_t daddr,
                        uint16_t sport,
                        uint16_t dport) override;
   virtual bool L4Rx(uint8_t *packet,
@@ -149,11 +205,37 @@ public:
 // ARP Socket
 class ARPSocket : public NetSocket {
 public:
-  virtual int32_t TransmitPacket(uint16_t type, uint32_t tpa, uint8_t *tha = nullptr);
-  virtual int32_t ReceivePacket(uint16_t type, uint32_t *spa = nullptr, uint8_t *sha = nullptr);
+  static const int16_t kOpARPRequest = 0x0001;
+  static const int16_t kOpARPReply = 0x0002;
 
-  static const uint16_t kOpARPRequest = 0x0001;
-  static const uint16_t kOpARPReply = 0x0002;
+  // transmit ARP packet
+  //   @type: request / reply
+  //   @tpa: target IP address
+  //   @tha: target MAC address
+  //    (if tha = nullptr, does not care @tha (usually used in request packet))
+  // return value is
+  //   * ARP operation (if succeed)
+  //   * -1            (otherwise)
+  virtual int32_t TransmitPacket(uint16_t type, uint32_t tpa, uint8_t *tha);
+
+  // receive ARP packet
+  //   @type: request / reply
+  //   @spa: source IP address
+  //   @sha: source MAC address
+  //
+  // type:0 spa:nullptr sha:nullptr => does not filter by these parameters
+  //
+  // return value is
+  //   * ARP operation (if succeed)
+  //   * -1            (otherwise)
+  virtual int32_t ReceivePacket(uint16_t type, uint32_t *spa, uint8_t *sha);
+
+  virtual void SetIPAddr(uint32_t ipaddr);
+
+private:
+  static const uint32_t kOperationOffset = 6;
+
+  uint32_t _ipaddr = 0x0a000210;
 };
 
 #endif // __RAPH_KERNEL_NET_SOCKET_H__

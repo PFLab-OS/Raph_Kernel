@@ -16,45 +16,38 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
- * Author: Levelfour
+ * Author: Yuchiki
  * 
  */
 
-#ifndef __RAPH_KERNEL_NET_GLOBAL_H__
-#define __RAPH_KERNEL_NET_GLOBAL_H__
+#ifndef __RAPH_KERNEL_DEV_KEYBOARD_H__
+#define __RAPH_KERNEL_DEV_KEYBOARD_H__
 
-// hide network controllers
-// be careful to define __NETCTRL__ macro
-// (intend to be included only in NetDev and its child class)
-#ifdef __NETCTRL__
+#include <global.h>
+#include <apic.h>
 
-// Network Devices
-class NetDevCtrl;
-extern NetDevCtrl *netdev_ctrl;
+// this file should be put in dev/...?
+class Keyboard {
+ public:
+  void Setup(int lapicid);
+  void Write(uint8_t code);
+  uint8_t Read();
+  char GetCh();
+  bool Overflow();
+  bool Underflow();
+  int Count();
+  void Reset();
+  static void Handler (Regs *reg);
+ private:
+  static const int kbufSize = 100;
+  static const char kScanCode[256];
+  static const int kDataPort = 0x60;
+  int _count = 0; 
+  uint8_t _buf[kbufSize];
+  bool _overflow = false;
+  bool _underflow = false;
+  int _next_w = 0;
+  int _next_r = 0;
+};
 
-// ARP Table
-class ARPTable;
-extern ARPTable *arp_table;
-
-// L2Ctrl
-class EthCtrl;
-extern EthCtrl *eth_ctrl;
-
-class ARPCtrl;
-extern ARPCtrl *arp_ctrl;
-
-// L3Ctrl
-class IPCtrl;
-extern IPCtrl *ip_ctrl;
-
-// L4Ctrl
-class UDPCtrl;
-class TCPCtrl;
-extern UDPCtrl *udp_ctrl;
-extern TCPCtrl *tcp_ctrl;
-
-#else
-#error "cannot include <net/global.h> unless __NETCTRL__ macro is defined"
-#endif
-
-#endif // __RAPH_KERNEL_NET_GLOBAL_H__
+#endif // __RAPH_KERNEL_DEV_KEYBOARD_H__

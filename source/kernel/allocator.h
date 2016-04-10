@@ -17,44 +17,66 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * Author: Liva
+ * 動的データ確保アロケータ
+ * ある程度の数の同種のオブジェクトを、頻繁に確保、開放する時に使う
+ * 領域が足りなくなりそうになったら足りなくなる前に自動で伸ばす
  * 
  */
 
-#ifndef __RAPH_KERNEL_LIST_DEF_H__
-#define __RAPH_KERNEL_LIST_DEF_H__
+#ifndef __RAPH_KERNEL_ALLOCATOR_H__
+#define __RAPH_KERNEL_ALLOCATOR_H__
 
-#include <assert.h>
-#include "raph.h"
-#include "list.h"
-
-template <typename T>
-List<T>::List() : _list(&_first) {}
+#include <spinlock.h>
+#include <raph.h>
+#include <global.h>
+#include <mem/virtmem.h>
 
 template <typename T>
-void List<T>::Free(T *data) {
-  WRITE_LOCK(_lock) {
-    Container *before = nullptr;
-    Container *cur = _list;
-    while(cur != nullptr) {
-      if (cur->_entry <= data && data <= cur->_entry + 63) {
-        if (~cur->_flag == 0 && before != nullptr) {
-          before->_next = cur->_next;
-          cur->_next = _list;
-          _list = cur;
-        }
-        assert(((reinterpret_cast<size_t>(data) - reinterpret_cast<size_t>(cur->_entry)) % sizeof(T)) == 0);
-        cur->_flag &= ~(1 << (data - cur->_entry));
-        return;
+class Allocator {
+public:
+  Allocator();
+  T *Alloc();
+  void Free(T *data);
+private:
+  T *Extend(T *entry);
+  class Container {
+  public:
+    Container() : _next(nullptr), _flag(0) {}
+    T _entry[64];
+    Container *_next;
+    uint64_t _flag;
+  } _first;
+  Container *_list;
+  SpinLock _lock;
+};
+
+template <typename T>
+Allocator<T>::Allocator() : _list(&_first) {}
+
+template <typename T>
+void Allocator<T>::Free(T *data) {
+  Locker locker(_lock);
+  Container *before = nullptr;
+  Container *cur = _list;
+  while(cur != nullptr) {
+    if (cur->_entry <= data && data <= cur->_entry + 63) {
+      if (~cur->_flag == 0 && before != nullptr) {
+        before->_next = cur->_next;
+        cur->_next = _list;
+        _list = cur;
       }
-      before = cur;
-      cur = cur->_next;
+      assert(((reinterpret_cast<size_t>(data) - reinterpret_cast<size_t>(cur->_entry)) % sizeof(T)) == 0);
+      cur->_flag &= ~(1 << (data - cur->_entry));
+      return;
     }
+    before = cur;
+    cur = cur->_next;
   }
   assert(false);
 }
 
 template <typename T>
-T *List<T>::Alloc() {
+T *Allocator<T>::Alloc() {
   bool extend = false;
   T* rval = nullptr;
   while(true) {
@@ -64,7 +86,8 @@ T *List<T>::Alloc() {
       _list_ptr = const_cast<volatile size_t *>(reinterpret_cast<size_t *>(&this->_list));
       asm volatile ("nop");
     }
-    WRITE_LOCK(_lock) {
+    {
+      Locker locker(_lock);
       int i;
       for (i = 0; i < 64; i++) {
         uint64_t bit = static_cast<uint64_t>(1) << i;
@@ -101,23 +124,17 @@ T *List<T>::Alloc() {
   }
   return rval;
 }
-/*
-template <>
-VirtmemCtrl::AllocatedArea *List<VirtmemCtrl::AllocatedArea>::Extend(VirtmemCtrl::AllocatedArea *entry);
-*/
+
 template <typename T>
-T *List<T>::Extend(T *entry) {
+T *Allocator<T>::Extend(T *entry) {
   Container *tmp = nullptr;
-#ifdef __UNIT_TEST__
-  if (virtmem_ctrl == nullptr) {
-    tmp = new Container();
-  }
-#endif
-  WRITE_LOCK(_lock) {
-    tmp->_next = _list;
-    _list = tmp;
-  }
+  kassert(virtmem_ctrl != nullptr);
+  tmp = reinterpret_cast<Container *>(virtmem_ctrl->Alloc(sizeof(Container)));
+  tmp = new(tmp) Container;
+  Locker locker(_lock);
+  tmp->_next = _list;
+  _list = tmp;
   return entry;
 }
 
-#endif // __RAPH_KERNEL_LIST_DEF_H__
+#endif // __RAPH_KERNEL_ALLOCATOR_H__

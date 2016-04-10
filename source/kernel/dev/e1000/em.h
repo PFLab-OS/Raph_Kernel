@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2015 Raphine Project
+ * Copyright (c) 2016 Raphine Project
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -17,39 +17,35 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * Author: Liva
- * リスト
- * 領域が足りなくなりそうになったら足りなくなる前に自動で伸ばす
- * 
+ *
  */
 
-#ifndef __RAPH_KERNEL_LIST_H__
-#define __RAPH_KERNEL_LIST_H__
+#ifndef __RAPH_KERNEL_E1000_EM_H__
+#define __RAPH_KERNEL_E1000_EM_H__
 
-#include "spinlock.h"
+#include <stdint.h>
+#include <mem/physmem.h>
+#include <mem/virtmem.h>
+#include <polling.h>
+#include <global.h>
+#include <dev/pci.h>
+#include "bem.h"
 
-template <typename T>
-class List {
+class E1000 : public bE1000, Polling {
 public:
-  List();
-  T *Alloc();
-  void Free(T *data);
-private:
-  T *Extend(T *entry);
-  class Container {
-  public:
-    Container() : _next(nullptr), _flag(0) {}
-    T _entry[64];
-    Container *_next;
-    uint64_t _flag;
-  } _first;
-  Container *_list;
-  SpinLock _lock;
+ E1000(uint8_t bus, uint8_t device, bool mf) : bE1000(bus, device, mf) {}
+  static bool InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf);
+  // from Polling
+  virtual void Handle() override;
+
+  BsdDriver bsd;
+  virtual void UpdateLinkStatus() override;
+
+  virtual void SetupNetInterface() override;
+
+  // allocate 6 byte before call
+  virtual void GetEthAddr(uint8_t *buffer) override;
+ private:
 };
 
-#ifndef __RAPH_KERNEL_MEM_VIRTMEM_H__
-
-#include "list_def.h"
-
-#endif // __RAPH_KERNEL_MEM_VIRTMEM_H__
-
-#endif // __RAPH_KERNEL_LIST_H__
+#endif /* __RAPH_KERNEL_E1000_EM_H__ */
