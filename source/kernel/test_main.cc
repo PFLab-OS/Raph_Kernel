@@ -22,11 +22,11 @@
  *
  */
 
-#include <ctime>
 #include <spinlock.h>
 #include <mem/virtmem.h>
 #include <global.h>
 #include <apic.h>
+#include <posix.h>
 #include <dev/raw.h>
 #include <net/test.h>
 #include <net/netctrl.h>
@@ -37,8 +37,14 @@ VirtmemCtrl *virtmem_ctrl;
 PhysmemCtrl *physmem_ctrl;
 PagingCtrl *paging_ctrl;
 
+Timer *timer;
+
 int main(int argc, char **argv) {
   srand((unsigned) time(NULL));
+
+  PosixTimer _timer;
+  timer = &_timer;
+  timer->Setup();
 
   InitNetCtrl();
 
