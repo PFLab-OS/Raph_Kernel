@@ -42,7 +42,7 @@ int32_t IPCtrl::GenerateHeader(uint8_t *buffer, uint32_t length, uint8_t type, u
   header->checksum = 0;
   header->saddr = htonl(saddr);
   header->daddr = htonl(daddr);
-  header->checksum = checkSum(reinterpret_cast<uint8_t*>(header), sizeof(IPv4Header));
+  header->checksum = CheckSum(reinterpret_cast<uint8_t*>(header), sizeof(IPv4Header));
 
   return 0;
 }
@@ -54,7 +54,7 @@ bool IPCtrl::FilterPacket(uint8_t *packet, uint8_t type, uint32_t saddr, uint32_
       && (!daddr || ntohl(header->daddr) == daddr);
 }
 
-uint16_t IPCtrl::checkSum(uint8_t *buf, uint32_t size) {
+uint16_t IPCtrl::CheckSum(uint8_t *buf, uint32_t size) {
   uint64_t sum = 0;
 
   while(size > 1) {

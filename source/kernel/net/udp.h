@@ -38,8 +38,6 @@ struct UDPHeader {
 } __attribute__ ((packed));
 
 class UDPCtrl : public L4Ctrl {
-  static const uint32_t kDstPortOffset = 2;
-
 public:
   UDPCtrl() {}
   virtual int32_t GenerateHeader(uint8_t *buffer,
@@ -49,6 +47,10 @@ public:
   virtual bool FilterPacket(uint8_t *packet,
                             uint16_t sport,
                             uint16_t dport);
+
+private:
+  // offset in header
+  static const uint32_t kDstPortOffset = 2;
 };
 
 #endif // __RAPH_KERNEL_NET_UDP_H__
