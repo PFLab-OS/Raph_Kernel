@@ -4827,6 +4827,7 @@ em_rxeof(struct rx_ring *rxr, int count, int *done)
 			em_rx_discard(rxr, i);
 			goto next_desc;
 		}
+
                 bE1000::Packet *packet;
                 if (e1000->_rx_reserved.Pop(packet)) {
                   memcpy(packet->buf, reinterpret_cast<void *>(p2v(rxr->rx_base[i].buffer_addr)), len);

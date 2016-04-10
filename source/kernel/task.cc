@@ -46,8 +46,7 @@ void TaskCtrl::Setup() {
   }
 }
 
-void TaskCtrl::Remove(const Function &func) {
-  int apicid = apic_ctrl->GetApicId();
+void TaskCtrl::Remove(int apicid, const Function &func) {
   Locker locker(_task_struct[apicid].lock);
   Task *t = _task_struct[apicid].top;
   while(t->next != nullptr) {
@@ -132,12 +131,11 @@ void TaskCtrl::Run() {
   }
 }
 
-void TaskCtrl::RegisterSub(const Function &func, TaskType type) {
+void TaskCtrl::RegisterSub(int apicid, const Function &func, TaskType type) {
   Task *task = reinterpret_cast<Task *>(virtmem_ctrl->Alloc(sizeof(Task)));//_allocator.Alloc();
   task->func = func;
   task->next = nullptr;
   task->type = type;
-  int apicid = apic_ctrl->GetApicId();
   Locker locker(_task_struct[apicid].lock);
   _task_struct[apicid].bottom->next = task;
   _task_struct[apicid].bottom = task;

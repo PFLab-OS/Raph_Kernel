@@ -18,19 +18,26 @@
  *
  * Author: Liva
  * 
+ * 一時メモリ管理モジュール
+ * 確保できるメモリサイズに制限があるが、高速
+ * 
  */
 
-// 一時メモリ管理
 
 #ifndef __RAPH_KERNEL_MEM_TMPMEM_H__
 #define __RAPH_KERNEL_MEM_TMPMEM_H__
 
 #include <string.h>
 #include <mem/virtmem.h>
+#include <spinlock.h>
 
-class TmpmemCtrl {
+class TmpmemCtrl final {
  public:
-  TmpmemCtrl();
+  TmpmemCtrl() {
+  }
+  ~TmpmemCtrl() {
+  }
+  void Init();
   virt_addr Alloc(size_t size);
   virt_addr AllocZ(size_t size) {
     virt_addr addr = Alloc(size);
@@ -39,7 +46,13 @@ class TmpmemCtrl {
   }
   // 仮想メモリ領域を開放するが、物理メモリ領域は解放しない
   void Free(virt_addr addr);
+  static const int kMaxMemSize = 512;
  private:
+  void AllocNewFrame();
+  static const int kFrameSize = 8192;
+  uint8_t *_frame;
+  int _frame_offset;
+  SpinLock _lock;
 };
 
 #endif // __RAPH_KERNEL_MEM_TMPMEM_H__

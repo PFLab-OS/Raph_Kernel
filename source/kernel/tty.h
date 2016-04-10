@@ -26,152 +26,145 @@
 #include <string.h>
 #include <stdint.h>
 #include <spinlock.h>
+#include <queue.h>
 
 class Tty {
  public:
   Tty() {
-    _cx = 0;
-    _cy = 0;
+  }
+  void Init() {
+    Function func;
+    func.Init(Handle, reinterpret_cast<void *>(this));
+    _queue.SetFunction(1, func);
   }
   void Printf() {
   }
   template<class... T>
     void Printf(const T& ...args) {
-    Locker locker(_lock);
-    Printf_sub(args...);
+    String *str = String::New();
+    Printf_sub1(*str, args...);
+    str->Exit();
+    _queue.Push(str);
   }
   // use to print error message
   template<class... T>
     void PrintfRaw(const T& ...args) {
+    String str;
+    str.Init();
+    str.type = String::Type::kSingle;
+    Printf_sub1(str, args...);
+    str.Exit();
+    Locker locker(_lock);
     int tx = _cx;
     int ty = _cy;
-    _cx = 0;
-    _cy = 0;
-    Printf_sub(args...);
+    _cx = _rcx;
+    _cy = _rcy;
+    PrintString(&str);
+    _rcx = _cx;
+    _rcy = _cy;
     _cx = tx;
-    _cy = ty;
+    _cy = ty;    
   }
  protected:
   virtual void Write(uint8_t c) = 0;
-  int _cx;
-  int _cy;
+  int _cx = 0;
+  int _cy = 0;
+  int _rcx = 0;
+  int _rcy = 0;
  private:
-  SpinLock _lock;
-  void Printf_sub() {
-  }
-  template<class T>
-    void Printf_sub(T /* arg */) {
-    Printf_sub("s", "(invalid format)");
-  }
-  template<class... T2>
-    void Printf_sub(const char *arg1, const char arg2, const T2& ...args) {
-    if (strcmp(arg1, "c")) {
-      Printf_sub("s", "(invalid format)", args...);
-    } else {
-      Write(arg2);
-      Printf_sub(args...);
+  struct String {
+    enum class Type {
+      kSingle,
+      kQueue,
+    } type;
+    static const int length = 100;
+    uint8_t str[length];
+    int offset;
+    String *next;
+    static String *New();
+    void Init() {
+      type = Type::kQueue;
+      offset = 0;
+      next = nullptr;
+    }
+    void Write(uint8_t c);
+    void Exit() {
+      Write('\0');
+    }
+  };
+  static void Handle(void *tty){
+    Tty *that = reinterpret_cast<Tty *>(tty);
+    void *str;
+    while(that->_queue.Pop(str)) {
+      Locker locker(that->_lock);
+      that->PrintString(reinterpret_cast<String *>(str));
     }
   }
-  template<class... T2>
-    void Printf_sub(const char* arg1, const char *arg2, const T2& ...args) {
+  void Printf_sub1(String &str) {
+  }
+  template<class T>
+    void Printf_sub1(String &str, T /* arg */) {
+    Printf_sub2(str, "s", "(invalid format)");
+  }
+  template<class T1, class T2, class... T>
+    void Printf_sub1(String &str, const T1 &arg1, const T2 &arg2, const T& ...args) {
+    Printf_sub2(str, arg1, arg2);
+    Printf_sub1(str, args...);
+  }
+  
+  void Printf_sub2(String &str, const char *arg1, const char arg2) {
+    if (strcmp(arg1, "c")) {
+      Printf_sub2(str, "s", "(invalid format)");
+    } else {
+      str.Write(arg2);
+    }
+  }
+  void Printf_sub2(String &str, const char* arg1, const char *arg2) {
     if (strcmp(arg1, "s")) {
-      Printf_sub("s", "(invalid format)");
+      Printf_sub2(str, "s", "(invalid format)");
     } else {
       while(*arg2) {
-        Write(*arg2);
+        str.Write(*arg2);
         arg2++;
       }
     }
-    Printf_sub(args...);
   }
-  template<class... T2>
-    void Printf_sub(const char *arg1, const int8_t arg2, const T2& ...args) {
-      PrintInt(arg1, arg2, args...);
-    }
-  template<class... T2>
-    void Printf_sub(const char *arg1, const int16_t arg2, const T2& ...args) {
-      PrintInt(arg1, arg2, args...);
-    }
-  template<class... T2>
-    void Printf_sub(const char *arg1, const int32_t arg2, const T2& ...args) {
-      PrintInt(arg1, arg2, args...);
-    }
-  template<class... T2>
-    void Printf_sub(const char *arg1, const int64_t arg2, const T2& ...args) {
-      PrintInt(arg1, arg2, args...);
-    }
-  template<class... T2>
-    void Printf_sub(const char *arg1, const uint8_t arg2, const T2& ...args) {
-      PrintInt(arg1, arg2, args...);
-    }
-  template<class... T2>
-    void Printf_sub(const char *arg1, const uint16_t arg2, const T2& ...args) {
-      PrintInt(arg1, arg2, args...);
-    }
-  template<class... T2>
-    void Printf_sub(const char *arg1, const uint32_t arg2, const T2& ...args) {
-      PrintInt(arg1, arg2, args...);
-    }
-  template<class... T2>
-    void Printf_sub(const char *arg1, const uint64_t arg2, const T2& ...args) {
-      PrintInt(arg1, arg2, args...);
-    }
-  template<class T1, class... T2>
-    void Printf_sub(const char *arg1, const T1& /*arg2*/, const T2& ...args) {
-    Printf_sub("s", "(unknown)", args...);
+  void Printf_sub2(String &str, const char *arg1, const int8_t arg2) {
+    PrintInt(str, arg1, arg2);
   }
-  template<class T1, class T2, class... T3>
-    void Printf_sub(const T1& /*arg1*/, const T2& /*arg2*/, const T3& ...args) {
-    Printf_sub("s", "(invalid format)", args...);
+  void Printf_sub2(String &str, const char *arg1, const int16_t arg2) {
+    PrintInt(str, arg1, arg2);
   }
-  template<class... T2>
-    void PrintInt(const char *arg1, const int arg2, const T2& ...args) {
-    if (!strcmp(arg1, "d")) {
-      if (arg2 < 0) {
-        Write('-');
-      }
-      unsigned int _arg2 = (arg2 < 0) ? -arg2 : arg2;
-      unsigned int i = _arg2;
-      int digit = 0;
-      while (i >= 10) {
-        i /= 10;
-        digit++;
-      }
-      for (int j = digit; j >= 0; j--) {
-        i = 1;
-        for (int k = 0; k < j; k++) {
-          i *= 10;
-        }
-        unsigned int l = _arg2 / i;
-        Write(l + '0');
-        _arg2 -= l * i;
-      }
-    } else if (!strcmp(arg1, "x")) {
-      unsigned int _arg2 = arg2;
-      unsigned int i = _arg2;
-      int digit = 0;
-      while (i >= 16) {
-        i /= 16;
-        digit++;
-      }
-      for (int j = digit; j >= 0; j--) {
-        i = 1;
-        for (int k = 0; k < j; k++) {
-          i *= 16;
-        }
-        unsigned int l = _arg2 / i;
-        if (l < 10) {
-          Write(l + '0');
-        } else if (l < 16) {
-          Write(l - 10 + 'A');
-        }
-        _arg2 -= l * i;
-      }
-    } else {
-      Printf_sub("s", "(invalid format)");
-    }
-    Printf_sub(args...);
-  } 
+  void Printf_sub2(String &str, const char *arg1, const int32_t arg2) {
+    PrintInt(str, arg1, arg2);
+  }
+  void Printf_sub2(String &str, const char *arg1, const int64_t arg2) {
+    PrintInt(str, arg1, arg2);
+  }
+  void Printf_sub2(String &str, const char *arg1, const uint8_t arg2) {
+    PrintInt(str, arg1, arg2);
+  }
+  void Printf_sub2(String &str, const char *arg1, const uint16_t arg2) {
+    PrintInt(str, arg1, arg2);
+  }
+  void Printf_sub2(String &str, const char *arg1, const uint32_t arg2) {
+    PrintInt(str, arg1, arg2);
+  }
+  void Printf_sub2(String &str, const char *arg1, const uint64_t arg2) {
+    PrintInt(str, arg1, arg2);
+  }
+  template<class T1>
+    void Printf_sub2(String &str, const char *arg1, const T1& /*arg2*/) {
+    Printf_sub2(str, "s", "(unknown)");
+  }
+  template<class T1, class T2>
+    void Printf_sub2(String &str, const T1& /*arg1*/, const T2& /*arg2*/) {
+    Printf_sub2(str, "s", "(invalid format)");
+  }
+  void PrintInt(String &str, const char *arg1, const int arg2);
+  void PrintString(String *str);
+  FunctionalQueue _queue;
+  SpinLock _lock;
 };
 
 #endif // __RAPH_KERNEL_TTY_H__
