@@ -208,16 +208,26 @@ int32_t Socket::TransmitRawPacket(const uint8_t *data, uint32_t length) {
 }
 
 int32_t Socket::Receive(uint8_t *data, uint32_t length, bool is_raw_packet, bool wait_timeout, uint64_t rto) {
-  // alloc buffer
-  int32_t received_length;
+  // receiving packet buffer
   DevEthernet::Packet *packet;
+  // packet was on wire?
+  bool packet_reached = false;
+  // my MAC address
   uint8_t eth_daddr[6];
-  uint32_t ip_daddr = _ipaddr;
   _dev->GetEthAddr(eth_daddr);
 
   do {
-    // receive
-    if(!_dev->ReceivePacket(packet)) {
+    if(packet_reached) {
+      // there is a packet already fetched but not released
+      // discard it
+      _dev->ReuseRxBuffer(packet);
+      packet_reached = false;
+    }
+
+    if(_dev->ReceivePacket(packet)) {
+      // packet on wire was fetched
+      packet_reached = true;
+    } else {
       // check retransmission timeout
       if(wait_timeout && rto <= timer->ReadMainCnt()) {
         return kErrorRetransmissionTimeout;
@@ -231,7 +241,7 @@ int32_t Socket::Receive(uint8_t *data, uint32_t length, bool is_raw_packet, bool
 
     // filter IP address
     uint32_t offset_l3 = L2HeaderLength();
-    if(!L3Rx(packet->buf + offset_l3 , L4Protocol(), _daddr, ip_daddr)) continue;
+    if(!L3Rx(packet->buf + offset_l3 , L4Protocol(), _daddr, _ipaddr)) continue;
 
     // filter TCP port
     uint32_t offset_l4 = L2HeaderLength() + L3HeaderLength();
@@ -240,7 +250,8 @@ int32_t Socket::Receive(uint8_t *data, uint32_t length, bool is_raw_packet, bool
     break;
   } while(1);
 
-  received_length = packet->len;
+  // received "RAW" packet length
+  int32_t received_length = packet->len;
 
   if(!is_raw_packet) {
     // copy data
