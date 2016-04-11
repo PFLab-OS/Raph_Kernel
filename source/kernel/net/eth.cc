@@ -20,11 +20,11 @@
  * 
  */
 
-#include "eth.h"
 #include <string.h>
-#include "../mem/physmem.h"
-#include "../mem/virtmem.h"
-#include "../global.h"
+#include <global.h>
+#include <mem/physmem.h>
+#include <mem/virtmem.h>
+#include <net/eth.h>
 
 const uint8_t EthCtrl::kBcastAddress[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 

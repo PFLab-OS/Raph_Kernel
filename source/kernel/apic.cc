@@ -21,11 +21,12 @@
  */
 
 #include <assert.h>
-#include "mem/virtmem.h"
-#include "acpi.h"
-#include "apic.h"
-#include "timer.h"
-#include "global.h"
+#include <mem/virtmem.h>
+#include <acpi.h>
+#include <apic.h>
+#include <timer.h>
+#include <global.h>
+#include <idt.h>
 
 extern "C" void entryothers();
 extern "C" void entry();
@@ -59,7 +60,6 @@ void ApicCtrl::Setup() {
     }
     offset += madtSt->length;
   }
-  _lapic.Setup();
   _ioapic.Setup();
   _lapic._ncpu = ncpu;
 }
@@ -81,11 +81,12 @@ void ApicCtrl::StartAPs() {
       continue;
     }
     _started = false;
-    static const int stack_size = 8192 + 8;
-    *stack_of_others = ((virtmem_ctrl->Alloc(stack_size) + stack_size + 7) / 8) * 8 - 8;
+    static const int stack_size = 4096*5;
+    *stack_of_others = ((virtmem_ctrl->Alloc(stack_size + 8) + stack_size + 7) / 8) * 8 - 8;
     _lapic.Start(_lapic._apicIds[i], reinterpret_cast<uint64_t>(entryothers));
     while(!_started) {}
   }
+  _all_bootup = true;
 }
 
 void ApicCtrl::Lapic::Setup() {
@@ -101,20 +102,20 @@ void ApicCtrl::Lapic::Setup() {
     return;
   }
 
-  _ctrlAddr[kRegSvr] = kRegSvrApicEnableFlag | (32 + 31); // TODO
-
-  // setup timer
-  _ctrlAddr[kRegDivConfig] = kDivVal1;
-  _ctrlAddr[kRegTimerInitCnt] = 1448895600;
+  _ctrlAddr[kRegSvr] = kRegSvrApicEnableFlag | Idt::ReservedIntVector::kSpurious;
 
   // disable all local interrupt sources
-  _ctrlAddr[kRegLvtTimer] = kRegTimerPeriodic | (32 + 10);
+  _ctrlAddr[kRegLvtTimer] = kRegLvtMask | kRegTimerPeriodic;
   // TODO : check APIC version before mask tsensor & pcnt
+  _ctrlAddr[kRegLvtCmci] = kRegLvtMask;
   _ctrlAddr[kRegLvtThermalSensor] = kRegLvtMask;
   _ctrlAddr[kRegLvtPerformanceCnt] = kRegLvtMask;
   _ctrlAddr[kRegLvtLint0] = kRegLvtMask;
   _ctrlAddr[kRegLvtLint1] = kRegLvtMask;
-  _ctrlAddr[kRegLvtErr] = 32 + 19; // TODO
+  _ctrlAddr[kRegLvtErr] = kRegLvtMask | Idt::ReservedIntVector::kLapicErr;
+
+  kassert(idt != nullptr);
+  idt->SetIntCallback(Idt::ReservedIntVector::kIpi, IpiCallback);
 }
 
 void ApicCtrl::Lapic::Start(uint8_t apicId, uint64_t entryPoint) {
@@ -129,9 +130,9 @@ void ApicCtrl::Lapic::Start(uint8_t apicId, uint64_t entryPoint) {
 
   // Universal startup algorithm
   // see mp spec Appendix B.4.1
-  WriteIcr(apicId << 24, kDeliverModeInit | kTriggerModeLevel | kLevelAssert);
+  WriteIcr(apicId << 24, kDeliverModeInit | kRegIcrTriggerModeLevel | kRegIcrLevelAssert);
   timer->BusyUwait(200);
-  WriteIcr(apicId << 24, kDeliverModeInit | kTriggerModeLevel);
+  WriteIcr(apicId << 24, kDeliverModeInit | kRegIcrTriggerModeLevel);
   timer->BusyUwait(100);
 
   // Application Processor Setup (defined in mp spec Appendix B.4)
@@ -150,15 +151,44 @@ void ApicCtrl::Lapic::WriteIcr(uint32_t hi, uint32_t lo) {
   GetApicId();
 }
 
+void ApicCtrl::Lapic::SetupTimer(uint32_t irq) {
+  _ctrlAddr[kRegDivConfig] = kDivVal16;
+  _ctrlAddr[kRegTimerInitCnt] = 0xFFFFFFFF;
+  uint64_t timer1 = timer->ReadMainCnt();
+  while(true) {
+    volatile uint32_t cur = _ctrlAddr[kRegTimerCurCnt];
+    if (cur < 0xFFF00000) {
+      break;
+    }
+  }
+  uint64_t timer2 = timer->ReadMainCnt();
+  kassert((timer2 - timer1) > 0);
+  uint32_t base_cnt = 0xFFFFF / ((timer2 - timer1) * timer->GetCntClkPeriod() / (10 * 1000));
+  kassert(base_cnt > 0);
+
+  kassert(idt != nullptr);
+  idt->SetIntCallback(irq, TmrCallback);
+  _ctrlAddr[kRegTimerInitCnt] = base_cnt;
+      
+  _ctrlAddr[kRegLvtTimer] = kRegTimerPeriodic | irq;
+}
+
+void ApicCtrl::Lapic::SendIpi(uint8_t destid) {
+  WriteIcr(destid << 24, kDeliverModeFixed | kRegIcrTriggerModeLevel | kRegIcrDestShorthandNoShortHand | Idt::ReservedIntVector::kIpi);
+}
+
 void ApicCtrl::Ioapic::Setup() {
   if (_reg == nullptr) {
     return;
   }
 
-  uint32_t intr = GetMaxIntr();
+  // disable 8259 PIC
+  asm volatile("mov $0xff, %al; out %al, $0xa1; out %al, $0x21;");
+
+  uint32_t intr = this->GetMaxIntr();
   // disable all external I/O interrupts
-  for (uint32_t i = 0; i < intr; i++) {
-    Write(kRegRedTbl + 2 * i, kRegRedTblMask);
-    Write(kRegRedTbl + 2 * i + 1, 0);
+  for (uint32_t i = 0; i <= intr; i++) {
+    this->Write(kRegRedTbl + 2 * i, kRegRedTblFlagMask);
+    this->Write(kRegRedTbl + 2 * i + 1, 0);
   }
 }

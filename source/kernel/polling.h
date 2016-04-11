@@ -22,43 +22,65 @@
 
 #ifndef __RAPH_KERNEL_DEV_POLLING_H__
 #define __RAPH_KERNEL_DEV_POLLING_H__
-
-#include "raph.h"
+#include <timer.h>
+#include <global.h>
+#include <raph.h>
+#include <task.h>
 
 class Polling {
- public:
+ protected:
+  enum class PollingState {
+    kPolling,
+    kStopped,
+  };
+  void RegisterPolling() {
+    if (_state == PollingState::kPolling) {
+      return;
+    }
+    Function func;
+    func.Init(HandleSub, reinterpret_cast<void *>(this));
+    _state = PollingState::kPolling;
+    task_ctrl->RegisterPolling(func);
+  }
+  // pollingを登録したprocessorで実行する事
+  void RemovePolling() {
+    if (_state == PollingState::kStopped) {
+      return;
+    }
+    Function func;
+    func.Init(HandleSub, reinterpret_cast<void *>(this));
+    _state = PollingState::kStopped;
+    task_ctrl->Remove(func);
+  }
   virtual void Handle() = 0;
+ private:
+  static void HandleSub(void *p) {
+    Polling *that = reinterpret_cast<Polling *>(p);
+    if (that->_state == PollingState::kPolling) {
+      that->Handle();
+    } else {
+      that->RemovePolling();
+    }
+  }
+  PollingState _state = PollingState::kStopped;
 };
 
-class PollingCtrl {
+class PollingFunc : public Polling {
  public:
-  PollingCtrl() {
-    for(int i = 0; i < 10; i++) {
-      _handlers[i] = nullptr;
-    }
+  void Register() {
+    this->RegisterPolling();
   }
-  void Register(Polling *p) {
-    for(int i = 0; i < 10; i++) {
-      if (_handlers[i] == nullptr) {
-        _handlers[i] = p;
-        return;
-      }
-    }
-    kassert(false);
+  void Remove() {
+    this->RemovePolling();
   }
-  void HandleAll() {
-    while(true) {
-      for(int i = 0; i < 10; i++) {
-        if (_handlers[i] == nullptr) {
-          continue;
-        }
-        _handlers[i]->Handle();
-      }
-    }
+  void Init(void (*func)(void *), void *arg) {
+    _func.Init(func, arg);
   }
  private:
-  Polling *_handlers[10]; // TODO なんとかする
+  virtual void Handle() override {
+    _func.Execute();
+  }
+  Function _func;
 };
-
 
 #endif /* __RAPH_KERNEL_DEV_POLLING_H__ */

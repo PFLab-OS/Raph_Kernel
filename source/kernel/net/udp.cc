@@ -20,11 +20,11 @@
  * 
  */
 
-#include "udp.h"
-#include "../raph.h"
-#include "../mem/physmem.h"
-#include "../mem/virtmem.h"
-#include "../global.h"
+#include <raph.h>
+#include <global.h>
+#include <mem/physmem.h>
+#include <mem/virtmem.h>
+#include <net/udp.h>
 
 int32_t UDPCtrl::GenerateHeader(uint8_t *buffer, uint32_t length, uint16_t sport, uint16_t dport) {
   UDPHeader * volatile header = reinterpret_cast<UDPHeader*>(buffer);

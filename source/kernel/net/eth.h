@@ -24,10 +24,10 @@
 #define __RAPH_KERNEL_NET_ETH_H__
 
 #include <stdint.h>
-#include "../raph.h"
-#include "../dev/netdev.h"
-#include "layer.h"
-#include "socket.h"
+#include <raph.h>
+#include <dev/netdev.h>
+#include <net/layer.h>
+#include <net/socket.h>
 
 struct EthHeader {
   // destination MAC address

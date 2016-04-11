@@ -37,13 +37,13 @@ struct ARPPacket {
   // operation
   uint16_t op;
   // source hardware address
-  uint8_t hwSaddr[6];
+  uint8_t hw_saddr[6];
   // source protocol address
-  uint32_t protoSaddr;
+  uint32_t proto_saddr;
   // destination hardware address
-  uint8_t hwDaddr[6];
+  uint8_t hw_daddr[6];
   // destination protocol address
-  uint32_t protoDaddr;
+  uint32_t proto_daddr;
 } __attribute__((packed));
 
 class ARPCtrl {

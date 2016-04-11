@@ -22,16 +22,17 @@
 
 #include <stdint.h>
 #include "e1000.h"
-#include "../timer.h"
-#include "../net/eth.h"
-#include "../mem/physmem.h"
-#include "../mem/paging.h"
-#include "../tty.h"
-#include "../global.h"
+#include <timer.h>
+#include <mem/paging.h>
+#include <tty.h>
+#include <global.h>
+extern uint32_t cnt;
 
-void E1000::InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {
+extern bE1000 *eth;
+
+bool oE1000::InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {
   if (vid == kVendorId) {
-    E1000 *e1000 = nullptr;
+    oE1000 *e1000 = nullptr;
     switch(did) {
     case kI8254x:
       {
@@ -51,16 +52,20 @@ void E1000::InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, boo
         e1000 = new(addr) DevGbeIch8(bus, device, mf);
       }
       break;
+    default:
+      return false;
     }
-    if (e1000 != nullptr) {
-      e1000->Setup(did);
-      polling_ctrl->Register(e1000);
-//      e1000->TxTest();
-    }
+    kassert(e1000 != nullptr);
+    e1000->Setup(did);
+    e1000->RegisterPolling();
+    timer->BusyUwait(3000*1000);
+    eth = e1000;
+    return true;
   }
+  return false;
 }
 
-void E1000::WritePhy(uint16_t addr, uint16_t value) {
+void oE1000::WritePhy(uint16_t addr, uint16_t value) {
   // TODO: check register and set page if need
   _mmioAddr[kRegMdic] = kRegMdicValueOpcWrite | (addr << kRegMdicOffsetAddr) | (value << kRegMdicOffsetData);
   while(true) {
@@ -73,7 +78,7 @@ void E1000::WritePhy(uint16_t addr, uint16_t value) {
   }
 }
 
-volatile uint16_t E1000::ReadPhy(uint16_t addr) {
+volatile uint16_t oE1000::ReadPhy(uint16_t addr) {
   // TODO: check register and set page if need
   _mmioAddr[kRegMdic] = kRegMdicValueOpcRead | (addr << kRegMdicOffsetAddr);
   while(true) {
@@ -86,7 +91,7 @@ volatile uint16_t E1000::ReadPhy(uint16_t addr) {
   }
 }
 
-int32_t E1000::ReceivePacket(uint8_t *buffer, uint32_t size) {
+int32_t oE1000::Receive(uint8_t *buffer, uint32_t size) {
   E1000RxDesc *rxdesc;
   uint32_t rdh = _mmioAddr[kRegRdh0];
   uint32_t rdt = _mmioAddr[kRegRdt0];
@@ -122,7 +127,7 @@ int32_t E1000::ReceivePacket(uint8_t *buffer, uint32_t size) {
   }
 }
 
-int32_t E1000::TransmitPacket(const uint8_t *packet, uint32_t length) {
+int32_t oE1000::Transmit(const uint8_t *packet, uint32_t length) {
   E1000TxDesc *txdesc;
   uint32_t tdh = _mmioAddr[kRegTdh];
   uint32_t tdt = _mmioAddr[kRegTdt];
@@ -139,19 +144,6 @@ int32_t E1000::TransmitPacket(const uint8_t *packet, uint32_t length) {
     txdesc->special = 0;
     txdesc->cso = 0;
     _mmioAddr[kRegTdt] = (tdt + 1) % kTxdescNumber;
-
-    gtty->Printf("s", "e1000 tx dump; 0x",
-                 "x", reinterpret_cast<uint64_t>(txdesc->bufAddr),
-                 "s", "\n");
-    for(uint32_t i = 0; i < length; i++) {
-	  if(packet[i] < 0x10) gtty->Printf("d", 0);
-	  gtty->Printf("x", packet[i]);
-	  if((i+1) % 16 == 0) gtty->Printf("s", "\n");
-	  else if((i+1) % 16 == 8) gtty->Printf("s", ":");
-	  else                gtty->Printf("s", " ");
-	}
-	gtty->Printf("s", "\n");
-
     return length;
   } else {
     // if tx_desc_buf_ is full, fails
@@ -160,19 +152,11 @@ int32_t E1000::TransmitPacket(const uint8_t *packet, uint32_t length) {
   }
 }
 
-void E1000::GetEthAddr(uint8_t *buffer) {
-  uint16_t ethaddr_lo = this->NvmRead(kEepromEthAddrLo);
-  uint16_t ethaddr_md = this->NvmRead(kEepromEthAddrMd);
-  uint16_t ethaddr_hi = this->NvmRead(kEepromEthAddrHi);
-  buffer[0] = ethaddr_hi & 0xff;
-  buffer[1] = (ethaddr_hi >> 8) & 0xff;
-  buffer[2] = ethaddr_md & 0xff;
-  buffer[3] = (ethaddr_md >> 8) & 0xff;
-  buffer[4] = ethaddr_lo & 0xff;
-  buffer[5] = (ethaddr_lo >> 8) & 0xff;
+void oE1000::GetEthAddr(uint8_t *buffer) {
+  memcpy(buffer, _ethAddr, 6);
 }
 
-uint32_t E1000::Crc32b(uint8_t *message) {
+uint32_t oE1000::Crc32b(uint8_t *message) {
   int32_t i, j;
   uint32_t byte, crc, mask;
 
@@ -190,55 +174,24 @@ uint32_t E1000::Crc32b(uint8_t *message) {
   return ~crc;
 }
 
-void E1000::TxTest() {
-  uint8_t data[] = {
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, // Target MAC Address
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source MAC Address
-    0x08, 0x06, // Type: ARP
-    // ARP Packet
-    0x00, 0x01, // HardwareType: Ethernet
-    0x08, 0x00, // ProtocolType: IPv4
-    0x06, // HardwareLength
-    0x04, // ProtocolLength
-    0x00, 0x01, // Operation: ARP Request
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source Hardware Address
-    0xC0, 0xA8, 0x64, 0x74, // Source Protocol Address
-    //0x0A, 0x00, 0x02, 0x05,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
-    0xC0, 0xA8, 0x64, 0x64, // Target Protocol Address
-    //0x0A, 0x00, 0x02, 0x0F,
-  };
-  GetEthAddr(data + 6);
-  memcpy(data + 22, data + 6, 6);
-
-  uint32_t len = sizeof(data)/sizeof(uint8_t);
-  this->TransmitPacket(data, len);
-  gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
-}
-
-void E1000::Handle() {
-  const uint32_t kBufsize = 256;
-  virt_addr vaddr = virtmem_ctrl->Alloc(sizeof(uint8_t) * kBufsize);
-  uint8_t *buf = reinterpret_cast<uint8_t*>(k2p(vaddr));
-  if(this->ReceivePacket(buf, kBufsize) == -1) {
-    virtmem_ctrl->Free(vaddr);
-    return;
-  } 
-  // received packet
-  if(buf[12] == 0x08 && buf[13] == 0x06) {
-    // ARP packet
-    gtty->Printf(
-                 "s", "[debug] info: ARP Reply received; ",
-                 "x", buf[6], "s", ":",
-                 "x", buf[7], "s", ":",
-                 "x", buf[8], "s", ":",
-                 "x", buf[9], "s", ":",
-                 "x", buf[10], "s", ":",
-                 "x", buf[11], "s", " -> ",
-                 "d", buf[28], "s", ".",
-                 "d", buf[29], "s", ".",
-                 "d", buf[30], "s", ".",
-                 "d", buf[31], "s", "\n");
+void oE1000::Handle() {
+  uint8_t buf[kBufSize];
+  int32_t len;
+  if ((len = this->Receive(buf, kBufSize)) != -1) {
+    bE1000::Packet *packet;
+    if (this->_rx_reserved.Pop(packet)) {
+      memcpy(packet->buf, buf, len);
+      packet->len = len;
+      if (!this->_rx_buffered.Push(packet)) {
+        kassert(this->_rx_reserved.Push(packet));
+      }
+    }
   }
-  virtmem_ctrl->Free(vaddr);
+
+  if (!this->_tx_buffered.IsEmpty()) {
+    bE1000::Packet *packet;
+    kassert(this->_tx_buffered.Pop(packet));
+    this->Transmit(packet->buf, packet->len);
+    this->ReuseTxBuffer(packet);
+  }
 }

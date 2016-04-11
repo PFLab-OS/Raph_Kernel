@@ -23,11 +23,8 @@
 #ifndef __RAPH_KERNEL_IDT_H__
 #define __RAPH_KERNEL_IDT_H__
 
-#define KERNEL_CS (0x10)
-#define KERNEL_DS (0x18)
-
-#ifndef ASM_FILE
 #include <stdint.h>
+#include <apic.h>
 
 struct Regs {
   uint64_t rax, rbx, rcx, rdx, rbp, rsi, rdi, r8, r9, r10, r11, r12, r13, r14, r15;
@@ -35,13 +32,34 @@ struct Regs {
   uint64_t rsp, ss;
 }__attribute__((__packed__));
 
+typedef void (*idt_callback)(Regs *rs);
+
+namespace C {
+  extern "C" void handle_int(Regs *rs);
+}
+
 class Idt {
  public:
-  void Setup();
+  void SetupGeneric();
+  void SetupProc();
+  void SetIntCallback(int n, idt_callback callback);
+  // if 0, cpu is not handling interrupt
+  volatile int GetHandlingCnt() {
+    return _handling_cnt[apic_ctrl->GetApicId()];
+  }
+  struct ReservedIntVector {
+    static const int kIpi      = 32;
+    static const int kSpurious = 33;
+    static const int kLapicErr = 34;
+    static const int kKeyboard = 64;
+  };
  private:
-  void SetGate(void (*gate)(Regs *rs), int n, uint8_t dpl, bool trap);
+  void SetGate(void (*gate)(Regs *rs), int n, uint8_t dpl, bool trap, uint8_t ist);
   static const uint32_t kIdtPresent = 1 << 15;
+  volatile uint16_t _idtr[5];
+  idt_callback **_callback;
+  int *_handling_cnt;
+  friend void C::handle_int(Regs *rs);
 };
 
-#endif // ! ASM_FILE
 #endif // __RAPH_KERNEL_IDT_H__

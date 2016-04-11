@@ -27,9 +27,10 @@
 
 #ifndef ASM_FILE
 
-#include "../spinlock.h"
-#include "../raph.h"
+#include <spinlock.h>
+#include <raph.h>
 #include <stdint.h>
+#include <string.h>
 #include <assert.h>
 
 typedef uint64_t virt_addr;
@@ -44,6 +45,12 @@ public:
   // 新規に仮想メモリ領域を確保する。
   // 物理メモリが割り当てられていない領域の場合は物理メモリを割り当てる
   virt_addr Alloc(size_t size);
+  // ０初期化版
+  virt_addr AllocZ(size_t size) {
+    virt_addr addr = Alloc(size);
+    bzero(reinterpret_cast<void *>(addr), size);
+    return addr;
+  }
   // 仮想メモリ領域を解放するが、物理メモリは解放しない
   void Free(virt_addr addr);
 #ifndef __UNIT_TEST__
@@ -109,8 +116,7 @@ private:
     }
     // areaは未初期化でOK
     void Append(AreaManager *area, size_t size) {
-      // thisは理解しやすくするために付加
-      area = new(area) AreaManager(this, this->_next, size);
+      area = new(area) AreaManager(this->_next, this, size);
       this->_next->_prev = area;
       this->_next = area;
     }
@@ -139,10 +145,8 @@ private:
   static AreaManager *GetAreaManager(virt_addr addr) {
     return reinterpret_cast<AreaManager *>(addr - AreaManager::GetAreaManagerSize());
   }
-  
+  SpinLock _lock;
 };
-
-#include "../list_def.h"
 
 #endif // ! ASM_FILE
 
