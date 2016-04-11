@@ -41,7 +41,7 @@ void ARPReply(uint32_t ipRequest, uint32_t ipReply) {
 
   // wait for ARP request
   socket.SetIPAddr(ipReply);
-  socket.ReceivePacket(ARPSocket::kOpARPRequest, &ipaddr, macaddr);
+  while(socket.ReceivePacket(ARPSocket::kOpARPRequest, &ipaddr, macaddr) < 0);
 
   // need to wait a little
   // because Linux kernel cannot handle packet too quick
@@ -72,7 +72,7 @@ void ARPRequest(uint32_t ipRequest, uint32_t ipReply) {
   if(socket.TransmitPacket(ARPSocket::kOpARPRequest, ipReply, nullptr) < 0) {
     fprintf(stderr, "[ARP] failed to send request packet\n");
   } else {
-    socket.ReceivePacket(ARPSocket::kOpARPReply, &ipaddr, macaddr);
+    while(socket.ReceivePacket(ARPSocket::kOpARPReply, &ipaddr, macaddr) < 0);
   
     fprintf(stderr, "[ARP] reply from %u.%u.%u.%u (%.2x:%.2x:%.2x:%.2x:%.2x:%.2x)\n",
       (ipaddr >> 24), (ipaddr >> 16) & 0xff, (ipaddr >> 8) & 0xff, ipaddr & 0xff,
@@ -108,7 +108,7 @@ void TCPServer1() {
       fprintf(stderr, "[TCP:server] received; %s\n", data);
       socket.TransmitPacket(data, strlen(reinterpret_cast<char*>(data)) + 1);
       fprintf(stderr, "[TCP:server] loopback\n");
-    } else if(rval == Socket::kErrorConnectionClosed) {
+    } else if(rval == Socket::kResultConnectionClosed) {
       break;
     }
   }

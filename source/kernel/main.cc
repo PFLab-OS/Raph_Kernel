@@ -169,12 +169,12 @@ extern "C" int main() {
   PollingFunc _keyboard_polling;
   keyboard->Setup(0); //should we define kDefaultLapicid = 0 ?
   _keyboard_polling.Init([](void *) {
-      while(keyboard->Count() > 0){
-	char ch[2] = {'\0','\0'};
-	ch[0] = keyboard->GetCh();
-	gtty->Printf("s", ch);
-      }
-    }, nullptr);
+    while(keyboard->Count() > 0) {
+      char ch[2] = {'\0','\0'};
+      ch[0] = keyboard->GetCh();
+      gtty->Printf("s", ch);
+    }
+  }, nullptr);
   _keyboard_polling.Register();
   
   while(true) {
@@ -271,12 +271,12 @@ extern "C" int main_of_others() {
                      "d", (ipaddr >> 0) & 0xff, "s", "\n");
 
         if(socket.TransmitPacket(ARPSocket::kOpARPReply, ipaddr, macaddr) < 0) {
-	      gtty->Printf("s", "[arp] failed to transmit reply\n");
-	    } else {
-	      gtty->Printf("s", "[arp] reply sent\n");
-	    }
+	        gtty->Printf("s", "[arp] failed to transmit reply\n");
+	      } else {
+	        gtty->Printf("s", "[arp] reply sent\n");
+	      }
       }
-      }, nullptr);
+    }, nullptr);
     p.Register();
   } else if (apic_ctrl->GetApicId() == 2) {
     cnt = 0;

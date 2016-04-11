@@ -27,11 +27,28 @@
 #include "../dev/eth.h"
 
 class NetSocket {
+public:
+  /*
+   * return code of ReceivePacket
+   */
+
+  // connection closed by remote host
+  static const int32_t kResultConnectionClosed      = - 0x100;
+  // unknown error
+  static const int32_t kErrorUnknown                = - 0x1000;
+  // remote host does not reply for retransmission timeout
+  static const int32_t kErrorRetransmissionTimeout  = - 0x1001;
+  // no new packet reached on wire
+  static const int32_t kErrorNoPacketOnWire         = - 0x1002;
+  // the packet reached on wire is invalid (destination is wrong, etc.)
+  static const int32_t kErrorInvalidPacketOnWire    = - 0x1003;
+  // invalid parameter is set in the received packet
+  static const int32_t kErrorInvalidPacketParameter = - 0x1004;
+
+  int32_t Open();
+
 protected:
   DevEthernet *_dev = nullptr;
-
-public:
-  int32_t Open();
 };
 
 // TCP/IP Socket
@@ -51,10 +68,6 @@ public:
 
   // maximum segment size
   static const uint32_t kMSS = 1460;
-
-  // return code of ReceivePacket
-  static const int32_t kErrorConnectionClosed       = - 0x100;
-  static const int32_t kErrorRetransmissionTimeout  = - 0x101;
 
   Socket() {}
   void SetAddr(uint32_t addr) { _daddr = addr; }

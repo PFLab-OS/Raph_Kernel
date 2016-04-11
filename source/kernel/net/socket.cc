@@ -285,7 +285,7 @@ int32_t Socket::ReceivePacket(uint8_t *data, uint32_t length) {
           SetSequenceNumber(ack);
           SetAcknowledgeNumber(seq + 1);
           CloseAck(type);
-          rval = kErrorConnectionClosed;
+          rval = kResultConnectionClosed;
           break;
         } else if(_ack == seq || (_seq == seq && _ack == ack)) {
           // acknowledge number = the expected next sequence number
@@ -558,24 +558,28 @@ int32_t ARPSocket::TransmitPacket(uint16_t type, uint32_t tpa, uint8_t *tha) {
 
 int32_t ARPSocket::ReceivePacket(uint16_t type, uint32_t *spa, uint8_t *sha) {
   // alloc buffer
-  DevEthernet::Packet *packet;
+  DevEthernet::Packet *packet = nullptr;
   int16_t op = 0;
 
   uint8_t eth_daddr[6];
   _dev->GetEthAddr(eth_daddr);
 
-  do {
-    // receive
-    if(!_dev->ReceivePacket(packet)) continue;
+  // check if there is a new packet on wire (if so, then fetch it)
+  if(!_dev->ReceivePacket(packet)) {
+    return kErrorInvalidPacketOnWire;
+  }
 
-    // filter Ethernet address
-    if(!eth_ctrl->FilterPacket(packet->buf, nullptr, eth_daddr, EthCtrl::kProtocolARP)) continue;
+  // filter Ethernet address
+  if(!eth_ctrl->FilterPacket(packet->buf, nullptr, eth_daddr, EthCtrl::kProtocolARP)) {
+    _dev->ReuseRxBuffer(packet);
+    return kErrorInvalidPacketOnWire;
+  }
 
-    // filter IP address
-    if(!arp_ctrl->FilterPacket(packet->buf + sizeof(EthHeader), type, nullptr, 0, eth_daddr, _ipaddr)) continue;
-
-    break;
-  } while(true);
+  // filter IP address
+  if(!arp_ctrl->FilterPacket(packet->buf + sizeof(EthHeader), type, nullptr, 0, eth_daddr, _ipaddr)) {
+    _dev->ReuseRxBuffer(packet);
+    return kErrorInvalidPacketOnWire;
+  }
 
   uint8_t *p = packet->buf + sizeof(EthHeader) + kOperationOffset;
   op = ntohs(*reinterpret_cast<uint16_t*>(p));
@@ -590,7 +594,7 @@ int32_t ARPSocket::ReceivePacket(uint16_t type, uint32_t *spa, uint8_t *sha) {
       break;
     default:
       _dev->ReuseRxBuffer(packet);
-      return -1;
+      return kErrorInvalidPacketParameter;
   }
 
   // finalization
