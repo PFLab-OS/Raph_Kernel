@@ -187,7 +187,7 @@ extern "C" int main() {
   return 0;
 }
 
-#define FLAG 0
+#define FLAG 1
 #if FLAG == 3
 #define IP1 192, 168, 100, 117
 #define IP2 192, 168, 100, 254
@@ -257,6 +257,12 @@ extern "C" int main_of_others() {
                      "d", (ipaddr >> 0) & 0xff, "s", " (");
         gtty->Printf("s", "latency:", "d", l, "s", "us)\n");
       } else if(rval == ARPSocket::kOpARPRequest) {
+        if(socket.TransmitPacket(ARPSocket::kOpARPReply, ipaddr, macaddr) < 0) {
+	        gtty->Printf("s", "[arp] failed to transmit reply\n");
+	      } else {
+	        gtty->Printf("s", "[arp] reply sent\n");
+	      }
+
         gtty->Printf(
                      "s", "[arp] request received; ",
                      "x", macaddr[0], "s", ":",
@@ -269,12 +275,6 @@ extern "C" int main_of_others() {
                      "d", (ipaddr >> 16) & 0xff, "s", ".",
                      "d", (ipaddr >> 8) & 0xff, "s", ".",
                      "d", (ipaddr >> 0) & 0xff, "s", "\n");
-
-        if(socket.TransmitPacket(ARPSocket::kOpARPReply, ipaddr, macaddr) < 0) {
-	        gtty->Printf("s", "[arp] failed to transmit reply\n");
-	      } else {
-	        gtty->Printf("s", "[arp] reply sent\n");
-	      }
       }
     }, nullptr);
     p.Register();
@@ -306,10 +306,10 @@ extern "C" int main_of_others() {
           socket.SetIPAddr(inet_atoi(ip1));
           cnt = timer->ReadMainCnt();
           if(socket.TransmitPacket(ARPSocket::kOpARPRequest, inet_atoi(ip2), nullptr) < 0) {
-    	    gtty->Printf("s", "[arp] failed to transmit request\n");
-    	  } else {
-    	    gtty->Printf("s", "[arp] request sent\n");
-    	  }
+    	      gtty->Printf("s", "[arp] failed to transmit request\n");
+    	    } else {
+    	      gtty->Printf("s", "[arp] request sent\n");
+    	    }
         }
 
         time--;
