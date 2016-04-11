@@ -1,5 +1,5 @@
 DEV_ARCHIVE = ../dev.o
-DEV_OBJS = pci.o netdev.o nic.o
+DEV_OBJS = pci.o netdev.o keyboard.o nic.o
 DEPS= $(filter %.d,$(DEV_OBJS:%.o=%.d))
 
 obj: $(DEV_ARCHIVE)

@@ -68,6 +68,10 @@ static inline uint32_t inl(uint16_t pin) {
   return data;
 }
 
+static inline uint32_t inet_atoi(uint8_t ip[]) {
+  return (ip[0] << 24) | (ip[1] << 16) | (ip[2] << 8) | ip[3];
+}
+
 #ifdef __UNIT_TEST__
 #define UTEST_VIRTUAL virtual
 #define kassert(flag) if (!(flag)) {throw #flag;}

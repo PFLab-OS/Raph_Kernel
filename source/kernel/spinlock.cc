@@ -26,14 +26,18 @@
 #include <apic.h>
 
 void SpinLock::Lock() {
+#ifndef __UNIT_TEST__
   if ((_flag % 2) == 1) {
     kassert(_id != apic_ctrl->GetApicId());
   }
+#endif // __UNIT_TEST__
   volatile unsigned int flag = GetFlag();
   while((flag % 2) == 1 || !SetFlag(flag, flag + 1)) {
     flag = GetFlag();
   }
+#ifndef __UNIT_TEST__
   _id = apic_ctrl->GetApicId();
+#endif // __UNIT_TEST__
 }
 
 void SpinLock::Unlock() {

@@ -37,9 +37,11 @@
 #include <dev/hpet.h>
 #include <dev/vga.h>
 #include <dev/pci.h>
+#include <dev/keyboard.h>
 
 #include "net/netctrl.h"
 #include "net/socket.h"
+
 
 SpinLockCtrl *spinlock_ctrl;
 MultibootCtrl *multiboot_ctrl;
@@ -55,6 +57,7 @@ Idt *idt;
 Timer *timer;
 
 Tty *gtty;
+Keyboard *keyboard;
 
 PCICtrl *pci_ctrl;
 
@@ -127,6 +130,9 @@ extern "C" int main() {
 
   Vga _vga;
   gtty = &_vga;
+
+  Keyboard _keyboard;
+  keyboard = &_keyboard;
   
   tmpmem_ctrl->Init();
 
@@ -264,12 +270,25 @@ extern "C" int main() {
 
   gtty->Printf("s", "\n\n[kernel] info: initialization completed\n");
 
+  // print keyboard_input
+  PollingFunc _keyboard_polling;
+  keyboard->Setup(0); //should we define kDefaultLapicid = 0 ?
+  _keyboard_polling.Init([](void *) {
+    while(keyboard->Count() > 0) {
+      char ch[2] = {'\0','\0'};
+      ch[0] = keyboard->GetCh();
+      gtty->Printf("s", ch);
+    }
+  }, nullptr);
+  _keyboard_polling.Register();
+  
   task_ctrl->Run();
 
   DismissNetCtrl();
 
   return 0;
 }
+
 
 extern "C" int main_of_others() {
 // according to mp spec B.3, system should switch over to Symmetric I/O mode
@@ -303,7 +322,7 @@ extern "C" int main_of_others() {
       }, nullptr);
     tt1.SetHandler(10);
   }
-  
+
   if (apic_ctrl->GetApicId() == 3) {
     cnt = 0;
     new(&tt2) Callout;
@@ -363,7 +382,7 @@ extern "C" int main_of_others() {
 
 void kernel_panic(const char *class_name, const char *err_str) {
   gtty->PrintfRaw("s", "\n[","s",class_name,"s","] error: ","s",err_str);
-  while(1) {
+  while(true) {
     asm volatile("hlt;");
   }
 }
