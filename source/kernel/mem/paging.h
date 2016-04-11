@@ -63,9 +63,10 @@
 #ifndef ASM_FILE
 
 #include <assert.h>
-#include "../global.h"
+#include <global.h>
 #include "physmem.h"
 #include "virtmem.h"
+#include <spinlock.h>
 
 typedef uint64_t entry_type;
 
@@ -176,6 +177,7 @@ private:
     entry_type entry[512];
   };
   PageTable *_pml4t;
+  SpinLock _lock;
 };
 
 // 仮想メモリを物理メモリに変換する

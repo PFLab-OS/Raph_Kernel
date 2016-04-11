@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2015 Raphine Project
+ * Copyright (c) 2016 Raphine Project
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -17,39 +17,20 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * Author: Liva
- * リスト
- * 領域が足りなくなりそうになったら足りなくなる前に自動で伸ばす
  * 
  */
 
-#ifndef __RAPH_KERNEL_LIST_H__
-#define __RAPH_KERNEL_LIST_H__
+// 一時メモリ管理
 
-#include "spinlock.h"
+#ifndef __RAPH_KERNEL_MEM_TMPMEM_H__
+#define __RAPH_KERNEL_MEM_TMPMEM_H__
 
-template <typename T>
-class List {
-public:
-  List();
-  T *Alloc();
-  void Free(T *data);
-private:
-  T *Extend(T *entry);
-  class Container {
-  public:
-    Container() : _next(nullptr), _flag(0) {}
-    T _entry[64];
-    Container *_next;
-    uint64_t _flag;
-  } _first;
-  Container *_list;
-  SpinLock _lock;
+class TmpmemCtrl {
+ public:
+  TmpmemCtrl() {
+  }
+ private:
 };
 
-#ifndef __RAPH_KERNEL_MEM_VIRTMEM_H__
+#endif // __RAPH_KERNEL_MEM_TMPMEM_H__
 
-#include "list_def.h"
-
-#endif // __RAPH_KERNEL_MEM_VIRTMEM_H__
-
-#endif // __RAPH_KERNEL_LIST_H__

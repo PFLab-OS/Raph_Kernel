@@ -25,78 +25,105 @@
 
 #include <string.h>
 #include <stdint.h>
+#include <spinlock.h>
 
 class Tty {
  public:
   Tty() {
+    _cx = 0;
+    _cy = 0;
   }
   void Printf() {
   }
+  template<class... T>
+    void Printf(const T& ...args) {
+    Locker locker(_lock);
+    Printf_sub(args...);
+  }
+  // use to print error message
+  template<class... T>
+    void PrintfRaw(const T& ...args) {
+    int tx = _cx;
+    int ty = _cy;
+    _cx = 0;
+    _cy = 0;
+    Printf_sub(args...);
+    _cx = tx;
+    _cy = ty;
+  }
+ protected:
+  virtual void Write(uint8_t c) = 0;
+  int _cx;
+  int _cy;
+ private:
+  SpinLock _lock;
+  void Printf_sub() {
+  }
   template<class T>
-    void Printf(T /* arg */) {
+    void Printf_sub(T /* arg */) {
+    Printf_sub("s", "(invalid format)");
   }
   template<class... T2>
-    void Printf(const char *arg1, const char arg2, const T2& ...args) {
+    void Printf_sub(const char *arg1, const char arg2, const T2& ...args) {
     if (strcmp(arg1, "c")) {
-      Printf("s", "(invalid format)", args...);
+      Printf_sub("s", "(invalid format)", args...);
     } else {
       Write(arg2);
-      Printf(args...);
+      Printf_sub(args...);
     }
   }
   template<class... T2>
-    void Printf(const char* arg1, const char *arg2, const T2& ...args) {
+    void Printf_sub(const char* arg1, const char *arg2, const T2& ...args) {
     if (strcmp(arg1, "s")) {
-      Printf("s", "(invalid format)");
+      Printf_sub("s", "(invalid format)");
     } else {
       while(*arg2) {
         Write(*arg2);
         arg2++;
       }
     }
-    Printf(args...);
+    Printf_sub(args...);
   }
   template<class... T2>
-    void Printf(const char *arg1, const int8_t arg2, const T2& ...args) {
+    void Printf_sub(const char *arg1, const int8_t arg2, const T2& ...args) {
       PrintInt(arg1, arg2, args...);
     }
   template<class... T2>
-    void Printf(const char *arg1, const int16_t arg2, const T2& ...args) {
+    void Printf_sub(const char *arg1, const int16_t arg2, const T2& ...args) {
       PrintInt(arg1, arg2, args...);
     }
   template<class... T2>
-    void Printf(const char *arg1, const int32_t arg2, const T2& ...args) {
+    void Printf_sub(const char *arg1, const int32_t arg2, const T2& ...args) {
       PrintInt(arg1, arg2, args...);
     }
   template<class... T2>
-    void Printf(const char *arg1, const int64_t arg2, const T2& ...args) {
+    void Printf_sub(const char *arg1, const int64_t arg2, const T2& ...args) {
       PrintInt(arg1, arg2, args...);
     }
   template<class... T2>
-    void Printf(const char *arg1, const uint8_t arg2, const T2& ...args) {
+    void Printf_sub(const char *arg1, const uint8_t arg2, const T2& ...args) {
       PrintInt(arg1, arg2, args...);
     }
   template<class... T2>
-    void Printf(const char *arg1, const uint16_t arg2, const T2& ...args) {
+    void Printf_sub(const char *arg1, const uint16_t arg2, const T2& ...args) {
       PrintInt(arg1, arg2, args...);
     }
   template<class... T2>
-    void Printf(const char *arg1, const uint32_t arg2, const T2& ...args) {
+    void Printf_sub(const char *arg1, const uint32_t arg2, const T2& ...args) {
       PrintInt(arg1, arg2, args...);
     }
   template<class... T2>
-    void Printf(const char *arg1, const uint64_t arg2, const T2& ...args) {
+    void Printf_sub(const char *arg1, const uint64_t arg2, const T2& ...args) {
       PrintInt(arg1, arg2, args...);
     }
   template<class T1, class... T2>
-    void Printf(const char *arg1, const T1& /*arg2*/, const T2& ...args) {
-    Printf("s", "(unknown)", args...);
+    void Printf_sub(const char *arg1, const T1& /*arg2*/, const T2& ...args) {
+    Printf_sub("s", "(unknown)", args...);
   }
   template<class T1, class T2, class... T3>
-    void Printf(const T1& /*arg1*/, const T2& /*arg2*/, const T3& ...args) {
-    Printf("s", "(invalid format)", args...);
+    void Printf_sub(const T1& /*arg1*/, const T2& /*arg2*/, const T3& ...args) {
+    Printf_sub("s", "(invalid format)", args...);
   }
- private:
   template<class... T2>
     void PrintInt(const char *arg1, const int arg2, const T2& ...args) {
     if (!strcmp(arg1, "d")) {
@@ -141,11 +168,10 @@ class Tty {
         _arg2 -= l * i;
       }
     } else {
-      Printf("s", "(invalid format)");
+      Printf_sub("s", "(invalid format)");
     }
-    Printf(args...);
+    Printf_sub(args...);
   } 
-  virtual void Write(uint8_t c) = 0;
 };
 
 #endif // __RAPH_KERNEL_TTY_H__

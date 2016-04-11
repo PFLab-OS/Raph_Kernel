@@ -6,8 +6,18 @@ BUILD_DIR = build
 
 default: image
 
-run: image
-	sudo qemu-system-x86_64 -hda $(IMAGE) -smp 4 -machine q35  -monitor stdio -vnc 0.0.0.0:0,password -net nic -net bridge,br=br0
+run:
+	make qemurun
+	-telnet 127.0.0.1 1234
+	make qemuend
+
+qemurun: image
+	sudo qemu-system-x86_64 -hda $(IMAGE) -smp 4 -machine q35 -monitor telnet:127.0.0.1:1234,server,nowait -vnc 0.0.0.0:0,password -net nic -net bridge,br=br0 &
+	sleep 0.2s
+	echo "set_password vnc a" | netcat 127.0.0.1 1234
+
+qemuend:
+	-sudo pkill -KILL qemu
 
 #$(CORE_FILE): $(subst $(MOUNT_DIR)/core,$(BUILD),$@)
 #	cp $< $@
