@@ -23,8 +23,8 @@
 #include "e1000_raph.h"
 #include "e1000_api.h"
 #include "e1000_osdep.h"
-#include "../pci.h"
-#include "../../mem/virtmem.h"
+#include <dev/pci.h>
+#include <mem/virtmem.h>
 
 uint16_t pci_get_vendor(device_t dev) {
   return dev->parent->ReadReg<uint16_t>(PCICtrl::kVendorIDReg);

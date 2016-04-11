@@ -60,7 +60,7 @@ PCICtrl *pci_ctrl;
 
 static uint32_t rnd_next = 1;
 
-#include <dev/e1000/bem.h>
+#include <dev/nic/intel/em/bem.h>
 bE1000 *eth;
 uint64_t cnt;
 int time;

@@ -96,10 +96,10 @@
 
 #include <stdint.h>
 #include <string.h>
-#include "../../timer.h"
-#include "../../mem/paging.h"
-#include "../../mem/virtmem.h"
-#include "../../mem/physmem.h"
+#include <timer.h>
+#include <mem/paging.h>
+#include <mem/virtmem.h>
+#include <mem/physmem.h>
 
 #include "lem.h"
 #include "e1000_raph.h"
