@@ -1,17 +1,16 @@
 KERNEL = kernel.elf
-DEV_OBJ = dev/pci.o dev/netdev.o dev/e1000/lem.o dev/e1000/em.o dev/e1000/e1000_api.o dev/e1000/e1000_nvm.o dev/e1000/e1000_mac.o dev/e1000/e1000_phy.o dev/e1000/e1000_manage.o dev/e1000/e1000_80003es2lan.o dev/e1000/e1000_82540.o dev/e1000/e1000_82541.o dev/e1000/e1000_82542.o dev/e1000/e1000_82543.o dev/e1000/e1000_82571.o dev/e1000/e1000_ich8lan.o dev/e1000/e1000_osdep.o dev/e1000/e1000_raph.o dev/e1000/if_lem.o dev/e1000/if_em.o
-# dev/oe1000/e1000.o dev/oe1000/i8254.o dev/oe1000/i8257.o dev/oe1000/ich8.o
-NET_OBJ = net/eth.o net/arp.o net/ip.o net/tcp.o net/udp.o net/socket.o net/netctrl.o
-OBJ = boot/boot.o boot/bootap.o main.o spinlock.o apic.o acpi.o gdt.o idt.o int.o dev/keyboard.o task.o mem/virtmem.o mem/tmpmem.o mem/paging.o mem/physmem.o $(DEV_OBJ) $(NET_OBJ)
-TEST_OBJ = test_main.o spinlock.o mem/virtmem.o dev/raw.o dev/netdev.o net/test.o $(NET_OBJ)
+NET_OBJS = net/eth.o net/arp.o net/ip.o net/tcp.o net/udp.o net/socket.o net/netctrl.o
+OBJS = boot/boot.o boot/bootap.o main.o spinlock.o apic.o acpi.o gdt.o idt.o int.o tty.o task.o queue.o functional.o dev.o mem/virtmem.o mem/tmpmem.o mem/paging.o mem/physmem.o $(DEV_OBJS) $(NET_OBJS)
+TEST_OBJS = test_main.o spinlock.o mem/virtmem.o dev/raw.o dev/netdev.o net/test.o $(NET_OBJS)
+
 BUILD = ../../build/
-DEPS= $(OBJ:%.o=%.d) $(TEST_OBJ:%.o=%.d)
+DEPS= $(filter %.d,$(OBJS:%.o=%.d) $(TEST_OBJS:%.o=%.d))
 
 TEST = ./unit_test
 
-CXXFLAGS += -Wall -Wshadow -nostdinc -nostdlib -fno-exceptions -fno-rtti -mcmodel=large -D__KERNEL__ -std=c++11 -I../lib/ -I. -MMD -MP
+CXXFLAGS += -Wall -Wshadow -nostdinc -nostdlib -fno-exceptions -fno-rtti -fno-use-cxa-atexit -mcmodel=large -D__KERNEL__ -std=c++11 -I$(realpath ../lib/) -I$(realpath .) -MMD -MP
 
-ASFLAGS += -I.
+ASFLAGS += -I$(realpath .)
 
 .PHONY: clean test
 
@@ -19,20 +18,24 @@ default: $(BUILD)$(KERNEL)
 
 -include $(DEPS)
 
-test: 
+test:
 	make $(TEST) CXX=g++ LD=ld "CXXFLAGS= -O3 -g -Wall -Wshadow -D__UNIT_TEST__ -std=c++11 -I."
-	rm $(TEST_OBJ)
+	rm $(TEST_OBJS)
 
 testrun:
 	make clean
 	make test
 	sudo $(TEST)
 
-$(TEST): $(TEST_OBJ)
+$(TEST): $(TEST_OBJS)
 	g++ -pedantic -pthread -static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive -o $@ $^
 
-$(BUILD)$(KERNEL): $(OBJ) kernel.ld
-	$(LD) -nostdinc -nostdlib -Tkernel.ld $(OBJ) -o $@
+$(BUILD)$(KERNEL): $(OBJS) kernel.ld
+	$(LD) -nostdinc -nostdlib -Tkernel.ld $(OBJS) -o $@
+
+dev.o:
+	make CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)" -C dev obj
 
 clean:
-	-rm -f $(OBJ) $(TEST) $(DEPS) *.s *.ii
+	make -C dev clean
+	-rm -f $(OBJS) $(TEST) $(DEPS) *.s *.ii

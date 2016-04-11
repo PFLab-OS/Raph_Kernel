@@ -24,10 +24,12 @@
 #define __RAPH_KERNEL_BUF_H__
   
 #include <stddef.h>
-#include "raph.h"
-#include "mem/virtmem.h"
-#include "global.h"
-#include "spinlock.h"
+#include <raph.h>
+#include <mem/virtmem.h>
+#include <global.h>
+#include <spinlock.h>
+#include <task.h>
+#include <functional.h>
 
 class ListBuffer {
 public:
@@ -98,6 +100,8 @@ class RingBuffer {
     _head = 0;
     _tail = 0;
   }
+  virtual ~RingBuffer() {
+  }
   // 満杯の時は何もせず、falseを返す
   bool Push(T data) {
     Locker locker(_lock);
@@ -136,5 +140,34 @@ class RingBuffer {
   int _tail;
   SpinLock _lock;
 };
+
+template<class T, int S>
+  class FunctionalRingBuffer final : public Functional {
+ public:
+  FunctionalRingBuffer() {
+  }
+  ~FunctionalRingBuffer() {
+  }
+  bool Push(T data) {
+    bool flag = _buf.Push(data);
+    WakeupFunction();
+    return flag;
+  }
+  bool Pop(T &data) {
+    return _buf.Pop(data);
+  }
+  bool IsFull() {
+    return _buf.IsFull();
+  }
+  bool IsEmpty() {
+    return _buf.IsEmpty();
+  }
+ private:
+  virtual bool ShouldFunc() override {
+    return !_buf.IsEmpty();
+  }
+  RingBuffer<T, S> _buf;
+};
+
 
 #endif /* __RAPH_KERNEL_BUF_H__ */

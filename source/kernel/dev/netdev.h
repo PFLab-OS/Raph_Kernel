@@ -40,6 +40,9 @@ public:
     Down
   };
 
+  typedef RingBuffer<Packet *, 300> NetDevRingBuffer;
+  typedef FunctionalRingBuffer<Packet *, 300> NetDevFunctionalRingBuffer;
+
   // rxパケットの処理の流れ
   // 0. rx_reservedを初期化、バッファを満タンにしておく
   // 1. Receiveハンドラがパケットを受信すると、rx_reservedから一つ取り出し、
@@ -52,8 +55,8 @@ public:
   //
   // プロトコル・スタックがReuseRxBufferを呼ばないと
   // そのうちrx_reservedが枯渇して、一切のパケットの受信ができなくなるるよ♪
-  RingBuffer<Packet *, 300> _rx_reserved;
-  RingBuffer<Packet *, 300> _rx_buffered;
+  NetDevRingBuffer _rx_reserved;
+  NetDevFunctionalRingBuffer _rx_buffered;
 
   // txパケットの処理の流れ
   // 0. tx_reservedを初期化、バッファを満タンにしておく
@@ -67,8 +70,8 @@ public:
   // プロトコル・スタックはGetTxBufferで確保したバッファを必ずTransmitPacketするか
   // ReuseTxBufferで開放しなければならない。サボるとそのうちtx_reservedが枯渇
   // して、一切のパケットの送信ができなくなるよ♪
-  RingBuffer<Packet *, 300> _tx_reserved;
-  RingBuffer<Packet *, 300> _tx_buffered;
+  NetDevRingBuffer _tx_reserved;
+  NetDevFunctionalRingBuffer _tx_buffered;
 
   void ReuseRxBuffer(Packet *packet) {
     kassert(_rx_reserved.Push(packet));
@@ -90,6 +93,9 @@ public:
   }
   bool ReceivePacket(Packet *&packet) {
     return _rx_buffered.Pop(packet);
+  }
+  void SetReceiveCallback(int apicid, const Function &func) {
+    _rx_buffered.SetFunction(apicid, func);
   }
 
   void InitTxPacketBuffer() {

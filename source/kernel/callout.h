@@ -42,6 +42,8 @@ class Callout : public Polling {
   };
   Callout() {
   }
+  virtual ~Callout() {
+  }
   void Init(void (*func)(void *), void *arg) {
     _func.Init(func, arg);
   }

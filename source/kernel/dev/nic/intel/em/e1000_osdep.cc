@@ -33,7 +33,7 @@
 /*$FreeBSD$*/
 
 #include "e1000_api.h"
-#include "../pci.h"
+#include <dev/pci.h>
 
 /*
  * NOTE: the following routines using the e1000 

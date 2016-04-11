@@ -31,7 +31,7 @@
 #ifndef _EM_COMPAT_H_
 #define _EM_COMPAT_H_
 
-#include "../../spinlock.h"
+#include <spinlock.h>
 #include "e1000_raph.h"
 /*
 #include <sys/param.h>
