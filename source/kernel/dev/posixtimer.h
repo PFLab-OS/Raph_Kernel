@@ -23,11 +23,12 @@
 #ifndef __RAPH_KERNEL_POSIXTIMER_H__
 #define __RAPH_KERNEL_POSIXTIMER_H__
 
+#include <timer.h>
+
 #ifdef __UNIT_TEST__
 
 #include <stdint.h>
 #include <time.h>
-#include <timer.h>
 
 class PosixTimer : public Timer {
 public:
