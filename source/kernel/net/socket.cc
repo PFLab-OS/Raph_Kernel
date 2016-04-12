@@ -90,7 +90,7 @@ int32_t Socket::Transmit(const uint8_t *data, uint32_t length, bool is_raw_packe
   // alloc buffer
   NetDev::Packet *packet;
   if(!_dev->GetTxPacket(packet)) {
-    return -1;
+    return kErrorInsufficientBuffer;
   }
 
   if(is_raw_packet) {
@@ -319,7 +319,7 @@ int32_t Socket::ReceiveRawPacket(uint8_t *data, uint32_t length) {
 
 int32_t Socket::Listen() {
   // connection already established
-  if(_established) return -1;
+  if(_established) return kErrorAlreadyEstablished;
 
   uint32_t kBufSize = sizeof(EthHeader) + sizeof(Ipv4Header) + sizeof(TcpHeader);
   uint8_t buffer[kBufSize];
@@ -362,7 +362,7 @@ int32_t Socket::Listen() {
 
 int32_t Socket::Connect() {
   // connection already established
-  if(_established) return -1;
+  if(_established) return kErrorAlreadyEstablished;
 
   uint32_t kBufSize = sizeof(EthHeader) + sizeof(Ipv4Header) + sizeof(TcpHeader);
   uint8_t buffer[kBufSize];
@@ -532,13 +532,13 @@ int32_t ArpSocket::TransmitPacket(uint16_t type, uint32_t tpa, uint8_t *tha) {
       break;
     default:
       // unknown ARP operation
-      return -1;
+      return kErrorInvalidPacketParameter;
   }
 
   // alloc buffer
   DevEthernet::Packet *packet;
   if(!_dev->GetTxPacket(packet)) {
-    return -1;
+    return kErrorInsufficientBuffer;
   }
   uint32_t len = sizeof(EthHeader) + sizeof(ArpPacket);
   packet->len = len;

@@ -29,7 +29,7 @@
 class NetSocket {
 public:
   /*
-   * return code of ReceivePacket
+   * return code of TransmitPacket / ReceivePacket
    */
 
   // connection closed by remote host
@@ -44,6 +44,10 @@ public:
   static const int32_t kErrorInvalidPacketOnWire    = - 0x1003;
   // invalid parameter is set in the received packet
   static const int32_t kErrorInvalidPacketParameter = - 0x1004;
+  // cannot fetch packet buffer from transmit queue
+  static const int32_t kErrorInsufficientBuffer     = - 0x1005;
+  // connection is already established before Listen / Connect
+  static const int32_t kErrorAlreadyEstablished     = - 0x1006;
 
   int32_t Open();
 
