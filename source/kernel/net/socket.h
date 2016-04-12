@@ -48,10 +48,14 @@ public:
   static const int32_t kErrorInsufficientBuffer     = - 0x1005;
   // connection is already established before Listen / Connect
   static const int32_t kErrorAlreadyEstablished     = - 0x1006;
+  // device internal error
+  static const int32_t kErrorDeviceInternal         = - 0x1007;
 
+  // open socket, which internally fetch an available network device
   int32_t Open();
 
 protected:
+  // the instance of the network device to send / receive packet
   DevEthernet *_dev = nullptr;
 };
 
@@ -74,7 +78,8 @@ public:
   static const uint32_t kMSS = 1460;
 
   Socket() {}
-  void SetAddr(uint32_t addr) { _daddr = addr; }
+
+  void SetIPAddr(uint32_t addr) { _daddr = addr; }
   void SetPort(uint16_t port) { _dport = port; }
   void SetListenAddr(uint32_t addr) { _ipaddr = addr; }
   void SetListenPort(uint16_t port) { _sport = port; }
@@ -220,7 +225,7 @@ public:
   //   * -1            (otherwise)
   virtual int32_t ReceivePacket(uint16_t type, uint32_t *spa, uint8_t *sha);
 
-  virtual void SetIPAddr(uint32_t ipaddr);
+  virtual void SetIPAddr(uint32_t ipaddr) { _ipaddr = ipaddr; }
 
 private:
   static const uint32_t kOperationOffset = 6;

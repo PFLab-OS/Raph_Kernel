@@ -513,10 +513,6 @@ int32_t UdpSocket::TransmitPacket(const uint8_t *data, uint32_t length) {
  * ArpSocket
  */
 
-void ArpSocket::SetIPAddr(uint32_t ipaddr) {
-  _ipaddr = ipaddr;
-}
-
 int32_t ArpSocket::TransmitPacket(uint16_t type, uint32_t tpa, uint8_t *tha) {
   uint32_t ip_daddr = tpa;
   uint8_t eth_saddr[6];
@@ -540,18 +536,18 @@ int32_t ArpSocket::TransmitPacket(uint16_t type, uint32_t tpa, uint8_t *tha) {
   if(!_dev->GetTxPacket(packet)) {
     return kErrorInsufficientBuffer;
   }
-  uint32_t len = sizeof(EthHeader) + sizeof(ArpPacket);
-  packet->len = len;
+
+  packet->len = sizeof(EthHeader) + sizeof(ArpPacket);
 
   // ARP header
-  uint32_t offsetARP = sizeof(EthHeader);
-  arp_ctrl->GeneratePacket(packet->buf + offsetARP, type, eth_saddr, _ipaddr, eth_daddr, ip_daddr);
+  uint32_t offset_arp = sizeof(EthHeader);
+  arp_ctrl->GeneratePacket(packet->buf + offset_arp , type, eth_saddr, _ipaddr, eth_daddr, ip_daddr);
 
   // Ethernet header
   eth_ctrl->GenerateHeader(packet->buf, eth_saddr, eth_daddr, EthCtrl::kProtocolARP);
 
   // transmit
-  _dev->TransmitPacket(packet);
+  if(!_dev->TransmitPacket(packet)) return kErrorDeviceInternal;
 
   return type;
 }
@@ -566,7 +562,7 @@ int32_t ArpSocket::ReceivePacket(uint16_t type, uint32_t *spa, uint8_t *sha) {
 
   // check if there is a new packet on wire (if so, then fetch it)
   if(!_dev->ReceivePacket(packet)) {
-    return kErrorInvalidPacketOnWire;
+    return kErrorNoPacketOnWire;
   }
 
   // filter Ethernet address
@@ -585,12 +581,14 @@ int32_t ArpSocket::ReceivePacket(uint16_t type, uint32_t *spa, uint8_t *sha) {
   op = ntohs(*reinterpret_cast<uint16_t*>(p));
 
   // handle received ARP request/reply
+  uint32_t offset_arp = sizeof(EthHeader);
+
   switch(op) {
     case kOpARPReply:
       arp_ctrl->RegisterAddress(packet->buf + sizeof(EthHeader));
     case kOpARPRequest:
-      if(spa) *spa = arp_ctrl->GetSourceIPAddress(packet->buf + sizeof(EthHeader));
-      if(sha) arp_ctrl->GetSourceMACAddress(sha, packet->buf + sizeof(EthHeader));
+      if(spa) *spa = arp_ctrl->GetSourceIPAddress(packet->buf + offset_arp);
+      if(sha) arp_ctrl->GetSourceMACAddress(sha, packet->buf + offset_arp);
       break;
     default:
       _dev->ReuseRxBuffer(packet);

@@ -88,7 +88,7 @@ void TCPServer1() {
   }
   socket.SetListenAddr(0x0a000206);
   socket.SetListenPort(Socket::kPortTelnet);
-  socket.SetAddr(0x0a000205);
+  socket.SetIPAddr(0x0a000205);
   socket.SetPort(Socket::kPortTelnet);
 
   const uint32_t size = 0x100;
@@ -122,7 +122,7 @@ void TCPClient1() {
   }
   socket.SetListenAddr(0x0a000205);
   socket.SetListenPort(Socket::kPortTelnet);
-  socket.SetAddr(0x0a000206);
+  socket.SetIPAddr(0x0a000206);
   socket.SetPort(Socket::kPortTelnet);
 
   const uint32_t size = 0x100;
@@ -162,7 +162,7 @@ void TCPServer2() {
   }
   socket.SetListenAddr(0x0a000206);
   socket.SetListenPort(Socket::kPortTelnet);
-  socket.SetAddr(0x0a000205);
+  socket.SetIPAddr(0x0a000205);
   socket.SetPort(Socket::kPortTelnet);
 
   const uint32_t size = Socket::kMSS;
@@ -187,7 +187,7 @@ void TCPClient2() {
   }
   socket.SetListenAddr(0x0a000205);
   socket.SetListenPort(Socket::kPortTelnet);
-  socket.SetAddr(0x0a000206);
+  socket.SetIPAddr(0x0a000206);
   socket.SetPort(Socket::kPortTelnet);
 
   const uint32_t size = 8000;
@@ -209,7 +209,7 @@ void TCPServer3() {
   }
   socket.SetListenAddr(0x0a000206);
   socket.SetListenPort(Socket::kPortTelnet);
-  socket.SetAddr(0x0a000205);
+  socket.SetIPAddr(0x0a000205);
   socket.SetPort(Socket::kPortTelnet);
 
   const uint32_t size = Socket::kMSS;
