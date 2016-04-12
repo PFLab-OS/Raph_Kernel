@@ -486,26 +486,26 @@ int32_t Socket::CloseAck(uint8_t flag) {
   return 0;
 }
 /*
- * UDPSocket
+ * UdpSocket
  */
 
-uint32_t UDPSocket::L4HeaderLength() { return sizeof(UDPHeader); }
+uint32_t UdpSocket::L4HeaderLength() { return sizeof(UDPHeader); }
 
-uint16_t UDPSocket::L4Protocol() { return IpCtrl::kProtocolUDP; }
+uint16_t UdpSocket::L4Protocol() { return IpCtrl::kProtocolUDP; }
 
-int32_t UDPSocket::L4Tx(uint8_t *buffer, uint32_t length, uint32_t saddr, uint32_t daddr, uint16_t sport, uint16_t dport) {
+int32_t UdpSocket::L4Tx(uint8_t *buffer, uint32_t length, uint32_t saddr, uint32_t daddr, uint16_t sport, uint16_t dport) {
   return udp_ctrl->GenerateHeader(buffer, length, sport, dport);
 }
 
-bool UDPSocket::L4Rx(uint8_t *buffer, uint16_t sport, uint16_t dport) {
+bool UdpSocket::L4Rx(uint8_t *buffer, uint16_t sport, uint16_t dport) {
   return udp_ctrl->FilterPacket(buffer, sport, dport);
 }
 
-int32_t UDPSocket::ReceivePacket(uint8_t *data, uint32_t length) {
+int32_t UdpSocket::ReceivePacket(uint8_t *data, uint32_t length) {
   return Receive(data, length, false, false, 0);
 }
 
-int32_t UDPSocket::TransmitPacket(const uint8_t *data, uint32_t length) {
+int32_t UdpSocket::TransmitPacket(const uint8_t *data, uint32_t length) {
   return Transmit(data, length, false);
 }
 

@@ -175,7 +175,7 @@ private:
 };
 
 // UDP Socket
-class UDPSocket : public Socket {
+class UdpSocket : public Socket {
 protected:
   virtual uint32_t L4HeaderLength() override;
   virtual uint16_t L4Protocol() override;
@@ -185,7 +185,7 @@ protected:
   virtual int32_t ReceivePacket(uint8_t *data, uint32_t length) override;
 
 public:
-  UDPSocket() {}
+  UdpSocket() {}
 };
 
 // ARP Socket

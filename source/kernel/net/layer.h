@@ -28,14 +28,8 @@
 
 class L2Ctrl {
 public:
-  virtual int32_t GenerateHeader(uint8_t *header,
-                                 uint8_t *saddr,
-                                 uint8_t *daddr,
-                                 uint16_t type) = 0;
-  virtual bool FilterPacket(uint8_t *packet,
-                            uint8_t *saddr,
-                            uint8_t *daddr,
-                            uint16_t type) = 0;
+  virtual int32_t GenerateHeader(uint8_t *header, uint8_t *saddr, uint8_t *daddr, uint16_t type) = 0;
+  virtual bool FilterPacket(uint8_t *packet, uint8_t *saddr, uint8_t *daddr, uint16_t type) = 0;
 };
 
 class L4Ctrl {
