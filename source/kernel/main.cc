@@ -72,6 +72,12 @@ int time;
 Callout tt1;
 Callout tt2;
 
+#include <acpica/source/include/acpi.h>
+#include <acpica/source/include/accommon.h>
+#include <acpica/source/include/acapps.h>
+//#include <acpica/source/acpiexec/aecommon.h>
+
+
 #define FLAG 2
 #if FLAG == 3
 #define IP1 192, 168, 100, 117

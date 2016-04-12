@@ -8,7 +8,7 @@ DEPS= $(filter %.d,$(OBJS:%.o=%.d) $(TEST_OBJS:%.o=%.d))
 
 TEST = ./unit_test
 
-CXXFLAGS += -Wall -Wshadow -nostdinc -nostdlib -fno-exceptions -fno-rtti -fno-use-cxa-atexit -mcmodel=large -D__KERNEL__ -std=c++11 -I$(realpath ../lib/) -I$(realpath .) -MMD -MP
+CXXFLAGS += -Wall -Wshadow -nostdinc -nostdlib -fno-exceptions -fno-rtti -fno-use-cxa-atexit -mcmodel=large -D__KERNEL__ -D__RAPHINE__ -std=c++11 -I$(realpath ../lib/) -I$(realpath .) -MMD -MP
 
 ASFLAGS += -I$(realpath .)
 
