@@ -286,7 +286,7 @@ static void	em_refresh_mbufs(struct rx_ring *, int);
 // static void	em_register_vlan(void *, if_t, u16);
 // static void	em_unregister_vlan(void *, if_t, u16);
 // static void	em_setup_vlan_hw_support(struct adapter *);
-static int	em_xmit(struct tx_ring *, bE1000::Packet *);
+static int	em_xmit(struct tx_ring *, DevEthernet::Packet *);
 static int	em_dma_malloc(struct adapter *, bus_size_t,
 		    struct em_dma_alloc *, int);
 // static void	em_dma_free(struct adapter *, struct em_dma_alloc *);
@@ -408,7 +408,8 @@ static int em_smart_pwr_down = FALSE;
 // SYSCTL_INT(_hw_em, OID_AUTO, sbp, CTLFLAG_RDTUN, &em_debug_sbp, 0,
 //     "Show bad packets in promiscuous mode");
 
-// static int em_enable_msix = TRUE;
+// RaphineはMSIXをサポートしていない
+static int em_enable_msix = FALSE;
 // SYSCTL_INT(_hw_em, OID_AUTO, enable_msix, CTLFLAG_RDTUN, &em_enable_msix, 0,
 //     "Enable MSI-X interrupts");
 
@@ -959,7 +960,7 @@ static void
 em_start_locked(if_t ifp, struct tx_ring *txr)
 {
   struct adapter	*adapter = reinterpret_cast<struct adapter *>(if_getsoftc(ifp));
-  bE1000 *e1000 = adapter->dev->parent;
+  DevEthernet *e1000 = adapter->dev->GetMasterClass<DevEthernet>();
 	// struct mbuf	*m_head;
 
 	EM_TX_LOCK_ASSERT(txr);
@@ -993,7 +994,7 @@ em_start_locked(if_t ifp, struct tx_ring *txr)
 		// 	if_sendq_prepend(ifp, m_head);
 		// 	break;
 		// }
-                bE1000::Packet *packet;
+                DevEthernet::Packet *packet;
                 kassert(e1000->_tx_buffered.Pop(packet));
                 em_xmit(txr, packet);
                 e1000->ReuseTxBuffer(packet);
@@ -1504,7 +1505,7 @@ int
 em_poll(if_t ifp)
 {
   struct adapter *adapter = reinterpret_cast<struct adapter *>(if_getsoftc(ifp));
-  bE1000 *e1000 = adapter->dev->parent;
+  DevEthernet *e1000 = adapter->dev->GetMasterClass<DevEthernet>();
 	struct tx_ring	*txr = adapter->tx_rings;
 	struct rx_ring	*rxr = adapter->rx_rings;
 	// u32		reg_icr;
@@ -1904,7 +1905,7 @@ em_poll(if_t ifp)
  **********************************************************************/
 
 static int
-em_xmit(struct tx_ring *txr, bE1000::Packet *packet)
+em_xmit(struct tx_ring *txr, DevEthernet::Packet *packet)
 {
 	struct adapter		*adapter = txr->adapter;
 	// bus_dma_segment_t	segs[EM_MAX_SCATTER];
@@ -2393,10 +2394,9 @@ em_update_link_status(struct adapter *adapter)
 {
 	struct e1000_hw *hw = &adapter->hw;
 	// if_t ifp = adapter->ifp;
-	device_t dev = adapter->dev;
 	struct tx_ring *txr = adapter->tx_rings;
 	u32 link_check = 0;
-        bE1000 *e1000 = dev->parent;
+        DevEthernet *e1000 = adapter->dev->GetMasterClass<DevEthernet>();
 
 	/* Get the cached link value or read phy for real */
 	switch (hw->phy.media_type) {
@@ -2448,7 +2448,7 @@ em_update_link_status(struct adapter *adapter)
 		adapter->smartspeed = 0;
 		// if_setbaudrate(ifp, adapter->link_speed * 1000000);
 		// if_link_state_change(ifp, LINK_STATE_UP);
-                e1000->SetStatus(bE1000::LinkStatus::Up);
+                e1000->SetStatus(DevEthernet::LinkStatus::Up);
 	} else if (!link_check && (adapter->link_active == 1)) {
 		// if_setbaudrate(ifp, 0);
 		adapter->link_speed = 0;
@@ -2460,7 +2460,7 @@ em_update_link_status(struct adapter *adapter)
 		for (int i = 0; i < adapter->num_queues; i++, txr++)
 			txr->busy = EM_TX_IDLE;
 		// if_link_state_change(ifp, LINK_STATE_DOWN);
-                e1000->SetStatus(bE1000::LinkStatus::Down);
+                e1000->SetStatus(DevEthernet::LinkStatus::Down);
 	}
 }
 
@@ -3532,7 +3532,7 @@ em_allocate_transmit_buffers(struct tx_ring *txr)
 	device_t dev = adapter->dev;
 	struct em_buffer *txbuf;
 	int error, i;
-        bE1000 *e1000 = dev->parent;
+        DevEthernet *e1000 = adapter->dev->GetMasterClass<DevEthernet>();
 
 	/*
 	 * Setup DMA descriptor areas.
@@ -3589,7 +3589,7 @@ static void
 em_setup_transmit_ring(struct tx_ring *txr)
 {
 	struct adapter *adapter = txr->adapter;
-        bE1000 *e1000 = adapter->dev->parent;
+        DevEthernet *e1000 = adapter->dev->GetMasterClass<DevEthernet>();
 	struct em_buffer *txbuf;
 	int i;
 #ifdef DEV_NETMAP
@@ -3636,7 +3636,7 @@ em_setup_transmit_ring(struct tx_ring *txr)
           txbuf->next_eop = -1;
         }
 
-        bE1000::Packet *packet;
+        DevEthernet::Packet *packet;
         while(e1000->_tx_buffered.Pop(packet)) {
           kassert(e1000->_tx_reserved.Push(packet));
         }
@@ -4308,10 +4308,9 @@ static int
 em_allocate_receive_buffers(struct rx_ring *rxr)
 {
 	struct adapter		*adapter = rxr->adapter;
-	device_t		dev = adapter->dev;
 	struct em_buffer	*rxbuf;
 	int			error;
-        bE1000 *e1000 = dev->parent;
+        DevEthernet *e1000 = adapter->dev->GetMasterClass<DevEthernet>();
 
 	rxr->rx_buffers = reinterpret_cast<struct em_buffer *>(virtmem_ctrl->AllocZ(sizeof(struct em_buffer) * adapter->num_rx_desc));
 	// rxr->rx_buffers = malloc(sizeof(struct em_buffer) *
@@ -4368,7 +4367,7 @@ static int
 em_setup_receive_ring(struct rx_ring *rxr)
 {
 	struct	adapter 	*adapter = rxr->adapter;
-        bE1000 *e1000 = adapter->dev->parent;
+        DevEthernet *e1000 = adapter->dev->GetMasterClass<DevEthernet>();
         // struct em_buffer	*rxbuf;
 	// bus_dma_segment_t	seg[1];
 	int			rsize, /* nsegs, */ error = 0;
@@ -4400,7 +4399,7 @@ em_setup_receive_ring(struct rx_ring *rxr)
 	// 		rxbuf->m_head = NULL; /* mark as freed */
 	// 	}
 	// }
-        bE1000::Packet *packet;
+        DevEthernet::Packet *packet;
         while(e1000->_rx_buffered.Pop(packet)) {
           kassert(e1000->_rx_reserved.Push(packet));
         }
@@ -4786,7 +4785,7 @@ em_rxeof(struct rx_ring *rxr, int count, int *done)
 	int			i, processed, rxdone = 0;
 	bool			eop;
 	struct e1000_rx_desc	*cur;
-        bE1000 *e1000 = adapter->dev->parent;
+        DevEthernet *e1000 = adapter->dev->GetMasterClass<DevEthernet>();
 
 	EM_RX_LOCK(rxr);
 
@@ -4828,7 +4827,7 @@ em_rxeof(struct rx_ring *rxr, int count, int *done)
 			goto next_desc;
 		}
 
-                bE1000::Packet *packet;
+                DevEthernet::Packet *packet;
                 if (e1000->_rx_reserved.Pop(packet)) {
                   memcpy(packet->buf, reinterpret_cast<void *>(p2v(rxr->rx_base[i].buffer_addr)), len);
                   packet->len = len;

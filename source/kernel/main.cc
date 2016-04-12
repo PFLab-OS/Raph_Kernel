@@ -59,12 +59,12 @@ Timer *timer;
 Tty *gtty;
 Keyboard *keyboard;
 
-PCICtrl *pci_ctrl;
+PciCtrl *pci_ctrl;
 
 static uint32_t rnd_next = 1;
 
-#include <dev/nic/intel/em/bem.h>
-bE1000 *eth;
+#include <dev/eth.h>
+DevEthernet *eth;
 uint64_t cnt;
 int time;
 
@@ -170,14 +170,14 @@ extern "C" int main() {
 
   InitNetCtrl();
 
-  InitDevices<PCICtrl, Device>();
+  InitDevices<PciCtrl, Device>();
 
   gtty->Init();
 
   kassert(eth != nullptr);
   Function func;
   func.Init([](void *){
-      bE1000::Packet *rpacket;
+      DevEthernet::Packet *rpacket;
       if(!eth->ReceivePacket(rpacket)) {
         return;
       } 
@@ -225,7 +225,7 @@ extern "C" int main() {
         memcpy(data + 38, rpacket->buf + 28, 4);
 
         uint32_t len = sizeof(data)/sizeof(uint8_t);
-        bE1000::Packet *tpacket;
+        DevEthernet::Packet *tpacket;
         kassert(eth->GetTxPacket(tpacket));
         memcpy(tpacket->buf, data, len);
         tpacket->len = len;
@@ -334,7 +334,7 @@ extern "C" int main_of_others() {
         }
         kassert(eth != nullptr);
         eth->UpdateLinkStatus();
-        if (eth->GetStatus() != bE1000::LinkStatus::Up) {
+        if (eth->GetStatus() != DevEthernet::LinkStatus::Up) {
           tt2.SetHandler(1000);
           return;
         }
@@ -362,7 +362,7 @@ extern "C" int main_of_others() {
         memcpy(data + 22, data + 6, 6);
         memcpy(data + 28, ip, 4);
         uint32_t len = sizeof(data)/sizeof(uint8_t);
-        bE1000::Packet *tpacket;
+        DevEthernet::Packet *tpacket;
         kassert(eth->GetTxPacket(tpacket));
         memcpy(tpacket->buf, data, len);
         tpacket->len = len;

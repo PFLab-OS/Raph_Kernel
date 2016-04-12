@@ -60,7 +60,6 @@
 #include <timer.h>
 #include <spinlock.h>
 #include <freebsd/sys/bus.h>
-#include "bem.h"
 
 #define NULL nullptr
 

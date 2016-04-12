@@ -33,13 +33,13 @@
 #include <freebsd/sys/errno.h>
 #include <freebsd/sys/param.h>
 #include <freebsd/sys/bus.h>
+#include <freebsd/sys/types.h>
 #include <freebsd/sys/bus_dma.h>
 #include <freebsd/sys/endian.h>
 #include <freebsd/dev/pci/pcireg.h>
 #include <freebsd/net/if.h>
 #include <freebsd/net/if_var.h>
 #include <freebsd/net/if_types.h>
-#include "bem.h"
 
 #define NULL nullptr
 
@@ -86,13 +86,13 @@ typedef struct {} eventhandler_tag;
 static inline void pci_write_config(device_t dev, int reg, uint32_t val, int width) {
   switch (width) {
   case 1:
-    dev->parent->WriteReg<uint8_t>(static_cast<uint16_t>(reg), static_cast<uint8_t>(val));
+    dev->GetPciClass()->WriteReg<uint8_t>(static_cast<uint16_t>(reg), static_cast<uint8_t>(val));
     return;
   case 2:
-    dev->parent->WriteReg<uint16_t>(static_cast<uint16_t>(reg), static_cast<uint16_t>(val));
+    dev->GetPciClass()->WriteReg<uint16_t>(static_cast<uint16_t>(reg), static_cast<uint16_t>(val));
     return;
   case 4:
-    dev->parent->WriteReg<uint32_t>(static_cast<uint16_t>(reg), static_cast<uint32_t>(val));
+    dev->GetPciClass()->WriteReg<uint32_t>(static_cast<uint16_t>(reg), static_cast<uint32_t>(val));
     return;
   default:
     kassert(false);
@@ -103,11 +103,11 @@ static inline void pci_write_config(device_t dev, int reg, uint32_t val, int wid
 static inline uint32_t pci_read_config(device_t dev, int reg, int width) {
   switch (width) {
   case 1:
-    return dev->parent->ReadReg<uint8_t>(static_cast<uint16_t>(reg));
+    return dev->GetPciClass()->ReadReg<uint8_t>(static_cast<uint16_t>(reg));
   case 2:
-    return dev->parent->ReadReg<uint16_t>(static_cast<uint16_t>(reg));
+    return dev->GetPciClass()->ReadReg<uint16_t>(static_cast<uint16_t>(reg));
   case 4:
-    return dev->parent->ReadReg<uint32_t>(static_cast<uint16_t>(reg));
+    return dev->GetPciClass()->ReadReg<uint32_t>(static_cast<uint16_t>(reg));
   default:
     kassert(false);
     return 0;
@@ -115,22 +115,22 @@ static inline uint32_t pci_read_config(device_t dev, int reg, int width) {
 }
 
 static inline int pci_enable_busmaster(device_t dev) {
-  dev->parent->WriteReg<uint16_t>(PCICtrl::kCommandReg, dev->parent->ReadReg<uint16_t>(PCICtrl::kCommandReg) | PCICtrl::kCommandRegBusMasterEnableFlag);
+  dev->GetPciClass()->WriteReg<uint16_t>(PciCtrl::kCommandReg, dev->GetPciClass()->ReadReg<uint16_t>(PciCtrl::kCommandReg) | PciCtrl::kCommandRegBusMasterEnableFlag);
   return 0;
 }
 
 static inline int pci_find_cap(device_t dev, int capability, int *capreg)
 {
-  PCICtrl::CapabilityId id;
+  PciCtrl::CapabilityId id;
   switch(capability) {
   case PCIY_EXPRESS:
-    id = PCICtrl::CapabilityId::kPcie;
+    id = PciCtrl::CapabilityId::kPcie;
     break;
   default:
     kassert(false);
   }
   uint16_t cap;
-  if ((cap = dev->parent->FindCapability(id)) != 0) {
+  if ((cap = dev->GetPciClass()->FindCapability(id)) != 0) {
     *capreg = cap;
     return 0;
   } else {
@@ -239,19 +239,6 @@ static inline void callout_reset(struct callout *c, int ticks, timeout_t *func, 
 
 #define EVENTHANDLER_REGISTER(...)
 #define EVENTHANDLER_DEREGISTER(...)
-
-struct resource {
-  phys_addr addr;
-  bus_space_tag_t type;
-  union {
-    struct {
-      bool is_prefetchable;
-    } mem;
-  } data;
-};
-
-struct resource *bus_alloc_resource_from_bar(device_t dev, int bar);
-#define bus_alloc_resource_any(dev, dummy1, bar, dummy2) bus_alloc_resource_from_bar(dev, *(bar))
 
 static inline bus_space_tag_t rman_get_bustag(struct resource *r) {
   return r->type;

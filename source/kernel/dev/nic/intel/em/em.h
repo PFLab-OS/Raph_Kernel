@@ -28,17 +28,17 @@
 #include <mem/virtmem.h>
 #include <polling.h>
 #include <global.h>
+#include <dev/eth.h>
 #include <dev/pci.h>
-#include "bem.h"
+#include <freebsd/sys/types.h>
 
-class E1000 : public bE1000, Polling {
+class E1000 : public DevEthernet, Polling {
 public:
- E1000(uint8_t bus, uint8_t device, bool mf) : bE1000(bus, device, mf) {}
+ E1000(uint8_t bus, uint8_t device, bool mf) : DevEthernet(bus, device, mf) {}
   static bool InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf);
   // from Polling
   virtual void Handle() override;
 
-  BsdDriver bsd;
   virtual void UpdateLinkStatus() override;
 
   virtual void SetupNetInterface() override;
@@ -46,6 +46,7 @@ public:
   // allocate 6 byte before call
   virtual void GetEthAddr(uint8_t *buffer) override;
  private:
+  BsdDevice bsd;
 };
 
 #endif /* __RAPH_KERNEL_E1000_EM_H__ */

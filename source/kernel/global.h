@@ -41,7 +41,7 @@ class Tty;
 class Timer;
 class Keyboard;
 
-class PCICtrl;
+class PciCtrl;
 
 class NetDevCtrl;
 
@@ -62,7 +62,7 @@ extern Tty *gtty;
 extern Timer *timer;
 extern Keyboard *keyboard;
 
-extern PCICtrl *pci_ctrl;
+extern PciCtrl *pci_ctrl;
 
 /*
  * Network Controllers

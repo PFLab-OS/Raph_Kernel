@@ -27,55 +27,36 @@
 #include <mem/virtmem.h>
 
 uint16_t pci_get_vendor(device_t dev) {
-  return dev->parent->ReadReg<uint16_t>(PCICtrl::kVendorIDReg);
+  return dev->GetPciClass()->ReadReg<uint16_t>(PciCtrl::kVendorIDReg);
 }
 
 uint16_t pci_get_device(device_t dev) {
-  return dev->parent->ReadReg<uint16_t>(PCICtrl::kDeviceIDReg);
+  return dev->GetPciClass()->ReadReg<uint16_t>(PciCtrl::kDeviceIDReg);
 }
 
 
 uint16_t pci_get_subvendor(device_t dev) {
-  switch(dev->parent->ReadReg<uint8_t>(PCICtrl::kHeaderTypeReg) & PCICtrl::kHeaderTypeRegMaskDeviceType) {
-  case PCICtrl::kHeaderTypeRegValueDeviceTypeNormal:
-    return dev->parent->ReadReg<uint16_t>(PCICtrl::kSubVendorIdReg);
-  case PCICtrl::kHeaderTypeRegValueDeviceTypeBridge:
+  switch(dev->GetPciClass()->ReadReg<uint8_t>(PciCtrl::kHeaderTypeReg) & PciCtrl::kHeaderTypeRegMaskDeviceType) {
+  case PciCtrl::kHeaderTypeRegValueDeviceTypeNormal:
+    return dev->GetPciClass()->ReadReg<uint16_t>(PciCtrl::kSubVendorIdReg);
+  case PciCtrl::kHeaderTypeRegValueDeviceTypeBridge:
     return 0xffff;
-  case PCICtrl::kHeaderTypeRegValueDeviceTypeCardbus:
+  case PciCtrl::kHeaderTypeRegValueDeviceTypeCardbus:
   default:
     kassert(false);
   }
 }
 
 uint16_t pci_get_subdevice(device_t dev) {
-  switch(dev->parent->ReadReg<uint8_t>(PCICtrl::kHeaderTypeReg) & PCICtrl::kHeaderTypeRegMaskDeviceType) {
-  case PCICtrl::kHeaderTypeRegValueDeviceTypeNormal:
-    return dev->parent->ReadReg<uint16_t>(PCICtrl::kSubsystemIdReg);
-  case PCICtrl::kHeaderTypeRegValueDeviceTypeBridge:
+  switch(dev->GetPciClass()->ReadReg<uint8_t>(PciCtrl::kHeaderTypeReg) & PciCtrl::kHeaderTypeRegMaskDeviceType) {
+  case PciCtrl::kHeaderTypeRegValueDeviceTypeNormal:
+    return dev->GetPciClass()->ReadReg<uint16_t>(PciCtrl::kSubsystemIdReg);
+  case PciCtrl::kHeaderTypeRegValueDeviceTypeBridge:
     return 0xffff;
-  case PCICtrl::kHeaderTypeRegValueDeviceTypeCardbus:
+  case PciCtrl::kHeaderTypeRegValueDeviceTypeCardbus:
   default:
     kassert(false);
   }
-}
-
-struct resource *bus_alloc_resource_from_bar(device_t dev, int bar) {
-  struct resource *r = reinterpret_cast<struct resource *>(virtmem_ctrl->Alloc(sizeof(struct resource)));
-  uint32_t addr = dev->parent->ReadReg<uint32_t>(static_cast<uint32_t>(bar));
-  if ((addr & PCICtrl::kRegBaseAddrFlagIo) != 0) {
-    r->type = BUS_SPACE_PIO;
-    r->addr = addr & PCICtrl::kRegBaseAddrMaskIoAddr;
-  } else {
-    r->type = BUS_SPACE_MEMIO;
-    r->data.mem.is_prefetchable = ((addr & PCICtrl::kRegBaseAddrIsPrefetchable) != 0);
-    r->addr = addr & PCICtrl::kRegBaseAddrMaskMemAddr;
-
-    if ((addr & PCICtrl::kRegBaseAddrMaskMemType) == PCICtrl::kRegBaseAddrValueMemType64) {
-      r->addr |= static_cast<uint64_t>(dev->parent->ReadReg<uint32_t>(static_cast<uint32_t>(bar + 4))) << 32;
-    }
-    r->addr = p2v(r->addr);
-  }
-  return r;
 }
 
 struct adapter *device_get_softc(device_t dev) {

@@ -238,7 +238,7 @@ void	lem_update_link_status(struct adapter *);
 // static void	lem_register_vlan(void *, if_t, u16);
 // static void	lem_unregister_vlan(void *, if_t, u16);
 // static void	lem_setup_vlan_hw_support(struct adapter *);
-static int	lem_xmit(struct adapter *, bE1000::Packet *);
+static int	lem_xmit(struct adapter *, DevEthernet::Packet *);
 static void	lem_smartspeed(struct adapter *);
 // static int	lem_82547_fifo_workaround(struct adapter *, int);
 // static void	lem_82547_update_fifo_head(struct adapter *, int);
@@ -923,7 +923,7 @@ static void
 lem_start_locked(if_t ifp)
 {
   struct adapter	*adapter = reinterpret_cast<struct adapter *>(if_getsoftc(ifp));
-  bE1000 *e1000 = adapter->dev->parent;
+  DevEthernet *e1000 = adapter->dev->GetMasterClass<DevEthernet>();
 	// struct mbuf	*m_head;
 
 	EM_TX_LOCK_ASSERT(adapter);
@@ -964,7 +964,7 @@ lem_start_locked(if_t ifp)
 		// 	if_sendq_prepend(ifp, m_head);
 		// 	break;
 		// }
-          bE1000::Packet *packet;
+          DevEthernet::Packet *packet;
           kassert(e1000->_tx_buffered.Pop(packet));
           lem_xmit(adapter, packet);
 
@@ -1350,7 +1350,7 @@ int
 lem_poll(if_t ifp)
 {
   struct adapter *adapter = reinterpret_cast<struct adapter *>(if_getsoftc(ifp));
-  bE1000 *e1000 = adapter->dev->parent;
+  DevEthernet *e1000 = adapter->dev->GetMasterClass<DevEthernet>();
   // u32		reg_icr;
   int rx_done = 0;
 
@@ -1645,7 +1645,7 @@ lem_poll(if_t ifp)
  **********************************************************************/
 
 static int
-lem_xmit(struct adapter *adapter, bE1000::Packet *packet)
+lem_xmit(struct adapter *adapter, DevEthernet::Packet *packet)
 {
 	// bus_dma_segment_t	segs[EM_MAX_SCATTER];
 	bus_dmamap_t		map;
@@ -1654,7 +1654,7 @@ lem_xmit(struct adapter *adapter, bE1000::Packet *packet)
 	// struct mbuf		*m_head;
 	u32			txd_upper, txd_lower, txd_used, txd_saved;
 	int			error, nsegs, i, /* j, */ first, last = 0;
-        bE1000 *e1000 = adapter->dev->parent;
+        DevEthernet *e1000 = adapter->dev->GetMasterClass<DevEthernet>();
 
 	// m_head = *m_headp;
 	txd_upper = txd_lower = txd_used = txd_saved = 0;
@@ -2165,9 +2165,8 @@ lem_update_link_status(struct adapter *adapter)
 {
 	struct e1000_hw *hw = &adapter->hw;
 	// if_t ifp = adapter->ifp;
-	device_t dev = adapter->dev;
 	u32 link_check = 0;
-        bE1000 *e1000 = dev->parent;
+        DevEthernet *e1000 = adapter->dev->GetMasterClass<DevEthernet>();
 
 	/* Get the cached link value or read phy for real */
 	switch (hw->phy.media_type) {
@@ -2207,7 +2206,7 @@ lem_update_link_status(struct adapter *adapter)
 		adapter->smartspeed = 0;
 		// if_setbaudrate(ifp, adapter->link_speed * 1000000);
 		// if_link_state_change(ifp, LINK_STATE_UP);
-                e1000->SetStatus(bE1000::LinkStatus::Up);
+                e1000->SetStatus(DevEthernet::LinkStatus::Up);
 	} else if (!link_check && (adapter->link_active == 1)) {
 		// if_setbaudrate(ifp, 0);
 		adapter->link_speed = 0;
@@ -2218,7 +2217,7 @@ lem_update_link_status(struct adapter *adapter)
 		/* Link down, disable watchdog */
 		adapter->watchdog_check = FALSE;
 		// if_link_state_change(ifp, LINK_STATE_DOWN);
-                e1000->SetStatus(bE1000::LinkStatus::Down);
+                e1000->SetStatus(DevEthernet::LinkStatus::Down);
 	}
 }
 
@@ -2760,7 +2759,7 @@ lem_allocate_transmit_structures(struct adapter *adapter)
 	device_t dev = adapter->dev;
 	struct em_buffer *tx_buffer;
 	int error;
-        bE1000 *e1000 = dev->parent;
+        DevEthernet *e1000 = adapter->dev->GetMasterClass<DevEthernet>();
 
 	/*
 	 * Create DMA tags for tx descriptors
@@ -2818,7 +2817,7 @@ fail:
 static void
 lem_setup_transmit_structures(struct adapter *adapter)
 {
-  bE1000 *e1000 = adapter->dev->parent;
+        DevEthernet *e1000 = adapter->dev->GetMasterClass<DevEthernet>();
 	// struct em_buffer *tx_buffer;
 #ifdef DEV_NETMAP
 	/* we are already locked */
@@ -2854,7 +2853,7 @@ lem_setup_transmit_structures(struct adapter *adapter)
 // 		tx_buffer->next_eop = -1;
 // 	}
 
-        bE1000::Packet *packet;
+        DevEthernet::Packet *packet;
         while(e1000->_tx_buffered.Pop(packet)) {
           kassert(e1000->_tx_reserved.Push(packet));
         }
@@ -3346,7 +3345,7 @@ lem_allocate_receive_structures(struct adapter *adapter)
 	device_t dev = adapter->dev;
 	struct em_buffer *rx_buffer;
 	int i, error;
-        bE1000 *e1000 = dev->parent;
+        DevEthernet *e1000 = adapter->dev->GetMasterClass<DevEthernet>();
 
 	adapter->rx_buffer_area = reinterpret_cast<struct em_buffer *>(virtmem_ctrl->AllocZ(sizeof(struct em_buffer) * adapter->num_rx_desc));
 	// adapter->rx_buffer_area = malloc(sizeof(struct em_buffer) *
@@ -3409,7 +3408,7 @@ fail:
 static int
 lem_setup_receive_structures(struct adapter *adapter)
 {
-  bE1000 *e1000 = adapter->dev->parent;
+  DevEthernet *e1000 = adapter->dev->GetMasterClass<DevEthernet>();
 
   // struct em_buffer *rx_buffer;
   int i/* , error */;
@@ -3434,7 +3433,7 @@ lem_setup_receive_structures(struct adapter *adapter)
 	// 		rx_buffer->m_head = NULL;
 	// 	}
         // }
-        bE1000::Packet *packet;
+        DevEthernet::Packet *packet;
         while(e1000->_rx_buffered.Pop(packet)) {
           kassert(e1000->_rx_reserved.Push(packet));
         }
@@ -3650,7 +3649,7 @@ lem_rxeof(struct adapter *adapter, int count, int *done)
 	u16 		len, desc_len /*, prev_len_adj */;
 	int		i, rx_sent = 0;
 	struct e1000_rx_desc   *current_desc;
-        bE1000 *e1000 = adapter->dev->parent;
+        DevEthernet *e1000 = adapter->dev->GetMasterClass<DevEthernet>();
 
 #ifdef BATCH_DISPATCH
 	struct mbuf *mh = NULL, *mt = NULL;
@@ -3769,7 +3768,7 @@ lem_rxeof(struct adapter *adapter, int count, int *done)
 		}
 
 		if (accept_frame) {
-                  bE1000::Packet *packet;
+                  DevEthernet::Packet *packet;
                   if (e1000->_rx_reserved.Pop(packet)) {
                     memcpy(packet->buf, reinterpret_cast<void *>(p2v(adapter->rx_desc_base[i].buffer_addr)), len);
                     packet->len = len;

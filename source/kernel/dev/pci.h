@@ -20,8 +20,8 @@
  * 
  */
 
-#ifndef __RAPH_KERNEL_DEV_PCI_H__
-#define __RAPH_KERNEL_DEV_PCI_H__
+#ifndef __RAPH_KERNEL_DEV_Pci_H__
+#define __RAPH_KERNEL_DEV_Pci_H__
 
 #include <stdint.h>
 #include "../acpi.h"
@@ -43,17 +43,17 @@ struct MCFG {
   MCFGSt list[0];
 } __attribute__ ((packed));
 
-class DevPCI;
+class DevPci;
 
-class PCICtrl : public Device {
+class PciCtrl : public Device {
  public:
   enum class CapabilityId : uint8_t {
    kPcie = 0x10,
   };
 
   static void Init() {
-    PCICtrl *addr = reinterpret_cast<PCICtrl *>(virtmem_ctrl->Alloc(sizeof(PCICtrl)));
-    pci_ctrl = new(addr) PCICtrl; 
+    PciCtrl *addr = reinterpret_cast<PciCtrl *>(virtmem_ctrl->Alloc(sizeof(PciCtrl)));
+    pci_ctrl = new(addr) PciCtrl; 
     pci_ctrl->_Init();
   }
   virt_addr GetVaddr(uint8_t bus, uint8_t device, uint8_t func, uint16_t reg) {
@@ -112,11 +112,11 @@ class PCICtrl : public Device {
 };
 
 // !!! important !!!
-// 派生クラスはstatic void InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf); を作成する事
-class DevPCI : public Device {
+// 派生クラスはstatic void InitPci(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf); を作成する事
+class DevPci : public Device {
  public:
- DevPCI(uint8_t bus, uint8_t device, bool mf) : _bus(bus), _device(device), _mf(mf) {}
-  static bool InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {
+ DevPci(uint8_t bus, uint8_t device, bool mf) : _bus(bus), _device(device), _mf(mf) {}
+  static bool InitPci(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {
     return false;
   } // dummy
   template<class T> T ReadReg(uint16_t reg) {
@@ -127,7 +127,7 @@ class DevPCI : public Device {
     kassert(pci_ctrl != nullptr);
     pci_ctrl->WriteReg<T>(_bus, _device, 0, reg, value);
   }
-  uint16_t FindCapability(PCICtrl::CapabilityId id) {
+  uint16_t FindCapability(PciCtrl::CapabilityId id) {
     kassert(pci_ctrl != nullptr);
     return pci_ctrl->FindCapability(_bus, _device, 0, id);
   }
@@ -138,16 +138,16 @@ class DevPCI : public Device {
 };
 
 template<class T>
-static inline void InitPCIDevices(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {
-  T::InitPCI(vid, did, bus, device, mf);
+static inline void InitPciDevices(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {
+  T::InitPci(vid, did, bus, device, mf);
 }
 
 template<class T1, class T2, class... Rest>
-static inline void InitPCIDevices(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {
-  if (!T1::InitPCI(vid, did, bus, device, mf)) {
-    InitPCIDevices<T2, Rest...>(vid, did, bus, device, mf);
+static inline void InitPciDevices(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {
+  if (!T1::InitPci(vid, did, bus, device, mf)) {
+    InitPciDevices<T2, Rest...>(vid, did, bus, device, mf);
   }
 }
 
 
-#endif /* __RAPH_KERNEL_DEV_PCI_H__ */
+#endif /* __RAPH_KERNEL_DEV_Pci_H__ */
