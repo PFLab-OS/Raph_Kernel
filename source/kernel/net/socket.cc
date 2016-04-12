@@ -208,47 +208,40 @@ int32_t Socket::TransmitRawPacket(const uint8_t *data, uint32_t length) {
 }
 
 int32_t Socket::Receive(uint8_t *data, uint32_t length, bool is_raw_packet, bool wait_timeout, uint64_t rto) {
+  // check timeout
+  if(wait_timeout && rto <= timer->ReadMainCnt()) {
+    return kErrorRetransmissionTimeout;
+  }
+
   // receiving packet buffer
   DevEthernet::Packet *packet;
-  // packet was on wire?
-  bool packet_reached = false;
   // my MAC address
   uint8_t eth_daddr[6];
   _dev->GetEthAddr(eth_daddr);
 
-  do {
-    if(packet_reached) {
-      // there is a packet already fetched but not released
-      // discard it
-      _dev->ReuseRxBuffer(packet);
-      packet_reached = false;
-    }
+  if(!_dev->ReceivePacket(packet)) {
+    return kErrorNoPacketOnWire;
+  }
 
-    if(_dev->ReceivePacket(packet)) {
-      // packet on wire was fetched
-      packet_reached = true;
-    } else {
-      // check retransmission timeout
-      if(wait_timeout && rto <= timer->ReadMainCnt()) {
-        return kErrorRetransmissionTimeout;
-      } else {
-        continue;
-      }
-    }
+  // filter Ethernet address
+  if(!L2Rx(packet->buf, nullptr, eth_daddr, EthCtrl::kProtocolIPv4)) {
+    _dev->ReuseRxBuffer(packet);
+    return kErrorInvalidPacketOnWire;
+  }
 
-    // filter Ethernet address
-    if(!L2Rx(packet->buf, nullptr, eth_daddr, EthCtrl::kProtocolIPv4)) continue;
+  // filter IP address
+  uint32_t offset_l3 = L2HeaderLength();
+  if(!L3Rx(packet->buf + offset_l3 , L4Protocol(), _daddr, _ipaddr)) {
+    _dev->ReuseRxBuffer(packet);
+    return kErrorInvalidPacketOnWire;
+  }
 
-    // filter IP address
-    uint32_t offset_l3 = L2HeaderLength();
-    if(!L3Rx(packet->buf + offset_l3 , L4Protocol(), _daddr, _ipaddr)) continue;
-
-    // filter TCP port
-    uint32_t offset_l4 = L2HeaderLength() + L3HeaderLength();
-    if(!L4Rx(packet->buf + offset_l4, _sport, _dport)) continue;
-
-    break;
-  } while(true);
+  // filter TCP port
+  uint32_t offset_l4 = L2HeaderLength() + L3HeaderLength();
+  if(!L4Rx(packet->buf + offset_l4, _sport, _dport)) {
+    _dev->ReuseRxBuffer(packet);
+    return kErrorInvalidPacketOnWire;
+  }
 
   // received "RAW" packet length
   int32_t received_length = packet->len;
@@ -329,7 +322,7 @@ int32_t Socket::Listen() {
   while(true) {
     // receive SYN packet
     SetSessionType(kFlagSYN);
-    if(ReceiveRawPacket(buffer, kBufSize) < 0) continue;
+    while(ReceiveRawPacket(buffer, kBufSize) < 0);
     t = tcp_ctrl->GetSequenceNumber(tcp);
 
     // transmit SYN+ACK packet
@@ -337,11 +330,11 @@ int32_t Socket::Listen() {
     s = rand();
     SetSequenceNumber(s);
     SetAcknowledgeNumber(++t);
-    if(TransmitPacket(buffer, 0) < 0) continue;
+    while(TransmitPacket(buffer, 0) < 0);
 
     // receive ACK packet
     SetSessionType(kFlagACK);
-    if(ReceiveRawPacket(buffer, kBufSize) < 0) continue;
+    while(ReceiveRawPacket(buffer, kBufSize) < 0);
 
     // check sequence number
     if(tcp_ctrl->GetSequenceNumber(tcp) != t) continue;
@@ -375,11 +368,11 @@ int32_t Socket::Connect() {
     SetSessionType(kFlagSYN);
     SetSequenceNumber(t);
     SetAcknowledgeNumber(0);
-    if(TransmitPacket(buffer, 0) < 0) continue;
+    while(TransmitPacket(buffer, 0) < 0);
 
     // receive SYN+ACK packet
     SetSessionType(kFlagSYN | kFlagACK);
-    if(ReceiveRawPacket(buffer, kBufSize) < 0) continue;
+    while(ReceiveRawPacket(buffer, kBufSize) < 0);
 
     // check acknowledge number
     s = tcp_ctrl->GetAcknowledgeNumber(tcp);
@@ -390,7 +383,7 @@ int32_t Socket::Connect() {
     SetSessionType(kFlagACK);
     SetSequenceNumber(s);
     SetAcknowledgeNumber(t + 1);
-    if(TransmitPacket(buffer, 0) < 0) continue;
+    while(TransmitPacket(buffer, 0) < 0);
 
     break;
   }
@@ -418,11 +411,11 @@ int32_t Socket::Close() {
 
     // transmit FIN+ACK packet
     SetSessionType(kFlagFIN | kFlagACK);
-    if(Transmit(buffer, 0, false) < 0) continue;
+    while(Transmit(buffer, 0, false) < 0);
 
     // receive ACK packet
     SetSessionType(kFlagACK);
-    if(ReceiveRawPacket(buffer, kBufSize) < 0) continue;
+    while(ReceiveRawPacket(buffer, kBufSize) < 0);
 
     // check sequence number
     if(tcp_ctrl->GetSequenceNumber(tcp) != t) continue;
@@ -432,7 +425,7 @@ int32_t Socket::Close() {
 
     // receive FIN+ACK packet
     SetSessionType(kFlagFIN | kFlagACK);
-    if(ReceiveRawPacket(buffer, kBufSize) < 0) continue;
+    while(ReceiveRawPacket(buffer, kBufSize) < 0);
 
     // check sequence number
     if(tcp_ctrl->GetSequenceNumber(tcp) != t) continue;
@@ -444,7 +437,7 @@ int32_t Socket::Close() {
     SetSessionType(kFlagACK);
     SetSequenceNumber(s + 1);
     SetAcknowledgeNumber(t + 1);
-    if(Transmit(buffer, 0, false) < 0) continue;
+    while(Transmit(buffer, 0, false) < 0);
 
     break;
   }
@@ -462,15 +455,15 @@ int32_t Socket::CloseAck(uint8_t flag) {
     while(true) {
       // transmit ACK packet
       SetSessionType(kFlagACK);
-      if(Transmit(buffer, 0, false) < 0) continue;
+      while(Transmit(buffer, 0, false) < 0);
 
       // transmit FIN+ACK packet
       SetSessionType(kFlagFIN | kFlagACK);
-      if(Transmit(buffer, 0, false) < 0) continue;
+      while(Transmit(buffer, 0, false) < 0);
 
       // receive ACK packet
       SetSessionType(kFlagACK);
-      if(ReceiveRawPacket(buffer, kBufSize) < 0) continue;
+      while(ReceiveRawPacket(buffer, kBufSize) < 0);
 
       // check sequence number
       if(tcp_ctrl->GetSequenceNumber(tcp) != _ack) continue;
