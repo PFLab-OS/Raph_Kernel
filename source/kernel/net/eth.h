@@ -26,7 +26,6 @@
 #include <stdint.h>
 #include <raph.h>
 #include <dev/netdev.h>
-#include <net/layer.h>
 #include <net/socket.h>
 
 struct EthHeader {
@@ -38,7 +37,7 @@ struct EthHeader {
   uint16_t type;
 };
 
-class EthCtrl : public L2Ctrl {
+class EthCtrl {
   NetDev *_dev = nullptr;
 
   static const uint32_t kDstAddrOffset      = 0;
@@ -55,8 +54,8 @@ public:
   static const uint16_t kProtocolIPv4 = 0x0800;
   static const uint16_t kProtocolARP  = 0x0806;
 
-  virtual int32_t GenerateHeader(uint8_t *buffer, uint8_t *saddr, uint8_t *daddr, uint16_t type) override;
-  virtual bool FilterPacket(uint8_t *packet, uint8_t *saddr, uint8_t *daddr, uint16_t type) override;
+  int32_t GenerateHeader(uint8_t *buffer, uint8_t *saddr, uint8_t *daddr, uint16_t type);
+  bool FilterPacket(uint8_t *packet, uint8_t *saddr, uint8_t *daddr, uint16_t type);
 };
 
 #endif // __RAPH_KERNEL_NET_ETH_H__

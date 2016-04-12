@@ -51,8 +51,8 @@ class ArpCtrl {
 
 public:
   ArpCtrl() {}
-  virtual int32_t GeneratePacket(uint8_t *buffer, uint16_t op, uint8_t *smacaddr, uint32_t sipaddr, uint8_t *dmacaddr, uint32_t dipaddr);
-  virtual bool FilterPacket(uint8_t *packet, uint16_t op, uint8_t *smacaddr, uint32_t sipaddr, uint8_t *dmacaddr, uint32_t dipaddr);
+  int32_t GeneratePacket(uint8_t *buffer, uint16_t op, uint8_t *smacaddr, uint32_t sipaddr, uint8_t *dmacaddr, uint32_t dipaddr);
+  bool FilterPacket(uint8_t *packet, uint16_t op, uint8_t *smacaddr, uint32_t sipaddr, uint8_t *dmacaddr, uint32_t dipaddr);
   bool RegisterAddress(uint8_t *packet);
   void GetSourceMACAddress(uint8_t *buffer, uint8_t *packet);
   uint32_t GetSourceIPAddress(uint8_t *packet);

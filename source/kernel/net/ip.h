@@ -24,7 +24,6 @@
 #define __RAPH_KERNEL_NET_IP_H__
 
 #include <stdint.h>
-#include <net/layer.h>
 
 /*
  * IPv4 Header
@@ -57,8 +56,8 @@ struct Ipv4Header {
 class IpCtrl {
 public:
   IpCtrl() : _id_auto_increment(0) {}
-  virtual int32_t GenerateHeader(uint8_t *buffer, uint32_t length, uint8_t type, uint32_t saddr, uint32_t daddr);
-  virtual bool FilterPacket(uint8_t *packet, uint8_t type, uint32_t saddr, uint32_t daddr);
+  int32_t GenerateHeader(uint8_t *buffer, uint32_t length, uint8_t type, uint32_t saddr, uint32_t daddr);
+  bool FilterPacket(uint8_t *packet, uint8_t type, uint32_t saddr, uint32_t daddr);
 
   // Layer 4 protocols
   static const uint8_t kProtocolTCP         = 0x06;

@@ -24,7 +24,6 @@
 #define __RAPH_KERNEL_NET_UDP_H__
 
 #include <stdint.h>
-#include <net/layer.h>
 
 struct UDPHeader {
   // source port
@@ -37,16 +36,11 @@ struct UDPHeader {
   uint16_t checksum;
 } __attribute__ ((packed));
 
-class UdpCtrl : public L4Ctrl {
+class UdpCtrl {
 public:
   UdpCtrl() {}
-  virtual int32_t GenerateHeader(uint8_t *buffer,
-                                 uint32_t length,
-                                 uint16_t sport,
-                                 uint16_t dport);
-  virtual bool FilterPacket(uint8_t *packet,
-                            uint16_t sport,
-                            uint16_t dport);
+  int32_t GenerateHeader(uint8_t *buffer, uint32_t length, uint16_t sport, uint16_t dport);
+  bool FilterPacket(uint8_t *packet, uint16_t sport, uint16_t dport);
 
 private:
   // offset in header
