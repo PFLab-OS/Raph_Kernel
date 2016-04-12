@@ -28,7 +28,7 @@
 #include <net/socket.h>
 #include <net/layer.h>
 
-struct TCPHeader {
+struct TcpHeader {
   // source port
   uint16_t sport;
   // destination port
@@ -49,9 +49,9 @@ struct TCPHeader {
   uint16_t urgent_pointer;
 } __attribute__ ((packed));
 
-class TCPCtrl : public L4Ctrl {
+class TcpCtrl : public L4Ctrl {
 public:
-  TCPCtrl() {}
+  TcpCtrl() {}
   virtual int32_t GenerateHeader(uint8_t *header, uint32_t length, uint32_t saddr, uint32_t daddr, uint16_t sport, uint16_t dport, uint8_t type, uint32_t seq, uint32_t ack);
   virtual bool FilterPacket(uint8_t *packet, uint16_t sport, uint16_t dport, uint8_t type, uint32_t seq, uint32_t ack);
   uint8_t GetSessionType(uint8_t *packet);

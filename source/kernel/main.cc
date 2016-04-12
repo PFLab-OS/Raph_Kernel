@@ -229,7 +229,7 @@ extern "C" int main_of_others() {
 
   
   if (apic_ctrl->GetApicId() == 1) {
-    static ARPSocket socket;
+    static ArpSocket socket;
     if(socket.Open() < 0) {
       gtty->Printf("s", "[error] failed to open socket\n");
     }
@@ -240,7 +240,7 @@ extern "C" int main_of_others() {
       uint32_t ipaddr;
       uint8_t macaddr[6];
       int32_t rval = socket.ReceivePacket(0, &ipaddr, macaddr);
-      if(rval == ARPSocket::kOpARPReply) {
+      if(rval == ArpSocket::kOpARPReply) {
         uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;
         cnt = 0;
         gtty->Printf(
@@ -256,8 +256,8 @@ extern "C" int main_of_others() {
                      "d", (ipaddr >> 8) & 0xff, "s", ".",
                      "d", (ipaddr >> 0) & 0xff, "s", " (");
         gtty->Printf("s", "latency:", "d", l, "s", "us)\n");
-      } else if(rval == ARPSocket::kOpARPRequest) {
-        if(socket.TransmitPacket(ARPSocket::kOpARPReply, ipaddr, macaddr) < 0) {
+      } else if(rval == ArpSocket::kOpARPRequest) {
+        if(socket.TransmitPacket(ArpSocket::kOpARPReply, ipaddr, macaddr) < 0) {
 	        gtty->Printf("s", "[arp] failed to transmit reply\n");
 	      } else {
 	        gtty->Printf("s", "[arp] reply sent\n");
@@ -299,13 +299,13 @@ extern "C" int main_of_others() {
           return;
         }
 
-        ARPSocket socket;
+        ArpSocket socket;
         if(socket.Open() < 0) {
           gtty->Printf("s", "[error] failed to open socket\n");
         } else {
           socket.SetIPAddr(inet_atoi(ip1));
           cnt = timer->ReadMainCnt();
-          if(socket.TransmitPacket(ARPSocket::kOpARPRequest, inet_atoi(ip2), nullptr) < 0) {
+          if(socket.TransmitPacket(ArpSocket::kOpARPRequest, inet_atoi(ip2), nullptr) < 0) {
     	      gtty->Printf("s", "[arp] failed to transmit request\n");
     	    } else {
     	      gtty->Printf("s", "[arp] request sent\n");

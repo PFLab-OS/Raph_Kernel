@@ -27,11 +27,11 @@
 #include <mem/virtmem.h>
 #include <net/ip.h>
 
-int32_t IPCtrl::GenerateHeader(uint8_t *buffer, uint32_t length, uint8_t type, uint32_t saddr, uint32_t daddr) {
-  IPv4Header * volatile header = reinterpret_cast<IPv4Header*>(buffer);
-  header->ip_header_len_version = (sizeof(IPv4Header) >> 2) | (kIPVersion << 4);
+int32_t IpCtrl::GenerateHeader(uint8_t *buffer, uint32_t length, uint8_t type, uint32_t saddr, uint32_t daddr) {
+  Ipv4Header * volatile header = reinterpret_cast<Ipv4Header*>(buffer);
+  header->ip_header_len_version = (sizeof(Ipv4Header) >> 2) | (kIPVersion << 4);
   header->type = kPktPriority | kPktDelay | kPktThroughput | kPktReliability;
-  header->total_len = htons(sizeof(IPv4Header) + length);
+  header->total_len = htons(sizeof(Ipv4Header) + length);
   header->id = _id_auto_increment++;
   // TODO: fragment on IP layer
   uint16_t frag = 0;
@@ -42,19 +42,19 @@ int32_t IPCtrl::GenerateHeader(uint8_t *buffer, uint32_t length, uint8_t type, u
   header->checksum = 0;
   header->saddr = htonl(saddr);
   header->daddr = htonl(daddr);
-  header->checksum = CheckSum(reinterpret_cast<uint8_t*>(header), sizeof(IPv4Header));
+  header->checksum = CheckSum(reinterpret_cast<uint8_t*>(header), sizeof(Ipv4Header));
 
   return 0;
 }
 
-bool IPCtrl::FilterPacket(uint8_t *packet, uint8_t type, uint32_t saddr, uint32_t daddr) {
-  IPv4Header * volatile header = reinterpret_cast<IPv4Header*>(packet);
+bool IpCtrl::FilterPacket(uint8_t *packet, uint8_t type, uint32_t saddr, uint32_t daddr) {
+  Ipv4Header * volatile header = reinterpret_cast<Ipv4Header*>(packet);
   return (header->proto_id == type)
       && (!saddr || ntohl(header->saddr) == saddr)
       && (!daddr || ntohl(header->daddr) == daddr);
 }
 
-uint16_t IPCtrl::CheckSum(uint8_t *buf, uint32_t size) {
+uint16_t IpCtrl::CheckSum(uint8_t *buf, uint32_t size) {
   uint64_t sum = 0;
 
   while(size > 1) {

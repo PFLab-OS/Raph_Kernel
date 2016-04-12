@@ -37,9 +37,9 @@ struct UDPHeader {
   uint16_t checksum;
 } __attribute__ ((packed));
 
-class UDPCtrl : public L4Ctrl {
+class UdpCtrl : public L4Ctrl {
 public:
-  UDPCtrl() {}
+  UdpCtrl() {}
   virtual int32_t GenerateHeader(uint8_t *buffer,
                                  uint32_t length,
                                  uint16_t sport,

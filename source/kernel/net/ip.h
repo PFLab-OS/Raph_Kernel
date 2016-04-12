@@ -29,7 +29,7 @@
 /*
  * IPv4 Header
  */
-struct IPv4Header {
+struct Ipv4Header {
   // IP Header Length (4bit) | Version (4bit)
   uint8_t ip_header_len_version;
   // TYPE of service
@@ -54,18 +54,11 @@ struct IPv4Header {
   uint32_t daddr;
 } __attribute__ ((packed));
 
-class IPCtrl {
+class IpCtrl {
 public:
-  IPCtrl() : _id_auto_increment(0) {}
-  virtual int32_t GenerateHeader(uint8_t *buffer,
-                                 uint32_t length,
-                                 uint8_t type,
-                                 uint32_t saddr,
-                                 uint32_t daddr);
-  virtual bool FilterPacket(uint8_t *packet,
-                            uint8_t type,
-                            uint32_t saddr,
-                            uint32_t daddr);
+  IpCtrl() : _id_auto_increment(0) {}
+  virtual int32_t GenerateHeader(uint8_t *buffer, uint32_t length, uint8_t type, uint32_t saddr, uint32_t daddr);
+  virtual bool FilterPacket(uint8_t *packet, uint8_t type, uint32_t saddr, uint32_t daddr);
 
   // Layer 4 protocols
   static const uint8_t kProtocolTCP         = 0x06;

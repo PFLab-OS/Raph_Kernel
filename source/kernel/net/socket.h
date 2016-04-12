@@ -189,7 +189,7 @@ public:
 };
 
 // ARP Socket
-class ARPSocket : public NetSocket {
+class ArpSocket : public NetSocket {
 public:
   static const int16_t kOpARPRequest = 0x0001;
   static const int16_t kOpARPReply = 0x0002;

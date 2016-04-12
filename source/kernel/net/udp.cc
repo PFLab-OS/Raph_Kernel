@@ -26,7 +26,7 @@
 #include <mem/virtmem.h>
 #include <net/udp.h>
 
-int32_t UDPCtrl::GenerateHeader(uint8_t *buffer, uint32_t length, uint16_t sport, uint16_t dport) {
+int32_t UdpCtrl::GenerateHeader(uint8_t *buffer, uint32_t length, uint16_t sport, uint16_t dport) {
   UDPHeader * volatile header = reinterpret_cast<UDPHeader*>(buffer);
   header->sport    = htons(sport);
   header->dport    = htons(dport);
@@ -35,7 +35,7 @@ int32_t UDPCtrl::GenerateHeader(uint8_t *buffer, uint32_t length, uint16_t sport
   return 0;
 }
 
-bool UDPCtrl::FilterPacket(uint8_t *packet, uint16_t sport, uint16_t dport) {
+bool UdpCtrl::FilterPacket(uint8_t *packet, uint16_t sport, uint16_t dport) {
   UDPHeader * volatile header = reinterpret_cast<UDPHeader*>(packet);
   return (!sport || ntohs(header->sport) == sport)
       && (!dport || ntohs(header->dport) == dport);

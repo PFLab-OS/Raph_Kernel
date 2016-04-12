@@ -31,7 +31,7 @@ void StripNewline(uint8_t *data) {
 }
 
 void ARPReply(uint32_t ipRequest, uint32_t ipReply) {
-  ARPSocket socket;
+  ArpSocket socket;
   if(socket.Open() < 0) {
     fprintf(stderr, "[open] cannot open socket\n");
   }
@@ -41,14 +41,14 @@ void ARPReply(uint32_t ipRequest, uint32_t ipReply) {
 
   // wait for ARP request
   socket.SetIPAddr(ipReply);
-  while(socket.ReceivePacket(ARPSocket::kOpARPRequest, &ipaddr, macaddr) < 0);
+  while(socket.ReceivePacket(ArpSocket::kOpARPRequest, &ipaddr, macaddr) < 0);
 
   // need to wait a little
   // because Linux kernel cannot handle packet too quick
   usleep(570);
 
   // ARP reply
-  if(socket.TransmitPacket(ARPSocket::kOpARPReply, ipaddr, macaddr) < 0) {
+  if(socket.TransmitPacket(ArpSocket::kOpARPReply, ipaddr, macaddr) < 0) {
     fprintf(stderr, "[ARP] failed to send reply packet\n");
   } else {
     fprintf(stderr, "[ARP] request from %u.%u.%u.%u (%.2x:%.2x:%.2x:%.2x:%.2x:%.2x)\n",
@@ -59,7 +59,7 @@ void ARPReply(uint32_t ipRequest, uint32_t ipReply) {
 }
 
 void ARPRequest(uint32_t ipRequest, uint32_t ipReply) {
-  ARPSocket socket;
+  ArpSocket socket;
   if(socket.Open() < 0) {
     fprintf(stderr, "[open] cannot open socket\n");
   }
@@ -69,10 +69,10 @@ void ARPRequest(uint32_t ipRequest, uint32_t ipReply) {
 
   // send ARP request
   socket.SetIPAddr(ipRequest);
-  if(socket.TransmitPacket(ARPSocket::kOpARPRequest, ipReply, nullptr) < 0) {
+  if(socket.TransmitPacket(ArpSocket::kOpARPRequest, ipReply, nullptr) < 0) {
     fprintf(stderr, "[ARP] failed to send request packet\n");
   } else {
-    while(socket.ReceivePacket(ARPSocket::kOpARPReply, &ipaddr, macaddr) < 0);
+    while(socket.ReceivePacket(ArpSocket::kOpARPReply, &ipaddr, macaddr) < 0);
   
     fprintf(stderr, "[ARP] reply from %u.%u.%u.%u (%.2x:%.2x:%.2x:%.2x:%.2x:%.2x)\n",
       (ipaddr >> 24), (ipaddr >> 16) & 0xff, (ipaddr >> 8) & 0xff, ipaddr & 0xff,

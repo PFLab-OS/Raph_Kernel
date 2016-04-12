@@ -45,18 +45,18 @@ int32_t NetSocket::Open() {
  */
 
 uint32_t Socket::L2HeaderLength() { return sizeof(EthHeader); }
-uint32_t Socket::L3HeaderLength() { return sizeof(IPv4Header); }
-uint32_t Socket::L4HeaderLength() { return sizeof(TCPHeader); }
+uint32_t Socket::L3HeaderLength() { return sizeof(Ipv4Header); }
+uint32_t Socket::L4HeaderLength() { return sizeof(TcpHeader); }
 
-uint16_t Socket::L4Protocol() { return IPCtrl::kProtocolTCP; }
+uint16_t Socket::L4Protocol() { return IpCtrl::kProtocolTCP; }
 
 int32_t Socket::GetEthAddr(uint32_t ipaddr, uint8_t *macaddr) {
   while(arp_table->Find(ipaddr, macaddr) < 0) {
-    ARPSocket socket;
+    ArpSocket socket;
     if(socket.Open() < 0) {
       return -1;
     } else {
-      socket.TransmitPacket(ARPSocket::kOpARPRequest, ipaddr, nullptr);
+      socket.TransmitPacket(ArpSocket::kOpARPRequest, ipaddr, nullptr);
     }
   }
   return 0;
@@ -146,8 +146,8 @@ int32_t Socket::TransmitPacket(const uint8_t *packet, uint32_t length) {
 
     if(_type & kFlagACK) {
       // transmission mode is ACK
-      uint8_t packet_ack[sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader)];
-      uint8_t *tcp = packet_ack + sizeof(EthHeader) + sizeof(IPv4Header);
+      uint8_t packet_ack[sizeof(EthHeader) + sizeof(Ipv4Header) + sizeof(TcpHeader)];
+      uint8_t *tcp = packet_ack + sizeof(EthHeader) + sizeof(Ipv4Header);
 
       if(rval >= 0 && _established) {
 
@@ -155,7 +155,7 @@ int32_t Socket::TransmitPacket(const uint8_t *packet, uint32_t length) {
 
         while(true) {
           // receive acknowledgement
-          rval_ack = Receive(packet_ack, sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader), true, true, rto);
+          rval_ack = Receive(packet_ack, sizeof(EthHeader) + sizeof(Ipv4Header) + sizeof(TcpHeader), true, true, rto);
           if(rval_ack >= 0) {
             // acknowledgement packet received
             uint8_t type = tcp_ctrl->GetSessionType(tcp);
@@ -270,10 +270,10 @@ int32_t Socket::Receive(uint8_t *data, uint32_t length, bool is_raw_packet, bool
 int32_t Socket::ReceivePacket(uint8_t *data, uint32_t length) {
   if(_type & kFlagACK) {
     // TCP acknowledgement
-    uint32_t pkt_size = sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader) + length;
+    uint32_t pkt_size = sizeof(EthHeader) + sizeof(Ipv4Header) + sizeof(TcpHeader) + length;
     int32_t rval;
     uint8_t *packet = reinterpret_cast<uint8_t*>(virtmem_ctrl->Alloc(pkt_size));
-    uint8_t *tcp = packet + sizeof(EthHeader) + sizeof(IPv4Header);
+    uint8_t *tcp = packet + sizeof(EthHeader) + sizeof(Ipv4Header);
 
     while(true) {
       if((rval = Receive(packet, pkt_size, true, false, 0)) >= 0) {
@@ -290,7 +290,7 @@ int32_t Socket::ReceivePacket(uint8_t *data, uint32_t length) {
         } else if(_ack == seq || (_seq == seq && _ack == ack)) {
           // acknowledge number = the expected next sequence number
           // (but the packet receiving right after 3-way handshake is not the case)
-          rval -= sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader);
+          rval -= sizeof(EthHeader) + sizeof(Ipv4Header) + sizeof(TcpHeader);
           SetSequenceNumber(ack);
           SetAcknowledgeNumber(seq + rval);
 
@@ -321,9 +321,9 @@ int32_t Socket::Listen() {
   // connection already established
   if(_established) return -1;
 
-  uint32_t kBufSize = sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader);
+  uint32_t kBufSize = sizeof(EthHeader) + sizeof(Ipv4Header) + sizeof(TcpHeader);
   uint8_t buffer[kBufSize];
-  uint8_t *tcp = buffer + sizeof(EthHeader) + sizeof(IPv4Header);
+  uint8_t *tcp = buffer + sizeof(EthHeader) + sizeof(Ipv4Header);
   uint32_t s, t;
 
   while(true) {
@@ -364,9 +364,9 @@ int32_t Socket::Connect() {
   // connection already established
   if(_established) return -1;
 
-  uint32_t kBufSize = sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader);
+  uint32_t kBufSize = sizeof(EthHeader) + sizeof(Ipv4Header) + sizeof(TcpHeader);
   uint8_t buffer[kBufSize];
-  uint8_t *tcp = buffer + sizeof(EthHeader) + sizeof(IPv4Header);
+  uint8_t *tcp = buffer + sizeof(EthHeader) + sizeof(Ipv4Header);
   uint32_t s, t;
 
   while(true) {
@@ -404,9 +404,9 @@ int32_t Socket::Connect() {
 }
 
 int32_t Socket::Close() {
-  uint32_t kBufSize = sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader);
+  uint32_t kBufSize = sizeof(EthHeader) + sizeof(Ipv4Header) + sizeof(TcpHeader);
   uint8_t buffer[kBufSize];
-  uint8_t *tcp = buffer + sizeof(EthHeader) + sizeof(IPv4Header);
+  uint8_t *tcp = buffer + sizeof(EthHeader) + sizeof(Ipv4Header);
   uint32_t saved_seq = _seq;
   uint32_t saved_ack = _ack;
   uint32_t s = _seq;
@@ -454,9 +454,9 @@ int32_t Socket::Close() {
 }
 
 int32_t Socket::CloseAck(uint8_t flag) {
-  uint32_t kBufSize = sizeof(EthHeader) + sizeof(IPv4Header) + sizeof(TCPHeader);
+  uint32_t kBufSize = sizeof(EthHeader) + sizeof(Ipv4Header) + sizeof(TcpHeader);
   uint8_t buffer[kBufSize];
-  uint8_t *tcp = buffer + sizeof(EthHeader) + sizeof(IPv4Header);
+  uint8_t *tcp = buffer + sizeof(EthHeader) + sizeof(Ipv4Header);
 
   if(flag == (kFlagFIN | kFlagACK)) {
     while(true) {
@@ -491,7 +491,7 @@ int32_t Socket::CloseAck(uint8_t flag) {
 
 uint32_t UDPSocket::L4HeaderLength() { return sizeof(UDPHeader); }
 
-uint16_t UDPSocket::L4Protocol() { return IPCtrl::kProtocolUDP; }
+uint16_t UDPSocket::L4Protocol() { return IpCtrl::kProtocolUDP; }
 
 int32_t UDPSocket::L4Tx(uint8_t *buffer, uint32_t length, uint32_t saddr, uint32_t daddr, uint16_t sport, uint16_t dport) {
   return udp_ctrl->GenerateHeader(buffer, length, sport, dport);
@@ -510,14 +510,14 @@ int32_t UDPSocket::TransmitPacket(const uint8_t *data, uint32_t length) {
 }
 
 /*
- * ARPSocket
+ * ArpSocket
  */
 
-void ARPSocket::SetIPAddr(uint32_t ipaddr) {
+void ArpSocket::SetIPAddr(uint32_t ipaddr) {
   _ipaddr = ipaddr;
 }
 
-int32_t ARPSocket::TransmitPacket(uint16_t type, uint32_t tpa, uint8_t *tha) {
+int32_t ArpSocket::TransmitPacket(uint16_t type, uint32_t tpa, uint8_t *tha) {
   uint32_t ip_daddr = tpa;
   uint8_t eth_saddr[6];
   uint8_t eth_daddr[6];
@@ -540,7 +540,7 @@ int32_t ARPSocket::TransmitPacket(uint16_t type, uint32_t tpa, uint8_t *tha) {
   if(!_dev->GetTxPacket(packet)) {
     return -1;
   }
-  uint32_t len = sizeof(EthHeader) + sizeof(ARPPacket);
+  uint32_t len = sizeof(EthHeader) + sizeof(ArpPacket);
   packet->len = len;
 
   // ARP header
@@ -556,7 +556,7 @@ int32_t ARPSocket::TransmitPacket(uint16_t type, uint32_t tpa, uint8_t *tha) {
   return type;
 }
 
-int32_t ARPSocket::ReceivePacket(uint16_t type, uint32_t *spa, uint8_t *sha) {
+int32_t ArpSocket::ReceivePacket(uint16_t type, uint32_t *spa, uint8_t *sha) {
   // alloc buffer
   DevEthernet::Packet *packet = nullptr;
   int16_t op = 0;

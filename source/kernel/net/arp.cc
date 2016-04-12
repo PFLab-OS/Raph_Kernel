@@ -28,10 +28,10 @@
 #include <net/socket.h>
 #include <net/arp.h>
 
-const uint8_t ARPCtrl::kBcastMACAddr[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+const uint8_t ArpCtrl::kBcastMACAddr[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 
-int32_t ARPCtrl::GeneratePacket(uint8_t *buffer, uint16_t op, uint8_t *smacaddr, uint32_t sipaddr, uint8_t *dmacaddr, uint32_t dipaddr) {
-  ARPPacket * volatile packet = reinterpret_cast<ARPPacket*>(buffer);
+int32_t ArpCtrl::GeneratePacket(uint8_t *buffer, uint16_t op, uint8_t *smacaddr, uint32_t sipaddr, uint8_t *dmacaddr, uint32_t dipaddr) {
+  ArpPacket * volatile packet = reinterpret_cast<ArpPacket*>(buffer);
   packet->hwtype = htons(kHWEthernet);
   packet->protocol = htons(kProtocolIPv4);
   packet->hlen = 6;
@@ -41,10 +41,10 @@ int32_t ARPCtrl::GeneratePacket(uint8_t *buffer, uint16_t op, uint8_t *smacaddr,
   packet->proto_saddr = htonl(sipaddr);
   packet->proto_daddr = htonl(dipaddr);
   switch(op) {
-    case ARPSocket::kOpARPRequest:
+    case ArpSocket::kOpARPRequest:
       memset(packet->hw_daddr, 0, 6);
       break;
-	case ARPSocket::kOpARPReply:
+	case ArpSocket::kOpARPReply:
       memcpy(packet->hw_daddr, dmacaddr, 6);
       break;
     default:
@@ -52,52 +52,52 @@ int32_t ARPCtrl::GeneratePacket(uint8_t *buffer, uint16_t op, uint8_t *smacaddr,
       return -1;
   }
 
-  return sizeof(ARPPacket);
+  return sizeof(ArpPacket);
 }
 
-bool ARPCtrl::FilterPacket(uint8_t *packet, uint16_t op, uint8_t *smacaddr, uint32_t sipaddr, uint8_t *dmacaddr, uint32_t dipaddr) {
-  ARPPacket * volatile data = reinterpret_cast<ARPPacket*>(packet);
+bool ArpCtrl::FilterPacket(uint8_t *packet, uint16_t op, uint8_t *smacaddr, uint32_t sipaddr, uint8_t *dmacaddr, uint32_t dipaddr) {
+  ArpPacket * volatile data = reinterpret_cast<ArpPacket*>(packet);
   return (!op || ntohs(data->op) == op)
       && (!smacaddr || !memcmp(data->hw_saddr, smacaddr, 6))
       && (!sipaddr  || ntohl(data->proto_saddr) == sipaddr)
-      && (ntohs(data->op) == ARPSocket::kOpARPRequest || !dmacaddr || !memcmp(data->hw_daddr, dmacaddr, 6) || !memcmp(data->hw_daddr, kBcastMACAddr, 6))
+      && (ntohs(data->op) == ArpSocket::kOpARPRequest || !dmacaddr || !memcmp(data->hw_daddr, dmacaddr, 6) || !memcmp(data->hw_daddr, kBcastMACAddr, 6))
       && (!dipaddr  || ntohl(data->proto_daddr) == dipaddr);
 }
 
-bool ARPCtrl::RegisterAddress(uint8_t *packet) {
-  ARPPacket * volatile arp = reinterpret_cast<ARPPacket*>(packet);
+bool ArpCtrl::RegisterAddress(uint8_t *packet) {
+  ArpPacket * volatile arp = reinterpret_cast<ArpPacket*>(packet);
   return arp_table->Add(arp->proto_saddr, arp->hw_saddr);
 }
 
-void ARPCtrl::GetSourceMACAddress(uint8_t *buffer, uint8_t *packet) {
-  ARPPacket * volatile arp = reinterpret_cast<ARPPacket*>(packet);
+void ArpCtrl::GetSourceMACAddress(uint8_t *buffer, uint8_t *packet) {
+  ArpPacket * volatile arp = reinterpret_cast<ArpPacket*>(packet);
   memcpy(buffer, arp->hw_saddr, 6);
 }
 
-uint32_t ARPCtrl::GetSourceIPAddress(uint8_t *packet) {
-  ARPPacket * volatile arp = reinterpret_cast<ARPPacket*>(packet);
+uint32_t ArpCtrl::GetSourceIPAddress(uint8_t *packet) {
+  ArpPacket * volatile arp = reinterpret_cast<ArpPacket*>(packet);
   return ntohl(arp->proto_saddr);
 }
 
 /*
- * ARPTable
+ * ArpTable
  */
 
-ARPTable::ARPTable() {
+ArpTable::ArpTable() {
   for(uint32_t i = 0; i < kMaxNumberRecords; i++) {
     _table[i].ipaddr = 0;
   }
 }
 
-uint32_t ARPTable::Hash(uint32_t s) {
+uint32_t ArpTable::Hash(uint32_t s) {
   return s & 0xff;
 }
 
-uint32_t ARPTable::Probe(uint32_t s) {
+uint32_t ArpTable::Probe(uint32_t s) {
   return (s + 1) & 0xff;
 }
 
-bool ARPTable::Add(uint32_t ipaddr, uint8_t *macaddr) {
+bool ArpTable::Add(uint32_t ipaddr, uint8_t *macaddr) {
   uint32_t index = Hash(ipaddr);
   while(_table[index].ipaddr != 0) {
     // record already exists
@@ -108,7 +108,7 @@ bool ARPTable::Add(uint32_t ipaddr, uint8_t *macaddr) {
   return true;
 }
 
-bool ARPTable::Find(uint32_t ipaddr, uint8_t *macaddr) {
+bool ArpTable::Find(uint32_t ipaddr, uint8_t *macaddr) {
   uint32_t index = Hash(ipaddr);
   while(_table[index].ipaddr != ipaddr) {
     if(_table[index].ipaddr == 0) {

@@ -25,7 +25,7 @@
 
 #include <stdint.h>
 
-struct ARPPacket {
+struct ArpPacket {
   // hardware type
   uint16_t hwtype;
   // protocol type
@@ -46,23 +46,13 @@ struct ARPPacket {
   uint32_t proto_daddr;
 } __attribute__((packed));
 
-class ARPCtrl {
+class ArpCtrl {
   static const uint8_t kBcastMACAddr[6];
 
 public:
-  ARPCtrl() {}
-  virtual int32_t GeneratePacket(uint8_t *buffer,
-                                 uint16_t op,
-                                 uint8_t *smacaddr,
-                                 uint32_t sipaddr,
-                                 uint8_t *dmacaddr,
-                                 uint32_t dipaddr);
-  virtual bool FilterPacket(uint8_t *packet,
-                            uint16_t op,
-                            uint8_t *smacaddr,
-                            uint32_t sipaddr,
-                            uint8_t *dmacaddr,
-                            uint32_t dipaddr);
+  ArpCtrl() {}
+  virtual int32_t GeneratePacket(uint8_t *buffer, uint16_t op, uint8_t *smacaddr, uint32_t sipaddr, uint8_t *dmacaddr, uint32_t dipaddr);
+  virtual bool FilterPacket(uint8_t *packet, uint16_t op, uint8_t *smacaddr, uint32_t sipaddr, uint8_t *dmacaddr, uint32_t dipaddr);
   bool RegisterAddress(uint8_t *packet);
   void GetSourceMACAddress(uint8_t *buffer, uint8_t *packet);
   uint32_t GetSourceIPAddress(uint8_t *packet);
@@ -71,19 +61,19 @@ public:
   static const uint16_t kProtocolIPv4 = 0x0800;
 };
 
-class ARPTable {
-  struct ARPTableRecord {
+class ArpTable {
+  struct ArpTableRecord {
     uint32_t ipaddr;
     uint8_t macaddr[6];
   };
 
   static const uint32_t kMaxNumberRecords = 256;
-  ARPTableRecord _table[kMaxNumberRecords];
+  ArpTableRecord _table[kMaxNumberRecords];
   uint32_t Hash(uint32_t s);
   uint32_t Probe(uint32_t s);
 
 public:
-  ARPTable();
+  ArpTable();
   bool Add(uint32_t ipaddr, uint8_t *macaddr);
   bool Find(uint32_t ipaddr, uint8_t *macaddr);
 };
