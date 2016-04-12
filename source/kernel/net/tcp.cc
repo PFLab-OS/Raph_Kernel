@@ -29,6 +29,8 @@
 #include <net/tcp.h>
 
 int32_t TcpCtrl::GenerateHeader(uint8_t *buffer, uint32_t length, uint32_t saddr, uint32_t daddr, uint16_t sport, uint16_t dport, uint8_t type, uint32_t seq, uint32_t ack) {
+  Locker locker(_lock);
+
   TcpHeader * volatile header = reinterpret_cast<TcpHeader*>(buffer);
   header->sport = htons(sport);
   header->dport = htons(dport);
@@ -46,26 +48,13 @@ int32_t TcpCtrl::GenerateHeader(uint8_t *buffer, uint32_t length, uint32_t saddr
 }
 
 bool TcpCtrl::FilterPacket(uint8_t *packet, uint16_t sport, uint16_t dport, uint8_t type, uint32_t seq, uint32_t ack) {
+  Locker locker(_lock);
+
   TcpHeader * volatile header = reinterpret_cast<TcpHeader*>(packet);
   // NB: dport of packet sender == sport of packet receiver
   return (!sport || ntohs(header->dport) == sport)
       && (!dport || ntohs(header->sport) == dport)
       && ((header->flag & Socket::kFlagFIN) || header->flag == type);
-}
-
-uint8_t TcpCtrl::GetSessionType(uint8_t *packet) {
-  TcpHeader * volatile header = reinterpret_cast<TcpHeader*>(packet);
-  return header->flag;
-}
-
-uint32_t TcpCtrl::GetSequenceNumber(uint8_t *packet) {
-  TcpHeader * volatile header = reinterpret_cast<TcpHeader*>(packet);
-  return ntohl(header->seq_number);
-}
-
-uint32_t TcpCtrl::GetAcknowledgeNumber(uint8_t *packet) {
-  TcpHeader * volatile header = reinterpret_cast<TcpHeader*>(packet);
-  return ntohl(header->ack_number);
 }
 
 uint16_t TcpCtrl::CheckSum(uint8_t *buf, uint32_t size, uint32_t saddr, uint32_t daddr) {

@@ -24,9 +24,8 @@
 #define __RAPH_KERNEL_NET_ETH_H__
 
 #include <stdint.h>
-#include <raph.h>
+#include <spinlock.h>
 #include <dev/netdev.h>
-#include <net/socket.h>
 
 struct EthHeader {
   // destination MAC address
@@ -38,24 +37,29 @@ struct EthHeader {
 };
 
 class EthCtrl {
-  NetDev *_dev = nullptr;
-
-  static const uint32_t kDstAddrOffset      = 0;
-  static const uint32_t kSrcAddrOffset      = 6;
-  static const uint32_t kProtocolTypeOffset = 12;
-  static const uint8_t kBcastAddress[6];
-
 public:
   EthCtrl() {}
 
-  static const uint32_t kHeaderSize = sizeof(EthHeader);
-
-  // protocol type
+  // upper layer protocol type
   static const uint16_t kProtocolIPv4 = 0x0800;
   static const uint16_t kProtocolARP  = 0x0806;
 
   int32_t GenerateHeader(uint8_t *buffer, uint8_t *saddr, uint8_t *daddr, uint16_t type);
   bool FilterPacket(uint8_t *packet, uint8_t *saddr, uint8_t *daddr, uint16_t type);
+
+private:
+  // physical layer network device
+  NetDev *_dev = nullptr;
+
+  SpinLock _lock;
+
+  // field offset in Ethernet header
+  static const uint32_t kDstAddrOffset      = 0;
+  static const uint32_t kSrcAddrOffset      = 6;
+  static const uint32_t kProtocolTypeOffset = 12;
+
+  // broadcast MAC address (ff:ff:ff:ff:ff:ff)
+  static const uint8_t kBcastAddress[6];
 };
 
 #endif // __RAPH_KERNEL_NET_ETH_H__

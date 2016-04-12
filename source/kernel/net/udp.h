@@ -24,6 +24,7 @@
 #define __RAPH_KERNEL_NET_UDP_H__
 
 #include <stdint.h>
+#include <spinlock.h>
 
 struct UDPHeader {
   // source port
@@ -45,6 +46,8 @@ public:
 private:
   // offset in header
   static const uint32_t kDstPortOffset = 2;
+
+  SpinLock _lock;
 };
 
 #endif // __RAPH_KERNEL_NET_UDP_H__

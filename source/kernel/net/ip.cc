@@ -22,12 +22,13 @@
 
 #include <string.h>
 #include <raph.h>
-#include <global.h>
 #include <mem/physmem.h>
 #include <mem/virtmem.h>
 #include <net/ip.h>
 
 int32_t IpCtrl::GenerateHeader(uint8_t *buffer, uint32_t length, uint8_t type, uint32_t saddr, uint32_t daddr) {
+  Locker locker(_lock);
+
   Ipv4Header * volatile header = reinterpret_cast<Ipv4Header*>(buffer);
   header->ip_header_len_version = (sizeof(Ipv4Header) >> 2) | (kIPVersion << 4);
   header->type = kPktPriority | kPktDelay | kPktThroughput | kPktReliability;
@@ -48,6 +49,8 @@ int32_t IpCtrl::GenerateHeader(uint8_t *buffer, uint32_t length, uint8_t type, u
 }
 
 bool IpCtrl::FilterPacket(uint8_t *packet, uint8_t type, uint32_t saddr, uint32_t daddr) {
+  Locker locker(_lock);
+
   Ipv4Header * volatile header = reinterpret_cast<Ipv4Header*>(packet);
   return (header->proto_id == type)
       && (!saddr || ntohl(header->saddr) == saddr)

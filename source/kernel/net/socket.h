@@ -24,7 +24,7 @@
 #define __RAPH_KERNEL_NET_SOCKET_H__
 
 #include <stdint.h>
-#include "../dev/eth.h"
+#include <dev/eth.h>
 
 class NetSocket {
 public:

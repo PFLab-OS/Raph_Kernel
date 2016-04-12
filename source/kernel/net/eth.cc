@@ -29,6 +29,8 @@
 const uint8_t EthCtrl::kBcastAddress[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 
 int32_t EthCtrl::GenerateHeader(uint8_t *buffer, uint8_t *saddr, uint8_t *daddr, uint16_t type) {
+  Locker locker(_lock);
+
   EthHeader * volatile header = reinterpret_cast<EthHeader*>(buffer);
   memcpy(header->daddr, daddr, 6);
   memcpy(header->saddr, saddr, 6);
@@ -37,6 +39,8 @@ int32_t EthCtrl::GenerateHeader(uint8_t *buffer, uint8_t *saddr, uint8_t *daddr,
 }
 
 bool EthCtrl::FilterPacket(uint8_t *packet, uint8_t *saddr, uint8_t *daddr, uint16_t type) {
+  Locker locker(_lock);
+
   EthHeader * volatile header = reinterpret_cast<EthHeader*>(packet);
   return (!daddr || !memcmp(header->daddr, daddr, 6) || !memcmp(header->daddr, kBcastAddress, 6))
       && (!saddr || !memcmp(header->saddr, saddr, 6))

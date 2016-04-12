@@ -22,7 +22,6 @@
 
 #include <string.h>
 #include <raph.h>
-#include <global.h>
 #include <mem/physmem.h>
 #include <mem/virtmem.h>
 #include <net/socket.h>
@@ -56,6 +55,8 @@ int32_t ArpCtrl::GeneratePacket(uint8_t *buffer, uint16_t op, uint8_t *smacaddr,
 }
 
 bool ArpCtrl::FilterPacket(uint8_t *packet, uint16_t op, uint8_t *smacaddr, uint32_t sipaddr, uint8_t *dmacaddr, uint32_t dipaddr) {
+  Locker locker(_lock);
+
   ArpPacket * volatile data = reinterpret_cast<ArpPacket*>(packet);
   return (!op || ntohs(data->op) == op)
       && (!smacaddr || !memcmp(data->hw_saddr, smacaddr, 6))
@@ -65,16 +66,22 @@ bool ArpCtrl::FilterPacket(uint8_t *packet, uint16_t op, uint8_t *smacaddr, uint
 }
 
 bool ArpCtrl::RegisterAddress(uint8_t *packet) {
+  Locker locker(_lock);
+
   ArpPacket * volatile arp = reinterpret_cast<ArpPacket*>(packet);
   return arp_table->Add(arp->proto_saddr, arp->hw_saddr);
 }
 
 void ArpCtrl::GetSourceMACAddress(uint8_t *buffer, uint8_t *packet) {
+  Locker locker(_lock);
+
   ArpPacket * volatile arp = reinterpret_cast<ArpPacket*>(packet);
   memcpy(buffer, arp->hw_saddr, 6);
 }
 
 uint32_t ArpCtrl::GetSourceIPAddress(uint8_t *packet) {
+  Locker locker(_lock);
+
   ArpPacket * volatile arp = reinterpret_cast<ArpPacket*>(packet);
   return ntohl(arp->proto_saddr);
 }
@@ -89,15 +96,9 @@ ArpTable::ArpTable() {
   }
 }
 
-uint32_t ArpTable::Hash(uint32_t s) {
-  return s & 0xff;
-}
-
-uint32_t ArpTable::Probe(uint32_t s) {
-  return (s + 1) & 0xff;
-}
-
 bool ArpTable::Add(uint32_t ipaddr, uint8_t *macaddr) {
+  Locker locker(_lock);
+
   uint32_t index = Hash(ipaddr);
   while(_table[index].ipaddr != 0) {
     // record already exists
@@ -109,7 +110,11 @@ bool ArpTable::Add(uint32_t ipaddr, uint8_t *macaddr) {
 }
 
 bool ArpTable::Find(uint32_t ipaddr, uint8_t *macaddr) {
+  Locker locker(_lock);
+
   uint32_t index = Hash(ipaddr);
+
+  // TODO: must set the upper bound of probing
   while(_table[index].ipaddr != ipaddr) {
     if(_table[index].ipaddr == 0) {
       // does not exist

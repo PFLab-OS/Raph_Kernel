@@ -24,6 +24,7 @@
 #define __RAPH_KERNEL_NET_IP_H__
 
 #include <stdint.h>
+#include <spinlock.h>
 
 /*
  * IPv4 Header
@@ -56,6 +57,7 @@ struct Ipv4Header {
 class IpCtrl {
 public:
   IpCtrl() : _id_auto_increment(0) {}
+
   int32_t GenerateHeader(uint8_t *buffer, uint32_t length, uint8_t type, uint32_t saddr, uint32_t daddr);
   bool FilterPacket(uint8_t *packet, uint8_t type, uint32_t saddr, uint32_t daddr);
 
@@ -83,6 +85,8 @@ private:
 
   // time to live (number of hops)
   static const uint8_t kTimeToLive          = 16;
+
+  SpinLock _lock;
 
   // IP header id
   uint16_t _id_auto_increment;
