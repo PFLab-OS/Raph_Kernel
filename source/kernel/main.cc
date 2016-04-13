@@ -75,7 +75,7 @@ Callout tt2;
 #include <acpica/source/include/acpi.h>
 #include <acpica/source/include/accommon.h>
 #include <acpica/source/include/acapps.h>
-//#include <acpica/source/acpiexec/aecommon.h>
+#include <acpica/source/tools/acpiexec/aecommon.h>
 
 
 #define FLAG 2

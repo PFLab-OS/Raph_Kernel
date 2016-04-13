@@ -222,7 +222,7 @@
 /* Common for all ACPICA applications */
 
 #ifdef ACPI_APPLICATION
-#define ACPI_USE_SYSTEM_CLIBRARY
+//#define ACPI_USE_SYSTEM_CLIBRARY
 #define ACPI_USE_LOCAL_CACHE
 #endif
 
@@ -480,5 +480,6 @@ typedef char *va_list;
 #define ACPI_FILE_ERR          NULL
 #endif /* ACPI_APPLICATION */
 #endif /* ACPI_FILE */
+
 
 #endif /* __ACENV_H__ */

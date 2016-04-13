@@ -121,21 +121,22 @@
 #endif
 
 #include "acpi.h"
-#include "accommon.h"
-#include "acparser.h"
-#include "amlcode.h"
-#include "acnamesp.h"
-#include "acdebug.h"
-#include "actables.h"
-#include "acinterp.h"
-#include "amlresrc.h"
-#include "acapps.h"
+#include "../../include/accommon.h"
+#include "../../include/acparser.h"
+#include "../../include/amlcode.h"
+#include "../../include/acnamesp.h"
+#include "../../include/acdebug.h"
+#include "../../include/actables.h"
+#include "../../include/acinterp.h"
+#include "../../include/amlresrc.h"
+#include "../../include/acapps.h"
 
+/*
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
-
+*/
 
 /*
  * Debug Regions

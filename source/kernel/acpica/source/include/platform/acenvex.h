@@ -125,7 +125,10 @@
  *
  *****************************************************************************/
 
-#if defined(_LINUX) || defined(__linux__)
+#if defined(__RAPHINE__)
+#include "acraphineex.h"
+
+#elif defined(_LINUX) || defined(__linux__)
 #include "aclinuxex.h"
 
 #elif defined(WIN32)
