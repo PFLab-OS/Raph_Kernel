@@ -151,7 +151,7 @@ void TCPClient1() {
     fprintf(stderr, "[TCP:client] received; %s\n", data);
   }
 
-  socket.Close();
+  while(socket.Close() < 0);
   fprintf(stderr, "[TCP:client] closed\n");
 }
 
@@ -199,7 +199,7 @@ void TCPClient2() {
 
   printf("return value = %d\n", socket.TransmitPacket(data, size));
 
-  socket.Close();
+  while(socket.Close() < 0);
 }
 
 void TCPServer3() {

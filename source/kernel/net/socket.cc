@@ -277,7 +277,7 @@ int32_t Socket::ReceivePacket(uint8_t *data, uint32_t length) {
         if(type & kFlagFIN) {
           SetSequenceNumber(ack);
           SetAcknowledgeNumber(seq + 1);
-          CloseAck(type);
+          while(CloseAck(type) < 0);
           rval = kResultConnectionClosed;
           break;
         } else if(_ack == seq || (_seq == seq && _ack == ack)) {
@@ -440,52 +440,75 @@ int32_t Socket::Connect() {
 }
 
 int32_t Socket::Close() {
-  uint32_t kBufSize = sizeof(EthHeader) + sizeof(Ipv4Header) + sizeof(TcpHeader);
-  uint8_t buffer[kBufSize];
-  uint8_t *tcp = buffer + sizeof(EthHeader) + sizeof(Ipv4Header);
-  uint32_t saved_seq = _seq;
-  uint32_t saved_ack = _ack;
-  uint32_t s = _seq;
-  uint32_t t = _ack;
-
-  while(true) {
-    SetSequenceNumber(saved_seq);
-    SetAcknowledgeNumber(saved_ack);
-
-    // transmit FIN+ACK packet
-    SetSessionType(kFlagFIN | kFlagACK);
-    while(Transmit(buffer, 0, false) < 0);
-
-    // receive ACK packet
-    SetSessionType(kFlagACK);
-    while(ReceiveRawPacket(buffer, kBufSize) < 0);
-
-    // check sequence number
-    if(tcp_ctrl->GetSequenceNumber(tcp) != t) continue;
-
-    // check acknowledge number
-    if(tcp_ctrl->GetAcknowledgeNumber(tcp) != s + 1) continue;
-
-    // receive FIN+ACK packet
-    SetSessionType(kFlagFIN | kFlagACK);
-    while(ReceiveRawPacket(buffer, kBufSize) < 0);
-
-    // check sequence number
-    if(tcp_ctrl->GetSequenceNumber(tcp) != t) continue;
-
-    // check acknowledge number
-    if(tcp_ctrl->GetAcknowledgeNumber(tcp) != s + 1) continue;
-
-    // transmit ACK packet
-    SetSessionType(kFlagACK);
-    SetSequenceNumber(s + 1);
-    SetAcknowledgeNumber(t + 1);
-    while(Transmit(buffer, 0, false) < 0);
-
-    break;
+  if(_state == kStateSynSent || _state == kStateListen) {
+    _state = kStateClosed;
+    return 0;
   }
 
-  _established = false;
+  uint32_t kBufSize = sizeof(EthHeader) + sizeof(Ipv4Header) + sizeof(TcpHeader);
+  uint8_t buffer[kBufSize];
+  uint8_t *tcp= buffer + sizeof(EthHeader) + sizeof(Ipv4Header);
+
+  if(_state == kStateEstablished) {
+    // transmit FIN+ACK packet
+    SetSessionType(kFlagFIN | kFlagACK);
+    int32_t rval = Transmit(buffer, 0, false);
+
+    if(rval >= 0) {
+      _state = kStateFinWait1;
+    } else {
+      return rval;  // failure
+    }
+  }
+
+  if(_state == kStateFinWait1) {
+    // receive ACK packet
+    SetSessionType(kFlagACK);
+    int32_t rval = ReceiveRawPacket(buffer, kBufSize);
+
+    if(rval >= 0) {
+      // check sequence number
+      if(tcp_ctrl->GetSequenceNumber(tcp) != _ack) return kErrorInvalidPacketOnWire;
+
+      // check acknowledge number
+      if(tcp_ctrl->GetAcknowledgeNumber(tcp) != _seq + 1) return kErrorInvalidPacketOnWire;
+
+      _state = kStateFinWait2;
+    } else {
+      return rval;  // failure
+    }
+  }
+
+  if(_state == kStateFinWait2) {
+    // receive FIN+ACK packet
+    SetSessionType(kFlagFIN | kFlagACK);
+    int32_t rval = ReceiveRawPacket(buffer, kBufSize);
+
+    if(rval >= 0) {
+      // check sequence number
+      if(tcp_ctrl->GetSequenceNumber(tcp) != _ack) return kErrorInvalidPacketOnWire;
+
+      // check acknowledge number
+      if(tcp_ctrl->GetAcknowledgeNumber(tcp) != _seq + 1) return kErrorInvalidPacketOnWire;
+
+      // transmit ACK packet
+      SetSessionType(kFlagACK);
+      SetSequenceNumber(_seq + 1);
+      SetAcknowledgeNumber(_ack + 1);
+
+      rval = Transmit(buffer, 0, false);
+      
+      if(rval >= 0) {
+        _established = false;
+        _state = kStateClosed;
+      } else {
+        return rval;  // failure
+      }
+    } else {
+      return rval;  // failure
+    }
+  }
+
   return 0;
 }
 
@@ -495,30 +518,49 @@ int32_t Socket::CloseAck(uint8_t flag) {
   uint8_t *tcp = buffer + sizeof(EthHeader) + sizeof(Ipv4Header);
 
   if(flag == (kFlagFIN | kFlagACK)) {
-    while(true) {
+
+    if(_state == kStateEstablished) {
       // transmit ACK packet
       SetSessionType(kFlagACK);
-      while(Transmit(buffer, 0, false) < 0);
+      int rval = Transmit(buffer, 0, false);
 
+      if(rval >= 0) {
+        _state = kStateCloseWait;
+      } else {
+        return rval;  // failure
+      }
+    }
+      
+    if(_state == kStateCloseWait) {
       // transmit FIN+ACK packet
       SetSessionType(kFlagFIN | kFlagACK);
-      while(Transmit(buffer, 0, false) < 0);
+      int rval = Transmit(buffer, 0, false);
 
+      if(rval >= 0) {
+        _state = kStateLastAck;
+      } else {
+        return rval;  // failure
+      }
+    }
+
+    if(_state == kStateLastAck) {
       // receive ACK packet
       SetSessionType(kFlagACK);
-      while(ReceiveRawPacket(buffer, kBufSize) < 0);
+      int rval = ReceiveRawPacket(buffer, kBufSize);
 
-      // check sequence number
-      if(tcp_ctrl->GetSequenceNumber(tcp) != _ack) continue;
+      if(rval >= 0) {
+        // check sequence number
+        if(tcp_ctrl->GetSequenceNumber(tcp) != _ack) return kErrorInvalidPacketOnWire;
 
-      // check acknowledge number
-      if(tcp_ctrl->GetAcknowledgeNumber(tcp) != _seq + 1) continue;
+        // check acknowledge number
+        if(tcp_ctrl->GetAcknowledgeNumber(tcp) != _seq + 1) return kErrorInvalidPacketOnWire;
 
-      break;
+        _state = kStateClosed;
+        _established = false;
+      } 
     }
   }
  
-  _established = false;
   return 0;
 }
 /*
