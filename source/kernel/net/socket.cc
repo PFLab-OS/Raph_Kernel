@@ -501,6 +501,7 @@ int32_t Socket::Close() {
       if(rval >= 0) {
         _established = false;
         _state = kStateClosed;
+        _seq = 0; _ack = 0;
       } else {
         return rval;  // failure
       }
@@ -557,6 +558,7 @@ int32_t Socket::CloseAck(uint8_t flag) {
 
         _state = kStateClosed;
         _established = false;
+        _seq = 0; _ack = 0;
       } 
     }
   }
