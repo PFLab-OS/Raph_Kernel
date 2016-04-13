@@ -90,3 +90,20 @@ uint16_t PciCtrl::FindCapability(uint8_t bus, uint8_t device, uint8_t func, Capa
     ptr = ReadReg<uint8_t>(bus, device, func, ptr + kCapRegNext);
   }
 }
+
+bool PciCtrl::SetMsi(uint8_t bus, uint8_t device, uint8_t func, uint64_t addr, uint16_t data) {
+  uint16_t offset = FindCapability(bus, device, func, CapabilityId::kMsi);
+  uint16_t control = ReadReg<uint16_t>(bus, device, func, offset + kMsiCapRegControl);
+  
+  if (control & kMsiCapRegControlAddr64Flag) {
+    // addr 64bit
+    WriteReg<uint32_t>(bus, device, func, offset + kMsiCapRegMsgAddr, static_cast<uint32_t>(addr));
+    WriteReg<uint32_t>(bus, device, func, offset + kMsiCapReg64MsgUpperAddr, static_cast<uint32_t>(addr >> 32));
+    WriteReg<uint16_t>(bus, device, func, offset + kMsiCapReg64MsgData, static_cast<uint16_t>(data));
+  } else {
+    kassert(addr < 0x100000000);
+    WriteReg<uint32_t>(bus, device, func, offset + kMsiCapRegMsgAddr, static_cast<uint32_t>(addr));
+    WriteReg<uint16_t>(bus, device, func, offset + kMsiCapReg32MsgData, static_cast<uint16_t>(data));
+  }
+  WriteReg<uint16_t>(bus, device, func, offset + kMsiCapRegControl, control | kMsiCapRegControlMsiEnableFlag);
+}

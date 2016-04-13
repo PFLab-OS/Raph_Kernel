@@ -24,10 +24,12 @@
 #define __RAPH_KERNEL_DEV_Pci_H__
 
 #include <stdint.h>
-#include "../acpi.h"
-#include "../global.h"
-#include "device.h"
-#include "../mem/virtmem.h"
+#include <acpi.h>
+#include <global.h>
+#include <mem/virtmem.h>
+#include <idt.h>
+#include <apic.h>
+#include <dev/device.h>
 
 struct MCFGSt {
   uint8_t reserved1[8];
@@ -48,6 +50,7 @@ class DevPci;
 class PciCtrl : public Device {
  public:
   enum class CapabilityId : uint8_t {
+   kMsi = 0x05,
    kPcie = 0x10,
   };
 
@@ -70,6 +73,8 @@ class PciCtrl : public Device {
   // Capabilityへのオフセットを返す
   // 見つからなかった時は0
   uint16_t FindCapability(uint8_t bus, uint8_t device, uint8_t func, CapabilityId id);
+  // エラーの場合flaseが返る
+  bool SetMsi(uint8_t bus, uint8_t device, uint8_t func, uint64_t addr, uint16_t data);
   static const uint16_t kDevIdentifyReg = 0x2;
   static const uint16_t kVendorIDReg = 0x00;
   static const uint16_t kDeviceIDReg = 0x02;
@@ -86,6 +91,21 @@ class PciCtrl : public Device {
   // Capability Registers
   static const uint16_t kCapRegId = 0x0;
   static const uint16_t kCapRegNext = 0x1;
+
+  // MSI Capability Registers
+  // see PCI Local Bus Specification Figure 6-9
+  static const uint16_t kMsiCapRegControl = 0x2;
+  static const uint16_t kMsiCapRegMsgAddr = 0x4;
+  // 32bit
+  static const uint16_t kMsiCapReg32MsgData = 0x8;
+  // 64bit
+  static const uint16_t kMsiCapReg64MsgUpperAddr = 0x8;
+  static const uint16_t kMsiCapReg64MsgData = 0xC;
+
+  // Message Control for MSI
+  // see PCI Local Bus Specification 6.8.1.3
+  static const uint16_t kMsiCapRegControlMsiEnableFlag = 1 << 0;
+  static const uint16_t kMsiCapRegControlAddr64Flag = 1 << 7;
 
   static const uint16_t kCommandRegBusMasterEnableFlag = 1 << 2;
   static const uint16_t kCommandRegMemWriteInvalidateFlag = 1 << 4;
@@ -131,10 +151,30 @@ class DevPci : public Device {
     kassert(pci_ctrl != nullptr);
     return pci_ctrl->FindCapability(_bus, _device, 0, id);
   }
+  bool SetMsi(uint64_t addr, uint16_t data) {
+    // TODO apicの設定までやってしまうように
+    kassert(pci_ctrl != nullptr);
+    return pci_ctrl->SetMsi(_bus, _device, 0, addr, data);
+  }
  private:
+  static void HandleSub(Regs *rs, void *arg) {
+    DevPci *that = reinterpret_cast<DevPci *>(arg);
+    for (int i = 0; i < kIntMax; i++) {
+      if (map[i].vector == rs->n && map[i].lapicid == apic_ctrl->GetApicId()) {
+        that->*(map[i].handler)();
+        break;
+      }
+    }
+  }
   const uint8_t _bus;
   const uint8_t _device;
   const bool _mf;
+  static const int kIntMax = 10;
+  struct IntMap {
+    int lapicid;
+    int vector;
+    void (DevPCI::*handler)();
+  } map[kIntMax];
 };
 
 template<class T>

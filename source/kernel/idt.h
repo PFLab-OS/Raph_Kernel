@@ -33,6 +33,7 @@ struct Regs {
 }__attribute__((__packed__));
 
 typedef void (*idt_callback)(Regs *rs);
+typedef void (*int_callback)(Regs *rs, void *arg);
 
 namespace C {
   extern "C" void handle_int(Regs *rs);
@@ -42,7 +43,7 @@ class Idt {
  public:
   void SetupGeneric();
   void SetupProc();
-  void SetIntCallback(int n, idt_callback callback);
+  void SetIntCallback(int lapicid, int vector, idt_callback callback, void *arg);
   // if 0, cpu is not handling interrupt
   volatile int GetHandlingCnt() {
     return _handling_cnt[apic_ctrl->GetApicId()];
@@ -54,10 +55,13 @@ class Idt {
     static const int kKeyboard = 64;
   };
  private:
-  void SetGate(void (*gate)(Regs *rs), int n, uint8_t dpl, bool trap, uint8_t ist);
+  void SetGate(idt_callback gate, int vector, uint8_t dpl, bool trap, uint8_t ist);
   static const uint32_t kIdtPresent = 1 << 15;
   volatile uint16_t _idtr[5];
-  idt_callback **_callback;
+  struct IntCallback {
+    int_callback callback;
+    void *arg;
+  } **_callback;
   int *_handling_cnt;
   friend void C::handle_int(Regs *rs);
 };

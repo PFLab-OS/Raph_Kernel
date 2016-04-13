@@ -32,6 +32,7 @@
 #include <stdint.h>
 #include <raph.h>
 #include <mem/physmem.h>
+#include <idt.h>
 #include <freebsd/sys/types.h>
 #include <freebsd/sys/rman.h>
 #include <freebsd/i386/include/resource.h>
@@ -121,23 +122,27 @@ static inline void bus_space_write_4(bus_space_tag_t space, bus_space_handle_t h
 struct resource {
   phys_addr addr;
   bus_space_tag_t type;
+  DevPci *pci;
   union {
     struct {
       bool is_prefetchable;
     } mem;
   } data;
+  idt_callback gate;
 };
 
 static inline struct resource *bus_alloc_resource_any(device_t dev, int type, int *rid, u_int flags);
 
 static inline struct resource *bus_alloc_resource_any(device_t dev, int type, int *rid, u_int flags) {
   int bar = *rid;
-  struct resource *r = reinterpret_cast<struct resource *>(virtmem_ctrl->Alloc(sizeof(struct resource)));
+  struct resource *r;
   uint32_t addr = dev->GetPciClass()->ReadReg<uint32_t>(static_cast<uint32_t>(bar));
-  if ((addr & PciCtrl::kRegBaseAddrFlagIo) != 0) {
-    r->type = BUS_SPACE_PIO;
-    r->addr = addr & PciCtrl::kRegBaseAddrMaskIoAddr;
-  } else {
+  switch(type) {
+  case SYS_RES_MEMORY: {
+    if ((addr & PciCtrl::kRegBaseAddrFlagIo) != 0) {
+      return NULL;
+    }
+    r = reinterpret_cast<struct resource *>(virtmem_ctrl->Alloc(sizeof(struct resource)));
     r->type = BUS_SPACE_MEMIO;
     r->data.mem.is_prefetchable = ((addr & PciCtrl::kRegBaseAddrIsPrefetchable) != 0);
     r->addr = addr & PciCtrl::kRegBaseAddrMaskMemAddr;
@@ -146,8 +151,29 @@ static inline struct resource *bus_alloc_resource_any(device_t dev, int type, in
       r->addr |= static_cast<uint64_t>(dev->GetPciClass()->ReadReg<uint32_t>(static_cast<uint32_t>(bar + 4))) << 32;
     }
     r->addr = p2v(r->addr);
+    break;
   }
+  case SYS_RES_IOPORT: {
+    if ((addr & PciCtrl::kRegBaseAddrFlagIo) == 0) {
+      return NULL;
+    }
+    r = reinterpret_cast<struct resource *>(virtmem_ctrl->Alloc(sizeof(struct resource)));
+    r->type = BUS_SPACE_PIO;
+    r->addr = addr & PciCtrl::kRegBaseAddrMaskIoAddr;
+    break;
+  }
+  case SYS_RES_IRQ: {
+    break;
+  }
+  default: {
+    kassert(false);
+  }
+  }
+  r->pci = dev->GetPciClass();
   return r;
+}
+
+static inline int bus_setup_intr(device_t dev, struct resource *r, int flags, driver_filter_t filter, driver_intr_t handler, void *arg, void **cookiep) {
 }
 
 #endif /* _FREEBSD_BUS_H_ */
