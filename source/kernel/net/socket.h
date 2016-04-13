@@ -77,6 +77,20 @@ public:
   // maximum segment size
   static const uint32_t kMSS = 1460;
 
+  // TCP states
+  // (cf) RFC 793 p.26
+  static const int32_t kStateClosed      = 0;
+  static const int32_t kStateListen      = 1;
+  static const int32_t kStateSynSent     = 2;
+  static const int32_t kStateSynReceived = 3;
+  static const int32_t kStateEstablished = 4;
+  static const int32_t kStateFinWait1    = 5;
+  static const int32_t kStateFinWait2    = 6;
+  static const int32_t kStateCloseWait   = 7;
+  static const int32_t kStateClosing     = 8;
+  static const int32_t kStateLastAck     = 9;
+  static const int32_t kStateTimeWait    = 10;
+
   Socket() {}
 
   void SetIPAddr(uint32_t addr) { _daddr = addr; }
@@ -154,6 +168,8 @@ private:
   uint32_t _ack   = 0;
   // flag for whether connection is established
   bool _established = false;
+  // TCP state (cf. RFC 793 p.26)
+  int32_t _state = kStateClosed;
 
   /*
    * TCP Restransmission Timeout Parameters

@@ -311,87 +311,130 @@ int32_t Socket::ReceiveRawPacket(uint8_t *data, uint32_t length) {
 }
 
 int32_t Socket::Listen() {
-  // connection already established
-  if(_established) return kErrorAlreadyEstablished;
+  if(_state != kStateClosed && _state != kStateListen && _state != kStateSynReceived && _state != kStateSynSent) {
+    // connection already established
+    return kErrorAlreadyEstablished;
+  }
 
   uint32_t kBufSize = sizeof(EthHeader) + sizeof(Ipv4Header) + sizeof(TcpHeader);
   uint8_t buffer[kBufSize];
   uint8_t *tcp = buffer + sizeof(EthHeader) + sizeof(Ipv4Header);
-  uint32_t s, t;
 
-  while(true) {
+  if(_state == kStateClosed) {
     // receive SYN packet
     SetSessionType(kFlagSYN);
-    while(ReceiveRawPacket(buffer, kBufSize) < 0);
-    t = tcp_ctrl->GetSequenceNumber(tcp);
+    int32_t rval = ReceiveRawPacket(buffer, kBufSize);
 
-    // transmit SYN+ACK packet
-    SetSessionType(kFlagSYN | kFlagACK);
-    s = rand();
-    SetSequenceNumber(s);
-    SetAcknowledgeNumber(++t);
-    while(TransmitPacket(buffer, 0) < 0);
-
-    // receive ACK packet
-    SetSessionType(kFlagACK);
-    while(ReceiveRawPacket(buffer, kBufSize) < 0);
-
-    // check sequence number
-    if(tcp_ctrl->GetSequenceNumber(tcp) != t) continue;
-
-    // check acknowledge number
-    if(tcp_ctrl->GetAcknowledgeNumber(tcp) != s + 1) continue;
-
-    break;
+    if(rval >= 0) {
+      SetAcknowledgeNumber(tcp_ctrl->GetSequenceNumber(tcp) + 1);
+      _state = kStateListen;
+    } else {
+      return rval;  // failure
+    }
   }
 
-  // connection established
-  SetSequenceNumber(t);
-  SetAcknowledgeNumber(s + 1);
-  _established = true;
+  if(_state == kStateListen) {
+    // transmit SYN+ACK packet
+    SetSessionType(kFlagSYN | kFlagACK);
+
+    if(_seq == 0) {
+      SetSequenceNumber(rand());
+    }
+
+    int32_t rval = TransmitPacket(buffer, 0);
+
+    if(rval >= 0) {
+      _state = kStateSynSent;
+    } else {
+      return rval;  // failure
+    }
+  }
+
+  if(_state == kStateSynSent) {
+    // receive ACK packet
+    SetSessionType(kFlagACK);
+    int32_t rval = ReceiveRawPacket(buffer, kBufSize);
+
+    if(rval >= 0) {
+      // check sequence number
+      if(tcp_ctrl->GetSequenceNumber(tcp) != _ack) {
+        return kErrorInvalidPacketOnWire;
+      }
+
+      // check acknowledge number
+      if(tcp_ctrl->GetAcknowledgeNumber(tcp) != _seq + 1) {
+        return kErrorInvalidPacketOnWire;
+      }
+
+      // connection established
+      uint32_t s = _seq;
+      SetSequenceNumber(_ack);
+      SetAcknowledgeNumber(s + 1);
+      _established = true;
+      _state = kStateEstablished;
+    } else {
+      return rval;  // failure
+    }
+  }
 
   return 0;
 }
 
 int32_t Socket::Connect() {
-  // connection already established
-  if(_established) return kErrorAlreadyEstablished;
+  if(_state != kStateClosed && _state != kStateListen && _state != kStateSynReceived && _state != kStateSynSent) {
+    // connection already established
+    return kErrorAlreadyEstablished;
+  }
 
   uint32_t kBufSize = sizeof(EthHeader) + sizeof(Ipv4Header) + sizeof(TcpHeader);
   uint8_t buffer[kBufSize];
   uint8_t *tcp = buffer + sizeof(EthHeader) + sizeof(Ipv4Header);
-  uint32_t s, t;
 
-  while(true) {
+  if(_state == kStateClosed) {
     // transmit SYN packet
-    t = rand();
     SetSessionType(kFlagSYN);
-    SetSequenceNumber(t);
+    SetSequenceNumber(rand());
     SetAcknowledgeNumber(0);
-    while(TransmitPacket(buffer, 0) < 0);
 
-    // receive SYN+ACK packet
-    SetSessionType(kFlagSYN | kFlagACK);
-    while(ReceiveRawPacket(buffer, kBufSize) < 0);
+    int32_t rval = TransmitPacket(buffer, 0);
 
-    // check acknowledge number
-    s = tcp_ctrl->GetAcknowledgeNumber(tcp);
-    if(s != t + 1) continue;
-
-    // transmit ACK packet
-    t = tcp_ctrl->GetSequenceNumber(tcp);
-    SetSessionType(kFlagACK);
-    SetSequenceNumber(s);
-    SetAcknowledgeNumber(t + 1);
-    while(TransmitPacket(buffer, 0) < 0);
-
-    break;
+    if(rval >= 0) {
+      _state = kStateSynSent;
+    } else {
+      return rval;  // failure
+    }
   }
 
-  // connection established
-  SetSequenceNumber(s);
-  SetAcknowledgeNumber(t + 1);
-  _established = true;
+  if(_state == kStateSynSent) {
+    // receive SYN+ACK packet
+    SetSessionType(kFlagSYN | kFlagACK);
+    int rval = ReceiveRawPacket(buffer, kBufSize);
+
+    if(rval >= 0) {
+      // check acknowledge number
+      if(tcp_ctrl->GetAcknowledgeNumber(tcp) != _seq + 1) return kErrorInvalidPacketOnWire;
+
+      // transmit ACK packet
+      uint32_t t = tcp_ctrl->GetSequenceNumber(tcp);
+      SetSessionType(kFlagACK);
+      SetSequenceNumber(_seq + 1);
+      SetAcknowledgeNumber(tcp_ctrl->GetSequenceNumber(tcp) + 1);
+      rval = TransmitPacket(buffer, 0);
+
+      if(rval >= 0) {
+        _state = kStateEstablished;
+
+        // connection established
+        SetAcknowledgeNumber(t + 1);
+        _established = true;
+
+      } else {
+        return rval;  // failure
+      }
+    } else {
+      return rval;  // failure
+    }
+  }
 
   return 0;
 }

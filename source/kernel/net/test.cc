@@ -96,7 +96,7 @@ void TCPServer1() {
   int32_t rval;
 
   // TCP server 
-  socket.Listen();
+  while(socket.Listen() < 0);
   fprintf(stderr, "[TCP:server] connection established\n");
 
   // loopback
@@ -129,7 +129,7 @@ void TCPClient1() {
   uint8_t data[size];
 
   // TCP client
-  socket.Connect();
+  while(socket.Connect() < 0);
   fprintf(stderr, "[TCP:client] connection established\n");
 
   while(true) {
@@ -169,7 +169,7 @@ void TCPServer2() {
   uint8_t data[size];
   int32_t rval;
 
-  socket.Listen();
+  while(socket.Listen() < 0);
 
   while(true) {
     rval = socket.ReceivePacket(data, size);
@@ -195,7 +195,7 @@ void TCPClient2() {
   memset(data, 0x41, size-1);
   data[size-1] = 0;
 
-  socket.Connect();
+  while(socket.Connect() < 0);
 
   printf("return value = %d\n", socket.TransmitPacket(data, size));
 
@@ -216,7 +216,7 @@ void TCPServer3() {
   uint8_t data[size];
   int32_t rval;
 
-  socket.Listen();
+  while(socket.Listen() < 0);
 
   while(true) {
     // NB: stupid server!!! (test TCP restransmission)
