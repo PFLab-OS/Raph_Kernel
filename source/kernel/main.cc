@@ -72,7 +72,7 @@ int time;
 Callout tt1;
 Callout tt2;
 
-#define FLAG 2
+#define FLAG 1
 #if FLAG == 3
 #define IP1 192, 168, 100, 117
 #define IP2 192, 168, 100, 254
