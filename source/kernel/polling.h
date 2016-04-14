@@ -34,16 +34,17 @@ class Polling {
     kPolling,
     kStopped,
   };
+  // この関数が呼ばれたCPUでPollingが登録される
   void RegisterPolling() {
     if (_state == PollingState::kPolling) {
       return;
     }
+    _apicid = apic_ctrl->GetApicId();
     Function func;
     func.Init(HandleSub, reinterpret_cast<void *>(this));
     _state = PollingState::kPolling;
     task_ctrl->RegisterPolling(_apicid, func);
   }
-  // pollingを登録したprocessorで実行する事
   void RemovePolling() {
     if (_state == PollingState::kStopped) {
       return;
@@ -54,7 +55,6 @@ class Polling {
     task_ctrl->Remove(_apicid, func);
   }
   virtual void Handle() = 0;
-  int _apicid = 0;
  private:
   static void HandleSub(void *p) {
     Polling *that = reinterpret_cast<Polling *>(p);
@@ -65,6 +65,7 @@ class Polling {
     }
   }
   PollingState _state = PollingState::kStopped;
+  int _apicid = 0;
 };
 
 class PollingFunc : public Polling {
@@ -76,7 +77,6 @@ class PollingFunc : public Polling {
     this->RemovePolling();
   }
   void Init(void (*func)(void *), void *arg) {
-    _apicid = apic_ctrl->GetApicId();
     _func.Init(func, arg);
   }
  private:
