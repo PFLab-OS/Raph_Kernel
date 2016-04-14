@@ -30,6 +30,7 @@
 #define _FREEBSD_BUS_H_
 
 #include <stdint.h>
+#include <stddef.h>
 #include <raph.h>
 #include <mem/physmem.h>
 #include <idt.h>

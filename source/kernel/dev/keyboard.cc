@@ -26,8 +26,8 @@
 #include <dev/keyboard.h>
 
 void Keyboard::Setup(int lapicid) {
-  apic_ctrl->SetupIoInt(ApicCtrl::Ioapic::kIrqKeyboard, lapicid, Idt::ReservedIntVector::kKeyboard);
-  idt->SetIntCallback(Idt::ReservedIntVector::kKeyboard, Keyboard::Handler);
+  int vector = idt->SetIntCallback(lapicid, Keyboard::Handler, nullptr);
+  apic_ctrl->SetupIoInt(ApicCtrl::Ioapic::kIrqKeyboard, lapicid, vector);
 }
 
 void Keyboard::Write(uint8_t code){
@@ -69,7 +69,7 @@ void Keyboard::Reset() {
 }
 
 
-void Keyboard::Handler(Regs *reg) { //static
+void Keyboard::Handler(Regs *reg, void *arg) {
   uint8_t data;
   data = inb(kDataPort);
   if(data < (1 << 7))  keyboard->Write(data);

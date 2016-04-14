@@ -81,7 +81,7 @@ void TaskCtrl::Remove(int apicid, const Function &func) {
 }
 
 void TaskCtrl::Run() {
-  apic_ctrl->SetupTimer(32 + 10);
+  apic_ctrl->SetupTimer();
   while(true) {
     apic_ctrl->StopTimer();
     Function f;

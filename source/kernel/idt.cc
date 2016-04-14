@@ -107,8 +107,23 @@ void Idt::SetGate(idt_callback gate, int vector, uint8_t dpl, bool trap, uint8_t
   idt_def[vector].entry[3] = 0;
 }
 
-void Idt::SetIntCallback(int lapicid, int vector, idt_callback callback, void *arg) {
+int Idt::SetIntCallback(int lapicid, int_callback callback, void *arg) {
   kassert(apic_ctrl != nullptr);
+  Locker locker(_lock);
+  for(int vector = 64; vector < 256; vector++) {
+    if (_callback[lapicid][vector].callback == nullptr) {
+      _callback[lapicid][vector].callback = callback;
+      _callback[lapicid][vector].arg = arg;
+      return vector;
+    }
+  }
+  return ReservedIntVector::kError;
+}
+
+void Idt::SetExceptionCallback(int lapicid, int vector, int_callback callback, void *arg) {
+  kassert(apic_ctrl != nullptr);
+  kassert(vector < 64 && vector >= 1);
+  Locker locker(_lock);
   _callback[lapicid][vector].callback = callback;
   _callback[lapicid][vector].arg = arg;
 }

@@ -24,6 +24,7 @@
 #define __RAPH_KERNEL_E1000_RAPH_H__
 
 #include <stdint.h>
+#include <stddef.h>
 #include <raph.h>
 #include <callout.h>
 #include <dev/pci.h>
@@ -40,8 +41,6 @@
 #include <freebsd/net/if.h>
 #include <freebsd/net/if_var.h>
 #include <freebsd/net/if_types.h>
-
-#define NULL nullptr
 
 typedef bool boolean_t;
 

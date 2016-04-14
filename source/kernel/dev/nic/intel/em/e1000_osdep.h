@@ -56,12 +56,11 @@
 /* #include <dev/pci/pcivar.h> */
 /* #include <dev/pci/pcireg.h> */
 
+#include <stddef.h>
 #include <string.h>
 #include <timer.h>
 #include <spinlock.h>
 #include <freebsd/sys/bus.h>
-
-#define NULL nullptr
 
 #define ASSERT(x) (kassert(x))
 

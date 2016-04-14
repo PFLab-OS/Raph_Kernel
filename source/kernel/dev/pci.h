@@ -160,8 +160,8 @@ class DevPci : public Device {
   static void HandleSub(Regs *rs, void *arg) {
     DevPci *that = reinterpret_cast<DevPci *>(arg);
     for (int i = 0; i < kIntMax; i++) {
-      if (map[i].vector == rs->n && map[i].lapicid == apic_ctrl->GetApicId()) {
-        that->*(map[i].handler)();
+      if (static_cast<unsigned int>(that->map[i].vector) == rs->n && that->map[i].lapicid == apic_ctrl->GetApicId()) {
+        (that->*(that->map[i].handler))();
         break;
       }
     }
@@ -173,7 +173,7 @@ class DevPci : public Device {
   struct IntMap {
     int lapicid;
     int vector;
-    void (DevPCI::*handler)();
+    void (DevPci::*handler)();
   } map[kIntMax];
 };
 

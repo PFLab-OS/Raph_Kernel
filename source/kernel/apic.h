@@ -99,7 +99,7 @@ public:
       _ctrlAddr[kRegEoi] = 0;
     }
     void SendIpi(uint8_t destid);
-    void SetupTimer(uint32_t irq);
+    void SetupTimer();
     void StartTimer() {
       volatile uint32_t tmp = _ctrlAddr[kRegTimerInitCnt];
       _ctrlAddr[kRegTimerInitCnt] = tmp;
@@ -251,8 +251,8 @@ public:
   void SendIpi(uint8_t destid) {
     _lapic.SendIpi(destid);
   }
-  void SetupTimer(uint32_t irq) {
-    _lapic.SetupTimer(irq);
+  void SetupTimer() {
+    _lapic.SetupTimer();
   }
   void StartTimer() {
     _lapic.StartTimer();
@@ -261,9 +261,9 @@ public:
     _lapic.StopTimer();
   }
 private:
-  static void TmrCallback(Regs *rs) {
+  static void TmrCallback(Regs *rs, void *arg) {
   }
-  static void IpiCallback(Regs *rs) {
+  static void IpiCallback(Regs *rs, void *arg) {
   }
   Lapic _lapic;
   Ioapic _ioapic;

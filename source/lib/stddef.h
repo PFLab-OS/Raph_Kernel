@@ -25,4 +25,6 @@
 
 typedef __SIZE_TYPE__ size_t;
 
+#define NULL nullptr
+
 #endif /* __RAPH_LIB_STDDEF_H__ */

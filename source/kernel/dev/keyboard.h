@@ -37,8 +37,8 @@ class Keyboard {
   bool Underflow();
   int Count();
   void Reset();
-  static void Handler (Regs *reg);
  private:
+  static void Handler (Regs *reg, void *arg);
   static const int kbufSize = 100;
   static const char kScanCode[256];
   static const int kDataPort = 0x60;
