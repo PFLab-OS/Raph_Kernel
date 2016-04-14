@@ -90,8 +90,7 @@ public:
   static const int32_t kStateClosing     = 8;
   static const int32_t kStateLastAck     = 9;
   static const int32_t kStateTimeWait    = 10;
-  static const int32_t kStateAckSent     = 11;  // extended
-  static const int32_t kStateAckReceived = 12;  // extended
+  static const int32_t kStateAckWait     = 11;  // extended
 
   Socket() {}
 

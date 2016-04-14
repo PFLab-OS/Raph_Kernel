@@ -106,7 +106,9 @@ void TCPServer1() {
       StripNewline(data);
 
       fprintf(stderr, "[TCP:server] received; %s\n", data);
-      socket.TransmitPacket(data, strlen(reinterpret_cast<char*>(data)) + 1);
+
+      while(socket.TransmitPacket(data, strlen(reinterpret_cast<char*>(data)) + 1) < 0);
+
       fprintf(stderr, "[TCP:server] loopback\n");
     } else if(rval == Socket::kResultConnectionClosed) {
       break;
@@ -139,15 +141,14 @@ void TCPClient1() {
     }
     if(!strncmp(reinterpret_cast<char*>(data), "q", 1)) break;
 
-    socket.TransmitPacket(data, strlen(reinterpret_cast<char*>(data)) + 1);
+    while(socket.TransmitPacket(data, strlen(reinterpret_cast<char*>(data)) + 1) < 0);
 
     // show newline as '%'
     StripNewline(data);
     fprintf(stderr, "[TCP:client] sent; %s\n", data);
 
-    while(true) {
-      if(socket.ReceivePacket(data, size) >= 0) break;
-    }
+    while(socket.ReceivePacket(data, size) < 0);
+
     fprintf(stderr, "[TCP:client] received; %s\n", data);
   }
 
@@ -200,9 +201,10 @@ void TCPClient2() {
 
   while(socket.Connect() < 0);
 
+  int32_t rval;
   uint32_t sum = 0;
   while(sum < size) {
-    int32_t rval = socket.TransmitPacket(p, s);
+    while((rval = socket.TransmitPacket(p, s)) < 0);
     printf("return value = %d\n", rval);
 
     if(rval >= 0) {

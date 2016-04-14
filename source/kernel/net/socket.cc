@@ -133,50 +133,61 @@ int32_t Socket::TransmitPacket(const uint8_t *packet, uint32_t length) {
   // base count of round trip time
   uint64_t t0 = 0;
 
+  int32_t rval = kErrorUnknown;
+
   // length intended to be sent
   uint32_t send_length = length > kMSS ? kMSS : length;
 
   if(rval_ack != kErrorRetransmissionTimeout) t0 = timer->ReadMainCnt();
 
-  // successfully sent length of packet
-  int32_t rval = Transmit(packet, send_length, false);
+  if(_state != kStateAckWait) {
+    // successfully sent length of packet
+    rval = Transmit(packet, send_length, false);
 
-  if(_type & kFlagACK) {
-    // transmission mode is ACK
+    if(_type & kFlagACK) {
+      // transmission mode is ACK
+      if(rval >= 0 && _established) {
+        _packet_length = rval;
+        _state = kStateAckWait;
+      } else if(rval < 0) {
+        return rval;  // failure
+      }
+    }
+  }
+
+  if(_state == kStateAckWait) {
     uint8_t packet_ack[sizeof(EthHeader) + sizeof(Ipv4Header) + sizeof(TcpHeader)];
     uint8_t *tcp = packet_ack + sizeof(EthHeader) + sizeof(Ipv4Header);
 
-    if(rval >= 0 && _established) {
+    uint64_t rto = timer->GetCntAfterPeriod(timer->ReadMainCnt(), GetRetransmissionTimeout());
 
-      uint64_t rto = timer->GetCntAfterPeriod(timer->ReadMainCnt(), GetRetransmissionTimeout());
+    // receive acknowledgement
+    rval_ack = Receive(packet_ack, sizeof(EthHeader) + sizeof(Ipv4Header) + sizeof(TcpHeader), true, true, rto);
 
-      while(true) {
-        // receive acknowledgement
-        rval_ack = Receive(packet_ack, sizeof(EthHeader) + sizeof(Ipv4Header) + sizeof(TcpHeader), true, true, rto);
-        if(rval_ack >= 0) {
-          // acknowledgement packet received
-          uint8_t type = tcp_ctrl->GetSessionType(tcp);
-          uint32_t seq = tcp_ctrl->GetSequenceNumber(tcp);
-          uint32_t ack = tcp_ctrl->GetAcknowledgeNumber(tcp);
+    if(rval_ack >= 0) {
+      // acknowledgement packet received
+      uint8_t type = tcp_ctrl->GetSessionType(tcp);
+      uint32_t seq = tcp_ctrl->GetSequenceNumber(tcp);
+      uint32_t ack = tcp_ctrl->GetAcknowledgeNumber(tcp);
 
-          // sequence & acknowledge number validation
-          if(type & kFlagACK && seq == _ack && ack == _seq + rval) {
+      // sequence & acknowledge number validation
+      if(type & kFlagACK && seq == _ack && ack == _seq + _packet_length) {
 
-            // calculate round trip time
-            uint64_t t1 = timer->ReadMainCnt();
-            _rtt_usec = t1 - t0;
+        // calculate round trip time
+        uint64_t t1 = timer->ReadMainCnt();
+        _rtt_usec = t1 - t0;
 
-            // seqeuence & acknowledge number is valid
-            SetSequenceNumber(_seq + rval);
+        // seqeuence & acknowledge number is valid
+        SetSequenceNumber(_seq + _packet_length);
 
-            return rval;
-          }
-        } else if(rval_ack == kErrorRetransmissionTimeout) {
-          return kErrorRetransmissionTimeout;
-        }
+        _state = kStateEstablished;
+
+        return _packet_length;
       }
-    } else if(rval < 0) {
-      return rval;  // failure
+    } else if(rval_ack == kErrorRetransmissionTimeout) {
+      return kErrorRetransmissionTimeout;
+    } else {
+      return rval_ack;  // failure
     }
   }
 
