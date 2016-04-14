@@ -1,9 +1,0 @@
-
-CONTENTS
-
-   bug demonstrating and proving bug fixes test collections
-
-ACPICA
-
-   bdemo tests for all bugs encountered and filed against ACPICA.
-   Nevertheless, these tests can be run on any ACPI implementation.

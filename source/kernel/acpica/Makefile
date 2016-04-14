@@ -1,22 +1,23 @@
-#
-# Common make for acpica tools and utilities
-#
+SRCDIR = ./hardware ./resources ./dispatcher ./tables ./events ./namespace ./utilities ./executer ./parser
+HEADERDIR = ./include/ ./include/platform/ ./
+HEADERS = $(foreach dir, $(HEADERDIR), $(wildcard $(dir)*h))
+SRCS = $(foreach dir, $(SRCDIR), $(wildcard $(dir)/*.c))
+OBJS = $(SRCS:.c=.o) osraphinexf.o acpica_main.o
+CFLAGS += $(addprefix -I, $(HEADERDIR)) 
+CFLAGS += -D__RAPHINE__
+ACPICA = acpica
 
-#
-# Note: This makefile is intended to be used from within the native
-# ACPICA directory structure, from under top level acpica directory.
-# It specifically places all the object files for each tool in separate
-# generate/unix subdirectories, not within the various ACPICA source
-# code directories. This prevents collisions between different
-# compilations of the same source file with different compile options.
-#
 
-ifeq ($(OS),efi)
-	BUILD_DIRECTORY_PATH = "generate/efi"
-	include generate/efi/Makefile.config
-	include generate/efi/Makefile.common
-else
-	BUILD_DIRECTORY_PATH = "generate/unix"
-	include generate/unix/Makefile.config
-	include generate/unix/Makefile.common
-endif
+$(ACPICA): $(OBJS)
+	gcc -o $(ACPICA).o $(OBJS) 
+
+.PHONY: clean
+clean:
+	rm $(ACPICA).o makelog.txt
+
+.PHONY: echo
+echo:
+	@echo "SOURCE FILES:"
+	@echo $(SRCS)
+	@echo "HEADER FILES:"
+	@echo $(HEADERS)

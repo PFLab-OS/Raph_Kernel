@@ -1,1 +1,0 @@
-The tests of this 'device' directory are just started, in progress.

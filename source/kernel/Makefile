@@ -1,5 +1,9 @@
 KERNEL = kernel.elf
 NET_OBJS = net/eth.o net/arp.o net/ip.o net/tcp.o net/udp.o net/socket.o net/netctrl.o
+ACPI_GNR = acpica/generate/unix
+ACPICA_OBJS_SURROUND = $(wildcard $(ACPI_GNR)/acpibin/obj/*.o) $(wildcard $(ACPI_GNR)/acpidump/obj/*.o) $(wildcard $(ACPI_GNR)/acpinames/obj/*.o)  $(wildcard $(ACPI_GNR)/acpisrc/obj/*.o) $(wildcard $(ACPI_GNR)/acpixtract/obj/*.o)
+ACPICA_OBJS = acpica/source/components/hardware/hwxfsleep.o acpica/source/components/hardware/hwsleep.o acpica/source/components/hardware/hwesleep.o 
+
 OBJS = boot/boot.o boot/bootap.o main.o spinlock.o apic.o acpi.o acpica.o gdt.o idt.o int.o tty.o task.o queue.o functional.o dev.o mem/virtmem.o mem/tmpmem.o mem/paging.o mem/physmem.o $(DEV_OBJS) $(NET_OBJS)
 TEST_OBJS = test_main.o spinlock.o mem/virtmem.o dev/raw.o dev/netdev.o net/test.o $(NET_OBJS)
 
@@ -29,6 +33,8 @@ testrun:
 
 $(TEST): $(TEST_OBJS)
 	g++ -pedantic -pthread -static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive -o $@ $^
+
+ACPICA_OBJS: $(ACPICA_SRCS)
 
 $(BUILD)$(KERNEL): $(OBJS) kernel.ld
 	$(LD) -nostdinc -nostdlib -Tkernel.ld $(OBJS) -o $@

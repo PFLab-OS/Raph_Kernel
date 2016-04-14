@@ -1,4 +1,4 @@
-default:
+cdefault:
 	make -C kernel
 
 clean:
