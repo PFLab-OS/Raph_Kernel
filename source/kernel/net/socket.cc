@@ -30,7 +30,7 @@
 #include <net/ip.h>
 #include <net/udp.h>
 #include <net/tcp.h>
-#include <net/pctl.h>
+#include <net/ptcl.h>
 
 int32_t NetSocket::Open() {
   _dev = reinterpret_cast<DevEthernet*>(netdev_ctrl->GetDevice());

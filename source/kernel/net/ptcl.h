@@ -20,8 +20,8 @@
  * 
  */
 
-#ifndef __RAPH_KERNEL_NET_PCTL_H__
-#define __RAPH_KERNEL_NET_PCTL_H__
+#ifndef __RAPH_KERNEL_NET_PTCL_H__
+#define __RAPH_KERNEL_NET_PTCL_H__
 
 // Layer 3 protocols
 const uint16_t kProtocolIPv4 = 0x0800;
@@ -31,4 +31,4 @@ const uint16_t kProtocolARP  = 0x0806;
 const uint8_t kProtocolTCP         = 0x06;
 const uint8_t kProtocolUDP         = 0x11;
 
-#endif // __RAPH_KERNEL_NET_PCTL_H__
+#endif // __RAPH_KERNEL_NET_PTCL_H__
