@@ -26,11 +26,15 @@
 #include <mem/virtmem.h>
 #include <net/eth.h>
 
-const uint8_t EthCtrl::kBcastAddress[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+// field offset in Ethernet header
+const uint32_t kDstAddrOffset      = 0;
+const uint32_t kSrcAddrOffset      = 6;
+const uint32_t kProtocolTypeOffset = 12;
 
-int32_t EthCtrl::GenerateHeader(uint8_t *buffer, uint8_t *saddr, uint8_t *daddr, uint16_t type) {
-  Locker locker(_lock);
+// broadcast MAC address (ff:ff:ff:ff:ff:ff)
+const uint8_t kBcastAddress[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 
+int32_t EthGenerateHeader(uint8_t *buffer, uint8_t *saddr, uint8_t *daddr, uint16_t type) {
   EthHeader * volatile header = reinterpret_cast<EthHeader*>(buffer);
   memcpy(header->daddr, daddr, 6);
   memcpy(header->saddr, saddr, 6);
@@ -38,9 +42,7 @@ int32_t EthCtrl::GenerateHeader(uint8_t *buffer, uint8_t *saddr, uint8_t *daddr,
   return 0;
 }
 
-bool EthCtrl::FilterPacket(uint8_t *packet, uint8_t *saddr, uint8_t *daddr, uint16_t type) {
-  Locker locker(_lock);
-
+bool EthFilterPacket(uint8_t *packet, uint8_t *saddr, uint8_t *daddr, uint16_t type) {
   EthHeader * volatile header = reinterpret_cast<EthHeader*>(packet);
   return (!daddr || !memcmp(header->daddr, daddr, 6) || !memcmp(header->daddr, kBcastAddress, 6))
       && (!saddr || !memcmp(header->saddr, saddr, 6))

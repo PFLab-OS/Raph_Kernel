@@ -25,7 +25,6 @@
 
 #include <stdint.h>
 #include <stdlib.h>
-#include <spinlock.h>
 #include <net/socket.h>
 
 struct TcpHeader {
@@ -49,44 +48,16 @@ struct TcpHeader {
   uint16_t urgent_pointer;
 } __attribute__ ((packed));
 
-class TcpCtrl {
-public:
-  TcpCtrl() {}
+int32_t TcpGenerateHeader(uint8_t *header, uint32_t length, uint32_t saddr, uint32_t daddr, uint16_t sport, uint16_t dport, uint8_t type, uint32_t seq, uint32_t ack);
+bool TcpFilterPacket(uint8_t *packet, uint16_t sport, uint16_t dport, uint8_t type, uint32_t seq, uint32_t ack);
 
-  int32_t GenerateHeader(uint8_t *header, uint32_t length, uint32_t saddr, uint32_t daddr, uint16_t sport, uint16_t dport, uint8_t type, uint32_t seq, uint32_t ack);
-  bool FilterPacket(uint8_t *packet, uint16_t sport, uint16_t dport, uint8_t type, uint32_t seq, uint32_t ack);
+// extract sender packet session type
+uint8_t GetSessionType(uint8_t *packet);
 
-  // extract sender packet session type
-  uint8_t GetSessionType(uint8_t *packet) {
-    TcpHeader * volatile header = reinterpret_cast<TcpHeader*>(packet);
-    return header->flag;
-  }
+// extract sender sequence number from packet
+uint32_t GetSequenceNumber(uint8_t *packet);
 
-  // extract sender sequence number from packet
-  uint32_t GetSequenceNumber(uint8_t *packet) {
-    TcpHeader * volatile header = reinterpret_cast<TcpHeader*>(packet);
-    return ntohl(header->seq_number);
-  }
-
-  // extract sender acknowledge number from packet
-  uint32_t GetAcknowledgeNumber(uint8_t *packet) {
-
-    TcpHeader * volatile header = reinterpret_cast<TcpHeader*>(packet);
-    return ntohl(header->ack_number);
-  }
-
-private:
-  // offset in header
-  static const uint8_t kSrcPortOffset     = 0;
-  static const uint8_t kDstPortOffset     = 2;
-  static const uint8_t kSeqOffset         = 4;
-  static const uint8_t kAckOffset         = 8;
-  static const uint8_t kSessionTypeOffset = 13;
-  static const uint8_t kWindowSizeOffset  = 14;
-
-  SpinLock _lock;
-
-  uint16_t CheckSum(uint8_t *buf, uint32_t size, uint32_t saddr, uint32_t daddr);
-};
+// extract sender acknowledge number from packet
+uint32_t GetAcknowledgeNumber(uint8_t *packet);
 
 #endif // __RAPH_KERNEL_NET_TCP_H__

@@ -20,32 +20,15 @@
  * 
  */
 
-#include <raph.h>
-#include <global.h>
-#include <mem/physmem.h>
-#include <mem/virtmem.h>
-#include <dev/netdev.h>
-#include <net/eth.h>
-#include <net/arp.h>
-#include <net/ip.h>
-#include <net/udp.h>
-#include <net/tcp.h>
+#ifndef __RAPH_KERNEL_NET_PCTL_H__
+#define __RAPH_KERNEL_NET_PCTL_H__
 
-extern uint16_t _id_auto_increment;
+// Layer 3 protocols
+const uint16_t kProtocolIPv4 = 0x0800;
+const uint16_t kProtocolARP  = 0x0806;
 
-DevEthernetCtrl *netdev_ctrl;
-ArpTable *arp_table;
+// Layer 4 protocols
+const uint8_t kProtocolTCP         = 0x06;
+const uint8_t kProtocolUDP         = 0x11;
 
-void InitNetCtrl() {
-  netdev_ctrl = new(reinterpret_cast<DevEthernetCtrl*>(virtmem_ctrl->Alloc(sizeof(DevEthernetCtrl)))) DevEthernetCtrl();
-
-  arp_table = new(reinterpret_cast<ArpTable*>(virtmem_ctrl->Alloc(sizeof(ArpTable)))) ArpTable();
-
-  // initialize id in IPv4 header
-  _id_auto_increment = 0;
-}
-
-void DismissNetCtrl() {
-  virtmem_ctrl->Free(reinterpret_cast<virt_addr>(netdev_ctrl));
-  virtmem_ctrl->Free(reinterpret_cast<virt_addr>(arp_table));
-}
+#endif // __RAPH_KERNEL_NET_PCTL_H__

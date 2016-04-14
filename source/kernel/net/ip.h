@@ -24,7 +24,6 @@
 #define __RAPH_KERNEL_NET_IP_H__
 
 #include <stdint.h>
-#include <spinlock.h>
 
 /*
  * IPv4 Header
@@ -54,44 +53,7 @@ struct Ipv4Header {
   uint32_t daddr;
 } __attribute__ ((packed));
 
-class IpCtrl {
-public:
-  IpCtrl() : _id_auto_increment(0) {}
-
-  int32_t GenerateHeader(uint8_t *buffer, uint32_t length, uint8_t type, uint32_t saddr, uint32_t daddr);
-  bool FilterPacket(uint8_t *packet, uint8_t type, uint32_t saddr, uint32_t daddr);
-
-  // Layer 4 protocols
-  static const uint8_t kProtocolTCP         = 0x06;
-  static const uint8_t kProtocolUDP         = 0x11;
-
-private:
-  // offset in header
-  static const uint32_t kProtocolTypeOffset = 9;
-  static const uint32_t kSrcAddrOffset      = 13;
-
-  // IPv4
-  static const uint8_t kIPVersion           = 4;
-
-  // packet priority
-  static const uint8_t kPktPriority         = (7 << 5);
-  static const uint8_t kPktDelay            = (1 << 4);
-  static const uint8_t kPktThroughput       = (1 << 3);
-  static const uint8_t kPktReliability      = (1 << 2);
-
-  // packet flag
-  static const uint8_t kFlagNoFragment      = (1 << 6);
-  static const uint8_t kFlagMoreFragment    = (1 << 5);
-
-  // time to live (number of hops)
-  static const uint8_t kTimeToLive          = 16;
-
-  SpinLock _lock;
-
-  // IP header id
-  uint16_t _id_auto_increment;
-
-  uint16_t CheckSum(uint8_t *buf, uint32_t size);
-};
+int32_t IpGenerateHeader(uint8_t *buffer, uint32_t length, uint8_t type, uint32_t saddr, uint32_t daddr);
+bool IpFilterPacket(uint8_t *packet, uint8_t type, uint32_t saddr, uint32_t daddr);
 
 #endif // __RAPH_KERNEL_NET_IP_H__

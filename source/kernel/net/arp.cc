@@ -27,9 +27,16 @@
 #include <net/socket.h>
 #include <net/arp.h>
 
-const uint8_t ArpCtrl::kBcastMACAddr[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+// hardware type
+const uint16_t kHWEthernet = 0x0001;
 
-int32_t ArpCtrl::GeneratePacket(uint8_t *buffer, uint16_t op, uint8_t *smacaddr, uint32_t sipaddr, uint8_t *dmacaddr, uint32_t dipaddr) {
+// protocol
+const uint16_t kProtocolIPv4 = 0x0800;
+
+// broadcast MAC address (ff:ff:ff:ff:ff:ff)
+const uint8_t kBcastMACAddr[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+
+int32_t ArpGeneratePacket(uint8_t *buffer, uint16_t op, uint8_t *smacaddr, uint32_t sipaddr, uint8_t *dmacaddr, uint32_t dipaddr) {
   ArpPacket * volatile packet = reinterpret_cast<ArpPacket*>(buffer);
   packet->hwtype = htons(kHWEthernet);
   packet->protocol = htons(kProtocolIPv4);
@@ -54,9 +61,7 @@ int32_t ArpCtrl::GeneratePacket(uint8_t *buffer, uint16_t op, uint8_t *smacaddr,
   return sizeof(ArpPacket);
 }
 
-bool ArpCtrl::FilterPacket(uint8_t *packet, uint16_t op, uint8_t *smacaddr, uint32_t sipaddr, uint8_t *dmacaddr, uint32_t dipaddr) {
-  Locker locker(_lock);
-
+bool ArpFilterPacket(uint8_t *packet, uint16_t op, uint8_t *smacaddr, uint32_t sipaddr, uint8_t *dmacaddr, uint32_t dipaddr) {
   ArpPacket * volatile data = reinterpret_cast<ArpPacket*>(packet);
   return (!op || ntohs(data->op) == op)
       && (!smacaddr || !memcmp(data->hw_saddr, smacaddr, 6))
@@ -65,23 +70,17 @@ bool ArpCtrl::FilterPacket(uint8_t *packet, uint16_t op, uint8_t *smacaddr, uint
       && (!dipaddr  || ntohl(data->proto_daddr) == dipaddr);
 }
 
-bool ArpCtrl::RegisterAddress(uint8_t *packet) {
-  Locker locker(_lock);
-
+bool RegisterIpAddress(uint8_t *packet) {
   ArpPacket * volatile arp = reinterpret_cast<ArpPacket*>(packet);
   return arp_table->Add(arp->proto_saddr, arp->hw_saddr);
 }
 
-void ArpCtrl::GetSourceMACAddress(uint8_t *buffer, uint8_t *packet) {
-  Locker locker(_lock);
-
+void GetSourceMacAddress(uint8_t *buffer, uint8_t *packet) {
   ArpPacket * volatile arp = reinterpret_cast<ArpPacket*>(packet);
   memcpy(buffer, arp->hw_saddr, 6);
 }
 
-uint32_t ArpCtrl::GetSourceIPAddress(uint8_t *packet) {
-  Locker locker(_lock);
-
+uint32_t GetSourceIpAddress(uint8_t *packet) {
   ArpPacket * volatile arp = reinterpret_cast<ArpPacket*>(packet);
   return ntohl(arp->proto_saddr);
 }

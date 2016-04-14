@@ -27,10 +27,19 @@
 #include <mem/virtmem.h>
 #include <net/ip.h>
 #include <net/tcp.h>
+#include <net/pctl.h>
 
-int32_t TcpCtrl::GenerateHeader(uint8_t *buffer, uint32_t length, uint32_t saddr, uint32_t daddr, uint16_t sport, uint16_t dport, uint8_t type, uint32_t seq, uint32_t ack) {
-  Locker locker(_lock);
+// offset in header
+static const uint8_t kSrcPortOffset     = 0;
+static const uint8_t kDstPortOffset     = 2;
+static const uint8_t kSeqOffset         = 4;
+static const uint8_t kAckOffset         = 8;
+static const uint8_t kSessionTypeOffset = 13;
+static const uint8_t kWindowSizeOffset  = 14;
 
+uint16_t CheckSum(uint8_t *buf, uint32_t size, uint32_t saddr, uint32_t daddr);
+
+int32_t TcpGenerateHeader(uint8_t *buffer, uint32_t length, uint32_t saddr, uint32_t daddr, uint16_t sport, uint16_t dport, uint8_t type, uint32_t seq, uint32_t ack) {
   TcpHeader * volatile header = reinterpret_cast<TcpHeader*>(buffer);
   header->sport = htons(sport);
   header->dport = htons(dport);
@@ -47,9 +56,7 @@ int32_t TcpCtrl::GenerateHeader(uint8_t *buffer, uint32_t length, uint32_t saddr
   return 0;
 }
 
-bool TcpCtrl::FilterPacket(uint8_t *packet, uint16_t sport, uint16_t dport, uint8_t type, uint32_t seq, uint32_t ack) {
-  Locker locker(_lock);
-
+bool TcpFilterPacket(uint8_t *packet, uint16_t sport, uint16_t dport, uint8_t type, uint32_t seq, uint32_t ack) {
   TcpHeader * volatile header = reinterpret_cast<TcpHeader*>(packet);
   // NB: dport of packet sender == sport of packet receiver
   return (!sport || ntohs(header->dport) == sport)
@@ -57,7 +64,7 @@ bool TcpCtrl::FilterPacket(uint8_t *packet, uint16_t sport, uint16_t dport, uint
       && ((header->flag & Socket::kFlagFIN) || header->flag == type);
 }
 
-uint16_t TcpCtrl::CheckSum(uint8_t *buf, uint32_t size, uint32_t saddr, uint32_t daddr) {
+uint16_t CheckSum(uint8_t *buf, uint32_t size, uint32_t saddr, uint32_t daddr) {
   uint64_t sum = 0;
 
   // pseudo header
@@ -69,7 +76,7 @@ uint16_t TcpCtrl::CheckSum(uint8_t *buf, uint32_t size, uint32_t saddr, uint32_t
   if(sum & 0x80000000) sum = (sum & 0xffff) + (sum >> 16);
   sum += ntohs((daddr >> 0) & 0xffff);
   if(sum & 0x80000000) sum = (sum & 0xffff) + (sum >> 16);
-  sum += ntohs(IpCtrl::kProtocolTCP);
+  sum += ntohs(kProtocolTCP);
   if(sum & 0x80000000) sum = (sum & 0xffff) + (sum >> 16);
   sum += ntohs(static_cast<uint16_t>(size));
   if(sum & 0x80000000) sum = (sum & 0xffff) + (sum >> 16);
@@ -95,4 +102,22 @@ uint16_t TcpCtrl::CheckSum(uint8_t *buf, uint32_t size, uint32_t saddr, uint32_t
   }
 
   return ~sum;
+}
+
+// extract sender packet session type
+uint8_t GetSessionType(uint8_t *packet) {
+  TcpHeader * volatile header = reinterpret_cast<TcpHeader*>(packet);
+  return header->flag;
+}
+
+// extract sender sequence number from packet
+uint32_t GetSequenceNumber(uint8_t *packet) {
+  TcpHeader * volatile header = reinterpret_cast<TcpHeader*>(packet);
+  return ntohl(header->seq_number);
+}
+
+// extract sender acknowledge number from packet
+uint32_t GetAcknowledgeNumber(uint8_t *packet) {
+  TcpHeader * volatile header = reinterpret_cast<TcpHeader*>(packet);
+  return ntohl(header->ack_number);
 }

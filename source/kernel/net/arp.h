@@ -24,7 +24,6 @@
 #define __RAPH_KERNEL_NET_ARP_H__
 
 #include <stdint.h>
-#include <spinlock.h>
 
 struct ArpPacket {
   // hardware type
@@ -47,34 +46,17 @@ struct ArpPacket {
   uint32_t proto_daddr;
 } __attribute__((packed));
 
-class ArpCtrl {
-public:
-  ArpCtrl() {}
+int32_t ArpGeneratePacket(uint8_t *buffer, uint16_t op, uint8_t *smacaddr, uint32_t sipaddr, uint8_t *dmacaddr, uint32_t dipaddr);
+bool ArpFilterPacket(uint8_t *packet, uint16_t op, uint8_t *smacaddr, uint32_t sipaddr, uint8_t *dmacaddr, uint32_t dipaddr);
 
-  int32_t GeneratePacket(uint8_t *buffer, uint16_t op, uint8_t *smacaddr, uint32_t sipaddr, uint8_t *dmacaddr, uint32_t dipaddr);
-  bool FilterPacket(uint8_t *packet, uint16_t op, uint8_t *smacaddr, uint32_t sipaddr, uint8_t *dmacaddr, uint32_t dipaddr);
+// register the mapping from IP address to MAC address to ARP table
+bool RegisterIpAddress(uint8_t *packet);
 
-  // register the mapping from IP address to MAC address to ARP table
-  bool RegisterAddress(uint8_t *packet);
+// extract sender MAC address from packet
+void GetSourceMacAddress(uint8_t *buffer, uint8_t *packet);
 
-  // extract sender MAC address from packet
-  void GetSourceMACAddress(uint8_t *buffer, uint8_t *packet);
-
-  // extract sender MAC address from packet
-  uint32_t GetSourceIPAddress(uint8_t *packet);
-
-  // hardware type
-  static const uint16_t kHWEthernet = 0x0001;
-
-  // protocol
-  static const uint16_t kProtocolIPv4 = 0x0800;
-
-private:
-  // broadcast MAC address (ff:ff:ff:ff:ff:ff)
-  static const uint8_t kBcastMACAddr[6];
-
-  SpinLock _lock;
-};
+// extract sender MAC address from packet
+uint32_t GetSourceIpAddress(uint8_t *packet);
 
 class ArpTable {
 public:
