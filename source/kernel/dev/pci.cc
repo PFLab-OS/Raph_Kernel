@@ -26,8 +26,8 @@
 #include "../tty.h"
 #include "pci.h"
 
-#include "e1000/em.h"
-#include "e1000/lem.h"
+#include "nic/intel/em/em.h"
+#include "nic/intel/em/lem.h"
 
 void PCICtrl::_Init() {
   _mcfg = acpi_ctrl->GetMCFG();

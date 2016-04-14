@@ -28,6 +28,7 @@
 #include <task.h>
 #include <mem/physmem.h>
 #include <mem/paging.h>
+#include <mem/tmpmem.h>
 #include <gdt.h>
 #include <idt.h>
 #include <timer.h>
@@ -49,6 +50,7 @@ ApicCtrl *apic_ctrl;
 PhysmemCtrl *physmem_ctrl;
 PagingCtrl *paging_ctrl;
 VirtmemCtrl *virtmem_ctrl;
+TmpmemCtrl *tmpmem_ctrl;
 TaskCtrl *task_ctrl;
 Gdt *gdt;
 Idt *idt;
@@ -61,13 +63,33 @@ PCICtrl *pci_ctrl;
 
 static uint32_t rnd_next = 1;
 
-#include <dev/e1000/bem.h>
+#include <dev/nic/intel/em/bem.h>
 bE1000 *eth;
 uint64_t cnt;
 int time;
 
 #include <callout.h>
-Callout tt;
+Callout tt1;
+Callout tt2;
+
+#define FLAG 2
+#if FLAG == 3
+#define IP1 192, 168, 100, 117
+#define IP2 192, 168, 100, 254
+#elif FLAG == 2
+#define IP1 192, 168, 100, 117
+#define IP2 192, 168, 100, 104
+#elif FLAG == 1
+#define IP1 192, 168, 100, 104
+#define IP2 192, 168, 100, 117
+#elif FLAG == 0
+#define IP1 10, 0, 2, 5
+#define IP2 10, 0, 2, 15
+#endif
+
+uint8_t ip[] = {
+  IP1,
+};
 
 extern "C" int main() {
   SpinLockCtrl _spinlock_ctrl;
@@ -90,6 +112,9 @@ extern "C" int main() {
 
   VirtmemCtrl _virtmem_ctrl;
   virtmem_ctrl = &_virtmem_ctrl;
+
+  TmpmemCtrl _tmpmem_ctrl;
+  tmpmem_ctrl = &_tmpmem_ctrl;
   
   PhysmemCtrl _physmem_ctrl;
   physmem_ctrl = &_physmem_ctrl;
@@ -109,6 +134,8 @@ extern "C" int main() {
   Keyboard _keyboard;
   keyboard = &_keyboard;
   
+  tmpmem_ctrl->Init();
+
   PhysAddr paddr;
   physmem_ctrl->Alloc(paddr, PagingCtrl::kPageSize * 2);
   extern int kKernelEndAddr;
@@ -145,6 +172,85 @@ extern "C" int main() {
 
   InitDevices<PCICtrl, Device>();
 
+  gtty->Init();
+
+  kassert(eth != nullptr);
+  Function func;
+  func.Init([](void *){
+      bE1000::Packet *rpacket;
+      if(!eth->ReceivePacket(rpacket)) {
+        return;
+      } 
+      // received packet
+      if(rpacket->buf[12] == 0x08 && rpacket->buf[13] == 0x06 && rpacket->buf[21] == 0x02) {
+        uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;
+        cnt = 0;
+        // ARP packet
+        gtty->Printf(
+                     "s", "ARP Reply received; ",
+                     "x", rpacket->buf[22], "s", ":",
+                     "x", rpacket->buf[23], "s", ":",
+                     "x", rpacket->buf[24], "s", ":",
+                     "x", rpacket->buf[25], "s", ":",
+                     "x", rpacket->buf[26], "s", ":",
+                     "x", rpacket->buf[27], "s", " is ",
+                     "d", rpacket->buf[28], "s", ".",
+                     "d", rpacket->buf[29], "s", ".",
+                     "d", rpacket->buf[30], "s", ".",
+                     "d", rpacket->buf[31], "s", " ",
+                     "s","latency:","d",l,"s","us\n");
+      }
+      if(rpacket->buf[12] == 0x08 && rpacket->buf[13] == 0x06 && rpacket->buf[21] == 0x01 && (memcmp(rpacket->buf + 38, ip, 4) == 0)) {
+        // ARP packet
+        uint8_t data[] = {
+          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target MAC Address
+          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source MAC Address
+          0x08, 0x06, // Type: ARP
+          // ARP Packet
+          0x00, 0x01, // HardwareType: Ethernet
+          0x08, 0x00, // ProtocolType: IPv4
+          0x06, // HardwareLength
+          0x04, // ProtocolLength
+          0x00, 0x02, // Operation: ARP Reply
+          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source Hardware Address
+          0x00, 0x00, 0x00, 0x00, // Source Protocol Address
+          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
+          0x00, 0x00, 0x00, 0x00, // Target Protocol Address
+        };
+        memcpy(data, rpacket->buf + 6, 6);
+        eth->GetEthAddr(data + 6);
+        memcpy(data + 22, data + 6, 6);
+        memcpy(data + 28, ip, 4);
+        memcpy(data + 32, rpacket->buf + 22, 6);
+        memcpy(data + 38, rpacket->buf + 28, 4);
+
+        uint32_t len = sizeof(data)/sizeof(uint8_t);
+        bE1000::Packet *tpacket;
+        kassert(eth->GetTxPacket(tpacket));
+        memcpy(tpacket->buf, data, len);
+        tpacket->len = len;
+        eth->TransmitPacket(tpacket);
+        gtty->Printf(
+                     "s", "ARP Request received; ",
+                     "x", rpacket->buf[22], "s", ":",
+                     "x", rpacket->buf[23], "s", ":",
+                     "x", rpacket->buf[24], "s", ":",
+                     "x", rpacket->buf[25], "s", ":",
+                     "x", rpacket->buf[26], "s", ":",
+                     "x", rpacket->buf[27], "s", ",",
+                     "d", rpacket->buf[28], "s", ".",
+                     "d", rpacket->buf[29], "s", ".",
+                     "d", rpacket->buf[30], "s", ".",
+                     "d", rpacket->buf[31], "s", " says who's ",
+                     "d", rpacket->buf[38], "s", ".",
+                     "d", rpacket->buf[39], "s", ".",
+                     "d", rpacket->buf[40], "s", ".",
+                     "d", rpacket->buf[41], "s", "\n");
+        gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
+      }
+      eth->ReuseRxBuffer(rpacket);
+    }, nullptr);
+  eth->SetReceiveCallback(2, func);
 
   extern int kKernelEndAddr;
   // stackは16K
@@ -159,7 +265,6 @@ extern "C" int main() {
   cnt = 0;
 
   gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
-  apic_ctrl->SetupTimer(32 + 10);
 
   apic_ctrl->StartAPs();
 
@@ -177,33 +282,12 @@ extern "C" int main() {
   }, nullptr);
   _keyboard_polling.Register();
   
-  while(true) {
-    task_ctrl->Run();
-    asm volatile("hlt");
-  }
+  task_ctrl->Run();
 
   DismissNetCtrl();
 
   return 0;
 }
-
-#define FLAG 1
-#if FLAG == 3
-#define IP1 192, 168, 100, 117
-#define IP2 192, 168, 100, 254
-#elif FLAG == 2
-#define IP1 192, 168, 100, 117
-#define IP2 192, 168, 100, 104
-#elif FLAG == 1
-#define IP1 192, 168, 100, 104
-#define IP2 192, 168, 100, 117
-#elif FLAG == 0
-#define IP1 10, 0, 2, 5
-#define IP2 10, 0, 2, 15
-#endif
-
-uint8_t ip1[] = {IP1};
-uint8_t ip2[] = {IP2};
 
 extern "C" int main_of_others() {
 // according to mp spec B.3, system should switch over to Symmetric I/O mode
@@ -214,9 +298,8 @@ extern "C" int main_of_others() {
 
   gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
 
-  apic_ctrl->SetupTimer(32 + 10);
   // ループ性能測定用
-  // if (apic_ctrl->GetApicId() == 3) {
+  // if (apic_ctrl->GetApicId() == 4) {
   //   PollingFunc p;
   //   static int hoge = 0;
   //   p.Init([](void *){
@@ -227,102 +310,72 @@ extern "C" int main_of_others() {
   //   p.Register();
   // }
 
-  
-  if (apic_ctrl->GetApicId() == 1) {
-    static ArpSocket socket;
-    if(socket.Open() < 0) {
-      gtty->Printf("s", "[error] failed to open socket\n");
-    }
-    socket.SetIPAddr(inet_atoi(ip1));
-
-    PollingFunc p;
-    p.Init([](void *){
-      uint32_t ipaddr;
-      uint8_t macaddr[6];
-      int32_t rval = socket.ReceivePacket(0, &ipaddr, macaddr);
-      if(rval == ArpSocket::kOpARPReply) {
-        uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;
-        cnt = 0;
-        gtty->Printf(
-                     "s", "[arp] reply received; ",
-                     "x", macaddr[0], "s", ":",
-                     "x", macaddr[1], "s", ":",
-                     "x", macaddr[2], "s", ":",
-                     "x", macaddr[3], "s", ":",
-                     "x", macaddr[4], "s", ":",
-                     "x", macaddr[5], "s", " is ",
-                     "d", (ipaddr >> 24) & 0xff, "s", ".",
-                     "d", (ipaddr >> 16) & 0xff, "s", ".",
-                     "d", (ipaddr >> 8) & 0xff, "s", ".",
-                     "d", (ipaddr >> 0) & 0xff, "s", " (");
-        gtty->Printf("s", "latency:", "d", l, "s", "us)\n");
-      } else if(rval == ArpSocket::kOpARPRequest) {
-        if(socket.TransmitPacket(ArpSocket::kOpARPReply, ipaddr, macaddr) < 0) {
-	        gtty->Printf("s", "[arp] failed to transmit reply\n");
-	      } else {
-	        gtty->Printf("s", "[arp] reply sent\n");
-	      }
-
-        gtty->Printf(
-                     "s", "[arp] request received; ",
-                     "x", macaddr[0], "s", ":",
-                     "x", macaddr[1], "s", ":",
-                     "x", macaddr[2], "s", ":",
-                     "x", macaddr[3], "s", ":",
-                     "x", macaddr[4], "s", ":",
-                     "x", macaddr[5], "s", " is ",
-                     "d", (ipaddr >> 24) & 0xff, "s", ".",
-                     "d", (ipaddr >> 16) & 0xff, "s", ".",
-                     "d", (ipaddr >> 8) & 0xff, "s", ".",
-                     "d", (ipaddr >> 0) & 0xff, "s", "\n");
-      }
-    }, nullptr);
-    p.Register();
-  } else if (apic_ctrl->GetApicId() == 2) {
-    cnt = 0;
-    new(&tt) Callout;
-    time = 10;
-    tt.Init([](void *){
+  // ワンショット性能測定用
+  if (apic_ctrl->GetApicId() == 5) {
+    new(&tt1) Callout;
+    tt1.Init([](void *){
         if (!apic_ctrl->IsBootupAll()) {
-          tt.SetHandler(1000);
+          tt1.SetHandler(1000);
           return;
         }
-        apic_ctrl->SendIpi(3);
+      }, nullptr);
+    tt1.SetHandler(10);
+  }
+
+  if (apic_ctrl->GetApicId() == 3) {
+    cnt = 0;
+    new(&tt2) Callout;
+    time = 10;
+    tt2.Init([](void *){
+        if (!apic_ctrl->IsBootupAll()) {
+          tt2.SetHandler(1000);
+          return;
+        }
         kassert(eth != nullptr);
         eth->UpdateLinkStatus();
         if (eth->GetStatus() != bE1000::LinkStatus::Up) {
-          tt.SetHandler(1000);
+          tt2.SetHandler(1000);
           return;
         }
         if (cnt != 0) {
-          tt.SetHandler(10);
+          tt2.SetHandler(10);
           return;
         }
-
-        ArpSocket socket;
-        if(socket.Open() < 0) {
-          gtty->Printf("s", "[error] failed to open socket\n");
-        } else {
-          socket.SetIPAddr(inet_atoi(ip1));
-          cnt = timer->ReadMainCnt();
-          if(socket.TransmitPacket(ArpSocket::kOpARPRequest, inet_atoi(ip2), nullptr) < 0) {
-    	      gtty->Printf("s", "[arp] failed to transmit request\n");
-    	    } else {
-    	      gtty->Printf("s", "[arp] request sent\n");
-    	    }
-        }
-
+        uint8_t data[] = {
+          0xff, 0xff, 0xff, 0xff, 0xff, 0xff, // Target MAC Address
+          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source MAC Address
+          0x08, 0x06, // Type: ARP
+          // ARP Packet
+          0x00, 0x01, // HardwareType: Ethernet
+          0x08, 0x00, // ProtocolType: IPv4
+          0x06, // HardwareLength
+          0x04, // ProtocolLength
+          0x00, 0x01, // Operation: ARP Request
+          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source Hardware Address
+          0x00, 0x00, 0x00, 0x00, // Source Protocol Address
+          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
+          // Target Protocol Address
+          IP2,
+        };
+        eth->GetEthAddr(data + 6);
+        memcpy(data + 22, data + 6, 6);
+        memcpy(data + 28, ip, 4);
+        uint32_t len = sizeof(data)/sizeof(uint8_t);
+        bE1000::Packet *tpacket;
+        kassert(eth->GetTxPacket(tpacket));
+        memcpy(tpacket->buf, data, len);
+        tpacket->len = len;
+        cnt = timer->ReadMainCnt();
+        eth->TransmitPacket(tpacket);
+        gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
         time--;
         if (time != 0) {
-          tt.SetHandler(3000);
+          tt2.SetHandler(3000);
         }
       }, nullptr);
-    tt.SetHandler(10);
+    tt2.SetHandler(10);
   }
-  while(true) {
-    task_ctrl->Run();
-    asm volatile("hlt");
-  }
+  task_ctrl->Run();
   return 0;
 }
 

@@ -35,7 +35,7 @@
 
 #include <mem/virtmem.h>
 #include <global.h>
-
+#include <freebsd/net/ethernet.h>
 
 struct ifnet {
   int	if_drv_flags;		/* driver-managed status flags */
@@ -72,6 +72,14 @@ static inline int if_setsoftc(if_t ifp, void *softc)
 
 static inline if_t if_gethandle(uint8_t type) {
   return reinterpret_cast<if_t>(virtmem_ctrl->Alloc(sizeof(struct ifnet)));
+}
+
+static inline int if_getmtu(if_t ifp) {
+  return ETHERMTU;
+}
+
+static inline int if_getcapenable(if_t ifp) {
+  return 0;
 }
 
 #endif /* _FREEBSD_NET_IF_VAR_H_ */

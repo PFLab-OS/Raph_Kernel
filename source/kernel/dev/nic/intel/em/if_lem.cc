@@ -96,10 +96,10 @@
 
 #include <stdint.h>
 #include <string.h>
-#include "../../timer.h"
-#include "../../mem/paging.h"
-#include "../../mem/virtmem.h"
-#include "../../mem/physmem.h"
+#include <timer.h>
+#include <mem/paging.h>
+#include <mem/virtmem.h>
+#include <mem/physmem.h>
 
 #include "lem.h"
 #include "e1000_raph.h"
@@ -212,7 +212,7 @@ static void	lem_setup_transmit_structures(struct adapter *);
 static void	lem_initialize_transmit_unit(struct adapter *);
 static int	lem_setup_receive_structures(struct adapter *);
 static void	lem_initialize_receive_unit(struct adapter *);
-// static void	lem_enable_intr(struct adapter *);
+static void	lem_enable_intr(struct adapter *);
 static void	lem_disable_intr(struct adapter *);
 // static void	lem_free_transmit_structures(struct adapter *);
 // static void	lem_free_receive_structures(struct adapter *);
@@ -1318,11 +1318,11 @@ lem_init_locked(struct adapter *adapter)
 	 * Only enable interrupts if we are not polling, make sure
 	 * they are off otherwise.
 	 */
-	// if (if_getcapenable(ifp) & IFCAP_POLLING)
-		lem_disable_intr(adapter);
-	// else
+        if (if_getcapenable(ifp) & IFCAP_POLLING)
+          lem_disable_intr(adapter);
+        else
 #endif /* DEVICE_POLLING */
-		// lem_enable_intr(adapter);
+          lem_enable_intr(adapter);
 
 	/* AMT based hardware can now take control from firmware */
 	if (adapter->has_manage && adapter->has_amt)
@@ -4103,14 +4103,14 @@ lem_fixup_rx(struct adapter *adapter)
 // 	E1000_WRITE_REG(hw, E1000_RCTL, reg);
 // }
 
-// static void
-// lem_enable_intr(struct adapter *adapter)
-// {
-// 	struct e1000_hw *hw = &adapter->hw;
-// 	u32 ims_mask = IMS_ENABLE_MASK;
+static void
+lem_enable_intr(struct adapter *adapter)
+{
+	struct e1000_hw *hw = &adapter->hw;
+	u32 ims_mask = IMS_ENABLE_MASK;
 
-// 	E1000_WRITE_REG(hw, E1000_IMS, ims_mask);
-// }
+	E1000_WRITE_REG(hw, E1000_IMS, ims_mask);
+}
 
 static void
 lem_disable_intr(struct adapter *adapter)

@@ -100,6 +100,14 @@ public:
     }
     void SendIpi(uint8_t destid);
     void SetupTimer(uint32_t irq);
+    void StartTimer() {
+      volatile uint32_t tmp = _ctrlAddr[kRegTimerInitCnt];
+      _ctrlAddr[kRegTimerInitCnt] = tmp;
+      _ctrlAddr[kRegLvtTimer] &= ~kRegLvtMask;
+    }
+    void StopTimer() {
+      _ctrlAddr[kRegLvtTimer] |= kRegLvtMask;
+    }
   private:
     volatile uint32_t *_ctrlAddr = nullptr;
     static const int kIa32ApicBaseMsr = 0x1B;
@@ -245,6 +253,12 @@ public:
   }
   void SetupTimer(uint32_t irq) {
     _lapic.SetupTimer(irq);
+  }
+  void StartTimer() {
+    _lapic.StartTimer();
+  }
+  void StopTimer() {
+    _lapic.StopTimer();
   }
 private:
   static void TmrCallback(Regs *rs) {

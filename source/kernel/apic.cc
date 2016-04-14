@@ -170,7 +170,7 @@ void ApicCtrl::Lapic::SetupTimer(uint32_t irq) {
   idt->SetIntCallback(irq, TmrCallback);
   _ctrlAddr[kRegTimerInitCnt] = base_cnt;
       
-  _ctrlAddr[kRegLvtTimer] = kRegTimerPeriodic | irq;
+  _ctrlAddr[kRegLvtTimer] = kRegLvtMask | kRegTimerPeriodic | irq;
 }
 
 void ApicCtrl::Lapic::SendIpi(uint8_t destid) {

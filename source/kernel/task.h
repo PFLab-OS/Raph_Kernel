@@ -28,39 +28,7 @@
 #include <mem/virtmem.h>
 #include <global.h>
 #include <spinlock.h>
-
-#include <timer.h>
-
-class Function {
- public:
-  Function() {
-  }
-  Function(const Function &func) {
-    _func = func._func;
-    _arg = func._arg;
-  }
-  void Init(void (*func)(void *), void *arg) {
-    _func = func;
-    _arg = arg;
-  }
-  void Execute() {
-    if (_func != nullptr) {
-      _func(_arg);
-    }
-  }
-  volatile bool CanExecute() {
-    return (_func != nullptr);
-  }
-  void Clear() {
-    _func = nullptr;
-  }
-  bool Equal(const Function &func) {
-    return (_func == func._func) && (_arg == func._arg);
-  }
- private:
-  void (*_func)(void *) = nullptr;
-  void *_arg;
-};
+#include <functional.h>
 
 class Polling;
 // TODO: Functionベースでなく、Taskベースでの登録にすべき
@@ -72,10 +40,10 @@ class TaskCtrl {
   };
   TaskCtrl() {}
   void Setup();
-  void Register(const Function &func) {
-    RegisterSub(func, TaskType::kNormal);
+  void Register(int apicid, const Function &func) {
+    RegisterSub(apicid, func, TaskType::kNormal);
   }
-  void Remove(const Function &func);
+  void Remove(int apicid, const Function &func);
   void Run();
   TaskCtrlState GetState(int apicid) {
     return _task_struct[apicid].state;
@@ -91,10 +59,10 @@ class TaskCtrl {
     Task *next;
     TaskType type;
   };
-  void RegisterPolling(const Function &func) {
-    RegisterSub(func, TaskType::kPolling);
+  void RegisterPolling(int apicid, const Function &func) {
+    RegisterSub(apicid, func, TaskType::kPolling);
   }
-  void RegisterSub(const Function &func, TaskType type);
+  void RegisterSub(int apicid, const Function &func, TaskType type);
   struct TaskStruct {
     // queue
     Task *top;

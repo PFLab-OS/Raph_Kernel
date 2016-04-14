@@ -46,8 +46,7 @@ void TaskCtrl::Setup() {
   }
 }
 
-void TaskCtrl::Remove(const Function &func) {
-  int apicid = apic_ctrl->GetApicId();
+void TaskCtrl::Remove(int apicid, const Function &func) {
   Locker locker(_task_struct[apicid].lock);
   Task *t = _task_struct[apicid].top;
   while(t->next != nullptr) {
@@ -82,56 +81,61 @@ void TaskCtrl::Remove(const Function &func) {
 }
 
 void TaskCtrl::Run() {
-  Function f;
-  int apicid = apic_ctrl->GetApicId();
-  kassert(_task_struct[apicid].state == TaskCtrlState::kNotRunningTask);
-  _task_struct[apicid].state = TaskCtrlState::kRunningTask;
-  while (true){
-    Task *t;
-    {
-      Locker locker(_task_struct[apicid].lock);
-      Task *tt = _task_struct[apicid].top;
-      t = tt->next;
-      if (t == nullptr) {
-        kassert(tt == _task_struct[apicid].bottom);
-        break;
+  apic_ctrl->SetupTimer(32 + 10);
+  while(true) {
+    apic_ctrl->StopTimer();
+    Function f;
+    int apicid = apic_ctrl->GetApicId();
+    kassert(_task_struct[apicid].state == TaskCtrlState::kNotRunningTask);
+    _task_struct[apicid].state = TaskCtrlState::kRunningTask;
+    while (true){
+      Task *t;
+      {
+        Locker locker(_task_struct[apicid].lock);
+        Task *tt = _task_struct[apicid].top;
+        t = tt->next;
+        if (t == nullptr) {
+          kassert(tt == _task_struct[apicid].bottom);
+          break;
+        }
+        tt->next = t->next;
+        if (t->next == nullptr) {
+          kassert(_task_struct[apicid].bottom == t);
+          _task_struct[apicid].bottom = tt;
+        }
       }
-      tt->next = t->next;
-      if (t->next == nullptr) {
-        kassert(_task_struct[apicid].bottom == t);
-        _task_struct[apicid].bottom = tt;
+      t->func.Execute();
+      if (t->type == TaskType::kPolling) {
+        Locker locker(_task_struct[apicid].lock);
+        _task_struct[apicid].bottom_sub->next = t;
+        t->next = nullptr;
+        _task_struct[apicid].bottom_sub = t;
+      } else {
+        virtmem_ctrl->Free(reinterpret_cast<virt_addr>(t));
+        //      _allocator.Free(t);
       }
     }
-    t->func.Execute();
-    if (t->type == TaskType::kPolling) {
-      Locker locker(_task_struct[apicid].lock);
-      _task_struct[apicid].bottom_sub->next = t;
-      t->next = nullptr;
-      _task_struct[apicid].bottom_sub = t;
-    } else {
-      virtmem_ctrl->Free(reinterpret_cast<virt_addr>(t));
-      //      _allocator.Free(t);
-    }
+    Locker locker(_task_struct[apicid].lock);
+    Task *tmp;
+    tmp = _task_struct[apicid].top;
+    _task_struct[apicid].top = _task_struct[apicid].top_sub;
+    _task_struct[apicid].top_sub = tmp;
+
+    tmp = _task_struct[apicid].bottom;
+    _task_struct[apicid].bottom = _task_struct[apicid].bottom_sub;
+    _task_struct[apicid].bottom_sub = tmp;
+
+    _task_struct[apicid].state = TaskCtrlState::kNotRunningTask;
+    apic_ctrl->StartTimer();
+    asm volatile("hlt");
   }
-  Locker locker(_task_struct[apicid].lock);
-  Task *tmp;
-  tmp = _task_struct[apicid].top;
-  _task_struct[apicid].top = _task_struct[apicid].top_sub;
-  _task_struct[apicid].top_sub = tmp;
-
-  tmp = _task_struct[apicid].bottom;
-  _task_struct[apicid].bottom = _task_struct[apicid].bottom_sub;
-  _task_struct[apicid].bottom_sub = tmp;
-
-  _task_struct[apicid].state = TaskCtrlState::kNotRunningTask;
 }
 
-void TaskCtrl::RegisterSub(const Function &func, TaskType type) {
+void TaskCtrl::RegisterSub(int apicid, const Function &func, TaskType type) {
   Task *task = reinterpret_cast<Task *>(virtmem_ctrl->Alloc(sizeof(Task)));//_allocator.Alloc();
   task->func = func;
   task->next = nullptr;
   task->type = type;
-  int apicid = apic_ctrl->GetApicId();
   Locker locker(_task_struct[apicid].lock);
   _task_struct[apicid].bottom->next = task;
   _task_struct[apicid].bottom = task;
