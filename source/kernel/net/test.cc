@@ -193,12 +193,24 @@ void TCPClient2() {
 
   const uint32_t size = 8000;
   uint8_t data[size];
+  uint32_t s = size;  // length of packet last time sent
+  uint8_t *p = data;  // current position in packet
   memset(data, 0x41, size-1);
   data[size-1] = 0;
 
   while(socket.Connect() < 0);
 
-  printf("return value = %d\n", socket.TransmitPacket(data, size));
+  uint32_t sum = 0;
+  while(sum < size) {
+    int32_t rval = socket.TransmitPacket(p, s);
+    printf("return value = %d\n", rval);
+
+    if(rval >= 0) {
+      p += rval;
+      s -= rval;
+      sum += rval;
+    }
+  }
 
   while(socket.Close() < 0);
 }

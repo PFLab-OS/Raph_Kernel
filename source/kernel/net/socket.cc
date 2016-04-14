@@ -128,79 +128,59 @@ int32_t Socket::Transmit(const uint8_t *data, uint32_t length, bool is_raw_packe
 }
 
 int32_t Socket::TransmitPacket(const uint8_t *packet, uint32_t length) {
-  // total sent length
-  int32_t sum = 0;
   // return value of receiving ack
   int32_t rval_ack = 0;
   // base count of round trip time
   uint64_t t0 = 0;
 
-  while(true) {
-    // length intended to be sent
-    uint32_t send_length = length > kMSS ? kMSS : length;
+  // length intended to be sent
+  uint32_t send_length = length > kMSS ? kMSS : length;
 
-    if(rval_ack != kErrorRetransmissionTimeout) t0 = timer->ReadMainCnt();
+  if(rval_ack != kErrorRetransmissionTimeout) t0 = timer->ReadMainCnt();
 
-    // successfully sent length of packet
-    int32_t rval = Transmit(packet, send_length, false);
+  // successfully sent length of packet
+  int32_t rval = Transmit(packet, send_length, false);
 
-    if(_type & kFlagACK) {
-      // transmission mode is ACK
-      uint8_t packet_ack[sizeof(EthHeader) + sizeof(Ipv4Header) + sizeof(TcpHeader)];
-      uint8_t *tcp = packet_ack + sizeof(EthHeader) + sizeof(Ipv4Header);
+  if(_type & kFlagACK) {
+    // transmission mode is ACK
+    uint8_t packet_ack[sizeof(EthHeader) + sizeof(Ipv4Header) + sizeof(TcpHeader)];
+    uint8_t *tcp = packet_ack + sizeof(EthHeader) + sizeof(Ipv4Header);
 
-      if(rval >= 0 && _established) {
+    if(rval >= 0 && _established) {
 
-        uint64_t rto = timer->GetCntAfterPeriod(timer->ReadMainCnt(), GetRetransmissionTimeout());
+      uint64_t rto = timer->GetCntAfterPeriod(timer->ReadMainCnt(), GetRetransmissionTimeout());
 
-        while(true) {
-          // receive acknowledgement
-          rval_ack = Receive(packet_ack, sizeof(EthHeader) + sizeof(Ipv4Header) + sizeof(TcpHeader), true, true, rto);
-          if(rval_ack >= 0) {
-            // acknowledgement packet received
-            uint8_t type = tcp_ctrl->GetSessionType(tcp);
-            uint32_t seq = tcp_ctrl->GetSequenceNumber(tcp);
-            uint32_t ack = tcp_ctrl->GetAcknowledgeNumber(tcp);
+      while(true) {
+        // receive acknowledgement
+        rval_ack = Receive(packet_ack, sizeof(EthHeader) + sizeof(Ipv4Header) + sizeof(TcpHeader), true, true, rto);
+        if(rval_ack >= 0) {
+          // acknowledgement packet received
+          uint8_t type = tcp_ctrl->GetSessionType(tcp);
+          uint32_t seq = tcp_ctrl->GetSequenceNumber(tcp);
+          uint32_t ack = tcp_ctrl->GetAcknowledgeNumber(tcp);
 
-            // sequence & acknowledge number validation
-            if(type & kFlagACK && seq == _ack && ack == _seq + rval) {
+          // sequence & acknowledge number validation
+          if(type & kFlagACK && seq == _ack && ack == _seq + rval) {
 
-              // calculate round trip time
-              uint64_t t1 = timer->ReadMainCnt();
-              _rtt_usec = t1 - t0;
+            // calculate round trip time
+            uint64_t t1 = timer->ReadMainCnt();
+            _rtt_usec = t1 - t0;
 
-              // seqeuence & acknowledge number is valid
-              SetSequenceNumber(_seq + rval);
+            // seqeuence & acknowledge number is valid
+            SetSequenceNumber(_seq + rval);
 
-              sum += rval;
-              break;
-            }
-          } else if(rval_ack == kErrorRetransmissionTimeout) {
-            // retransmission timeout
-            break;
+            return rval;
           }
+        } else if(rval_ack == kErrorRetransmissionTimeout) {
+          return kErrorRetransmissionTimeout;
         }
-      } else if(rval < 0) {
-        // failed to transmit
-        sum = rval;
-        break;
       }
-    }
-
-    if(rval_ack == kErrorRetransmissionTimeout) continue;
-
-    // for remaining segment transmission
-    if(length > kMSS) {
-      packet += rval;
-      length -= rval;
-      continue;
-    } else {
-      // transmission complete
-      break;
+    } else if(rval < 0) {
+      return rval;  // failure
     }
   }
 
-  return sum;
+  return rval;
 }
 
 int32_t Socket::TransmitRawPacket(const uint8_t *data, uint32_t length) {
