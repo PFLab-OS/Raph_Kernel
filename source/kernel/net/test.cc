@@ -173,8 +173,9 @@ void TCPServer2() {
 
   while(true) {
     rval = socket.ReceivePacket(data, size);
-    printf("return value = %d\n", rval);
-    if(rval < 0) {
+    if(rval >= 0) {
+      printf("return value = %d\n", rval);
+    } else if(rval == Socket::kResultConnectionClosed) {
       break;
     }
   }
@@ -214,17 +215,18 @@ void TCPServer3() {
 
   const uint32_t size = Socket::kMSS;
   uint8_t data[size];
-  int32_t rval;
+  int32_t rval = 0;
 
   while(socket.Listen() < 0);
 
-  while(true) {
+  for(uint32_t t = 0; ; t++) {
     // NB: stupid server!!! (test TCP restransmission)
-    timer->BusyUwait(5000000);
+    if(rval >= 0) timer->BusyUwait(5000000);
 
     rval = socket.ReceivePacket(data, size);
-    printf("return value = %d\n", rval);
-    if(rval < 0) {
+    if(rval >= 0) {
+      printf("return value = %d\n", rval);
+    } else if(rval == Socket::kResultConnectionClosed) {
       break;
     }
   }

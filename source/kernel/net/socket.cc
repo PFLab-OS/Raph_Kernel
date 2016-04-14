@@ -261,49 +261,64 @@ int32_t Socket::Receive(uint8_t *data, uint32_t length, bool is_raw_packet, bool
 }
 
 int32_t Socket::ReceivePacket(uint8_t *data, uint32_t length) {
-  if(_type & kFlagACK) {
-    // TCP acknowledgement
-    uint32_t pkt_size = sizeof(EthHeader) + sizeof(Ipv4Header) + sizeof(TcpHeader) + length;
-    int32_t rval;
-    uint8_t *packet = reinterpret_cast<uint8_t*>(virtmem_ctrl->Alloc(pkt_size));
-    uint8_t *tcp = packet + sizeof(EthHeader) + sizeof(Ipv4Header);
+  if(_state == kStateCloseWait || _state == kStateLastAck) {
+    // continue closing connection
+    int32_t rval = CloseAck();
 
-    while(true) {
-      if((rval = Receive(packet, pkt_size, true, false, 0)) >= 0) {
+    if(rval >= 0) {
+      return kResultConnectionClosed;
+    } else {
+      return rval;  // failure
+    }
+  }
+
+  if(_state == kStateEstablished) {
+    if(_type & kFlagACK) {
+      // TCP acknowledgement
+      uint32_t pkt_size = sizeof(EthHeader) + sizeof(Ipv4Header) + sizeof(TcpHeader) + length;
+      uint8_t *packet = reinterpret_cast<uint8_t*>(virtmem_ctrl->Alloc(pkt_size));
+      uint8_t *tcp = packet + sizeof(EthHeader) + sizeof(Ipv4Header);
+  
+      int32_t rval = Receive(packet, pkt_size, true, false, 0);
+  
+      if(rval >= 0) {
         uint8_t type = tcp_ctrl->GetSessionType(tcp);
         uint32_t seq = tcp_ctrl->GetSequenceNumber(tcp);
         uint32_t ack = tcp_ctrl->GetAcknowledgeNumber(tcp);
-
+  
+        // TODO: check if ack number is duplicated
+  
         if(type & kFlagFIN) {
+          // close connection
           SetSequenceNumber(ack);
           SetAcknowledgeNumber(seq + 1);
-          while(CloseAck(type) < 0);
-          rval = kResultConnectionClosed;
-          break;
+          rval = CloseAck();
+  
+          if(rval >= 0) {
+            rval = kResultConnectionClosed;
+          }
         } else if(_ack == seq || (_seq == seq && _ack == ack)) {
           // acknowledge number = the expected next sequence number
           // (but the packet receiving right after 3-way handshake is not the case)
           rval -= sizeof(EthHeader) + sizeof(Ipv4Header) + sizeof(TcpHeader);
           SetSequenceNumber(ack);
           SetAcknowledgeNumber(seq + rval);
-
+  
           // acknowledge
-          if(_established) Transmit(nullptr, 0, false);
+          if(_state == kStateEstablished) Transmit(nullptr, 0, false);
+  
           memcpy(data, packet + pkt_size - length, length);
-          break;
-        } else {
-          // something is wrong with the received sequence number
-          // it is possible that sender retransmitted the lost packet,
-          // so discard it and retry to receive next packet
-          continue;
         }
       }
+  
+      virtmem_ctrl->Free(reinterpret_cast<virt_addr>(packet));
+      return rval;
+    } else {
+      return Receive(data, length, false, false, 0);
     }
-    virtmem_ctrl->Free(reinterpret_cast<virt_addr>(packet));
-    return rval;
-  } else {
-    return Receive(data, length, false, false, 0);
   }
+
+  return kErrorUnknown;
 }
 
 int32_t Socket::ReceiveRawPacket(uint8_t *data, uint32_t length) {
@@ -513,54 +528,51 @@ int32_t Socket::Close() {
   return 0;
 }
 
-int32_t Socket::CloseAck(uint8_t flag) {
+int32_t Socket::CloseAck() {
   uint32_t kBufSize = sizeof(EthHeader) + sizeof(Ipv4Header) + sizeof(TcpHeader);
   uint8_t buffer[kBufSize];
   uint8_t *tcp = buffer + sizeof(EthHeader) + sizeof(Ipv4Header);
 
-  if(flag == (kFlagFIN | kFlagACK)) {
+  if(_state == kStateEstablished) {
+    // transmit ACK packet
+    SetSessionType(kFlagACK);
+    int rval = Transmit(buffer, 0, false);
 
-    if(_state == kStateEstablished) {
-      // transmit ACK packet
-      SetSessionType(kFlagACK);
-      int rval = Transmit(buffer, 0, false);
-
-      if(rval >= 0) {
-        _state = kStateCloseWait;
-      } else {
-        return rval;  // failure
-      }
+    if(rval >= 0) {
+      _state = kStateCloseWait;
+    } else {
+      return rval;  // failure
     }
-      
-    if(_state == kStateCloseWait) {
-      // transmit FIN+ACK packet
-      SetSessionType(kFlagFIN | kFlagACK);
-      int rval = Transmit(buffer, 0, false);
+  }
+    
+  if(_state == kStateCloseWait) {
+    // transmit FIN+ACK packet
+    SetSessionType(kFlagFIN | kFlagACK);
+    int rval = Transmit(buffer, 0, false);
 
-      if(rval >= 0) {
-        _state = kStateLastAck;
-      } else {
-        return rval;  // failure
-      }
+    if(rval >= 0) {
+      _state = kStateLastAck;
+    } else {
+      return rval;  // failure
     }
+  }
 
-    if(_state == kStateLastAck) {
-      // receive ACK packet
-      SetSessionType(kFlagACK);
-      int rval = ReceiveRawPacket(buffer, kBufSize);
+  if(_state == kStateLastAck) {
+    // receive ACK packet
+    SetSessionType(kFlagACK);
+    int rval = ReceiveRawPacket(buffer, kBufSize);
 
-      if(rval >= 0) {
-        // check sequence number
-        if(tcp_ctrl->GetSequenceNumber(tcp) != _ack) return kErrorInvalidPacketOnWire;
+    if(rval >= 0) {
+      // check sequence number
+      if(tcp_ctrl->GetSequenceNumber(tcp) != _ack) return kErrorInvalidPacketOnWire;
 
-        // check acknowledge number
-        if(tcp_ctrl->GetAcknowledgeNumber(tcp) != _seq + 1) return kErrorInvalidPacketOnWire;
+      // check acknowledge number
+      if(tcp_ctrl->GetAcknowledgeNumber(tcp) != _seq + 1) return kErrorInvalidPacketOnWire;
 
-        _state = kStateClosed;
-        _established = false;
-        _seq = 0; _ack = 0;
-      } 
-    }
+      _state = kStateClosed;
+      _established = false;
+      _seq = 0; _ack = 0;
+    } 
   }
  
   return 0;

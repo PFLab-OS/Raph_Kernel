@@ -77,7 +77,7 @@ public:
   // maximum segment size
   static const uint32_t kMSS = 1460;
 
-  // TCP states
+  // TCP states (extended)
   // (cf) RFC 793 p.26
   static const int32_t kStateClosed      = 0;
   static const int32_t kStateListen      = 1;
@@ -90,6 +90,8 @@ public:
   static const int32_t kStateClosing     = 8;
   static const int32_t kStateLastAck     = 9;
   static const int32_t kStateTimeWait    = 10;
+  static const int32_t kStateAckSent     = 11;  // extended
+  static const int32_t kStateAckReceived = 12;  // extended
 
   Socket() {}
 
@@ -148,7 +150,7 @@ protected:
   int32_t Transmit(const uint8_t *data, uint32_t length, bool is_raw_packet);
 
   // respond to FIN+ACK (4-way handshake)
-  int32_t CloseAck(uint8_t flag);
+  int32_t CloseAck();
 
 private:
   // my IP address
@@ -170,6 +172,10 @@ private:
   bool _established = false;
   // TCP state (cf. RFC 793 p.26)
   int32_t _state = kStateClosed;
+  // temporary packet buffer (used in TransmitPacket / ReceivePacket)
+  uint8_t *_packet = nullptr;
+  // temporary packet length buffer
+  int32_t _packet_length = 0;
 
   /*
    * TCP Restransmission Timeout Parameters
