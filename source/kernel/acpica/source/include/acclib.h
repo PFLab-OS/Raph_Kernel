@@ -163,14 +163,14 @@ strcpy (
     char                    *DstString,
     const char              *SrcString);
 
-int
-strcmp (
-    const char              *String1,
-    const char              *String2);
+/* int */
+/* strcmp ( */
+/*     const char              *String1, */
+/*     const char              *String2); */
 
-ACPI_SIZE
-strlen (
-    const char              *String);
+/* ACPI_SIZE */
+/* strlen ( */
+/*     const char              *String); */
 
 char *
 strncat (
@@ -178,17 +178,17 @@ strncat (
     const char              *SrcString,
     ACPI_SIZE               Count);
 
-int
-strncmp (
-    const char              *String1,
-    const char              *String2,
-    ACPI_SIZE               Count);
+/* int
+/* strncmp ( */
+/*     const char              *String1, */
+/*     const char              *String2, */
+/*     ACPI_SIZE               Count); */
 
-char *
-strncpy (
-    char                    *DstString,
-    const char              *SrcString,
-    ACPI_SIZE               Count);
+/* char * */
+/* strncpy ( */
+/*     char                    *DstString, */
+/*     const char              *SrcString, */
+/*     ACPI_SIZE               Count); */
 
 char *
 strstr (
@@ -207,23 +207,23 @@ strtoul (
 
 /* Memory */
 
-int
-memcmp (
-    void                    *Buffer1,
-    void                    *Buffer2,
-    ACPI_SIZE               Count);
+/* int */
+/* memcmp ( */
+/*     void                    *Buffer1, */
+/*     void                    *Buffer2, */
+/*     ACPI_SIZE               Count); */
 
-void *
-memcpy (
-    void                    *Dest,
-    const void              *Src,
-    ACPI_SIZE               Count);
+/* void * */
+/* memcpy ( */
+/*     void                    *Dest, */
+/*     const void              *Src, */
+/*     ACPI_SIZE               Count); */
 
-void *
-memset (
-    void                    *Dest,
-    int                     Value,
-    ACPI_SIZE               Count);
+/* void * */
+/* memset ( */
+/*     void                    *Dest, */
+/*     int                     Value, */
+/*     ACPI_SIZE               Count); */
 
 
 /* upper/lower case */

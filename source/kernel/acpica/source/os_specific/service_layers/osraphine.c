@@ -4,6 +4,7 @@
 #include "acparser.h"
 #include "acdebug.h"
 
+/*
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -12,6 +13,7 @@
 #include <semaphore.h>
 #include <pthread.h>
 #include <errno.h>
+*/
 
 #define _COMPONENT          ACPI_OS_SERVICES
         ACPI_MODULE_NAME    ("osraphine")

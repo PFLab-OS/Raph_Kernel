@@ -165,6 +165,24 @@
 
 #ifndef ACPI_USE_SYSTEM_CLIBRARY    /* Entire module */
 
+	/*following are defined*/
+#define    MEMCMP
+	//#define    MEMCPY
+	//mak#define    MEMSET
+#define    STRLEN
+#define    STRCPY
+#define    STRNCPY
+#define    STRCMP
+#define    STRCHR
+#define    STRNCMP
+#define    STRCAT
+#define    STRNCAT
+#define    STRSTR
+#define    STRTOUL
+#define    TOUPPER
+#define    TOLOWER
+
+
 
 /*******************************************************************************
  *
@@ -179,6 +197,7 @@
  * DESCRIPTION: Compare two Buffers, with a maximum length
  *
  ******************************************************************************/
+#ifdef MEMCMP
 
 int
 memcmp (
@@ -198,6 +217,7 @@ memcmp (
         (unsigned char) *Buffer2));
 }
 
+#endif //MEMCMP
 
 /*******************************************************************************
  *
@@ -212,6 +232,9 @@ memcmp (
  * DESCRIPTION: Copy arbitrary bytes of memory
  *
  ******************************************************************************/
+
+
+#ifdef MEMCPY
 
 void *
 memcpy (
@@ -234,6 +257,8 @@ memcpy (
     return (Dest);
 }
 
+#endif //MEMCMP
+
 
 /*******************************************************************************
  *
@@ -248,6 +273,8 @@ memcpy (
  * DESCRIPTION: Initialize a buffer to a known value.
  *
  ******************************************************************************/
+
+#ifdef MEMSET
 
 void *
 memset (
@@ -268,7 +295,7 @@ memset (
     return (Dest);
 }
 
-
+#endif //MEMSET
 /*******************************************************************************
  *
  * FUNCTION:    strlen
@@ -281,6 +308,7 @@ memset (
  *
  ******************************************************************************/
 
+#ifdef STRLEN
 
 ACPI_SIZE
 strlen (
@@ -300,7 +328,7 @@ strlen (
     return (Length);
 }
 
-
+#endif //STRLEN
 /*******************************************************************************
  *
  * FUNCTION:    strcpy
@@ -314,6 +342,7 @@ strlen (
  *
  ******************************************************************************/
 
+#ifdef STRCPY
 char *
 strcpy (
     char                    *DstString,
@@ -338,7 +367,7 @@ strcpy (
     return (DstString);
 }
 
-
+#endif //STRCPY
 /*******************************************************************************
  *
  * FUNCTION:    strncpy
@@ -353,6 +382,7 @@ strcpy (
  *
  ******************************************************************************/
 
+#ifdef STRNCPY
 char *
 strncpy (
     char                    *DstString,
@@ -380,7 +410,7 @@ strncpy (
 
     return (DstString);
 }
-
+#endif //STRNCPY
 
 /*******************************************************************************
  *
@@ -395,6 +425,7 @@ strncpy (
  *
  ******************************************************************************/
 
+#ifdef STRCMP
 int
 strcmp (
     const char              *String1,
@@ -412,7 +443,7 @@ strcmp (
 
     return ((unsigned char) *String1 - (unsigned char) *String2);
 }
-
+#endif //STRCMP
 
 /*******************************************************************************
  *
@@ -427,6 +458,7 @@ strcmp (
  *
  ******************************************************************************/
 
+#ifdef STRCHR
 char *
 strchr (
     const char              *String,
@@ -444,7 +476,7 @@ strchr (
 
     return (NULL);
 }
-
+#endif //STRCHR
 
 /*******************************************************************************
  *
@@ -460,6 +492,7 @@ strchr (
  *
  ******************************************************************************/
 
+#ifdef STRNCMP
 int
 strncmp (
     const char              *String1,
@@ -479,7 +512,7 @@ strncmp (
     return ((Count == ACPI_SIZE_MAX) ? 0 : ((unsigned char) *String1 -
         (unsigned char) *String2));
 }
-
+#endif //STRNCMP
 
 /*******************************************************************************
  *
@@ -494,6 +527,7 @@ strncmp (
  *
  ******************************************************************************/
 
+#ifdef STRCAT
 char *
 strcat (
     char                    *DstString,
@@ -514,7 +548,7 @@ strcat (
 
     return (DstString);
 }
-
+#endif STRCAT
 
 /*******************************************************************************
  *
@@ -531,6 +565,7 @@ strcat (
  *
  ******************************************************************************/
 
+#ifdef STRNCAT
 char *
 strncat (
     char                    *DstString,
@@ -562,7 +597,7 @@ strncat (
 
     return (DstString);
 }
-
+#endif STRNCAT
 
 /*******************************************************************************
  *
@@ -579,6 +614,7 @@ strncat (
  *
  ******************************************************************************/
 
+#ifdef STRSTR
 char *
 strstr (
     char                    *String1,
@@ -604,7 +640,7 @@ strstr (
 
     return (NULL);
 }
-
+#endif //STRSTR
 
 /*******************************************************************************
  *
@@ -622,6 +658,7 @@ strstr (
  *
  ******************************************************************************/
 
+#ifdef STRTOUL
 UINT32
 strtoul (
     const char              *String,
@@ -793,7 +830,7 @@ done:
 
     return (ReturnValue);
 }
-
+#endif //STRTOUL
 
 /*******************************************************************************
  *
@@ -807,6 +844,7 @@ done:
  *
  ******************************************************************************/
 
+#ifdef TOUPPER
 int
 toupper (
     int                     c)
@@ -827,7 +865,9 @@ toupper (
  * DESCRIPTION: Convert character to lowercase
  *
  ******************************************************************************/
+#endif //TOUPPER
 
+#ifdef TOLOWER
 int
 tolower (
     int                     c)
@@ -835,7 +875,7 @@ tolower (
 
     return (isupper(c) ? ((c)+0x20) : (c));
 }
-
+#endif //TOLOWER
 
 /*******************************************************************************
  *

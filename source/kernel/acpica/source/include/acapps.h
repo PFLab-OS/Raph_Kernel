@@ -194,11 +194,11 @@ AcGetAllTablesFromFile (
 
 BOOLEAN
 AcIsFileBinary (
-    FILE                    *File);
+    ACPI_FILE                    *File);
 
 ACPI_STATUS
 AcValidateTableHeader (
-    FILE                    *File,
+    ACPI_FILE                    *File,
     long                    TableOffset);
 
 

@@ -23,6 +23,7 @@
 #include <global.h>
 #include <spinlock.h>
 #include <acpi.h>
+#include <acpica.h>
 #include <apic.h>
 #include <multiboot.h>
 #include <task.h>
@@ -60,6 +61,7 @@ Tty *gtty;
 Keyboard *keyboard;
 
 PCICtrl *pci_ctrl;
+//Acpica *acpica;
 
 static uint32_t rnd_next = 1;
 
@@ -71,11 +73,6 @@ int time;
 #include <callout.h>
 Callout tt1;
 Callout tt2;
-
-#include <acpica/source/include/acpi.h>
-#include <acpica/source/include/accommon.h>
-#include <acpica/source/include/acapps.h>
-#include <acpica/source/tools/acpiexec/aecommon.h>
 
 
 #define FLAG 2
@@ -103,6 +100,9 @@ extern "C" int main() {
   
   MultibootCtrl _multiboot_ctrl;
   multiboot_ctrl = &_multiboot_ctrl;
+
+  //  Acpica _acpica;
+  //acpica = &_acpica;
 
   AcpiCtrl _acpi_ctrl;
   acpi_ctrl = &_acpi_ctrl;
@@ -159,7 +159,7 @@ extern "C" int main() {
 
 
   // timer->Sertup()より後
-  apic_ctrl->Setup();
+    apic_ctrl->Setup();
 
   rnd_next = timer->ReadMainCnt();
 
@@ -276,6 +276,10 @@ extern "C" int main() {
 
   gtty->Printf("s", "\n\n[kernel] info: initialization completed\n");
 
+  //acpica
+  //  acpica->Setup();
+  //  acpica->Shutdown();
+
   // print keyboard_input
   PollingFunc _keyboard_polling;
   keyboard->Setup(0); //should we define kDefaultLapicid = 0 ?
@@ -287,7 +291,7 @@ extern "C" int main() {
     }
   }, nullptr);
   _keyboard_polling.Register();
-  
+
   task_ctrl->Run();
 
   DismissNetCtrl();
