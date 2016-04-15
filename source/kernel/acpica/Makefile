@@ -9,16 +9,17 @@ CFLAGS += -D__RAPHINE__
 ACPICA = acpica
 
 .PHONY: test classtest
-default:acpica.o $(OBJS)
+#default:acpica.o $(OBJS)
+
+classtest:$(OBJS) acpica.o
+	g++ classtest.c $(OBJS) acpica.o $(CFLAGS) -o test.out
+	./test.out
 
 
 test:$(OBJS)
 	g++ acpica_test.c $(OBJS) $(CFLAGS) -o test.out
 	./test.out
 
-classtest:$(OBJS) acpica.o
-	g++ classtest.c $(OBJS) acpica.o $(CFLAGS) -o test.out
-	./test.out
 
 .PHONY: clean echo
 clean:
