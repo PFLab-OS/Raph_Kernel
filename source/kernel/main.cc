@@ -23,7 +23,7 @@
 #include <global.h>
 #include <spinlock.h>
 #include <acpi.h>
-//#include <acpica.h>
+#include <acpica/acpica.h>
 #include <apic.h>
 #include <multiboot.h>
 #include <task.h>
@@ -46,6 +46,7 @@
 
 SpinLockCtrl *spinlock_ctrl;
 MultibootCtrl *multiboot_ctrl;
+Acpica *acpica;
 AcpiCtrl *acpi_ctrl;
 ApicCtrl *apic_ctrl;
 PhysmemCtrl *physmem_ctrl;
@@ -101,8 +102,8 @@ extern "C" int main() {
   MultibootCtrl _multiboot_ctrl;
   multiboot_ctrl = &_multiboot_ctrl;
 
-  //  Acpica _acpica;
-  //acpica = &_acpica;
+    Acpica _acpica;
+  acpica = &_acpica;
 
   AcpiCtrl _acpi_ctrl;
   acpi_ctrl = &_acpi_ctrl;
@@ -277,8 +278,8 @@ extern "C" int main() {
   gtty->Printf("s", "\n\n[kernel] info: initialization completed\n");
 
   //acpica
-  //  acpica->Setup();
-  //  acpica->Shutdown();
+    acpica->Init();
+    acpica->Terminate();
 
   // print keyboard_input
   PollingFunc _keyboard_polling;
