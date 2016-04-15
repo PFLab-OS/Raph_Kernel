@@ -126,7 +126,7 @@
 #define INIT_TABLE_LENGTH(i)        i->Value
 
 #define COMPARE_OPCODE(i)           i->ResourceOffset
-#define COMPARE_TARGET(i)           i->AmlOffset
+#define COMPARE_Target(i)           i->AmlOffset
 #define COMPARE_VALUE(i)            i->Value
 
 
@@ -259,7 +259,7 @@ AcpiRsConvertAmlToResource (
 
         case ACPI_RSC_COUNT_GPIO_PIN:
 
-            Target = ACPI_ADD_PTR (void, Aml, Info->Value);
+            Target = (char *)ACPI_ADD_PTR (void, Aml, Info->Value);
             ItemCount = ACPI_GET16 (Target) - ACPI_GET16 (Source);
 
             Resource->Length = Resource->Length + ItemCount;
@@ -280,12 +280,12 @@ AcpiRsConvertAmlToResource (
              * Vendor data is optional (length/offset may both be zero)
              * Examine vendor data length field first
              */
-            Target = ACPI_ADD_PTR (void, Aml, (Info->Value + 2));
+            Target = (char *)ACPI_ADD_PTR (void, Aml, (Info->Value + 2));
             if (ACPI_GET16 (Target))
             {
                 /* Use vendor offset to get resource source length */
 
-                Target = ACPI_ADD_PTR (void, Aml, Info->Value);
+                Target = (char *)ACPI_ADD_PTR (void, Aml, Info->Value);
                 ItemCount = ACPI_GET16 (Target) - ACPI_GET16 (Source);
             }
             else
@@ -403,7 +403,7 @@ AcpiRsConvertAmlToResource (
 
         case ACPI_RSC_DATA8:
 
-            Target = ACPI_ADD_PTR (char, Resource, Info->Value);
+            Target = (char *)ACPI_ADD_PTR (char, Resource, Info->Value);
             memcpy (Destination, Source,  ACPI_GET16 (Target));
             break;
 
@@ -423,7 +423,7 @@ AcpiRsConvertAmlToResource (
              */
             Resource->Length +=
                 AcpiRsGetResourceSource (AmlResourceLength, Info->Value,
-                    Destination, Aml, NULL);
+					 Destination, Aml, NULL);
             break;
 
         case ACPI_RSC_SOURCEX:
@@ -431,7 +431,7 @@ AcpiRsConvertAmlToResource (
              * Optional ResourceSource (Index and String). This is the more
              * complicated case used by the Interrupt() macro
              */
-            Target = ACPI_ADD_PTR (char, Resource,
+            Target = (char *)ACPI_ADD_PTR (char, Resource,
                 Info->AmlOffset + (ItemCount * 4));
 
             Resource->Length +=
@@ -450,7 +450,7 @@ AcpiRsConvertAmlToResource (
                 Resource->Length += (ItemCount - 1);
             }
 
-            Target = ACPI_ADD_PTR (char, Resource, Info->Value);
+            Target = (char *)ACPI_ADD_PTR (char, Resource, Info->Value);
             ACPI_SET8 (Target, ItemCount);
             break;
 
@@ -466,7 +466,7 @@ AcpiRsConvertAmlToResource (
                 Resource->Length += (ItemCount - 1);
             }
 
-            Target = ACPI_ADD_PTR (char, Resource, Info->Value);
+            Target = (char *)ACPI_ADD_PTR (char, Resource, Info->Value);
             ACPI_SET8 (Target, ItemCount);
             break;
 
@@ -640,7 +640,7 @@ AcpiRsConvertResourceToAml (
             ACPI_SET16 (Destination, AmlLength);
 
             AmlLength = (UINT16) (AmlLength + ItemCount * 2);
-            Target = ACPI_ADD_PTR (void, Aml, Info->Value);
+            Target = (char *)ACPI_ADD_PTR (void, Aml, Info->Value);
             ACPI_SET16 (Target, AmlLength);
             AcpiRsSetResourceLength (AmlLength, Aml);
             break;
@@ -665,7 +665,7 @@ AcpiRsConvertResourceToAml (
             /* Compute offset for the Vendor Data */
 
             AmlLength = (UINT16) (AmlLength + ItemCount);
-            Target = ACPI_ADD_PTR (void, Aml, Info->Value);
+            Target = (char *)ACPI_ADD_PTR (void, Aml, Info->Value);
 
             /* Set vendor offset only if there is vendor data */
 
@@ -764,7 +764,7 @@ AcpiRsConvertResourceToAml (
              * Optional ResourceSource (Index and String). This is the more
              * complicated case used by the Interrupt() macro
              */
-            AmlLength = AcpiRsSetResourceSource (Aml, Info->Value, Source);
+	  AmlLength = AcpiRsSetResourceSource (Aml, Info->Value, (ACPI_RESOURCE_SOURCE*)Source);
             AcpiRsSetResourceLength (AmlLength, Aml);
             break;
 
@@ -805,7 +805,7 @@ AcpiRsConvertResourceToAml (
             case ACPI_RSC_COMPARE_VALUE:
 
                 if (*ACPI_ADD_PTR (UINT8, Resource,
-                    COMPARE_TARGET (Info)) != COMPARE_VALUE (Info))
+                    COMPARE_Target (Info)) != COMPARE_VALUE (Info))
                 {
                     goto Exit;
                 }
@@ -823,7 +823,7 @@ AcpiRsConvertResourceToAml (
              * Control - Exit conversion if equal
              */
             if (*ACPI_ADD_PTR (UINT8, Resource,
-                COMPARE_TARGET (Info)) == COMPARE_VALUE (Info))
+                COMPARE_Target (Info)) == COMPARE_VALUE (Info))
             {
                 goto Exit;
             }

@@ -627,7 +627,7 @@ AcpiGetSleepTypeData (
 
     /* Allocate the evaluation information block */
 
-    Info = ACPI_ALLOCATE_ZEROED (sizeof (ACPI_EVALUATE_INFO));
+    Info = (ACPI_EVALUATE_INFO *) ACPI_ALLOCATE_ZEROED (sizeof (ACPI_EVALUATE_INFO));
     if (!Info)
     {
         return_ACPI_STATUS (AE_NO_MEMORY);

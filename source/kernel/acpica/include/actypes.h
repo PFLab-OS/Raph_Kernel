@@ -450,6 +450,7 @@ typedef UINT64                          ACPI_PHYSICAL_ADDRESS;
 /*
  * Normal memory allocation directly via the OS services layer
  */
+//#define ACPI_ALLOCATE(a)                AcpiOsAllocate ((ACPI_SIZE) (reinterpret_cast<ACPI_PCI_DEVICE*>(a)))
 #define ACPI_ALLOCATE(a)                AcpiOsAllocate ((ACPI_SIZE) (a))
 #define ACPI_ALLOCATE_ZEROED(a)         AcpiOsAllocateZeroed ((ACPI_SIZE) (a))
 #define ACPI_FREE(a)                    AcpiOsFree (a)

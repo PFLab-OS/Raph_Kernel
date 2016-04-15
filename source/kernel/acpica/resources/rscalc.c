@@ -523,7 +523,7 @@ AcpiRsGetListLength (
             return_ACPI_STATUS (Status);
         }
 
-        AmlResource = (void *) AmlBuffer;
+        AmlResource = (AML_RESOURCE *) AmlBuffer;
 
         /* Get the resource length and base (minimum) AML size */
 

@@ -163,7 +163,7 @@
 #define ACPI_LARGE_NAMESPACE_NODE
 //#define ACPI_DATA_TABLE_DISASSEMBLY
 #define ACPI_32BIT_PHYSICAL_ADDRESS
-#define ACPI_DISASSEMBLER 1
+//#define ACPI_DISASSEMBLER 1
 #endif
 
 /* AcpiExec configuration. Multithreaded with full AML debugger */
@@ -226,7 +226,7 @@
 /* Common for all ACPICA applications */
 
 #ifdef ACPI_APPLICATION
-#define ACPI_USE_SYSTEM_CLIBRARY
+//#define ACPI_USE_SYSTEM_CLIBRARY
 #define ACPI_USE_LOCAL_CACHE
 #endif
 

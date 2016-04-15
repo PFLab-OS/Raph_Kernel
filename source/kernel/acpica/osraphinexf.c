@@ -40,10 +40,10 @@ ACPI_STATUS AcpiOsGetPhysicalAddress(void *LogicalAddress, ACPI_PHYSICAL_ADDRESS
   return AE_OK;
 }
 void *AcpiOsAllocate(ACPI_SIZE Size){
-  return malloc(Size);
+  //  return malloc(Size);
 }
 void AcpiOsFree(void *Memory){
-  return free(Memory);
+  //  return free(Memory);
 }
 BOOLEAN AcpiOsReadable(void *Memory, ACPI_SIZE Length){
   return TRUE;
@@ -363,7 +363,7 @@ AcpiOsGetTimer (
 
     /* This timer has sufficient resolution for user-space application code */
 
-    gettimeofday (&time, NULL);
+    //    gettimeofday (&time, NULL);
 
     /* (Seconds * 10^7 = 100ns(10^-7)) + (Microseconds(10^-6) * 10^1 = 100ns) */
 

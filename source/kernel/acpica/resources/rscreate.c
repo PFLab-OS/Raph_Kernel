@@ -192,7 +192,7 @@ AcpiBufferToResource (
     }
     else
     {
-        *ResourcePtr = Resource;
+      *ResourcePtr = (ACPI_RESOURCE *)Resource;
     }
 
     return_ACPI_STATUS (Status);
@@ -352,7 +352,7 @@ AcpiRsCreatePciRoutingTable (
      */
     TopObjectList = PackageObject->Package.Elements;
     NumberOfElements = PackageObject->Package.Count;
-    Buffer = OutputBuffer->Pointer;
+    Buffer =(UINT8 *) OutputBuffer->Pointer;
     UserPrt = ACPI_CAST_PTR (ACPI_PCI_ROUTING_TABLE, Buffer);
 
     for (Index = 0; Index < NumberOfElements; Index++)
@@ -546,7 +546,7 @@ AcpiRsCreateAmlResources (
     /* Get the buffer size needed for the AML byte stream */
 
     Status = AcpiRsGetAmlLength (
-        ResourceList->Pointer, ResourceList->Length, &AmlSizeNeeded);
+				 (ACPI_RESOURCE*)(ResourceList->Pointer), ResourceList->Length,(ACPI_SIZE*)(&AmlSizeNeeded));
 
     ACPI_DEBUG_PRINT ((ACPI_DB_INFO, "AmlSizeNeeded=%X, %s\n",
         (UINT32) AmlSizeNeeded, AcpiFormatException (Status)));
@@ -565,8 +565,8 @@ AcpiRsCreateAmlResources (
 
     /* Do the conversion */
 
-    Status = AcpiRsConvertResourcesToAml (ResourceList->Pointer,
-        AmlSizeNeeded, OutputBuffer->Pointer);
+    Status = AcpiRsConvertResourcesToAml ((ACPI_RESOURCE*)(ResourceList->Pointer),
+					  AmlSizeNeeded, (UINT8*)(OutputBuffer->Pointer));
     if (ACPI_FAILURE (Status))
     {
         return_ACPI_STATUS (Status);

@@ -1,11 +1,18 @@
 KERNEL = kernel.elf
 NET_OBJS = net/eth.o net/arp.o net/ip.o net/tcp.o net/udp.o net/socket.o net/netctrl.o
-ACPI_GNR = acpica/generate/unix
-ACPICA_OBJS_SURROUND = $(wildcard $(ACPI_GNR)/acpibin/obj/*.o) $(wildcard $(ACPI_GNR)/acpidump/obj/*.o) $(wildcard $(ACPI_GNR)/acpinames/obj/*.o)  $(wildcard $(ACPI_GNR)/acpisrc/obj/*.o) $(wildcard $(ACPI_GNR)/acpixtract/obj/*.o)
-ACPICA_OBJS = acpica/source/components/hardware/hwxfsleep.o acpica/source/components/hardware/hwsleep.o acpica/source/components/hardware/hwesleep.o 
-
-OBJS = boot/boot.o boot/bootap.o main.o spinlock.o apic.o acpi.o acpica.o gdt.o idt.o int.o tty.o task.o queue.o functional.o dev.o mem/virtmem.o mem/tmpmem.o mem/paging.o mem/physmem.o $(DEV_OBJS) $(NET_OBJS)
+ACPICA = acpica/acpica.o
+OBJS = boot/boot.o boot/bootap.o main.o spinlock.o apic.o acpi.o gdt.o idt.o int.o tty.o task.o queue.o functional.o dev.o mem/virtmem.o mem/tmpmem.o mem/paging.o mem/physmem.o $(DEV_OBJS) $(NET_OBJS) $(ACPICA)
 TEST_OBJS = test_main.o spinlock.o mem/virtmem.o dev/raw.o dev/netdev.o net/test.o $(NET_OBJS)
+
+
+
+ACPICASRCDIR += ./acpica/hardware ./acpica/resources ./acpica/dispatcher ./acpica/tables ./acpica/events ./acpica/namespace ./acpica/utilities ./acpica/executer ./acpica/parser 
+ACPICAHEADERDIR += ./acpica/include/ ./acpica/include/platform/
+ACPICACHEADERS = $(foreach dir, $(ACPICAHEADERDIR), $(wildcard $(dir)*h)) acraphine.h acraphineex.h
+ACPICACSRCS += $(foreach dir, $(ACPICASRCDIR), $(wildcard $(dir)/*.c)) ./acpica/osraphinexf.c
+ACPICACOBJS += $(ACPICACSRCS:.c=.o)
+ACPICACFLAGS += $(addprefix -I, $(ACPICAHEADERDIR)) 
+
 
 BUILD = ../../build/
 DEPS= $(filter %.d,$(OBJS:%.o=%.d) $(TEST_OBJS:%.o=%.d))
@@ -19,6 +26,9 @@ ASFLAGS += -I$(realpath .)
 .PHONY: clean test
 
 default: $(BUILD)$(KERNEL)
+
+acpica/acpica.o:
+	make -C acpica
 
 -include $(DEPS)
 
@@ -34,10 +44,16 @@ testrun:
 $(TEST): $(TEST_OBJS)
 	g++ -pedantic -pthread -static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive -o $@ $^
 
-ACPICA_OBJS: $(ACPICA_SRCS)
+
 
 $(BUILD)$(KERNEL): $(OBJS) kernel.ld
-	$(LD) -nostdinc -nostdlib -Tkernel.ld $(OBJS) -o $@
+	$(LD) -nostdinc -nostdlib -Tkernel.ld $(OBJS) $(ACPICACOBJS) $(ACPICACFLAGS) -o $@
+
+echo:
+	@echo FLAG
+	@echo $(ACPICACFLAGS)
+	@echo OBJS
+	@echo $(ACPICACOBJS)
 
 dev.o:
 	make CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)" -C dev obj

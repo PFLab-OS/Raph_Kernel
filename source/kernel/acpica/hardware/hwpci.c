@@ -297,7 +297,7 @@ AcpiHwBuildPciList (
             return (AE_OK);
         }
 
-        ListElement = ACPI_ALLOCATE (sizeof (ACPI_PCI_DEVICE));
+        ListElement =(ACPI_PCI_DEVICE *) ACPI_ALLOCATE (sizeof (ACPI_PCI_DEVICE));
         if (!ListElement)
         {
             /* Must delete the list before exit */
@@ -464,7 +464,7 @@ AcpiHwGetPciDeviceInfo (
     /* We need an _ADR. Ignore device if not present */
 
     Status = AcpiUtEvaluateNumericObject (METHOD_NAME__ADR,
-        PciDevice, &ReturnValue);
+	 (ACPI_NAMESPACE_NODE *) PciDevice, &ReturnValue);
     if (ACPI_FAILURE (Status))
     {
         return (AE_OK);

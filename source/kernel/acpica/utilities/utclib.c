@@ -162,7 +162,6 @@
 #define _COMPONENT          ACPI_UTILITIES
         ACPI_MODULE_NAME    ("utclib")
 
-
 #ifndef ACPI_USE_SYSTEM_CLIBRARY    /* Entire module */
 
 
@@ -180,23 +179,23 @@
  *
  ******************************************************************************/
 
-int
-memcmp (
-    void                    *VBuffer1,
-    void                    *VBuffer2,
-    ACPI_SIZE               Count)
-{
-    char                    *Buffer1 = (char *) VBuffer1;
-    char                    *Buffer2 = (char *) VBuffer2;
+/* int */
+/* memcmp ( */
+/*     void                    *VBuffer1, */
+/*     void                    *VBuffer2, */
+/*     ACPI_SIZE               Count) */
+/* { */
+/*     char                    *Buffer1 = (char *) VBuffer1; */
+/*     char                    *Buffer2 = (char *) VBuffer2; */
 
 
-    for ( ; Count-- && (*Buffer1 == *Buffer2); Buffer1++, Buffer2++)
-    {
-    }
+/*     for ( ; Count-- && (*Buffer1 == *Buffer2); Buffer1++, Buffer2++) */
+/*     { */
+/*     } */
 
-    return ((Count == ACPI_SIZE_MAX) ? 0 : ((unsigned char) *Buffer1 -
-        (unsigned char) *Buffer2));
-}
+/*     return ((Count == ACPI_SIZE_MAX) ? 0 : ((unsigned char) *Buffer1 - */
+/*         (unsigned char) *Buffer2)); */
+/* } */
 
 
 /*******************************************************************************
@@ -213,26 +212,26 @@ memcmp (
  *
  ******************************************************************************/
 
-void *
-memcpy (
-    void                    *Dest,
-    const void              *Src,
-    ACPI_SIZE               Count)
-{
-    char                    *New = (char *) Dest;
-    char                    *Old = (char *) Src;
+/* void * */
+/* memcpy ( */
+/*     void                    *Dest, */
+/*     const void              *Src, */
+/*     ACPI_SIZE               Count) */
+/* { */
+/*     char                    *New = (char *) Dest; */
+/*     char                    *Old = (char *) Src; */
 
 
-    while (Count)
-    {
-        *New = *Old;
-        New++;
-        Old++;
-        Count--;
-    }
+/*     while (Count) */
+/*     { */
+/*         *New = *Old; */
+/*         New++; */
+/*         Old++; */
+/*         Count--; */
+/*     } */
 
-    return (Dest);
-}
+/*     return (Dest); */
+/* } */
 
 
 /*******************************************************************************
@@ -249,24 +248,24 @@ memcpy (
  *
  ******************************************************************************/
 
-void *
-memset (
-    void                    *Dest,
-    int                     Value,
-    ACPI_SIZE               Count)
-{
-    char                    *New = (char *) Dest;
+/* void * */
+/* memset ( */
+/*     void                    *Dest, */
+/*     int                     Value, */
+/*     ACPI_SIZE               Count) */
+/* { */
+/*     char                    *New = (char *) Dest; */
 
 
-    while (Count)
-    {
-        *New = (char) Value;
-        New++;
-        Count--;
-    }
+/*     while (Count) */
+/*     { */
+/*         *New = (char) Value; */
+/*         New++; */
+/*         Count--; */
+/*     } */
 
-    return (Dest);
-}
+/*     return (Dest); */
+/* } */
 
 
 /*******************************************************************************
@@ -282,23 +281,23 @@ memset (
  ******************************************************************************/
 
 
-ACPI_SIZE
-strlen (
-    const char              *String)
-{
-    UINT32                  Length = 0;
+/* ACPI_SIZE */
+/* strlen ( */
+/*     const char              *String) */
+/* { */
+/*     UINT32                  Length = 0; */
 
 
-    /* Count the string until a null is encountered */
+/*     /\* Count the string until a null is encountered *\/ */
 
-    while (*String)
-    {
-        Length++;
-        String++;
-    }
+/*     while (*String) */
+/*     { */
+/*         Length++; */
+/*         String++; */
+/*     } */
 
-    return (Length);
-}
+/*     return (Length); */
+/* } */
 
 
 /*******************************************************************************
@@ -314,29 +313,29 @@ strlen (
  *
  ******************************************************************************/
 
-char *
-strcpy (
-    char                    *DstString,
-    const char              *SrcString)
-{
-    char                    *String = DstString;
+/* char * */
+/* strcpy ( */
+/*     char                    *DstString, */
+/*     const char              *SrcString) */
+/* { */
+/*     char                    *String = DstString; */
 
 
-    /* Move bytes brute force */
+/*     /\* Move bytes brute force *\/ */
 
-    while (*SrcString)
-    {
-        *String = *SrcString;
+/*     while (*SrcString) */
+/*     { */
+/*         *String = *SrcString; */
 
-        String++;
-        SrcString++;
-    }
+/*         String++; */
+/*         SrcString++; */
+/*     } */
 
-    /* Null terminate */
+/*     /\* Null terminate *\/ */
 
-    *String = 0;
-    return (DstString);
-}
+/*     *String = 0; */
+/*     return (DstString); */
+/* } */
 
 
 /*******************************************************************************
@@ -353,33 +352,33 @@ strcpy (
  *
  ******************************************************************************/
 
-char *
-strncpy (
-    char                    *DstString,
-    const char              *SrcString,
-    ACPI_SIZE               Count)
-{
-    char                    *String = DstString;
+/* char * */
+/* strncpy ( */
+/*     char                    *DstString, */
+/*     const char              *SrcString, */
+/*     ACPI_SIZE               Count) */
+/* { */
+/*     char                    *String = DstString; */
 
 
-    /* Copy the string */
+/*     /\* Copy the string *\/ */
 
-    for (String = DstString;
-        Count && (Count--, (*String++ = *SrcString++)); )
-    {;}
+/*     for (String = DstString; */
+/*         Count && (Count--, (*String++ = *SrcString++)); ) */
+/*     {;} */
 
-    /* Pad with nulls if necessary */
+/*     /\* Pad with nulls if necessary *\/ */
 
-    while (Count--)
-    {
-        *String = 0;
-        String++;
-    }
+/*     while (Count--) */
+/*     { */
+/*         *String = 0; */
+/*         String++; */
+/*     } */
 
-    /* Return original pointer */
+/*     /\* Return original pointer *\/ */
 
-    return (DstString);
-}
+/*     return (DstString); */
+/* } */
 
 
 /*******************************************************************************
@@ -395,23 +394,23 @@ strncpy (
  *
  ******************************************************************************/
 
-int
-strcmp (
-    const char              *String1,
-    const char              *String2)
-{
+/* int */
+/* strcmp ( */
+/*     const char              *String1, */
+/*     const char              *String2) */
+/* { */
 
 
-    for ( ; (*String1 == *String2); String2++)
-    {
-        if (!*String1++)
-        {
-            return (0);
-        }
-    }
+/*     for ( ; (*String1 == *String2); String2++) */
+/*     { */
+/*         if (!*String1++) */
+/*         { */
+/*             return (0); */
+/*         } */
+/*     } */
 
-    return ((unsigned char) *String1 - (unsigned char) *String2);
-}
+/*     return ((unsigned char) *String1 - (unsigned char) *String2); */
+/* } */
 
 
 /*******************************************************************************

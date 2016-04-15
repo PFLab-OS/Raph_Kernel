@@ -215,37 +215,37 @@ ACPI_RSCONVERT_INFO         *AcpiGbl_ConvertResourceSerialBusDispatch[] =
 
 /* Dispatch table for resource dump functions */
 
-ACPI_RSDUMP_INFO            *AcpiGbl_DumpResourceDispatch[] =
-{
-    AcpiRsDumpIrq,                  /* ACPI_RESOURCE_TYPE_IRQ */
-    AcpiRsDumpDma,                  /* ACPI_RESOURCE_TYPE_DMA */
-    AcpiRsDumpStartDpf,             /* ACPI_RESOURCE_TYPE_START_DEPENDENT */
-    AcpiRsDumpEndDpf,               /* ACPI_RESOURCE_TYPE_END_DEPENDENT */
-    AcpiRsDumpIo,                   /* ACPI_RESOURCE_TYPE_IO */
-    AcpiRsDumpFixedIo,              /* ACPI_RESOURCE_TYPE_FIXED_IO */
-    AcpiRsDumpVendor,               /* ACPI_RESOURCE_TYPE_VENDOR */
-    AcpiRsDumpEndTag,               /* ACPI_RESOURCE_TYPE_END_TAG */
-    AcpiRsDumpMemory24,             /* ACPI_RESOURCE_TYPE_MEMORY24 */
-    AcpiRsDumpMemory32,             /* ACPI_RESOURCE_TYPE_MEMORY32 */
-    AcpiRsDumpFixedMemory32,        /* ACPI_RESOURCE_TYPE_FIXED_MEMORY32 */
-    AcpiRsDumpAddress16,            /* ACPI_RESOURCE_TYPE_ADDRESS16 */
-    AcpiRsDumpAddress32,            /* ACPI_RESOURCE_TYPE_ADDRESS32 */
-    AcpiRsDumpAddress64,            /* ACPI_RESOURCE_TYPE_ADDRESS64 */
-    AcpiRsDumpExtAddress64,         /* ACPI_RESOURCE_TYPE_EXTENDED_ADDRESS64 */
-    AcpiRsDumpExtIrq,               /* ACPI_RESOURCE_TYPE_EXTENDED_IRQ */
-    AcpiRsDumpGenericReg,           /* ACPI_RESOURCE_TYPE_GENERIC_REGISTER */
-    AcpiRsDumpGpio,                 /* ACPI_RESOURCE_TYPE_GPIO */
-    AcpiRsDumpFixedDma,             /* ACPI_RESOURCE_TYPE_FIXED_DMA */
-    NULL,                           /* ACPI_RESOURCE_TYPE_SERIAL_BUS */
-};
+/* ACPI_RSDUMP_INFO            *AcpiGbl_DumpResourceDispatch[] = */
+/* { */
+/*     AcpiRsDumpIrq,                  /\* ACPI_RESOURCE_TYPE_IRQ *\/ */
+/*     AcpiRsDumpDma,                  /\* ACPI_RESOURCE_TYPE_DMA *\/ */
+/*     AcpiRsDumpStartDpf,             /\* ACPI_RESOURCE_TYPE_START_DEPENDENT *\/ */
+/*     AcpiRsDumpEndDpf,               /\* ACPI_RESOURCE_TYPE_END_DEPENDENT *\/ */
+/*     AcpiRsDumpIo,                   /\* ACPI_RESOURCE_TYPE_IO *\/ */
+/*     AcpiRsDumpFixedIo,              /\* ACPI_RESOURCE_TYPE_FIXED_IO *\/ */
+/*     AcpiRsDumpVendor,               /\* ACPI_RESOURCE_TYPE_VENDOR *\/ */
+/*     AcpiRsDumpEndTag,               /\* ACPI_RESOURCE_TYPE_END_TAG *\/ */
+/*     AcpiRsDumpMemory24,             /\* ACPI_RESOURCE_TYPE_MEMORY24 *\/ */
+/*     AcpiRsDumpMemory32,             /\* ACPI_RESOURCE_TYPE_MEMORY32 *\/ */
+/*     AcpiRsDumpFixedMemory32,        /\* ACPI_RESOURCE_TYPE_FIXED_MEMORY32 *\/ */
+/*     AcpiRsDumpAddress16,            /\* ACPI_RESOURCE_TYPE_ADDRESS16 *\/ */
+/*     AcpiRsDumpAddress32,            /\* ACPI_RESOURCE_TYPE_ADDRESS32 *\/ */
+/*     AcpiRsDumpAddress64,            /\* ACPI_RESOURCE_TYPE_ADDRESS64 *\/ */
+/*     AcpiRsDumpExtAddress64,         /\* ACPI_RESOURCE_TYPE_EXTENDED_ADDRESS64 *\/ */
+/*     AcpiRsDumpExtIrq,               /\* ACPI_RESOURCE_TYPE_EXTENDED_IRQ *\/ */
+/*     AcpiRsDumpGenericReg,           /\* ACPI_RESOURCE_TYPE_GENERIC_REGISTER *\/ */
+/*     AcpiRsDumpGpio,                 /\* ACPI_RESOURCE_TYPE_GPIO *\/ */
+/*     AcpiRsDumpFixedDma,             /\* ACPI_RESOURCE_TYPE_FIXED_DMA *\/ */
+/*     NULL,                           /\* ACPI_RESOURCE_TYPE_SERIAL_BUS *\/ */
+/* }; */
 
-ACPI_RSDUMP_INFO            *AcpiGbl_DumpSerialBusDispatch[] =
-{
-    NULL,
-    AcpiRsDumpI2cSerialBus,         /* AML_RESOURCE_I2C_BUS_TYPE */
-    AcpiRsDumpSpiSerialBus,         /* AML_RESOURCE_SPI_BUS_TYPE */
-    AcpiRsDumpUartSerialBus,        /* AML_RESOURCE_UART_BUS_TYPE */
-};
+/* ACPI_RSDUMP_INFO            *AcpiGbl_DumpSerialBusDispatch[] = */
+/* { */
+/*     NULL, */
+/*     AcpiRsDumpI2cSerialBus,         /\* AML_RESOURCE_I2C_BUS_TYPE *\/ */
+/*     AcpiRsDumpSpiSerialBus,         /\* AML_RESOURCE_SPI_BUS_TYPE *\/ */
+/*     AcpiRsDumpUartSerialBus,        /\* AML_RESOURCE_UART_BUS_TYPE *\/ */
+/* }; */
 #endif
 
 
