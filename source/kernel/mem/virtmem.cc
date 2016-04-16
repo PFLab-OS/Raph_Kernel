@@ -357,6 +357,8 @@ VirtmemCtrl::VirtmemCtrl() {
   _list = _first;
 }
 
+VirtmemCtrl::~VirtmemCtrl() {}
+
 #endif // __UNIT_TEST__
 
 #ifndef __UNIT_TEST__

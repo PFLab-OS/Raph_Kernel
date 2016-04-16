@@ -27,6 +27,7 @@
 #include <raph.h>
 #include <acpi.h>
 
+#ifndef __UNIT_TEST__
 struct MADT {
   ACPISDTHeader header;
   uint32_t lapicCtrlAddr;
@@ -60,12 +61,15 @@ struct MADTStIOAPIC {
   uint32_t ioapicAddr;
   uint32_t glblIntBase;
 } __attribute__ ((packed));
+#endif // __UNIT_TEST__
 
 class Regs;
 
 class ApicCtrl {
 public:
   static constexpr int lapicMaxNumber = 128;
+
+#ifndef __UNIT_TEST__
   class Lapic {
   public:
     // setup local APIC respond to specified index
@@ -218,59 +222,100 @@ public:
     static const uint32_t kRegRedTblFlagMask = 1 << 16;
     static const int kRegRedTblOffsetDest = 24;
   };
-  ApicCtrl() {
-  }
-  void Setup();
+#endif // !__UNIT_TEST__
+
+  ApicCtrl() {}
+#ifdef __UNIT_TEST__ 
+  virtual void Setup() {}
+#else
+  virtual void Setup();
+#endif // __UNIT_TEST__
+
+#ifndef __UNIT_TEST__
   void SetMADT(MADT *table) {
     _madt = table;
   }
+
   void StartAPs();
+
   void BootBSP() {
     _lapic.Setup();
   }
+
   void BootAP() {
     _started = true;
     _lapic.Setup();
   }
-  volatile uint8_t GetApicId() {
-    return _lapic.GetApicId();
-  }
-  volatile bool IsBootupAll() {
-    return _all_bootup;
-  }
-  int GetHowManyCpus() {
-    return _lapic._ncpu;
-  }
+
   bool SetupIoInt(uint32_t irq, uint8_t lapicid, uint8_t vector) {
     kassert(vector >= 32);
     return _ioapic.SetupInt(irq, lapicid, vector);
   }
+
   void SendEoi() {
     _lapic.SendEoi();
   }
+
   void SendIpi(uint8_t destid) {
     _lapic.SendIpi(destid);
   }
-  void SetupTimer(uint32_t irq) {
+#endif // !__UNIT_TEST__
+
+  virtual volatile uint8_t GetApicId() {
+#ifndef __UNIT_TEST__
+    return _lapic.GetApicId();
+#else
+    return 0;
+#endif // !__UNIT_TEST__
+  }
+
+  bool IsBootupAll() {
+    return _all_bootup;
+  }
+
+  virtual int GetHowManyCpus() {
+#ifndef __UNIT_TEST__
+    return _lapic._ncpu;
+#else
+    return 0;
+#endif // !__UNIT_TEST__
+  }
+
+  virtual void SetupTimer(uint32_t irq) {
+#ifndef __UNIT_TEST__
     _lapic.SetupTimer(irq);
+#endif // !__UNIT_TEST__
   }
-  void StartTimer() {
+
+  virtual void StartTimer() {
+#ifndef __UNIT_TEST__
     _lapic.StartTimer();
+#endif // !__UNIT_TEST__
   }
-  void StopTimer() {
+
+  virtual void StopTimer() {
+#ifndef __UNIT_TEST__
     _lapic.StopTimer();
+#endif // !__UNIT_TEST__
   }
+
+protected:
+  volatile bool _started = false;
+  volatile bool _all_bootup = false;
+
 private:
   static void TmrCallback(Regs *rs) {
   }
   static void IpiCallback(Regs *rs) {
   }
+
+#ifndef __UNIT_TEST__
   Lapic _lapic;
   Ioapic _ioapic;
   MADT *_madt = nullptr;
+#endif // !__UNIT_TEST__
+
   static const uint32_t kMadtFlagLapicEnable = 1;
-  volatile bool _started = false;
-  volatile bool _all_bootup = false;
 };
 
 #endif /* __RAPH_KERNEL_APIC_H__ */
