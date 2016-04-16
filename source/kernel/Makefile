@@ -4,16 +4,6 @@ ACPICA = libacpica.a
 OBJS = boot/boot.o boot/bootap.o main.o spinlock.o apic.o acpi.o gdt.o idt.o int.o tty.o task.o queue.o functional.o dev.o mem/virtmem.o mem/tmpmem.o mem/paging.o mem/physmem.o $(DEV_OBJS) $(NET_OBJS) $(ACPICA)
 TEST_OBJS = test_main.o spinlock.o mem/virtmem.o dev/raw.o dev/netdev.o net/test.o $(NET_OBJS)
 
-
-
-# ACPICASRCDIR += ./acpica/hardware ./acpica/resources ./acpica/dispatcher ./acpica/tables ./acpica/events ./acpica/namespace ./acpica/utilities ./acpica/executer ./acpica/parser 
-# ACPICAHEADERDIR += ./acpica/include/ ./acpica/include/platform/
-# ACPICACHEADERS = $(foreach dir, $(ACPICAHEADERDIR), $(wildcard $(dir)*h)) ./acpica/acraphine.h ./acpica/acraphineex.h
-# ACPICACSRCS += $(foreach dir, $(ACPICASRCDIR), $(wildcard $(dir)/*.c)) ./acpica/osraphinexf.c
-# ACPICACOBJS += $(ACPICACSRCS:.c=.o)
-# ACPICACFLAGS += $(addprefix -I, $(ACPICAHEADERDIR))
-
-
 BUILD = ../../build/
 DEPS= $(filter %.d,$(OBJS:%.o=%.d) $(TEST_OBJS:%.o=%.d))
 
@@ -50,14 +40,11 @@ $(TEST): $(TEST_OBJS)
 $(BUILD)$(KERNEL): $(OBJS) kernel.ld
 	$(LD) -nostdinc -nostdlib -Tkernel.ld $(OBJS) -o $@
 
-echo:
-	@echo FLAG
-	@echo $(ACPICACFLAGS)
-	@echo OBJS
-	@echo $(ACPICACOBJS)
-
 dev.o:
 	make CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)" -C dev obj
+
+echo:
+	echo $(ACPICAHEADERS)
 
 clean:
 	make -C dev clean

@@ -4,12 +4,13 @@ extern "C"{
 }
 #include "acpica.h"
 
+//#include "../tty.h"
 
-#define __ACPICA_DEBUG__
+//#define __ACPICA_DEBUG__
 
 #ifdef __ACPICA_DEBUG__
 //#include <stdio.h>
-#define DEBUG(str)   (puts(str))
+#define DEBUG(str)   (ACPIRaphPrintf("s", str))
 #else
 #define DEBUG(str) 
 #endif
@@ -18,15 +19,15 @@ void puts(char *){
 }
 void Acpica::Init() {
    ACPI_STATUS status;
-  // DEBUG("InitializeSubsytem segufo here.");
+   DEBUG("InitializeSubsytem segufo here.");
    AcpiInitializeSubsystem();
-  // DEBUG("Initialize tables");
+   DEBUG("Initialize tables");
    AcpiInitializeTables(NULL, 16, FALSE);
-  // DEBUG("load tables.");
+   DEBUG("load tables.");
    AcpiLoadTables();
-  // DEBUG("Enable Subsystem");
+   DEBUG("Enable Subsystem");
    AcpiEnableSubsystem(0);
-  // DEBUG("Init Obj");
+   DEBUG("Init Obj");
    AcpiInitializeObjects(0);
 }
 

@@ -102,7 +102,7 @@ extern "C" int main() {
   MultibootCtrl _multiboot_ctrl;
   multiboot_ctrl = &_multiboot_ctrl;
 
-    Acpica _acpica;
+  Acpica _acpica;
   acpica = &_acpica;
 
   AcpiCtrl _acpi_ctrl;
