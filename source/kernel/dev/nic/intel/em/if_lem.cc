@@ -267,7 +267,7 @@ static void	lem_get_wakeup(device_t);
 // static int	lem_enable_phy_wakeup(struct adapter *);
 // static void	lem_led_func(void *, int);
 
-// static void	lem_intr(void *);
+static void	lem_intr(void *);
 static int	lem_irq_fast(void *);
 static void	lem_handle_rxtx(void *context, int pending);
 static void	lem_handle_link(void *context, int pending);
@@ -1391,51 +1391,53 @@ lem_poll(if_t ifp)
  *  Legacy Interrupt Service routine  
  *
  *********************************************************************/
-// static void
-// lem_intr(void *arg)
-// {
-// 	struct adapter	*adapter = arg;
-// 	if_t ifp = adapter->ifp;
-// 	u32		reg_icr;
+static void
+lem_intr(void *arg)
+{
+  struct adapter	*adapter = reinterpret_cast<struct adapter *>(arg);
+        BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<lE1000>();
+	if_t ifp = adapter->ifp;
+	u32		reg_icr;
 
 
-// 	if ((if_getcapenable(ifp) & IFCAP_POLLING) ||
-// 	    ((if_getdrvflags(ifp) & IFF_DRV_RUNNING) == 0))
-// 		return;
+	if ((if_getcapenable(ifp) & IFCAP_POLLING) ||
+	    ((if_getdrvflags(ifp) & IFF_DRV_RUNNING) == 0))
+		return;
 
-// 	EM_CORE_LOCK(adapter);
-// 	reg_icr = E1000_READ_REG(&adapter->hw, E1000_ICR);
-// 	if (reg_icr & E1000_ICR_RXO)
-// 		adapter->rx_overruns++;
+	EM_CORE_LOCK(adapter);
+	reg_icr = E1000_READ_REG(&adapter->hw, E1000_ICR);
+	if (reg_icr & E1000_ICR_RXO)
+		adapter->rx_overruns++;
 
-// 	if ((reg_icr == 0xffffffff) || (reg_icr == 0)) {
-// 		EM_CORE_UNLOCK(adapter);
-// 		return;
-// 	}
+	if ((reg_icr == 0xffffffff) || (reg_icr == 0)) {
+		EM_CORE_UNLOCK(adapter);
+		return;
+	}
 
-// 	if (reg_icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC)) {
-// 		callout_stop(&adapter->timer);
-// 		adapter->hw.mac.get_link_status = 1;
-// 		lem_update_link_status(adapter);
-// 		/* Deal with TX cruft when link lost */
-// 		lem_tx_purge(adapter);
-// 		callout_reset(&adapter->timer, hz,
-// 		    lem_local_timer, adapter);
-// 		EM_CORE_UNLOCK(adapter);
-// 		return;
-// 	}
+	if (reg_icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC)) {
+		callout_stop(&adapter->timer);
+		adapter->hw.mac.get_link_status = 1;
+		lem_update_link_status(adapter);
+		/* Deal with TX cruft when link lost */
+		lem_tx_purge(adapter);
+		callout_reset(&adapter->timer, hz,
+		    lem_local_timer, adapter);
+		EM_CORE_UNLOCK(adapter);
+		return;
+	}
 
-// 	EM_CORE_UNLOCK(adapter);
-// 	lem_rxeof(adapter, -1, NULL);
+	EM_CORE_UNLOCK(adapter);
+	lem_rxeof(adapter, -1, NULL);
 
-// 	EM_TX_LOCK(adapter);
-// 	lem_txeof(adapter);
-// 	if ((if_getdrvflags(ifp) & IFF_DRV_RUNNING) &&
-// 	    (!if_sendq_empty(ifp)))
-// 		lem_start_locked(ifp);
-// 	EM_TX_UNLOCK(adapter);
-// 	return;
-// }
+	EM_TX_LOCK(adapter);
+	lem_txeof(adapter);
+	if ((if_getdrvflags(ifp) & IFF_DRV_RUNNING) &&
+            !e1000->_tx_buffered.IsEmpty())
+	    // (!if_sendq_empty(ifp)))
+		lem_start_locked(ifp);
+	EM_TX_UNLOCK(adapter);
+	return;
+}
 
 
 static void
@@ -5020,7 +5022,7 @@ bool lE1000::InitPci(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bo
     kassert(lem_attach(&addr->bsd) == 0);
     lem_init(addr->bsd.adapter);
     addr->SetupNetInterface();
-    addr->SetHandleMethod(HandleMethod::kInt);
+    addr->SetHandleMethod(HandleMethod::kPolling);
     eth = addr;
     return true;
   } else {

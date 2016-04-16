@@ -93,6 +93,7 @@ uint16_t PciCtrl::FindCapability(uint8_t bus, uint8_t device, uint8_t func, Capa
 bool PciCtrl::SetMsi(uint8_t bus, uint8_t device, uint8_t func, uint64_t addr, uint16_t data) {
   uint16_t offset = FindCapability(bus, device, func, CapabilityId::kMsi);
   if (offset == 0) {
+    kassert(false);
     return false;
   }
   uint16_t control = ReadReg<uint16_t>(bus, device, func, offset + kMsiCapRegControl);

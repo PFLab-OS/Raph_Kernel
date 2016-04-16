@@ -161,9 +161,9 @@ class DevPci : public Device {
     kassert(idt != nullptr);
     int vector = idt->SetIntCallback(lapicid, handler, arg);
     if(pci_ctrl->SetMsi(_bus, _device, 0, ApicCtrl::Lapic::GetMsiAddr(lapicid), ApicCtrl::Lapic::GetMsiData(vector))) {
-      return -1;
+      return vector;
     }
-    return vector;
+    return -1;
   }
  private:
   DevPci();

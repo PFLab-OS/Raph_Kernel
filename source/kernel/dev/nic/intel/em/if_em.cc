@@ -309,15 +309,15 @@ static void	em_get_wakeup(device_t);
 // static void	em_led_func(void *, int);
 static void	em_disable_aspm(struct adapter *);
 
-// static int	em_irq_fast(void *);
+static int	em_irq_fast(void *);
 
 /* MSIX handlers */
 // static void	em_msix_tx(void *);
 // static void	em_msix_rx(void *);
 // static void	em_msix_link(void *);
-// static void	em_handle_tx(void *context, int pending);
+static void	em_handle_tx(void *context, int pending);
 // static void	em_handle_rx(void *context, int pending);
-// static void	em_handle_link(void *context, int pending);
+static void	em_handle_link(void *context, int pending);
 
 #ifdef EM_MULTIQUEUE
 static void	em_enable_vectors_82574(struct adapter *);
@@ -1554,78 +1554,80 @@ em_poll(if_t ifp)
  *  Fast Legacy/MSI Combined Interrupt Service routine  
  *
  *********************************************************************/
-// static int
-// em_irq_fast(void *arg)
-// {
-// 	struct adapter	*adapter = arg;
-// 	if_t ifp;
-// 	u32		reg_icr;
+static int
+em_irq_fast(void *arg)
+{
+  struct adapter	*adapter = reinterpret_cast<struct adapter *>(arg);
+	if_t ifp;
+	u32		reg_icr;
 
-// 	ifp = adapter->ifp;
+	ifp = adapter->ifp;
 
-// 	reg_icr = E1000_READ_REG(&adapter->hw, E1000_ICR);
+	reg_icr = E1000_READ_REG(&adapter->hw, E1000_ICR);
 
-// 	/* Hot eject?  */
-// 	if (reg_icr == 0xffffffff)
-// 		return FILTER_STRAY;
+	/* Hot eject?  */
+	if (reg_icr == 0xffffffff)
+		return FILTER_STRAY;
 
-// 	/* Definitely not our interrupt.  */
-// 	if (reg_icr == 0x0)
-// 		return FILTER_STRAY;
+	/* Definitely not our interrupt.  */
+	if (reg_icr == 0x0)
+		return FILTER_STRAY;
 
-// 	/*
-// 	 * Starting with the 82571 chip, bit 31 should be used to
-// 	 * determine whether the interrupt belongs to us.
-// 	 */
-// 	if (adapter->hw.mac.type >= e1000_82571 &&
-// 	    (reg_icr & E1000_ICR_INT_ASSERTED) == 0)
-// 		return FILTER_STRAY;
+	/*
+	 * Starting with the 82571 chip, bit 31 should be used to
+	 * determine whether the interrupt belongs to us.
+	 */
+	if (adapter->hw.mac.type >= e1000_82571 &&
+	    (reg_icr & E1000_ICR_INT_ASSERTED) == 0)
+		return FILTER_STRAY;
 
-// 	em_disable_intr(adapter);
-// 	taskqueue_enqueue(adapter->tq, &adapter->que_task);
+	em_disable_intr(adapter);
+	taskqueue_enqueue(adapter->tq, &adapter->que_task);
 
-// 	/* Link status change */
-// 	if (reg_icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC)) {
-// 		adapter->hw.mac.get_link_status = 1;
-// 		taskqueue_enqueue(taskqueue_fast, &adapter->link_task);
-// 	}
+	/* Link status change */
+	if (reg_icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC)) {
+		adapter->hw.mac.get_link_status = 1;
+		taskqueue_enqueue(taskqueue_fast, &adapter->link_task);
+	}
 
-// 	if (reg_icr & E1000_ICR_RXO)
-// 		adapter->rx_overruns++;
-// 	return FILTER_HANDLED;
-// }
+	if (reg_icr & E1000_ICR_RXO)
+		adapter->rx_overruns++;
+	return FILTER_HANDLED;
+}
 
 /* Combined RX/TX handler, used by Legacy and MSI */
-// static void
-// em_handle_que(void *context, int pending)
-// {
-// 	struct adapter	*adapter = context;
-// 	if_t ifp = adapter->ifp;
-// 	struct tx_ring	*txr = adapter->tx_rings;
-// 	struct rx_ring	*rxr = adapter->rx_rings;
+static void
+em_handle_que(void *context, int pending)
+{
+  struct adapter	*adapter = reinterpret_cast<struct adapter *>(context);
+  BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
+	if_t ifp = adapter->ifp;
+	struct tx_ring	*txr = adapter->tx_rings;
+	struct rx_ring	*rxr = adapter->rx_rings;
 
-// 	if (if_getdrvflags(ifp) & IFF_DRV_RUNNING) {
-// 		bool more = em_rxeof(rxr, adapter->rx_process_limit, NULL);
+	if (if_getdrvflags(ifp) & IFF_DRV_RUNNING) {
+		bool more = em_rxeof(rxr, adapter->rx_process_limit, NULL);
 
-// 		EM_TX_LOCK(txr);
-// 		em_txeof(txr);
-// #ifdef EM_MULTIQUEUE
-// 		if (!drbr_empty(ifp, txr->br))
-// 			em_mq_start_locked(ifp, txr);
-// #else
-// 		if (!if_sendq_empty(ifp))
-// 			em_start_locked(ifp, txr);
-// #endif
-// 		EM_TX_UNLOCK(txr);
-// 		if (more) {
-// 			taskqueue_enqueue(adapter->tq, &adapter->que_task);
-// 			return;
-// 		}
-// 	}
+		EM_TX_LOCK(txr);
+		em_txeof(txr);
+#ifdef EM_MULTIQUEUE
+		if (!drbr_empty(ifp, txr->br))
+			em_mq_start_locked(ifp, txr);
+#else
+		// if (!if_sendq_empty(ifp))
+                if (!e1000->_tx_buffered.IsEmpty())
+                  em_start_locked(ifp, txr);
+#endif
+		EM_TX_UNLOCK(txr);
+		if (more) {
+			taskqueue_enqueue(adapter->tq, &adapter->que_task);
+			return;
+		}
+	}
 
-// 	em_enable_intr(adapter);
-// 	return;
-// }
+	em_enable_intr(adapter);
+	return;
+}
 
 
 /*********************************************************************
@@ -1723,7 +1725,7 @@ em_poll(if_t ifp)
 // em_handle_rx(void *context, int pending)
 // {
 // 	struct rx_ring	*rxr = context;
-// 	struct adapter	*adapter = rxr->adapter;
+// 	struct adapter	*adapter = reinterpret_cast<struct adapter *>(rxr->adapter);
 //         bool            more;
 
 // 	more = em_rxeof(rxr, adapter->rx_process_limit, NULL);
@@ -1735,57 +1737,61 @@ em_poll(if_t ifp)
 // 	}
 // }
 
-// static void
-// em_handle_tx(void *context, int pending)
-// {
-// 	struct tx_ring	*txr = context;
-// 	struct adapter	*adapter = txr->adapter;
-// 	if_t ifp = adapter->ifp;
+static void
+em_handle_tx(void *context, int pending)
+{
+  struct tx_ring	*txr = reinterpret_cast<struct tx_ring *>(context);
+	struct adapter	*adapter = reinterpret_cast<struct adapter *>(txr->adapter);
+        BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
+	if_t ifp = adapter->ifp;
 
-// 	EM_TX_LOCK(txr);
-// 	em_txeof(txr);
-// #ifdef EM_MULTIQUEUE
-// 	if (!drbr_empty(ifp, txr->br))
-// 		em_mq_start_locked(ifp, txr);
-// #else
-// 	if (!if_sendq_empty(ifp))
-// 		em_start_locked(ifp, txr);
-// #endif
-// 	E1000_WRITE_REG(&adapter->hw, E1000_IMS, txr->ims);
-// 	EM_TX_UNLOCK(txr);
-// }
+	EM_TX_LOCK(txr);
+	em_txeof(txr);
+#ifdef EM_MULTIQUEUE
+	if (!drbr_empty(ifp, txr->br))
+		em_mq_start_locked(ifp, txr);
+#else
+	// if (!if_sendq_empty(ifp))
+        if (!e1000->_tx_buffered.IsEmpty())
+		em_start_locked(ifp, txr);
+#endif
+	E1000_WRITE_REG(&adapter->hw, E1000_IMS, txr->ims);
+	EM_TX_UNLOCK(txr);
+}
 
-// static void
-// em_handle_link(void *context, int pending)
-// {
-// 	struct adapter	*adapter = context;
-// 	struct tx_ring	*txr = adapter->tx_rings;
-// 	if_t ifp = adapter->ifp;
+static void
+em_handle_link(void *context, int pending)
+{
+  struct adapter	*adapter = reinterpret_cast<struct adapter *>(context);
+  BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
+	struct tx_ring	*txr = adapter->tx_rings;
+	if_t ifp = adapter->ifp;
 
-// 	if (!(if_getdrvflags(ifp) & IFF_DRV_RUNNING))
-// 		return;
+	if (!(if_getdrvflags(ifp) & IFF_DRV_RUNNING))
+		return;
 
-// 	EM_CORE_LOCK(adapter);
-// 	callout_stop(&adapter->timer);
-// 	em_update_link_status(adapter);
-// 	callout_reset(&adapter->timer, hz, em_local_timer, adapter);
-// 	E1000_WRITE_REG(&adapter->hw, E1000_IMS,
-// 	    EM_MSIX_LINK | E1000_IMS_LSC);
-// 	if (adapter->link_active) {
-// 		for (int i = 0; i < adapter->num_queues; i++, txr++) {
-// 			EM_TX_LOCK(txr);
-// #ifdef EM_MULTIQUEUE
-// 			if (!drbr_empty(ifp, txr->br))
-// 				em_mq_start_locked(ifp, txr);
-// #else
-// 			if (if_sendq_empty(ifp))
-// 				em_start_locked(ifp, txr);
-// #endif
-// 			EM_TX_UNLOCK(txr);
-// 		}
-// 	}
-// 	EM_CORE_UNLOCK(adapter);
-// }
+	EM_CORE_LOCK(adapter);
+	callout_stop(&adapter->timer);
+	em_update_link_status(adapter);
+	callout_reset(&adapter->timer, hz, em_local_timer, adapter);
+	E1000_WRITE_REG(&adapter->hw, E1000_IMS,
+	    EM_MSIX_LINK | E1000_IMS_LSC);
+	if (adapter->link_active) {
+		for (int i = 0; i < adapter->num_queues; i++, txr++) {
+			EM_TX_LOCK(txr);
+#ifdef EM_MULTIQUEUE
+			if (!drbr_empty(ifp, txr->br))
+				em_mq_start_locked(ifp, txr);
+#else
+			// if (if_sendq_empty(ifp))
+                        if (!e1000->_tx_buffered.IsEmpty())
+                          em_start_locked(ifp, txr);
+#endif
+			EM_TX_UNLOCK(txr);
+		}
+	}
+	EM_CORE_UNLOCK(adapter);
+}
 
 
 /*********************************************************************
@@ -2572,8 +2578,8 @@ int
 em_allocate_legacy(struct adapter *adapter)
 {
 	device_t dev = adapter->dev;
-	// struct tx_ring	*txr = adapter->tx_rings;
-	int /* error, */ rid = 0;
+        struct tx_ring	*txr = adapter->tx_rings;
+	int error, rid = 0;
 
 	/* Manually turn off all interrupts */
 	E1000_WRITE_REG(&adapter->hw, E1000_IMC, 0xffffffff);
@@ -2593,26 +2599,26 @@ em_allocate_legacy(struct adapter *adapter)
 	 * Allocate a fast interrupt and the associated
 	 * deferred processing contexts.
 	 */
-	// TASK_INIT(&adapter->que_task, 0, em_handle_que, adapter);
-	// adapter->tq = taskqueue_create_fast("em_taskq", M_NOWAIT,
-	//     taskqueue_thread_enqueue, &adapter->tq);
-	// taskqueue_start_threads(&adapter->tq, 1, PI_NET, "%s que",
-	//     device_get_nameunit(adapter->dev));
-	// /* Use a TX only tasklet for local timer */
-	// TASK_INIT(&txr->tx_task, 0, em_handle_tx, txr);
-	// txr->tq = taskqueue_create_fast("em_txq", M_NOWAIT,
-	//     taskqueue_thread_enqueue, &txr->tq);
-	// taskqueue_start_threads(&txr->tq, 1, PI_NET, "%s txq",
-	//     device_get_nameunit(adapter->dev));
-	// TASK_INIT(&adapter->link_task, 0, em_handle_link, adapter);
-	// if ((error = bus_setup_intr(dev, adapter->res, INTR_TYPE_NET,
-	//     em_irq_fast, NULL, adapter, &adapter->tag)) != 0) {
-	// 	device_printf(dev, "Failed to register fast interrupt "
-	// 		    "handler: %d\n", error);
-	// 	taskqueue_free(adapter->tq);
-	// 	adapter->tq = NULL;
-	// 	return (error);
-	// }
+	TASK_INIT(&adapter->que_task, 0, em_handle_que, adapter);
+	adapter->tq = taskqueue_create_fast("em_taskq", M_NOWAIT,
+	    taskqueue_thread_enqueue, &adapter->tq);
+	taskqueue_start_threads(&adapter->tq, 1, PI_NET, "%s que",
+	    device_get_nameunit(adapter->dev));
+	/* Use a TX only tasklet for local timer */
+	TASK_INIT(&txr->tx_task, 0, em_handle_tx, txr);
+	txr->tq = taskqueue_create_fast("em_txq", M_NOWAIT,
+	    taskqueue_thread_enqueue, &txr->tq);
+	taskqueue_start_threads(&txr->tq, 1, PI_NET, "%s txq",
+	    device_get_nameunit(adapter->dev));
+	TASK_INIT(&adapter->link_task, 0, em_handle_link, adapter);
+	if ((error = bus_setup_intr(dev, adapter->res, INTR_TYPE_NET,
+	    em_irq_fast, NULL, adapter, &adapter->tag)) != 0) {
+		device_printf(dev, "Failed to register fast interrupt "
+			    "handler: %d\n", error);
+		// taskqueue_free(adapter->tq);
+		adapter->tq = NULL;
+		return (error);
+	}
 	
 	return (0);
 }
