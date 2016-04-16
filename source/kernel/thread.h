@@ -18,6 +18,10 @@
  *
  * Author: Levelfour
  * 
+ * ApicCtrl class for test_main.cc
+ *
+ *  16/04/15 created
+ *
  */
 
 #ifndef __RAPH_KERNEL_THREAD_H__
