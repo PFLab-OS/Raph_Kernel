@@ -30,6 +30,7 @@
 #include <freebsd/sys/param.h>
 
 class ProtocolStack;
+class DevEthernet;
 
 class NetDev {
 public:
@@ -146,14 +147,14 @@ public:
 class NetDevCtrl {
 public:
   struct NetDevInfo {
-    NetDev *device;
-    ProtocolStack *stack;
+    DevEthernet *device;
+    ProtocolStack *ptcl_stack;
   };
 
   NetDevCtrl() {}
 
-  bool RegisterDevice(NetDev *dev, const char *name = kDefaultNetworkInterfaceName);
-  NetDev *GetDevice(const char *name = kDefaultNetworkInterfaceName);
+  bool RegisterDevice(DevEthernet *dev, const char *name = kDefaultNetworkInterfaceName);
+  NetDevInfo *GetDeviceInfo(const char *name = kDefaultNetworkInterfaceName);
 
 protected:
   static const uint32_t kMaxDevNumber = 32;
@@ -162,7 +163,7 @@ private:
   static const uint32_t kNetworkInterfaceNameLen = 8;
   static const char *kDefaultNetworkInterfaceName;
   uint32_t _current_device_number = 0;
-  NetDevInfo _devTable[kMaxDevNumber];
+  NetDevInfo _dev_table[kMaxDevNumber];
 };
 
 #endif /* __RAPH_KERNEL_NETDEV_H__ */

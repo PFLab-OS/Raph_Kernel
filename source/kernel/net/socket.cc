@@ -33,10 +33,10 @@
 #include <net/ptcl.h>
 
 int32_t NetSocket::Open() {
-  _dev = reinterpret_cast<DevEthernet*>(netdev_ctrl->GetDevice());
-  if(!_dev) {
+  if((_device_info = netdev_ctrl->GetDeviceInfo()) == nullptr) {
     return -1;
   } else {
+    _device_info->ptcl_stack->RegisterSocket(this);
     return 0;
   }
 }
@@ -90,7 +90,7 @@ bool Socket::L4Rx(uint8_t *buffer, uint16_t sport, uint16_t dport) {
 int32_t Socket::Transmit(const uint8_t *data, uint32_t length, bool is_raw_packet) {
   // alloc buffer
   NetDev::Packet *packet;
-  if(!_dev->GetTxPacket(packet)) {
+  if(!_device_info->device->GetTxPacket(packet)) {
     return kErrorInsufficientBuffer;
   }
 
@@ -116,13 +116,13 @@ int32_t Socket::Transmit(const uint8_t *data, uint32_t length, bool is_raw_packe
     // Ethernet header
     uint8_t eth_saddr[6];
     uint8_t eth_daddr[6] = {0x08, 0x00, 0x27, 0xc1, 0x5b, 0x93}; // TODO:
-    _dev->GetEthAddr(eth_saddr);
+    _device_info->device->GetEthAddr(eth_saddr);
 //    GetEthAddr(_daddr, eth_daddr);
     L2Tx(packet->buf, eth_saddr, eth_daddr, kProtocolIPv4);
   }
 
   // transmit
-  _dev->TransmitPacket(packet);
+  _device_info->device->TransmitPacket(packet);
   int32_t sent_length = packet->len;
 
   return (sent_length < 0 || is_raw_packet) ? sent_length : sent_length - (L2HeaderLength() + L3HeaderLength() + L4HeaderLength());
@@ -209,29 +209,29 @@ int32_t Socket::Receive(uint8_t *data, uint32_t length, bool is_raw_packet, bool
   DevEthernet::Packet *packet;
   // my MAC address
   uint8_t eth_daddr[6];
-  _dev->GetEthAddr(eth_daddr);
+  _device_info->device->GetEthAddr(eth_daddr);
 
-  if(!_dev->ReceivePacket(packet)) {
+  if(!_device_info->device->ReceivePacket(packet)) {
     return kErrorNoPacketOnWire;
   }
 
   // filter Ethernet address
   if(!L2Rx(packet->buf, nullptr, eth_daddr, kProtocolIPv4)) {
-    _dev->ReuseRxBuffer(packet);
+    _device_info->device->ReuseRxBuffer(packet);
     return kErrorInvalidPacketOnWire;
   }
 
   // filter IP address
   uint32_t offset_l3 = L2HeaderLength();
   if(!L3Rx(packet->buf + offset_l3 , L4Protocol(), _daddr, _ipaddr)) {
-    _dev->ReuseRxBuffer(packet);
+    _device_info->device->ReuseRxBuffer(packet);
     return kErrorInvalidPacketOnWire;
   }
 
   // filter TCP port
   uint32_t offset_l4 = L2HeaderLength() + L3HeaderLength();
   if(!L4Rx(packet->buf + offset_l4, _sport, _dport)) {
-    _dev->ReuseRxBuffer(packet);
+    _device_info->device->ReuseRxBuffer(packet);
     return kErrorInvalidPacketOnWire;
   }
 
@@ -247,7 +247,7 @@ int32_t Socket::Receive(uint8_t *data, uint32_t length, bool is_raw_packet, bool
   }
 
   // finalization
-  _dev->ReuseRxBuffer(packet);
+  _device_info->device->ReuseRxBuffer(packet);
 
   return (received_length < 0 || is_raw_packet) ? received_length : received_length - (L2HeaderLength() + L3HeaderLength() + L4HeaderLength());
 }
@@ -603,7 +603,7 @@ int32_t ArpSocket::TransmitPacket(uint16_t type, uint32_t tpa, uint8_t *tha) {
   uint32_t ip_daddr = tpa;
   uint8_t eth_saddr[6];
   uint8_t eth_daddr[6];
-  _dev->GetEthAddr(eth_saddr);
+  _device_info->device->GetEthAddr(eth_saddr);
 
   switch(type) {
     case kOpARPRequest:
@@ -619,7 +619,7 @@ int32_t ArpSocket::TransmitPacket(uint16_t type, uint32_t tpa, uint8_t *tha) {
 
   // alloc buffer
   DevEthernet::Packet *packet;
-  if(!_dev->GetTxPacket(packet)) {
+  if(!_device_info->device->GetTxPacket(packet)) {
     return kErrorInsufficientBuffer;
   }
 
@@ -633,7 +633,7 @@ int32_t ArpSocket::TransmitPacket(uint16_t type, uint32_t tpa, uint8_t *tha) {
   EthGenerateHeader(packet->buf, eth_saddr, eth_daddr, kProtocolARP);
 
   // transmit
-  if(!_dev->TransmitPacket(packet)) return kErrorDeviceInternal;
+  if(!_device_info->device->TransmitPacket(packet)) return kErrorDeviceInternal;
 
   return type;
 }
@@ -644,22 +644,22 @@ int32_t ArpSocket::ReceivePacket(uint16_t type, uint32_t *spa, uint8_t *sha) {
   int16_t op = 0;
 
   uint8_t eth_daddr[6];
-  _dev->GetEthAddr(eth_daddr);
+  _device_info->device->GetEthAddr(eth_daddr);
 
   // check if there is a new packet on wire (if so, then fetch it)
-  if(!_dev->ReceivePacket(packet)) {
+  if(!_device_info->device->ReceivePacket(packet)) {
     return kErrorNoPacketOnWire;
   }
 
   // filter Ethernet address
   if(!EthFilterPacket(packet->buf, nullptr, eth_daddr, kProtocolARP)) {
-    _dev->ReuseRxBuffer(packet);
+    _device_info->device->ReuseRxBuffer(packet);
     return kErrorInvalidPacketOnWire;
   }
 
   // filter IP address
   if(!ArpFilterPacket(packet->buf + sizeof(EthHeader), type, nullptr, 0, eth_daddr, _ipaddr)) {
-    _dev->ReuseRxBuffer(packet);
+    _device_info->device->ReuseRxBuffer(packet);
     return kErrorInvalidPacketOnWire;
   }
 
@@ -677,12 +677,12 @@ int32_t ArpSocket::ReceivePacket(uint16_t type, uint32_t *spa, uint8_t *sha) {
       if(sha) GetSourceMacAddress(sha, packet->buf + offset_arp);
       break;
     default:
-      _dev->ReuseRxBuffer(packet);
+      _device_info->device->ReuseRxBuffer(packet);
       return kErrorInvalidPacketParameter;
   }
 
   // finalization
-  _dev->ReuseRxBuffer(packet);
+  _device_info->device->ReuseRxBuffer(packet);
 
   return op;
 }

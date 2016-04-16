@@ -46,9 +46,6 @@ public:
   // register new socket
   bool RegisterSocket(NetSocket *socket);
 
-  // insert new packet (NetDev uses)
-  bool DelegatePacket(NetDev *dev, NetDev::Packet *packet);
-
   // fetch packet (NetSocket uses)
   bool ReceivePacket(uint32_t socket_id, NetDev::Packet *packet);
 
@@ -56,6 +53,8 @@ public:
   void Handle() override;
 
   // TODO: remove socket
+
+  void SetDevice(NetDev *dev) { _device = dev; }
 
 private:
   // packet queue (inserted from network device)
@@ -67,6 +66,9 @@ private:
   static const uint32_t kMaxSocketNumber = 8;
   uint32_t _current_socket_number = 0;
   PacketQueue _duplicated_queue[kMaxSocketNumber];
+
+  // reference to the network device holding this protocol stack
+  NetDev *_device;
 
   SpinLock _lock;
 };

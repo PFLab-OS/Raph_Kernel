@@ -58,8 +58,8 @@ public:
   uint32_t GetProtocolStackId() { return _ptcl_stack_id; }
 
 protected:
-  // the instance of the network device to send / receive packet
-  DevEthernet *_dev = nullptr;
+  // reference to network device info
+  NetDevCtrl::NetDevInfo *_device_info;
 
 private:
   uint32_t _ptcl_stack_id;

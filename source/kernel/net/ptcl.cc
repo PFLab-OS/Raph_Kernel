@@ -39,19 +39,6 @@ bool ProtocolStack::RegisterSocket(NetSocket *socket) {
   }
 }
 
-bool ProtocolStack::DelegatePacket(NetDev *dev, NetDev::Packet *packet) {
-  Locker locker(_lock);
-
-  NetDev::Packet *dup_packet = reinterpret_cast<NetDev::Packet*>(virtmem_ctrl->Alloc(sizeof(NetDev::Packet)));
-  memcpy(dup_packet, packet, sizeof(NetDev::Packet));
-
-  // insert into main queue at first
-  bool result = _main_queue.Push(packet);
-  dev->ReuseRxBuffer(packet);
-
-  return result;
-}
-
 bool ProtocolStack::ReceivePacket(uint32_t socket_id, NetDev::Packet *packet) {
   if(socket_id >= _current_socket_number) {
     // invalid socket id
@@ -62,9 +49,21 @@ bool ProtocolStack::ReceivePacket(uint32_t socket_id, NetDev::Packet *packet) {
 }
 
 void ProtocolStack::Handle() {
+  puts("ProtocolStack::Handle()");
   Locker locker(_lock);
 
-  while(!_main_queue.IsEmpty()) {
+  NetDev::Packet *packet = nullptr;
+
+  if(!_device->ReceivePacket(packet)) {
+    NetDev::Packet *dup_packet = reinterpret_cast<NetDev::Packet*>(virtmem_ctrl->Alloc(sizeof(NetDev::Packet)));
+    memcpy(dup_packet, packet, sizeof(NetDev::Packet));
+
+    // insert into main queue at first
+    _main_queue.Push(packet);
+    _device->ReuseRxBuffer(packet);
+  }
+
+  if(!_main_queue.IsEmpty()) {
     // new packets arrived from network device
     NetDev::Packet *new_packet;
     kassert(_main_queue.Pop(new_packet));
