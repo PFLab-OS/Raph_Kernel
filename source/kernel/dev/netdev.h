@@ -27,6 +27,7 @@
 #include <string.h>
 #include <buf.h>
 #include <spinlock.h>
+#include <polling.h>
 #include <freebsd/sys/param.h>
 
 class NetDev {
@@ -36,8 +37,12 @@ public:
     uint8_t buf[MCLBYTES];
   };
   enum class LinkStatus {
-    Up,
-    Down
+    kUp,
+    kDown,
+  };
+  enum class HandleMethod {
+    kInt,
+    kPolling,
   };
 
   typedef RingBuffer<Packet *, 300> NetDevRingBuffer;
@@ -123,10 +128,31 @@ public:
     strncpy(_name, name, kNetworkInterfaceNameLen);
   }
   const char *GetName() { return _name; }
- protected:
+  void SetHandleMethod(HandleMethod method) {
+    switch(method) {
+    case HandleMethod::kInt: {
+      ChangeHandleMethodToInt();
+    }
+    case HandleMethod::kPolling: {
+      ChangeHandleMethodToPolling();
+    }
+    default: {
+      kassert(false);
+    }
+    }
+    _method = method;
+  }
+  HandleMethod GetHandleMethod() {
+    return _method;
+  }
+protected:
   NetDev() {}
+  virtual void ChangeHandleMethodToPolling() = 0;
+  virtual void ChangeHandleMethodToInt() = 0;
   SpinLock _lock;
-  volatile LinkStatus _status = LinkStatus::Down;
+  PollingFunc _polling;
+  volatile LinkStatus _status = LinkStatus::kDown;
+  HandleMethod _method = HandleMethod::kInt;
 
   // IP address
   uint32_t _ipAddr = 0;

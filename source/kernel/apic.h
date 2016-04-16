@@ -108,6 +108,12 @@ public:
     void StopTimer() {
       _ctrlAddr[kRegLvtTimer] |= kRegLvtMask;
     }
+    static uint64_t GetMsiAddr(uint8_t dest_lapicid) {
+      return kMsiAddrRegReserved | (static_cast<uint64_t>(dest_lapicid) << kMsiAddrRegDestOffset);
+    }
+    static uint16_t GetMsiData(uint8_t vector) {
+      return kRegIcrTriggerModeEdge | kDeliverModeLowest | vector;
+    }
   private:
     volatile uint32_t *_ctrlAddr = nullptr;
     static const int kIa32ApicBaseMsr = 0x1B;
@@ -156,6 +162,10 @@ public:
     static const uint32_t kRegIcrDestShorthandSelf           = 1 << 18;
     static const uint32_t kRegIcrDestShorthandAllIncludeSelf = 2 << 18;
     static const uint32_t kRegIcrDestShorthandAllExcludeSelf = 3 << 18;
+
+    // see intel64 manual vol3 Figure 10-14 (Layout of the MSI Message Address Register)
+    static const uint64_t kMsiAddrRegReserved = 0xFEE00000;
+    static const int kMsiAddrRegDestOffset = 12;
 
     // see intel MPspec Appendix B.5
     static const uint32_t kIoRtc = 0x70;

@@ -42,6 +42,7 @@ enum class SpinLockId : int {
 class SpinLock {
 public:
   SpinLock() {}
+  virtual ~SpinLock() {}
   volatile unsigned int GetFlag() {
     return _flag;
   }
@@ -55,15 +56,27 @@ public:
   virtual SpinLockId getLockId() {
     return SpinLockId::kNull;
   }
-  void Lock();
+  virtual void Lock();
   void Unlock();
   int Trylock();
   bool IsLocked() {
     return ((_flag % 2) == 1);
   }
-private:
+protected:
   volatile unsigned int _flag = 0;
   volatile int _id;
+};
+
+class DebugSpinLock : public SpinLock {
+public:
+  DebugSpinLock() {
+    _key = kKey;
+  }
+  virtual ~DebugSpinLock() {}
+  virtual void Lock() override;
+private:
+  volatile int _key;
+  static const int kKey = 0x13572468;
 };
 
 // コンストラクタ、デストラクタでlock,unlockができるラッパー

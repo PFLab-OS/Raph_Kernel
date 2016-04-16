@@ -38,6 +38,10 @@
 #include <freebsd/sys/rman.h>
 #include <freebsd/i386/include/resource.h>
 
+#define	FILTER_STRAY		0x01
+#define	FILTER_HANDLED		0x02
+#define	FILTER_SCHEDULE_THREAD	0x04
+
 typedef enum {
   BUS_SPACE_MEMIO,
   BUS_SPACE_PIO
@@ -47,6 +51,38 @@ typedef uint64_t bus_space_handle_t;
 
 typedef void *bus_addr_t;
 typedef int bus_size_t;
+
+typedef int (*driver_filter_t)(void*);
+typedef void (*driver_intr_t)(void*);
+
+enum intr_type {
+	INTR_TYPE_TTY = 1,
+	INTR_TYPE_BIO = 2,
+	INTR_TYPE_NET = 4,
+	INTR_TYPE_CAM = 8,
+	INTR_TYPE_MISC = 16,
+	INTR_TYPE_CLK = 32,
+	INTR_TYPE_AV = 64,
+	INTR_EXCL = 256,		/* exclusive interrupt */
+	INTR_MPSAFE = 512,		/* this interrupt is SMP safe */
+	INTR_ENTROPY = 1024,		/* this interrupt provides entropy */
+	INTR_MD1 = 4096,		/* flag reserved for MD use */
+	INTR_MD2 = 8192,		/* flag reserved for MD use */
+	INTR_MD3 = 16384,		/* flag reserved for MD use */
+	INTR_MD4 = 32768		/* flag reserved for MD use */
+};
+
+enum intr_trigger {
+	INTR_TRIGGER_CONFORM = 0,
+	INTR_TRIGGER_EDGE = 1,
+	INTR_TRIGGER_LEVEL = 2
+};
+
+enum intr_polarity {
+	INTR_POLARITY_CONFORM = 0,
+	INTR_POLARITY_HIGH = 1,
+	INTR_POLARITY_LOW = 2
+};
 
 static inline uint8_t bus_space_read_1(bus_space_tag_t space, bus_space_handle_t handle, bus_size_t offset) {
   switch(space) {
@@ -123,7 +159,6 @@ static inline void bus_space_write_4(bus_space_tag_t space, bus_space_handle_t h
 struct resource {
   phys_addr addr;
   bus_space_tag_t type;
-  DevPci *pci;
   union {
     struct {
       bool is_prefetchable;
@@ -170,11 +205,29 @@ static inline struct resource *bus_alloc_resource_any(device_t dev, int type, in
     kassert(false);
   }
   }
-  r->pci = dev->GetPciClass();
   return r;
 }
 
+// defined by Raphine Project
+struct bus_filter_struct {
+  driver_filter_t filter;
+  void *arg;
+};
+static inline void bus_filter_sub(void *arg) {
+  bus_filter_struct *s = reinterpret_cast<bus_filter_struct *>(arg);
+  s->filter(s->arg);
+}
+
 static inline int bus_setup_intr(device_t dev, struct resource *r, int flags, driver_filter_t filter, driver_intr_t handler, void *arg, void **cookiep) {
+  kassert(handler == nullptr);
+  bus_filter_struct *s = reinterpret_cast<bus_filter_struct *>(virtmem_ctrl->Alloc(sizeof(bus_filter_struct)));
+  s->filter = filter;
+  s->arg = arg;
+  if (dev->GetPciClass()->SetMsi(0, bus_filter_sub, reinterpret_cast<void *>(s)) == -1) {
+    return -1;
+  } else {
+    return 0;
+  }
 }
 
 #endif /* _FREEBSD_BUS_H_ */

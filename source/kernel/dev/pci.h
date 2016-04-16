@@ -26,6 +26,7 @@
 #include <stdint.h>
 #include <acpi.h>
 #include <global.h>
+#include <spinlock.h>
 #include <mem/virtmem.h>
 #include <idt.h>
 #include <apic.h>
@@ -56,7 +57,7 @@ class PciCtrl : public Device {
 
   static void Init() {
     PciCtrl *addr = reinterpret_cast<PciCtrl *>(virtmem_ctrl->Alloc(sizeof(PciCtrl)));
-    pci_ctrl = new(addr) PciCtrl; 
+    pci_ctrl = new(addr) PciCtrl;
     pci_ctrl->_Init();
   }
   virt_addr GetVaddr(uint8_t bus, uint8_t device, uint8_t func, uint16_t reg) {
@@ -135,7 +136,10 @@ class PciCtrl : public Device {
 // 派生クラスはstatic void InitPci(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf); を作成する事
 class DevPci : public Device {
  public:
- DevPci(uint8_t bus, uint8_t device, bool mf) : _bus(bus), _device(device), _mf(mf) {}
+ DevPci(uint8_t bus, uint8_t device, bool mf) : _bus(bus), _device(device), _mf(mf) {
+  }
+  virtual ~DevPci() {
+  }
   static bool InitPci(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {
     return false;
   } // dummy
@@ -150,31 +154,22 @@ class DevPci : public Device {
   uint16_t FindCapability(PciCtrl::CapabilityId id) {
     kassert(pci_ctrl != nullptr);
     return pci_ctrl->FindCapability(_bus, _device, 0, id);
-  }
-  bool SetMsi(uint64_t addr, uint16_t data) {
-    // TODO apicの設定までやってしまうように
+  } 
+  // 返り値は割り当てられたvector または-1(error)
+  int SetMsi(int lapicid, int_callback handler, void *arg) {
     kassert(pci_ctrl != nullptr);
-    return pci_ctrl->SetMsi(_bus, _device, 0, addr, data);
+    kassert(idt != nullptr);
+    int vector = idt->SetIntCallback(lapicid, handler, arg);
+    if(pci_ctrl->SetMsi(_bus, _device, 0, ApicCtrl::Lapic::GetMsiAddr(lapicid), ApicCtrl::Lapic::GetMsiData(vector))) {
+      return -1;
+    }
+    return vector;
   }
  private:
-  static void HandleSub(Regs *rs, void *arg) {
-    DevPci *that = reinterpret_cast<DevPci *>(arg);
-    for (int i = 0; i < kIntMax; i++) {
-      if (static_cast<unsigned int>(that->map[i].vector) == rs->n && that->map[i].lapicid == apic_ctrl->GetApicId()) {
-        (that->*(that->map[i].handler))();
-        break;
-      }
-    }
-  }
+  DevPci();
   const uint8_t _bus;
   const uint8_t _device;
   const bool _mf;
-  static const int kIntMax = 10;
-  struct IntMap {
-    int lapicid;
-    int vector;
-    void (DevPci::*handler)();
-  } map[kIntMax];
 };
 
 template<class T>

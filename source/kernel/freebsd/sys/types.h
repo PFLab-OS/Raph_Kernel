@@ -38,13 +38,81 @@
 #ifndef _FREEBSD_SYS_TYPES_H_
 #define _FREEBSD_SYS_TYPES_H_
 
+#include <stdint.h>
 #include <raph.h>
 #include <dev/pci.h>
+#include <dev/eth.h>
+#include <freebsd/net/if_var.h>
 
 typedef	unsigned char	u_char;
 typedef	unsigned short	u_short;
 typedef	unsigned int	u_int;
 typedef	unsigned long	u_long;
+
+class BsdDevPci : public DevPci {
+public:
+  BsdDevPci(uint8_t bus, uint8_t device, bool mf) : DevPci(bus, device, mf) {
+    for (int i = 0; i < kIntMax; i++) {
+      map[i].handler = nullptr;
+    }
+  }
+  virtual ~BsdDevPci() {
+  }
+  // 返り値は割り当てられたvector または-1(error)
+  int SetMsi(int lapicid, ioint_callback handler, void *arg) {
+    int i;
+    {
+      Locker locker(_lock);
+      for (i = 0; i < kIntMax; i++) {
+        if (map[i].handler == nullptr) {
+          break;
+        }
+      }
+      if (i == kIntMax) {
+        return -1;
+      }
+    }
+    int vector = DevPci::SetMsi(lapicid, HandleSub, reinterpret_cast<void *>(this));
+    if (vector == -1) {
+      return -1;
+    }
+    map[i].lapicid = lapicid;
+    map[i].vector = vector;
+    map[i].handler = handler;
+    map[i].arg = arg;
+    return vector;
+  }
+private:
+  static void HandleSub(Regs *rs, void *arg) {
+    BsdDevPci *that = reinterpret_cast<BsdDevPci *>(arg);
+    Locker locker(that->_lock);
+    for (int i = 0; i < kIntMax; i++) {
+      if (static_cast<unsigned int>(that->map[i].vector) == rs->n && that->map[i].lapicid == apic_ctrl->GetApicId()) {
+        that->map[i].handler(that->map[i].arg);
+        break;
+      }
+    }
+  }
+  static const int kIntMax = 10;
+  struct IntMap {
+    int lapicid;
+    int vector;
+    ioint_callback handler;
+    void *arg;
+  } map[kIntMax];
+  SpinLock _lock;
+};
+
+class BsdDevEthernet : public BsdNetDev, public InterfaceDevEthernet {
+ public:
+  BsdDevEthernet(uint8_t bus, uint8_t device, bool mf) : _bsd_pci(bus, device, mf) {}
+  virtual ~BsdDevEthernet() {}
+  BsdDevPci *GetBsdDevPci() {
+    return &_bsd_pci;
+  }
+ protected:
+  BsdDevPci _bsd_pci;
+};
 
 class BsdDevice {
  public:
@@ -56,16 +124,16 @@ class BsdDevice {
     T *GetMasterClass() {
     return reinterpret_cast<T *>(_master);
   }
-  void SetClass(DevPci *pci) {
+  void SetClass(BsdDevPci *pci) {
     _pci = pci;
   }
-  DevPci *GetPciClass() {
+  BsdDevPci *GetPciClass() {
     kassert(_pci != nullptr);
     return _pci;
   }
   struct adapter *adapter;
  private:
-  DevPci *_pci = nullptr;
+  BsdDevPci *_pci = nullptr;
   void *_master;
 };
 

@@ -44,14 +44,17 @@ class Callout : public Polling {
   }
   virtual ~Callout() {
   }
-  void Init(void (*func)(void *), void *arg) {
-    _func.Init(func, arg);
+  void Init(const Function &func) {
+    _func = func;
   }
   void SetHandler(uint32_t us) {
+    SetHandler(apic_ctrl->GetApicId(), us);
+  }
+  void SetHandler(int lapicid, uint32_t us) {
     if (_state == CalloutState::kNull) {
       _state = CalloutState::kWaiting;
       _cnt = timer->GetCntAfterPeriod(timer->ReadMainCnt(), us);
-      this->RegisterPolling();
+      this->RegisterPolling(lapicid);
     }
   }
   volatile bool IsHandling() {

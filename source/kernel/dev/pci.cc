@@ -53,7 +53,6 @@ void PciCtrl::_Init() {
         }
         uint16_t did = ReadReg<uint16_t>(j, k, 0, kDeviceIDReg);
         bool mf = ReadReg<uint8_t>(j, k, 0, kHeaderTypeReg) & kHeaderTypeRegFlagMultiFunction;
-
         InitPciDevices<E1000, lE1000, DevPci>(vid, did, j, k, mf);
       }
     }
@@ -93,6 +92,9 @@ uint16_t PciCtrl::FindCapability(uint8_t bus, uint8_t device, uint8_t func, Capa
 
 bool PciCtrl::SetMsi(uint8_t bus, uint8_t device, uint8_t func, uint64_t addr, uint16_t data) {
   uint16_t offset = FindCapability(bus, device, func, CapabilityId::kMsi);
+  if (offset == 0) {
+    return false;
+  }
   uint16_t control = ReadReg<uint16_t>(bus, device, func, offset + kMsiCapRegControl);
   
   if (control & kMsiCapRegControlAddr64Flag) {
@@ -106,4 +108,5 @@ bool PciCtrl::SetMsi(uint8_t bus, uint8_t device, uint8_t func, uint64_t addr, u
     WriteReg<uint16_t>(bus, device, func, offset + kMsiCapReg32MsgData, static_cast<uint16_t>(data));
   }
   WriteReg<uint16_t>(bus, device, func, offset + kMsiCapRegControl, control | kMsiCapRegControlMsiEnableFlag);
+  return true;
 }

@@ -40,6 +40,16 @@ void SpinLock::Lock() {
 #endif // __UNIT_TEST__
 }
 
+void DebugSpinLock::Lock() {
+  kassert(_key == kKey);
+#ifndef __UNIT_TEST__
+  if ((_flag % 2) == 1) {
+    kassert(_id != apic_ctrl->GetApicId());
+  }
+#endif // __UNIT_TEST__
+  SpinLock::Lock();
+}
+
 void SpinLock::Unlock() {
   kassert((_flag % 2) == 1);
   _id = -1;

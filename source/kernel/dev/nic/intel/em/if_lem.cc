@@ -184,8 +184,8 @@ static const char *lem_strings[] = {
 /*********************************************************************
  *  Function prototypes
  *********************************************************************/
-int	lem_probe(device_t);
-int	lem_attach(device_t);
+static int	lem_probe(device_t);
+static int	lem_attach(device_t);
 // static int	lem_detach(device_t);
 // static int	lem_shutdown(device_t);
 // static int	lem_suspend(device_t);
@@ -196,7 +196,7 @@ static void	lem_start_locked(if_t ifp);
 #if __FreeBSD_version >= 1100036
 static uint64_t	lem_get_counter(if_t, ift_counter);
 #endif
-void	lem_init(struct adapter *);
+static void	lem_init(struct adapter *);
 static void	lem_init_locked(struct adapter *);
 static void	lem_stop(struct adapter *);
 // static void	lem_media_status(if_t, struct ifmediareq *);
@@ -219,7 +219,7 @@ static void	lem_disable_intr(struct adapter *);
 static void	lem_update_stats_counters(struct adapter *);
 // static void	lem_add_hw_stats(struct adapter *adapter);
 static void	lem_txeof(struct adapter *);
-// static void	lem_tx_purge(struct adapter *);
+static void	lem_tx_purge(struct adapter *);
 static int	lem_allocate_receive_structures(struct adapter *);
 static int	lem_allocate_transmit_structures(struct adapter *);
 static bool	lem_rxeof(struct adapter *, int, int *);
@@ -233,12 +233,12 @@ static int	lem_fixup_rx(struct adapter *);
 // static void	lem_set_promisc(struct adapter *);
 // static void	lem_disable_promisc(struct adapter *);
 static void	lem_set_multi(struct adapter *);
-void	lem_update_link_status(struct adapter *);
+static void	lem_update_link_status(struct adapter *);
 // static int	lem_get_buf(struct adapter *, int);
 // static void	lem_register_vlan(void *, if_t, u16);
 // static void	lem_unregister_vlan(void *, if_t, u16);
 // static void	lem_setup_vlan_hw_support(struct adapter *);
-static int	lem_xmit(struct adapter *, DevEthernet::Packet *);
+static int	lem_xmit(struct adapter *, BsdDevEthernet::Packet *);
 static void	lem_smartspeed(struct adapter *);
 // static int	lem_82547_fifo_workaround(struct adapter *, int);
 // static void	lem_82547_update_fifo_head(struct adapter *, int);
@@ -268,14 +268,14 @@ static void	lem_get_wakeup(device_t);
 // static void	lem_led_func(void *, int);
 
 // static void	lem_intr(void *);
-// static int	lem_irq_fast(void *);
-// static void	lem_handle_rxtx(void *context, int pending);
-// static void	lem_handle_link(void *context, int pending);
+static int	lem_irq_fast(void *);
+static void	lem_handle_rxtx(void *context, int pending);
+static void	lem_handle_link(void *context, int pending);
 // static void	lem_add_rx_process_limit(struct adapter *, const char *,
 // 		    const char *, int *, int);
 
 #ifdef DEVICE_POLLING
-int lem_poll(if_t ifp);
+static int lem_poll(if_t ifp);
 #endif /* POLLING */
 
 /*********************************************************************
@@ -923,7 +923,7 @@ static void
 lem_start_locked(if_t ifp)
 {
   struct adapter	*adapter = reinterpret_cast<struct adapter *>(if_getsoftc(ifp));
-  DevEthernet *e1000 = adapter->dev->GetMasterClass<DevEthernet>();
+  BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<lE1000>();
 	// struct mbuf	*m_head;
 
 	EM_TX_LOCK_ASSERT(adapter);
@@ -964,7 +964,7 @@ lem_start_locked(if_t ifp)
 		// 	if_sendq_prepend(ifp, m_head);
 		// 	break;
 		// }
-          DevEthernet::Packet *packet;
+          BsdDevEthernet::Packet *packet;
           kassert(e1000->_tx_buffered.Pop(packet));
           lem_xmit(adapter, packet);
 
@@ -1350,7 +1350,7 @@ int
 lem_poll(if_t ifp)
 {
   struct adapter *adapter = reinterpret_cast<struct adapter *>(if_getsoftc(ifp));
-  DevEthernet *e1000 = adapter->dev->GetMasterClass<DevEthernet>();
+  BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<lE1000>();
   // u32		reg_icr;
   int rx_done = 0;
 
@@ -1438,92 +1438,93 @@ lem_poll(if_t ifp)
 // }
 
 
-// static void
-// lem_handle_link(void *context, int pending)
-// {
-// 	struct adapter	*adapter = context;
-// 	if_t ifp = adapter->ifp;
+static void
+lem_handle_link(void *context, int pending)
+{
+  struct adapter	*adapter = reinterpret_cast<struct adapter *>(context);
+  if_t ifp = adapter->ifp;
 
-// 	if (!(if_getdrvflags(ifp) & IFF_DRV_RUNNING))
-// 		return;
+  if (!(if_getdrvflags(ifp) & IFF_DRV_RUNNING))
+    return;
 
-// 	EM_CORE_LOCK(adapter);
-// 	callout_stop(&adapter->timer);
-// 	lem_update_link_status(adapter);
-// 	/* Deal with TX cruft when link lost */
-// 	lem_tx_purge(adapter);
-// 	callout_reset(&adapter->timer, hz, lem_local_timer, adapter);
-// 	EM_CORE_UNLOCK(adapter);
-// }
+  EM_CORE_LOCK(adapter);
+  callout_stop(&adapter->timer);
+  lem_update_link_status(adapter);
+  /* Deal with TX cruft when link lost */
+  lem_tx_purge(adapter);
+  callout_reset(&adapter->timer, hz, lem_local_timer, adapter);
+  EM_CORE_UNLOCK(adapter);
+}
 
 
 /* Combined RX/TX handler, used by Legacy and MSI */
-// static void
-// lem_handle_rxtx(void *context, int pending)
-// {
-// 	struct adapter	*adapter = context;
-// 	if_t ifp = adapter->ifp;
+static void
+lem_handle_rxtx(void *context, int pending)
+{
+  struct adapter	*adapter = reinterpret_cast<struct adapter *>(context);
+  BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<lE1000>();
+  if_t ifp = adapter->ifp;
 
 
-// 	if (if_getdrvflags(ifp) & IFF_DRV_RUNNING) {
-// 		bool more = lem_rxeof(adapter, adapter->rx_process_limit, NULL);
-// 		EM_TX_LOCK(adapter);
-// 		lem_txeof(adapter);
-// 		if(!if_sendq_empty(ifp))
-// 			lem_start_locked(ifp);
-// 		EM_TX_UNLOCK(adapter);
-// 		if (more) {
-// 			taskqueue_enqueue(adapter->tq, &adapter->rxtx_task);
-// 			return;
-// 		}
-// 	}
+  if (if_getdrvflags(ifp) & IFF_DRV_RUNNING) {
+    bool more = lem_rxeof(adapter, adapter->rx_process_limit, NULL);
+    EM_TX_LOCK(adapter);
+    lem_txeof(adapter);
+    if (!e1000->_tx_buffered.IsEmpty())
+      lem_start_locked(ifp);
+    EM_TX_UNLOCK(adapter);
+    if (more) {
+      taskqueue_enqueue(adapter->tq, &adapter->rxtx_task);
+      return;
+    }
+  }
 
-// 	if (if_getdrvflags(ifp) & IFF_DRV_RUNNING)
-// 		lem_enable_intr(adapter);
-// }
+  if (if_getdrvflags(ifp) & IFF_DRV_RUNNING)
+    lem_enable_intr(adapter);
+}
 
 /*********************************************************************
  *
  *  Fast Legacy/MSI Combined Interrupt Service routine  
  *
  *********************************************************************/
-// static int
-// lem_irq_fast(void *arg)
-// {
-// 	struct adapter	*adapter = arg;
-// 	if_t ifp;
-// 	u32		reg_icr;
+static int
+lem_irq_fast(void *arg)
+{
+  struct adapter	*adapter = reinterpret_cast<struct adapter *>(arg);
+	if_t ifp;
+	u32		reg_icr;
 
-// 	ifp = adapter->ifp;
+	ifp = adapter->ifp;
 
-// 	reg_icr = E1000_READ_REG(&adapter->hw, E1000_ICR);
+	reg_icr = E1000_READ_REG(&adapter->hw, E1000_ICR);
 
-// 	/* Hot eject?  */
-// 	if (reg_icr == 0xffffffff)
-// 		return FILTER_STRAY;
+	/* Hot eject?  */
+	if (reg_icr == 0xffffffff)
+		return FILTER_STRAY;
 
-// 	/* Definitely not our interrupt.  */
-// 	if (reg_icr == 0x0)
-// 		return FILTER_STRAY;
+	/* Definitely not our interrupt.  */
+	if (reg_icr == 0x0)
+		return FILTER_STRAY;
 
-// 	/*
-// 	 * Mask interrupts until the taskqueue is finished running.  This is
-// 	 * cheap, just assume that it is needed.  This also works around the
-// 	 * MSI message reordering errata on certain systems.
-// 	 */
-// 	lem_disable_intr(adapter);
-// 	taskqueue_enqueue(adapter->tq, &adapter->rxtx_task);
+	/*
+	 * Mask interrupts until the taskqueue is finished running.  This is
+	 * cheap, just assume that it is needed.  This also works around the
+	 * MSI message reordering errata on certain systems.
+	 */
+	lem_disable_intr(adapter);
+	taskqueue_enqueue(adapter->tq, &adapter->rxtx_task);
 
-// 	/* Link status change */
-// 	if (reg_icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC)) {
-// 		adapter->hw.mac.get_link_status = 1;
-// 		taskqueue_enqueue(taskqueue_fast, &adapter->link_task);
-// 	}
+	/* Link status change */
+	if (reg_icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC)) {
+		adapter->hw.mac.get_link_status = 1;
+		taskqueue_enqueue(taskqueue_fast, &adapter->link_task);
+	}
 
-// 	if (reg_icr & E1000_ICR_RXO)
-// 		adapter->rx_overruns++;
-// 	return FILTER_HANDLED;
-// }
+	if (reg_icr & E1000_ICR_RXO)
+		adapter->rx_overruns++;
+	return FILTER_HANDLED;
+}
 
 
 /*********************************************************************
@@ -1645,7 +1646,7 @@ lem_poll(if_t ifp)
  **********************************************************************/
 
 static int
-lem_xmit(struct adapter *adapter, DevEthernet::Packet *packet)
+lem_xmit(struct adapter *adapter, BsdDevEthernet::Packet *packet)
 {
 	// bus_dma_segment_t	segs[EM_MAX_SCATTER];
 	bus_dmamap_t		map;
@@ -1654,7 +1655,7 @@ lem_xmit(struct adapter *adapter, DevEthernet::Packet *packet)
 	// struct mbuf		*m_head;
 	u32			txd_upper, txd_lower, txd_used, txd_saved;
 	int			error, nsegs, i, /* j, */ first, last = 0;
-        DevEthernet *e1000 = adapter->dev->GetMasterClass<DevEthernet>();
+        BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<lE1000>();
 
 	// m_head = *m_headp;
 	txd_upper = txd_lower = txd_used = txd_saved = 0;
@@ -2166,7 +2167,7 @@ lem_update_link_status(struct adapter *adapter)
 	struct e1000_hw *hw = &adapter->hw;
 	// if_t ifp = adapter->ifp;
 	u32 link_check = 0;
-        DevEthernet *e1000 = adapter->dev->GetMasterClass<DevEthernet>();
+        BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<lE1000>();
 
 	/* Get the cached link value or read phy for real */
 	switch (hw->phy.media_type) {
@@ -2206,7 +2207,7 @@ lem_update_link_status(struct adapter *adapter)
 		adapter->smartspeed = 0;
 		// if_setbaudrate(ifp, adapter->link_speed * 1000000);
 		// if_link_state_change(ifp, LINK_STATE_UP);
-                e1000->SetStatus(DevEthernet::LinkStatus::Up);
+                e1000->SetStatus(BsdDevEthernet::LinkStatus::kUp);
 	} else if (!link_check && (adapter->link_active == 1)) {
 		// if_setbaudrate(ifp, 0);
 		adapter->link_speed = 0;
@@ -2217,7 +2218,7 @@ lem_update_link_status(struct adapter *adapter)
 		/* Link down, disable watchdog */
 		adapter->watchdog_check = FALSE;
 		// if_link_state_change(ifp, LINK_STATE_DOWN);
-                e1000->SetStatus(DevEthernet::LinkStatus::Down);
+                e1000->SetStatus(BsdDevEthernet::LinkStatus::kDown);
 	}
 }
 
@@ -2353,7 +2354,7 @@ int
 lem_allocate_irq(struct adapter *adapter)
 {
 	device_t dev = adapter->dev;
-	int /* error, */ rid = 0;
+	int error, rid = 0;
 
 	/* Manually turn off all interrupts */
 	E1000_WRITE_REG(&adapter->hw, E1000_IMC, 0xffffffff);
@@ -2384,21 +2385,21 @@ lem_allocate_irq(struct adapter *adapter)
 	 * Use a Fast interrupt and the associated
 	 * deferred processing contexts.
 	 */
-	// TASK_INIT(&adapter->rxtx_task, 0, lem_handle_rxtx, adapter);
-	// TASK_INIT(&adapter->link_task, 0, lem_handle_link, adapter);
-	// adapter->tq = taskqueue_create_fast("lem_taskq", M_NOWAIT,
-	//     taskqueue_thread_enqueue, &adapter->tq);
-	// taskqueue_start_threads(&adapter->tq, 1, PI_NET, "%s taskq",
-	//     device_get_nameunit(adapter->dev));
-	// if ((error = bus_setup_intr(dev, adapter->res[0],
-	//     INTR_TYPE_NET, lem_irq_fast, NULL, adapter,
-	//     &adapter->tag[0])) != 0) {
-	// 	device_printf(dev, "Failed to register fast interrupt "
-	// 		    "handler: %d\n", error);
-	// 	taskqueue_free(adapter->tq);
-	// 	adapter->tq = NULL;
-	// 	return (error);
-	// }
+	TASK_INIT(&adapter->rxtx_task, 0, lem_handle_rxtx, adapter);
+	TASK_INIT(&adapter->link_task, 0, lem_handle_link, adapter);
+	adapter->tq = taskqueue_create_fast("lem_taskq", M_NOWAIT,
+	    taskqueue_thread_enqueue, &adapter->tq);
+	taskqueue_start_threads(&adapter->tq, 1, PI_NET, "%s taskq",
+	    device_get_nameunit(adapter->dev));
+	if ((error = bus_setup_intr(dev, adapter->res[0],
+	    INTR_TYPE_NET, lem_irq_fast, NULL, adapter,
+	    &adapter->tag[0])) != 0) {
+		device_printf(dev, "Failed to register fast interrupt "
+			    "handler: %d\n", error);
+		// taskqueue_free(adapter->tq);
+		adapter->tq = NULL;
+		return (error);
+	}
 	
 	return (0);
 }
@@ -2503,7 +2504,8 @@ lem_setup_interface(device_t dev, struct adapter *adapter)
 
 	INIT_DEBUGOUT("lem_setup_interface: begin");
 
-	ifp = adapter->ifp = if_gethandle(IFT_ETHER);
+	//ifp = adapter->ifp = if_gethandle(dev, IFT_ETHER);
+	ifp = adapter->ifp = dev->GetMasterClass<lE1000>();
 	if (ifp == (void *)NULL) {
 		device_printf(dev, "can not allocate ifnet structure\n");
 		return (-1);
@@ -2522,19 +2524,19 @@ lem_setup_interface(device_t dev, struct adapter *adapter)
 
 	// ether_ifattach(ifp, adapter->hw.mac.addr);
 
-	// if_setcapabilities(ifp, 0);
+        if_setcapabilities(ifp, 0);
 
-	// if (adapter->hw.mac.type >= e1000_82543) {
-	// 	if_setcapabilitiesbit(ifp, IFCAP_HWCSUM | IFCAP_VLAN_HWCSUM, 0);
-	// 	if_setcapenablebit(ifp, IFCAP_HWCSUM | IFCAP_VLAN_HWCSUM, 0);
-	// }
+	if (adapter->hw.mac.type >= e1000_82543) {
+		if_setcapabilitiesbit(ifp, IFCAP_HWCSUM | IFCAP_VLAN_HWCSUM, 0);
+		if_setcapenablebit(ifp, IFCAP_HWCSUM | IFCAP_VLAN_HWCSUM, 0);
+	}
 
 	/*
 	 * Tell the upper layer(s) we support long frames.
 	 */
 	// if_setifheaderlen(ifp, sizeof(struct ether_vlan_header));
-	// if_setcapabilitiesbit(ifp, IFCAP_VLAN_HWTAGGING | IFCAP_VLAN_MTU, 0);
-	// if_setcapenablebit(ifp, IFCAP_VLAN_HWTAGGING | IFCAP_VLAN_MTU, 0);
+        if_setcapabilitiesbit(ifp, IFCAP_VLAN_HWTAGGING | IFCAP_VLAN_MTU, 0);
+        if_setcapenablebit(ifp, IFCAP_VLAN_HWTAGGING | IFCAP_VLAN_MTU, 0);
 
 	/*
 	** Dont turn this on by default, if vlans are
@@ -2544,17 +2546,17 @@ lem_setup_interface(device_t dev, struct adapter *adapter)
 	** using vlans directly on the em driver you can
 	** enable this and get full hardware tag filtering.
 	*/
-// 	if_setcapabilitiesbit(ifp, IFCAP_VLAN_HWFILTER, 0);
+ 	if_setcapabilitiesbit(ifp, IFCAP_VLAN_HWFILTER, 0);
 
-// #ifdef DEVICE_POLLING
-// 	if_setcapabilitiesbit(ifp, IFCAP_POLLING, 0);
-// #endif
+#ifdef DEVICE_POLLING
+	if_setcapabilitiesbit(ifp, IFCAP_POLLING, 0);
+#endif
 
 	/* Enable only WOL MAGIC by default */
-	// if (adapter->wol) {
-	// 	if_setcapabilitiesbit(ifp, IFCAP_WOL, 0);
-	// 	if_setcapenablebit(ifp, IFCAP_WOL_MAGIC, 0);
-	// }
+	if (adapter->wol) {
+		if_setcapabilitiesbit(ifp, IFCAP_WOL, 0);
+		if_setcapenablebit(ifp, IFCAP_WOL_MAGIC, 0);
+	}
 		
 	/*
 	 * Specify the media types supported by this adapter and register
@@ -2759,7 +2761,7 @@ lem_allocate_transmit_structures(struct adapter *adapter)
 	device_t dev = adapter->dev;
 	struct em_buffer *tx_buffer;
 	int error;
-        DevEthernet *e1000 = adapter->dev->GetMasterClass<DevEthernet>();
+        BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<lE1000>();
 
 	/*
 	 * Create DMA tags for tx descriptors
@@ -2817,7 +2819,7 @@ fail:
 static void
 lem_setup_transmit_structures(struct adapter *adapter)
 {
-        DevEthernet *e1000 = adapter->dev->GetMasterClass<DevEthernet>();
+        BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<lE1000>();
 	// struct em_buffer *tx_buffer;
 #ifdef DEV_NETMAP
 	/* we are already locked */
@@ -2853,7 +2855,7 @@ lem_setup_transmit_structures(struct adapter *adapter)
 // 		tx_buffer->next_eop = -1;
 // 	}
 
-        DevEthernet::Packet *packet;
+        BsdDevEthernet::Packet *packet;
         while(e1000->_tx_buffered.Pop(packet)) {
           kassert(e1000->_tx_reserved.Push(packet));
         }
@@ -3267,17 +3269,17 @@ lem_txeof(struct adapter *adapter)
  *  seens mostly with fiber adapters.
  *
  **********************************************************************/
-// static void
-// lem_tx_purge(struct adapter *adapter)
-// {
-// 	if ((!adapter->link_active) && (adapter->watchdog_check)) {
-// 		EM_TX_LOCK(adapter);
-// 		lem_txeof(adapter);
-// 		EM_TX_UNLOCK(adapter);
-// 		if (adapter->watchdog_check) /* Still outstanding? */
-// 			lem_init_locked(adapter);
-// 	}
-// }
+static void
+lem_tx_purge(struct adapter *adapter)
+{
+	if ((!adapter->link_active) && (adapter->watchdog_check)) {
+		EM_TX_LOCK(adapter);
+		lem_txeof(adapter);
+		EM_TX_UNLOCK(adapter);
+		if (adapter->watchdog_check) /* Still outstanding? */
+			lem_init_locked(adapter);
+	}
+}
 
 /*********************************************************************
  *
@@ -3345,7 +3347,7 @@ lem_allocate_receive_structures(struct adapter *adapter)
 	device_t dev = adapter->dev;
 	struct em_buffer *rx_buffer;
 	int i, error;
-        DevEthernet *e1000 = adapter->dev->GetMasterClass<DevEthernet>();
+        BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<lE1000>();
 
 	adapter->rx_buffer_area = reinterpret_cast<struct em_buffer *>(virtmem_ctrl->AllocZ(sizeof(struct em_buffer) * adapter->num_rx_desc));
 	// adapter->rx_buffer_area = malloc(sizeof(struct em_buffer) *
@@ -3408,7 +3410,7 @@ fail:
 static int
 lem_setup_receive_structures(struct adapter *adapter)
 {
-  DevEthernet *e1000 = adapter->dev->GetMasterClass<DevEthernet>();
+  BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<lE1000>();
 
   // struct em_buffer *rx_buffer;
   int i/* , error */;
@@ -3433,7 +3435,7 @@ lem_setup_receive_structures(struct adapter *adapter)
 	// 		rx_buffer->m_head = NULL;
 	// 	}
         // }
-        DevEthernet::Packet *packet;
+        BsdDevEthernet::Packet *packet;
         while(e1000->_rx_buffered.Pop(packet)) {
           kassert(e1000->_rx_reserved.Push(packet));
         }
@@ -3649,7 +3651,7 @@ lem_rxeof(struct adapter *adapter, int count, int *done)
 	u16 		len, desc_len /*, prev_len_adj */;
 	int		i, rx_sent = 0;
 	struct e1000_rx_desc   *current_desc;
-        DevEthernet *e1000 = adapter->dev->GetMasterClass<DevEthernet>();
+        BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<lE1000>();
 
 #ifdef BATCH_DISPATCH
 	struct mbuf *mh = NULL, *mt = NULL;
@@ -3768,7 +3770,7 @@ lem_rxeof(struct adapter *adapter, int count, int *done)
 		}
 
 		if (accept_frame) {
-                  DevEthernet::Packet *packet;
+                  BsdDevEthernet::Packet *packet;
                   if (e1000->_rx_reserved.Pop(packet)) {
                     memcpy(packet->buf, reinterpret_cast<void *>(p2v(adapter->rx_desc_base[i].buffer_addr)), len);
                     packet->len = len;
@@ -4972,3 +4974,101 @@ lem_get_counter(if_t ifp, ift_counter cnt)
 // 	    SYSCTL_CHILDREN(device_get_sysctl_tree(adapter->dev)),
 // 	    OID_AUTO, name, CTLFLAG_RW, limit, value, description);
 // }
+
+/*
+ *
+ * Copyright (c) 2016 Raphine Project
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ * Author: Liva
+ * 
+ */
+
+#include "lem.h"
+#include "e1000_raph.h"
+#include "e1000_hw.h"
+#include "if_lem.h"
+
+int	lem_probe(device_t);
+int	lem_attach(device_t);
+void	lem_init(struct adapter *);
+int lem_poll(if_t ifp);
+void lem_update_link_status(struct adapter *adapter);
+
+extern BsdDevEthernet *eth;
+bool lE1000::InitPci(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {
+  lE1000 *addr = reinterpret_cast<lE1000 *>(virtmem_ctrl->Alloc(sizeof(lE1000)));
+  addr = new(addr) lE1000(bus, device, mf);
+  addr->bsd.SetMasterClass(addr);
+  addr->bsd.SetClass(addr->GetBsdDevPci());
+  addr->bsd.adapter = reinterpret_cast<struct adapter *>(virtmem_ctrl->AllocZ(sizeof(adapter)));
+
+  if (lem_probe(&addr->bsd) == BUS_PROBE_DEFAULT) {
+    kassert(lem_attach(&addr->bsd) == 0);
+    lem_init(addr->bsd.adapter);
+    addr->SetupNetInterface();
+    addr->SetHandleMethod(HandleMethod::kPolling);
+    eth = addr;
+    return true;
+  } else {
+    virtmem_ctrl->Free(ptr2virtaddr(addr->bsd.adapter));
+    virtmem_ctrl->Free(ptr2virtaddr(addr));
+    return false;
+  }  
+}
+
+void lE1000::SetupNetInterface() {
+  netdev_ctrl->RegisterDevice(this);
+}
+
+void lE1000::GetEthAddr(uint8_t *buffer) {
+  memcpy(buffer, bsd.adapter->hw.mac.addr, 6);
+}
+
+void lE1000::UpdateLinkStatus() {
+  this->bsd.adapter->hw.mac.get_link_status = 1;
+  lem_update_link_status(this->bsd.adapter);
+}
+
+void lE1000::PollingHandler(void *arg) {
+  lE1000 *that = reinterpret_cast<lE1000 *>(arg);
+  lem_poll(that->bsd.adapter->ifp);
+}
+
+void lE1000::ChangeHandleMethodToPolling() {
+  Function func;
+  func.Init(PollingHandler, reinterpret_cast<void *>(this));
+  _polling.Init(func);
+  _polling.Register(0);
+  
+  struct adapter *adapter = this->bsd.adapter;
+  if_t ifp = adapter->ifp;
+  EM_CORE_LOCK(adapter);
+  lem_disable_intr(adapter);
+  if_setcapenablebit(ifp, IFCAP_POLLING, 0);
+  EM_CORE_UNLOCK(adapter);
+}
+
+void lE1000::ChangeHandleMethodToInt() {
+  _polling.Remove();
+  
+  struct adapter *adapter = this->bsd.adapter;
+  if_t ifp = adapter->ifp;
+  EM_CORE_LOCK(adapter);
+  lem_enable_intr(adapter);
+  if_setcapenablebit(ifp, 0, IFCAP_POLLING);
+  EM_CORE_UNLOCK(adapter);
+}

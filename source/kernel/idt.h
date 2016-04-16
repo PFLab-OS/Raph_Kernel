@@ -35,6 +35,7 @@ struct Regs {
 
 typedef void (*idt_callback)(Regs *rs);
 typedef void (*int_callback)(Regs *rs, void *arg);
+typedef void (*ioint_callback)(void *arg);
 
 namespace C {
   extern "C" void handle_int(Regs *rs);

@@ -74,8 +74,6 @@ typedef struct bus_dma_segment
    bus_size_t      ds_len;
 } bus_dma_segment_t;
 
-struct task {};
-
 struct ifmedia {};
 
 struct mbuf {};
@@ -232,7 +230,9 @@ static inline void callout_reset(struct callout *c, int ticks, timeout_t *func, 
   if (ticks < 0) {
     ticks = 1;
   }
-  c->callout.Init(func, arg);
+  Function f;
+  f.Init(func, arg);
+  c->callout.Init(f);
   c->callout.SetHandler(static_cast<uint32_t>(ticks) * 1000 * 1000 / hz);
 }
 

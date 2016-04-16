@@ -20,32 +20,6 @@
  * 
  */
 
-#ifndef __RAPH_KERNEL_DEV_ETH_H__
-#define __RAPH_KERNEL_DEV_ETH_H__
+#include "taskqueue.h"
 
-#include "netdev.h"
-#include "pci.h"
-
-class InterfaceDevEthernet {
-public:
-  // allocate 6 byte before call
-  virtual void GetEthAddr(uint8_t *buffer) = 0;
-  virtual void SetupNetInterface() = 0;
-};
-
-class DevEthernet : public NetDev, public InterfaceDevEthernet {
- public:
- DevEthernet(uint8_t bus, uint8_t device, bool mf) : _pci(bus, device, mf) {}
-  virtual ~DevEthernet() {}
-  DevPci *GetDevPci() {
-    return &_pci;
-  }
- protected:
-  DevPci _pci;
-};
-
-class DevEthernetCtrl : public NetDevCtrl {
-  DevEthernet *_devTable[kMaxDevNumber] = {nullptr};
-};
-
-#endif /* __RAPH_KERNEL_DEV_ETH_H__ */
+struct taskqueue *taskqueue_fast = nullptr;

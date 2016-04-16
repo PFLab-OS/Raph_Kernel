@@ -132,6 +132,9 @@ void TaskCtrl::Run() {
 }
 
 void TaskCtrl::RegisterSub(int apicid, const Function &func, TaskType type) {
+  if (apicid < 0 || apicid >= apic_ctrl->GetHowManyCpus()) {
+    return;
+  }
   Task *task = reinterpret_cast<Task *>(virtmem_ctrl->Alloc(sizeof(Task)));//_allocator.Alloc();
   task->func = func;
   task->next = nullptr;
