@@ -182,7 +182,7 @@ AcpiExStoreBufferToBuffer (
         /* Clear existing buffer and copy in the new one */
 
         memset (TargetDesc->Buffer.Pointer, 0, TargetDesc->Buffer.Length);
-        memcpy (TargetDesc->Buffer.Pointer, Buffer, Length);
+        acpica_memcpy (TargetDesc->Buffer.Pointer, Buffer, Length);
 
 #ifdef ACPI_OBSOLETE_BEHAVIOR
         /*
@@ -211,7 +211,7 @@ AcpiExStoreBufferToBuffer (
     {
         /* Truncate the source, copy only what will fit */
 
-        memcpy (TargetDesc->Buffer.Pointer, Buffer,
+        acpica_memcpy (TargetDesc->Buffer.Pointer, Buffer,
             TargetDesc->Buffer.Length);
 
         ACPI_DEBUG_PRINT ((ACPI_DB_INFO,
@@ -277,7 +277,7 @@ AcpiExStoreStringToString (
          */
         memset (TargetDesc->String.Pointer, 0,
             (ACPI_SIZE) TargetDesc->String.Length + 1);
-        memcpy (TargetDesc->String.Pointer, Buffer, Length);
+        acpica_memcpy (TargetDesc->String.Pointer, Buffer, Length);
     }
     else
     {
@@ -302,7 +302,7 @@ AcpiExStoreStringToString (
         }
 
         TargetDesc->Common.Flags &= ~AOPOBJ_STATIC_POINTER;
-        memcpy (TargetDesc->String.Pointer, Buffer, Length);
+        acpica_memcpy (TargetDesc->String.Pointer, Buffer, Length);
     }
 
     /* Set the new target length */

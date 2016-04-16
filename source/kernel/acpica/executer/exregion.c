@@ -631,13 +631,13 @@ AcpiExDataTableSpaceHandler (
     {
     case ACPI_READ:
 
-        memcpy (ACPI_CAST_PTR (char, Value), ACPI_PHYSADDR_TO_PTR (Address),
+        acpica_memcpy (ACPI_CAST_PTR (char, Value), ACPI_PHYSADDR_TO_PTR (Address),
             ACPI_DIV_8 (BitWidth));
         break;
 
     case ACPI_WRITE:
 
-        memcpy (ACPI_PHYSADDR_TO_PTR (Address), ACPI_CAST_PTR (char, Value),
+        acpica_memcpy (ACPI_PHYSADDR_TO_PTR (Address), ACPI_CAST_PTR (char, Value),
             ACPI_DIV_8 (BitWidth));
         break;
 

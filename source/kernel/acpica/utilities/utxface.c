@@ -308,7 +308,7 @@ AcpiGetStatistics (
     Stats->SciCount = AcpiSciCount;
     Stats->GpeCount = AcpiGpeCount;
 
-    memcpy (Stats->FixedEventCount, AcpiFixedEventCount,
+    acpica_memcpy (Stats->FixedEventCount, AcpiFixedEventCount,
         sizeof (AcpiFixedEventCount));
 
     /* Other counters */

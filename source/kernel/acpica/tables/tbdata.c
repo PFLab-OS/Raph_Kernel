@@ -584,7 +584,7 @@ AcpiTbResizeRootTableList (
 
     if (AcpiGbl_RootTableList.Tables)
     {
-        memcpy (Tables, AcpiGbl_RootTableList.Tables,
+        acpica_memcpy (Tables, AcpiGbl_RootTableList.Tables,
             (ACPI_SIZE) TableCount * sizeof (ACPI_TABLE_DESC));
 
         if (AcpiGbl_RootTableList.Flags & ACPI_ROOT_ORIGIN_ALLOCATED)

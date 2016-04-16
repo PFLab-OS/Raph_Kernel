@@ -344,7 +344,7 @@ AcpiNsCopyDeviceId (
 
     /* Copy actual string and return a pointer to the next string area */
 
-    memcpy (StringArea, Source->String, Source->Length);
+    acpica_memcpy (StringArea, Source->String, Source->Length);
     return (StringArea + Source->Length);
 }
 
@@ -764,7 +764,7 @@ AcpiInstallMethod (
 
     /* Copy the method AML to the local buffer */
 
-    memcpy (AmlBuffer, AmlStart, AmlLength);
+    acpica_memcpy (AmlBuffer, AmlStart, AmlLength);
 
     /* Initialize the method object with the new method's information */
 

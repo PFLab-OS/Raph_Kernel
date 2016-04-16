@@ -544,7 +544,7 @@ AcpiExWriteDataToField (
         }
 
         Buffer = BufferDesc->Buffer.Pointer;
-        memcpy (Buffer, SourceDesc->Buffer.Pointer, Length);
+        acpica_memcpy (Buffer, SourceDesc->Buffer.Pointer, Length);
 
         /* Lock entire transaction if requested */
 

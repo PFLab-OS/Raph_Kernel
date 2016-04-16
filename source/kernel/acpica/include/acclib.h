@@ -214,7 +214,7 @@ memcmp (
     ACPI_SIZE               Count);
 
 void *
-memcpy (
+acpica_memcpy (
     void                    *Dest,
     const void              *Src,
     ACPI_SIZE               Count);

@@ -237,7 +237,7 @@ AcpiUtCopyIsimpleToEsimple (
         *BufferSpaceUsed = ACPI_ROUND_UP_TO_NATIVE_WORD (
             (ACPI_SIZE) InternalObject->String.Length + 1);
 
-        memcpy ((void *) DataSpace,
+        acpica_memcpy ((void *) DataSpace,
             (void *) InternalObject->String.Pointer,
             (ACPI_SIZE) InternalObject->String.Length + 1);
         break;
@@ -249,7 +249,7 @@ AcpiUtCopyIsimpleToEsimple (
         *BufferSpaceUsed = ACPI_ROUND_UP_TO_NATIVE_WORD (
             InternalObject->String.Length);
 
-        memcpy ((void *) DataSpace,
+        acpica_memcpy ((void *) DataSpace,
             (void *) InternalObject->Buffer.Pointer,
             InternalObject->Buffer.Length);
         break;
@@ -600,7 +600,7 @@ AcpiUtCopyEsimpleToIsimple (
             goto ErrorExit;
         }
 
-        memcpy (InternalObject->String.Pointer,
+        acpica_memcpy (InternalObject->String.Pointer,
             ExternalObject->String.Pointer,
             ExternalObject->String.Length);
 
@@ -616,7 +616,7 @@ AcpiUtCopyEsimpleToIsimple (
             goto ErrorExit;
         }
 
-        memcpy (InternalObject->Buffer.Pointer,
+        acpica_memcpy (InternalObject->Buffer.Pointer,
             ExternalObject->Buffer.Pointer,
             ExternalObject->Buffer.Length);
 
@@ -807,7 +807,7 @@ AcpiUtCopySimpleObject (
         CopySize = sizeof (ACPI_NAMESPACE_NODE);
     }
 
-    memcpy (ACPI_CAST_PTR (char, DestDesc),
+    acpica_memcpy (ACPI_CAST_PTR (char, DestDesc),
         ACPI_CAST_PTR (char, SourceDesc), CopySize);
 
     /* Restore the saved fields */
@@ -841,7 +841,7 @@ AcpiUtCopySimpleObject (
 
             /* Copy the actual buffer data */
 
-            memcpy (DestDesc->Buffer.Pointer,
+            acpica_memcpy (DestDesc->Buffer.Pointer,
                 SourceDesc->Buffer.Pointer, SourceDesc->Buffer.Length);
         }
         break;
@@ -863,7 +863,7 @@ AcpiUtCopySimpleObject (
 
             /* Copy the actual string data */
 
-            memcpy (DestDesc->String.Pointer, SourceDesc->String.Pointer,
+            acpica_memcpy (DestDesc->String.Pointer, SourceDesc->String.Pointer,
                 (ACPI_SIZE) SourceDesc->String.Length + 1);
         }
         break;

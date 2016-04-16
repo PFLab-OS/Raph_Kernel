@@ -82,7 +82,7 @@
  * 4.1. INTEL MAKES NO WARRANTY OF ANY KIND REGARDING ANY SOFTWARE PROVIDED
  * HERE. ANY SOFTWARE ORIGINATING FROM INTEL OR DERIVED FROM INTEL SOFTWARE
  * IS PROVIDED "AS IS," AND INTEL WILL NOT PROVIDE ANY SUPPORT, ASSISTANCE,
- * INSTALLATION, TRAINING OR OTHER SERVICES. INTEL WILL NOT PROVIDE ANY
+\ * INSTALLATION, TRAINING OR OTHER SERVICES. INTEL WILL NOT PROVIDE ANY
  * UPDATES, ENHANCEMENTS OR EXTENSIONS. INTEL SPECIFICALLY DISCLAIMS ANY
  * IMPLIED WARRANTIES OF MERCHANTABILITY, NONINFRINGEMENT AND FITNESS FOR A
  * PARTICULAR PURPOSE.
@@ -113,10 +113,16 @@
  *
  *****************************************************************************/
 
+
+#ifndef __UTCLIB__
+#define __UTCLIB__
+
 #define ACPI_CLIBRARY
 #include "acpi.h"
 #include "accommon.h"
 
+
+#warning "utclib.cの先頭だよ！"
 /*
  * This module contains implementations of the standard C library functions
  * that are required by the ACPICA code at both application level and kernel
@@ -141,7 +147,7 @@
  * Functions implemented in this module:
  *
  * FUNCTION:    memcmp
- * FUNCTION:    memcpy
+ * FUNCTION:    acpica_memcpy
  * FUNCTION:    memset
  * FUNCTION:    strlen
  * FUNCTION:    strcpy
@@ -162,7 +168,7 @@
 #define _COMPONENT          ACPI_UTILITIES
         ACPI_MODULE_NAME    ("utclib")
 
-#ifndef ACPI_USE_SYSTEM_CLIBRARY    /* Entire module */
+	//#ifndef ACPI_USE_SYSTEM_CLIBRARY    /* Entire module */
 
 
 /*******************************************************************************
@@ -178,7 +184,6 @@
  * DESCRIPTION: Compare two Buffers, with a maximum length
  *
  ******************************************************************************/
-
 int
 memcmp (
     void                    *VBuffer1,
@@ -200,7 +205,7 @@ memcmp (
 
 /*******************************************************************************
  *
- * FUNCTION:    memcpy
+ * FUNCTION:    acpica_memcpy
  *
  * PARAMETERS:  Dest        - Target of the copy
  *              Src         - Source buffer to copy
@@ -212,26 +217,26 @@ memcmp (
  *
  ******************************************************************************/
 
-/* void * */
-/* memcpy ( */
-/*     void                    *Dest, */
-/*     const void              *Src, */
-/*     ACPI_SIZE               Count) */
-/* { */
-/*     char                    *New = (char *) Dest; */
-/*     char                    *Old = (char *) Src; */
+void *
+acpica_memcpy (
+    void                    *Dest,
+    const void              *Src,
+    ACPI_SIZE               Count)
+{
+    char                    *New = (char *) Dest;
+    char                    *Old = (char *) Src;
 
 
-/*     while (Count) */
-/*     { */
-/*         *New = *Old; */
-/*         New++; */
-/*         Old++; */
-/*         Count--; */
-/*     } */
+    while (Count)
+    {
+        *New = *Old;
+        New++;
+        Old++;
+        Count--;
+    }
 
-/*     return (Dest); */
-/* } */
+    return (Dest);
+}
 
 
 /*******************************************************************************
@@ -248,24 +253,24 @@ memcmp (
  *
  ******************************************************************************/
 
-/* void * */
-/* memset ( */
-/*     void                    *Dest, */
-/*     int                     Value, */
-/*     ACPI_SIZE               Count) */
-/* { */
-/*     char                    *New = (char *) Dest; */
+void *
+memset (
+    void                    *Dest,
+    int                     Value,
+    ACPI_SIZE               Count)
+{
+    char                    *New = (char *) Dest;
 
 
-/*     while (Count) */
-/*     { */
-/*         *New = (char) Value; */
-/*         New++; */
-/*         Count--; */
-/*     } */
+    while (Count)
+    {
+        *New = (char) Value;
+        New++;
+        Count--;
+    }
 
-/*     return (Dest); */
-/* } */
+    return (Dest);
+}
 
 
 /*******************************************************************************
@@ -281,23 +286,23 @@ memcmp (
  ******************************************************************************/
 
 
-/* ACPI_SIZE */
-/* strlen ( */
-/*     const char              *String) */
-/* { */
-/*     UINT32                  Length = 0; */
+ACPI_SIZE
+strlen (
+    const char              *String)
+{
+    UINT32                  Length = 0;
 
 
-/*     /\* Count the string until a null is encountered *\/ */
+    /* Count the string until a null is encountered */
 
-/*     while (*String) */
-/*     { */
-/*         Length++; */
-/*         String++; */
-/*     } */
+    while (*String)
+    {
+        Length++;
+        String++;
+    }
 
-/*     return (Length); */
-/* } */
+    return (Length);
+}
 
 
 /*******************************************************************************
@@ -313,29 +318,29 @@ memcmp (
  *
  ******************************************************************************/
 
-/* char * */
-/* strcpy ( */
-/*     char                    *DstString, */
-/*     const char              *SrcString) */
-/* { */
-/*     char                    *String = DstString; */
+char *
+strcpy (
+    char                    *DstString,
+    const char              *SrcString)
+{
+    char                    *String = DstString;
 
 
-/*     /\* Move bytes brute force *\/ */
+    /* Move bytes brute force */
 
-/*     while (*SrcString) */
-/*     { */
-/*         *String = *SrcString; */
+    while (*SrcString)
+    {
+        *String = *SrcString;
 
-/*         String++; */
-/*         SrcString++; */
-/*     } */
+        String++;
+        SrcString++;
+    }
 
-/*     /\* Null terminate *\/ */
+    /* Null terminate */
 
-/*     *String = 0; */
-/*     return (DstString); */
-/* } */
+    *String = 0;
+    return (DstString);
+}
 
 
 /*******************************************************************************
@@ -352,33 +357,33 @@ memcmp (
  *
  ******************************************************************************/
 
-/* char * */
-/* strncpy ( */
-/*     char                    *DstString, */
-/*     const char              *SrcString, */
-/*     ACPI_SIZE               Count) */
-/* { */
-/*     char                    *String = DstString; */
+char *
+strncpy (
+    char                    *DstString,
+    const char              *SrcString,
+    ACPI_SIZE               Count)
+{
+    char                    *String = DstString;
 
 
-/*     /\* Copy the string *\/ */
+    /* Copy the string */
 
-/*     for (String = DstString; */
-/*         Count && (Count--, (*String++ = *SrcString++)); ) */
-/*     {;} */
+    for (String = DstString;
+        Count && (Count--, (*String++ = *SrcString++)); )
+    {;}
 
-/*     /\* Pad with nulls if necessary *\/ */
+    /* Pad with nulls if necessary */
 
-/*     while (Count--) */
-/*     { */
-/*         *String = 0; */
-/*         String++; */
-/*     } */
+    while (Count--)
+    {
+        *String = 0;
+        String++;
+    }
 
-/*     /\* Return original pointer *\/ */
+    /* Return original pointer */
 
-/*     return (DstString); */
-/* } */
+    return (DstString);
+}
 
 
 /*******************************************************************************
@@ -394,23 +399,23 @@ memcmp (
  *
  ******************************************************************************/
 
-/* int */
-/* strcmp ( */
-/*     const char              *String1, */
-/*     const char              *String2) */
-/* { */
+int
+strcmp (
+    const char              *String1,
+    const char              *String2)
+{
 
 
-/*     for ( ; (*String1 == *String2); String2++) */
-/*     { */
-/*         if (!*String1++) */
-/*         { */
-/*             return (0); */
-/*         } */
-/*     } */
+    for ( ; (*String1 == *String2); String2++)
+    {
+        if (!*String1++)
+        {
+            return (0);
+        }
+    }
 
-/*     return ((unsigned char) *String1 - (unsigned char) *String2); */
-/* } */
+    return ((unsigned char) *String1 - (unsigned char) *String2);
+}
 
 
 /*******************************************************************************
@@ -986,4 +991,7 @@ const UINT8 AcpiGbl_Ctypes[257] = {
 };
 
 
-#endif /* ACPI_USE_SYSTEM_CLIBRARY */
+//#endif /* ACPI_USE_SYSTEM_CLIBRARY */
+
+
+#endif /* __UTCLIB__*/

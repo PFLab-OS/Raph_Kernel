@@ -4,15 +4,15 @@
 SRCDIR += ./hardware ./resources ./dispatcher ./tables ./events ./namespace ./utilities ./executer ./parser 
 HEADERDIR += ./include/ ./include/platform/ ./
 HEADERS = $(foreach dir, $(HEADERDIR), $(wildcard $(dir)*h)) ./acpica.h
-SRCS += $(foreach dir, $(SRCDIR), $(wildcard $(dir)/*.c)) ./osraphinexf.c 
+SRCS += $(foreach dir, $(SRCDIR), $(wildcard $(dir)/*.c)) ./osraphinexf.c  utilities/utclib.c
 OBJS += $(SRCS:.c=.o) 
 CFLAGS += $(addprefix -I, $(HEADERDIR)) 
 CFLAGS += -D__RAPHINE__
-ACPICA = acpica
+ACPICA = libacpica.a
 
 .PHONY: test classtest
 default:acpica.o $(OBJS)
-	ar rcs acpica.a acpica.o $(OBJS) $(HEADERS)
+	ar rcs $(ACPICA) acpica.o $(OBJS) $(HEADERS)
 	rm *.o
 
 classtest:$(OBJS) acpica.o

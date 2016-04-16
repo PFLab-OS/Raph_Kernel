@@ -510,7 +510,7 @@ AcpiTbCreateLocalFadt (
 
     /* Copy the original FADT, up to sizeof (ACPI_TABLE_FADT) */
 
-    memcpy (&AcpiGbl_FADT, Table,
+    acpica_memcpy (&AcpiGbl_FADT, Table,
         ACPI_MIN (Length, sizeof (ACPI_TABLE_FADT)));
 
     /* Take a copy of the Hardware Reduced flag */

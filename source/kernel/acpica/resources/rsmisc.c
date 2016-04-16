@@ -404,7 +404,7 @@ AcpiRsConvertAmlToResource (
         case ACPI_RSC_DATA8:
 
             Target = (char *)ACPI_ADD_PTR (char, Resource, Info->Value);
-            memcpy (Destination, Source,  ACPI_GET16 (Target));
+            acpica_memcpy (Destination, Source,  ACPI_GET16 (Target));
             break;
 
         case ACPI_RSC_ADDRESS:

@@ -521,7 +521,7 @@ AcpiResourceToAddress64 (
 
         /* Simple copy for 64 bit source */
 
-        memcpy (Out, &Resource->Data, sizeof (ACPI_RESOURCE_ADDRESS64));
+        acpica_memcpy (Out, &Resource->Data, sizeof (ACPI_RESOURCE_ADDRESS64));
         break;
 
     default:
@@ -648,7 +648,7 @@ AcpiRsMatchVendorResource (
 
     /* Found the correct resource, copy and return it */
 
-    memcpy (Buffer->Pointer, Resource, Resource->Length);
+    acpica_memcpy (Buffer->Pointer, Resource, Resource->Length);
     Buffer->Length = Resource->Length;
 
     /* Found the desired descriptor, terminate resource walk */

@@ -214,7 +214,7 @@ AcpiRsEncodeBitmask (
  *
  * DESCRIPTION: Move multiple data items from one descriptor to another. Handles
  *              alignment issues and endian issues if necessary, as configured
- *              via the ACPI_MOVE_* macros. (This is why a memcpy is not used)
+ *              via the ACPI_MOVE_* macros. (This is why a acpica_memcpy is not used)
  *
  ******************************************************************************/
 
@@ -246,7 +246,7 @@ AcpiRsMoveData (
         case ACPI_RSC_MOVE_SERIAL_VEN:
         case ACPI_RSC_MOVE_SERIAL_RES:
 
-            memcpy (Destination, Source, ItemCount);
+            acpica_memcpy (Destination, Source, ItemCount);
             return;
 
         /*

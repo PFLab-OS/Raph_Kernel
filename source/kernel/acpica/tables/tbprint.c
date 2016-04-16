@@ -187,7 +187,7 @@ AcpiTbCleanupTableHeader (
     ACPI_TABLE_HEADER       *Header)
 {
 
-    memcpy (OutHeader, Header, sizeof (ACPI_TABLE_HEADER));
+    acpica_memcpy (OutHeader, Header, sizeof (ACPI_TABLE_HEADER));
 
     AcpiTbFixString (OutHeader->Signature, ACPI_NAME_SIZE);
     AcpiTbFixString (OutHeader->OemId, ACPI_OEM_ID_SIZE);
@@ -229,7 +229,7 @@ AcpiTbPrintTableHeader (
     {
         /* RSDP has no common fields */
 
-        memcpy (LocalHeader.OemId, ACPI_CAST_PTR (ACPI_TABLE_RSDP,
+        acpica_memcpy (LocalHeader.OemId, ACPI_CAST_PTR (ACPI_TABLE_RSDP,
             Header)->OemId, ACPI_OEM_ID_SIZE);
         AcpiTbFixString (LocalHeader.OemId, ACPI_OEM_ID_SIZE);
 

@@ -531,7 +531,7 @@ AcpiExFieldDatumIo (
              * Copy the data from the source buffer.
              * Length is the field width in bytes.
              */
-            memcpy (Value,
+            acpica_memcpy (Value,
                 (ObjDesc->BufferField.BufferObj)->Buffer.Pointer +
                     ObjDesc->BufferField.BaseByteOffset +
                     FieldDatumByteOffset,
@@ -543,7 +543,7 @@ AcpiExFieldDatumIo (
              * Copy the data to the target buffer.
              * Length is the field width in bytes.
              */
-            memcpy ((ObjDesc->BufferField.BufferObj)->Buffer.Pointer +
+            acpica_memcpy ((ObjDesc->BufferField.BufferObj)->Buffer.Pointer +
                 ObjDesc->BufferField.BaseByteOffset +
                 FieldDatumByteOffset,
                 Value, ObjDesc->CommonField.AccessByteWidth);
@@ -841,7 +841,7 @@ AcpiExExtractFromField (
             /* Use RawDatum (UINT64) to handle buffers < 64 bits */
 
             Status = AcpiExFieldDatumIo (ObjDesc, 0, &RawDatum, ACPI_READ);
-            memcpy (Buffer, &RawDatum, BufferLength);
+            acpica_memcpy (Buffer, &RawDatum, BufferLength);
         }
 
         return_ACPI_STATUS (Status);
@@ -911,7 +911,7 @@ AcpiExExtractFromField (
 
         /* Write merged datum to target buffer */
 
-        memcpy (((char *) Buffer) + BufferOffset, &MergedDatum,
+        acpica_memcpy (((char *) Buffer) + BufferOffset, &MergedDatum,
             ACPI_MIN(ObjDesc->CommonField.AccessByteWidth,
                 BufferLength - BufferOffset));
 
@@ -929,7 +929,7 @@ AcpiExExtractFromField (
 
     /* Write the last datum to the buffer */
 
-    memcpy (((char *) Buffer) + BufferOffset, &MergedDatum,
+    acpica_memcpy (((char *) Buffer) + BufferOffset, &MergedDatum,
         ACPI_MIN(ObjDesc->CommonField.AccessByteWidth,
             BufferLength - BufferOffset));
 
@@ -1003,7 +1003,7 @@ AcpiExInsertIntoField (
          * at Byte zero. All unused (upper) bytes of the
          * buffer will be 0.
          */
-        memcpy ((char *) NewBuffer, (char *) Buffer, BufferLength);
+        acpica_memcpy ((char *) NewBuffer, (char *) Buffer, BufferLength);
         Buffer = NewBuffer;
         BufferLength = RequiredLength;
     }
@@ -1046,7 +1046,7 @@ AcpiExInsertIntoField (
 
     /* Get initial Datum from the input buffer */
 
-    memcpy (&RawDatum, Buffer,
+    acpica_memcpy (&RawDatum, Buffer,
         ACPI_MIN(ObjDesc->CommonField.AccessByteWidth,
             BufferLength - BufferOffset));
 
@@ -1098,7 +1098,7 @@ AcpiExInsertIntoField (
         /* Get the next input datum from the buffer */
 
         BufferOffset += ObjDesc->CommonField.AccessByteWidth;
-        memcpy (&RawDatum, ((char *) Buffer) + BufferOffset,
+        acpica_memcpy (&RawDatum, ((char *) Buffer) + BufferOffset,
             ACPI_MIN(ObjDesc->CommonField.AccessByteWidth,
                  BufferLength - BufferOffset));
 

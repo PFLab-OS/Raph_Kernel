@@ -318,12 +318,12 @@ AcpiExDoConcatenate (
 
         /* Copy the first integer, LSB first */
 
-        memcpy (Buffer, &Operand0->Integer.Value,
+        acpica_memcpy (Buffer, &Operand0->Integer.Value,
             AcpiGbl_IntegerByteWidth);
 
         /* Copy the second integer (LSB first) after the first */
 
-        memcpy (Buffer + AcpiGbl_IntegerByteWidth,
+        acpica_memcpy (Buffer + AcpiGbl_IntegerByteWidth,
             &LocalOperand1->Integer.Value, AcpiGbl_IntegerByteWidth);
         break;
 
@@ -365,9 +365,9 @@ AcpiExDoConcatenate (
 
         /* Concatenate the buffers */
 
-        memcpy (Buffer, Operand0->Buffer.Pointer,
+        acpica_memcpy (Buffer, Operand0->Buffer.Pointer,
             Operand0->Buffer.Length);
-        memcpy (Buffer + Operand0->Buffer.Length,
+        acpica_memcpy (Buffer + Operand0->Buffer.Length,
             LocalOperand1->Buffer.Pointer,
             LocalOperand1->Buffer.Length);
         break;
@@ -518,8 +518,8 @@ AcpiExConcatTemplate (
      * EndTag descriptor is copied from Operand1.
      */
     NewBuf = ReturnDesc->Buffer.Pointer;
-    memcpy (NewBuf, Operand0->Buffer.Pointer, Length0);
-    memcpy (NewBuf + Length0, Operand1->Buffer.Pointer, Length1);
+    acpica_memcpy (NewBuf, Operand0->Buffer.Pointer, Length0);
+    acpica_memcpy (NewBuf + Length0, Operand1->Buffer.Pointer, Length1);
 
     /* Insert EndTag and set the checksum to zero, means "ignore checksum" */
 

@@ -343,7 +343,7 @@ AcpiGetTableHeader (
                     return (AE_NO_MEMORY);
                 }
 
-                memcpy (OutTableHeader, Header, sizeof (ACPI_TABLE_HEADER));
+                acpica_memcpy (OutTableHeader, Header, sizeof (ACPI_TABLE_HEADER));
                 AcpiOsUnmapMemory (Header, sizeof (ACPI_TABLE_HEADER));
             }
             else
@@ -353,7 +353,7 @@ AcpiGetTableHeader (
         }
         else
         {
-            memcpy (OutTableHeader,
+            acpica_memcpy (OutTableHeader,
                 AcpiGbl_RootTableList.Tables[i].Pointer,
                 sizeof (ACPI_TABLE_HEADER));
         }

@@ -324,7 +324,7 @@ AcpiExConvertToBuffer (
         /* Copy the integer to the buffer, LSB first */
 
         NewBuf = ReturnDesc->Buffer.Pointer;
-        memcpy (NewBuf, &ObjDesc->Integer.Value, AcpiGbl_IntegerByteWidth);
+        acpica_memcpy (NewBuf, &ObjDesc->Integer.Value, AcpiGbl_IntegerByteWidth);
         break;
 
     case ACPI_TYPE_STRING:

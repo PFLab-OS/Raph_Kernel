@@ -420,7 +420,7 @@ AcpiDsBuildInternalBufferObj (
 
         if (ByteList)
         {
-            memcpy (ObjDesc->Buffer.Pointer, ByteList->Named.Data,
+            acpica_memcpy (ObjDesc->Buffer.Pointer, ByteList->Named.Data,
                 ByteListLength);
         }
     }

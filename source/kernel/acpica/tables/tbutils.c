@@ -249,7 +249,7 @@ AcpiTbCopyDsdt (
         return (NULL);
     }
 
-    memcpy (NewTable, TableDesc->Pointer, TableDesc->Length);
+    acpica_memcpy (NewTable, TableDesc->Pointer, TableDesc->Length);
     AcpiTbUninstallTable (TableDesc);
 
     AcpiTbInitTableDescriptor (
