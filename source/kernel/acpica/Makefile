@@ -7,7 +7,7 @@ HEADERS = $(foreach dir, $(HEADERDIR), $(wildcard $(dir)*h)) ./acpica.h
 SRCS += $(foreach dir, $(SRCDIR), $(wildcard $(dir)/*.c)) ./osraphinexf.c  utilities/utclib.c
 OBJS += $(SRCS:.c=.o) 
 CFLAGS += $(addprefix -I, $(HEADERDIR)) 
-CFLAGS += -D__RAPHINE__
+CFLAGS += -D__RAPHINE__ -fPIC
 ACPICA = libacpica.a
 
 .PHONY: test classtest
@@ -27,7 +27,7 @@ test:$(OBJS)
 
 .PHONY: clean echo
 clean:
-	rm  *.o $(OBJS) test.out *.a
+	-rm  *.o $(OBJS) test.out *.a
 echo:
 	@echo "SOURCE FILES:"
 	@echo $(SRCS)
