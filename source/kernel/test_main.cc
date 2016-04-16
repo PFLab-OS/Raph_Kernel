@@ -62,8 +62,6 @@ int main(int argc, char **argv) {
 
   DevRawEthernet eth;
 
-//  task_ctrl->Run();
-
   if(!strncmp(argv[1], "arp", 3)) {
     uint32_t ipRequest = 0x0a000210;
     uint32_t ipReply = 0x0a000211;
@@ -101,6 +99,8 @@ int main(int argc, char **argv) {
   } else {
     fprintf(stderr, "[error] specify protocol\n");
   }
+
+  task_ctrl->Run();
 
   DismissNetCtrl();
 

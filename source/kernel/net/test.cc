@@ -22,63 +22,108 @@
 
 #include <unistd.h>
 #include <cstdio>
+#include <callout.h>
 #include <dev/posixtimer.h>
 #include <net/test.h>
 #include <net/socket.h>
+
+Callout tt1, tt2;
 
 void StripNewline(uint8_t *data) {
   data[strcspn(reinterpret_cast<char*>(data), "\n")] = '%';
 }
 
-void ARPReply(uint32_t ipRequest, uint32_t ipReply) {
-  ArpSocket socket;
-  if(socket.Open() < 0) {
-    fprintf(stderr, "[open] cannot open socket\n");
+ArpSocket arpsocket;
+uint32_t ipaddr;
+uint8_t macaddr[6];
+uint32_t ip1;
+uint32_t ip2;
+bool arp_reply_received = false;
+bool thread_end = false;
+
+void ARPReplySub(void *p) {
+  if(!arp_reply_received) {
+    if(arpsocket.ReceivePacket(ArpSocket::kOpARPRequest, &ipaddr, macaddr) >= 0) {
+      // need to wait a little
+      // because Linux kernel cannot handle packet too quick
+      usleep(570);
+      arp_reply_received = true;
+    }
+  } else {
+    if(arpsocket.TransmitPacket(ArpSocket::kOpARPReply, ipaddr, macaddr) < 0) {
+      fprintf(stderr, "[ARP] failed to send reply packet\n");
+    } else {
+      fprintf(stderr, "[ARP] request from %u.%u.%u.%u (%.2x:%.2x:%.2x:%.2x:%.2x:%.2x)\n",
+          (ipaddr >> 24), (ipaddr >> 16) & 0xff, (ipaddr >> 8) & 0xff, ipaddr & 0xff,
+          macaddr[0], macaddr[1], macaddr[2], macaddr[3], macaddr[4], macaddr[5]);
+      fflush(stdout);
+      arp_reply_received = false;
+      thread_end = true;
+    }
   }
 
-  uint32_t ipaddr;
-  uint8_t macaddr[6];
-
-  // wait for ARP request
-  socket.SetIPAddr(ipReply);
-  while(socket.ReceivePacket(ArpSocket::kOpARPRequest, &ipaddr, macaddr) < 0);
-
-  // need to wait a little
-  // because Linux kernel cannot handle packet too quick
-  usleep(570);
-
-  // ARP reply
-  if(socket.TransmitPacket(ArpSocket::kOpARPReply, ipaddr, macaddr) < 0) {
-    fprintf(stderr, "[ARP] failed to send reply packet\n");
+  if(!thread_end) {
+    tt1.SetHandler(10);
   } else {
-    fprintf(stderr, "[ARP] request from %u.%u.%u.%u (%.2x:%.2x:%.2x:%.2x:%.2x:%.2x)\n",
-      (ipaddr >> 24), (ipaddr >> 16) & 0xff, (ipaddr >> 8) & 0xff, ipaddr & 0xff,
-      macaddr[0], macaddr[1], macaddr[2], macaddr[3], macaddr[4], macaddr[5]);
-    fflush(stdout);
+    printf("[ARP] test end\n");
   }
 }
 
-void ARPRequest(uint32_t ipRequest, uint32_t ipReply) {
-  ArpSocket socket;
-  if(socket.Open() < 0) {
+void ARPReply(uint32_t ip_request, uint32_t ip_reply) {
+  if(arpsocket.Open() < 0) {
     fprintf(stderr, "[open] cannot open socket\n");
   }
 
-  uint32_t ipaddr;
-  uint8_t macaddr[6];
+  // wait for ARP request
+  ip1 = ip_reply;
+  ip2 = ip_request;
+  arpsocket.SetIPAddr(ip_reply);
+
+  new(&tt1) Callout;
+  tt1.Init(ARPReplySub, nullptr);
+  tt1.SetHandler(10);
+}
+
+bool arp_request_sent = false;
+
+void ARPRequestSub(void *p) {
+  if(!arp_request_sent) {
+    if(arpsocket.TransmitPacket(ArpSocket::kOpARPRequest, ip1, nullptr) < 0) {
+      fprintf(stderr, "[ARP] failed to send request packet\n");
+    } else {
+      arp_request_sent = true;
+    }
+  } else {
+    if(arpsocket.ReceivePacket(ArpSocket::kOpARPReply, &ipaddr, macaddr) >= 0) {
+      fprintf(stderr, "[ARP] reply from %u.%u.%u.%u (%.2x:%.2x:%.2x:%.2x:%.2x:%.2x)\n",
+          (ipaddr >> 24), (ipaddr >> 16) & 0xff, (ipaddr >> 8) & 0xff, ipaddr & 0xff,
+          macaddr[0], macaddr[1], macaddr[2], macaddr[3], macaddr[4], macaddr[5]);
+      fflush(stdout);
+      arp_request_sent = false;
+      thread_end = true;
+    }
+  }
+
+  if(!thread_end) {
+    tt2.SetHandler(10);
+  } else {
+    printf("[ARP] test end\n");
+  }
+}
+
+void ARPRequest(uint32_t ip_request, uint32_t ip_reply) {
+  if(arpsocket.Open() < 0) {
+    fprintf(stderr, "[open] cannot open socket\n");
+  }
 
   // send ARP request
-  socket.SetIPAddr(ipRequest);
-  if(socket.TransmitPacket(ArpSocket::kOpARPRequest, ipReply, nullptr) < 0) {
-    fprintf(stderr, "[ARP] failed to send request packet\n");
-  } else {
-    while(socket.ReceivePacket(ArpSocket::kOpARPReply, &ipaddr, macaddr) < 0);
-  
-    fprintf(stderr, "[ARP] reply from %u.%u.%u.%u (%.2x:%.2x:%.2x:%.2x:%.2x:%.2x)\n",
-      (ipaddr >> 24), (ipaddr >> 16) & 0xff, (ipaddr >> 8) & 0xff, ipaddr & 0xff,
-      macaddr[0], macaddr[1], macaddr[2], macaddr[3], macaddr[4], macaddr[5]);
-    fflush(stdout);
-  }
+  arpsocket.SetIPAddr(ip_request);
+  ip1 = ip_reply;
+  ip2 = ip_request;
+
+  new(&tt2) Callout;
+  tt2.Init(ARPRequestSub, nullptr);
+  tt2.SetHandler(10);
 }
 
 void TCPServer1() {

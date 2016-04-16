@@ -47,7 +47,11 @@ public:
   bool RegisterSocket(NetSocket *socket);
 
   // fetch packet (NetSocket uses)
-  bool ReceivePacket(uint32_t socket_id, NetDev::Packet *packet);
+  bool ReceivePacket(uint32_t socket_id, NetDev::Packet *&packet);
+
+  // !!N.B.!! YOU MUST use FreeRxBuffer to free packet
+  // fetched by ProtocolStack::ReceivePacket
+  void FreeRxBuffer(NetDev::Packet *packet);
 
   // pop packet from main queue, then duplicate it into duplicated queue
   void Handle() override;
@@ -71,6 +75,8 @@ private:
   NetDev *_device;
 
   SpinLock _lock;
+
+  void InitPacketQueue();
 };
 
 #endif // __RAPH_KERNEL_NET_PTCL_H__

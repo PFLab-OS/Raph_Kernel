@@ -89,7 +89,7 @@ bool Socket::L4Rx(uint8_t *buffer, uint16_t sport, uint16_t dport) {
 
 int32_t Socket::Transmit(const uint8_t *data, uint32_t length, bool is_raw_packet) {
   // alloc buffer
-  NetDev::Packet *packet;
+  NetDev::Packet *packet = nullptr;
   if(!_device_info->device->GetTxPacket(packet)) {
     return kErrorInsufficientBuffer;
   }
@@ -206,12 +206,12 @@ int32_t Socket::Receive(uint8_t *data, uint32_t length, bool is_raw_packet, bool
   }
 
   // receiving packet buffer
-  DevEthernet::Packet *packet;
+  DevEthernet::Packet *packet = nullptr;
   // my MAC address
   uint8_t eth_daddr[6];
   _device_info->device->GetEthAddr(eth_daddr);
 
-  if(!_device_info->device->ReceivePacket(packet)) {
+  if(!_device_info->ptcl_stack->ReceivePacket(GetProtocolStackId(), packet)) {
     return kErrorNoPacketOnWire;
   }
 
@@ -618,7 +618,7 @@ int32_t ArpSocket::TransmitPacket(uint16_t type, uint32_t tpa, uint8_t *tha) {
   }
 
   // alloc buffer
-  DevEthernet::Packet *packet;
+  DevEthernet::Packet *packet = nullptr;
   if(!_device_info->device->GetTxPacket(packet)) {
     return kErrorInsufficientBuffer;
   }
@@ -647,19 +647,19 @@ int32_t ArpSocket::ReceivePacket(uint16_t type, uint32_t *spa, uint8_t *sha) {
   _device_info->device->GetEthAddr(eth_daddr);
 
   // check if there is a new packet on wire (if so, then fetch it)
-  if(!_device_info->device->ReceivePacket(packet)) {
+  if(!_device_info->ptcl_stack->ReceivePacket(GetProtocolStackId(), packet)) {
     return kErrorNoPacketOnWire;
   }
 
   // filter Ethernet address
   if(!EthFilterPacket(packet->buf, nullptr, eth_daddr, kProtocolARP)) {
-    _device_info->device->ReuseRxBuffer(packet);
+    _device_info->ptcl_stack->FreeRxBuffer(packet);
     return kErrorInvalidPacketOnWire;
   }
 
   // filter IP address
   if(!ArpFilterPacket(packet->buf + sizeof(EthHeader), type, nullptr, 0, eth_daddr, _ipaddr)) {
-    _device_info->device->ReuseRxBuffer(packet);
+    _device_info->ptcl_stack->FreeRxBuffer(packet);
     return kErrorInvalidPacketOnWire;
   }
 
@@ -677,12 +677,12 @@ int32_t ArpSocket::ReceivePacket(uint16_t type, uint32_t *spa, uint8_t *sha) {
       if(sha) GetSourceMacAddress(sha, packet->buf + offset_arp);
       break;
     default:
-      _device_info->device->ReuseRxBuffer(packet);
+      _device_info->ptcl_stack->FreeRxBuffer(packet);
       return kErrorInvalidPacketParameter;
   }
 
   // finalization
-  _device_info->device->ReuseRxBuffer(packet);
+  _device_info->ptcl_stack->FreeRxBuffer(packet);
 
   return op;
 }

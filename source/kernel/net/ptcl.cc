@@ -39,13 +39,17 @@ bool ProtocolStack::RegisterSocket(NetSocket *socket) {
   }
 }
 
-bool ProtocolStack::ReceivePacket(uint32_t socket_id, NetDev::Packet *packet) {
+bool ProtocolStack::ReceivePacket(uint32_t socket_id, NetDev::Packet *&packet) {
   if(socket_id >= _current_socket_number) {
     // invalid socket id
     return false;
   }
 
   return _duplicated_queue[socket_id].Pop(packet);
+}
+
+void ProtocolStack::FreeRxBuffer(NetDev::Packet *packet) {
+  virtmem_ctrl->Free(reinterpret_cast<virt_addr>(packet));
 }
 
 void ProtocolStack::Handle() {
@@ -55,7 +59,8 @@ void ProtocolStack::Handle() {
 
   if(_device->ReceivePacket(packet)) {
     NetDev::Packet *dup_packet = reinterpret_cast<NetDev::Packet*>(virtmem_ctrl->Alloc(sizeof(NetDev::Packet)));
-    memcpy(dup_packet, packet, sizeof(NetDev::Packet));
+    dup_packet->len = packet->len;
+    memcpy(dup_packet->buf, packet->buf, packet->len);
 
     // insert into main queue at first
     _main_queue.Push(packet);
@@ -67,15 +72,18 @@ void ProtocolStack::Handle() {
     NetDev::Packet *new_packet;
     kassert(_main_queue.Pop(new_packet));
 
-    if(_main_queue.Pop(new_packet)) {
-      for(uint32_t i = 0; i < _current_socket_number; i++) {
-        // distribute the received packet to duplicated queues
-        NetDev::Packet *dup_packet = reinterpret_cast<NetDev::Packet*>(virtmem_ctrl->Alloc(sizeof(NetDev::Packet)));
-        memcpy(dup_packet, new_packet, sizeof(NetDev::Packet));
-        _duplicated_queue[i].Push(dup_packet);
-      }
-
-      virtmem_ctrl->Free(reinterpret_cast<virt_addr>(new_packet));
+    for(uint32_t i = 0; i < _current_socket_number; i++) {
+      // distribute the received packet to duplicated queues
+      NetDev::Packet *dup_packet = reinterpret_cast<NetDev::Packet*>(virtmem_ctrl->Alloc(sizeof(NetDev::Packet)));
+      dup_packet->len = new_packet->len;
+      memcpy(dup_packet->buf, new_packet->buf, new_packet->len);
+      _duplicated_queue[i].Push(dup_packet);
     }
+
+    virtmem_ctrl->Free(reinterpret_cast<virt_addr>(new_packet));
   }
+}
+
+void ProtocolStack::InitPacketQueue() {
+  
 }
