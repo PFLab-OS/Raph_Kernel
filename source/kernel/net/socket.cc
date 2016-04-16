@@ -297,7 +297,9 @@ int32_t Socket::ReceivePacket(uint8_t *data, uint32_t length) {
           SetAcknowledgeNumber(seq + rval);
   
           // acknowledge
-          if(_state == kStateEstablished) Transmit(nullptr, 0, false);
+          if(_state == kStateEstablished) {
+            Transmit(nullptr, 0, false);
+          }
   
           memcpy(data, packet + pkt_size - length, length);
         }
@@ -320,7 +322,7 @@ int32_t Socket::ReceiveRawPacket(uint8_t *data, uint32_t length) {
 int32_t Socket::Listen() {
   if(_state != kStateClosed && _state != kStateListen && _state != kStateSynReceived && _state != kStateSynSent) {
     // connection already established
-    return kErrorAlreadyEstablished;
+    return kResultAlreadyEstablished;
   }
 
   uint32_t kBufSize = sizeof(EthHeader) + sizeof(Ipv4Header) + sizeof(TcpHeader);
@@ -390,7 +392,7 @@ int32_t Socket::Listen() {
 int32_t Socket::Connect() {
   if(_state != kStateClosed && _state != kStateListen && _state != kStateSynReceived && _state != kStateSynSent) {
     // connection already established
-    return kErrorAlreadyEstablished;
+    return kResultAlreadyEstablished;
   }
 
   uint32_t kBufSize = sizeof(EthHeader) + sizeof(Ipv4Header) + sizeof(TcpHeader);

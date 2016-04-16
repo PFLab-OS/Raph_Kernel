@@ -94,24 +94,29 @@ void TCPServer1() {
   const uint32_t size = 0x100;
   uint8_t data[size];
   int32_t rval;
+  bool received = false;
 
   // TCP server 
-  while(socket.Listen() < 0);
-  fprintf(stderr, "[TCP:server] connection established\n");
-
-  // loopback
   while(true) {
-    if((rval = socket.ReceivePacket(data, size)) >= 0) {
-      // show newline as '%'
-      StripNewline(data);
-
-      fprintf(stderr, "[TCP:server] received; %s\n", data);
-
-      while(socket.TransmitPacket(data, strlen(reinterpret_cast<char*>(data)) + 1) < 0);
-
-      fprintf(stderr, "[TCP:server] loopback\n");
-    } else if(rval == Socket::kResultConnectionClosed) {
-      break;
+    int32_t listen_rval = socket.Listen();
+    if(listen_rval >= 0) {
+      fprintf(stderr, "[TCP:server] connection established\n");
+    } else if(listen_rval == Socket::kResultAlreadyEstablished) {
+      if(!received) {
+        if((rval = socket.ReceivePacket(data, size)) >= 0) {
+          StripNewline(data);
+          fprintf(stderr, "[TCP:server] received; %s\n", data);
+          received = true;
+        } else if(rval == Socket::kResultConnectionClosed) {
+          break;
+        }
+      } else {
+        rval = socket.TransmitPacket(data, strlen(reinterpret_cast<char*>(data)) + 1);
+        if(rval >= 0) {
+          received = false;
+          fprintf(stderr, "[TCP:server] loopback\n");
+        }
+      }
     }
   }
   fprintf(stderr, "[TCP:server] closed\n");
@@ -129,32 +134,52 @@ void TCPClient1() {
 
   const uint32_t size = 0x100;
   uint8_t data[size];
+  bool preparing = false;
+  bool sent = false;
+  bool closing = false;
 
   // TCP client
-  while(socket.Connect() < 0);
-  fprintf(stderr, "[TCP:client] connection established\n");
-
   while(true) {
-    printf(">> ");
-    if(fgets(reinterpret_cast<char*>(data), size-1, stdin)) {
-      data[size-1] = 0;
+    int32_t connect_rval = socket.Connect();
+
+    if(connect_rval >= 0) {
+      fprintf(stderr, "[TCP:client] connection established\n");
+      preparing = true;
+    } else if(connect_rval == Socket::kResultAlreadyEstablished) {
+      if(closing) {
+        if(socket.Close() >= 0) {
+          fprintf(stderr, "[TCP:client] closed\n");
+          break;
+        }
+      } else if(preparing) {
+        printf(">> ");
+        if(fgets(reinterpret_cast<char*>(data), size-1, stdin)) {
+          data[size-1] = 0;
+        }
+
+        if(!strncmp(reinterpret_cast<char*>(data), "q", 1)) {
+          closing = true;
+          continue;
+        }
+
+        preparing = false;
+      } else if(!sent) {
+        if(socket.TransmitPacket(data, strlen(reinterpret_cast<char*>(data)) + 1) >= 0){
+          StripNewline(data);
+          fprintf(stderr, "[TCP:client] sent; %s\n", data);
+          sent = true;
+        }
+      } else {
+        if(socket.ReceivePacket(data, size) >= 0) {
+          fprintf(stderr, "[TCP:client] received; %s\n", data);
+          sent = false;
+          preparing = true;
+        }
+      }
     }
-    if(!strncmp(reinterpret_cast<char*>(data), "q", 1)) break;
-
-    while(socket.TransmitPacket(data, strlen(reinterpret_cast<char*>(data)) + 1) < 0);
-
-    // show newline as '%'
-    StripNewline(data);
-    fprintf(stderr, "[TCP:client] sent; %s\n", data);
-
-    while(socket.ReceivePacket(data, size) < 0);
-
-    fprintf(stderr, "[TCP:client] received; %s\n", data);
   }
-
-  while(socket.Close() < 0);
-  fprintf(stderr, "[TCP:client] closed\n");
 }
+
 
 void TCPServer2() {
   Socket socket;
@@ -170,14 +195,16 @@ void TCPServer2() {
   uint8_t data[size];
   int32_t rval;
 
-  while(socket.Listen() < 0);
-
   while(true) {
-    rval = socket.ReceivePacket(data, size);
-    if(rval >= 0) {
-      printf("return value = %d\n", rval);
-    } else if(rval == Socket::kResultConnectionClosed) {
-      break;
+    int32_t listen_rval = socket.Listen();
+
+    if(listen_rval >= 0 || listen_rval == Socket::kResultAlreadyEstablished) {
+      rval = socket.ReceivePacket(data, size);
+      if(rval >= 0) {
+        printf("return value = %d\n", rval);
+      } else if(rval == Socket::kResultConnectionClosed) {
+        break;
+      }
     }
   }
 }

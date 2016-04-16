@@ -34,6 +34,8 @@ public:
 
   // connection closed by remote host
   static const int32_t kResultConnectionClosed      = - 0x100;
+  // connection is already established before Listen / Connect
+  static const int32_t kResultAlreadyEstablished    = - 0x101;
   // unknown error
   static const int32_t kErrorUnknown                = - 0x1000;
   // remote host does not reply for retransmission timeout
@@ -46,8 +48,6 @@ public:
   static const int32_t kErrorInvalidPacketParameter = - 0x1004;
   // cannot fetch packet buffer from transmit queue
   static const int32_t kErrorInsufficientBuffer     = - 0x1005;
-  // connection is already established before Listen / Connect
-  static const int32_t kErrorAlreadyEstablished     = - 0x1006;
   // device internal error
   static const int32_t kErrorDeviceInternal         = - 0x1007;
 
