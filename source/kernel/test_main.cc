@@ -46,8 +46,8 @@ Timer *timer;
 int main(int argc, char **argv) {
   srand((unsigned) time(NULL));
 
-  ApicCtrl _apic_ctrl;
-  apic_ctrl = &_apic_ctrl;
+  PthreadCtrl _thread_ctrl;
+  apic_ctrl = &_thread_ctrl;
   apic_ctrl->Setup();
 
   TaskCtrl _task_ctrl;
@@ -61,6 +61,8 @@ int main(int argc, char **argv) {
   InitNetCtrl();
 
   DevRawEthernet eth;
+
+//  task_ctrl->Run();
 
   if(!strncmp(argv[1], "arp", 3)) {
     uint32_t ipRequest = 0x0a000210;

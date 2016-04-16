@@ -22,10 +22,10 @@
 
 #include <string.h>
 #include <mem/virtmem.h>
-#include <mem/physmem.h>
 #include <net/ptcl.h>
 
 void ProtocolStack::Setup() {
+  RegisterPolling();
 }
 
 bool ProtocolStack::RegisterSocket(NetSocket *socket) {
@@ -49,12 +49,11 @@ bool ProtocolStack::ReceivePacket(uint32_t socket_id, NetDev::Packet *packet) {
 }
 
 void ProtocolStack::Handle() {
-  puts("ProtocolStack::Handle()");
   Locker locker(_lock);
 
   NetDev::Packet *packet = nullptr;
 
-  if(!_device->ReceivePacket(packet)) {
+  if(_device->ReceivePacket(packet)) {
     NetDev::Packet *dup_packet = reinterpret_cast<NetDev::Packet*>(virtmem_ctrl->Alloc(sizeof(NetDev::Packet)));
     memcpy(dup_packet, packet, sizeof(NetDev::Packet));
 

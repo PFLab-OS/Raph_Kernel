@@ -180,7 +180,6 @@ void TCPClient1() {
   }
 }
 
-
 void TCPServer2() {
   Socket socket;
   if(socket.Open() < 0) {
