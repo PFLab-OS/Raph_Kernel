@@ -217,21 +217,21 @@ int32_t Socket::Receive(uint8_t *data, uint32_t length, bool is_raw_packet, bool
 
   // filter Ethernet address
   if(!L2Rx(packet->buf, nullptr, eth_daddr, kProtocolIPv4)) {
-    _device_info->device->ReuseRxBuffer(packet);
+    _device_info->ptcl_stack->FreeRxBuffer(packet);
     return kErrorInvalidPacketOnWire;
   }
 
   // filter IP address
   uint32_t offset_l3 = L2HeaderLength();
   if(!L3Rx(packet->buf + offset_l3 , L4Protocol(), _daddr, _ipaddr)) {
-    _device_info->device->ReuseRxBuffer(packet);
+    _device_info->ptcl_stack->FreeRxBuffer(packet);
     return kErrorInvalidPacketOnWire;
   }
 
   // filter TCP port
   uint32_t offset_l4 = L2HeaderLength() + L3HeaderLength();
   if(!L4Rx(packet->buf + offset_l4, _sport, _dport)) {
-    _device_info->device->ReuseRxBuffer(packet);
+    _device_info->ptcl_stack->FreeRxBuffer(packet);
     return kErrorInvalidPacketOnWire;
   }
 
@@ -247,7 +247,7 @@ int32_t Socket::Receive(uint8_t *data, uint32_t length, bool is_raw_packet, bool
   }
 
   // finalization
-  _device_info->device->ReuseRxBuffer(packet);
+  _device_info->ptcl_stack->FreeRxBuffer(packet);
 
   return (received_length < 0 || is_raw_packet) ? received_length : received_length - (L2HeaderLength() + L3HeaderLength() + L4HeaderLength());
 }
