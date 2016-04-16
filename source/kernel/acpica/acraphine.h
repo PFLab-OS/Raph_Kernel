@@ -152,7 +152,7 @@
 
 /* Cygwin uses GCC */
 
-#include "acgcc.h"
+//#include "acgcc.h"
 
 
 /*

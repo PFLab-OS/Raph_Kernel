@@ -247,7 +247,7 @@
  *
  *****************************************************************************/
 #if defined(__RAPHINE__)
-#include "../../../acraphine.h"
+#include "acraphine.h"
 
 #elif defined(_LINUX) || defined(__linux__)
 #include "aclinux.h"

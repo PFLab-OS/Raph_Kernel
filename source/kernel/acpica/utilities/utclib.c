@@ -179,23 +179,23 @@
  *
  ******************************************************************************/
 
-/* int */
-/* memcmp ( */
-/*     void                    *VBuffer1, */
-/*     void                    *VBuffer2, */
-/*     ACPI_SIZE               Count) */
-/* { */
-/*     char                    *Buffer1 = (char *) VBuffer1; */
-/*     char                    *Buffer2 = (char *) VBuffer2; */
+int
+memcmp (
+    void                    *VBuffer1,
+    void                    *VBuffer2,
+    ACPI_SIZE               Count)
+{
+    char                    *Buffer1 = (char *) VBuffer1;
+    char                    *Buffer2 = (char *) VBuffer2;
 
 
-/*     for ( ; Count-- && (*Buffer1 == *Buffer2); Buffer1++, Buffer2++) */
-/*     { */
-/*     } */
+    for ( ; Count-- && (*Buffer1 == *Buffer2); Buffer1++, Buffer2++)
+    {
+    }
 
-/*     return ((Count == ACPI_SIZE_MAX) ? 0 : ((unsigned char) *Buffer1 - */
-/*         (unsigned char) *Buffer2)); */
-/* } */
+    return ((Count == ACPI_SIZE_MAX) ? 0 : ((unsigned char) *Buffer1 -
+        (unsigned char) *Buffer2));
+}
 
 
 /*******************************************************************************

@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2016 Project Raphine
+ * Copyright (c) 2015 Raphine Project
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -16,16 +16,17 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
- * Author: Yuchiki
+ * Author: Liva
  * 
  */
 
-#ifndef __RAPH_KERNEL_ACPICA_ACPICA_H__
-#define __RAPH_KERNEL_ACPICA_ACPICA_H__
+#ifndef __RAPH_KERNEL_ACPICA_H__
+#define __RAPH_KERNEL_ACPICA_H__
 
 class Acpica {
  public:
   void Init();
   void Terminate();
 };
-#endif // __RAPH_KERNEL_ACPICA_ACPICA_H__
+
+#endif /* __RAPH_KERNEL_ACPICA_H__ */

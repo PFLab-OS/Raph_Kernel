@@ -1,7 +1,14 @@
+//#include <global.h>
+//#include <gtty.h>
+
+
 #include "acpi.h"
 #include "accommon.h"
 #include "amlcode.h"
 #include "acparser.h"
+
+
+
 
 #define _COMPONENT          ACPI_OS_SERVICES
 ACPI_MODULE_NAME    ("osraphinexf")
@@ -358,17 +365,19 @@ UINT64
 AcpiOsGetTimer (
     void)
 {
-    struct timeval          time;
+    /* struct timeval          time; */
 
 
-    /* This timer has sufficient resolution for user-space application code */
+    /* /\* This timer has sufficient resolution for user-space application code *\/ */
 
-    //    gettimeofday (&time, NULL);
+    /* //    gettimeofday (&time, NULL); */
 
-    /* (Seconds * 10^7 = 100ns(10^-7)) + (Microseconds(10^-6) * 10^1 = 100ns) */
+    /* /\* (Seconds * 10^7 = 100ns(10^-7)) + (Microseconds(10^-6) * 10^1 = 100ns) *\/ */
 
-    return (((UINT64) time.tv_sec * ACPI_100NSEC_PER_SEC) +
-            ((UINT64) time.tv_usec * ACPI_100NSEC_PER_USEC));
+    /* return (((UINT64) time.tv_sec * ACPI_100NSEC_PER_SEC) + */
+    /*         ((UINT64) time.tv_usec * ACPI_100NSEC_PER_USEC)); */
+
+  return 0;
 }
 
 
