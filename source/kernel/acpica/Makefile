@@ -9,7 +9,9 @@ HEADERS += $(foreach dir, $(HEADERDIR), $(wildcard $(dir)*h)) ./acpica.h ./osrap
 SRCS += $(foreach dir, $(SRCDIR), $(wildcard $(dir)/*.c))   utilities/utclib.c  ./osraphinexf.c
 OBJS += $(SRCS:.c=.o) 
 CFLAGS += $(addprefix -I, $(HEADERDIR)) 
-CFLAGS += -D__RAPHINE__ -fPIC -MMD
+CFLAGS += -D__RAPHINE__ -fPIC -MMD -fpermissive
+CXXFLAGS = -Wall -Wshadow -nostdinc -nostdlib -fno-exceptions  -fno-rtti -fno-use-cxa-atexit -mcmodel=large  -D__KERNEL__ -D__RAPHINE__ -std=c++11
+CXXFLAGS += $(CFLAGS)
 ACPICA += libacpica.a
 
 .PHONY: test classtest

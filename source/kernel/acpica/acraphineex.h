@@ -159,36 +159,37 @@ static inline void *
 AcpiOsAllocate (
     ACPI_SIZE               Size)
 {
-    return kmalloc (Size, irqs_disabled () ? GFP_ATOMIC : GFP_KERNEL);
+  
+  //    return kmalloc (Size, irqs_disabled () ? GFP_ATOMIC : GFP_KERNEL);
 }
 
 static inline void *
 AcpiOsAllocateZeroed (
     ACPI_SIZE               Size)
 {
-    return kzalloc (Size, irqs_disabled () ? GFP_ATOMIC : GFP_KERNEL);
+  //  return kzalloc (Size, irqs_disabled () ? GFP_ATOMIC : GFP_KERNEL);
 }
 
 static inline void
 AcpiOsFree (
     void                   *Memory)
 {
-    kfree (Memory);
+  //kfree (Memory);
 }
 
 static inline void *
 AcpiOsAcquireObject (
     ACPI_CACHE_T           *Cache)
 {
-    return kmem_cache_zalloc (Cache,
-        irqs_disabled () ? GFP_ATOMIC : GFP_KERNEL);
+  //return kmem_cache_zalloc (Cache,
+  //    irqs_disabled () ? GFP_ATOMIC : GFP_KERNEL);
 }
 
 static inline ACPI_THREAD_ID
 AcpiOsGetThreadId (
     void)
 {
-    return (ACPI_THREAD_ID) (unsigned long) current;
+  //return (ACPI_THREAD_ID) (unsigned long) current;
 }
 
 /*
