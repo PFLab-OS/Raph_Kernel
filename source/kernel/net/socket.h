@@ -54,9 +54,15 @@ public:
   // open socket, which internally fetch an available network device
   int32_t Open();
 
+  void SetProtocolStackId(uint32_t id) { _ptcl_stack_id = id; }
+  uint32_t GetProtocolStackId() { return _ptcl_stack_id; }
+
 protected:
   // the instance of the network device to send / receive packet
   DevEthernet *_dev = nullptr;
+
+private:
+  uint32_t _ptcl_stack_id;
 };
 
 // TCP/IP Socket

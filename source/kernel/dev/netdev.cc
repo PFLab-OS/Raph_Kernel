@@ -20,15 +20,29 @@
  * 
  */
 
-#include "netdev.h"
+#include <mem/virtmem.h>
+#include <dev/netdev.h>
+#include <net/ptcl.h>
 
 const char *NetDevCtrl::kDefaultNetworkInterfaceName = "eth0";
 
 bool NetDevCtrl::RegisterDevice(NetDev *dev, const char *name) {
-  if(_curDevNumber < kMaxDevNumber) {
+  if(_current_device_number < kMaxDevNumber) {
     // succeed to register
     dev->SetName(name);
-    _devTable[_curDevNumber++] = dev;
+
+    _devTable[_current_device_number].device = dev;
+
+    // allocate protocol stack
+    ProtocolStack *addr = reinterpret_cast<ProtocolStack*>(virtmem_ctrl->Alloc(sizeof(ProtocolStack)));
+    ProtocolStack *ptcl_stack = new(addr) ProtocolStack();
+    ptcl_stack->Setup();
+
+    _devTable[_current_device_number].stack = ptcl_stack;
+    dev->SetProtocolStack(ptcl_stack);
+
+    _current_device_number += 1;
+
     return true;
   } else {
     // fail to register
@@ -38,10 +52,12 @@ bool NetDevCtrl::RegisterDevice(NetDev *dev, const char *name) {
 
 NetDev *NetDevCtrl::GetDevice(const char *name) {
   if(!name) name = kDefaultNetworkInterfaceName;
-  for(uint32_t i = _curDevNumber; i > 0; i--) {
-    NetDev *dev = _devTable[i - 1];
+
+  for(uint32_t i = _current_device_number; i > 0; i--) {
+    NetDev *dev = _devTable[i - 1].device;
+
     // search device by network interface name
-    if(!strncmp(dev->GetName(), name, strlen(name))) {
+    if(dev != nullptr && !strncmp(dev->GetName(), name, strlen(name))) {
       return dev;
     }
   }

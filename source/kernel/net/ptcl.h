@@ -23,6 +23,12 @@
 #ifndef __RAPH_KERNEL_NET_PTCL_H__
 #define __RAPH_KERNEL_NET_PTCL_H__
 
+#include <buf.h>
+#include <polling.h>
+#include <spinlock.h>
+#include <dev/netdev.h>
+#include <net/socket.h>
+
 // Layer 3 protocols
 const uint16_t kProtocolIPv4 = 0x0800;
 const uint16_t kProtocolARP  = 0x0806;
@@ -30,5 +36,39 @@ const uint16_t kProtocolARP  = 0x0806;
 // Layer 4 protocols
 const uint8_t kProtocolTCP         = 0x06;
 const uint8_t kProtocolUDP         = 0x11;
+
+class ProtocolStack : public Polling {
+public:
+  ProtocolStack() {}
+
+  void Setup();
+
+  // register new socket
+  bool RegisterSocket(NetSocket *socket);
+
+  // insert new packet (NetDev uses)
+  bool DelegatePacket(NetDev *dev, NetDev::Packet *packet);
+
+  // fetch packet (NetSocket uses)
+  bool ReceivePacket(uint32_t socket_id, NetDev::Packet *packet);
+
+  // pop packet from main queue, then duplicate it into duplicated queue
+  void Handle() override;
+
+  // TODO: remove socket
+
+private:
+  // packet queue (inserted from network device)
+  static const uint32_t kQueueDepth = 300;
+  typedef RingBuffer <NetDev::Packet*, kQueueDepth> PacketQueue;
+  PacketQueue _main_queue;
+
+  // duplicated queue
+  static const uint32_t kMaxSocketNumber = 8;
+  uint32_t _current_socket_number = 0;
+  PacketQueue _duplicated_queue[kMaxSocketNumber];
+
+  SpinLock _lock;
+};
 
 #endif // __RAPH_KERNEL_NET_PTCL_H__
