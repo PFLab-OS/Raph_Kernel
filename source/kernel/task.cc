@@ -26,7 +26,7 @@ void TaskCtrl::Setup() {
   int cpus = apic_ctrl->GetHowManyCpus();
   _task_struct = reinterpret_cast<TaskStruct *>(virtmem_ctrl->Alloc(sizeof(TaskStruct) * cpus));
   for (int i = 0; i < cpus; i++) {
-    new(&_task_struct[i].lock) SpinLock;
+    new(&_task_struct[i]) TaskStruct;
 
     Task *t = reinterpret_cast<Task *>(virtmem_ctrl->Alloc(sizeof(Task)));
     new(&t->func) Function;

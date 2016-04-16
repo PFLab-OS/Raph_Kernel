@@ -3444,7 +3444,7 @@ em_allocate_queues(struct adapter *adapter)
 		// snprintf(txr->mtx_name, sizeof(txr->mtx_name), "%s:tx(%d)",
 		//     device_get_nameunit(dev), txr->me);
 		// mtx_init(&txr->tx_mtx, txr->mtx_name, NULL, MTX_DEF);
-                new(&txr->tx_mtx) SpinLock;
+                new(&txr->tx_mtx) mtx;
 
 		if (em_dma_malloc(adapter, tsize,
 			&txr->txdma, BUS_DMA_NOWAIT)) {
@@ -3481,7 +3481,7 @@ em_allocate_queues(struct adapter *adapter)
 		// snprintf(rxr->mtx_name, sizeof(rxr->mtx_name), "%s:rx(%d)",
 		//     device_get_nameunit(dev), txr->me);
 		// mtx_init(&rxr->rx_mtx, rxr->mtx_name, NULL, MTX_DEF);
-                new(&rxr->rx_mtx.lock) SpinLock;
+                new(&rxr->rx_mtx) mtx;
 
 		if (em_dma_malloc(adapter, rsize,
 			&rxr->rxdma, BUS_DMA_NOWAIT)) {

@@ -203,9 +203,9 @@ struct mtx {
   SpinLock lock;
 };
 
-static inline void callout_init_mtx(struct callout *c, struct mtx *mtx, int flags) {
+static inline void callout_init_mtx(struct callout *c, struct mtx *mutex, int flags) {
   new(&c->callout) LckCallout;
-  c->callout.SetLock(&mtx->lock);
+  c->callout.SetLock(&mutex->lock);
 }
 
 static inline int callout_stop(struct callout *c) {

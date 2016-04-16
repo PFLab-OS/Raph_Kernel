@@ -115,14 +115,6 @@ static inline int if_setcapenablebit(if_t ifp, int setcap, int clearcap) {
     ifp->if_capenable &= ~clearcap;
   }
 
-  if (clearcap & IFCAP_POLLING) {
-    ifp->SetHandleMethod(NetDev::HandleMethod::kInt);
-  }
-  
-  if (setcap & IFCAP_POLLING) {
-    ifp->SetHandleMethod(NetDev::HandleMethod::kPolling);
-  }
-
   return 0;
 }
 

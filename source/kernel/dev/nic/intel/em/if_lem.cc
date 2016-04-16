@@ -5020,7 +5020,7 @@ bool lE1000::InitPci(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bo
     kassert(lem_attach(&addr->bsd) == 0);
     lem_init(addr->bsd.adapter);
     addr->SetupNetInterface();
-    addr->SetHandleMethod(HandleMethod::kPolling);
+    addr->SetHandleMethod(HandleMethod::kInt);
     eth = addr;
     return true;
   } else {

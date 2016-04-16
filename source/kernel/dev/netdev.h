@@ -132,9 +132,11 @@ public:
     switch(method) {
     case HandleMethod::kInt: {
       ChangeHandleMethodToInt();
+      break;
     }
     case HandleMethod::kPolling: {
       ChangeHandleMethodToPolling();
+      break;
     }
     default: {
       kassert(false);

@@ -75,7 +75,7 @@ public:
   virtual ~DebugSpinLock() {}
   virtual void Lock() override;
 private:
-  volatile int _key;
+  int _key;
   static const int kKey = 0x13572468;
 };
 

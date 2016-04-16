@@ -91,7 +91,7 @@ class Callout : public Polling {
 
 #include "spinlock.h"
 
-class LckCallout : public Callout {
+class LckCallout final : public Callout {
  public:
   void SetLock(SpinLock *lock) {
     _lock = lock;
