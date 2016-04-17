@@ -69,6 +69,9 @@ class Polling {
 
 class PollingFunc : public Polling {
  public:
+  void Register() {
+    Register(apic_ctrl->GetCpuId());
+  }
   void Register(int cpuid) {
     this->RegisterPolling(cpuid);
   }
