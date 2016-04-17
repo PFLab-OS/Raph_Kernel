@@ -30,7 +30,7 @@ void Functional::WakeupFunction() {
     _state = FunctionState::kFunctioning;
     Function func;
     func.Init(Handle, reinterpret_cast<void *>(this));
-    task_ctrl->Register(_apicid, func);
+    task_ctrl->Register(_cpuid, func);
   }
 }
 
@@ -50,8 +50,8 @@ void Functional::Handle(void *p) {
   }
 }
 
-void Functional::SetFunction(int apicid, const Function &func) {
+void Functional::SetFunction(int cpuid, const Function &func) {
   kassert(!_func.CanExecute());
-  _apicid = apicid;
+  _cpuid = cpuid;
   _func = func;
 }

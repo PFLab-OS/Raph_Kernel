@@ -66,7 +66,7 @@ class Functional {
   }
   virtual ~Functional() {
   }
-  void SetFunction(int apicid, const Function &func);
+  void SetFunction(int cpuid, const Function &func);
  protected:
   void WakeupFunction();
   // 設定された関数を呼び出すべきかどうかを返す
@@ -74,7 +74,7 @@ class Functional {
  private:
   static void Handle(void *p);
   Function _func;
-  int _apicid = 0;
+  int _cpuid = 0;
   SpinLock _lock;
   FunctionState _state = FunctionState::kNotFunctioning;
 };

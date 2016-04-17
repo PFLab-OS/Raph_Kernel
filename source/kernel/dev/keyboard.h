@@ -26,10 +26,9 @@
 #include <global.h>
 #include <apic.h>
 
-// this file should be put in dev/...?
 class Keyboard {
  public:
-  void Setup(int lapicid);
+  void Setup(int cpuid);
   void Write(uint8_t code);
   uint8_t Read();
   char GetCh();

@@ -156,11 +156,11 @@ class DevPci : public Device {
     return pci_ctrl->FindCapability(_bus, _device, 0, id);
   } 
   // 返り値は割り当てられたvector または-1(error)
-  int SetMsi(int lapicid, int_callback handler, void *arg) {
+  int SetMsi(int cpuid, int_callback handler, void *arg) {
     kassert(pci_ctrl != nullptr);
     kassert(idt != nullptr);
-    int vector = idt->SetIntCallback(lapicid, handler, arg);
-    if(pci_ctrl->SetMsi(_bus, _device, 0, ApicCtrl::Lapic::GetMsiAddr(lapicid), ApicCtrl::Lapic::GetMsiData(vector))) {
+    int vector = idt->SetIntCallback(cpuid, handler, arg);
+    if(pci_ctrl->SetMsi(_bus, _device, 0, ApicCtrl::Lapic::GetMsiAddr(apic_ctrl->GetApicIdFromCpuId(cpuid)), ApicCtrl::Lapic::GetMsiData(vector))) {
       return vector;
     }
     return -1;

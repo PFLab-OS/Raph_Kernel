@@ -25,9 +25,11 @@
 #include <idt.h>
 #include <dev/keyboard.h>
 
-void Keyboard::Setup(int lapicid) {
-  int vector = idt->SetIntCallback(lapicid, Keyboard::Handler, nullptr);
-  apic_ctrl->SetupIoInt(ApicCtrl::Ioapic::kIrqKeyboard, lapicid, vector);
+void Keyboard::Setup(int cpuid) {
+  kassert(apic_ctrl != nullptr);
+  kassert(idt != nullptr);
+  int vector = idt->SetIntCallback(cpuid, Keyboard::Handler, nullptr);
+  apic_ctrl->SetupIoInt(ApicCtrl::Ioapic::kIrqKeyboard, apic_ctrl->GetApicIdFromCpuId(cpuid), vector);
 }
 
 void Keyboard::Write(uint8_t code){

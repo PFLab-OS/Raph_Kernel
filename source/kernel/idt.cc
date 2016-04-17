@@ -29,17 +29,17 @@
 
 namespace C {
 extern "C" void handle_int(Regs *rs) {
-  int apicid = apic_ctrl->GetApicId();
-  idt->_handling_cnt[apicid]++;
-  if (idt->_callback[apicid][rs->n].callback == nullptr) {
+  int cpuid = apic_ctrl->GetCpuId();
+  idt->_handling_cnt[cpuid]++;
+  if (idt->_callback[cpuid][rs->n].callback == nullptr) {
     if (gtty != nullptr) {
       gtty->PrintfRaw("s","[kernel] error: unimplemented interrupt ", "d", rs->n, "s", " ");
     }
     asm volatile("cli; hlt; nop; nop; hlt; nop; hlt;"::"a"(rs->rip));
   } else {
-    idt->_callback[apicid][rs->n].callback(rs, idt->_callback[apicid][rs->n].arg);
+    idt->_callback[cpuid][rs->n].callback(rs, idt->_callback[cpuid][rs->n].arg);
   }
-  idt->_handling_cnt[apicid]--;
+  idt->_handling_cnt[cpuid]--;
   apic_ctrl->SendEoi();
 }
 }
@@ -107,23 +107,21 @@ void Idt::SetGate(idt_callback gate, int vector, uint8_t dpl, bool trap, uint8_t
   idt_def[vector].entry[3] = 0;
 }
 
-int Idt::SetIntCallback(int lapicid, int_callback callback, void *arg) {
-  kassert(apic_ctrl != nullptr);
+int Idt::SetIntCallback(int cpuid, int_callback callback, void *arg) {
   Locker locker(_lock);
   for(int vector = 64; vector < 256; vector++) {
-    if (_callback[lapicid][vector].callback == nullptr) {
-      _callback[lapicid][vector].callback = callback;
-      _callback[lapicid][vector].arg = arg;
+    if (_callback[cpuid][vector].callback == nullptr) {
+      _callback[cpuid][vector].callback = callback;
+      _callback[cpuid][vector].arg = arg;
       return vector;
     }
   }
   return ReservedIntVector::kError;
 }
 
-void Idt::SetExceptionCallback(int lapicid, int vector, int_callback callback, void *arg) {
-  kassert(apic_ctrl != nullptr);
+void Idt::SetExceptionCallback(int cpuid, int vector, int_callback callback, void *arg) {
   kassert(vector < 64 && vector >= 1);
   Locker locker(_lock);
-  _callback[lapicid][vector].callback = callback;
-  _callback[lapicid][vector].arg = arg;
+  _callback[cpuid][vector].callback = callback;
+  _callback[cpuid][vector].arg = arg;
 }

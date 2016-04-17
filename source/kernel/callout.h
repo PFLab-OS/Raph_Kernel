@@ -48,13 +48,13 @@ class Callout : public Polling {
     _func = func;
   }
   void SetHandler(uint32_t us) {
-    SetHandler(apic_ctrl->GetApicId(), us);
+    SetHandler(apic_ctrl->GetCpuId(), us);
   }
-  void SetHandler(int lapicid, uint32_t us) {
+  void SetHandler(int cpuid, uint32_t us) {
     if (_state == CalloutState::kNull) {
       _state = CalloutState::kWaiting;
       _cnt = timer->GetCntAfterPeriod(timer->ReadMainCnt(), us);
-      this->RegisterPolling(lapicid);
+      this->RegisterPolling(cpuid);
     }
   }
   volatile bool IsHandling() {

@@ -48,13 +48,13 @@ class Idt {
   // I/O等用の割り込みハンドラ
   // 確保したvectorが返る(vector >= 64)
   // 確保できなかった場合はReservedIntVector::kErrorが返る
-  int SetIntCallback(int lapicid, int_callback callback, void *arg);
+  int SetIntCallback(int cpuid, int_callback callback, void *arg);
   // 例外等用の割り込みハンドラ
   // vector < 64でなければならない
-  void SetExceptionCallback(int lapicid, int vector, int_callback callback, void *arg);
+  void SetExceptionCallback(int cpuid, int vector, int_callback callback, void *arg);
   // if 0, cpu is not handling interrupt
   volatile int GetHandlingCnt() {
-    return _handling_cnt[apic_ctrl->GetApicId()];
+    return _handling_cnt[apic_ctrl->GetCpuId()];
   }
   struct ReservedIntVector {
     static const int kIpi      = 33;

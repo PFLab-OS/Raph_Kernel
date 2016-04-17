@@ -40,13 +40,13 @@ class TaskCtrl {
   };
   TaskCtrl() {}
   void Setup();
-  void Register(int apicid, const Function &func) {
-    RegisterSub(apicid, func, TaskType::kNormal);
+  void Register(int cpuid, const Function &func) {
+    RegisterSub(cpuid, func, TaskType::kNormal);
   }
-  void Remove(int apicid, const Function &func);
+  void Remove(int cpuid, const Function &func);
   void Run();
-  TaskCtrlState GetState(int apicid) {
-    return _task_struct[apicid].state;
+  TaskCtrlState GetState(int cpuid) {
+    return _task_struct[cpuid].state;
   }
  private:
   friend Polling;
@@ -59,10 +59,10 @@ class TaskCtrl {
     Task *next;
     TaskType type;
   };
-  void RegisterPolling(int apicid, const Function &func) {
-    RegisterSub(apicid, func, TaskType::kPolling);
+  void RegisterPolling(int cpuid, const Function &func) {
+    RegisterSub(cpuid, func, TaskType::kPolling);
   }
-  void RegisterSub(int apicid, const Function &func, TaskType type);
+  void RegisterSub(int cpuid, const Function &func, TaskType type);
   struct TaskStruct {
     // queue
     Task *top;

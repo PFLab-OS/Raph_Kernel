@@ -28,7 +28,7 @@
 void SpinLock::Lock() {
 #ifndef __UNIT_TEST__
   if ((_flag % 2) == 1) {
-    kassert(_id != apic_ctrl->GetApicId());
+    kassert(_id != apic_ctrl->GetCpuId());
   }
 #endif // __UNIT_TEST__
   volatile unsigned int flag = GetFlag();
@@ -36,7 +36,7 @@ void SpinLock::Lock() {
     flag = GetFlag();
   }
 #ifndef __UNIT_TEST__
-  _id = apic_ctrl->GetApicId();
+  _id = apic_ctrl->GetCpuId();
 #endif // __UNIT_TEST__
 }
 
@@ -44,7 +44,7 @@ void DebugSpinLock::Lock() {
   kassert(_key == kKey);
 #ifndef __UNIT_TEST__
   if ((_flag % 2) == 1) {
-    kassert(_id != apic_ctrl->GetApicId());
+    kassert(_id != apic_ctrl->GetCpuId());
   }
 #endif // __UNIT_TEST__
   SpinLock::Lock();

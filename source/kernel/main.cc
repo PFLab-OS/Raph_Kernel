@@ -198,6 +198,20 @@ extern "C" int main() {
                        "d", buf[30], "s", ".",
                        "d", buf[31], "s", " ");
   }
+  measure{
+    int buf[40];
+    gtty->Printf("s", "ARP Reply received; ",
+                 "x", buf[22], "s", ":",
+                 "x", buf[23], "s", ":",
+                 "x", buf[24], "s", ":",
+                 "x", buf[25], "s", ":",
+                 "x", buf[26], "s", ":",
+                 "x", buf[27], "s", " is ");
+    gtty->Printf("d", buf[28], "s", ".",
+                 "d", buf[29], "s", ".",
+                 "d", buf[30], "s", ".",
+                 "d", buf[31], "s", " ");
+  }
   
   if (eth != nullptr) {
     Function func;
@@ -293,7 +307,7 @@ extern "C" int main() {
   kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 5) + 1));
   kassert(!paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - 4096 * 6));
 
-  gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
+  gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetCpuId(), "s", "(apic id:", "d", apic_ctrl->GetApicIdFromCpuId(apic_ctrl->GetCpuId()), "s", ") started.\n");
 
   apic_ctrl->StartAPs();
 
@@ -330,11 +344,12 @@ extern "C" int main_of_others() {
   gdt->SetupProc();
   idt->SetupProc();
 
-  gtty->PrintfRaw("s", "[cpu] info: #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
+  gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetCpuId(), "s", "(apic id:", "d", apic_ctrl->GetApicIdFromCpuId(apic_ctrl->GetCpuId()), "s", ") started.\n");
+
   task_ctrl->Run();
 
   // ループ性能測定用
-  // if (apic_ctrl->GetApicId() == 4) {
+  // if (apic_ctrl->GetCpuId() == 4) {
   //   PollingFunc p;
   //   static int hoge = 0;
   //   p.Init([](void *){
@@ -346,7 +361,7 @@ extern "C" int main_of_others() {
   // }
 
   // ワンショット性能測定用
-  if (apic_ctrl->GetApicId() == 5) {
+  if (apic_ctrl->GetCpuId() == 5) {
     new(&tt1) Callout;
     Function func;
     func.Init([](void *){
@@ -359,7 +374,7 @@ extern "C" int main_of_others() {
     tt1.SetHandler(10);
   }
 
-  if (apic_ctrl->GetApicId() == 3 && eth != nullptr) {
+  if (apic_ctrl->GetCpuId() == 3 && eth != nullptr) {
     cnt = 0;
     new(&tt2) Callout;
     Function func;

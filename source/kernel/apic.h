@@ -77,15 +77,20 @@ public:
         kassert(_ctrlAddr == ctrlAddr);
       }
     }
-    int Cpunum() {
+    int GetCpuId() {
       if(_ctrlAddr == nullptr) {
         return 0;
       }
       for(int n = 0; n < _ncpu; n++) {
-        if(_ctrlAddr[kRegId] >> 24 == _apicIds[n])
+        if(_ctrlAddr[kRegId] >> 24 == _apicIds[n]) {
           return n;
+        }
       }
       return 0;
+    }
+    uint8_t GetApicIdFromCpuId(int cpuid) {
+      kassert(cpuid >= 0 && cpuid < _ncpu);
+      return _apicIds[cpuid];
     }
     // start local APIC respond to specified index with apicId
     void Start(uint8_t apicId, uint64_t entryPoint);
@@ -242,8 +247,14 @@ public:
     _started = true;
     _lapic.Setup();
   }
-  volatile uint8_t GetApicId() {
-    return _lapic.GetApicId();
+  // volatile uint8_t GetApicId() {
+  //   return _lapic.GetApicId();
+  // }
+  uint8_t GetApicIdFromCpuId(int cpuid) {
+    return _lapic.GetApicIdFromCpuId(cpuid);
+  }
+  volatile int GetCpuId() {
+    return _lapic.GetCpuId();
   }
   volatile bool IsBootupAll() {
     return _all_bootup;

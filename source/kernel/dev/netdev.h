@@ -99,8 +99,8 @@ public:
   bool ReceivePacket(Packet *&packet) {
     return _rx_buffered.Pop(packet);
   }
-  void SetReceiveCallback(int apicid, const Function &func) {
-    _rx_buffered.SetFunction(apicid, func);
+  void SetReceiveCallback(int cpuid, const Function &func) {
+    _rx_buffered.SetFunction(cpuid, func);
   }
 
   void InitTxPacketBuffer() {

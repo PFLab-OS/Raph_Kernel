@@ -125,7 +125,7 @@ private:
 
 #define MASK(val, ebit, sbit) ((val) & (((1 << ((ebit) - (sbit) + 1)) - 1) << (sbit)))
 
-#define checkpoint(id,str) if (id < 0 || apic_ctrl->GetApicId() == id) {gtty->Printf("s",str);}
+#define checkpoint(id,str) if (id < 0 || apic_ctrl->GetCpuId() == id) {gtty->Printf("s",str);}
 #define measure for(uint64_t t1 = 0, t2 = timer->ReadMainCnt(); ({if (t1 != 0) gtty->Printf("s","<","d",(timer->ReadMainCnt() - t2) * timer->GetCntClkPeriod(),"s","ns>"); (t1 == 0);}) ; t1++)
 
 inline void *operator new(size_t, void *p)     throw() { return p; }

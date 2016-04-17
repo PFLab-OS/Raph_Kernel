@@ -55,7 +55,7 @@ static void __taskqueue_handle(void *arg) {
 static inline int taskqueue_enqueue(struct taskqueue *queue, struct task *task) {
   Function func;
   func.Init(__taskqueue_handle, reinterpret_cast<void *>(task));
-  // TODO apicidの管理をどうするか
+  // TODO cpuidの管理をどうするか
   task_ctrl->Register(0, func);
   return 0;
 }

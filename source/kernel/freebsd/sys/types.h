@@ -59,7 +59,7 @@ public:
   virtual ~BsdDevPci() {
   }
   // 返り値は割り当てられたvector または-1(error)
-  int SetMsi(int lapicid, ioint_callback handler, void *arg) {
+  int SetMsi(int cpuid, ioint_callback handler, void *arg) {
     int i;
     {
       Locker locker(_lock);
@@ -72,11 +72,11 @@ public:
         return -1;
       }
     }
-    int vector = DevPci::SetMsi(lapicid, HandleSub, reinterpret_cast<void *>(this));
+    int vector = DevPci::SetMsi(cpuid, HandleSub, reinterpret_cast<void *>(this));
     if (vector == -1) {
       return -1;
     }
-    map[i].lapicid = lapicid;
+    map[i].cpuid = cpuid;
     map[i].vector = vector;
     map[i].handler = handler;
     map[i].arg = arg;
@@ -87,7 +87,7 @@ private:
     BsdDevPci *that = reinterpret_cast<BsdDevPci *>(arg);
     Locker locker(that->_lock);
     for (int i = 0; i < kIntMax; i++) {
-      if (static_cast<unsigned int>(that->map[i].vector) == rs->n && that->map[i].lapicid == apic_ctrl->GetApicId()) {
+      if (static_cast<unsigned int>(that->map[i].vector) == rs->n && that->map[i].cpuid == apic_ctrl->GetCpuId()) {
         that->map[i].handler(that->map[i].arg);
         break;
       }
@@ -95,7 +95,7 @@ private:
   }
   static const int kIntMax = 10;
   struct IntMap {
-    int lapicid;
+    int cpuid;
     int vector;
     ioint_callback handler;
     void *arg;

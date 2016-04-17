@@ -126,7 +126,7 @@ class Tty {
     Printf_sub2(str, arg1, arg2);
     Printf_sub1(str, args...);
   }
-  
+
   void Printf_sub2(String &str, const char *arg1, const char arg2) {
     if (strcmp(arg1, "c")) {
       Printf_sub2(str, "s", "(invalid format)");
