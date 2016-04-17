@@ -33,31 +33,34 @@ void StripNewline(uint8_t *data) {
   data[strcspn(reinterpret_cast<char*>(data), "\n")] = '%';
 }
 
-ArpSocket arpsocket;
-uint32_t ipaddr;
-uint8_t macaddr[6];
 uint32_t ip1;
 uint32_t ip2;
-bool arp_reply_received = false;
 bool thread_end = false;
 
+namespace arp {
+  ArpSocket socket;
+  uint32_t ipaddr;
+  uint8_t macaddr[6];
+  bool reply_received = false;
+};
+
 void ARPReplySub(void *p) {
-  if(!arp_reply_received) {
-    if(arpsocket.ReceivePacket(ArpSocket::kOpARPRequest, &ipaddr, macaddr) >= 0) {
+  if(!arp::reply_received) {
+    if(arp::socket.ReceivePacket(ArpSocket::kOpARPRequest, &arp::ipaddr, arp::macaddr) >= 0) {
       // need to wait a little
       // because Linux kernel cannot handle packet too quick
       usleep(570);
-      arp_reply_received = true;
+      arp::reply_received = true;
     }
   } else {
-    if(arpsocket.TransmitPacket(ArpSocket::kOpARPReply, ipaddr, macaddr) < 0) {
+    if(arp::socket.TransmitPacket(ArpSocket::kOpARPReply, arp::ipaddr, arp::macaddr) < 0) {
       fprintf(stderr, "[ARP] failed to send reply packet\n");
     } else {
       fprintf(stderr, "[ARP] request from %u.%u.%u.%u (%.2x:%.2x:%.2x:%.2x:%.2x:%.2x)\n",
-          (ipaddr >> 24), (ipaddr >> 16) & 0xff, (ipaddr >> 8) & 0xff, ipaddr & 0xff,
-          macaddr[0], macaddr[1], macaddr[2], macaddr[3], macaddr[4], macaddr[5]);
+          (arp::ipaddr >> 24), (arp::ipaddr >> 16) & 0xff, (arp::ipaddr >> 8) & 0xff, arp::ipaddr & 0xff,
+          arp::macaddr[0], arp::macaddr[1], arp::macaddr[2], arp::macaddr[3], arp::macaddr[4], arp::macaddr[5]);
       fflush(stdout);
-      arp_reply_received = false;
+      arp::reply_received = false;
       thread_end = true;
     }
   }
@@ -70,14 +73,14 @@ void ARPReplySub(void *p) {
 }
 
 void ARPReply(uint32_t ip_request, uint32_t ip_reply) {
-  if(arpsocket.Open() < 0) {
+  if(arp::socket.Open() < 0) {
     fprintf(stderr, "[open] cannot open socket\n");
   }
 
   // wait for ARP request
   ip1 = ip_reply;
   ip2 = ip_request;
-  arpsocket.SetIPAddr(ip_reply);
+  arp::socket.SetIPAddr(ip_reply);
 
   new(&tt1) Callout;
   tt1.Init(ARPReplySub, nullptr);
@@ -88,16 +91,16 @@ bool arp_request_sent = false;
 
 void ARPRequestSub(void *p) {
   if(!arp_request_sent) {
-    if(arpsocket.TransmitPacket(ArpSocket::kOpARPRequest, ip1, nullptr) < 0) {
+    if(arp::socket.TransmitPacket(ArpSocket::kOpARPRequest, ip1, nullptr) < 0) {
       fprintf(stderr, "[ARP] failed to send request packet\n");
     } else {
       arp_request_sent = true;
     }
   } else {
-    if(arpsocket.ReceivePacket(ArpSocket::kOpARPReply, &ipaddr, macaddr) >= 0) {
+    if(arp::socket.ReceivePacket(ArpSocket::kOpARPReply, &arp::ipaddr, arp::macaddr) >= 0) {
       fprintf(stderr, "[ARP] reply from %u.%u.%u.%u (%.2x:%.2x:%.2x:%.2x:%.2x:%.2x)\n",
-          (ipaddr >> 24), (ipaddr >> 16) & 0xff, (ipaddr >> 8) & 0xff, ipaddr & 0xff,
-          macaddr[0], macaddr[1], macaddr[2], macaddr[3], macaddr[4], macaddr[5]);
+          (arp::ipaddr >> 24), (arp::ipaddr >> 16) & 0xff, (arp::ipaddr >> 8) & 0xff, arp::ipaddr & 0xff,
+          arp::macaddr[0], arp::macaddr[1], arp::macaddr[2], arp::macaddr[3], arp::macaddr[4], arp::macaddr[5]);
       fflush(stdout);
       arp_request_sent = false;
       thread_end = true;
@@ -112,12 +115,12 @@ void ARPRequestSub(void *p) {
 }
 
 void ARPRequest(uint32_t ip_request, uint32_t ip_reply) {
-  if(arpsocket.Open() < 0) {
+  if(arp::socket.Open() < 0) {
     fprintf(stderr, "[open] cannot open socket\n");
   }
 
   // send ARP request
-  arpsocket.SetIPAddr(ip_request);
+  arp::socket.SetIPAddr(ip_request);
   ip1 = ip_reply;
   ip2 = ip_request;
 
