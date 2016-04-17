@@ -56,6 +56,14 @@ static inline char *strncpy(char *s1, const char *s2, size_t n) {
   return s1;
 }
 
+static inline char *strcpy(char *s1, const char *s2) {
+  char *s = s1;
+  while((*s1 = *s2) != '\0') {
+    s1++;
+    s2++;
+  }
+  return s;
+}
 
 static inline void *memcpy(void *dest, const void *src, size_t n) {
   uint8_t *d = reinterpret_cast<uint8_t *>(dest);

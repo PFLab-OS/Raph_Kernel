@@ -6306,7 +6306,7 @@ bool E1000::InitPci(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, boo
     kassert(em_attach(&addr->bsd) == 0);
     em_init(addr->bsd.adapter);
     addr->SetupNetInterface();
-    addr->SetHandleMethod(HandleMethod::kInt);
+    addr->SetHandleMethod(HandleMethod::kPolling);
     eth = addr;
     return true;
   } else {

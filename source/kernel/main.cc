@@ -66,13 +66,14 @@ static uint32_t rnd_next = 1;
 #include <freebsd/sys/types.h>
 BsdDevEthernet *eth;
 uint64_t cnt;
-int time;
+int sum;
+int time, rtime;
 
 #include <callout.h>
 Callout tt1;
 Callout tt2;
 
-#define FLAG 1
+#define FLAG 2
 #if FLAG == 3
 #define IP1 192, 168, 100, 117
 #define IP2 192, 168, 100, 254
@@ -174,10 +175,31 @@ extern "C" int main() {
 
   gtty->Init();
 
-  keyboard->Setup(1);
+  //  keyboard->Setup(1);
 
-  kassert(eth != nullptr);
-  do {
+  cnt = 0;
+  sum = 0;
+  time = 10;
+  rtime = 10;
+
+  
+  measure{
+    int buf[40];
+          gtty->Printf(
+                       "s", "ARP Reply received; ",
+                       "x", buf[22], "s", ":",
+                       "x", buf[23], "s", ":",
+                       "x", buf[24], "s", ":",
+                       "x", buf[25], "s", ":",
+                       "x", buf[26], "s", ":",
+                       "x", buf[27], "s", " is ",
+                       "d", buf[28], "s", ".",
+                       "d", buf[29], "s", ".",
+                       "d", buf[30], "s", ".",
+                       "d", buf[31], "s", " ");
+  }
+  
+  if (eth != nullptr) {
     Function func;
     func.Init([](void *){
         BsdDevEthernet::Packet *rpacket;
@@ -188,6 +210,8 @@ extern "C" int main() {
         if(rpacket->buf[12] == 0x08 && rpacket->buf[13] == 0x06 && rpacket->buf[21] == 0x02) {
           uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;
           cnt = 0;
+          sum += l;
+          rtime--;
           // ARP packet
           gtty->Printf(
                        "s", "ARP Reply received; ",
@@ -202,6 +226,9 @@ extern "C" int main() {
                        "d", rpacket->buf[30], "s", ".",
                        "d", rpacket->buf[31], "s", " ",
                        "s","latency:","d",l,"s","us\n");
+          if (rtime == 0) {
+            gtty->Printf("s","ARP Reply average latency:","d",sum / 10,"s","us\n");
+          }
         }
         if(rpacket->buf[12] == 0x08 && rpacket->buf[13] == 0x06 && rpacket->buf[21] == 0x01 && (memcmp(rpacket->buf + 38, ip, 4) == 0)) {
           // ARP packet
@@ -233,28 +260,28 @@ extern "C" int main() {
           memcpy(tpacket->buf, data, len);
           tpacket->len = len;
           eth->TransmitPacket(tpacket);
-          gtty->Printf(
-                       "s", "ARP Request received; ",
-                       "x", rpacket->buf[22], "s", ":",
-                       "x", rpacket->buf[23], "s", ":",
-                       "x", rpacket->buf[24], "s", ":",
-                       "x", rpacket->buf[25], "s", ":",
-                       "x", rpacket->buf[26], "s", ":",
-                       "x", rpacket->buf[27], "s", ",",
-                       "d", rpacket->buf[28], "s", ".",
-                       "d", rpacket->buf[29], "s", ".",
-                       "d", rpacket->buf[30], "s", ".",
-                       "d", rpacket->buf[31], "s", " says who's ",
-                       "d", rpacket->buf[38], "s", ".",
-                       "d", rpacket->buf[39], "s", ".",
-                       "d", rpacket->buf[40], "s", ".",
-                       "d", rpacket->buf[41], "s", "\n");
-          gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
+          // gtty->Printf(
+          //              "s", "ARP Request received; ",
+          //              "x", rpacket->buf[22], "s", ":",
+          //              "x", rpacket->buf[23], "s", ":",
+          //              "x", rpacket->buf[24], "s", ":",
+          //              "x", rpacket->buf[25], "s", ":",
+          //              "x", rpacket->buf[26], "s", ":",
+          //              "x", rpacket->buf[27], "s", ",",
+          //              "d", rpacket->buf[28], "s", ".",
+          //              "d", rpacket->buf[29], "s", ".",
+          //              "d", rpacket->buf[30], "s", ".",
+          //              "d", rpacket->buf[31], "s", " says who's ",
+          //              "d", rpacket->buf[38], "s", ".",
+          //              "d", rpacket->buf[39], "s", ".",
+          //              "d", rpacket->buf[40], "s", ".",
+          //              "d", rpacket->buf[41], "s", "\n");
+          // gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
         }
         eth->ReuseRxBuffer(rpacket);
       }, nullptr);
     eth->SetReceiveCallback(2, func);
-  } while(0);
+  }
 
   extern int kKernelEndAddr;
   // stackは16K
@@ -265,8 +292,6 @@ extern "C" int main() {
   kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 4) + 1));
   kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 5) + 1));
   kassert(!paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - 4096 * 6));
-
-  cnt = 0;
 
   gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
 
@@ -287,7 +312,7 @@ extern "C" int main() {
         }
       }, nullptr);
     _keyboard_polling.Init(func);
-    _keyboard_polling.Register(1);
+    // _keyboard_polling.Register(1);
   } while(0);
   
   task_ctrl->Run();
@@ -305,7 +330,8 @@ extern "C" int main_of_others() {
   gdt->SetupProc();
   idt->SetupProc();
 
-  gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
+  gtty->PrintfRaw("s", "[cpu] info: #", "d", apic_ctrl->GetApicId(), "s", " started.\n");
+  task_ctrl->Run();
 
   // ループ性能測定用
   // if (apic_ctrl->GetApicId() == 4) {
@@ -333,10 +359,9 @@ extern "C" int main_of_others() {
     tt1.SetHandler(10);
   }
 
-  if (apic_ctrl->GetApicId() == 3) {
+  if (apic_ctrl->GetApicId() == 3 && eth != nullptr) {
     cnt = 0;
     new(&tt2) Callout;
-    time = 10;
     Function func;
     func.Init([](void *){
         if (!apic_ctrl->IsBootupAll()) {
@@ -382,7 +407,7 @@ extern "C" int main_of_others() {
         gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
         time--;
         if (time != 0) {
-          tt2.SetHandler(3000);
+          tt2.SetHandler(3000*1000);
         }
       }, nullptr);
     tt2.Init(func);

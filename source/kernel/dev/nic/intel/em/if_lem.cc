@@ -337,7 +337,7 @@ TUNABLE_INT("hw.em.smart_pwr_down", &lem_smart_pwr_down);
 TUNABLE_INT("hw.em.sbp", &lem_debug_sbp);
 
 /* Interrupt style - default to fast */
-static int lem_use_legacy_irq = 0;
+static int lem_use_legacy_irq = 1;
 TUNABLE_INT("hw.em.use_legacy_irq", &lem_use_legacy_irq);
 
 /* How many packets rxeof tries to clean at a time */
@@ -2372,7 +2372,6 @@ lem_allocate_irq(struct adapter *adapter)
 
 	/* Do Legacy setup? */
 	if (lem_use_legacy_irq) {
-          kassert(false);
 		// if ((error = bus_setup_intr(dev, adapter->res[0],
 	    	//     INTR_TYPE_NET | INTR_MPSAFE, NULL, lem_intr, adapter,
 	    	//     &adapter->tag[0])) != 0) {
