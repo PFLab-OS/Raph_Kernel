@@ -76,7 +76,7 @@ public:
   // ReuseTxBufferで開放しなければならない。サボるとそのうちtx_reservedが枯渇
   // して、一切のパケットの送信ができなくなるよ♪
   NetDevRingBuffer _tx_reserved;
-  NetDevFunctionalRingBuffer _tx_buffered;
+  NetDevRingBuffer _tx_buffered;
 
   void ReuseRxBuffer(Packet *packet) {
     kassert(_rx_reserved.Push(packet));

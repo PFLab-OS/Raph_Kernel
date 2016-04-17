@@ -25,13 +25,17 @@
 
 void Functional::WakeupFunction() {
   // TODO : CPUを叩きおこす
-  Locker locker(_lock);
-  if (_state == FunctionState::kNotFunctioning && _func.CanExecute()) {
-    _state = FunctionState::kFunctioning;
-    Function func;
-    func.Init(Handle, reinterpret_cast<void *>(this));
-    task_ctrl->Register(_cpuid, func);
+  if (!_func.CanExecute()) {
+    return;
   }
+  if (_state == FunctionState::kFunctioning) {
+    return;
+  }
+  Locker locker(_lock);
+  _state = FunctionState::kFunctioning;
+  Function func;
+  func.Init(Handle, reinterpret_cast<void *>(this));
+  task_ctrl->Register(_cpuid, func);
 }
 
 void Functional::Handle(void *p) {

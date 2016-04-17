@@ -73,17 +73,22 @@ int time, rtime;
 Callout tt1;
 Callout tt2;
 
-#define FLAG 2
-#if FLAG == 3
+#define QEMU 0
+#define SND  1
+#define RCV  2
+#define TEST 3
+
+#define FLAG RCV
+#if FLAG == TEST
 #define IP1 192, 168, 100, 117
 #define IP2 192, 168, 100, 254
-#elif FLAG == 2
+#elif FLAG == SND
 #define IP1 192, 168, 100, 117
 #define IP2 192, 168, 100, 104
-#elif FLAG == 1
+#elif FLAG == RCV
 #define IP1 192, 168, 100, 104
 #define IP2 192, 168, 100, 117
-#elif FLAG == 0
+#elif FLAG == QEMU
 #define IP1 10, 0, 2, 5
 #define IP2 10, 0, 2, 15
 #endif
@@ -182,37 +187,6 @@ extern "C" int main() {
   time = 10;
   rtime = 10;
 
-  
-  measure{
-    int buf[40];
-          gtty->Printf(
-                       "s", "ARP Reply received; ",
-                       "x", buf[22], "s", ":",
-                       "x", buf[23], "s", ":",
-                       "x", buf[24], "s", ":",
-                       "x", buf[25], "s", ":",
-                       "x", buf[26], "s", ":",
-                       "x", buf[27], "s", " is ",
-                       "d", buf[28], "s", ".",
-                       "d", buf[29], "s", ".",
-                       "d", buf[30], "s", ".",
-                       "d", buf[31], "s", " ");
-  }
-  measure{
-    int buf[40];
-    gtty->Printf("s", "ARP Reply received; ",
-                 "x", buf[22], "s", ":",
-                 "x", buf[23], "s", ":",
-                 "x", buf[24], "s", ":",
-                 "x", buf[25], "s", ":",
-                 "x", buf[26], "s", ":",
-                 "x", buf[27], "s", " is ");
-    gtty->Printf("d", buf[28], "s", ".",
-                 "d", buf[29], "s", ".",
-                 "d", buf[30], "s", ".",
-                 "d", buf[31], "s", " ");
-  }
-  
   if (eth != nullptr) {
     Function func;
     func.Init([](void *){
@@ -227,6 +201,9 @@ extern "C" int main() {
           sum += l;
           rtime--;
           // ARP packet
+          char buf[40];
+          memcpy(buf, rpacket->buf,40);
+          measure{
           gtty->Printf(
                        "s", "ARP Reply received; ",
                        "x", rpacket->buf[22], "s", ":",
@@ -240,6 +217,7 @@ extern "C" int main() {
                        "d", rpacket->buf[30], "s", ".",
                        "d", rpacket->buf[31], "s", " ",
                        "s","latency:","d",l,"s","us\n");
+          }
           if (rtime == 0) {
             gtty->Printf("s","ARP Reply average latency:","d",sum / 10,"s","us\n");
           }
@@ -346,8 +324,6 @@ extern "C" int main_of_others() {
 
   gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetCpuId(), "s", "(apic id:", "d", apic_ctrl->GetApicIdFromCpuId(apic_ctrl->GetCpuId()), "s", ") started.\n");
 
-  task_ctrl->Run();
-
   // ループ性能測定用
   // if (apic_ctrl->GetCpuId() == 4) {
   //   PollingFunc p;
@@ -383,12 +359,12 @@ extern "C" int main_of_others() {
           tt2.SetHandler(1000);
           return;
         }
-        kassert(eth != nullptr);
         eth->UpdateLinkStatus();
         if (eth->GetStatus() != BsdDevEthernet::LinkStatus::kUp) {
           tt2.SetHandler(1000);
           return;
         }
+#if FLAG != RCV
         if (cnt != 0) {
           tt2.SetHandler(10);
           return;
@@ -424,6 +400,9 @@ extern "C" int main_of_others() {
         if (time != 0) {
           tt2.SetHandler(3000*1000);
         }
+#else
+        gtty->Printf("s", "[debug] info: Link Up\n");
+#endif
       }, nullptr);
     tt2.Init(func);
     tt2.SetHandler(10);
