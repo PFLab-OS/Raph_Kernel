@@ -29,6 +29,7 @@
 #ifndef _FREEBSD_SYS_TASKQUEUE_H_
 #define _FREEBSD_SYS_TASKQUEUE_H_
 
+#include <raph.h>
 #include <task.h>
 #include <freebsd/sys/_task.h>
 
@@ -38,6 +39,7 @@ extern struct taskqueue *taskqueue_fast;
 typedef void (*taskqueue_enqueue_fn)(void *context);
 
 #define TASK_INIT(task, priority, func, context) do {	\
+        new(&((task)->ta_task)) Task;                   \
 	(task)->ta_pending = 0;				\
 	(task)->ta_func = (func);			\
 	(task)->ta_context = (context);			\
@@ -55,8 +57,9 @@ static void __taskqueue_handle(void *arg) {
 static inline int taskqueue_enqueue(struct taskqueue *queue, struct task *task) {
   Function func;
   func.Init(__taskqueue_handle, reinterpret_cast<void *>(task));
+  task->ta_task.SetFunc(func);
   // TODO cpuidの管理をどうするか
-  task_ctrl->Register(0, func);
+  task_ctrl->Register(0, &task->ta_task);
   return 0;
 }
 

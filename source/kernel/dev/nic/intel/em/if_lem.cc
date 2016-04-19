@@ -1494,10 +1494,7 @@ static int
 lem_irq_fast(void *arg)
 {
   struct adapter	*adapter = reinterpret_cast<struct adapter *>(arg);
-	if_t ifp;
 	u32		reg_icr;
-
-	ifp = adapter->ifp;
 
 	reg_icr = E1000_READ_REG(&adapter->hw, E1000_ICR);
 
@@ -2370,18 +2367,6 @@ lem_allocate_irq(struct adapter *adapter)
 		return (ENXIO);
 	}
 
-	/* Do Legacy setup? */
-	if (lem_use_legacy_irq) {
-		// if ((error = bus_setup_intr(dev, adapter->res[0],
-	    	//     INTR_TYPE_NET | INTR_MPSAFE, NULL, lem_intr, adapter,
-	    	//     &adapter->tag[0])) != 0) {
-		// 	device_printf(dev,
-		// 	    "Failed to register interrupt handler");
-		// 	return (error);
-		// }
-		return (0);
-	}
-
 	/*
 	 * Use a Fast interrupt and the associated
 	 * deferred processing contexts.
@@ -2395,11 +2380,16 @@ lem_allocate_irq(struct adapter *adapter)
 	if ((error = bus_setup_intr(dev, adapter->res[0],
 	    INTR_TYPE_NET, lem_irq_fast, NULL, adapter,
 	    &adapter->tag[0])) != 0) {
-		device_printf(dev, "Failed to register fast interrupt "
-			    "handler: %d\n", error);
 		// taskqueue_free(adapter->tq);
 		adapter->tq = NULL;
-		return (error);
+		if ((error = bus_setup_intr(dev, adapter->res[0],
+	    	    INTR_TYPE_NET | INTR_MPSAFE, NULL, lem_intr, adapter,
+	    	    &adapter->tag[0])) != 0) {
+			device_printf(dev,
+			    "Failed to register interrupt handler");
+			return (error);
+		}
+		return (0);
 	}
 	
 	return (0);
@@ -2759,7 +2749,6 @@ lem_dma_malloc(struct adapter *adapter, bus_size_t size,
 static int
 lem_allocate_transmit_structures(struct adapter *adapter)
 {
-	device_t dev = adapter->dev;
 	struct em_buffer *tx_buffer;
 	int error;
         BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<lE1000>();
@@ -3345,7 +3334,6 @@ lem_tx_purge(struct adapter *adapter)
 static int
 lem_allocate_receive_structures(struct adapter *adapter)
 {
-	device_t dev = adapter->dev;
 	struct em_buffer *rx_buffer;
 	int i, error;
         BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<lE1000>();

@@ -23,8 +23,8 @@
 #ifndef __RAPH_KERNEL_RAPH_H__
 #define __RAPH_KERNEL_RAPH_H__
 
-#include "global.h"
-#include "tty.h"
+#include <stdint.h>
+#include <stddef.h>
 
 void kernel_panic(const char *class_name, const char *err_str);
 
@@ -121,12 +121,12 @@ private:
 #else
 #define UTEST_VIRTUAL
 #undef kassert
-#define kassert(flag) if (!(flag)) {if (gtty != nullptr) {gtty->PrintfRaw("s", "assertion failed at ", "s", __FILE__, "s", " l.", "d", __LINE__, "s", " (", "s", __func__, "s", ") Kernel stopped!");} while(true){asm volatile("hlt");}}
 
 #define MASK(val, ebit, sbit) ((val) & (((1 << ((ebit) - (sbit) + 1)) - 1) << (sbit)))
 
-#define checkpoint(id,str) if (id < 0 || apic_ctrl->GetCpuId() == id) {gtty->Printf("s",str);}
-#define measure for(uint64_t t1 = 0, t2 = timer->ReadMainCnt(); ({if (t1 != 0) gtty->Printf("s","<","d",(timer->ReadMainCnt() - t2) * timer->GetCntClkPeriod(),"s","ns>"); (t1 == 0);}) ; t1++)
+void _kassert(const char *file, int line, const char *func) __attribute__((noreturn));;
+#define kassert(flag) if (!(flag)) { _kassert(__FILE__, __LINE__, __func__); }
+void checkpoint(int id, const char *str);
 
 inline void *operator new(size_t, void *p)     throw() { return p; }
 inline void *operator new[](size_t, void *p)   throw() { return p; }

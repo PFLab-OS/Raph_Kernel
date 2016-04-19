@@ -193,6 +193,7 @@ public:
       _reg[kData] = data;
     }
     void SetReg(uint32_t *reg) {
+      kassert(_reg == nullptr);
       _reg = reg;
     }
     bool SetupInt(uint32_t irq, uint8_t lapicid, uint8_t vector) {

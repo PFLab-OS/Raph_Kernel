@@ -21,6 +21,7 @@
  */
 
 #include "tmpmem.h"
+#include <global.h>
 #include <mem/virtmem.h>
 
 void TmpmemCtrl::Init() {

@@ -34,15 +34,18 @@ class Polling {
     kPolling,
     kStopped,
   };
+  Polling() {
+    Function func;
+    func.Init(HandleSub, reinterpret_cast<void *>(this));
+    _task.SetFunc(func);
+  }
   void RegisterPolling(int cpuid) {
     if (_state == PollingState::kPolling) {
       return;
     }
     _cpuid = cpuid;
-    Function func;
-    func.Init(HandleSub, reinterpret_cast<void *>(this));
     _state = PollingState::kPolling;
-    task_ctrl->RegisterPolling(_cpuid, func);
+    task_ctrl->Register(_cpuid, &_task);
   }
   void RemovePolling() {
     if (_state == PollingState::kStopped) {
@@ -51,7 +54,7 @@ class Polling {
     Function func;
     func.Init(HandleSub, reinterpret_cast<void *>(this));
     _state = PollingState::kStopped;
-    task_ctrl->Remove(_cpuid, func);
+    task_ctrl->Remove(_cpuid, &_task);
   }
   virtual void Handle() = 0;
  private:
@@ -65,6 +68,7 @@ class Polling {
   }
   PollingState _state = PollingState::kStopped;
   int _cpuid = -1;
+  Task _task;
 };
 
 class PollingFunc : public Polling {

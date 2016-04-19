@@ -26,6 +26,7 @@
 #include <apic.h>
 #include <gdt.h>
 #include <global.h>
+#include <tty.h>
 
 namespace C {
 extern "C" void handle_int(Regs *rs) {

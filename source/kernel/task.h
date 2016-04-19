@@ -23,15 +23,11 @@
 #ifndef __RAPH_KERNEL_DEV_TASK_H__
 #define __RAPH_KERNEL_DEV_TASK_H__
 
-#include <allocator.h>
-#include <apic.h>
-#include <mem/virtmem.h>
 #include <global.h>
 #include <spinlock.h>
-#include <functional.h>
 
-class Polling;
-// TODO: Functionベースでなく、Taskベースでの登録にすべき
+class Task;
+
 class TaskCtrl {
  public:
   enum class TaskCtrlState {
@@ -40,29 +36,14 @@ class TaskCtrl {
   };
   TaskCtrl() {}
   void Setup();
-  void Register(int cpuid, const Function &func) {
-    RegisterSub(cpuid, func, TaskType::kNormal);
-  }
-  void Remove(int cpuid, const Function &func);
+  // RegisterしたTaskはRemoveを呼び出すまで削除されない
+  void Register(int cpuid, Task *task);
+  void Remove(int cpuid, Task *task);
   void Run();
   TaskCtrlState GetState(int cpuid) {
     return _task_struct[cpuid].state;
   }
  private:
-  friend Polling;
-  enum class TaskType {
-    kNormal,
-    kPolling,
-  };
-  struct Task {
-    Function func;
-    Task *next;
-    TaskType type;
-  };
-  void RegisterPolling(int cpuid, const Function &func) {
-    RegisterSub(cpuid, func, TaskType::kPolling);
-  }
-  void RegisterSub(int cpuid, const Function &func, TaskType type);
   struct TaskStruct {
     // queue
     Task *top;
@@ -73,8 +54,59 @@ class TaskCtrl {
 
     TaskCtrlState state;
   } *_task_struct;
-  Allocator<Task> _allocator;
 };
 
+class Function {
+ public:
+  Function() {
+  }
+  Function(const Function &func) {
+    _func = func._func;
+    _arg = func._arg;
+  }
+  void Init(void (*func)(void *), void *arg) {
+    _func = func;
+    _arg = arg;
+  }
+  void Execute() {
+    if (_func != nullptr) {
+      _func(_arg);
+    }
+  }
+  volatile bool CanExecute() {
+    return (_func != nullptr);
+  }
+  void Clear() {
+    _func = nullptr;
+  }
+  bool Equal(const Function &func) {
+    return (_func == func._func) && (_arg == func._arg);
+  }
+ private:
+  void (*_func)(void *) = nullptr;
+  void *_arg;
+};
+
+class Task {
+public:
+  Task() {
+  }
+  virtual ~Task();
+  void SetFunc(const Function &func) {
+    _func = func;
+  }
+private:
+  enum class Status {
+    kRunning,
+    kWaitingInQueue,
+    kOutOfQueue,
+    kGuard,
+  };
+  Function _func;
+  Task *_next;
+  Task *_prev;
+  Status _status = Status::kOutOfQueue;
+  friend TaskCtrl;
+};
 
 #endif /* __RAPH_KERNEL_DEV_TASK_H__ */

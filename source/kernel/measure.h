@@ -20,37 +20,14 @@
  * 
  */
 
-#ifndef __RAPH_KERNEL_FUNCTIONAL_H__
-#define __RAPH_KERNEL_FUNCTIONAL_H__
+#ifndef __RAPH_KERNEL_MEASURE_H__
+#define __RAPH_KERNEL_MEASURE_H__
 
-#include <spinlock.h>
-#include <task.h>
+#include <timer.h>
+#include <tty.h>
+#include <global.h>
 
-class Functional {
- public:
-  enum class FunctionState {
-    kFunctioning,
-    kNotFunctioning,
-  };
-  Functional() {
-    Function func;
-    func.Init(Handle, reinterpret_cast<void *>(this));
-    _task.SetFunc(func);
-  }
-  virtual ~Functional() {
-  }
-  void SetFunction(int cpuid, const Function &func);
- protected:
-  void WakeupFunction();
-  // 設定された関数を呼び出すべきかどうかを返す
-  virtual bool ShouldFunc() = 0;
- private:
-  static void Handle(void *p);
-  Function _func;
-  Task _task;
-  int _cpuid = 0;
-  SpinLock _lock;
-  FunctionState _state = FunctionState::kNotFunctioning;
-};
+#define measure for(uint64_t t1 = 0, t2 = timer->ReadMainCnt(); ({if (t1 != 0) gtty->Printf("s","<","d",(timer->ReadMainCnt() - t2) * timer->GetCntClkPeriod(),"s","ns>"); (t1 == 0);}) ; t1++)
 
-#endif // __RAPH_KERNEL_FUNCTIONAL_H__
+#endif // __RAPH_KERNEL_MEASURE_H__
+

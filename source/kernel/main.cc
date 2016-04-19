@@ -80,15 +80,15 @@ Callout tt3;
 #define RCV  2
 #define TEST 3
 
-#define FLAG SND
+#define FLAG QEMU
 #if FLAG == TEST
 #define IP1 192, 168, 100, 117
 #define IP2 192, 168, 100, 254
 #elif FLAG == SND
-// #define IP1 192, 168, 100, 117
-// #define IP2 192, 168, 100, 104
-#define IP1 0x00, 0x11, 0x22, 0x34
-#define IP2 0x00, 0x11, 0x22, 0x33
+#define IP1 192, 168, 100, 117
+#define IP2 192, 168, 100, 104
+// #define IP1 0x00, 0x11, 0x22, 0x34
+// #define IP2 0x00, 0x11, 0x22, 0x33
 #elif FLAG == RCV
 #define IP1 192, 168, 100, 104
 #define IP2 192, 168, 100, 117
@@ -240,9 +240,10 @@ extern "C" int main_of_others() {
 
   gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetCpuId(), "s", "(apic id:", "d", apic_ctrl->GetApicIdFromCpuId(apic_ctrl->GetCpuId()), "s", ") started.\n");
 
+  PollingFunc p;
+ 
   // ループ性能測定用
   // if (apic_ctrl->GetCpuId() == 4) {
-  //   PollingFunc p;
   //   static int hoge = 0;
   //   p.Init([](void *){
   //       int hoge2 = timer->GetUsecFromCnt(timer->ReadMainCnt()) - hoge;
@@ -253,7 +254,6 @@ extern "C" int main_of_others() {
   // }
 
   if (apic_ctrl->GetCpuId() == 2 && eth != nullptr) {
-    PollingFunc p;
     Function func;
     func.Init([](void *){
         BsdDevEthernet::Packet *rpacket;
@@ -392,6 +392,10 @@ extern "C" int main_of_others() {
           tt2.SetHandler(10);
           return;
         }
+        for(int k = 0; k < 1; k++) {
+          if (time == 0) {
+            break;
+          }
         uint8_t data[] = {
           0xff, 0xff, 0xff, 0xff, 0xff, 0xff, // Target MAC Address
           0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source MAC Address
@@ -420,6 +424,7 @@ extern "C" int main_of_others() {
         eth->TransmitPacket(tpacket);
         // gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
         time--;
+        }
         if (time != 0) {
           tt2.SetHandler(10);
         }
@@ -437,7 +442,22 @@ extern "C" int main_of_others() {
 void kernel_panic(const char *class_name, const char *err_str) {
   gtty->PrintfRaw("s", "\n[","s",class_name,"s","] error: ","s",err_str);
   while(true) {
-    asm volatile("hlt;");
+    asm volatile("cli;hlt;");
+  }
+}
+
+void checkpoint(int id, const char *str) {
+  if (id < 0 || apic_ctrl->GetCpuId() == id) {
+    gtty->Printf("s",str);
+  }
+}
+
+void _kassert(const char *file, int line, const char *func) {
+  if (gtty != nullptr) {
+    gtty->PrintfRaw("s", "assertion failed at ", "s", file, "s", " l.", "d", line, "s", " (", "s", func, "s", ") Kernel stopped!");
+  }
+  while(true){
+    asm volatile("cli;hlt");
   }
 }
 

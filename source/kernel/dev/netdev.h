@@ -46,7 +46,7 @@ public:
   };
 
   typedef RingBuffer<Packet *, 300> NetDevRingBuffer;
-  typedef RingBuffer<Packet *, 300> NetDevFunctionalRingBuffer;
+  typedef FunctionalRingBuffer<Packet *, 300> NetDevFunctionalRingBuffer;
 
   // rxパケットの処理の流れ
   // 0. rx_reservedを初期化、バッファを満タンにしておく
@@ -100,7 +100,7 @@ public:
     return _rx_buffered.Pop(packet);
   }
   void SetReceiveCallback(int cpuid, const Function &func) {
-    // _rx_buffered.SetFunction(cpuid, func);
+    _rx_buffered.SetFunction(cpuid, func);
   }
 
   void InitTxPacketBuffer() {
