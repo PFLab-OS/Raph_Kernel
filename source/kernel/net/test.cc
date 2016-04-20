@@ -27,6 +27,7 @@
 #include <net/test.h>
 #include <net/socket.h>
 
+bool test_end = false;
 Callout tt1, tt2;
 
 void StripNewline(uint8_t *data) {
@@ -69,7 +70,8 @@ void ARPReplySub(void *p) {
   if(!thread_end) {
     tt1.SetHandler(10);
   } else {
-    printf("[ARP] test end\n");
+    fprintf(stderr, "[ARP] test end\n");
+    test_end = true;
   }
 }
 
@@ -109,7 +111,8 @@ void ARPRequestSub(void *p) {
   if(!thread_end) {
     tt2.SetHandler(10);
   } else {
-    printf("[ARP] test end\n");
+    fprintf(stderr, "[ARP] test end\n");
+    test_end = true;
   }
 }
 
@@ -166,6 +169,7 @@ void TCPServerSub1(void *p) {
     tt1.SetHandler(10);
   } else {
     fprintf(stderr, "[TCP:server] test end\n");
+    test_end = true;
   }
 }
 
@@ -197,7 +201,7 @@ void TCPClientSub1(void *p) {
         thread_end = true;
       }
     } else if(tcp1::preparing) {
-      printf(">> ");
+      fprintf(stderr, ">> ");
       if(fgets(reinterpret_cast<char*>(tcp1::data), tcp1::size-1, stdin)) {
         tcp1::data[tcp1::size-1] = 0;
       }
@@ -228,6 +232,7 @@ void TCPClientSub1(void *p) {
     tt2.SetHandler(10);
   } else {
     fprintf(stderr, "[TCP:client] test end\n");
+    test_end = true;
   }
 }
 
@@ -246,67 +251,107 @@ void TCPClient1() {
   tt2.SetHandler(10);
 }
 
-void TCPServer2() {
+namespace tcp2 {
   Socket socket;
-  if(socket.Open() < 0) {
-    fprintf(stderr, "[error] cannot open socket\n");
-  }
-  socket.SetListenAddr(0x0a000206);
-  socket.SetListenPort(Socket::kPortTelnet);
-  socket.SetIPAddr(0x0a000205);
-  socket.SetPort(Socket::kPortTelnet);
-
-  const uint32_t size = Socket::kMSS;
-  uint8_t data[size];
+  const uint32_t server_size = Socket::kMSS;
+  uint8_t server_data[server_size];
   int32_t rval;
 
-  while(true) {
-    int32_t listen_rval = socket.Listen();
+  const uint32_t client_size = 8000;
+  uint8_t client_data[client_size];
+  uint32_t s = client_size;  // length of packet last time sent
+  uint8_t *p = client_data;  // current position in packet
+  uint32_t sum = 0;
+  bool established = false;
+  bool closing = false;
+};
 
-    if(listen_rval >= 0 || listen_rval == Socket::kResultAlreadyEstablished) {
-      rval = socket.ReceivePacket(data, size);
-      if(rval >= 0) {
-        printf("return value = %d\n", rval);
-      } else if(rval == Socket::kResultConnectionClosed) {
-        break;
+void TCPServerSub2(void *p) {
+  int32_t listen_rval = tcp2::socket.Listen();
+
+  if(listen_rval >= 0) {
+    fprintf(stderr, "[tcp:server] connection established\n");
+  } else if(listen_rval == Socket::kResultAlreadyEstablished) {
+    tcp2::rval = tcp2::socket.ReceivePacket(tcp2::server_data, tcp2::server_size);
+    if(tcp2::rval >= 0) {
+      fprintf(stderr, "return value = %d\n", tcp2::rval);
+    } else if(tcp2::rval == Socket::kResultConnectionClosed) {
+      thread_end = true;
+    }
+  }
+
+  if(!thread_end) {
+    tt1.SetHandler(10);
+  } else {
+    fprintf(stderr, "[tcp:server] test end\n");
+  }
+}
+
+void TCPServer2() {
+  if(tcp2::socket.Open() < 0) {
+    fprintf(stderr, "[error] cannot open socket\n");
+  }
+  tcp2::socket.SetListenAddr(0x0a000206);
+  tcp2::socket.SetListenPort(Socket::kPortTelnet);
+  tcp2::socket.SetIPAddr(0x0a000205);
+  tcp2::socket.SetPort(Socket::kPortTelnet);
+
+  new(&tt1) Callout();
+  tt1.Init(TCPServerSub2, nullptr);
+  tt1.SetHandler(10);
+}
+
+void TCPClientSub2(void *p) {
+  int32_t connect_rval = tcp2::socket.Connect();
+
+  if(connect_rval >= 0) {
+    fprintf(stderr, "[tcp:client] connection established\n");
+    tcp2::established = true;
+  } else if(connect_rval == Socket::kResultAlreadyEstablished) {
+    if(tcp2::established) {
+      if(tcp2::closing) {
+        if(tcp2::socket.Close() >= 0) {
+          fprintf(stderr, "[TCP:client] closed\n");
+          thread_end = true;
+        }
+      } else if(tcp2::sum < tcp2::client_size) {
+        if((tcp2::rval = tcp2::socket.TransmitPacket(tcp2::p, tcp2::s)) >= 0) {
+          fprintf(stderr, "return value = %d\n", tcp2::rval);
+
+          if(tcp2::rval >= 0) {
+            tcp2::p += tcp2::rval;
+            tcp2::s -= tcp2::rval;
+            tcp2::sum += tcp2::rval;
+          }
+        }
+      } else {
+        tcp2::closing = true;
       }
     }
+  }
+
+  if(!thread_end) {
+    tt2.SetHandler(10);
+  } else {
+    fprintf(stderr, "[tcp:client] test end\n");
   }
 }
 
 void TCPClient2() {
-  Socket socket;
-  if(socket.Open() < 0) {
+  if(tcp2::socket.Open() < 0) {
     fprintf(stderr, "[error] cannot open socket\n");
   }
-  socket.SetListenAddr(0x0a000205);
-  socket.SetListenPort(Socket::kPortTelnet);
-  socket.SetIPAddr(0x0a000206);
-  socket.SetPort(Socket::kPortTelnet);
+  tcp2::socket.SetListenAddr(0x0a000205);
+  tcp2::socket.SetListenPort(Socket::kPortTelnet);
+  tcp2::socket.SetIPAddr(0x0a000206);
+  tcp2::socket.SetPort(Socket::kPortTelnet);
 
-  const uint32_t size = 8000;
-  uint8_t data[size];
-  uint32_t s = size;  // length of packet last time sent
-  uint8_t *p = data;  // current position in packet
-  memset(data, 0x41, size-1);
-  data[size-1] = 0;
+  memset(tcp2::client_data, 0x41, tcp2::client_size-1);
+  tcp2::client_data[tcp2::client_size-1] = 0;
 
-  while(socket.Connect() < 0);
-
-  int32_t rval;
-  uint32_t sum = 0;
-  while(sum < size) {
-    while((rval = socket.TransmitPacket(p, s)) < 0);
-    printf("return value = %d\n", rval);
-
-    if(rval >= 0) {
-      p += rval;
-      s -= rval;
-      sum += rval;
-    }
-  }
-
-  while(socket.Close() < 0);
+  new(&tt2) Callout();
+  tt2.Init(TCPClientSub2, nullptr);
+  tt2.SetHandler(10);
 }
 
 void TCPServer3() {
@@ -331,7 +376,7 @@ void TCPServer3() {
 
     rval = socket.ReceivePacket(data, size);
     if(rval >= 0) {
-      printf("return value = %d\n", rval);
+      fprintf(stderr, "return value = %d\n", rval);
     } else if(rval == Socket::kResultConnectionClosed) {
       break;
     }
