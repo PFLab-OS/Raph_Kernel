@@ -177,10 +177,13 @@ private:
   bool _established = false;
   // TCP state (cf. RFC 793 p.26)
   int32_t _state = kStateClosed;
-  // temporary packet buffer (used in TransmitPacket / ReceivePacket)
-  uint8_t *_packet = nullptr;
   // temporary packet length buffer
   int32_t _packet_length = 0;
+
+  // max segment size
+  uint16_t _mss = kMSS;
+  // window scale
+  uint8_t _ws = 1;
 
   /*
    * TCP Restransmission Timeout Parameters

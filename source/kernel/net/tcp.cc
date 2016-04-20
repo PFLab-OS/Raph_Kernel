@@ -37,6 +37,28 @@ static const uint8_t kAckOffset         = 8;
 static const uint8_t kSessionTypeOffset = 13;
 static const uint8_t kWindowSizeOffset  = 14;
 
+/*
+ * TCP header option parameters
+ */
+// option number
+static const uint8_t kOptionEndOfOptionList = 0;
+static const uint8_t kOptionNoOperation     = 1;
+static const uint8_t kOptionMSS             = 2;
+static const uint8_t kOptionWindowScale     = 3;
+static const uint8_t kOptionSackPermitted   = 4;
+static const uint8_t kOptionSack            = 5;
+static const uint8_t kOptionTimeStamp       = 6;
+// option length
+static const uint8_t kOptionLength[] = {
+  0x01,
+  0x01,
+  0x04,
+  0x03,
+  0x02,
+  0x00, // variable
+  0x0a,
+};
+
 uint16_t CheckSum(uint8_t *buf, uint32_t size, uint32_t saddr, uint32_t daddr);
 
 int32_t TcpGenerateHeader(uint8_t *buffer, uint32_t length, uint32_t saddr, uint32_t daddr, uint16_t sport, uint16_t dport, uint8_t type, uint32_t seq, uint32_t ack) {
@@ -50,6 +72,10 @@ int32_t TcpGenerateHeader(uint8_t *buffer, uint32_t length, uint32_t saddr, uint
   header->window_size = 0;
   header->checksum = 0;
   header->urgent_pointer = 0;
+
+  header->option_mss.number = kOptionMSS;
+  header->option_mss.length = kOptionLength[kOptionMSS];
+  header->option_mss.mss = htons(1460);
 
   header->checksum = CheckSum(reinterpret_cast<uint8_t*>(header), length, saddr, daddr);
 
