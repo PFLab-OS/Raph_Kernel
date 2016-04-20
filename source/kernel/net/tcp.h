@@ -51,6 +51,9 @@ struct TcpHeader {
 int32_t TcpGenerateHeader(uint8_t *header, uint32_t length, uint32_t saddr, uint32_t daddr, uint16_t sport, uint16_t dport, uint8_t type, uint32_t seq, uint32_t ack);
 bool TcpFilterPacket(uint8_t *packet, uint16_t sport, uint16_t dport, uint8_t type, uint32_t seq, uint32_t ack);
 
+// extract sender port
+uint16_t GetSourcePort(uint8_t *packet);
+
 // extract sender packet session type
 uint8_t GetSessionType(uint8_t *packet);
 

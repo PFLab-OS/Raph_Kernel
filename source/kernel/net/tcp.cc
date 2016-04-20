@@ -104,6 +104,12 @@ uint16_t CheckSum(uint8_t *buf, uint32_t size, uint32_t saddr, uint32_t daddr) {
   return ~sum;
 }
 
+// extract sender port
+uint16_t GetSourcePort(uint8_t *packet) {
+  TcpHeader * volatile header = reinterpret_cast<TcpHeader*>(packet);
+  return ntohs(header->sport);
+}
+
 // extract sender packet session type
 uint8_t GetSessionType(uint8_t *packet) {
   TcpHeader * volatile header = reinterpret_cast<TcpHeader*>(packet);

@@ -246,6 +246,10 @@ int32_t Socket::Receive(uint8_t *data, uint32_t length, bool is_raw_packet, bool
     memcpy(data, packet->buf, packet->len < length ? packet->len : length);
   }
 
+  // remember source port
+  // TODO: 適当なので直す(ポートが途中から違ったら？)
+  _dport = GetSourcePort(packet->buf + offset_l4);
+
   // finalization
   _device_info->ptcl_stack->FreeRxBuffer(packet);
 
