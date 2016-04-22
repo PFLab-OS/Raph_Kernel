@@ -46,13 +46,6 @@ struct TcpHeader {
   uint16_t checksum;
   // urgent pointer
   uint16_t urgent_pointer;
-
-  // option fields
-  struct OptionMSS {
-    uint8_t number;
-    uint8_t length;
-    uint16_t mss;
-  } __attribute__((packed)) option_mss;
 } __attribute__ ((packed));
 
 int32_t TcpGenerateHeader(uint8_t *header, uint32_t length, uint32_t saddr, uint32_t daddr, uint16_t sport, uint16_t dport, uint8_t type, uint32_t seq, uint32_t ack);

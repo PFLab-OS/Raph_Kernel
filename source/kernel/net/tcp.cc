@@ -47,7 +47,7 @@ static const uint8_t kOptionMSS             = 2;
 static const uint8_t kOptionWindowScale     = 3;
 static const uint8_t kOptionSackPermitted   = 4;
 static const uint8_t kOptionSack            = 5;
-static const uint8_t kOptionTimeStamp       = 6;
+static const uint8_t kOptionTimeStamp       = 8;
 // option length
 static const uint8_t kOptionLength[] = {
   0x01,
@@ -55,7 +55,9 @@ static const uint8_t kOptionLength[] = {
   0x04,
   0x03,
   0x02,
-  0x00, // variable
+  0xff, // variable length
+  0x00, // invalid
+  0x00, // invalid
   0x0a,
 };
 
@@ -73,10 +75,6 @@ int32_t TcpGenerateHeader(uint8_t *buffer, uint32_t length, uint32_t saddr, uint
   header->checksum = 0;
   header->urgent_pointer = 0;
 
-  header->option_mss.number = kOptionMSS;
-  header->option_mss.length = kOptionLength[kOptionMSS];
-  header->option_mss.mss = htons(1460);
-
   header->checksum = CheckSum(reinterpret_cast<uint8_t*>(header), length, saddr, daddr);
 
   return 0;
@@ -84,10 +82,14 @@ int32_t TcpGenerateHeader(uint8_t *buffer, uint32_t length, uint32_t saddr, uint
 
 bool TcpFilterPacket(uint8_t *packet, uint16_t sport, uint16_t dport, uint8_t type, uint32_t seq, uint32_t ack) {
   TcpHeader * volatile header = reinterpret_cast<TcpHeader*>(packet);
+
+  // TODO: temporary ignore push flag
+  uint8_t recv_type = header->flag & (~Socket::kFlagPSH);
+
   // NB: dport of packet sender == sport of packet receiver
   return (!sport || ntohs(header->dport) == sport)
       && (!dport || ntohs(header->sport) == dport)
-      && ((header->flag & Socket::kFlagFIN) || header->flag == type);
+      && ((recv_type & Socket::kFlagFIN) || recv_type == type);
 }
 
 uint16_t CheckSum(uint8_t *buf, uint32_t size, uint32_t saddr, uint32_t daddr) {
