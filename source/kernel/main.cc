@@ -80,7 +80,7 @@ Callout tt3;
 #define RCV  2
 #define TEST 3
 
-#define FLAG QEMU
+#define FLAG RCV
 #if FLAG == TEST
 #define IP1 192, 168, 100, 117
 #define IP2 192, 168, 100, 254
@@ -202,64 +202,16 @@ extern "C" int main() {
   kassert(!paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - 4096 * 6));
 
   gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetCpuId(), "s", "(apic id:", "d", apic_ctrl->GetApicIdFromCpuId(apic_ctrl->GetCpuId()), "s", ") started.\n");
-
-  apic_ctrl->StartAPs();
-
-  gtty->Printf("s", "\n\n[kernel] info: initialization completed\n");
-  
-  do {
-    // TODO: Functional FIFOにすべき
-    PollingFunc _keyboard_polling;
-    Function func;
-    func.Init([](void *) {
-        // print keyboard_input
-        while(keyboard->Count() > 0) {
-          char ch[2] = {'\0','\0'};
-          ch[0] = keyboard->GetCh();
-          gtty->Printf("s", ch);
-        }
-      }, nullptr);
-    _keyboard_polling.Init(func);
-    // _keyboard_polling.Register(1);
-  } while(0);
-  
-  task_ctrl->Run();
-
-  DismissNetCtrl();
-
-  return 0;
-}
-
-
-extern "C" int main_of_others() {
-// according to mp spec B.3, system should switch over to Symmetric I/O mode
-  apic_ctrl->BootAP();
-
-  gdt->SetupProc();
-  idt->SetupProc();
-
-  gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetCpuId(), "s", "(apic id:", "d", apic_ctrl->GetApicIdFromCpuId(apic_ctrl->GetCpuId()), "s", ") started.\n");
-
-  PollingFunc p;
- 
-  // ループ性能測定用
-  // if (apic_ctrl->GetCpuId() == 4) {
-  //   static int hoge = 0;
-  //   p.Init([](void *){
-  //       int hoge2 = timer->GetUsecFromCnt(timer->ReadMainCnt()) - hoge;
-  //       gtty->Printf("d",hoge2,"s"," ");
-  //       hoge = timer->GetUsecFromCnt(timer->ReadMainCnt());
-  //     }, nullptr);
-  //   p.Register();
-  // }
-
-  if (apic_ctrl->GetCpuId() == 2 && eth != nullptr) {
+  static int xxx = 0;
+  if (eth != nullptr) {
     Function func;
     func.Init([](void *){
         BsdDevEthernet::Packet *rpacket;
         if(!eth->ReceivePacket(rpacket)) {
           return;
-        } 
+        }
+        xxx++;
+        gtty->Printf("d",xxx,"s"," ");
         // received packet
         if(rpacket->buf[12] == 0x08 && rpacket->buf[13] == 0x06 && rpacket->buf[21] == 0x02) {
           uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;
@@ -333,10 +285,58 @@ extern "C" int main_of_others() {
         }
         eth->ReuseRxBuffer(rpacket);
       }, nullptr);
-    p.Init(func);
-    p.Register();
+    eth->SetReceiveCallback(2, func);
   }
+  
+  apic_ctrl->StartAPs();
 
+  gtty->Printf("s", "\n\n[kernel] info: initialization completed\n");
+  
+  do {
+    // TODO: Functional FIFOにすべき
+    PollingFunc _keyboard_polling;
+    Function func;
+    func.Init([](void *) {
+        // print keyboard_input
+        while(keyboard->Count() > 0) {
+          char ch[2] = {'\0','\0'};
+          ch[0] = keyboard->GetCh();
+          gtty->Printf("s", ch);
+        }
+      }, nullptr);
+    _keyboard_polling.Init(func);
+    // _keyboard_polling.Register(1);
+  } while(0);
+  
+  task_ctrl->Run();
+
+  DismissNetCtrl();
+
+  return 0;
+}
+
+
+extern "C" int main_of_others() {
+// according to mp spec B.3, system should switch over to Symmetric I/O mode
+  apic_ctrl->BootAP();
+
+  gdt->SetupProc();
+  idt->SetupProc();
+
+  gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetCpuId(), "s", "(apic id:", "d", apic_ctrl->GetApicIdFromCpuId(apic_ctrl->GetCpuId()), "s", ") started.\n");
+
+  PollingFunc p;
+ 
+  // ループ性能測定用
+  // if (apic_ctrl->GetCpuId() == 4) {
+  //   static int hoge = 0;
+  //   p.Init([](void *){
+  //       int hoge2 = timer->GetUsecFromCnt(timer->ReadMainCnt()) - hoge;
+  //       gtty->Printf("d",hoge2,"s"," ");
+  //       hoge = timer->GetUsecFromCnt(timer->ReadMainCnt());
+  //     }, nullptr);
+  //   p.Register();
+  // }
   
   // ワンショット性能測定用
   if (apic_ctrl->GetCpuId() == 5) {
