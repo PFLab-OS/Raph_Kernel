@@ -26,16 +26,16 @@
 #include <net/udp.h>
 
 int32_t UdpGenerateHeader(uint8_t *buffer, uint32_t length, uint16_t sport, uint16_t dport) {
-  UDPHeader * volatile header = reinterpret_cast<UDPHeader*>(buffer);
+  UdpHeader * volatile header = reinterpret_cast<UdpHeader*>(buffer);
   header->sport    = htons(sport);
   header->dport    = htons(dport);
-  header->len      = htons(sizeof(UDPHeader) + length);
+  header->len      = htons(sizeof(UdpHeader) + length);
   header->checksum = 0;
   return 0;
 }
 
 bool UdpFilterPacket(uint8_t *packet, uint16_t sport, uint16_t dport) {
-  UDPHeader * volatile header = reinterpret_cast<UDPHeader*>(packet);
+  UdpHeader * volatile header = reinterpret_cast<UdpHeader*>(packet);
   return (!sport || ntohs(header->sport) == sport)
       && (!dport || ntohs(header->dport) == dport);
 }

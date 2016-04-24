@@ -25,7 +25,7 @@
 
 #include <stdint.h>
 
-struct UDPHeader {
+struct UdpHeader {
   // source port
   uint16_t sport;
   // destination port

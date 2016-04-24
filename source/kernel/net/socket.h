@@ -28,6 +28,10 @@
 
 class NetSocket {
 public:
+  // frequently used port number
+  static const uint16_t kPortTelnet = 23;
+  static const uint16_t kPortHTTP = 80;
+
   /*
    * return code of TransmitPacket / ReceivePacket
    */
@@ -70,10 +74,6 @@ private:
 // TCP/IP Socket
 class Socket : public NetSocket {
 public:
-  // frequently used port number
-  static const uint16_t kPortTelnet = 23;
-  static const uint16_t kPortHTTP = 80;
-
   // TCP flag
   static const uint8_t kFlagFIN = 1 << 0;
   static const uint8_t kFlagSYN = 1 << 1;
@@ -129,20 +129,6 @@ public:
   int32_t Close();
 
 protected:
-  // the process of each layer can be altered by overriding L[2/3/4][T/R]x
-  // L[2/3/4]Tx: attach header of each layer while transmission
-  // L[2/3/4]Rx: filter packet by referring header of each layer while reception
-  virtual uint32_t L2HeaderLength();
-  virtual uint32_t L3HeaderLength();
-  virtual uint32_t L4HeaderLength();
-  virtual uint16_t L4Protocol();
-  virtual int32_t L2Tx(uint8_t *buffer, uint8_t *saddr, uint8_t *daddr, uint16_t type);
-  virtual bool L2Rx(uint8_t *packet, uint8_t *saddr, uint8_t *daddr, uint16_t type);
-  virtual int32_t L3Tx(uint8_t *buffer, uint32_t length, uint8_t type, uint32_t saddr, uint32_t daddr);
-  virtual bool L3Rx(uint8_t *packet, uint8_t type, uint32_t saddr, uint32_t daddr);
-  virtual int32_t L4Tx(uint8_t *header, uint32_t length, uint32_t saddr, uint32_t daddr, uint16_t sport, uint16_t dport);
-  virtual bool L4Rx(uint8_t *packet, uint16_t sport, uint16_t dport);
-
   // low-level packet receive function
   //   @param buffer          buffer to store received data
   //   @param length          length of buffer
@@ -216,17 +202,23 @@ private:
 };
 
 // UDP Socket
-class UdpSocket : public Socket {
-protected:
-  virtual uint32_t L4HeaderLength() override;
-  virtual uint16_t L4Protocol() override;
-  virtual int32_t L4Tx(uint8_t *header, uint32_t length, uint32_t saddr, uint32_t daddr, uint16_t sport, uint16_t dport) override;
-  virtual bool L4Rx(uint8_t *packet, uint16_t sport, uint16_t dport) override;
-  virtual int32_t TransmitPacket(const uint8_t *data, uint32_t length) override;
-  virtual int32_t ReceivePacket(uint8_t *data, uint32_t length) override;
-
+class UdpSocket : public NetSocket {
 public:
-  UdpSocket() {}
+  UdpSocket();
+
+protected:
+  int32_t TransmitPacket(const uint8_t *data, uint32_t length);
+  int32_t ReceivePacket(uint8_t *data, uint32_t length);
+
+private:
+  // my IP address
+  uint32_t _ipaddr = 0x0a000210;
+  // destination IP address
+  uint32_t _daddr = 0x0a000210;
+  // destination port
+  uint16_t _dport = kPortHTTP;
+  // source port
+  uint16_t _sport = kPortHTTP;
 };
 
 // ARP Socket
@@ -264,6 +256,7 @@ public:
 private:
   static const uint32_t kOperationOffset = 6;
 
+  // my IP address
   uint32_t _ipaddr = 0x0a000210;
 };
 
