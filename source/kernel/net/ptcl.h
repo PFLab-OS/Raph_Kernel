@@ -46,6 +46,9 @@ public:
   // register new socket
   bool RegisterSocket(NetSocket *socket);
 
+  // remove socket
+  bool RemoveSocket(NetSocket *socket);
+
   // fetch packet (NetSocket uses)
   bool ReceivePacket(uint32_t socket_id, NetDev::Packet *&packet);
 
@@ -55,8 +58,6 @@ public:
 
   // pop packet from main queue, then duplicate it into duplicated queue
   void Handle() override;
-
-  // TODO: remove socket
 
   void SetDevice(NetDev *dev) { _device = dev; }
 
@@ -70,6 +71,7 @@ private:
   static const uint32_t kMaxSocketNumber = 8;
   uint32_t _current_socket_number = 0;
   PacketQueue _duplicated_queue[kMaxSocketNumber];
+  bool _in_use[kMaxSocketNumber] = {false};
 
   // reference to the network device holding this protocol stack
   NetDev *_device;

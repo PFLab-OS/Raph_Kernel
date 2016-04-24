@@ -30,8 +30,14 @@ void ProtocolStack::Setup() {
 
 bool ProtocolStack::RegisterSocket(NetSocket *socket) {
   if(_current_socket_number < kMaxSocketNumber) {
-    // set id to socket
-    socket->SetProtocolStackId(_current_socket_number++);
+    for(uint32_t id = 0; id < kMaxSocketNumber; id++) {
+      if(!_in_use[id]) {
+        // set id to socket
+        socket->SetProtocolStackId(id);
+        _in_use[id] = true;
+      }
+    }
+    _current_socket_number++;
     return true;
   } else {
     // no enough buffer for the new socket
@@ -39,8 +45,15 @@ bool ProtocolStack::RegisterSocket(NetSocket *socket) {
   }
 }
 
+bool ProtocolStack::RemoveSocket(NetSocket *socket) {
+  uint32_t id = socket->GetProtocolStackId();
+  _in_use[id] = false;
+  _current_socket_number--;
+  socket->SetProtocolStackId(-1);
+}
+
 bool ProtocolStack::ReceivePacket(uint32_t socket_id, NetDev::Packet *&packet) {
-  if(socket_id >= _current_socket_number) {
+  if(!_in_use[socket_id]) {
     // invalid socket id
     return false;
   }
@@ -72,12 +85,14 @@ void ProtocolStack::Handle() {
     NetDev::Packet *new_packet;
     kassert(_main_queue.Pop(new_packet));
 
-    for(uint32_t i = 0; i < _current_socket_number; i++) {
-      // distribute the received packet to duplicated queues
-      NetDev::Packet *dup_packet = reinterpret_cast<NetDev::Packet*>(virtmem_ctrl->Alloc(sizeof(NetDev::Packet)));
-      dup_packet->len = new_packet->len;
-      memcpy(dup_packet->buf, new_packet->buf, new_packet->len);
-      _duplicated_queue[i].Push(dup_packet);
+    for(uint32_t i = 0; i < kMaxSocketNumber; i++) {
+      if(_in_use[i]) {
+        // distribute the received packet to duplicated queues
+        NetDev::Packet *dup_packet = reinterpret_cast<NetDev::Packet*>(virtmem_ctrl->Alloc(sizeof(NetDev::Packet)));
+        dup_packet->len = new_packet->len;
+        memcpy(dup_packet->buf, new_packet->buf, new_packet->len);
+        _duplicated_queue[i].Push(dup_packet);
+      }
     }
 
     virtmem_ctrl->Free(reinterpret_cast<virt_addr>(new_packet));
