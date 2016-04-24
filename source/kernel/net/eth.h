@@ -38,4 +38,6 @@ struct EthHeader {
 int32_t EthGenerateHeader(uint8_t *buffer, uint8_t *saddr, uint8_t *daddr, uint16_t type);
 bool EthFilterPacket(uint8_t *packet, uint8_t *saddr, uint8_t *daddr, uint16_t type);
 
+uint16_t GetL3PtclType(uint8_t *packet);
+
 #endif // __RAPH_KERNEL_NET_ETH_H__

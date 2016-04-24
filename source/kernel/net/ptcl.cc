@@ -22,19 +22,26 @@
 
 #include <string.h>
 #include <mem/virtmem.h>
+#include <net/eth.h>
 #include <net/ptcl.h>
 
 void ProtocolStack::Setup() {
+  // init socket table
+  for(uint32_t i = 0; i < kMaxSocketNumber; i++) {
+    socket_table[i].in_use = false;
+  }
+
   RegisterPolling();
 }
 
-bool ProtocolStack::RegisterSocket(NetSocket *socket) {
+bool ProtocolStack::RegisterSocket(NetSocket *socket, uint16_t l3_ptcl) {
   if(_current_socket_number < kMaxSocketNumber) {
     for(uint32_t id = 0; id < kMaxSocketNumber; id++) {
-      if(!_in_use[id]) {
+      if(!socket_table[id].in_use) {
         // set id to socket
         socket->SetProtocolStackId(id);
-        _in_use[id] = true;
+        socket_table[id].in_use = true;
+        socket_table[id].l3_ptcl = l3_ptcl;
       }
     }
     _current_socket_number++;
@@ -47,18 +54,19 @@ bool ProtocolStack::RegisterSocket(NetSocket *socket) {
 
 bool ProtocolStack::RemoveSocket(NetSocket *socket) {
   uint32_t id = socket->GetProtocolStackId();
-  _in_use[id] = false;
+  socket_table[id].in_use = false;
   _current_socket_number--;
   socket->SetProtocolStackId(-1);
+  return true;
 }
 
 bool ProtocolStack::ReceivePacket(uint32_t socket_id, NetDev::Packet *&packet) {
-  if(!_in_use[socket_id]) {
+  if(!socket_table[socket_id].in_use) {
     // invalid socket id
     return false;
   }
 
-  return _duplicated_queue[socket_id].Pop(packet);
+  return socket_table[socket_id].dup_queue.Pop(packet);
 }
 
 void ProtocolStack::FreeRxBuffer(NetDev::Packet *packet) {
@@ -85,13 +93,15 @@ void ProtocolStack::Handle() {
     NetDev::Packet *new_packet;
     kassert(_main_queue.Pop(new_packet));
 
-    for(uint32_t i = 0; i < kMaxSocketNumber; i++) {
-      if(_in_use[i]) {
-        // distribute the received packet to duplicated queues
-        NetDev::Packet *dup_packet = reinterpret_cast<NetDev::Packet*>(virtmem_ctrl->Alloc(sizeof(NetDev::Packet)));
-        dup_packet->len = new_packet->len;
-        memcpy(dup_packet->buf, new_packet->buf, new_packet->len);
-        _duplicated_queue[i].Push(dup_packet);
+    if(FilterPacket(new_packet)) {
+      for(uint32_t i = 0; i < kMaxSocketNumber; i++) {
+        if(socket_table[i].in_use && socket_table[i].l3_ptcl == GetL3PtclType(new_packet->buf)) {
+          // distribute the received packet to duplicated queues
+          NetDev::Packet *dup_packet = reinterpret_cast<NetDev::Packet*>(virtmem_ctrl->Alloc(sizeof(NetDev::Packet)));
+          dup_packet->len = new_packet->len;
+          memcpy(dup_packet->buf, new_packet->buf, new_packet->len);
+          socket_table[i].dup_queue.Push(dup_packet);
+        }
       }
     }
 
@@ -99,6 +109,20 @@ void ProtocolStack::Handle() {
   }
 }
 
+void ProtocolStack::SetDevice(DevEthernet *dev) {
+  _device = dev;
+  _device->GetEthAddr(_eth_addr);
+}
+
 void ProtocolStack::InitPacketQueue() {
   
+}
+
+bool ProtocolStack::FilterPacket(NetDev::Packet *packet) {
+  // filter Ethernet address
+  if(!EthFilterPacket(packet->buf, nullptr, _eth_addr, 0)) {
+    return false;
+  }
+
+  return true;
 }

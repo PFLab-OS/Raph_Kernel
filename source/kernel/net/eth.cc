@@ -46,5 +46,10 @@ bool EthFilterPacket(uint8_t *packet, uint8_t *saddr, uint8_t *daddr, uint16_t t
   EthHeader * volatile header = reinterpret_cast<EthHeader*>(packet);
   return (!daddr || !memcmp(header->daddr, daddr, 6) || !memcmp(header->daddr, kBcastAddress, 6))
       && (!saddr || !memcmp(header->saddr, saddr, 6))
-      && (ntohs(header->type) == type);
+      && (!type || ntohs(header->type) == type);
+}
+
+uint16_t GetL3PtclType(uint8_t *packet) {
+  EthHeader * volatile header = reinterpret_cast<EthHeader*>(packet);
+  return ntohs(header->type);
 }

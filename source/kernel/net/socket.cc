@@ -36,7 +36,7 @@ int32_t NetSocket::Open() {
   if((_device_info = netdev_ctrl->GetDeviceInfo()) == nullptr) {
     return -1;
   } else {
-    _device_info->ptcl_stack->RegisterSocket(this);
+    _device_info->ptcl_stack->RegisterSocket(this, _l3_ptcl);
     return 0;
   }
 }
@@ -44,6 +44,10 @@ int32_t NetSocket::Open() {
 /*
  * (TCP/IP) Socket
  */
+
+Socket::Socket() {
+  _l3_ptcl = kProtocolIPv4;
+}
 
 uint32_t Socket::L2HeaderLength() { return sizeof(EthHeader); }
 uint32_t Socket::L3HeaderLength() { return sizeof(Ipv4Header); }
@@ -213,12 +217,6 @@ int32_t Socket::Receive(uint8_t *data, uint32_t length, bool is_raw_packet, bool
 
   if(!_device_info->ptcl_stack->ReceivePacket(GetProtocolStackId(), packet)) {
     return kErrorNoPacketOnWire;
-  }
-
-  // filter Ethernet address
-  if(!L2Rx(packet->buf, nullptr, eth_daddr, kProtocolIPv4)) {
-    _device_info->ptcl_stack->FreeRxBuffer(packet);
-    return kErrorInvalidPacketOnWire;
   }
 
   // filter IP address
@@ -603,6 +601,10 @@ int32_t UdpSocket::TransmitPacket(const uint8_t *data, uint32_t length) {
  * ArpSocket
  */
 
+ArpSocket::ArpSocket() {
+  _l3_ptcl = kProtocolARP;
+}
+
 int32_t ArpSocket::TransmitPacket(uint16_t type, uint32_t tpa, uint8_t *tha) {
   uint32_t ip_daddr = tpa;
   uint8_t eth_saddr[6];
@@ -653,12 +655,6 @@ int32_t ArpSocket::ReceivePacket(uint16_t type, uint32_t *spa, uint8_t *sha) {
   // check if there is a new packet on wire (if so, then fetch it)
   if(!_device_info->ptcl_stack->ReceivePacket(GetProtocolStackId(), packet)) {
     return kErrorNoPacketOnWire;
-  }
-
-  // filter Ethernet address
-  if(!EthFilterPacket(packet->buf, nullptr, eth_daddr, kProtocolARP)) {
-    _device_info->ptcl_stack->FreeRxBuffer(packet);
-    return kErrorInvalidPacketOnWire;
   }
 
   // filter IP address

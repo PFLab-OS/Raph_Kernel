@@ -61,6 +61,8 @@ protected:
   // reference to network device info
   NetDevCtrl::NetDevInfo *_device_info;
 
+  uint16_t _l3_ptcl;
+
 private:
   uint32_t _ptcl_stack_id;
 };
@@ -98,7 +100,7 @@ public:
   static const int32_t kStateTimeWait    = 10;
   static const int32_t kStateAckWait     = 11;  // extended
 
-  Socket() {}
+  Socket();
 
   void SetIPAddr(uint32_t addr) { _daddr = addr; }
   void SetPort(uint16_t port) { _dport = port; }
@@ -232,6 +234,8 @@ class ArpSocket : public NetSocket {
 public:
   static const int16_t kOpARPRequest = 0x0001;
   static const int16_t kOpARPReply = 0x0002;
+
+  ArpSocket();
 
   // transmit ARP packet
   //   @type: request / reply
