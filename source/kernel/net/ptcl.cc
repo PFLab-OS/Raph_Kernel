@@ -84,7 +84,9 @@ void ProtocolStack::Handle() {
     memcpy(dup_packet->buf, packet->buf, packet->len);
 
     // insert into main queue at first
-    _main_queue.Push(packet);
+    _main_queue.Push(dup_packet);
+
+    // free network device buffer as soon as possible
     _device->ReuseRxBuffer(packet);
   }
 
