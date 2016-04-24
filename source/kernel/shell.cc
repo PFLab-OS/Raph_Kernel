@@ -22,13 +22,15 @@
 
 #include<string.h>
 
+#include<shell.h>
 
 void Shell::Register(const char *name, void (*func)(void)) {
   if (_next_buf == kNameSize){
     //error
   }else{
-    if (strlen(name) < kNameSize){
-      strcpy(name, _name_func_mapping[_next_buf].name);
+    int slen = strlen(name);
+    if (slen < kNameSize){
+      strncpy(_name_func_mapping[_next_buf].name, name, slen);
       _name_func_mapping[_next_buf].func = func;
       _next_buf++;
     }
@@ -37,7 +39,7 @@ void Shell::Register(const char *name, void (*func)(void)) {
 
 void Shell::Exec(const char *name) {
   for(int i = 0; i < kBufSize; i++){
-    if (strcmp(name, _name_func_mapping[i]) == 0){
+    if (strncmp(name, _name_func_mapping[i].name ,strlen(name)) == 0){
       _name_func_mapping[i].func();
     }
   }

@@ -33,10 +33,9 @@ class Shell {
   static const int kBufSize = 10;
   static const int kNameSize = 10;
   int _next_buf = 0;
-  
   struct NameFuncMapping {
     char name[kNameSize];
     void (*func)(void);
   } _name_func_mapping[kBufSize];
-
+};
 #endif //__RAPH_KERNEL_SHELL_H__
