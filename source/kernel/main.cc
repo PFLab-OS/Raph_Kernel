@@ -282,6 +282,7 @@ extern "C" int main() {
     while(keyboard->Count() > 0) {
       char ch[2] = {'\0','\0'};
       ch[0] = keyboard->GetCh();
+      shell->ReadCh(ch[0]);
       gtty->Printf("s", ch);
     }
   }, nullptr);

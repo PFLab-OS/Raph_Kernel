@@ -57,3 +57,11 @@ void Shell::Exec(const char *name) {
 
   gtty->Printf("s","unknown command:", "s", name, "s", "\n");
 }
+
+void Shell::ReadCh(char c) {
+  _liner.ReadCh(c);
+}
+
+void Shell::Liner::ReadCh(char c) {
+
+}

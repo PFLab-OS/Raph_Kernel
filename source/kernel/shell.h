@@ -27,8 +27,8 @@ class Shell {
  public:
   void Setup();
   void Register(const char *name, void (*func)(void));
-
   void Exec(const char *name);
+  void ReadCh(char c);
 
  private:
   static const int kBufSize = 10;
@@ -38,5 +38,17 @@ class Shell {
     char name[kNameSize];
     void (*func)(void);
   } _name_func_mapping[kBufSize];
+  class Liner {
+  public:
+    void Setup(Shell *shell) {
+      _shell = shell;
+    }
+    void ReadCh(char c);
+  private:
+    static const int kCommandSize = 10;
+    char _command[kCommandSize] = "";
+    int _next_command = 0;
+    Shell *_shell;
+  } _liner;
 };
 #endif //__RAPH_KERNEL_SHELL_H__
