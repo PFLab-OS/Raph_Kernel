@@ -20,18 +20,16 @@
  * 
  */
 
+
+/*this shell-like program is substituted later*/
 #include<global.h>
 #include<tty.h>
 #include<string.h>
 #include<shell.h>
 
-
-void test() {  //this function is for testing
-  gtty->Printf("s","shell-test function is called\n");
-}
-
 void Shell::Setup() {
-  Register("test", test);
+  _liner.Setup(this);
+  gtty->Printf("s", ">");
 }
 
 void Shell::Register(const char *name, void (*func)(void)) {
@@ -63,5 +61,16 @@ void Shell::ReadCh(char c) {
 }
 
 void Shell::Liner::ReadCh(char c) {
-
+  if(c == '\n'){
+    if(strlen(_command) > 0){
+      _shell->Exec(_command);
+      _command[0] = '\0';
+      _next_command = 0;
+    }
+    gtty->Printf("s", ">");
+  }else if(_next_command != kCommandSize - 1){
+    _command[_next_command] = c;
+    _next_command++;
+    _command[_next_command] = '\0';
+  }
 }

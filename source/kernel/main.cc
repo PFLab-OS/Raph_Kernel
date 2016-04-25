@@ -93,6 +93,10 @@ uint8_t ip[] = {
   IP1,
 };
 
+void shell_test() {  //this function is for testing
+  gtty->Printf("s","shell-test function is called\n");
+}
+
 extern "C" int main() {
   SpinLockCtrl _spinlock_ctrl;
   spinlock_ctrl = &_spinlock_ctrl;
@@ -278,21 +282,20 @@ extern "C" int main() {
   // print keyboard_input
   PollingFunc _keyboard_polling;
   keyboard->Setup(0); //should we define kDefaultLapicid = 0 ?
+
+  shell->Setup();
+  shell->Register("test", shell_test);
+
   _keyboard_polling.Init([](void *) {
     while(keyboard->Count() > 0) {
       char ch[2] = {'\0','\0'};
       ch[0] = keyboard->GetCh();
-      shell->ReadCh(ch[0]);
       gtty->Printf("s", ch);
+      shell->ReadCh(ch[0]);
     }
   }, nullptr);
   _keyboard_polling.Register();
   
-  shell->Setup();
-  shell->Exec("pohe");
-  shell->Exec("test");
-  shell->Exec("fuga");
-
   task_ctrl->Run();
 
   DismissNetCtrl();

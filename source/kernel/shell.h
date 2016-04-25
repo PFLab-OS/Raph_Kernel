@@ -20,6 +20,9 @@
  * 
  */
 
+
+/*this shell-like program is substituted later*/
+
 #ifndef __RAPH_KERNEL_SHELL_H__
 #define __RAPH_KERNEL_SHELL_H__
 
@@ -27,10 +30,11 @@ class Shell {
  public:
   void Setup();
   void Register(const char *name, void (*func)(void));
-  void Exec(const char *name);
   void ReadCh(char c);
 
  private:
+  void Exec(const char *name);
+
   static const int kBufSize = 10;
   static const int kNameSize = 10;
   int _next_buf = 0;
