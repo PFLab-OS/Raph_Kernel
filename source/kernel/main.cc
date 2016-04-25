@@ -33,6 +33,7 @@
 #include <idt.h>
 #include <timer.h>
 #include <tty.h>
+#include <shell.h>
 
 #include <dev/hpet.h>
 #include <dev/vga.h>
@@ -58,6 +59,7 @@ Timer *timer;
 
 Tty *gtty;
 Keyboard *keyboard;
+Shell *shell;
 
 PCICtrl *pci_ctrl;
 
@@ -133,6 +135,9 @@ extern "C" int main() {
 
   Keyboard _keyboard;
   keyboard = &_keyboard;
+
+  Shell _shell;
+  shell = &_shell;
   
   tmpmem_ctrl->Init();
 
@@ -282,6 +287,11 @@ extern "C" int main() {
   }, nullptr);
   _keyboard_polling.Register();
   
+  shell->Setup();
+  shell->Exec("pohe");
+  shell->Exec("test");
+  shell->Exec("fuga");
+
   task_ctrl->Run();
 
   DismissNetCtrl();

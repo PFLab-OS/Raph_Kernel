@@ -25,6 +25,7 @@
 
 class Shell {
  public:
+  void Setup();
   void Register(const char *name, void (*func)(void));
 
   void Exec(const char *name);

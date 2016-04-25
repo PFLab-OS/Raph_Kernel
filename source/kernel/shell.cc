@@ -20,9 +20,19 @@
  * 
  */
 
+#include<global.h>
+#include<tty.h>
 #include<string.h>
-
 #include<shell.h>
+
+
+void test() {  //this function is for testing
+  gtty->Printf("s","shell-test function is called\n");
+}
+
+void Shell::Setup() {
+  Register("test", test);
+}
 
 void Shell::Register(const char *name, void (*func)(void)) {
   if (_next_buf == kNameSize){
@@ -41,6 +51,9 @@ void Shell::Exec(const char *name) {
   for(int i = 0; i < kBufSize; i++){
     if (strncmp(name, _name_func_mapping[i].name ,strlen(name)) == 0){
       _name_func_mapping[i].func();
+      return;
     }
   }
+
+  gtty->Printf("s","unknown command:", "s", name, "s", "\n");
 }
