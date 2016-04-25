@@ -42,6 +42,7 @@ bool ProtocolStack::RegisterSocket(NetSocket *socket, uint16_t l3_ptcl) {
         socket->SetProtocolStackId(id);
         socket_table[id].in_use = true;
         socket_table[id].l3_ptcl = l3_ptcl;
+        break;
       }
     }
     _current_socket_number++;
