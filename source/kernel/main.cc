@@ -96,8 +96,8 @@ uint8_t ip[] = {
 void shell_test(int argc, const char* argv[]) {  //this function is for testing
   gtty->Printf("s", "shell-test function is called\n");
   gtty->Printf("d", argc, "s", " arguments.\n");
-  for(int i =0; i < argc; i++) gtty->Printf("s", argv[i], "s", "\n");
-  if(argv[argc] == nullptr) gtty->Printf("s", "the last member is nullptr.\n");
+  for (int i =0; i < argc; i++) gtty->Printf("s", argv[i], "s", "\n");
+  if (argv[argc] == nullptr) gtty->Printf("s", "the last member is nullptr.\n");
 }
 
 extern "C" int main() {

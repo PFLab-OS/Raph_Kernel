@@ -43,7 +43,7 @@ class Shell {
     char name[kNameSize];
     void (*func)(int argc, const char *argv[]);
   } _name_func_mapping[kBufSize];
-  class Liner {
+  class Liner { //convert char inputs to a line input
   public:
     void Setup(Shell *shell) {
       _shell = shell;

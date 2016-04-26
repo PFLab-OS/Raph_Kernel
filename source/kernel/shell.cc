@@ -45,8 +45,8 @@ void Shell::Register(const char *name, void (*func)(int argc, const char *argv[]
 }
 
 void Shell::Exec(const char *name,int argc, const char* argv[]) {
-  for(int i = 0; i < kBufSize; i++){
-    if (strncmp(name, _name_func_mapping[i].name ,strlen(name)) == 0){
+  for (int i = 0; i < kBufSize; i++) {
+    if (strncmp(name, _name_func_mapping[i].name, strlen(name)) == 0) {
       _name_func_mapping[i].func(argc, argv);
       return;
     }
@@ -60,13 +60,13 @@ void Shell::ReadCh(char c) {
 }
 
 void Shell::Liner::ReadCh(char c) {
-  if(c == '\n'){
+  if (c == '\n') {
     Tokenize();
-    if(_argc > 0){	
+    if (_argc > 0) {	
       _shell->Exec(_command, _argc, (const char **)_arguments);
     }
     Reset();
-  }else if(_next_command != kCommandSize - 1){
+  } else if (_next_command != kCommandSize - 1) {
     _command[_next_command] = c;
     _next_command++;
     _command[_next_command] = '\0';
@@ -75,18 +75,18 @@ void Shell::Liner::ReadCh(char c) {
 
 void Shell::Liner::Tokenize() {
   bool inToken = false;
-  for(int i = 0; i < kCommandSize -1; i++) {
+  for (int i = 0; i < kCommandSize -1; i++) {
     if (_command[i] == '\0') return;
     if (inToken) {
-      if(_command[i] == ' ') {
+      if (_command[i] == ' ') {
 	_command[i] = '\0';
 	inToken = false;
       }
-    }else{
-      if(_command[i] == ' ') {
+    } else {
+      if (_command[i] == ' ') {
 	_command[i] = '\0';
-      }else{
-	if(_argc < kArgumentMax){
+      } else {
+	if (_argc < kArgumentMax) {
 	  _arguments[_argc] = _command + i;
 	  _argc++;
 	  _arguments[_argc] = nullptr;
