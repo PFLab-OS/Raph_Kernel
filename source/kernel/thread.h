@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2016 Project Raphine
+ * Copyright (c) 2016 Raphine Project
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -18,29 +18,42 @@
  *
  * Author: Levelfour
  * 
+ * ApicCtrl class for test_main.cc
+ *
+ *  16/04/15 created
+ *
  */
 
-#ifndef __RAPH_KERNEL_NET_L2_H__
-#define __RAPH_KERNEL_NET_L2_H__
+#ifndef __RAPH_KERNEL_THREAD_H__
+#define __RAPH_KERNEL_THREAD_H__
+
+#ifdef __UNIT_TEST__
 
 #include <stdint.h>
-#include <dev/netdev.h>
+#include <apic.h>
 
-class L2Ctrl {
+class PthreadCtrl : public ApicCtrl {
 public:
-  virtual int32_t GenerateHeader(uint8_t *header,
-                                 uint8_t *saddr,
-                                 uint8_t *daddr,
-                                 uint16_t type) = 0;
-  virtual bool FilterPacket(uint8_t *packet,
-                            uint8_t *saddr,
-                            uint8_t *daddr,
-                            uint16_t type) = 0;
+  PthreadCtrl() {}
+  virtual void Setup() override {
+  }
+  virtual volatile uint8_t GetApicId() override {
+    return 0;
+  }
+  virtual int GetHowManyCpus() override {
+    return _cpu_nums;
+  }
+  virtual void SetupTimer(uint32_t irq) override {
+  }
+  virtual void StartTimer() override {
+  }
+  virtual void StopTimer() override {
+  }
+
+private:
+  int _cpu_nums = 2;
 };
 
-class L4Ctrl {
-protected:
-  L4Ctrl() {}
-};
+#endif // __UNIT_TEST__
 
-#endif // __RAPH_KERNEL_NET_L2_H__
+#endif /* __RAPH_KERNEL_THREAD_H__ */

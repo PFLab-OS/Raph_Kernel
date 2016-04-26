@@ -25,7 +25,8 @@
 #include <spinlock.h>
 #include <mem/virtmem.h>
 #include <global.h>
-#include <apic.h>
+#include <thread.h>
+#include <task.h>
 #include <dev/posixtimer.h>
 #include <dev/raw.h>
 #include <net/test.h>
@@ -37,10 +38,21 @@ VirtmemCtrl *virtmem_ctrl;
 PhysmemCtrl *physmem_ctrl;
 PagingCtrl *paging_ctrl;
 
+ApicCtrl *apic_ctrl;
+TaskCtrl *task_ctrl;
+
 Timer *timer;
 
 int main(int argc, char **argv) {
   srand((unsigned) time(NULL));
+
+  PthreadCtrl _thread_ctrl;
+  apic_ctrl = &_thread_ctrl;
+  apic_ctrl->Setup();
+
+  TaskCtrl _task_ctrl;
+  task_ctrl = &_task_ctrl;
+  task_ctrl->Setup();
 
   PosixTimer _timer;
   timer = &_timer;
@@ -87,6 +99,8 @@ int main(int argc, char **argv) {
   } else {
     fprintf(stderr, "[error] specify protocol\n");
   }
+
+  task_ctrl->Run();
 
   DismissNetCtrl();
 

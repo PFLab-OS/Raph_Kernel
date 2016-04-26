@@ -41,8 +41,7 @@ template <typename ptr> inline virt_addr ptr2virtaddr(ptr *addr) {
 class VirtmemCtrl final {
 public:
   VirtmemCtrl();
-  ~VirtmemCtrl() {
-  }
+  ~VirtmemCtrl();
   // 新規に仮想メモリ領域を確保する。
   // 物理メモリが割り当てられていない領域の場合は物理メモリを割り当てる
   virt_addr Alloc(size_t size);

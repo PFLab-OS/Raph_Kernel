@@ -26,9 +26,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <net/socket.h>
-#include <net/layer.h>
 
-struct TCPHeader {
+struct TcpHeader {
   // source port
   uint16_t sport;
   // destination port
@@ -49,25 +48,19 @@ struct TCPHeader {
   uint16_t urgent_pointer;
 } __attribute__ ((packed));
 
-class TCPCtrl : public L4Ctrl {
-public:
-  TCPCtrl() {}
-  virtual int32_t GenerateHeader(uint8_t *header, uint32_t length, uint32_t saddr, uint32_t daddr, uint16_t sport, uint16_t dport, uint8_t type, uint32_t seq, uint32_t ack);
-  virtual bool FilterPacket(uint8_t *packet, uint16_t sport, uint16_t dport, uint8_t type, uint32_t seq, uint32_t ack);
-  uint8_t GetSessionType(uint8_t *packet);
-  uint32_t GetSequenceNumber(uint8_t *packet);
-  uint32_t GetAcknowledgeNumber(uint8_t *packet);
+int32_t TcpGenerateHeader(uint8_t *header, uint32_t length, uint32_t saddr, uint32_t daddr, uint16_t sport, uint16_t dport, uint8_t type, uint32_t seq, uint32_t ack);
+bool TcpFilterPacket(uint8_t *packet, uint16_t sport, uint16_t dport, uint8_t type, uint32_t seq, uint32_t ack);
 
-private:
-  static const uint32_t kBasicBufsize     = 0x10;
-  static const uint8_t kSrcPortOffset     = 0;
-  static const uint8_t kDstPortOffset     = 2;
-  static const uint8_t kSeqOffset         = 4;
-  static const uint8_t kAckOffset         = 8;
-  static const uint8_t kSessionTypeOffset = 13;
-  static const uint8_t kWindowSizeOffset  = 14;
+// extract sender port
+uint16_t GetSourcePort(uint8_t *packet);
 
-  uint16_t CheckSum(uint8_t *buf, uint32_t size, uint32_t saddr, uint32_t daddr);
-};
+// extract sender packet session type
+uint8_t GetSessionType(uint8_t *packet);
+
+// extract sender sequence number from packet
+uint32_t GetSequenceNumber(uint8_t *packet);
+
+// extract sender acknowledge number from packet
+uint32_t GetAcknowledgeNumber(uint8_t *packet);
 
 #endif // __RAPH_KERNEL_NET_TCP_H__

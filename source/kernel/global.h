@@ -73,24 +73,7 @@ class DevEthernetCtrl;
 extern DevEthernetCtrl *netdev_ctrl;
 
 // ARP Table
-class ARPTable;
-extern ARPTable *arp_table;
-
-// L2Ctrl
-class EthCtrl;
-extern EthCtrl *eth_ctrl;
-
-class ARPCtrl;
-extern ARPCtrl *arp_ctrl;
-
-// L3Ctrl
-class IPCtrl;
-extern IPCtrl *ip_ctrl;
-
-// L4Ctrl
-class UDPCtrl;
-class TCPCtrl;
-extern UDPCtrl *udp_ctrl;
-extern TCPCtrl *tcp_ctrl;
+class ArpTable;
+extern ArpTable *arp_table;
 
 #endif // __RAPH_KERNEL_GLOBAL_H__
