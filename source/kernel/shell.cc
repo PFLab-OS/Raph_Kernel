@@ -75,8 +75,8 @@ void Shell::Liner::ReadCh(char c) {
 
 void Shell::Liner::Tokenize() {
   bool inToken = false;
-  for(int i = 0; i < kArgumentMax -1; i++) {
-    if (_command[i] == '0') return;
+  for(int i = 0; i < kCommandSize -1; i++) {
+    if (_command[i] == '\0') return;
     if (inToken) {
       if(_command[i] == ' ') {
 	_command[i] = '\0';
@@ -86,9 +86,11 @@ void Shell::Liner::Tokenize() {
       if(_command[i] == ' ') {
 	_command[i] = '\0';
       }else{
-	_arguments[_argc] = _command + i;
-	_argc++;
-	_arguments[_argc] = nullptr;
+	if(_argc < kArgumentMax){
+	  _arguments[_argc] = _command + i;
+	  _argc++;
+	  _arguments[_argc] = nullptr;
+	}
 	inToken = true;
       }
     }
@@ -99,5 +101,6 @@ void Shell::Liner::Reset() {
     _command[0] = '\0';
     _arguments[0] = nullptr;
     _next_command = 0;
+    _argc = 0;
     gtty->Printf("s", ">");
 }

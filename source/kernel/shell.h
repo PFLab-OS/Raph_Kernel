@@ -56,7 +56,7 @@ class Shell {
     static const int kCommandSize = 100;
     static const int kArgumentMax = 10;
     char _command[kCommandSize] = "";
-    char *_arguments[kArgumentMax];
+    char *_arguments[kArgumentMax + 1];
     int _next_command = 0;
     int _argc = 0;
     Shell *_shell;
