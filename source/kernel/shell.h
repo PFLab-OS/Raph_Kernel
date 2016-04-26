@@ -29,29 +29,36 @@
 class Shell {
  public:
   void Setup();
-  void Register(const char *name, void (*func)(void));
+  void Register(const char *name, void (*func)(int argc, const char *argv[]));
   void ReadCh(char c);
 
  private:
-  void Exec(const char *name);
+  void Exec(const char *name, int argc, const char* argv[]);
 
   static const int kBufSize = 10;
   static const int kNameSize = 10;
   int _next_buf = 0;
   struct NameFuncMapping {
+
     char name[kNameSize];
-    void (*func)(void);
+    void (*func)(int argc, const char *argv[]);
   } _name_func_mapping[kBufSize];
   class Liner {
   public:
     void Setup(Shell *shell) {
       _shell = shell;
+      Reset();
     }
     void ReadCh(char c);
   private:
-    static const int kCommandSize = 10;
+    void Tokenize();
+    void Reset();
+    static const int kCommandSize = 100;
+    static const int kArgumentMax = 10;
     char _command[kCommandSize] = "";
+    char *_arguments[kArgumentMax];
     int _next_command = 0;
+    int _argc = 0;
     Shell *_shell;
   } _liner;
 };

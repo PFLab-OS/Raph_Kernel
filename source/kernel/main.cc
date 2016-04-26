@@ -93,7 +93,7 @@ uint8_t ip[] = {
   IP1,
 };
 
-void shell_test() {  //this function is for testing
+void shell_test(int argc, const char* argv[]) {  //this function is for testing
   gtty->Printf("s","shell-test function is called\n");
 }
 

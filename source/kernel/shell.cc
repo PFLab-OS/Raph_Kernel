@@ -29,10 +29,9 @@
 
 void Shell::Setup() {
   _liner.Setup(this);
-  gtty->Printf("s", ">");
 }
 
-void Shell::Register(const char *name, void (*func)(void)) {
+void Shell::Register(const char *name, void (*func)(int argc, const char *argv[])) {
   if (_next_buf == kNameSize){
     //error
   }else{
@@ -45,10 +44,10 @@ void Shell::Register(const char *name, void (*func)(void)) {
   }
 }
 
-void Shell::Exec(const char *name) {
+void Shell::Exec(const char *name,int argc, const char* argv[]) {
   for(int i = 0; i < kBufSize; i++){
     if (strncmp(name, _name_func_mapping[i].name ,strlen(name)) == 0){
-      _name_func_mapping[i].func();
+      _name_func_mapping[i].func(argc, argv);
       return;
     }
   }
@@ -62,15 +61,43 @@ void Shell::ReadCh(char c) {
 
 void Shell::Liner::ReadCh(char c) {
   if(c == '\n'){
-    if(strlen(_command) > 0){
-      _shell->Exec(_command);
-      _command[0] = '\0';
-      _next_command = 0;
+    Tokenize();
+    if(_argc > 0){	
+      _shell->Exec(_command, _argc, (const char **)_arguments);
     }
-    gtty->Printf("s", ">");
+    Reset();
   }else if(_next_command != kCommandSize - 1){
     _command[_next_command] = c;
     _next_command++;
     _command[_next_command] = '\0';
   }
+}
+
+void Shell::Liner::Tokenize() {
+  bool inToken = false;
+  for(int i = 0; i < kArgumentMax -1; i++) {
+    if (_command[i] == '0') return;
+    if (inToken) {
+      if(_command[i] == ' ') {
+	_command[i] = '\0';
+	inToken = false;
+      }
+    }else{
+      if(_command[i] == ' ') {
+	_command[i] = '\0';
+      }else{
+	_arguments[_argc] = _command + i;
+	_argc++;
+	_arguments[_argc] = nullptr;
+	inToken = true;
+      }
+    }
+  }
+}
+
+void Shell::Liner::Reset() {
+    _command[0] = '\0';
+    _arguments[0] = nullptr;
+    _next_command = 0;
+    gtty->Printf("s", ">");
 }
