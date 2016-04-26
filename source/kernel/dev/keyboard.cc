@@ -21,7 +21,6 @@
  */
 
 #include <global.h>
-#include <shell.h> /*keyboard knows shell...*/
 #include <apic.h>
 #include <idt.h>
 #include <dev/keyboard.h>
@@ -73,8 +72,7 @@ void Keyboard::Reset() {
 void Keyboard::Handler(Regs *reg) { //static
   uint8_t data;
   data = inb(kDataPort);
-  if(data < (1 << 7))  keyboard->Write(data);
-  
+  if(data < (1 << 7))  keyboard->Write(data);  
 }
 
 const char Keyboard::kScanCode[256] = {
