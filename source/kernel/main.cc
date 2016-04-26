@@ -33,6 +33,7 @@
 #include <idt.h>
 #include <timer.h>
 #include <tty.h>
+#include <shell.h>
 
 #include <dev/hpet.h>
 #include <dev/vga.h>
@@ -58,6 +59,7 @@ Timer *timer;
 
 Tty *gtty;
 Keyboard *keyboard;
+Shell *shell;
 
 PCICtrl *pci_ctrl;
 
@@ -90,6 +92,13 @@ Callout tt2;
 uint8_t ip[] = {
   IP1,
 };
+
+void shell_test(int argc, const char* argv[]) {  //this function is for testing
+  gtty->Printf("s", "shell-test function is called\n");
+  gtty->Printf("d", argc, "s", " arguments.\n");
+  for (int i =0; i < argc; i++) gtty->Printf("s", argv[i], "s", "\n");
+  if (argv[argc] == nullptr) gtty->Printf("s", "the last member is nullptr.\n");
+}
 
 extern "C" int main() {
   SpinLockCtrl _spinlock_ctrl;
@@ -133,6 +142,9 @@ extern "C" int main() {
 
   Keyboard _keyboard;
   keyboard = &_keyboard;
+
+  Shell _shell;
+  shell = &_shell;
   
   tmpmem_ctrl->Init();
 
@@ -273,11 +285,16 @@ extern "C" int main() {
   // print keyboard_input
   PollingFunc _keyboard_polling;
   keyboard->Setup(0); //should we define kDefaultLapicid = 0 ?
+
+  shell->Setup();
+  shell->Register("test", shell_test);
+
   _keyboard_polling.Init([](void *) {
     while(keyboard->Count() > 0) {
       char ch[2] = {'\0','\0'};
       ch[0] = keyboard->GetCh();
       gtty->Printf("s", ch);
+      shell->ReadCh(ch[0]);
     }
   }, nullptr);
   _keyboard_polling.Register();
