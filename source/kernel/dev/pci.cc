@@ -20,10 +20,10 @@
  * 
  */
 
-#include "../acpi.h"
-#include "../mem/physmem.h"
-#include "../global.h"
-#include "../tty.h"
+#include <raph_acpi.h>
+#include <mem/physmem.h>
+#include <global.h>
+#include <tty.h>
 #include "pci.h"
 
 #include "nic/intel/em/em.h"

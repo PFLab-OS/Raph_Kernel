@@ -22,7 +22,7 @@
 
 #include <assert.h>
 #include <mem/virtmem.h>
-#include <acpi.h>
+#include <raph_acpi.h>
 #include <apic.h>
 #include <timer.h>
 #include <global.h>

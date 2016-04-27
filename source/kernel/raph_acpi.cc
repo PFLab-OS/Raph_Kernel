@@ -21,7 +21,7 @@
  */
 
 #include "apic.h"
-#include "acpi.h"
+#include "raph_acpi.h"
 
 void AcpiCtrl::Setup(RSDPDescriptor *rsdp) {
   if (strncmp(rsdp->Signature, "RSD PTR ", 8)) {

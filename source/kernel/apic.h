@@ -25,7 +25,7 @@
 
 #include <stdint.h>
 #include <raph.h>
-#include <acpi.h>
+#include <raph_acpi.h>
 
 struct MADT {
   ACPISDTHeader header;

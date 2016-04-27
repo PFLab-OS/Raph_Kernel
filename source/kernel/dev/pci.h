@@ -24,7 +24,7 @@
 #define __RAPH_KERNEL_DEV_Pci_H__
 
 #include <stdint.h>
-#include <acpi.h>
+#include <raph_acpi.h>
 #include <global.h>
 #include <spinlock.h>
 #include <mem/virtmem.h>

@@ -28,7 +28,7 @@
 #include <stdint.h>
 #include <raph.h>
 #include <mem/physmem.h>
-#include <acpi.h>
+#include <raph_acpi.h>
 #include <timer.h>
 #include <apic.h>
 #include <global.h>

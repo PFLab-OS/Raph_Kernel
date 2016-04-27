@@ -22,7 +22,7 @@
 
 #include <global.h>
 #include <spinlock.h>
-#include <acpi.h>
+#include <raph_acpi.h>
 #include <apic.h>
 #include <multiboot.h>
 #include <task.h>
