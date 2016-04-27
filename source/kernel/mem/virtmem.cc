@@ -30,6 +30,7 @@ extern int virt_memory_start;
 extern int virt_memory_end;
 extern int virt_allocatedmemory_end;
 extern int phys_memory_end;
+extern int kLinearAddrOffset;
 extern int kHeapEndAddr;
 
 #ifdef __UNIT_TEST__
@@ -347,8 +348,8 @@ VirtmemCtrl::VirtmemCtrl() {
   _first = new(_first) AreaManager(_first, _first, tmp2 - tmp1);
 
   // 2MB allocated by boot.S
-  virt_addr tmp3 = p2v(reinterpret_cast<phys_addr>(&phys_memory_end));
-  virt_addr tmp4 = p2v(0x200000);
+  virt_addr tmp3 = reinterpret_cast<virt_addr>(&kLinearAddrOffset) + reinterpret_cast<virt_addr>(&phys_memory_end);
+  virt_addr tmp4 = reinterpret_cast<virt_addr>(&kLinearAddrOffset) + 0x200000;
   kassert(tmp3 + AreaManager::GetAreaManagerSize() < tmp4);
   AreaManager *second = reinterpret_cast<AreaManager *>(tmp3);
   _first->Append(second, tmp4 - tmp3);
@@ -356,11 +357,14 @@ VirtmemCtrl::VirtmemCtrl() {
   _list = _first;
 }
 
+VirtmemCtrl::~VirtmemCtrl() {}
+
 #endif // __UNIT_TEST__
 
 #ifndef __UNIT_TEST__
 
 virt_addr VirtmemCtrl::Alloc(size_t size) {
+  Locker locker(_lock);
   size = alignUp(size, 8);
   if (_last_freed != nullptr && _last_freed->GetSize() >= size) {
     AreaManager *best = _last_freed;
@@ -409,9 +413,9 @@ virt_addr VirtmemCtrl::Alloc(size_t size) {
     AreaManager *end = _first->GetPrev();
     virt_addr allocated_addr_end = end->GetAddr() + end->GetSize() + end->GetAreaManagerSize();
     kassert(allocated_addr_end == align(allocated_addr_end, PagingCtrl::kPageSize));
-    if (allocated_addr_end + size < _heap_end) {
+    size_t psize = alignUp(size + AreaManager::GetAreaManagerSize(), PagingCtrl::kPageSize);
+    if (allocated_addr_end + psize < _heap_end) {
       PhysAddr paddr;
-      size_t psize = alignUp(size, PagingCtrl::kPageSize);
       physmem_ctrl->Alloc(paddr, psize);
       kassert(paging_ctrl->MapPhysAddrToVirtAddr(allocated_addr_end, paddr, psize, PDE_WRITE_BIT, PTE_WRITE_BIT || PTE_GLOBAL_BIT));
       AreaManager *next = reinterpret_cast<AreaManager *>(allocated_addr_end);
@@ -436,6 +440,7 @@ virt_addr VirtmemCtrl::Alloc(size_t size) {
 
 #ifndef __UNIT_TEST__
 void VirtmemCtrl::Free(virt_addr addr) {
+  Locker locker(_lock);
   AreaManager *area = GetAreaManager(addr);
   area->Free();
   AreaManager *tmp = area->GetNext();

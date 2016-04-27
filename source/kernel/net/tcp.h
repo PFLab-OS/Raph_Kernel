@@ -25,58 +25,42 @@
 
 #include <stdint.h>
 #include <stdlib.h>
-#include "socket.h"
-#include "layer.h"
-#include "ip.h"
+#include <net/socket.h>
 
-struct TCPHeader {
+struct TcpHeader {
   // source port
   uint16_t sport;
   // destination port
   uint16_t dport;
   // sequence number
-  uint32_t seqNumber;
+  uint32_t seq_number;
   // acknowledge number
-  uint32_t ackNumber;
+  uint32_t ack_number;
   // TCP header length (upper 4bit) | Reserved (lower 4bit)
-  uint8_t headerLen;
+  uint8_t header_len;
   // Session flags (lower 6bit) + Reserved (upper 2bit)
   uint8_t flag;
   // window size
-  uint16_t windowSize;
+  uint16_t window_size;
   // checksum
   uint16_t checksum;
   // urgent pointer
-  uint16_t urgentPointer;
+  uint16_t urgent_pointer;
 } __attribute__ ((packed));
 
-class TCPCtrl : public L4Ctrl {
-  static const uint32_t kBasicBufsize     = 0x10;
-  static const uint8_t kSrcPortOffset     = 0;
-  static const uint8_t kDstPortOffset     = 2;
-  static const uint8_t kSeqOffset         = 4;
-  static const uint8_t kAckOffset         = 8;
-  static const uint8_t kSessionTypeOffset = 13;
-  static const uint8_t kWindowSizeOffset  = 14;
+int32_t TcpGenerateHeader(uint8_t *header, uint32_t length, uint32_t saddr, uint32_t daddr, uint16_t sport, uint16_t dport, uint8_t type, uint32_t seq, uint32_t ack);
+bool TcpFilterPacket(uint8_t *packet, uint16_t sport, uint16_t dport, uint8_t type, uint32_t seq, uint32_t ack);
 
-public:
-  TCPCtrl() {}
-  virtual int32_t GenerateHeader(uint8_t *header,
-                                 uint32_t length,
-                                 uint16_t sport,
-                                 uint16_t dport,
-                                 uint8_t type,
-                                 uint32_t seq,
-                                 uint32_t ack);
-  virtual bool FilterPacket(uint8_t *packet,
-                            uint16_t sport,
-                            uint16_t dport,
-                            uint8_t type,
-                            uint32_t seq,
-                            uint32_t ack);
-  uint8_t GetSessionType(uint8_t *packet);
-  uint32_t GetSequenceNumber(uint8_t *packet);
-  uint32_t GetAcknowledgeNumber(uint8_t *packet);
-};
+// extract sender port
+uint16_t GetSourcePort(uint8_t *packet);
+
+// extract sender packet session type
+uint8_t GetSessionType(uint8_t *packet);
+
+// extract sender sequence number from packet
+uint32_t GetSequenceNumber(uint8_t *packet);
+
+// extract sender acknowledge number from packet
+uint32_t GetAcknowledgeNumber(uint8_t *packet);
 
 #endif // __RAPH_KERNEL_NET_TCP_H__

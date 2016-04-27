@@ -23,10 +23,11 @@
 #ifndef __RAPH_KERNEL_VGA_H__
 #define __RAPH_KERNEL_VGA_H__
 
-#include "../global.h"
-#include "../mem/physmem.h"
-#include "../mem/paging.h"
-#include "../raph.h"
+#include <global.h>
+#include <mem/physmem.h>
+#include <mem/paging.h>
+#include <raph.h>
+#include <tty.h>
 
 class Vga : public Tty {
  public:
@@ -38,14 +39,15 @@ class Vga : public Tty {
     // TODO : サイズ適当
     physmem_ctrl->Reserve(PagingCtrl::RoundAddrOnPageBoundary(vga_addr), PagingCtrl::RoundUpAddrOnPageBoundary(0x1000));
     _vga_addr = reinterpret_cast<uint8_t *>(p2v(vga_addr));
-    _cx = 0;
-    _cy = 0;
   }
  private:
   virtual void Write(uint8_t c) override {
-    // TODO ページ送り
     switch(c) {
     case '\n':
+      for (int x = _cx; x < _x; x++) {
+        _vga_addr[(_cy * _x + x) * 2] = ' ';
+        _vga_addr[(_cy * _x + x) * 2 + 1] = 0x0f;
+      }
       _cx = 0;
       _cy++;
       break;
@@ -58,12 +60,26 @@ class Vga : public Tty {
         _cy++;
       }
     }
+    Scroll();
+  }
+  void Scroll() {
+    if (_cy == _y) {
+      _cy--;
+      for(int y = 1; y < _y; y++) {
+        for(int x = 0; x < _x; x++) {
+          _vga_addr[((y - 1) * _x + x) * 2] = _vga_addr[(y * _x + x) * 2];
+          _vga_addr[((y - 1) * _x + x) * 2 + 1] = _vga_addr[(y * _x + x) * 2 + 1];
+        }
+      }
+      for (int x = 0; x < _x; x++) {
+        _vga_addr[(_cy * _x + x) * 2] = ' ';
+        _vga_addr[(_cy * _x + x) * 2 + 1] = 0x0f;
+      }
+    }
   }
   uint8_t *_vga_addr;
   static const int _x = 80;
   static const int _y = 25;
-  int _cx;
-  int _cy;
 };
 
 #endif // __RAPH_KERNEL_VGA_H__

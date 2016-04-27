@@ -26,7 +26,7 @@
 #include "global.h"
 #include "tty.h"
 
-void kernel_panic(char *class_name, char *err_str);
+void kernel_panic(const char *class_name, const char *err_str);
 
 template<class T>
 static inline T align(T val, int base) {
@@ -66,6 +66,10 @@ static inline uint32_t inl(uint16_t pin) {
   uint32_t data;
   asm volatile("inl %%dx, %%eax;":"=a"(data):"d"(pin));
   return data;
+}
+
+static inline uint32_t inet_atoi(uint8_t ip[]) {
+  return (ip[0] << 24) | (ip[1] << 16) | (ip[2] << 8) | ip[3];
 }
 
 #ifdef __UNIT_TEST__
@@ -117,11 +121,17 @@ private:
 #else
 #define UTEST_VIRTUAL
 #undef kassert
-#define kassert(flag) if (!(flag)) {if (gtty != nullptr) {gtty->Printf("s", "assertion failed at ", "s", __FILE__, "s", " l.", "d", __LINE__, "s", " (", "s", __func__, "s", ") Kernel stopped!");} while(true){asm volatile("hlt");}}
+#define kassert(flag) if (!(flag)) {if (gtty != nullptr) {gtty->PrintfRaw("s", "assertion failed at ", "s", __FILE__, "s", " l.", "d", __LINE__, "s", " (", "s", __func__, "s", ") Kernel stopped!");} while(true){asm volatile("hlt");}}
+
+#define MASK(val, ebit, sbit) ((val) & (((1 << ((ebit) - (sbit) + 1)) - 1) << (sbit)))
+
+#define checkpoint(id,str) if (id < 0 || apic_ctrl->GetApicId() == id) {gtty->Printf("s",str);}
+#define measure for(uint64_t t1 = 0, t2 = timer->ReadMainCnt(); ({if (t1 != 0) gtty->Printf("s","<","d",(timer->ReadMainCnt() - t2) * timer->GetCntClkPeriod(),"s","ns>"); (t1 == 0);}) ; t1++)
 
 inline void *operator new(size_t, void *p)     throw() { return p; }
 inline void *operator new[](size_t, void *p)   throw() { return p; }
 inline void  operator delete  (void *, void *) throw() { };
+inline void  operator delete  (void *)         throw() { kassert(false) };
 
 static inline uint16_t htons(uint16_t n) {
   return (((n & 0xff) << 8) | ((n & 0xff00) >> 8));

@@ -24,10 +24,8 @@
 #define __RAPH_KERNEL_NET_UDP_H__
 
 #include <stdint.h>
-#include "layer.h"
-#include "ip.h"
 
-struct UDPHeader {
+struct UdpHeader {
   // source port
   uint16_t sport;
   // destination port
@@ -38,18 +36,7 @@ struct UDPHeader {
   uint16_t checksum;
 } __attribute__ ((packed));
 
-class UDPCtrl : public L4Ctrl {
-  static const uint32_t kDstPortOffset = 2;
-
-public:
-  UDPCtrl() {}
-  virtual int32_t GenerateHeader(uint8_t *buffer,
-                                 uint32_t length,
-                                 uint16_t sport,
-                                 uint16_t dport);
-  virtual bool FilterPacket(uint8_t *packet,
-                            uint16_t sport,
-                            uint16_t dport);
-};
+int32_t UdpGenerateHeader(uint8_t *buffer, uint32_t length, uint16_t sport, uint16_t dport);
+bool UdpFilterPacket(uint8_t *packet, uint16_t sport, uint16_t dport);
 
 #endif // __RAPH_KERNEL_NET_UDP_H__

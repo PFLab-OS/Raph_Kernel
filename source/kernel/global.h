@@ -23,6 +23,8 @@
 #ifndef __RAPH_KERNEL_GLOBAL_H__
 #define __RAPH_KERNEL_GLOBAL_H__
 
+// TODO: global namespace
+
 class SpinLockCtrl;
 class AcpiCtrl;
 class ApicCtrl;
@@ -30,11 +32,14 @@ class MultibootCtrl;
 class PagingCtrl;
 class PhysmemCtrl;
 class VirtmemCtrl;
-class PollingCtrl;
+class TmpmemCtrl;
+class TaskCtrl;
+class Gdt;
 class Idt;
 
 class Tty;
 class Timer;
+class Keyboard;
 
 class PCICtrl;
 
@@ -47,12 +52,28 @@ extern MultibootCtrl *multiboot_ctrl;
 extern PagingCtrl *paging_ctrl;
 extern PhysmemCtrl *physmem_ctrl;
 extern VirtmemCtrl *virtmem_ctrl;
-extern PollingCtrl *polling_ctrl;
+extern TmpmemCtrl *tmpmem_ctrl;
+extern TaskCtrl *task_ctrl;
+extern Gdt *gdt;
 extern Idt *idt;
+
 
 extern Tty *gtty;
 extern Timer *timer;
+extern Keyboard *keyboard;
 
 extern PCICtrl *pci_ctrl;
+
+/*
+ * Network Controllers
+ */
+
+// Network Devices
+class DevEthernetCtrl;
+extern DevEthernetCtrl *netdev_ctrl;
+
+// ARP Table
+class ArpTable;
+extern ArpTable *arp_table;
 
 #endif // __RAPH_KERNEL_GLOBAL_H__

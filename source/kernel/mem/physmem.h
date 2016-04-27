@@ -25,8 +25,8 @@
 
 #include <stdint.h>
 #include <assert.h>
-#include "../spinlock.h"
-#include "../list.h"
+#include <spinlock.h>
+#include <allocator.h>
 #include "virtmem.h"
 
 typedef uint64_t phys_addr;
@@ -98,7 +98,7 @@ class PhysmemCtrl {
     phys_addr end_addr;
     AllocatedArea *next;
   } *_allocated_area;
-  List<AllocatedArea> _allocated_area_buffer;
+  Allocator<AllocatedArea> _allocated_area_buffer;
   SpinLock _lock;
   bool _alloc_lock = false;
 };

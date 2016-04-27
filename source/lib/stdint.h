@@ -32,6 +32,4 @@ typedef __UINT32_TYPE__ uint32_t;
 typedef __INT64_TYPE__ int64_t;
 typedef __UINT64_TYPE__ uint64_t;
 
-typedef __SIZE_TYPE__ size_t;
-
 #endif // __RAPH_LIB_STDINT_H__

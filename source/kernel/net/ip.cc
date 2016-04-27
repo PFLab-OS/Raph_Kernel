@@ -21,55 +21,84 @@
  */
 
 #include <string.h>
-#include "ip.h"
-#include "../raph.h"
-#include "../mem/physmem.h"
-#include "../mem/virtmem.h"
-#include "../global.h"
+#include <raph.h>
+#include <mem/physmem.h>
+#include <mem/virtmem.h>
+#include <net/ip.h>
 
-int32_t IPCtrl::GenerateHeader(uint8_t *buffer, uint32_t length, uint8_t type, uint32_t saddr, uint32_t daddr) {
-  IPv4Header * volatile header = reinterpret_cast<IPv4Header*>(buffer);
-  header->ipHdrLen_ver = (sizeof(IPv4Header) >> 2) | (kIPVersion << 4);
+// offset in header
+const uint32_t kProtocolTypeOffset = 9;
+const uint32_t kSrcAddrOffset      = 13;
+
+// IPv4
+const uint8_t kIPVersion           = 4;
+
+// packet priority
+const uint8_t kPktPriority         = (7 << 5);
+const uint8_t kPktDelay            = (1 << 4);
+const uint8_t kPktThroughput       = (1 << 3);
+const uint8_t kPktReliability      = (1 << 2);
+
+// packet flag
+const uint8_t kFlagNoFragment      = (1 << 6);
+const uint8_t kFlagMoreFragment    = (1 << 5);
+
+// time to live (number of hops)
+const uint8_t kTimeToLive          = 16;
+
+// IP header id
+uint16_t _id_auto_increment;
+
+uint16_t CheckSum(uint8_t *buf, uint32_t size);
+
+int32_t IpGenerateHeader(uint8_t *buffer, uint32_t length, uint8_t type, uint32_t saddr, uint32_t daddr) {
+  Ipv4Header * volatile header = reinterpret_cast<Ipv4Header*>(buffer);
+  header->ip_header_len_version = (sizeof(Ipv4Header) >> 2) | (kIPVersion << 4);
   header->type = kPktPriority | kPktDelay | kPktThroughput | kPktReliability;
-  header->totalLen = htons(sizeof(IPv4Header) + length);
-  header->id = _idAutoIncrement++;
+  header->total_len = htons(sizeof(Ipv4Header) + length);
+  header->id = _id_auto_increment++;
   // TODO: fragment on IP layer
   uint16_t frag = 0;
-  header->fragOffsetHi_flag = ((frag >> 8) & 0x1f) | kFlagNoFragment;
-  header->fragOffsetLo = (frag & 0xff);
+  header->frag_offset_hi_flag = ((frag >> 8) & 0x1f) | kFlagNoFragment;
+  header->frag_offset_lo = (frag & 0xff);
   header->ttl = kTimeToLive;
-  header->protoId = type;
+  header->proto_id = type;
   header->checksum = 0;
   header->saddr = htonl(saddr);
   header->daddr = htonl(daddr);
-  header->checksum = checkSum(reinterpret_cast<uint8_t*>(header), sizeof(IPv4Header));
+  header->checksum = CheckSum(reinterpret_cast<uint8_t*>(header), sizeof(Ipv4Header));
 
   return 0;
 }
 
-bool IPCtrl::FilterPacket(uint8_t *packet, uint8_t type, uint32_t saddr, uint32_t daddr) {
-  IPv4Header * volatile header = reinterpret_cast<IPv4Header*>(packet);
-  return (header->protoId == type)
+bool IpFilterPacket(uint8_t *packet, uint8_t type, uint32_t saddr, uint32_t daddr) {
+  Ipv4Header * volatile header = reinterpret_cast<Ipv4Header*>(packet);
+  return (header->proto_id == type)
       && (!saddr || ntohl(header->saddr) == saddr)
       && (!daddr || ntohl(header->daddr) == daddr);
 }
 
-uint16_t IPCtrl::checkSum(uint8_t *buf, uint32_t size) {
+uint16_t CheckSum(uint8_t *buf, uint32_t size) {
   uint64_t sum = 0;
 
   while(size > 1) {
     sum += *reinterpret_cast<uint16_t*>(buf);
     buf += 2;
-    if(sum & 0x80000000)   /* if high order bit set, fold */
+    if(sum & 0x80000000) {
+      // if high order bit set, fold
       sum = (sum & 0xFFFF) + (sum >> 16);
+    }
     size -= 2;
   }
 
-  if(size)  /* take care of left over byte */
+  if(size) {
+    // take care of left over byte
     sum += static_cast<uint16_t>(*buf);
+  }
  
-  while(sum >> 16)
+  while(sum >> 16) {
     sum = (sum & 0xFFFF) + (sum >> 16);
+  }
 
   return ~sum;
 }

@@ -24,10 +24,7 @@
 #define __RAPH_KERNEL_NET_ETH_H__
 
 #include <stdint.h>
-#include "../raph.h"
-#include "../dev/netdev.h"
-#include "layer.h"
-#include "socket.h"
+#include <dev/netdev.h>
 
 struct EthHeader {
   // destination MAC address
@@ -38,31 +35,9 @@ struct EthHeader {
   uint16_t type;
 };
 
-class EthCtrl : public L2Ctrl {
-  NetDev *_dev = nullptr;
+int32_t EthGenerateHeader(uint8_t *buffer, uint8_t *saddr, uint8_t *daddr, uint16_t type);
+bool EthFilterPacket(uint8_t *packet, uint8_t *saddr, uint8_t *daddr, uint16_t type);
 
-  static const uint32_t kDstAddrOffset      = 0;
-  static const uint32_t kSrcAddrOffset      = 6;
-  static const uint32_t kProtocolTypeOffset = 12;
-  static const uint8_t kBcastAddress[6];
-
-public:
-  EthCtrl() {}
-
-  static const uint32_t kHeaderSize = sizeof(EthHeader);
-
-  // protocol type
-  static const uint16_t kProtocolIPv4 = 0x0800;
-  static const uint16_t kProtocolARP  = 0x0806;
-
-  virtual int32_t GenerateHeader(uint8_t *buffer,
-                                 uint8_t *saddr,
-                                 uint8_t *daddr,
-                                 uint16_t type) override;
-  virtual bool FilterPacket(uint8_t *packet,
-                            uint8_t *saddr,
-                            uint8_t *daddr,
-                            uint16_t type) override;
-};
+uint16_t GetL3PtclType(uint8_t *packet);
 
 #endif // __RAPH_KERNEL_NET_ETH_H__
