@@ -42,6 +42,7 @@ static inline virt_addr p2v(phys_addr addr) {
 // ストレートマップド仮想メモリを物理メモリに変換する
 // カーネル仮想メモリ等は変換できないのでk2pを使う
 static inline phys_addr v2p(virt_addr addr) {
+  //TODO 上限
   kassert(addr >= 0xffff800000000000);
   return reinterpret_cast<phys_addr>(addr - 0xffff800000000000);
 }

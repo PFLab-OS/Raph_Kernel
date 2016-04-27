@@ -160,6 +160,8 @@ public:
   FADT *GetFADT() {
     return _fadt;
   }
+  void SetupAcpica();
+  void Shutdown();
 private:
   int CheckACPISDTHeader(ACPISDTHeader *header) {
     uint8_t sum = 0;

@@ -20,24 +20,47 @@
  * 
  */
 
-#ifndef __RAPH_LIB_STDDEF_H__
-#define __RAPH_LIB_STDDEF_H__
+#ifndef __RAPH_KERNEL_SEMAPHORE_H__
+#define __RAPH_KERNEL_SEMAPHORE_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif /* __cplusplus */
+#include <raph.h>
+#include <spinlock.h>
 
-typedef __SIZE_TYPE__ size_t;
+class Semaphore {
+public:
+  Semaphore(int max) : _max(max) {
+    _cur = _max;
+  }
+  void Acquire() {
+    while(true) {
+      Locker locker(_lock);
+      if (_cur > 0) {
+        _cur--;
+        return;
+      }
+    }
+  }
+  int Tryacquire() {
+    Locker locker(_lock);
+    if (_cur == 0) {
+      return -1;
+    } else {
+      _cur--;
+      return 0;
+    }
+  }
+  void Release() {
+    Locker locker(_lock);
+    kassert(_cur < _max);
+    _cur++;
+  }
+  virtual ~Semaphore() {
+  }
+private:
+  Semaphore();
+  SpinLock _lock;
+  const int _max;
+  int _cur;
+};
 
-#ifdef __cplusplus
-#define NULL nullptr
-#else
-#define NULL ((void *)0)
-#endif /* __cplusplus */
-
-
-#ifdef __cplusplus
-}
-#endif /* __cplusplus */
-
-#endif /* __RAPH_LIB_STDDEF_H__ */
+#endif /* __RAPH_KERNEL_SEMAPHORE_H__ */

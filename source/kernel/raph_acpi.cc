@@ -20,6 +20,11 @@
  * 
  */
 
+extern "C" {
+#include <acpi.h>
+#include <accommon.h>
+}
+
 #include "apic.h"
 #include "raph_acpi.h"
 
@@ -61,3 +66,17 @@ void AcpiCtrl::Setup(RSDPDescriptor *rsdp) {
   }
 }
 
+void AcpiCtrl::SetupAcpica() {
+  kassert(!ACPI_FAILURE(AcpiInitializeSubsystem()));
+  kassert(!ACPI_FAILURE(AcpiInitializeTables (NULL, 16, FALSE)));
+  kassert(!ACPI_FAILURE(AcpiEnableSubsystem(ACPI_FULL_INITIALIZATION)));
+  kassert(!ACPI_FAILURE(AcpiLoadTables()));
+  kassert(!ACPI_FAILURE(AcpiInitializeObjects(ACPI_FULL_INITIALIZATION)));
+}
+  
+void AcpiCtrl::Shutdown() {
+  AcpiEnterSleepStatePrep(5);
+  asm volatile("cli;");
+  AcpiEnterSleepState(5);
+  kernel_panic("acpi", "could not halt system");
+}

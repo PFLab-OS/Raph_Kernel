@@ -30,7 +30,7 @@ void TaskCtrl::Setup() {
   for (int i = 0; i < cpus; i++) {
     new(&_task_struct[i]) TaskStruct;
 
-    t = virtmem_ctrl->Alloc<Task>();
+    t = virtmem_ctrl->New<Task>();
     t->_status = Task::Status::kGuard;
     t->_next = nullptr;
     t->_prev = nullptr;
@@ -38,7 +38,7 @@ void TaskCtrl::Setup() {
     _task_struct[i].top = t;
     _task_struct[i].bottom = t;
 
-    t = virtmem_ctrl->Alloc<Task>();
+    t = virtmem_ctrl->New<Task>();
     t->_status = Task::Status::kGuard;
     t->_next = nullptr;
     t->_prev = nullptr;

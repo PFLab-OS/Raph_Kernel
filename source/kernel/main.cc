@@ -180,6 +180,8 @@ extern "C" int main() {
 
   InitNetCtrl();
 
+  acpi_ctrl->SetupAcpica();
+
   InitDevices<PciCtrl, Device>();
 
   gtty->Init();
@@ -468,7 +470,7 @@ extern "C" void __stack_chk_fail() {
 
 #define RAND_MAX 0x7fff
 
-uint32_t rand() {
+extern "C" uint32_t rand() {
   rnd_next = rnd_next * 1103515245 + 12345;
   /* return (unsigned int)(rnd_next / 65536) % 32768;*/
   return (uint32_t)(rnd_next >> 16) & RAND_MAX;
