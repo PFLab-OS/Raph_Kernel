@@ -46,6 +46,7 @@ SECTIONS{
   data_end_addr = .;
 
   .bss : {
+    *(COMMON*)
     *(.COMMON*)
     *(EXCLUDE_FILE (*boot.o *bootap.o) .bss*)
     lock_data_start = .;

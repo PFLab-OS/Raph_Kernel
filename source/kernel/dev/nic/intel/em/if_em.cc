@@ -6358,3 +6358,4 @@ void E1000::ChangeHandleMethodToInt() {
   if_setcapenablebit(ifp, 0, IFCAP_POLLING);
   EM_CORE_UNLOCK(adapter);
 }
+

@@ -6,13 +6,13 @@ The code is mainly maintained by Liva <sap.pcmail@gmail.com>. If you found a bug
 
 # how to
 ## how to create disk image
-You can create complete disk image by execute "make" in this directory(where README.md is located).
+First, you have to run "make disk" in this directory(where README.md is located). It will create complete disk image of Raph Kernel. After that, if you need to rebuild kernel, the only thing you have to do is just type "make". You don't have to rerun "make disk" anymore. (until you delete disk image manually)
 
 ## how to debug kernel
 "make run" will launch qemu and show qemu console debugger.
 
 ## for developper's
-I higly recommend to use Raph_Kernel_DevEnv if you want to debug & develop Raph_Kernel. It creates well-prepared virtual machine environment and if you build Raph_Kernel on it, you will not need to consider about any software dependencies or environment specific problem. Of course, VM may make your PC slow, but if you don't want to be getting caught by some trivial matters and mess your times up, it would be a good option, I guess.
+I higly recommend to use Raph_Kernel_DevEnv if you want to debug & develop Raph_Kernel. It creates well-prepared virtual machine environment and if you build Raph_Kernel on it, you will not need to consider about any software dependencies or environment specific problems. Of course, VM may make your PC slow, but if you don't want to be getting caught by some trivial matters and mess your times up, it would be a good option, I guess.
 
 # references
 There are many references to create Raph_Kernel. In the source code, I used shorthand expression to note it. These are the correspondence.
