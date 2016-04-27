@@ -202,7 +202,6 @@ extern "C" int main() {
   kassert(!paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - 4096 * 6));
 
   gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetCpuId(), "s", "(apic id:", "d", apic_ctrl->GetApicIdFromCpuId(apic_ctrl->GetCpuId()), "s", ") started.\n");
-  static int xxx = 0;
   if (eth != nullptr) {
     Function func;
     func.Init([](void *){
@@ -210,8 +209,6 @@ extern "C" int main() {
         if(!eth->ReceivePacket(rpacket)) {
           return;
         }
-        xxx++;
-        gtty->Printf("d",xxx,"s"," ");
         // received packet
         if(rpacket->buf[12] == 0x08 && rpacket->buf[13] == 0x06 && rpacket->buf[21] == 0x02) {
           uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;

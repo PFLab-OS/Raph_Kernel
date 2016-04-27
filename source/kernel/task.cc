@@ -46,7 +46,7 @@ void TaskCtrl::Setup() {
     _task_struct[i].top_sub = t;
     _task_struct[i].bottom_sub = t;
 
-    _task_struct[i].state = TaskCtrlState::kNotRunningTask;
+    _task_struct[i].state = TaskQueueState::kNotRunning;
   }
 }
 
@@ -94,8 +94,8 @@ void TaskCtrl::Run() {
     apic_ctrl->StopTimer();
     Function f;
     int cpuid = apic_ctrl->GetCpuId();
-    kassert(_task_struct[cpuid].state == TaskCtrlState::kNotRunningTask);
-    _task_struct[cpuid].state = TaskCtrlState::kRunningTask;
+    kassert(_task_struct[cpuid].state == TaskQueueState::kNotRunning);
+    _task_struct[cpuid].state = TaskQueueState::kRunning;
     while (true){
       Task *t;
       {
@@ -141,7 +141,7 @@ void TaskCtrl::Run() {
       _task_struct[cpuid].bottom = _task_struct[cpuid].bottom_sub;
       _task_struct[cpuid].bottom_sub = tmp;
 
-      _task_struct[cpuid].state = TaskCtrlState::kNotRunningTask;
+      _task_struct[cpuid].state = TaskQueueState::kNotRunning;
     }
     apic_ctrl->StartTimer();
     asm volatile("hlt");

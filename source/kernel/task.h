@@ -30,9 +30,9 @@ class Task;
 
 class TaskCtrl {
  public:
-  enum class TaskCtrlState {
-    kRunningTask,
-    kNotRunningTask,
+  enum class TaskQueueState {
+    kRunning,
+    kNotRunning,
   };
   TaskCtrl() {}
   void Setup();
@@ -40,7 +40,10 @@ class TaskCtrl {
   void Register(int cpuid, Task *task);
   void Remove(int cpuid, Task *task);
   void Run();
-  TaskCtrlState GetState(int cpuid) {
+  TaskQueueState GetState(int cpuid) {
+    if (_task_struct == nullptr) {
+      return TaskQueueState::kNotRunning;
+    }
     return _task_struct[cpuid].state;
   }
  private:
@@ -52,8 +55,8 @@ class TaskCtrl {
     Task *bottom_sub;
     SpinLock lock;
 
-    TaskCtrlState state;
-  } *_task_struct;
+    TaskQueueState state;
+  } *_task_struct = nullptr;
 };
 
 class Function {

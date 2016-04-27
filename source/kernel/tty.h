@@ -27,6 +27,9 @@
 #include <stdint.h>
 #include <spinlock.h>
 #include <queue.h>
+#include <task.h>
+#include <global.h>
+#include <apic.h>
 
 class Tty {
  public:
@@ -44,7 +47,20 @@ class Tty {
     String *str = String::New();
     Printf_sub1(*str, args...);
     str->Exit();
-    _queue.Push(str);
+    switch (task_ctrl->GetState(apic_ctrl->GetCpuId())) {
+    case TaskCtrl::TaskQueueState::kNotRunning: {
+      Locker locker(_lock);
+      PrintString(str);
+      break;
+    }
+    case TaskCtrl::TaskQueueState::kRunning: { 
+      _queue.Push(str);
+      break;
+    }
+    default: {
+      kassert(false);
+    }
+    }
   }
   // use to print error message
   template<class... T>
@@ -55,22 +71,12 @@ class Tty {
     Printf_sub1(str, args...);
     str.Exit();
     Locker locker(_lock);
-    int tx = _cx;
-    int ty = _cy;
-    _cx = _rcx;
-    _cy = _rcy;
     PrintString(&str);
-    _rcx = _cx;
-    _rcy = _cy;
-    _cx = tx;
-    _cy = ty;    
   }
  protected:
   virtual void Write(uint8_t c) = 0;
   int _cx = 0;
   int _cy = 0;
-  int _rcx = 0;
-  int _rcy = 0;
  private:
   struct String {
     enum class Type {
