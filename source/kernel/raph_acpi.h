@@ -30,24 +30,6 @@
 
 // see acpi spec
 
-// RSDP v1
-struct RSDPDescriptor {
-  char Signature[8];
-  uint8_t Checksum;
-  char OEMID[6];
-  uint8_t Revision;
-  uint32_t RsdtAddress;
-} __attribute__ ((packed));
-
-// RSDP v2
-struct RSDPDescriptor20 {
-  RSDPDescriptor firstPart;
-  uint32_t Length;
-  uint64_t XsdtAddress;
-  uint8_t ExtendedChecksum;
-  uint8_t reserved[3];
-} __attribute__ ((packed));
-
 struct ACPISDTHeader {
   char Signature[4];
   uint32_t Length;
@@ -147,33 +129,13 @@ struct HPETDT;
 class AcpiCtrl {
 public:
   AcpiCtrl() {}
-  void Setup(RSDPDescriptor *rsdp);
-  void Setup(RSDPDescriptor20 *rsdp) {
-    Setup(&rsdp->firstPart);
-  }
-  MCFG *GetMCFG() {
-    return _mcfg;
-  }
-  HPETDT *GetHPETDT() {
-    return _hpetdt;
-  }
-  FADT *GetFADT() {
-    return _fadt;
-  }
+  void Setup();
+  MCFG *GetMCFG();
+  HPETDT *GetHPETDT();
+  FADT *GetFADT();
   void SetupAcpica();
   void Shutdown();
 private:
-  int CheckACPISDTHeader(ACPISDTHeader *header) {
-    uint8_t sum = 0;
-    uint8_t *byte = reinterpret_cast<uint8_t *>(header);
-    for (uint32_t i = 0; i < header->Length; i++, byte++) {
-      sum += *byte;
-    }
-    return (sum == 0);
-  }
-  MCFG *_mcfg = nullptr;
-  HPETDT *_hpetdt = nullptr;
-  FADT *_fadt = nullptr;
 };
 
 #endif /* __RAPH_KERNEL_ACPI_H__ */

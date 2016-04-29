@@ -28,51 +28,42 @@ extern "C" {
 #include "apic.h"
 #include "raph_acpi.h"
 
-void AcpiCtrl::Setup(RSDPDescriptor *rsdp) {
-  if (strncmp(rsdp->Signature, "RSD PTR ", 8)) {
-    return;
-  }
+#define ACPI_MAX_INIT_TABLES    16
+static ACPI_TABLE_DESC      TableArray[ACPI_MAX_INIT_TABLES];
 
-  uint8_t sum = 0;
-  uint8_t *byte = reinterpret_cast<uint8_t *>(rsdp);
-  for (uint32_t i = 0; i < 20; i++, byte++) {
-    sum += *byte;
-  }
-  if (sum != 0){
-    return;
-  }
+void AcpiCtrl::Setup() {
+  AcpiInitializeTables (TableArray, ACPI_MAX_INIT_TABLES, TRUE);
 
-  //TODO マッピング範囲内に収まってるかどうか調べた方が良い
-  ACPISDTHeader *rsdt = reinterpret_cast<ACPISDTHeader *>(p2v(rsdp->RsdtAddress));
-  if (strncmp(rsdt->Signature, "RSDT", 4)) {
-    return;
-  }
+  ACPI_TABLE_HEADER *table;
+  AcpiGetTable("APIC", 1, &table);
+  apic_ctrl->SetMADT(reinterpret_cast<MADT *>(table));
+}
 
-  if (!CheckACPISDTHeader(rsdt)) {
-    return;
-  }
+MCFG *AcpiCtrl::GetMCFG() {
+  ACPI_TABLE_HEADER *table;
+  AcpiGetTable("MCFG", 1, &table);
+  return reinterpret_cast<MCFG *>(table);
+}
 
-  for (uint32_t i = 0; i < rsdt->Length; i++) {
-    ACPISDTHeader *sdth = reinterpret_cast<ACPISDTHeader *>(p2v(*(reinterpret_cast<uint32_t *>(ptr2virtaddr(rsdt + 1) + i * sizeof(uint32_t)))));
-    if (!strncmp(sdth->Signature, "APIC", 4)) {
-      apic_ctrl->SetMADT(reinterpret_cast<MADT *>(ptr2virtaddr(sdth)));
-    } else if (!strncmp(sdth->Signature, "MCFG", 4)) {
-      _mcfg = reinterpret_cast<MCFG *>(ptr2virtaddr(sdth));
-    } else if (!strncmp(sdth->Signature, "HPET", 4)) {
-      _hpetdt = reinterpret_cast<HPETDT *>(ptr2virtaddr(sdth));
-    } else if (!strncmp(sdth->Signature, "FACP", 4)) {
-      _fadt = reinterpret_cast<FADT *>(ptr2virtaddr(sdth));
-    }
-  }
+HPETDT *AcpiCtrl::GetHPETDT() {
+  ACPI_TABLE_HEADER *table;
+  AcpiGetTable("HPET", 1, &table);
+  return reinterpret_cast<HPETDT *>(table);
+}
+
+FADT *AcpiCtrl::GetFADT() {
+  ACPI_TABLE_HEADER *table;
+  AcpiGetTable("FACP", 1, &table);
+  return reinterpret_cast<FADT *>(table);
 }
 
 void AcpiCtrl::SetupAcpica() {
   kassert(!ACPI_FAILURE(AcpiInitializeSubsystem()));
-  kassert(!ACPI_FAILURE(AcpiInitializeTables (NULL, 16, FALSE)));
+  kassert(!ACPI_FAILURE(AcpiReallocateRootTable()));
   kassert(!ACPI_FAILURE(AcpiEnableSubsystem(ACPI_FULL_INITIALIZATION)));
   kassert(!ACPI_FAILURE(AcpiLoadTables()));
   kassert(!ACPI_FAILURE(AcpiInitializeObjects(ACPI_FULL_INITIALIZATION)));
-}
+} 
   
 void AcpiCtrl::Shutdown() {
   AcpiEnterSleepStatePrep(5);

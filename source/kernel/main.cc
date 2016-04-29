@@ -153,7 +153,7 @@ extern "C" int main() {
 
   multiboot_ctrl->Setup();
   
-  // acpi_ctl->Setup() は multiboot_ctrl->Setup()から呼ばれる
+  acpi_ctrl->Setup();
 
   if (timer->Setup()) {
     gtty->Printf("s","[timer] info: HPET supported.\n");
@@ -181,6 +181,7 @@ extern "C" int main() {
   InitNetCtrl();
 
   acpi_ctrl->SetupAcpica();
+  //  acpi_ctrl->Shutdown();
 
   InitDevices<PciCtrl, Device>();
 

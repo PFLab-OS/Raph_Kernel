@@ -196,7 +196,7 @@ InitializeFullAcpica (void)
 
     /* Install local handlers */
 
-    Status = InstallHandlers ();
+    Status = InstallHandlers (); 
     if (ACPI_FAILURE (Status))
     {
         ACPI_EXCEPTION ((AE_INFO, Status, "While installing handlers"));
