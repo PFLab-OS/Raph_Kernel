@@ -96,6 +96,7 @@ void TaskCtrl::Run() {
     int cpuid = apic_ctrl->GetCpuId();
     kassert(_task_struct[cpuid].state == TaskQueueState::kNotRunning);
     _task_struct[cpuid].state = TaskQueueState::kRunning;
+    gtty->Printf("d",cpuid);
     while (true){
       Task *t;
       {
@@ -143,11 +144,10 @@ void TaskCtrl::Run() {
 
       _task_struct[cpuid].state = TaskQueueState::kNotRunning;
 
-      if (_task_struct[cpuid].top->next != nullptr) {
-        continue;
+      if (_task_struct[cpuid].top->_next != nullptr || _task_struct[cpuid].top_sub->_next != nullptr) {
+        apic_ctrl->StartTimer();
       }
     }
-    apic_ctrl->StartTimer();
     asm volatile("hlt");
   }
 }
