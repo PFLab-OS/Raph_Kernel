@@ -60,6 +60,7 @@ public:
     pci_ctrl = virtmem_ctrl->New<PciCtrl>();
     pci_ctrl->_Init();
   }
+  DevPci *InitPciDevices(uint8_t bus, uint8_t device, uint8_t function);
   virt_addr GetVaddr(uint8_t bus, uint8_t device, uint8_t func, uint16_t reg) {
     return _base_addr + ((bus & 0xff) << 20) + ((device & 0x1f) << 15) + ((func & 0x7) << 12) + (reg & 0xfff);
   }
@@ -129,6 +130,20 @@ public:
 protected:
   virtual void _Init();
 private:
+  template<class T>
+  static inline DevPci *_InitPciDevices(uint8_t bus, uint8_t device, uint8_t function) {
+    return T::InitPci(bus, device, function);
+  }
+
+  template<class T1, class T2, class... Rest>
+  static inline DevPci *_InitPciDevices(uint8_t bus, uint8_t device, uint8_t function) {
+    DevPci *dev = T1::InitPci(bus, device, function);
+    if (dev == nullptr) {
+      return _InitPciDevices<T2, Rest...>(bus, device, function);
+    } else {
+      return dev;
+    }
+  }
   MCFG *_mcfg = nullptr;
   virt_addr _base_addr = 0;
 };
@@ -144,18 +159,19 @@ public:
   }
 protected:
   virtual void _Init() override;
+private:
 };
 
 // !!! important !!!
 // 派生クラスはstatic void InitPci(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf); を作成する事
 class DevPci : public Device {
- public:
- DevPci(uint8_t bus, uint8_t device, bool mf) : _bus(bus), _device(device), _mf(mf) {
+public:
+  DevPci(uint8_t bus, uint8_t device, uint8_t function) : _bus(bus), _device(device), _function(function) {
   }
   virtual ~DevPci() {
   }
-  static bool InitPci(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {
-    return false;
+  static DevPci *InitPci(uint8_t bus, uint8_t device, uint8_t function) {
+    return nullptr;
   } // dummy
   template<class T> T ReadReg(uint16_t reg) {
     kassert(pci_ctrl != nullptr);
@@ -179,24 +195,12 @@ class DevPci : public Device {
     }
     return -1;
   }
- private:
+private:
   DevPci();
   const uint8_t _bus;
   const uint8_t _device;
-  const bool _mf;
+  const uint8_t _function;
 };
-
-template<class T>
-static inline void InitPciDevices(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {
-  T::InitPci(vid, did, bus, device, mf);
-}
-
-template<class T1, class T2, class... Rest>
-static inline void InitPciDevices(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {
-  if (!T1::InitPci(vid, did, bus, device, mf)) {
-    InitPciDevices<T2, Rest...>(vid, did, bus, device, mf);
-  }
-}
 
 
 #endif /* __RAPH_KERNEL_DEV_Pci_H__ */

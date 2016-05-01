@@ -52,14 +52,17 @@ void PciCtrl::_Init() {
           continue;
         }
         uint16_t did = ReadReg<uint16_t>(j, k, 0, kDeviceIDReg);
-        bool mf = ReadReg<uint8_t>(j, k, 0, kHeaderTypeReg) & kHeaderTypeRegFlagMultiFunction;
 
-        //TODO fix this(2)
-        // InitPciDevices<E1000, lE1000, DevPci>(vid, did, j, k, mf);
-        gtty->Printf("d",j,"d",k,"s"," ");
+        if (InitPciDevices(j, k, 0) != nullptr) {
+          
+        }
       }
     }
   }
+}
+
+DevPci *PciCtrl::InitPciDevices(uint8_t bus, uint8_t device, uint8_t func) {
+  _InitPciDevices<E1000, lE1000, DevPci>(bus, device, func);
 }
 
 void AcpicaPciCtrl::_Init() {

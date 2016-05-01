@@ -33,8 +33,9 @@ extern "C" {
 }
 
 #include <limits.h>
-#include "apic.h"
-#include "raph_acpi.h"
+#include <apic.h>
+#include <raph_acpi.h>
+#include <dev/pci.h>
 
 #define ACPI_MAX_INIT_TABLES    16
 static ACPI_TABLE_DESC      TableArray[ACPI_MAX_INIT_TABLES];
@@ -81,11 +82,12 @@ void AcpiCtrl::Shutdown() {
 }
 // TODO remove this
 #include <tty.h>
-ACPI_STATUS DisplayOneDevice2(ACPI_HANDLE obj_handle, UINT32 level, void *context, void **ReturnValue) {
+static ACPI_STATUS DisplayOneDevice2(ACPI_HANDLE obj_handle, UINT32 level, void *context, void **ReturnValue) {
   ACPI_STATUS status;
   ACPI_DEVICE_INFO *info;
   ACPI_BUFFER  path;
   char buffer[256];
+  uint8_t *bus = reinterpret_cast<uint8_t *>(context);
 
   path.Length = sizeof(buffer);
   path.Pointer = buffer;
@@ -109,8 +111,9 @@ ACPI_STATUS DisplayOneDevice2(ACPI_HANDLE obj_handle, UINT32 level, void *contex
     if (ACPI_SUCCESS(status)) {
       if (param.Type == ACPI_TYPE_INTEGER) { 
         AcpiOsPrintf("%s ", path.Pointer);
-        gtty->Printf("s", " ", "x", (int)param.Integer.Value);
-        gtty->Printf("s", " ", "x", (int)info->Address);
+        gtty->Printf("s", " ", "x", (int)param.Integer.Value,"s","\n");
+
+        pci_ctrl->InitPciDevices(*bus, param.Integer.Value >> 16, param.Integer.Value & 0xffff);
       } else {
         kassert(false);
       }
@@ -118,10 +121,10 @@ ACPI_STATUS DisplayOneDevice2(ACPI_HANDLE obj_handle, UINT32 level, void *contex
       // kassert(false);
     }
   }
-
   return AE_OK;
 }
-ACPI_STATUS DisplayOneDevice(ACPI_HANDLE obj_handle, UINT32 level, void *context, void **ReturnValue) {
+
+static ACPI_STATUS DisplayOneDevice(ACPI_HANDLE obj_handle, UINT32 level, void *context, void **ReturnValue) {
   ACPI_STATUS status;
   ACPI_DEVICE_INFO *info;
   ACPI_BUFFER  path;
@@ -146,20 +149,23 @@ ACPI_STATUS DisplayOneDevice(ACPI_HANDLE obj_handle, UINT32 level, void *context
     buf.Pointer = &param;
     buf.Length = sizeof(param);
     status = AcpiEvaluateObjectTyped(obj_handle, "_ADR", nullptr, &buf, ACPI_TYPE_INTEGER);
-    AcpiOsPrintf("%s ", path.Pointer);
     if (ACPI_SUCCESS(status)) {
-      if (param.Type == ACPI_TYPE_INTEGER) { 
-        gtty->Printf("s", " ", "x", (int)param.Integer.Value);
-      } else {
-        kassert(false);
-      }
+      kassert(param.Type == ACPI_TYPE_INTEGER);
+      AcpiOsPrintf("%s ", path.Pointer);
+      gtty->Printf("s", " ", "x", (int)param.Integer.Value,"s","\n");
     } else {
       kassert(false);
     }
-    gtty->Printf("s", " ", "x", (int)info->Address);
+    status = AcpiEvaluateObjectTyped(obj_handle, "_BBN", nullptr, &buf, ACPI_TYPE_INTEGER);
+    if (ACPI_SUCCESS(status)) {
+      kassert(param .Type == ACPI_TYPE_INTEGER);
+      uint8_t bus = param.Integer.Value;
+      AcpiOsPrintf("%d\n", (int)param.Integer.Value);
+      AcpiWalkNamespace(ACPI_TYPE_DEVICE, obj_handle, 100, DisplayOneDevice2, nullptr, reinterpret_cast<void *>(&bus), nullptr);
+    } else {
+      kassert(false);
+    }
   }
-
-  AcpiWalkNamespace(ACPI_TYPE_DEVICE, obj_handle, 100, DisplayOneDevice2, nullptr, nullptr, nullptr);
 
   return AE_OK;
 }

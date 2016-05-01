@@ -96,7 +96,6 @@ void TaskCtrl::Run() {
     int cpuid = apic_ctrl->GetCpuId();
     kassert(_task_struct[cpuid].state == TaskQueueState::kNotRunning);
     _task_struct[cpuid].state = TaskQueueState::kRunning;
-    gtty->Printf("d",cpuid);
     while (true){
       Task *t;
       {
@@ -163,6 +162,8 @@ void TaskCtrl::Register(int cpuid, Task *task) {
   _task_struct[cpuid].bottom_sub->_next = task;
   task->_prev = _task_struct[cpuid].bottom_sub;
   _task_struct[cpuid].bottom_sub = task;
+
+  //TODO stateをみて、キューイングによっては叩きおこすようにsubeki
 }
 
 Task::~Task() {

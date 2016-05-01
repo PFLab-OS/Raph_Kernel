@@ -25,6 +25,8 @@
 
 #include <string.h>
 #include <stdint.h>
+#include <stdarg.h>
+#include <ctype.h>
 #include <spinlock.h>
 #include <queue.h>
 #include <task.h>
@@ -40,6 +42,102 @@ class Tty {
     func.Init(Handle, reinterpret_cast<void *>(this));
     _queue.SetFunction(1, func);
   }
+  void Cprintf(const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    Cvprintf(fmt, args);
+    va_end(args);
+  }
+  void Cvprintf(const char *fmt, va_list args) {
+    String *str = String::New();
+    while(*fmt != '\0') {
+      switch(*fmt) {
+      case '%': {
+        fmt++;
+        switch(*fmt) {
+        case '+':
+        case '-':
+        case '#': {
+          fmt++;
+          break;
+        }
+        }
+        while(isdigit(*fmt)) {
+          fmt++;
+        }
+        switch(*fmt) {
+        case '.': {
+          fmt++;
+          break;
+        }
+        }
+        int accuracy = 0;
+        while(isdigit(*fmt)) {
+          accuracy *= 10;
+          accuracy += *fmt - '0';
+          fmt++;
+        }
+        switch(*fmt) {
+        case 'h':
+        case 'l':
+        case 'L': {
+          fmt++;
+          break;
+        }
+        }
+        switch(*fmt) {
+        case '\0': {
+          return;
+        }
+        case 'c': {
+          str->Write(static_cast<char>(va_arg(args, int)));
+          break;
+        }
+        case 's': {
+          const char *s = reinterpret_cast<const char *>(va_arg(args, const char *));
+          if (accuracy == 0) {
+            while(*s) {
+              str->Write(*s);
+              s++;
+            }
+          } else {
+            for (; accuracy > 0; accuracy--, s++) { 
+              if (*s == '\0') {
+                break;
+              }
+              str->Write(*s);
+            }
+          }
+          break;
+        }
+        case 'u':
+        case 'd': {
+          PrintInt(*str, "d", reinterpret_cast<int>(va_arg(args, int)));
+          break;
+        }
+        case 'p':
+        case 'X':
+        case 'x': {
+          PrintInt(*str, "x", reinterpret_cast<int>(va_arg(args, int)));
+          break;
+        }
+        default: {
+          str->Write('%');
+          str->Write(*fmt);
+        }
+        }
+        break;
+      }
+      default: {
+        str->Write(*fmt);
+      }
+      }
+      fmt++;
+    }
+    str->Exit();
+    DoString(str);
+  }
+
   void Printf() {
   }
   template<class... T>
@@ -47,20 +145,7 @@ class Tty {
     String *str = String::New();
     Printf_sub1(*str, args...);
     str->Exit();
-    switch (task_ctrl->GetState(apic_ctrl->GetCpuId())) {
-    case TaskCtrl::TaskQueueState::kNotRunning: {
-      Locker locker(_lock);
-      PrintString(str);
-      break;
-    }
-    case TaskCtrl::TaskQueueState::kRunning: { 
-      _queue.Push(str);
-      break;
-    }
-    default: {
-      kassert(false);
-    }
-    }
+    DoString(str);
   }
   // use to print error message
   template<class... T>
@@ -229,6 +314,22 @@ class Tty {
     }
   } 
   void PrintString(String *str);
+  void DoString(String *str) {
+    switch (task_ctrl->GetState(apic_ctrl->GetCpuId())) {
+    case TaskCtrl::TaskQueueState::kNotRunning: {
+      Locker locker(_lock);
+      PrintString(str);
+      break;
+    }
+    case TaskCtrl::TaskQueueState::kRunning: { 
+      _queue.Push(str);
+      break;
+    }
+    default: {
+      kassert(false);
+    }
+    }
+  }
   FunctionalQueue _queue;
   SpinLock _lock;
 };
