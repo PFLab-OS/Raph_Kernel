@@ -135,6 +135,7 @@ public:
   FADT *GetFADT();
   void SetupAcpica();
   void Shutdown();
+  void TraversePciNameSpace();
 private:
 };
 

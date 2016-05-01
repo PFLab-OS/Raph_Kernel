@@ -183,7 +183,7 @@ extern "C" int main() {
   acpi_ctrl->SetupAcpica();
   //  acpi_ctrl->Shutdown();
 
-  InitDevices<PciCtrl, Device>();
+  InitDevices<AcpicaPciCtrl, Device>();
 
   gtty->Init();
 
@@ -324,6 +324,7 @@ extern "C" int main_of_others() {
   idt->SetupProc();
 
   gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetCpuId(), "s", "(apic id:", "d", apic_ctrl->GetApicIdFromCpuId(apic_ctrl->GetCpuId()), "s", ") started.\n");
+  task_ctrl->Run();
 
   PollingFunc p;
  
@@ -352,7 +353,7 @@ extern "C" int main_of_others() {
     tt1.SetHandler(10);
   }
 
-  if (apic_ctrl->GetCpuId() == 6) {
+  if (apic_ctrl->GetCpuId() == 6 && eth != nullptr) {
 #if FLAG != RCV
     new(&tt3) Callout;
     Function func;

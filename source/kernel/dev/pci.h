@@ -49,15 +49,15 @@ struct MCFG {
 class DevPci;
 
 class PciCtrl : public Device {
- public:
+public:
   enum class CapabilityId : uint8_t {
    kMsi = 0x05,
    kPcie = 0x10,
   };
-
+  virtual ~PciCtrl() {
+  }
   static void Init() {
-    PciCtrl *addr = reinterpret_cast<PciCtrl *>(virtmem_ctrl->Alloc(sizeof(PciCtrl)));
-    pci_ctrl = new(addr) PciCtrl;
+    pci_ctrl = virtmem_ctrl->New<PciCtrl>();
     pci_ctrl->_Init();
   }
   virt_addr GetVaddr(uint8_t bus, uint8_t device, uint8_t func, uint16_t reg) {
@@ -126,10 +126,24 @@ class PciCtrl : public Device {
   static const uint32_t kRegBaseAddrIsPrefetchable = 1 << 3;
   static const uint32_t kRegBaseAddrMaskMemAddr = 0xFFFFFFF0;
   static const uint32_t kRegBaseAddrMaskIoAddr = 0xFFFFFFFC;
- private:
-  void _Init();
+protected:
+  virtual void _Init();
+private:
   MCFG *_mcfg = nullptr;
   virt_addr _base_addr = 0;
+};
+
+class AcpicaPciCtrl : public PciCtrl {
+public:
+  virtual ~AcpicaPciCtrl() {
+  }
+  static void Init() {
+    AcpicaPciCtrl *acpica_pci_ctrl = virtmem_ctrl->New<AcpicaPciCtrl>();
+    pci_ctrl = acpica_pci_ctrl;
+    acpica_pci_ctrl->_Init();
+  }
+protected:
+  virtual void _Init() override;
 };
 
 // !!! important !!!

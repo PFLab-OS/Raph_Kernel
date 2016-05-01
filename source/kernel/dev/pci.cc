@@ -53,10 +53,17 @@ void PciCtrl::_Init() {
         }
         uint16_t did = ReadReg<uint16_t>(j, k, 0, kDeviceIDReg);
         bool mf = ReadReg<uint8_t>(j, k, 0, kHeaderTypeReg) & kHeaderTypeRegFlagMultiFunction;
-        InitPciDevices<E1000, lE1000, DevPci>(vid, did, j, k, mf);
+
+        //TODO fix this(2)
+        // InitPciDevices<E1000, lE1000, DevPci>(vid, did, j, k, mf);
+        gtty->Printf("d",j,"d",k,"s"," ");
       }
     }
   }
+}
+
+void AcpicaPciCtrl::_Init() {
+  acpi_ctrl->TraversePciNameSpace();
 }
 
 uint16_t PciCtrl::FindCapability(uint8_t bus, uint8_t device, uint8_t func, CapabilityId id) {
