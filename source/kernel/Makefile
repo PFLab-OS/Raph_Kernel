@@ -12,7 +12,7 @@ TEST = ./unit_test
 
 RAPHFLAGS = -Wall -Wshadow -nostdinc -nostdlib -fno-builtin -mcmodel=large -D__KERNEL__ -I$(realpath ../lib/) -I$(realpath .) -I$(realpath ./acpica/include) -MMD -MP
 RAPHCFLAGS = $(RAPHFLAGS) -std=c99
-RAPHCXXFLAGS = $(RAPHFLAGS) -std=c++11 -fno-exceptions -fno-rtti -fno-use-cxa-atexit
+RAPHCXXFLAGS = $(RAPHFLAGS) -std=c++1y -fno-exceptions -fno-rtti -fno-use-cxa-atexit
 CFLAGS += $(RAPHCFLAGS)
 CXXFLAGS += $(RAPHCXXFLAGS)
 

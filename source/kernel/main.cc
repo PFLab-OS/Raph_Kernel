@@ -183,7 +183,7 @@ extern "C" int main() {
   acpi_ctrl->SetupAcpica();
   //  acpi_ctrl->Shutdown();
 
-  InitDevices<PciCtrl, Device>();
+  InitDevices<AcpicaPciCtrl, Device>();
 
   gtty->Init();
 

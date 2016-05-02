@@ -124,7 +124,7 @@ private:
 
 #define MASK(val, ebit, sbit) ((val) & (((1 << ((ebit) - (sbit) + 1)) - 1) << (sbit)))
 
-void _kassert(const char *file, int line, const char *func) __attribute__((noreturn));;
+[[noreturn]] void _kassert(const char *file, int line, const char *func);
 #define kassert(flag) if (!(flag)) { _kassert(__FILE__, __LINE__, __func__); }
 void checkpoint(int id, const char *str);
 

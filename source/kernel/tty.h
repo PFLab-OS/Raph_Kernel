@@ -48,8 +48,94 @@ class Tty {
     Cvprintf(fmt, args);
     va_end(args);
   }
+  void CprintfRaw(const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    CvprintfRaw(fmt, args);
+    va_end(args);
+  }
   void Cvprintf(const char *fmt, va_list args) {
     String *str = String::New();
+    Cvprintf_sub(str, fmt, args);
+    str->Exit();
+    DoString(str);
+  }
+  void CvprintfRaw(const char *fmt, va_list args) {
+    String str;
+    Cvprintf_sub(&str, fmt, args);
+    str.Exit();
+    Locker locker(_lock);
+    PrintString(&str);
+  }
+  [[deprecated]] void Printf() {
+  }
+  template<class... T>
+  [[deprecated]] void Printf(const T& ...args) {
+    String *str = String::New();
+    Printf_sub1(*str, args...);
+    str->Exit();
+    DoString(str);
+  }
+  // use to print error message
+  template<class... T>
+  [[deprecated]] void PrintfRaw(const T& ...args) {
+    String str;
+    str.Init();
+    str.type = String::Type::kSingle;
+    Printf_sub1(str, args...);
+    str.Exit();
+    Locker locker(_lock);
+    PrintString(&str);
+  }
+ protected:
+  virtual void Write(uint8_t c) = 0;
+  int _cx = 0;
+  int _cy = 0;
+ private:
+  struct String {
+    enum class Type {
+      kSingle,
+      kQueue,
+    } type;
+    static const int length = 100;
+    uint8_t str[length];
+    int offset;
+    String *next;
+    static String *New();
+    void Init() {
+      type = Type::kQueue;
+      offset = 0;
+      next = nullptr;
+    }
+    void Write(const uint8_t c) {
+      if (offset == length) {
+        if (next == nullptr) {
+          if (type == Type::kQueue) {
+            String *s = New();
+            next = s;
+            next->Write(c);
+          }
+        } else {
+          next->Write(c);
+        }
+      } else {
+        str[offset] = c;
+        offset++;
+      }
+    }
+    void Exit() {
+      Write('\0');
+    }
+  };
+  static void Handle(void *tty){
+    Tty *that = reinterpret_cast<Tty *>(tty);
+    void *str;
+    while(that->_queue.Pop(str)) {
+      Locker locker(that->_lock);
+      that->PrintString(reinterpret_cast<String *>(str));
+    }
+  }
+  void Cvprintf_sub(String *str, const char *fmt, va_list args) {
     while(*fmt != '\0') {
       switch(*fmt) {
       case '%': {
@@ -133,77 +219,6 @@ class Tty {
       }
       }
       fmt++;
-    }
-    str->Exit();
-    DoString(str);
-  }
-
-  void Printf() {
-  }
-  template<class... T>
-    void Printf(const T& ...args) {
-    String *str = String::New();
-    Printf_sub1(*str, args...);
-    str->Exit();
-    DoString(str);
-  }
-  // use to print error message
-  template<class... T>
-    void PrintfRaw(const T& ...args) {
-    String str;
-    str.Init();
-    str.type = String::Type::kSingle;
-    Printf_sub1(str, args...);
-    str.Exit();
-    Locker locker(_lock);
-    PrintString(&str);
-  }
- protected:
-  virtual void Write(uint8_t c) = 0;
-  int _cx = 0;
-  int _cy = 0;
- private:
-  struct String {
-    enum class Type {
-      kSingle,
-      kQueue,
-    } type;
-    static const int length = 100;
-    uint8_t str[length];
-    int offset;
-    String *next;
-    static String *New();
-    void Init() {
-      type = Type::kQueue;
-      offset = 0;
-      next = nullptr;
-    }
-    void Write(const uint8_t c) {
-      if (offset == length) {
-        if (next == nullptr) {
-          if (type == Type::kQueue) {
-            String *s = New();
-            next = s;
-            next->Write(c);
-          }
-        } else {
-          next->Write(c);
-        }
-      } else {
-        str[offset] = c;
-        offset++;
-      }
-    }
-    void Exit() {
-      Write('\0');
-    }
-  };
-  static void Handle(void *tty){
-    Tty *that = reinterpret_cast<Tty *>(tty);
-    void *str;
-    while(that->_queue.Pop(str)) {
-      Locker locker(that->_lock);
-      that->PrintString(reinterpret_cast<String *>(str));
     }
   }
   void Printf_sub1(String &str) {

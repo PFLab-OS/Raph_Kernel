@@ -53,9 +53,8 @@ void PciCtrl::_Init() {
         }
         uint16_t did = ReadReg<uint16_t>(j, k, 0, kDeviceIDReg);
 
-        if (InitPciDevices(j, k, 0) != nullptr) {
-          
-        }
+        gtty->Cprintf("pci: %d %d %d\n",j,k,0);
+        // InitPciDevices(j, k, 0);
       }
     }
   }
