@@ -54,6 +54,8 @@ public:
   static const int32_t kErrorInsufficientBuffer     = - 0x1005;
   // device internal error
   static const int32_t kErrorDeviceInternal         = - 0x1007;
+  // TCP acknowledgement number is wrong
+  static const int32_t kErrorTcpAcknowledgement     = - 0x1008;
 
   // open socket, which internally fetch an available network device
   int32_t Open();

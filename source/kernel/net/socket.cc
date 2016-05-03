@@ -279,6 +279,9 @@ int32_t Socket::ReceivePacket(uint8_t *data, uint32_t length) {
           }
   
           memcpy(data, packet + pkt_size - length, length);
+        } else {
+          // sequence number or acknowledgement number is wrong
+          rval = kErrorTcpAcknowledgement;
         }
       }
   

@@ -107,7 +107,11 @@ int32_t TcpGenerateHeader(uint8_t *buffer, uint32_t length, uint32_t saddr, uint
 
   // generate option fields
   if(options) {
+    bool option_field_used = false;
+
     if((type & Socket::kFlagSYN) && options->mss != TcpOptionParameters::kIgnore) {
+      option_field_used = true;
+
       TcpOptionMss * volatile s = reinterpret_cast<TcpOptionMss*>(buffer + option_offset);
       s->number = kOptionMSS;
       s->length = kOptionLength[kOptionMSS];
@@ -116,6 +120,8 @@ int32_t TcpGenerateHeader(uint8_t *buffer, uint32_t length, uint32_t saddr, uint
     }
 
     if((type & Socket::kFlagSYN) && options->ws != TcpOptionParameters::kIgnore) {
+      option_field_used = true;
+
       TcpOptionWindowScale * volatile s = reinterpret_cast<TcpOptionWindowScale*>(buffer + option_offset);
       s->number = kOptionWindowScale;
       s->length = kOptionLength[kOptionWindowScale];
@@ -123,14 +129,18 @@ int32_t TcpGenerateHeader(uint8_t *buffer, uint32_t length, uint32_t saddr, uint
       option_offset += kOptionLength[kOptionWindowScale];
     }
 
-    TcpOptionEol * volatile s = reinterpret_cast<TcpOptionEol*>(buffer + option_offset);
-    s->number = kOptionEndOfOptionList;
-    option_offset += kOptionLength[kOptionEndOfOptionList];
+    if(option_field_used) {
+      TcpOptionEol * volatile s = reinterpret_cast<TcpOptionEol*>(buffer + option_offset);
+      s->number = kOptionEndOfOptionList;
+      option_offset += kOptionLength[kOptionEndOfOptionList];
+    }
 
     if(option_offset % 4) {
       // 4B-alignment padding
-      for(uint16_t i = 1; i < 4 - option_offset % 4; i++) {
-        buffer[option_offset + i] = 0;
+      uint16_t nb_padding = 4 - (option_offset % 4);
+      for(uint16_t i = 0; i < nb_padding; i++) {
+        buffer[option_offset] = 0;
+        option_offset += 1;
       }
     }
   }
