@@ -27,6 +27,7 @@
 #include <raph.h>
 #include <acpi.h>
 
+#ifndef __UNIT_TEST__
 struct MADT {
   ACPISDTHeader header;
   uint32_t lapicCtrlAddr;
@@ -60,12 +61,25 @@ struct MADTStIOAPIC {
   uint32_t ioapicAddr;
   uint32_t glblIntBase;
 } __attribute__ ((packed));
+#endif // __UNIT_TEST__
 
 class Regs;
 
-class ApicCtrl {
+class ApicCtrlInterface {
+public:
+  virtual void Setup() = 0;
+  virtual volatile uint8_t GetApicId() = 0;
+  virtual int GetHowManyCpus() = 0;
+  virtual void SetupTimer(uint32_t irq) = 0;
+  virtual void StartTimer() = 0;
+  virtual void StopTimer() = 0;
+};
+
+#ifndef __UNIT_TEST__
+class ApicCtrl : public ApicCtrlInterface {
 public:
   static constexpr int lapicMaxNumber = 128;
+
   class Lapic {
   public:
     // setup local APIC respond to specified index
@@ -218,59 +232,80 @@ public:
     static const uint32_t kRegRedTblFlagMask = 1 << 16;
     static const int kRegRedTblOffsetDest = 24;
   };
-  ApicCtrl() {
-  }
-  void Setup();
+
+  ApicCtrl() {}
+  virtual void Setup() override;
+
   void SetMADT(MADT *table) {
     _madt = table;
   }
+
   void StartAPs();
+
   void BootBSP() {
     _lapic.Setup();
   }
+
   void BootAP() {
     _started = true;
     _lapic.Setup();
   }
-  volatile uint8_t GetApicId() {
-    return _lapic.GetApicId();
-  }
-  volatile bool IsBootupAll() {
-    return _all_bootup;
-  }
-  int GetHowManyCpus() {
-    return _lapic._ncpu;
-  }
+
   bool SetupIoInt(uint32_t irq, uint8_t lapicid, uint8_t vector) {
     kassert(vector >= 32);
     return _ioapic.SetupInt(irq, lapicid, vector);
   }
+
   void SendEoi() {
     _lapic.SendEoi();
   }
+
   void SendIpi(uint8_t destid) {
     _lapic.SendIpi(destid);
   }
-  void SetupTimer(uint32_t irq) {
+
+  virtual volatile uint8_t GetApicId() override {
+    return _lapic.GetApicId();
+  }
+
+  bool IsBootupAll() {
+    return _all_bootup;
+  }
+
+  virtual int GetHowManyCpus() override {
+    return _lapic._ncpu;
+  }
+
+  virtual void SetupTimer(uint32_t irq) override {
     _lapic.SetupTimer(irq);
   }
-  void StartTimer() {
+
+  virtual void StartTimer() override {
     _lapic.StartTimer();
   }
-  void StopTimer() {
+
+  virtual void StopTimer() override {
     _lapic.StopTimer();
   }
+
+protected:
+  volatile bool _started = false;
+  volatile bool _all_bootup = false;
+
 private:
   static void TmrCallback(Regs *rs) {
   }
   static void IpiCallback(Regs *rs) {
   }
+
   Lapic _lapic;
   Ioapic _ioapic;
   MADT *_madt = nullptr;
+
   static const uint32_t kMadtFlagLapicEnable = 1;
-  volatile bool _started = false;
-  volatile bool _all_bootup = false;
 };
+#else
+#include <thread.h>
+#endif // !__UNIT_TEST__
 
 #endif /* __RAPH_KERNEL_APIC_H__ */

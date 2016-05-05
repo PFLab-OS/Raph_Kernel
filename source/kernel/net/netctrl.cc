@@ -31,44 +31,21 @@
 #include <net/udp.h>
 #include <net/tcp.h>
 
-DevEthernetCtrl *netdev_ctrl;
-ARPTable *arp_table;
+extern uint16_t _id_auto_increment;
 
-EthCtrl *eth_ctrl;
-ARPCtrl *arp_ctrl;
-IPCtrl *ip_ctrl;
-UDPCtrl *udp_ctrl;
-TCPCtrl *tcp_ctrl;
+DevEthernetCtrl *netdev_ctrl;
+ArpTable *arp_table;
 
 void InitNetCtrl() {
   netdev_ctrl = new(reinterpret_cast<DevEthernetCtrl*>(virtmem_ctrl->Alloc(sizeof(DevEthernetCtrl)))) DevEthernetCtrl();
 
-  arp_table = new(reinterpret_cast<ARPTable*>(virtmem_ctrl->Alloc(sizeof(ARPTable)))) ARPTable();
+  arp_table = new(reinterpret_cast<ArpTable*>(virtmem_ctrl->Alloc(sizeof(ArpTable)))) ArpTable();
 
-  eth_ctrl = new(reinterpret_cast<EthCtrl*>(virtmem_ctrl->Alloc(sizeof(EthCtrl)))) EthCtrl();
-
-  arp_ctrl = new(reinterpret_cast<ARPCtrl*>(virtmem_ctrl->Alloc(sizeof(ARPCtrl)))) ARPCtrl();
-
-  ip_ctrl = new(reinterpret_cast<IPCtrl*>(virtmem_ctrl->Alloc(sizeof(IPCtrl)))) IPCtrl();
-
-  udp_ctrl = new(reinterpret_cast<UDPCtrl*>(virtmem_ctrl->Alloc(sizeof(UDPCtrl)))) UDPCtrl();
-
-  tcp_ctrl = new(reinterpret_cast<TCPCtrl*>(virtmem_ctrl->Alloc(sizeof(TCPCtrl)))) TCPCtrl();
+  // initialize id in IPv4 header
+  _id_auto_increment = 0;
 }
 
 void DismissNetCtrl() {
-  netdev_ctrl->~NetDevCtrl();
-  arp_table->~ARPTable();
-  eth_ctrl->~EthCtrl();
-  arp_ctrl->~ARPCtrl();
-  ip_ctrl->~IPCtrl();
-  udp_ctrl->~UDPCtrl();
-  tcp_ctrl->~TCPCtrl();
   virtmem_ctrl->Free(reinterpret_cast<virt_addr>(netdev_ctrl));
   virtmem_ctrl->Free(reinterpret_cast<virt_addr>(arp_table));
-  virtmem_ctrl->Free(reinterpret_cast<virt_addr>(eth_ctrl));
-  virtmem_ctrl->Free(reinterpret_cast<virt_addr>(arp_ctrl));
-  virtmem_ctrl->Free(reinterpret_cast<virt_addr>(ip_ctrl));
-  virtmem_ctrl->Free(reinterpret_cast<virt_addr>(udp_ctrl));
-  virtmem_ctrl->Free(reinterpret_cast<virt_addr>(tcp_ctrl));
 }

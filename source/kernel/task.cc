@@ -127,7 +127,9 @@ void TaskCtrl::Run() {
 
     _task_struct[apicid].state = TaskCtrlState::kNotRunningTask;
     apic_ctrl->StartTimer();
+#ifndef __UNIT_TEST__
     asm volatile("hlt");
+#endif // !__UNIT_TEST__
   }
 }
 
