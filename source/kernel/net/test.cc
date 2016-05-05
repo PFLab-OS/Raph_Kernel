@@ -46,16 +46,16 @@ namespace arp {
   bool request_sent = false;
 };
 
-void ARPReplySub(void *p) {
+void ArpReplySub(void *p) {
   if(!arp::reply_received) {
-    if(arp::socket.ReceivePacket(ArpSocket::kOpARPRequest, &arp::ipaddr, arp::macaddr) >= 0) {
+    if(arp::socket.ReceivePacket(ArpSocket::kOpArpRequest, &arp::ipaddr, arp::macaddr) >= 0) {
       // need to wait a little
       // because Linux kernel cannot handle packet too quick
       usleep(570);
       arp::reply_received = true;
     }
   } else {
-    if(arp::socket.TransmitPacket(ArpSocket::kOpARPReply, arp::ipaddr, arp::macaddr) < 0) {
+    if(arp::socket.TransmitPacket(ArpSocket::kOpArpReply, arp::ipaddr, arp::macaddr) < 0) {
       fprintf(stderr, "[ARP] failed to send reply packet\n");
     } else {
       fprintf(stderr, "[ARP] request from %u.%u.%u.%u (%.2x:%.2x:%.2x:%.2x:%.2x:%.2x)\n",
@@ -75,7 +75,7 @@ void ARPReplySub(void *p) {
   }
 }
 
-void ARPReply(uint32_t ip_request, uint32_t ip_reply) {
+void ArpReply(uint32_t ip_request, uint32_t ip_reply) {
   if(arp::socket.Open() < 0) {
     fprintf(stderr, "[open] cannot open socket\n");
   }
@@ -83,22 +83,22 @@ void ARPReply(uint32_t ip_request, uint32_t ip_reply) {
   // wait for ARP request
   ip1 = ip_reply;
   ip2 = ip_request;
-  arp::socket.SetIPAddr(ip_reply);
+  arp::socket.SetIpAddr(ip_reply);
 
   new(&tt1) Callout;
-  tt1.Init(ARPReplySub, nullptr);
+  tt1.Init(ArpReplySub, nullptr);
   tt1.SetHandler(10);
 }
 
-void ARPRequestSub(void *p) {
+void ArpRequestSub(void *p) {
   if(!arp::request_sent) {
-    if(arp::socket.TransmitPacket(ArpSocket::kOpARPRequest, ip1, nullptr) < 0) {
+    if(arp::socket.TransmitPacket(ArpSocket::kOpArpRequest, ip1, nullptr) < 0) {
       fprintf(stderr, "[ARP] failed to send request packet\n");
     } else {
       arp::request_sent = true;
     }
   } else {
-    if(arp::socket.ReceivePacket(ArpSocket::kOpARPReply, &arp::ipaddr, arp::macaddr) >= 0) {
+    if(arp::socket.ReceivePacket(ArpSocket::kOpArpReply, &arp::ipaddr, arp::macaddr) >= 0) {
       fprintf(stderr, "[ARP] reply from %u.%u.%u.%u (%.2x:%.2x:%.2x:%.2x:%.2x:%.2x)\n",
           (arp::ipaddr >> 24), (arp::ipaddr >> 16) & 0xff, (arp::ipaddr >> 8) & 0xff, arp::ipaddr & 0xff,
           arp::macaddr[0], arp::macaddr[1], arp::macaddr[2], arp::macaddr[3], arp::macaddr[4], arp::macaddr[5]);
@@ -116,18 +116,18 @@ void ARPRequestSub(void *p) {
   }
 }
 
-void ARPRequest(uint32_t ip_request, uint32_t ip_reply) {
+void ArpRequest(uint32_t ip_request, uint32_t ip_reply) {
   if(arp::socket.Open() < 0) {
     fprintf(stderr, "[open] cannot open socket\n");
   }
 
   // send ARP request
-  arp::socket.SetIPAddr(ip_request);
+  arp::socket.SetIpAddr(ip_request);
   ip1 = ip_reply;
   ip2 = ip_request;
 
   new(&tt2) Callout;
-  tt2.Init(ARPRequestSub, nullptr);
+  tt2.Init(ArpRequestSub, nullptr);
   tt2.SetHandler(10);
 }
 
@@ -142,7 +142,7 @@ namespace tcp1 {
   bool closing = false;
 };
 
-void TCPServerSub1(void *p) {
+void TcpServerSub1(void *p) {
   int32_t listen_rval = tcp1::socket.Listen();
   if(listen_rval >= 0) {
     fprintf(stderr, "[TCP:server] connection established\n");
@@ -173,22 +173,22 @@ void TCPServerSub1(void *p) {
   }
 }
 
-void TCPServer1() {
+void TcpServer1() {
   if(tcp1::socket.Open() < 0) {
     fprintf(stderr, "[error] cannot open socket\n");
   }
   tcp1::socket.SetListenAddr(0x0a000206);
   tcp1::socket.SetListenPort(Socket::kPortTelnet);
-  tcp1::socket.SetIPAddr(0x0a000205);
+  tcp1::socket.SetIpAddr(0x0a000205);
   tcp1::socket.SetPort(Socket::kPortTelnet);
 
   // TCP server 
   new(&tt1) Callout();
-  tt1.Init(TCPServerSub1, nullptr);
+  tt1.Init(TcpServerSub1, nullptr);
   tt1.SetHandler(10);
 }
 
-void TCPClientSub1(void *p) {
+void TcpClientSub1(void *p) {
   int32_t connect_rval = tcp1::socket.Connect();
 
   if(connect_rval >= 0) {
@@ -236,24 +236,24 @@ void TCPClientSub1(void *p) {
   }
 }
 
-void TCPClient1() {
+void TcpClient1() {
   if(tcp1::socket.Open() < 0) {
     fprintf(stderr, "[error] cannot open tcp1::socket\n");
   }
   tcp1::socket.SetListenAddr(0x0a000205);
   tcp1::socket.SetListenPort(Socket::kPortTelnet);
-  tcp1::socket.SetIPAddr(0x0a000206);
+  tcp1::socket.SetIpAddr(0x0a000206);
   tcp1::socket.SetPort(Socket::kPortTelnet);
 
   // TCP client
   new(&tt2) Callout();
-  tt2.Init(TCPClientSub1, nullptr);
+  tt2.Init(TcpClientSub1, nullptr);
   tt2.SetHandler(10);
 }
 
 namespace tcp2 {
   Socket socket;
-  const uint32_t server_size = Socket::kMSS;
+  const uint32_t server_size = Socket::kMss;
   uint8_t server_data[server_size];
   int32_t rval;
 
@@ -266,7 +266,7 @@ namespace tcp2 {
   bool closing = false;
 };
 
-void TCPServerSub2(void *p) {
+void TcpServerSub2(void *p) {
   int32_t listen_rval = tcp2::socket.Listen();
 
   if(listen_rval >= 0) {
@@ -287,21 +287,21 @@ void TCPServerSub2(void *p) {
   }
 }
 
-void TCPServer2() {
+void TcpServer2() {
   if(tcp2::socket.Open() < 0) {
     fprintf(stderr, "[error] cannot open socket\n");
   }
   tcp2::socket.SetListenAddr(0x0a000206);
   tcp2::socket.SetListenPort(Socket::kPortTelnet);
-  tcp2::socket.SetIPAddr(0x0a000205);
+  tcp2::socket.SetIpAddr(0x0a000205);
   tcp2::socket.SetPort(Socket::kPortTelnet);
 
   new(&tt1) Callout();
-  tt1.Init(TCPServerSub2, nullptr);
+  tt1.Init(TcpServerSub2, nullptr);
   tt1.SetHandler(10);
 }
 
-void TCPClientSub2(void *p) {
+void TcpClientSub2(void *p) {
   int32_t connect_rval = tcp2::socket.Connect();
 
   if(connect_rval >= 0) {
@@ -337,34 +337,34 @@ void TCPClientSub2(void *p) {
   }
 }
 
-void TCPClient2() {
+void TcpClient2() {
   if(tcp2::socket.Open() < 0) {
     fprintf(stderr, "[error] cannot open socket\n");
   }
   tcp2::socket.SetListenAddr(0x0a000205);
   tcp2::socket.SetListenPort(Socket::kPortTelnet);
-  tcp2::socket.SetIPAddr(0x0a000206);
+  tcp2::socket.SetIpAddr(0x0a000206);
   tcp2::socket.SetPort(Socket::kPortTelnet);
 
   memset(tcp2::client_data, 0x41, tcp2::client_size-1);
   tcp2::client_data[tcp2::client_size-1] = 0;
 
   new(&tt2) Callout();
-  tt2.Init(TCPClientSub2, nullptr);
+  tt2.Init(TcpClientSub2, nullptr);
   tt2.SetHandler(10);
 }
 
-void TCPServer3() {
+void TcpServer3() {
   Socket socket;
   if(socket.Open() < 0) {
     fprintf(stderr, "[error] cannot open socket\n");
   }
   socket.SetListenAddr(0x0a000206);
   socket.SetListenPort(Socket::kPortTelnet);
-  socket.SetIPAddr(0x0a000205);
+  socket.SetIpAddr(0x0a000205);
   socket.SetPort(Socket::kPortTelnet);
 
-  const uint32_t size = Socket::kMSS;
+  const uint32_t size = Socket::kMss;
   uint8_t data[size];
   int32_t rval = 0;
 
@@ -383,6 +383,6 @@ void TCPServer3() {
   }
 }
 
-void TCPClient3() {
-  TCPClient2();
+void TcpClient3() {
+  TcpClient2();
 }

@@ -66,33 +66,33 @@ int main(int argc, char **argv) {
     uint32_t ipRequest = 0x0a000210;
     uint32_t ipReply = 0x0a000211;
     if(!strncmp(argv[2], "reply", 5)) {
-      ARPReply(ipRequest, ipReply);
+      ArpReply(ipRequest, ipReply);
     } else if(!strncmp(argv[2], "request", 7)) {
-      ARPRequest(ipRequest, ipReply);
+      ArpRequest(ipRequest, ipReply);
     } else {
       fprintf(stderr, "[error] specify ARP command\n");
     }
   } else if(!strncmp(argv[1], "tcp", 3)) {
     if(!strncmp(argv[2], "server", 6)) {
-      TCPServer1();
+      TcpServer1();
     } else if(!strncmp(argv[2], "client", 6)) {
-      TCPClient1();
+      TcpClient1();
     } else {
       fprintf(stderr, "[error] specify TCP command\n");
     }
   } else if(!strncmp(argv[1], "segment", 7)) {
     if(!strncmp(argv[2], "server", 6)) {
-      TCPServer2();
+      TcpServer2();
     } else if(!strncmp(argv[2], "client", 6)) {
-      TCPClient2();
+      TcpClient2();
     } else {
       fprintf(stderr, "[error] command\n");
     }
   } else if(!strncmp(argv[1], "retry", 5)) {
     if(!strncmp(argv[2], "server", 6)) {
-      TCPServer3();
+      TcpServer3();
     } else if(!strncmp(argv[2], "client", 6)) {
-      TCPClient3();
+      TcpClient3();
     } else {
       fprintf(stderr, "[error] command\n");
     }

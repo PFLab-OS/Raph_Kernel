@@ -46,7 +46,7 @@ int32_t NetSocket::Open() {
  */
 
 Socket::Socket() {
-  _l3_ptcl = kProtocolIPv4;
+  _l3_ptcl = kProtocolIpv4;
 }
 
 int32_t Socket::GetEthAddr(uint32_t ipaddr, uint8_t *macaddr) {
@@ -55,7 +55,7 @@ int32_t Socket::GetEthAddr(uint32_t ipaddr, uint8_t *macaddr) {
     if(socket.Open() < 0) {
       return -1;
     } else {
-      socket.TransmitPacket(ArpSocket::kOpARPRequest, ipaddr, nullptr);
+      socket.TransmitPacket(ArpSocket::kOpArpRequest, ipaddr, nullptr);
     }
   }
   return 0;
@@ -85,14 +85,14 @@ int32_t Socket::Transmit(const uint8_t *data, uint32_t length, bool is_raw_packe
 
     // IP header
     uint32_t offset_l3 = sizeof(EthHeader);
-    IpGenerateHeader(packet->buf + offset_l3, sizeof(TcpHeader) + length, kProtocolTCP, saddr, _daddr);
+    IpGenerateHeader(packet->buf + offset_l3, sizeof(TcpHeader) + length, kProtocolTcp, saddr, _daddr);
 
     // Ethernet header
     uint8_t eth_saddr[6];
     uint8_t eth_daddr[6] = {0x08, 0x00, 0x27, 0xc1, 0x5b, 0x93}; // TODO:
     _device_info->device->GetEthAddr(eth_saddr);
 //    GetEthAddr(_daddr, eth_daddr);
-    EthGenerateHeader(packet->buf, eth_saddr, eth_daddr, kProtocolIPv4);
+    EthGenerateHeader(packet->buf, eth_saddr, eth_daddr, kProtocolIpv4);
   }
 
   // transmit
@@ -111,7 +111,7 @@ int32_t Socket::TransmitPacket(const uint8_t *packet, uint32_t length) {
   int32_t rval = kErrorUnknown;
 
   // length intended to be sent
-  uint32_t send_length = length > kMSS ? kMSS : length;
+  uint32_t send_length = length > kMss ? kMss : length;
 
   if(rval_ack != kErrorRetransmissionTimeout) t0 = timer->ReadMainCnt();
 
@@ -191,7 +191,7 @@ int32_t Socket::Receive(uint8_t *data, uint32_t length, bool is_raw_packet, bool
 
   // filter IP address
   uint32_t offset_l3 = sizeof(EthHeader);
-  if(!IpFilterPacket(packet->buf + offset_l3, kProtocolTCP, _daddr, _ipaddr)) {
+  if(!IpFilterPacket(packet->buf + offset_l3, kProtocolTcp, _daddr, _ipaddr)) {
     _device_info->ptcl_stack->FreeRxBuffer(packet);
     return kErrorInvalidPacketOnWire;
   }
@@ -548,7 +548,7 @@ int32_t Socket::CloseAck() {
  */
 
 UdpSocket::UdpSocket() {
-  _l3_ptcl = kProtocolIPv4;
+  _l3_ptcl = kProtocolIpv4;
 }
 
 int32_t UdpSocket::TransmitPacket(const uint8_t *data, uint32_t length) {
@@ -571,14 +571,14 @@ int32_t UdpSocket::TransmitPacket(const uint8_t *data, uint32_t length) {
 
   // IP header
   uint32_t offset_l3 = sizeof(EthHeader);
-  IpGenerateHeader(packet->buf + offset_l3, sizeof(UdpHeader) + length, kProtocolTCP, saddr, _daddr);
+  IpGenerateHeader(packet->buf + offset_l3, sizeof(UdpHeader) + length, kProtocolTcp, saddr, _daddr);
 
   // Ethernet header
   uint8_t eth_saddr[6];
   uint8_t eth_daddr[6] = {0x08, 0x00, 0x27, 0xc1, 0x5b, 0x93}; // TODO:
   _device_info->device->GetEthAddr(eth_saddr);
 //  GetEthAddr(_daddr, eth_daddr);
-  EthGenerateHeader(packet->buf, eth_saddr, eth_daddr, kProtocolIPv4);
+  EthGenerateHeader(packet->buf, eth_saddr, eth_daddr, kProtocolIpv4);
   
   // transmit
   _device_info->device->TransmitPacket(packet);
@@ -600,7 +600,7 @@ int32_t UdpSocket::ReceivePacket(uint8_t *data, uint32_t length) {
 
   // filter IP address
   uint32_t offset_l3 = sizeof(EthHeader);
-  if(!IpFilterPacket(packet->buf + offset_l3, kProtocolUDP, _daddr, _ipaddr)) {
+  if(!IpFilterPacket(packet->buf + offset_l3, kProtocolUdp, _daddr, _ipaddr)) {
     _device_info->ptcl_stack->FreeRxBuffer(packet);
     return kErrorInvalidPacketOnWire;
   }
@@ -634,7 +634,7 @@ int32_t UdpSocket::ReceivePacket(uint8_t *data, uint32_t length) {
  */
 
 ArpSocket::ArpSocket() {
-  _l3_ptcl = kProtocolARP;
+  _l3_ptcl = kProtocolArp;
 }
 
 int32_t ArpSocket::TransmitPacket(uint16_t type, uint32_t tpa, uint8_t *tha) {
@@ -644,10 +644,10 @@ int32_t ArpSocket::TransmitPacket(uint16_t type, uint32_t tpa, uint8_t *tha) {
   _device_info->device->GetEthAddr(eth_saddr);
 
   switch(type) {
-    case kOpARPRequest:
+    case kOpArpRequest:
       memset(eth_daddr, 0xff, 6); // broadcast
       break;
-    case kOpARPReply:
+    case kOpArpReply:
       memcpy(eth_daddr, tha, 6);
       break;
     default:
@@ -668,7 +668,7 @@ int32_t ArpSocket::TransmitPacket(uint16_t type, uint32_t tpa, uint8_t *tha) {
   ArpGeneratePacket(packet->buf + offset_arp , type, eth_saddr, _ipaddr, eth_daddr, ip_daddr);
 
   // Ethernet header
-  EthGenerateHeader(packet->buf, eth_saddr, eth_daddr, kProtocolARP);
+  EthGenerateHeader(packet->buf, eth_saddr, eth_daddr, kProtocolArp);
 
   // transmit
   if(!_device_info->device->TransmitPacket(packet)) return kErrorDeviceInternal;
@@ -702,9 +702,9 @@ int32_t ArpSocket::ReceivePacket(uint16_t type, uint32_t *spa, uint8_t *sha) {
   uint32_t offset_arp = sizeof(EthHeader);
 
   switch(op) {
-    case kOpARPReply:
+    case kOpArpReply:
       RegisterIpAddress(packet->buf + sizeof(EthHeader));
-    case kOpARPRequest:
+    case kOpArpRequest:
       if(spa) *spa = GetSourceIpAddress(packet->buf + offset_arp);
       if(sha) GetSourceMacAddress(sha, packet->buf + offset_arp);
       break;

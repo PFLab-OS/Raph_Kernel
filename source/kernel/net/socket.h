@@ -30,7 +30,7 @@ class NetSocket {
 public:
   // frequently used port number
   static const uint16_t kPortTelnet = 23;
-  static const uint16_t kPortHTTP = 80;
+  static const uint16_t kPortHttp = 80;
 
   /*
    * return code of TransmitPacket / ReceivePacket
@@ -83,7 +83,7 @@ public:
   static const uint8_t kFlagURG = 1 << 5;
 
   // maximum segment size
-  static const uint32_t kMSS = 1460;
+  static const uint32_t kMss = 1460;
 
   // TCP states (extended)
   // (cf) RFC 793 p.26
@@ -102,7 +102,7 @@ public:
 
   Socket();
 
-  void SetIPAddr(uint32_t addr) { _daddr = addr; }
+  void SetIpAddr(uint32_t addr) { _daddr = addr; }
   void SetPort(uint16_t port) { _dport = port; }
   void SetListenAddr(uint32_t addr) { _ipaddr = addr; }
   void SetListenPort(uint16_t port) { _sport = port; }
@@ -151,9 +151,9 @@ private:
   // destination IP address
   uint32_t _daddr = 0x0a000210;
   // destination port
-  uint16_t _dport = kPortHTTP;
+  uint16_t _dport = kPortHttp;
   // source port
-  uint16_t _sport = kPortHTTP;
+  uint16_t _sport = kPortHttp;
   // TCP session type
   // set before both tx/rx by Socket::SetSessionType()
   uint8_t _type   = kFlagRST;
@@ -169,7 +169,7 @@ private:
   int32_t _packet_length = 0;
 
   // max segment size
-  uint16_t _mss = kMSS;
+  uint16_t _mss = kMss;
   // window scale
   uint8_t _ws = 1;
 
@@ -216,16 +216,16 @@ private:
   // destination IP address
   uint32_t _daddr = 0x0a000210;
   // destination port
-  uint16_t _dport = kPortHTTP;
+  uint16_t _dport = kPortHttp;
   // source port
-  uint16_t _sport = kPortHTTP;
+  uint16_t _sport = kPortHttp;
 };
 
 // ARP Socket
 class ArpSocket : public NetSocket {
 public:
-  static const int16_t kOpARPRequest = 0x0001;
-  static const int16_t kOpARPReply = 0x0002;
+  static const int16_t kOpArpRequest = 0x0001;
+  static const int16_t kOpArpReply = 0x0002;
 
   ArpSocket();
 
@@ -251,7 +251,7 @@ public:
   //   * -1            (otherwise)
   virtual int32_t ReceivePacket(uint16_t type, uint32_t *spa, uint8_t *sha);
 
-  virtual void SetIPAddr(uint32_t ipaddr) { _ipaddr = ipaddr; }
+  virtual void SetIpAddr(uint32_t ipaddr) { _ipaddr = ipaddr; }
 
 private:
   static const uint32_t kOperationOffset = 6;

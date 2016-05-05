@@ -30,12 +30,12 @@
 #include <net/socket.h>
 
 // Layer 3 protocols
-const uint16_t kProtocolIPv4 = 0x0800;
-const uint16_t kProtocolARP  = 0x0806;
+const uint16_t kProtocolIpv4 = 0x0800;
+const uint16_t kProtocolArp  = 0x0806;
 
 // Layer 4 protocols
-const uint8_t kProtocolTCP         = 0x06;
-const uint8_t kProtocolUDP         = 0x11;
+const uint8_t kProtocolTcp         = 0x06;
+const uint8_t kProtocolUdp         = 0x11;
 
 class ProtocolStack : public Polling {
 public:

@@ -43,7 +43,7 @@ static const uint8_t kWindowSizeOffset  = 14;
 // option number
 static const uint8_t kOptionEndOfOptionList = 0;
 static const uint8_t kOptionNoOperation     = 1;
-static const uint8_t kOptionMSS             = 2;
+static const uint8_t kOptionMaxSegmentSize  = 2;
 static const uint8_t kOptionWindowScale     = 3;
 static const uint8_t kOptionSackPermitted   = 4;
 static const uint8_t kOptionSack            = 5;
@@ -104,7 +104,7 @@ uint16_t CheckSum(uint8_t *buf, uint32_t size, uint32_t saddr, uint32_t daddr) {
   if(sum & 0x80000000) sum = (sum & 0xffff) + (sum >> 16);
   sum += ntohs((daddr >> 0) & 0xffff);
   if(sum & 0x80000000) sum = (sum & 0xffff) + (sum >> 16);
-  sum += ntohs(kProtocolTCP);
+  sum += ntohs(kProtocolTcp);
   if(sum & 0x80000000) sum = (sum & 0xffff) + (sum >> 16);
   sum += ntohs(static_cast<uint16_t>(size));
   if(sum & 0x80000000) sum = (sum & 0xffff) + (sum >> 16);

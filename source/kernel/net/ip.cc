@@ -31,7 +31,7 @@ const uint32_t kProtocolTypeOffset = 9;
 const uint32_t kSrcAddrOffset      = 13;
 
 // IPv4
-const uint8_t kIPVersion           = 4;
+const uint8_t kIpVersion           = 4;
 
 // packet priority
 const uint8_t kPktPriority         = (7 << 5);
@@ -53,7 +53,7 @@ uint16_t CheckSum(uint8_t *buf, uint32_t size);
 
 int32_t IpGenerateHeader(uint8_t *buffer, uint32_t length, uint8_t type, uint32_t saddr, uint32_t daddr) {
   Ipv4Header * volatile header = reinterpret_cast<Ipv4Header*>(buffer);
-  header->ip_header_len_version = (sizeof(Ipv4Header) >> 2) | (kIPVersion << 4);
+  header->ip_header_len_version = (sizeof(Ipv4Header) >> 2) | (kIpVersion << 4);
   header->type = kPktPriority | kPktDelay | kPktThroughput | kPktReliability;
   header->total_len = htons(sizeof(Ipv4Header) + length);
   header->id = _id_auto_increment++;

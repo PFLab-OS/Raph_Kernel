@@ -189,7 +189,7 @@ extern "C" int main() {
   if(socket.Open() < 0) {
     gtty->Printf("s", "[error] failed to open socket\n");
   }
-  socket.SetIPAddr(inet_atoi(ip1));
+  socket.SetIpAddr(inet_atoi(ip1));
 
   kassert(eth != nullptr);
   Function func;
@@ -199,7 +199,7 @@ extern "C" int main() {
 
       int32_t rval = socket.ReceivePacket(0, &ipaddr, macaddr);
 
-      if(rval == ArpSocket::kOpARPReply) {
+      if(rval == ArpSocket::kOpArpReply) {
         uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;
         cnt = 0;
         gtty->Printf(
@@ -215,7 +215,7 @@ extern "C" int main() {
           "d", (ipaddr >> 8) & 0xff, "s", ".",
           "d", (ipaddr >> 0) & 0xff, "s", " (");
         gtty->Printf("s", "latency:", "d", l, "s", "us)\n");
-      } else if(rval == ArpSocket::kOpARPRequest) {
+      } else if(rval == ArpSocket::kOpArpRequest) {
         gtty->Printf(
             "s", "[arp] request received; ",
             "x", macaddr[0], "s", ":",
@@ -229,7 +229,7 @@ extern "C" int main() {
             "d", (ipaddr >> 8) & 0xff, "s", ".",
             "d", (ipaddr >> 0) & 0xff, "s", "\n");
 
-        if(socket.TransmitPacket(ArpSocket::kOpARPReply, ipaddr, macaddr) >= 0) {
+        if(socket.TransmitPacket(ArpSocket::kOpArpReply, ipaddr, macaddr) >= 0) {
           gtty->Printf("s", "[arp] reply sent\n");
         } else {
           gtty->Printf("s", "[arp] failed to sent ARP reply\n");
@@ -337,9 +337,9 @@ extern "C" int main_of_others() {
         if(socket.Open() < 0) {
           gtty->Printf("s", "[error] failed to open socket\n");
         } else {
-          socket.SetIPAddr(inet_atoi(ip1));
+          socket.SetIpAddr(inet_atoi(ip1));
           cnt = timer->ReadMainCnt();
-          if(socket.TransmitPacket(ArpSocket::kOpARPRequest, inet_atoi(ip2), nullptr) < 0) {
+          if(socket.TransmitPacket(ArpSocket::kOpArpRequest, inet_atoi(ip2), nullptr) < 0) {
             gtty->Printf("s", "[arp] failed to transmit request\n");
           } else {
             gtty->Printf("s", "[arp] request sent\n");

@@ -28,8 +28,8 @@
 #include <stdint.h>
 
 // ARP request/reply test (1 turn around)
-void ARPReply(uint32_t ipRequest, uint32_t ipReply);
-void ARPRequest(uint32_t ipRequest, uint32_t ipReply);
+void ArpReply(uint32_t ipRequest, uint32_t ipReply);
+void ArpRequest(uint32_t ipRequest, uint32_t ipReply);
 
 /* 
  * [TEST#1] TCP connection test (client loopback)
@@ -43,8 +43,8 @@ void ARPRequest(uint32_t ipRequest, uint32_t ipReply);
  *   * acknowledgement
  *   * FIN-ACK 4-way handshake (connection closing)
  */
-void TCPServer1();
-void TCPClient1();
+void TcpServer1();
+void TcpClient1();
 
 /*
  * [TEST#2] TCP packet segmentation test
@@ -54,8 +54,8 @@ void TCPClient1();
  * Through this test, it can be checked that both sender and receiver 
  * can handle segmented packets appropriately.
  */
-void TCPServer2();
-void TCPClient2();
+void TcpServer2();
+void TcpClient2();
 
 /*
  * [TEST#3] TCP retransmission timeout test
@@ -64,8 +64,8 @@ void TCPClient2();
  * which is larger than RTO (Retransmission TimeOut), before receiving.
  * Therefore client have to regard this as packet loss and retransmit.
  */
-void TCPServer3();
-void TCPClient3();
+void TcpServer3();
+void TcpClient3();
 
 #endif // __UNIT_TEST__
 

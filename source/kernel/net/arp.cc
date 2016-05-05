@@ -31,15 +31,15 @@
 const uint16_t kHWEthernet = 0x0001;
 
 // protocol
-const uint16_t kProtocolIPv4 = 0x0800;
+const uint16_t kProtocolIpv4 = 0x0800;
 
 // broadcast MAC address (ff:ff:ff:ff:ff:ff)
-const uint8_t kBcastMACAddr[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+const uint8_t kBcastMacAddr[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 
 int32_t ArpGeneratePacket(uint8_t *buffer, uint16_t op, uint8_t *smacaddr, uint32_t sipaddr, uint8_t *dmacaddr, uint32_t dipaddr) {
   ArpPacket * volatile packet = reinterpret_cast<ArpPacket*>(buffer);
   packet->hwtype = htons(kHWEthernet);
-  packet->protocol = htons(kProtocolIPv4);
+  packet->protocol = htons(kProtocolIpv4);
   packet->hlen = 6;
   packet->plen = 4;
   packet->op = htons(op);
@@ -47,10 +47,10 @@ int32_t ArpGeneratePacket(uint8_t *buffer, uint16_t op, uint8_t *smacaddr, uint3
   packet->proto_saddr = htonl(sipaddr);
   packet->proto_daddr = htonl(dipaddr);
   switch(op) {
-    case ArpSocket::kOpARPRequest:
+    case ArpSocket::kOpArpRequest:
       memset(packet->hw_daddr, 0, 6);
       break;
-	case ArpSocket::kOpARPReply:
+	case ArpSocket::kOpArpReply:
       memcpy(packet->hw_daddr, dmacaddr, 6);
       break;
     default:
@@ -66,7 +66,7 @@ bool ArpFilterPacket(uint8_t *packet, uint16_t op, uint8_t *smacaddr, uint32_t s
   return (!op || ntohs(data->op) == op)
       && (!smacaddr || !memcmp(data->hw_saddr, smacaddr, 6))
       && (!sipaddr  || ntohl(data->proto_saddr) == sipaddr)
-      && (ntohs(data->op) == ArpSocket::kOpARPRequest || !dmacaddr || !memcmp(data->hw_daddr, dmacaddr, 6) || !memcmp(data->hw_daddr, kBcastMACAddr, 6))
+      && (ntohs(data->op) == ArpSocket::kOpArpRequest || !dmacaddr || !memcmp(data->hw_daddr, dmacaddr, 6) || !memcmp(data->hw_daddr, kBcastMacAddr, 6))
       && (!dipaddr  || ntohl(data->proto_daddr) == dipaddr);
 }
 
