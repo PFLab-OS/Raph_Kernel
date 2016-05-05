@@ -66,12 +66,11 @@ extern "C" {
 
   ACPI_STATUS AcpiOsTableOverride(ACPI_TABLE_HEADER *ExistingTable, ACPI_TABLE_HEADER **NewTable) {
     *NewTable = NULL;
-    return (AE_OK);
+    return (AE_NO_ACPI_TABLES);
   }
 
   ACPI_STATUS AcpiOsPhysicalTableOverride(ACPI_TABLE_HEADER *ExistingTable, ACPI_PHYSICAL_ADDRESS *NewAddress, UINT32 *NewTableLength) {
-    *NewAddress = 0;
-    return (AE_OK);
+    return (AE_SUPPORT);
   }
 
   void *AcpiOsMapMemory(ACPI_PHYSICAL_ADDRESS PhysicalAddress, ACPI_SIZE Length) {

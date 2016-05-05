@@ -51,6 +51,7 @@ void ApicCtrl::Setup() {
       break;
     case MADTStType::kIOAPIC:
       {
+        // TODO : multi IOAPIC support
         MADTStIOAPIC *madtStIOAPIC = reinterpret_cast<MADTStIOAPIC *>(ptr);
         _ioapic.SetReg(reinterpret_cast<uint32_t *>(p2v(madtStIOAPIC->ioapicAddr)));
       }

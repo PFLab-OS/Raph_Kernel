@@ -82,6 +82,8 @@ void AcpiCtrl::Shutdown() {
 }
 // TODO remove this
 #include <tty.h>
+
+
 static ACPI_STATUS DisplayOneDevice2(ACPI_HANDLE obj_handle, UINT32 level, void *context, void **ReturnValue) {
   ACPI_STATUS status;
   ACPI_DEVICE_INFO *info;
@@ -107,18 +109,17 @@ static ACPI_STATUS DisplayOneDevice2(ACPI_HANDLE obj_handle, UINT32 level, void 
   ACPI_OBJECT param;
   buf.Pointer = &param;
   buf.Length = sizeof(param);
-
+  
   status = AcpiEvaluateObjectTyped(obj_handle, "_ADR", nullptr, &buf, ACPI_TYPE_INTEGER);
-  if (ACPI_SUCCESS(status)) {
-    if (param.Type == ACPI_TYPE_INTEGER) { 
-      gtty->Cprintf("%s %x %x\n", path.Pointer, (int)param.Integer.Value, info->Address);
-
-      pci_ctrl->InitPciDevices(*bus, param.Integer.Value >> 16, param.Integer.Value & 0xffff);
-      AcpiWalkNamespace(ACPI_TYPE_DEVICE, obj_handle, 100, DisplayOneDevice2, nullptr, reinterpret_cast<void *>(&bus), nullptr);
-    } else {
-      kassert(false);
-    }
+  if (ACPI_FAILURE(status)) {
+    return AE_OK;
   }
+
+  kassert(param.Type == ACPI_TYPE_INTEGER);
+  gtty->Cprintf("%s %x %x\n", path.Pointer, (int)param.Integer.Value, info->Address);
+    
+  // pci_ctrl->InitPciDevices(*bus, param.Integer.Value >> 16, param.Integer.Value & 0xffff);
+  //  AcpiWalkNamespace(ACPI_TYPE_METHOD, obj_handle, 100, DisplayOneDevice3, nullptr, nullptr, nullptr);
   return AE_OK;
 }
 
@@ -151,13 +152,11 @@ static ACPI_STATUS DisplayOneDevice(ACPI_HANDLE obj_handle, UINT32 level, void *
     status = AcpiEvaluateObjectTyped(obj_handle, "_ADR", nullptr, &buf, ACPI_TYPE_INTEGER);
     if (ACPI_SUCCESS(status)) {
       kassert(param.Type == ACPI_TYPE_INTEGER);
-      AcpiOsPrintf("%s ", path.Pointer);
-      gtty->Printf("s", " ", "x", (int)param.Integer.Value,"s","\n");
+      gtty->Cprintf("root> %s %x\n", path.Pointer, (int)param.Integer.Value);
       status = AcpiEvaluateObjectTyped(obj_handle, "_BBN", nullptr, &buf, ACPI_TYPE_INTEGER);
       if (ACPI_SUCCESS(status)) {
         kassert(param .Type == ACPI_TYPE_INTEGER);
         uint8_t bus = param.Integer.Value;
-        AcpiOsPrintf("%d\n", (int)param.Integer.Value);
         AcpiWalkNamespace(ACPI_TYPE_DEVICE, obj_handle, 100, DisplayOneDevice2, nullptr, reinterpret_cast<void *>(&bus), nullptr);
       } else {
         kassert(false);
