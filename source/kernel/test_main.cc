@@ -38,7 +38,7 @@ VirtmemCtrl *virtmem_ctrl;
 PhysmemCtrl *physmem_ctrl;
 PagingCtrl *paging_ctrl;
 
-ApicCtrl *apic_ctrl;
+PthreadCtrl *apic_ctrl;
 TaskCtrl *task_ctrl;
 
 Timer *timer;

@@ -32,7 +32,7 @@
 #include <stdint.h>
 #include <apic.h>
 
-class PthreadCtrl : public ApicCtrl {
+class PthreadCtrl : public ApicCtrlInterface {
 public:
   PthreadCtrl() {}
   virtual void Setup() override {

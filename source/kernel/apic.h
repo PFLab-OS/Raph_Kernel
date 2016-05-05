@@ -65,11 +65,21 @@ struct MADTStIOAPIC {
 
 class Regs;
 
-class ApicCtrl {
+class ApicCtrlInterface {
+public:
+  virtual void Setup() = 0;
+  virtual volatile uint8_t GetApicId() = 0;
+  virtual int GetHowManyCpus() = 0;
+  virtual void SetupTimer(uint32_t irq) = 0;
+  virtual void StartTimer() = 0;
+  virtual void StopTimer() = 0;
+};
+
+#ifndef __UNIT_TEST__
+class ApicCtrl : public ApicCtrlInterface {
 public:
   static constexpr int lapicMaxNumber = 128;
 
-#ifndef __UNIT_TEST__
   class Lapic {
   public:
     // setup local APIC respond to specified index
@@ -222,16 +232,10 @@ public:
     static const uint32_t kRegRedTblFlagMask = 1 << 16;
     static const int kRegRedTblOffsetDest = 24;
   };
-#endif // !__UNIT_TEST__
 
   ApicCtrl() {}
-#ifdef __UNIT_TEST__ 
-  virtual void Setup() {}
-#else
-  virtual void Setup();
-#endif // __UNIT_TEST__
+  virtual void Setup() override;
 
-#ifndef __UNIT_TEST__
   void SetMADT(MADT *table) {
     _madt = table;
   }
@@ -259,44 +263,29 @@ public:
   void SendIpi(uint8_t destid) {
     _lapic.SendIpi(destid);
   }
-#endif // !__UNIT_TEST__
 
-  virtual volatile uint8_t GetApicId() {
-#ifndef __UNIT_TEST__
+  virtual volatile uint8_t GetApicId() override {
     return _lapic.GetApicId();
-#else
-    return 0;
-#endif // !__UNIT_TEST__
   }
 
   bool IsBootupAll() {
     return _all_bootup;
   }
 
-  virtual int GetHowManyCpus() {
-#ifndef __UNIT_TEST__
+  virtual int GetHowManyCpus() override {
     return _lapic._ncpu;
-#else
-    return 0;
-#endif // !__UNIT_TEST__
   }
 
-  virtual void SetupTimer(uint32_t irq) {
-#ifndef __UNIT_TEST__
+  virtual void SetupTimer(uint32_t irq) override {
     _lapic.SetupTimer(irq);
-#endif // !__UNIT_TEST__
   }
 
-  virtual void StartTimer() {
-#ifndef __UNIT_TEST__
+  virtual void StartTimer() override {
     _lapic.StartTimer();
-#endif // !__UNIT_TEST__
   }
 
-  virtual void StopTimer() {
-#ifndef __UNIT_TEST__
+  virtual void StopTimer() override {
     _lapic.StopTimer();
-#endif // !__UNIT_TEST__
   }
 
 protected:
@@ -309,13 +298,14 @@ private:
   static void IpiCallback(Regs *rs) {
   }
 
-#ifndef __UNIT_TEST__
   Lapic _lapic;
   Ioapic _ioapic;
   MADT *_madt = nullptr;
-#endif // !__UNIT_TEST__
 
   static const uint32_t kMadtFlagLapicEnable = 1;
 };
+#else
+#include <thread.h>
+#endif // !__UNIT_TEST__
 
 #endif /* __RAPH_KERNEL_APIC_H__ */
