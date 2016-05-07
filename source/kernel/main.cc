@@ -234,6 +234,8 @@ extern "C" int main() {
         } else {
           gtty->Printf("s", "[arp] failed to sent ARP reply\n");
         }
+      } else {
+        gtty->Printf("s", "*");
       }
     }, nullptr);
   eth->SetReceiveCallback(2, func);
@@ -257,21 +259,21 @@ extern "C" int main() {
   gtty->Printf("s", "\n\n[kernel] info: initialization completed\n");
 
   // print keyboard_input
-  PollingFunc _keyboard_polling;
-  keyboard->Setup(0); //should we define kDefaultLapicid = 0 ?
-
-  shell->Setup();
-  shell->Register("test", shell_test);
-
-  _keyboard_polling.Init([](void *) {
-    while(keyboard->Count() > 0) {
-      char ch[2] = {'\0','\0'};
-      ch[0] = keyboard->GetCh();
-      gtty->Printf("s", ch);
-      shell->ReadCh(ch[0]);
-    }
-  }, nullptr);
-  _keyboard_polling.Register();
+//  PollingFunc _keyboard_polling;
+//  keyboard->Setup(0); //should we define kDefaultLapicid = 0 ?
+//
+//  shell->Setup();
+//  shell->Register("test", shell_test);
+//
+//  _keyboard_polling.Init([](void *) {
+//    while(keyboard->Count() > 0) {
+//      char ch[2] = {'\0','\0'};
+//      ch[0] = keyboard->GetCh();
+//      gtty->Printf("s", ch);
+//      shell->ReadCh(ch[0]);
+//    }
+//  }, nullptr);
+//  _keyboard_polling.Register();
   
   task_ctrl->Run();
 
@@ -317,6 +319,10 @@ extern "C" int main_of_others() {
     cnt = 0;
     new(&tt2) Callout;
     time = 10;
+    static ArpSocket socket;
+    if(socket.Open() < 0) {
+      gtty->Printf("s", "[error] failed to open socket\n");
+    }
     tt2.Init([](void *){
         if (!apic_ctrl->IsBootupAll()) {
           tt2.SetHandler(1000);
@@ -333,17 +339,12 @@ extern "C" int main_of_others() {
           return;
         }
 
-        ArpSocket socket;
-        if(socket.Open() < 0) {
-          gtty->Printf("s", "[error] failed to open socket\n");
+        socket.SetIpAddr(inet_atoi(ip1));
+        cnt = timer->ReadMainCnt();
+        if(socket.TransmitPacket(ArpSocket::kOpArpRequest, inet_atoi(ip2), nullptr) < 0) {
+          gtty->Printf("s", "[arp] failed to transmit request\n");
         } else {
-          socket.SetIpAddr(inet_atoi(ip1));
-          cnt = timer->ReadMainCnt();
-          if(socket.TransmitPacket(ArpSocket::kOpArpRequest, inet_atoi(ip2), nullptr) < 0) {
-            gtty->Printf("s", "[arp] failed to transmit request\n");
-          } else {
-            gtty->Printf("s", "[arp] request sent\n");
-          }
+          gtty->Printf("s", "[arp] request sent\n");
         }
 
         time--;
