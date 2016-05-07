@@ -113,10 +113,10 @@ int32_t TcpGenerateHeader(uint8_t *buffer, uint32_t length, uint32_t saddr, uint
       option_field_used = true;
 
       TcpOptionMss * volatile s = reinterpret_cast<TcpOptionMss*>(buffer + option_offset);
-      s->number = kOptionMSS;
-      s->length = kOptionLength[kOptionMSS];
+      s->number = kOptionMaxSegmentSize;
+      s->length = kOptionLength[kOptionMaxSegmentSize];
       s->mss = options->mss;
-      option_offset += kOptionLength[kOptionMSS];
+      option_offset += kOptionLength[kOptionMaxSegmentSize];
     }
 
     if((type & Socket::kFlagSYN) && options->ws != TcpOptionParameters::kIgnore) {
