@@ -76,7 +76,7 @@ private:
   // duplicated queue
   static const uint32_t kMaxSocketNumber = 8;
   uint32_t _current_socket_number = 0;
-  SocketInfo socket_table[kMaxSocketNumber];
+  SocketInfo _socket_table[kMaxSocketNumber];
 
   // reference to the network device holding this protocol stack
   DevEthernet *_device;

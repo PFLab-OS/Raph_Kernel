@@ -28,7 +28,7 @@
 void ProtocolStack::Setup() {
   // init socket table
   for(uint32_t i = 0; i < kMaxSocketNumber; i++) {
-    socket_table[i].in_use = false;
+    _socket_table[i].in_use = false;
   }
 
   RegisterPolling();
@@ -37,11 +37,11 @@ void ProtocolStack::Setup() {
 bool ProtocolStack::RegisterSocket(NetSocket *socket, uint16_t l3_ptcl) {
   if(_current_socket_number < kMaxSocketNumber) {
     for(uint32_t id = 0; id < kMaxSocketNumber; id++) {
-      if(!socket_table[id].in_use) {
+      if(!_socket_table[id].in_use) {
         // set id to socket
         socket->SetProtocolStackId(id);
-        socket_table[id].in_use = true;
-        socket_table[id].l3_ptcl = l3_ptcl;
+        _socket_table[id].in_use = true;
+        _socket_table[id].l3_ptcl = l3_ptcl;
         break;
       }
     }
@@ -55,19 +55,19 @@ bool ProtocolStack::RegisterSocket(NetSocket *socket, uint16_t l3_ptcl) {
 
 bool ProtocolStack::RemoveSocket(NetSocket *socket) {
   uint32_t id = socket->GetProtocolStackId();
-  socket_table[id].in_use = false;
+  _socket_table[id].in_use = false;
   _current_socket_number--;
   socket->SetProtocolStackId(-1);
   return true;
 }
 
 bool ProtocolStack::ReceivePacket(uint32_t socket_id, NetDev::Packet *&packet) {
-  if(!socket_table[socket_id].in_use) {
+  if(!_socket_table[socket_id].in_use) {
     // invalid socket id
     return false;
   }
 
-  return socket_table[socket_id].dup_queue.Pop(packet);
+  return _socket_table[socket_id].dup_queue.Pop(packet);
 }
 
 void ProtocolStack::FreeRxBuffer(NetDev::Packet *packet) {
@@ -98,12 +98,12 @@ void ProtocolStack::Handle() {
 
     if(FilterPacket(new_packet)) {
       for(uint32_t i = 0; i < kMaxSocketNumber; i++) {
-        if(socket_table[i].in_use && socket_table[i].l3_ptcl == GetL3PtclType(new_packet->buf)) {
+        if(_socket_table[i].in_use && _socket_table[i].l3_ptcl == GetL3PtclType(new_packet->buf)) {
           // distribute the received packet to duplicated queues
           NetDev::Packet *dup_packet = reinterpret_cast<NetDev::Packet*>(virtmem_ctrl->Alloc(sizeof(NetDev::Packet)));
           dup_packet->len = new_packet->len;
           memcpy(dup_packet->buf, new_packet->buf, new_packet->len);
-          socket_table[i].dup_queue.Push(dup_packet);
+          _socket_table[i].dup_queue.Push(dup_packet);
         }
       }
     }
