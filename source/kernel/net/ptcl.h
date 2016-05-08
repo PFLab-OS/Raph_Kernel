@@ -23,9 +23,7 @@
 #ifndef __RAPH_KERNEL_NET_PTCL_H__
 #define __RAPH_KERNEL_NET_PTCL_H__
 
-#include <buf.h>
-#include <polling.h>
-#include <spinlock.h>
+#include <functional.h>
 #include <dev/netdev.h>
 #include <net/socket.h>
 
@@ -37,7 +35,7 @@ const uint16_t kProtocolArp  = 0x0806;
 const uint8_t kProtocolTcp         = 0x06;
 const uint8_t kProtocolUdp         = 0x11;
 
-class ProtocolStack : public Polling {
+class ProtocolStack final {
 public:
   ProtocolStack() {}
 
@@ -56,15 +54,20 @@ public:
   // fetched by ProtocolStack::ReceivePacket
   void FreeRxBuffer(NetDev::Packet *packet);
 
-  // pop packet from main queue, then duplicate it into duplicated queue
-  void Handle() override;
-
   void SetDevice(DevEthernet *dev);
 
 private:
+  // fetch packet from network device buffer
+  friend void DeviceBufferHandler(void *self);
+
+  // duplicate packets in main queue then insert into dup queues
+  friend void MainQueueHandler(void *self);
+
+  friend NetSocket;
+
   // packet queue (inserted from network device)
   static const uint32_t kQueueDepth = 300;
-  typedef RingBuffer <NetDev::Packet*, kQueueDepth> PacketQueue;
+  typedef FunctionalRingBuffer <NetDev::Packet*, kQueueDepth> PacketQueue;
   PacketQueue _main_queue;
 
   struct SocketInfo {
@@ -81,8 +84,6 @@ private:
   // reference to the network device holding this protocol stack
   DevEthernet *_device;
   uint8_t _eth_addr[6];
-
-  SpinLock _lock;
 
   void InitPacketQueue();
 

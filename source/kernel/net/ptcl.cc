@@ -25,13 +25,55 @@
 #include <net/eth.h>
 #include <net/ptcl.h>
 
+void DeviceBufferHandler(void *self) {
+  ProtocolStack *ptcl_stack = reinterpret_cast<ProtocolStack*>(self);
+
+  NetDev::Packet *packet = nullptr;
+
+  if(ptcl_stack->_device->ReceivePacket(packet)) {
+    NetDev::Packet *dup_packet = reinterpret_cast<NetDev::Packet*>(virtmem_ctrl->Alloc(sizeof(NetDev::Packet)));
+    dup_packet->len = packet->len;
+    memcpy(dup_packet->buf, packet->buf, packet->len);
+
+    // insert into main queue at first
+    ptcl_stack->_main_queue.Push(dup_packet);
+
+    // free network device buffer as soon as possible
+    ptcl_stack->_device->ReuseRxBuffer(packet);
+  }
+}
+
+void MainQueueHandler(void *self) {
+  ProtocolStack *ptcl_stack = reinterpret_cast<ProtocolStack*>(self);
+
+  NetDev::Packet *new_packet;
+  kassert(ptcl_stack->_main_queue.Pop(new_packet));
+
+  if(ptcl_stack->FilterPacket(new_packet)) {
+    for(uint32_t i = 0; i < ptcl_stack->kMaxSocketNumber; i++) {
+      if(ptcl_stack->_socket_table[i].in_use && ptcl_stack->_socket_table[i].l3_ptcl == GetL3PtclType(new_packet->buf)) {
+        // distribute the received packet to duplicated queues
+        NetDev::Packet *dup_packet = reinterpret_cast<NetDev::Packet*>(virtmem_ctrl->Alloc(sizeof(NetDev::Packet)));
+        dup_packet->len = new_packet->len;
+        memcpy(dup_packet->buf, new_packet->buf, new_packet->len);
+        ptcl_stack->_socket_table[i].dup_queue.Push(dup_packet);
+      }
+    }
+  }
+
+  virtmem_ctrl->Free(reinterpret_cast<virt_addr>(new_packet));
+}
+
 void ProtocolStack::Setup() {
   // init socket table
   for(uint32_t i = 0; i < kMaxSocketNumber; i++) {
     _socket_table[i].in_use = false;
   }
 
-  RegisterPolling();
+  // set callback functions
+  Function main_queue_callback;
+  main_queue_callback.Init(MainQueueHandler, this);
+  _main_queue.SetFunction(2, main_queue_callback);
 }
 
 bool ProtocolStack::RegisterSocket(NetSocket *socket, uint16_t l3_ptcl) {
@@ -74,47 +116,14 @@ void ProtocolStack::FreeRxBuffer(NetDev::Packet *packet) {
   virtmem_ctrl->Free(reinterpret_cast<virt_addr>(packet));
 }
 
-void ProtocolStack::Handle() {
-  Locker locker(_lock);
-
-  NetDev::Packet *packet = nullptr;
-
-  if(_device->ReceivePacket(packet)) {
-    NetDev::Packet *dup_packet = reinterpret_cast<NetDev::Packet*>(virtmem_ctrl->Alloc(sizeof(NetDev::Packet)));
-    dup_packet->len = packet->len;
-    memcpy(dup_packet->buf, packet->buf, packet->len);
-
-    // insert into main queue at first
-    _main_queue.Push(dup_packet);
-
-    // free network device buffer as soon as possible
-    _device->ReuseRxBuffer(packet);
-  }
-
-  if(!_main_queue.IsEmpty()) {
-    // new packets arrived from network device
-    NetDev::Packet *new_packet;
-    kassert(_main_queue.Pop(new_packet));
-
-    if(FilterPacket(new_packet)) {
-      for(uint32_t i = 0; i < kMaxSocketNumber; i++) {
-        if(_socket_table[i].in_use && _socket_table[i].l3_ptcl == GetL3PtclType(new_packet->buf)) {
-          // distribute the received packet to duplicated queues
-          NetDev::Packet *dup_packet = reinterpret_cast<NetDev::Packet*>(virtmem_ctrl->Alloc(sizeof(NetDev::Packet)));
-          dup_packet->len = new_packet->len;
-          memcpy(dup_packet->buf, new_packet->buf, new_packet->len);
-          _socket_table[i].dup_queue.Push(dup_packet);
-        }
-      }
-    }
-
-    virtmem_ctrl->Free(reinterpret_cast<virt_addr>(new_packet));
-  }
-}
-
 void ProtocolStack::SetDevice(DevEthernet *dev) {
   _device = dev;
   _device->GetEthAddr(_eth_addr);
+
+  // set callback function
+  Function network_device_callback;
+  network_device_callback.Init(DeviceBufferHandler, this);
+  _device->SetReceiveCallback(2, network_device_callback);
 }
 
 void ProtocolStack::InitPacketQueue() {

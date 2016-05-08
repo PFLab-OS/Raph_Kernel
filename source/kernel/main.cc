@@ -185,19 +185,19 @@ extern "C" int main() {
 
   gtty->Init();
 
-  static ArpSocket socket;
-  if(socket.Open() < 0) {
+  ArpSocket arpsocket;
+  if(arpsocket.Open() < 0) {
     gtty->Printf("s", "[error] failed to open socket\n");
   }
-  socket.SetIpAddr(inet_atoi(ip1));
+  arpsocket.SetIpAddr(inet_atoi(ip1));
 
-  kassert(eth != nullptr);
   Function func;
-  func.Init([](void *){
+  func.Init([](void *ptr_socket){
+      ArpSocket *socket = reinterpret_cast<ArpSocket*>(ptr_socket);
       uint32_t ipaddr;
       uint8_t macaddr[6];
 
-      int32_t rval = socket.ReceivePacket(0, &ipaddr, macaddr);
+      int32_t rval = socket->ReceivePacket(0, &ipaddr, macaddr);
 
       if(rval == ArpSocket::kOpArpReply) {
         uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;
@@ -229,16 +229,14 @@ extern "C" int main() {
             "d", (ipaddr >> 8) & 0xff, "s", ".",
             "d", (ipaddr >> 0) & 0xff, "s", "\n");
 
-        if(socket.TransmitPacket(ArpSocket::kOpArpReply, ipaddr, macaddr) >= 0) {
+        if(socket->TransmitPacket(ArpSocket::kOpArpReply, ipaddr, macaddr) >= 0) {
           gtty->Printf("s", "[arp] reply sent\n");
         } else {
           gtty->Printf("s", "[arp] failed to sent ARP reply\n");
         }
-      } else {
-        gtty->Printf("s", "*");
       }
-    }, nullptr);
-  eth->SetReceiveCallback(2, func);
+    }, &arpsocket);
+  arpsocket.SetReceiveCallback(2, func);
 
   extern int kKernelEndAddr;
   // stackは16K
