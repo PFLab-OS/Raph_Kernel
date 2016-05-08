@@ -30,7 +30,7 @@ void DeviceBufferHandler(void *self) {
 
   NetDev::Packet *packet = nullptr;
 
-  if(ptcl_stack->_device->ReceivePacket(packet)) {
+  while(ptcl_stack->_device->ReceivePacket(packet)) {
     NetDev::Packet *dup_packet = reinterpret_cast<NetDev::Packet*>(virtmem_ctrl->Alloc(sizeof(NetDev::Packet)));
     dup_packet->len = packet->len;
     memcpy(dup_packet->buf, packet->buf, packet->len);

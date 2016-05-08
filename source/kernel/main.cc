@@ -213,8 +213,8 @@ extern "C" int main() {
           "d", (ipaddr >> 24) & 0xff, "s", ".",
           "d", (ipaddr >> 16) & 0xff, "s", ".",
           "d", (ipaddr >> 8) & 0xff, "s", ".",
-          "d", (ipaddr >> 0) & 0xff, "s", " (");
-        gtty->Printf("s", "latency:", "d", l, "s", "us)\n");
+          "d", (ipaddr >> 0) & 0xff, "s", " (",
+          "s", "latency:", "d", l, "s", "us)\n");
       } else if(rval == ArpSocket::kOpArpRequest) {
         gtty->Printf(
             "s", "[arp] request received; ",
