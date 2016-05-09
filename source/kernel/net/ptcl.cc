@@ -21,9 +21,14 @@
  */
 
 #include <string.h>
+#include <timer.h>
+#include <global.h>
 #include <mem/virtmem.h>
 #include <net/eth.h>
 #include <net/ptcl.h>
+
+extern uint64_t c[10];
+bool a[10] = {false};
 
 void DeviceBufferHandler(void *self) {
   ProtocolStack *ptcl_stack = reinterpret_cast<ProtocolStack*>(self);
@@ -31,7 +36,9 @@ void DeviceBufferHandler(void *self) {
   NetDev::Packet *packet = nullptr;
 
   while(ptcl_stack->_device->ReceivePacket(packet)) {
-    NetDev::Packet *dup_packet = reinterpret_cast<NetDev::Packet*>(virtmem_ctrl->Alloc(sizeof(NetDev::Packet)));
+    NetDev::Packet *dup_packet;
+    kassert(ptcl_stack->GetMainQueuePacket(dup_packet));
+
     dup_packet->len = packet->len;
     memcpy(dup_packet->buf, packet->buf, packet->len);
 
@@ -61,10 +68,13 @@ void MainQueueHandler(void *self) {
     }
   }
 
+  ptcl_stack->ReuseMainQueuePacket(new_packet);
   virtmem_ctrl->Free(reinterpret_cast<virt_addr>(new_packet));
 }
 
 void ProtocolStack::Setup() {
+  InitPacketQueue();
+
   // init socket table
   for(uint32_t i = 0; i < kMaxSocketNumber; i++) {
     _socket_table[i].in_use = false;
@@ -127,7 +137,10 @@ void ProtocolStack::SetDevice(DevEthernet *dev) {
 }
 
 void ProtocolStack::InitPacketQueue() {
-  
+  while(!_reserved_main_queue.IsFull()) {
+    NetDev::Packet *packet = reinterpret_cast<NetDev::Packet *>(virtmem_ctrl->Alloc(sizeof(NetDev::Packet)));
+    kassert(_reserved_main_queue.Push(packet));
+  }
 }
 
 bool ProtocolStack::FilterPacket(NetDev::Packet *packet) {
@@ -137,4 +150,12 @@ bool ProtocolStack::FilterPacket(NetDev::Packet *packet) {
   }
 
   return true;
+}
+
+bool ProtocolStack::GetMainQueuePacket(NetDev::Packet *&packet) {
+  return _reserved_main_queue.Pop(packet);
+}
+
+void ProtocolStack::ReuseMainQueuePacket(NetDev::Packet *packet) {
+  kassert(_reserved_main_queue.Push(packet));
 }

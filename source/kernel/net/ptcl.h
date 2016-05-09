@@ -67,11 +67,13 @@ private:
 
   // packet queue (inserted from network device)
   static const uint32_t kQueueDepth = 300;
-  typedef FunctionalRingBuffer <NetDev::Packet*, kQueueDepth> PacketQueue;
-  PacketQueue _main_queue;
+  typedef RingBuffer <NetDev::Packet*, kQueueDepth> PacketQueue;
+  typedef FunctionalRingBuffer <NetDev::Packet*, kQueueDepth> PacketFunctionalQueue;
+  PacketFunctionalQueue _main_queue;
+  PacketQueue _reserved_main_queue;
 
   struct SocketInfo {
-    PacketQueue dup_queue;
+    PacketFunctionalQueue dup_queue;
     bool in_use;
     uint16_t l3_ptcl;
   };
@@ -86,6 +88,9 @@ private:
   uint8_t _eth_addr[6];
 
   void InitPacketQueue();
+
+  bool GetMainQueuePacket(NetDev::Packet *&packet);
+  void ReuseMainQueuePacket(NetDev::Packet *packet);
 
   bool FilterPacket(NetDev::Packet *packet);
 };
