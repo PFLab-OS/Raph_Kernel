@@ -55,12 +55,14 @@ void MainQueueHandler(void *self) {
     for(uint32_t i = 0; i < ptcl_stack->kMaxSocketNumber; i++) {
       if(ptcl_stack->_socket_table[i].in_use && ptcl_stack->_socket_table[i].l3_ptcl == GetL3PtclType(new_packet->buf)) {
         // distribute the received packet to duplicated queues
-        NetDev::Packet *dup_packet;
-        kassert(ptcl_stack->_socket_table[i].reserved_queue.Pop(dup_packet));
+        if(!ptcl_stack->_socket_table[i].dup_queue.IsFull()) {
+          NetDev::Packet *dup_packet;
+          kassert(ptcl_stack->_socket_table[i].reserved_queue.Pop(dup_packet));
 
-        dup_packet->len = new_packet->len;
-        memcpy(dup_packet->buf, new_packet->buf, new_packet->len);
-        ptcl_stack->_socket_table[i].dup_queue.Push(dup_packet);
+          dup_packet->len = new_packet->len;
+          memcpy(dup_packet->buf, new_packet->buf, new_packet->len);
+          ptcl_stack->_socket_table[i].dup_queue.Push(dup_packet);
+        }
       }
     }
   }
