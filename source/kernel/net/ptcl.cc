@@ -21,14 +21,9 @@
  */
 
 #include <string.h>
-#include <timer.h>
-#include <global.h>
 #include <mem/virtmem.h>
 #include <net/eth.h>
 #include <net/ptcl.h>
-
-extern uint64_t c[10];
-bool a[10] = {false};
 
 void DeviceBufferHandler(void *self) {
   ProtocolStack *ptcl_stack = reinterpret_cast<ProtocolStack*>(self);
@@ -60,7 +55,9 @@ void MainQueueHandler(void *self) {
     for(uint32_t i = 0; i < ptcl_stack->kMaxSocketNumber; i++) {
       if(ptcl_stack->_socket_table[i].in_use && ptcl_stack->_socket_table[i].l3_ptcl == GetL3PtclType(new_packet->buf)) {
         // distribute the received packet to duplicated queues
-        NetDev::Packet *dup_packet = reinterpret_cast<NetDev::Packet*>(virtmem_ctrl->Alloc(sizeof(NetDev::Packet)));
+        NetDev::Packet *dup_packet;
+        kassert(ptcl_stack->_socket_table[i].reserved_queue.Pop(dup_packet));
+
         dup_packet->len = new_packet->len;
         memcpy(dup_packet->buf, new_packet->buf, new_packet->len);
         ptcl_stack->_socket_table[i].dup_queue.Push(dup_packet);
@@ -69,7 +66,6 @@ void MainQueueHandler(void *self) {
   }
 
   ptcl_stack->ReuseMainQueuePacket(new_packet);
-  virtmem_ctrl->Free(reinterpret_cast<virt_addr>(new_packet));
 }
 
 void ProtocolStack::Setup() {
@@ -88,21 +84,34 @@ void ProtocolStack::Setup() {
 
 bool ProtocolStack::RegisterSocket(NetSocket *socket, uint16_t l3_ptcl) {
   if(_current_socket_number < kMaxSocketNumber) {
+    int32_t socket_id = -1;
+
     for(uint32_t id = 0; id < kMaxSocketNumber; id++) {
       if(!_socket_table[id].in_use) {
         // set id to socket
         socket->SetProtocolStackId(id);
         _socket_table[id].in_use = true;
         _socket_table[id].l3_ptcl = l3_ptcl;
+        socket_id = id;
         break;
       }
     }
+
+    // initialize reserved buffer for duplicated queue
+    kassert(socket_id != -1);
+    while(!_socket_table[socket_id].reserved_queue.IsFull()) {
+      NetDev::Packet *packet = reinterpret_cast<NetDev::Packet *>(virtmem_ctrl->Alloc(sizeof(NetDev::Packet)));
+      kassert(_socket_table[socket_id].reserved_queue.Push(packet));
+    }
+
     _current_socket_number++;
     return true;
   } else {
     // no enough buffer for the new socket
     return false;
   }
+
+  return false;
 }
 
 bool ProtocolStack::RemoveSocket(NetSocket *socket) {
@@ -122,8 +131,8 @@ bool ProtocolStack::ReceivePacket(uint32_t socket_id, NetDev::Packet *&packet) {
   return _socket_table[socket_id].dup_queue.Pop(packet);
 }
 
-void ProtocolStack::FreeRxBuffer(NetDev::Packet *packet) {
-  virtmem_ctrl->Free(reinterpret_cast<virt_addr>(packet));
+void ProtocolStack::FreeRxBuffer(uint32_t socket_id, NetDev::Packet *packet) {
+  kassert(_socket_table[socket_id].reserved_queue.Push(packet));
 }
 
 void ProtocolStack::SetDevice(DevEthernet *dev) {

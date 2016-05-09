@@ -201,14 +201,14 @@ int32_t Socket::Receive(uint8_t *data, uint32_t length, bool is_raw_packet, bool
   // filter IP address
   uint32_t offset_l3 = sizeof(EthHeader);
   if(!IpFilterPacket(packet->buf + offset_l3, kProtocolTcp, _daddr, _ipaddr)) {
-    _device_info->ptcl_stack->FreeRxBuffer(packet);
+    _device_info->ptcl_stack->FreeRxBuffer(GetProtocolStackId(), packet);
     return kErrorInvalidPacketOnWire;
   }
 
   // filter TCP port
   uint32_t offset_l4 = sizeof(EthHeader) + sizeof(Ipv4Header);
   if(!TcpFilterPacket(packet->buf + offset_l4, _sport, _dport, _type, _seq, _ack, nullptr)) {
-    _device_info->ptcl_stack->FreeRxBuffer(packet);
+    _device_info->ptcl_stack->FreeRxBuffer(GetProtocolStackId(), packet);
     return kErrorInvalidPacketOnWire;
   }
 
@@ -228,7 +228,7 @@ int32_t Socket::Receive(uint8_t *data, uint32_t length, bool is_raw_packet, bool
   _dport = GetSourcePort(packet->buf + offset_l4);
 
   // finalization
-  _device_info->ptcl_stack->FreeRxBuffer(packet);
+  _device_info->ptcl_stack->FreeRxBuffer(GetProtocolStackId(), packet);
 
   return (received_length < 0 || is_raw_packet) ? received_length : received_length - (sizeof(EthHeader) + sizeof(Ipv4Header) + sizeof(TcpHeader));
 }
@@ -613,14 +613,14 @@ int32_t UdpSocket::ReceivePacket(uint8_t *data, uint32_t length) {
   // filter IP address
   uint32_t offset_l3 = sizeof(EthHeader);
   if(!IpFilterPacket(packet->buf + offset_l3, kProtocolUdp, _daddr, _ipaddr)) {
-    _device_info->ptcl_stack->FreeRxBuffer(packet);
+    _device_info->ptcl_stack->FreeRxBuffer(GetProtocolStackId(), packet);
     return kErrorInvalidPacketOnWire;
   }
 
   // filter TCP port
   uint32_t offset_l4 = sizeof(EthHeader) + sizeof(Ipv4Header);
   if(!UdpFilterPacket(packet->buf + offset_l4, _sport, _dport)) {
-    _device_info->ptcl_stack->FreeRxBuffer(packet);
+    _device_info->ptcl_stack->FreeRxBuffer(GetProtocolStackId(), packet);
     return kErrorInvalidPacketOnWire;
   }
 
@@ -636,7 +636,7 @@ int32_t UdpSocket::ReceivePacket(uint8_t *data, uint32_t length) {
   _dport = GetSourcePort(packet->buf + offset_l4);
 
   // finalization
-  _device_info->ptcl_stack->FreeRxBuffer(packet);
+  _device_info->ptcl_stack->FreeRxBuffer(GetProtocolStackId(), packet);
 
   return (received_length < 0) ? received_length : received_length - (sizeof(EthHeader) + sizeof(Ipv4Header) + sizeof(UdpHeader));
 }
@@ -703,7 +703,7 @@ int32_t ArpSocket::ReceivePacket(uint16_t type, uint32_t *spa, uint8_t *sha) {
 
   // filter IP address
   if(!ArpFilterPacket(packet->buf + sizeof(EthHeader), type, nullptr, 0, eth_daddr, _ipaddr)) {
-    _device_info->ptcl_stack->FreeRxBuffer(packet);
+    _device_info->ptcl_stack->FreeRxBuffer(GetProtocolStackId(), packet);
     return kErrorInvalidPacketOnWire;
   }
 
@@ -721,12 +721,12 @@ int32_t ArpSocket::ReceivePacket(uint16_t type, uint32_t *spa, uint8_t *sha) {
       if(sha) GetSourceMacAddress(sha, packet->buf + offset_arp);
       break;
     default:
-      _device_info->ptcl_stack->FreeRxBuffer(packet);
+      _device_info->ptcl_stack->FreeRxBuffer(GetProtocolStackId(), packet);
       return kErrorInvalidPacketParameter;
   }
 
   // finalization
-  _device_info->ptcl_stack->FreeRxBuffer(packet);
+  _device_info->ptcl_stack->FreeRxBuffer(GetProtocolStackId(), packet);
 
   return op;
 }

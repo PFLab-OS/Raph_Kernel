@@ -52,7 +52,7 @@ public:
 
   // !!N.B.!! YOU MUST use FreeRxBuffer to free packet
   // fetched by ProtocolStack::ReceivePacket
-  void FreeRxBuffer(NetDev::Packet *packet);
+  void FreeRxBuffer(uint32_t socket_id, NetDev::Packet *packet);
 
   void SetDevice(DevEthernet *dev);
 
@@ -66,7 +66,7 @@ private:
   friend NetSocket;
 
   // packet queue (inserted from network device)
-  static const uint32_t kQueueDepth = 300;
+  static const uint32_t kQueueDepth = 100;
   typedef RingBuffer <NetDev::Packet*, kQueueDepth> PacketQueue;
   typedef FunctionalRingBuffer <NetDev::Packet*, kQueueDepth> PacketFunctionalQueue;
   PacketFunctionalQueue _main_queue;
@@ -74,6 +74,7 @@ private:
 
   struct SocketInfo {
     PacketFunctionalQueue dup_queue;
+    PacketQueue reserved_queue;
     bool in_use;
     uint16_t l3_ptcl;
   };
