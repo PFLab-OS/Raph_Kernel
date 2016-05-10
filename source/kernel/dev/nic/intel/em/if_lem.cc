@@ -699,9 +699,10 @@ lem_attach(device_t dev)
 	/*
 	**  Do interrupt configuration
 	*/
-	error = lem_allocate_irq(adapter);
-	if (error)
-		goto err_rx_struct;
+  //TODO uncomment
+	// error = lem_allocate_irq(adapter);
+	// if (error)
+	// 	goto err_rx_struct;
 
 	/*
 	 * Get Wake-on-Lan and Management info for later use
