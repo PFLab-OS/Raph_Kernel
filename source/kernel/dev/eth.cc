@@ -25,20 +25,18 @@
 #include <net/arp.h>
 #include <net/socket.h>
 
-void DevEthernetFilterRxPacket(void *self) {
-  DevEthernet *device = reinterpret_cast<DevEthernet*>(self);
-
+void DevEthernet::FilterRxPacket() {
   NetDev::Packet *packet;
-  kassert(device->_rx_buffered.Pop(packet));
+  kassert(_rx_buffered.Pop(packet));
 
   // filter by my MAC addresss
   uint8_t eth_addr[6];
-  device->GetEthAddr(eth_addr);
+  GetEthAddr(eth_addr);
 
   if (EthFilterPacket(packet->buf, nullptr, eth_addr, 0)) {
-    device->_rx_filtered.Push(packet);
+    _rx_filtered.Push(packet);
   } else {
-    device->ReuseRxBuffer(packet);
+    ReuseRxBuffer(packet);
   }
 }
 

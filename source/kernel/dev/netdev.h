@@ -32,7 +32,6 @@
 
 class ProtocolStack;
 class DevEthernet;
-void NetDevFilterRxPacket(void *self);
 
 class NetDev {
 public:
@@ -156,7 +155,9 @@ public:
   void SetProtocolStack(ProtocolStack *stack) { _ptcl_stack = stack; }
 protected:
   NetDev() {
-    SetPacketFilter(NetDevFilterRxPacket);
+    Function packet_filter;
+    packet_filter.Init(FilteringWrapper, this);
+    _rx_buffered.SetFunction(2, packet_filter);
   }
   virtual void ChangeHandleMethodToPolling() = 0;
   virtual void ChangeHandleMethodToInt() = 0;
@@ -165,15 +166,16 @@ protected:
   volatile LinkStatus _status = LinkStatus::kDown;
   HandleMethod _method = HandleMethod::kInt;
 
-  // set packet filter function
-  void SetPacketFilter(void (*fn)(void *)) {
-    Function func;
-    func.Init(fn, this);
-    _rx_buffered.SetFunction(2, func);
+  // filter received packet
+  virtual void FilterRxPacket() = 0;
+
+  static void FilteringWrapper(void *self) {
+    NetDev *device = reinterpret_cast<NetDev*>(self);
+    device->FilterRxPacket();
   }
 
   // preprocess on packet before transmit
-  virtual void PrepareTxPacket(NetDev::Packet *packet) {}
+  virtual void PrepareTxPacket(NetDev::Packet *packet) = 0;
 
   // IP address
   uint32_t _ipAddr = 0;
