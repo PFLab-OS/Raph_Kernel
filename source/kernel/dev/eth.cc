@@ -19,7 +19,6 @@
  * Author: Levelfour
  * 
  */
-
 #include <dev/eth.h>
 #include <net/ptcl.h>
 #include <net/eth.h>
@@ -55,11 +54,12 @@ void DevEthernet::PrepareTxPacket(NetDev::Packet *packet) {
   if (ptcl == kProtocolIpv4) {
     EthGenerateHeader(packet->buf, eth_saddr, eth_daddr, kProtocolIpv4);
   } else if (ptcl == kProtocolArp) {
-    uint16_t op = GetArpOperation(packet->buf);
+    uint16_t op = GetArpOperation(packet->buf + sizeof(EthHeader));
 
     if (op == ArpSocket::kOpArpRequest) {
+      memset(eth_daddr, 0xff, 6);
       ArpGeneratePacket(packet->buf + sizeof(EthHeader), 0, eth_saddr, 0, nullptr, 0);     
-      EthGenerateHeader(packet->buf, eth_saddr, nullptr, kProtocolArp);
+      EthGenerateHeader(packet->buf, eth_saddr, eth_daddr, kProtocolArp);
     } else if (op == ArpSocket::kOpArpReply) {
       ArpGeneratePacket(packet->buf + sizeof(EthHeader), 0, eth_saddr, 0, eth_daddr, 0);     
       EthGenerateHeader(packet->buf, eth_saddr, eth_daddr, kProtocolArp);
