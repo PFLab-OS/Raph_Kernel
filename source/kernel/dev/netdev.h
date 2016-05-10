@@ -156,9 +156,7 @@ public:
   void SetProtocolStack(ProtocolStack *stack) { _ptcl_stack = stack; }
 protected:
   NetDev() {
-    Function func;
-    func.Init(NetDevFilterRxPacket, this);
-    _rx_buffered.SetFunction(2, func);
+    SetPacketFilter(NetDevFilterRxPacket);
   }
   virtual void ChangeHandleMethodToPolling() = 0;
   virtual void ChangeHandleMethodToInt() = 0;
@@ -167,8 +165,15 @@ protected:
   volatile LinkStatus _status = LinkStatus::kDown;
   HandleMethod _method = HandleMethod::kInt;
 
+  // set packet filter function
+  void SetPacketFilter(void (*fn)(void *)) {
+    Function func;
+    func.Init(fn, this);
+    _rx_buffered.SetFunction(2, func);
+  }
+
   // preprocess on packet before transmit
-  void PrepareTxPacket(NetDev::Packet *packet) {}
+  virtual void PrepareTxPacket(NetDev::Packet *packet) {}
 
   // IP address
   uint32_t _ipAddr = 0;

@@ -21,6 +21,7 @@
  */
 
 #include <dev/eth.h>
+#include <net/ptcl.h>
 #include <net/eth.h>
 #include <net/arp.h>
 #include <net/socket.h>
@@ -33,7 +34,7 @@ void DevEthernetFilterRxPacket(void *self) {
 
   // filter by my MAC addresss
   uint8_t eth_addr[6];
-  GetEthAddr(eth_addr);
+  device->GetEthAddr(eth_addr);
 
   if (EthFilterPacket(packet->buf, nullptr, eth_addr, 0)) {
     device->_rx_filtered.Push(packet);
@@ -65,5 +66,3 @@ void DevEthernet::PrepareTxPacket(NetDev::Packet *packet) {
     }
   }
 }
-
-#endif /* __RAPH_KERNEL_DEV_ETH_H__ */
