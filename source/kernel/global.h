@@ -27,7 +27,6 @@
 
 class SpinLockCtrl;
 class AcpiCtrl;
-class ApicCtrl;
 class MultibootCtrl;
 class PagingCtrl;
 class PhysmemCtrl;
@@ -47,7 +46,15 @@ class NetDevCtrl;
 
 extern SpinLockCtrl *spinlock_ctrl;
 extern AcpiCtrl *acpi_ctrl;
+
+#ifndef __UNIT_TEST__
+class ApicCtrl;
 extern ApicCtrl *apic_ctrl;
+#else
+class PthreadCtrl;
+extern PthreadCtrl *apic_ctrl;
+#endif // __UNIT_TEST__
+
 extern MultibootCtrl *multiboot_ctrl;
 extern PagingCtrl *paging_ctrl;
 extern PhysmemCtrl *physmem_ctrl;
@@ -73,24 +80,7 @@ class DevEthernetCtrl;
 extern DevEthernetCtrl *netdev_ctrl;
 
 // ARP Table
-class ARPTable;
-extern ARPTable *arp_table;
-
-// L2Ctrl
-class EthCtrl;
-extern EthCtrl *eth_ctrl;
-
-class ARPCtrl;
-extern ARPCtrl *arp_ctrl;
-
-// L3Ctrl
-class IPCtrl;
-extern IPCtrl *ip_ctrl;
-
-// L4Ctrl
-class UDPCtrl;
-class TCPCtrl;
-extern UDPCtrl *udp_ctrl;
-extern TCPCtrl *tcp_ctrl;
+class ArpTable;
+extern ArpTable *arp_table;
 
 #endif // __RAPH_KERNEL_GLOBAL_H__

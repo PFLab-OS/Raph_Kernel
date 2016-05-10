@@ -143,12 +143,14 @@ void TaskCtrl::Run() {
 
       _task_struct[cpuid].state = TaskQueueState::kNotRunning;
 
-      if (_task_struct[cpuid].top->next != nullptr) {
+      if (_task_struct[cpuid].top->_next != nullptr) {
         continue;
       }
     }
     apic_ctrl->StartTimer();
+#ifndef __UNIT_TEST__
     asm volatile("hlt");
+#endif // !__UNIT_TEST__
   }
 }
 

@@ -30,6 +30,9 @@
 #include <polling.h>
 #include <freebsd/sys/param.h>
 
+class ProtocolStack;
+class DevEthernet;
+
 class NetDev {
 public:
   struct Packet {
@@ -147,6 +150,7 @@ public:
   HandleMethod GetHandleMethod() {
     return _method;
   }
+  void SetProtocolStack(ProtocolStack *stack) { _ptcl_stack = stack; }
 protected:
   NetDev() {}
   virtual void ChangeHandleMethodToPolling() = 0;
@@ -162,14 +166,22 @@ protected:
   static const uint32_t kNetworkInterfaceNameLen = 8;
   // network interface name
   char _name[kNetworkInterfaceNameLen];
+
+  // reference to protocol stack
+  ProtocolStack *_ptcl_stack;
 };
 
 class NetDevCtrl {
 public:
+  struct NetDevInfo {
+    DevEthernet *device;
+    ProtocolStack *ptcl_stack;
+  };
+
   NetDevCtrl() {}
 
   bool RegisterDevice(NetDev *dev, const char *name = kDefaultNetworkInterfaceName);
-  NetDev *GetDevice(const char *name = kDefaultNetworkInterfaceName);
+  NetDevInfo *GetDeviceInfo(const char *name = kDefaultNetworkInterfaceName);
 
 protected:
   static const uint32_t kMaxDevNumber = 32;
@@ -177,8 +189,8 @@ protected:
 private:
   static const uint32_t kNetworkInterfaceNameLen = 8;
   static const char *kDefaultNetworkInterfaceName;
-  uint32_t _curDevNumber = 0;
-  NetDev *_devTable[kMaxDevNumber] = {nullptr};
+  uint32_t _current_device_number = 0;
+  NetDevInfo _dev_table[kMaxDevNumber];
 };
 
 #endif /* __RAPH_KERNEL_NETDEV_H__ */

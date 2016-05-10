@@ -25,7 +25,7 @@
 
 #include <stdint.h>
 
-struct ARPPacket {
+struct ArpPacket {
   // hardware type
   uint16_t hwtype;
   // protocol type
@@ -46,46 +46,43 @@ struct ARPPacket {
   uint32_t proto_daddr;
 } __attribute__((packed));
 
-class ARPCtrl {
-  static const uint8_t kBcastMACAddr[6];
+int32_t ArpGeneratePacket(uint8_t *buffer, uint16_t op, uint8_t *smacaddr, uint32_t sipaddr, uint8_t *dmacaddr, uint32_t dipaddr);
+bool ArpFilterPacket(uint8_t *packet, uint16_t op, uint8_t *smacaddr, uint32_t sipaddr, uint8_t *dmacaddr, uint32_t dipaddr);
 
+// register the mapping from IP address to MAC address to ARP table
+bool RegisterIpAddress(uint8_t *packet);
+
+// extract sender MAC address from packet
+void GetSourceMacAddress(uint8_t *buffer, uint8_t *packet);
+
+// extract sender MAC address from packet
+uint32_t GetSourceIpAddress(uint8_t *packet);
+
+class ArpTable {
 public:
-  ARPCtrl() {}
-  virtual int32_t GeneratePacket(uint8_t *buffer,
-                                 uint16_t op,
-                                 uint8_t *smacaddr,
-                                 uint32_t sipaddr,
-                                 uint8_t *dmacaddr,
-                                 uint32_t dipaddr);
-  virtual bool FilterPacket(uint8_t *packet,
-                            uint16_t op,
-                            uint8_t *smacaddr,
-                            uint32_t sipaddr,
-                            uint8_t *dmacaddr,
-                            uint32_t dipaddr);
-  bool RegisterAddress(uint8_t *packet);
-  void GetSourceMACAddress(uint8_t *buffer, uint8_t *packet);
-  uint32_t GetSourceIPAddress(uint8_t *packet);
+  ArpTable();
+  bool Add(uint32_t ipaddr, uint8_t *macaddr);
+  bool Find(uint32_t ipaddr, uint8_t *macaddr);
 
-  static const uint16_t kHWEthernet = 0x0001;
-  static const uint16_t kProtocolIPv4 = 0x0800;
-};
-
-class ARPTable {
-  struct ARPTableRecord {
+private:
+  struct ArpTableRecord {
     uint32_t ipaddr;
     uint8_t macaddr[6];
   };
 
-  static const uint32_t kMaxNumberRecords = 256;
-  ARPTableRecord _table[kMaxNumberRecords];
-  uint32_t Hash(uint32_t s);
-  uint32_t Probe(uint32_t s);
+  SpinLock _lock;
 
-public:
-  ARPTable();
-  bool Add(uint32_t ipaddr, uint8_t *macaddr);
-  bool Find(uint32_t ipaddr, uint8_t *macaddr);
+  static const uint32_t kMaxNumberRecords = 256;
+
+  // this table is implemented by open adressing hash table
+  ArpTableRecord _table[kMaxNumberRecords];
+
+  // hash function
+  uint32_t Hash(uint32_t s) { return s & 0xff; }
+
+  // probing function
+  // (search for next possible index in the case of conflict)
+  uint32_t Probe(uint32_t s) { return (s + 1) & 0xff; }
 };
 
 #endif // __RAPH_KERNEL_NET_ARP_H__

@@ -24,16 +24,22 @@
 #define __RAPH_KERNEL_NET_SOCKET_H__
 
 #include <stdint.h>
-#include "../dev/eth.h"
+#include <dev/eth.h>
 
 class NetSocket {
 public:
+  // frequently used port number
+  static const uint16_t kPortTelnet = 23;
+  static const uint16_t kPortHttp = 80;
+
   /*
-   * return code of ReceivePacket
+   * return code of TransmitPacket / ReceivePacket
    */
 
   // connection closed by remote host
   static const int32_t kResultConnectionClosed      = - 0x100;
+  // connection is already established before Listen / Connect
+  static const int32_t kResultAlreadyEstablished    = - 0x101;
   // unknown error
   static const int32_t kErrorUnknown                = - 0x1000;
   // remote host does not reply for retransmission timeout
@@ -44,20 +50,30 @@ public:
   static const int32_t kErrorInvalidPacketOnWire    = - 0x1003;
   // invalid parameter is set in the received packet
   static const int32_t kErrorInvalidPacketParameter = - 0x1004;
+  // cannot fetch packet buffer from transmit queue
+  static const int32_t kErrorInsufficientBuffer     = - 0x1005;
+  // device internal error
+  static const int32_t kErrorDeviceInternal         = - 0x1007;
 
+  // open socket, which internally fetch an available network device
   int32_t Open();
 
+  void SetProtocolStackId(uint32_t id) { _ptcl_stack_id = id; }
+  uint32_t GetProtocolStackId() { return _ptcl_stack_id; }
+
 protected:
-  DevEthernet *_dev = nullptr;
+  // reference to network device info
+  NetDevCtrl::NetDevInfo *_device_info;
+
+  uint16_t _l3_ptcl;
+
+private:
+  uint32_t _ptcl_stack_id;
 };
 
 // TCP/IP Socket
 class Socket : public NetSocket {
 public:
-  // frequently used port number
-  static const uint16_t kPortTelnet = 23;
-  static const uint16_t kPortHTTP = 80;
-
   // TCP flag
   static const uint8_t kFlagFIN = 1 << 0;
   static const uint8_t kFlagSYN = 1 << 1;
@@ -67,10 +83,26 @@ public:
   static const uint8_t kFlagURG = 1 << 5;
 
   // maximum segment size
-  static const uint32_t kMSS = 1460;
+  static const uint32_t kMss = 1460;
 
-  Socket() {}
-  void SetAddr(uint32_t addr) { _daddr = addr; }
+  // TCP states (extended)
+  // (cf) RFC 793 p.26
+  static const int32_t kStateClosed      = 0;
+  static const int32_t kStateListen      = 1;
+  static const int32_t kStateSynSent     = 2;
+  static const int32_t kStateSynReceived = 3;
+  static const int32_t kStateEstablished = 4;
+  static const int32_t kStateFinWait1    = 5;
+  static const int32_t kStateFinWait2    = 6;
+  static const int32_t kStateCloseWait   = 7;
+  static const int32_t kStateClosing     = 8;
+  static const int32_t kStateLastAck     = 9;
+  static const int32_t kStateTimeWait    = 10;
+  static const int32_t kStateAckWait     = 11;  // extended
+
+  Socket();
+
+  void SetIpAddr(uint32_t addr) { _daddr = addr; }
   void SetPort(uint16_t port) { _dport = port; }
   void SetListenAddr(uint32_t addr) { _ipaddr = addr; }
   void SetListenPort(uint16_t port) { _sport = port; }
@@ -97,20 +129,6 @@ public:
   int32_t Close();
 
 protected:
-  // the process of each layer can be altered by overriding L[2/3/4][T/R]x
-  // L[2/3/4]Tx: attach header of each layer while transmission
-  // L[2/3/4]Rx: filter packet by referring header of each layer while reception
-  virtual uint32_t L2HeaderLength();
-  virtual uint32_t L3HeaderLength();
-  virtual uint32_t L4HeaderLength();
-  virtual uint16_t L4Protocol();
-  virtual int32_t L2Tx(uint8_t *buffer, uint8_t *saddr, uint8_t *daddr, uint16_t type);
-  virtual bool L2Rx(uint8_t *packet, uint8_t *saddr, uint8_t *daddr, uint16_t type);
-  virtual int32_t L3Tx(uint8_t *buffer, uint32_t length, uint8_t type, uint32_t saddr, uint32_t daddr);
-  virtual bool L3Rx(uint8_t *packet, uint8_t type, uint32_t saddr, uint32_t daddr);
-  virtual int32_t L4Tx(uint8_t *header, uint32_t length, uint32_t saddr, uint32_t daddr, uint16_t sport, uint16_t dport);
-  virtual bool L4Rx(uint8_t *packet, uint16_t sport, uint16_t dport);
-
   // low-level packet receive function
   //   @param buffer          buffer to store received data
   //   @param length          length of buffer
@@ -125,7 +143,7 @@ protected:
   int32_t Transmit(const uint8_t *data, uint32_t length, bool is_raw_packet);
 
   // respond to FIN+ACK (4-way handshake)
-  int32_t CloseAck(uint8_t flag);
+  int32_t CloseAck();
 
 private:
   // my IP address
@@ -133,9 +151,9 @@ private:
   // destination IP address
   uint32_t _daddr = 0x0a000210;
   // destination port
-  uint16_t _dport = kPortHTTP;
+  uint16_t _dport = kPortHttp;
   // source port
-  uint16_t _sport = kPortHTTP;
+  uint16_t _sport = kPortHttp;
   // TCP session type
   // set before both tx/rx by Socket::SetSessionType()
   uint8_t _type   = kFlagRST;
@@ -145,6 +163,15 @@ private:
   uint32_t _ack   = 0;
   // flag for whether connection is established
   bool _established = false;
+  // TCP state (cf. RFC 793 p.26)
+  int32_t _state = kStateClosed;
+  // temporary packet length buffer
+  int32_t _packet_length = 0;
+
+  // max segment size
+  uint16_t _mss = kMss;
+  // window scale
+  uint8_t _ws = 1;
 
   /*
    * TCP Restransmission Timeout Parameters
@@ -175,24 +202,32 @@ private:
 };
 
 // UDP Socket
-class UDPSocket : public Socket {
-protected:
-  virtual uint32_t L4HeaderLength() override;
-  virtual uint16_t L4Protocol() override;
-  virtual int32_t L4Tx(uint8_t *header, uint32_t length, uint32_t saddr, uint32_t daddr, uint16_t sport, uint16_t dport) override;
-  virtual bool L4Rx(uint8_t *packet, uint16_t sport, uint16_t dport) override;
-  virtual int32_t TransmitPacket(const uint8_t *data, uint32_t length) override;
-  virtual int32_t ReceivePacket(uint8_t *data, uint32_t length) override;
-
+class UdpSocket : public NetSocket {
 public:
-  UDPSocket() {}
+  UdpSocket();
+
+protected:
+  int32_t TransmitPacket(const uint8_t *data, uint32_t length);
+  int32_t ReceivePacket(uint8_t *data, uint32_t length);
+
+private:
+  // my IP address
+  uint32_t _ipaddr = 0x0a000210;
+  // destination IP address
+  uint32_t _daddr = 0x0a000210;
+  // destination port
+  uint16_t _dport = kPortHttp;
+  // source port
+  uint16_t _sport = kPortHttp;
 };
 
 // ARP Socket
-class ARPSocket : public NetSocket {
+class ArpSocket : public NetSocket {
 public:
-  static const int16_t kOpARPRequest = 0x0001;
-  static const int16_t kOpARPReply = 0x0002;
+  static const int16_t kOpArpRequest = 0x0001;
+  static const int16_t kOpArpReply = 0x0002;
+
+  ArpSocket();
 
   // transmit ARP packet
   //   @type: request / reply
@@ -216,11 +251,12 @@ public:
   //   * -1            (otherwise)
   virtual int32_t ReceivePacket(uint16_t type, uint32_t *spa, uint8_t *sha);
 
-  virtual void SetIPAddr(uint32_t ipaddr);
+  virtual void SetIpAddr(uint32_t ipaddr) { _ipaddr = ipaddr; }
 
 private:
   static const uint32_t kOperationOffset = 6;
 
+  // my IP address
   uint32_t _ipaddr = 0x0a000210;
 };
 

@@ -6317,7 +6317,7 @@ bool E1000::InitPci(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, boo
 }
 
 void E1000::SetupNetInterface() {
-  netdev_ctrl->RegisterDevice(this);
+  netdev_ctrl->RegisterDevice(this, "eth0");
 }
 
 void E1000::GetEthAddr(uint8_t *buffer) {
