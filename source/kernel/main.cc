@@ -33,6 +33,7 @@
 #include <idt.h>
 #include <timer.h>
 #include <tty.h>
+#include <shell.h>
 
 #include <dev/hpet.h>
 #include <dev/vga.h>
@@ -58,6 +59,7 @@ Timer *timer;
 
 Tty *gtty;
 Keyboard *keyboard;
+Shell *shell;
 
 PciCtrl *pci_ctrl;
 
@@ -101,6 +103,13 @@ uint8_t ip[] = {
   IP1,
 };
 
+void shell_test(int argc, const char* argv[]) {  //this function is for testing
+  gtty->Printf("s", "shell-test function is called\n");
+  gtty->Printf("d", argc, "s", " arguments.\n");
+  for (int i =0; i < argc; i++) gtty->Printf("s", argv[i], "s", "\n");
+  if (argv[argc] == nullptr) gtty->Printf("s", "the last member is nullptr.\n");
+}
+
 extern "C" int main() {
   SpinLockCtrl _spinlock_ctrl;
   spinlock_ctrl = &_spinlock_ctrl;
@@ -143,6 +152,9 @@ extern "C" int main() {
 
   Keyboard _keyboard;
   keyboard = &_keyboard;
+
+  Shell _shell;
+  shell = &_shell;
   
   tmpmem_ctrl->Init();
 
@@ -288,8 +300,12 @@ extern "C" int main() {
   apic_ctrl->StartAPs();
 
   gtty->Printf("s", "\n\n[kernel] info: initialization completed\n");
+
+  shell->Setup();
+  shell->Register("test", shell_test);
   
   do {
+    // print keyboard_input
     // TODO: Functional FIFOにすべき
     PollingFunc _keyboard_polling;
     Function func;
@@ -299,6 +315,7 @@ extern "C" int main() {
           char ch[2] = {'\0','\0'};
           ch[0] = keyboard->GetCh();
           gtty->Printf("s", ch);
+          shell->ReadCh(ch[0]);
         }
       }, nullptr);
     _keyboard_polling.Init(func);
