@@ -34,6 +34,9 @@
 #include <raph.h>
 #include <mem/physmem.h>
 #include <idt.h>
+#include <apic.h>
+#include <global.h>
+#include <task.h>
 #include <freebsd/sys/types.h>
 #include <freebsd/sys/rman.h>
 #include <freebsd/i386/include/resource.h>
@@ -209,25 +212,78 @@ static inline struct resource *bus_alloc_resource_any(device_t dev, int type, in
 }
 
 // defined by Raphine Project
-struct bus_filter_struct {
+struct filter_container_struct {
   driver_filter_t filter;
   void *arg;
 };
-static inline void bus_filter_sub(void *arg) {
-  bus_filter_struct *s = reinterpret_cast<bus_filter_struct *>(arg);
+static inline void filter_handler_sub(void *arg) {
+  filter_container_struct *s = reinterpret_cast<filter_container_struct *>(arg);
   s->filter(s->arg);
 }
+struct intr_container_struct {
+  driver_intr_t ithread;
+  void *arg;
+  Task task;
+  SpinLock lock;
+  int cnt;
+};
+static inline void bus_ithread_sub1(Regs *reg, void *arg) {
+  // 割り込みハンドラ
+  intr_container_struct *s = reinterpret_cast<intr_container_struct *>(arg);
 
-static inline int bus_setup_intr(device_t dev, struct resource *r, int flags, driver_filter_t filter, driver_intr_t handler, void *arg, void **cookiep) {
-  kassert(handler == nullptr);
-  bus_filter_struct *s = reinterpret_cast<bus_filter_struct *>(virtmem_ctrl->Alloc(sizeof(bus_filter_struct)));
-  s->filter = filter;
-  s->arg = arg;
-  if (dev->GetPciClass()->SetMsi(0, bus_filter_sub, reinterpret_cast<void *>(s)) == -1) {
-    return -1;
+  Locker locker(s->lock);
+  kassert(s->cnt >= 0);
+  s->cnt++;
+  if (s->cnt == 1) {
+    kassert(s->task.GetStatus() == Task::Status::kOutOfQueue);
+    task_ctrl->Register(apic_ctrl->GetCpuId(), &s->task);
   } else {
+    kassert(s->task.GetStatus() != Task::Status::kOutOfQueue);
+  }
+}
+
+static inline void bus_ithread_sub2(void *arg) {
+  // タスクハンドラ
+  intr_container_struct *s = reinterpret_cast<intr_container_struct *>(arg);
+
+  while(true) {
+    {
+      Locker locker(s->lock);
+      if (s->cnt == 0) {
+        task_ctrl->Remove(apic_ctrl->GetCpuId(), &s->task);
+        break;
+      }
+      s->cnt--;
+    }
+    s->ithread(s->arg);
+  }
+}
+
+static inline int bus_setup_intr(device_t dev, struct resource *r, int flags, driver_filter_t filter, driver_intr_t ithread, void *arg, void **cookiep) {
+  if (filter != nullptr) {
+    if (!dev->GetPciClass()->HasMsi()) {
+      return -1;
+    }
+    filter_container_struct *s = virtmem_ctrl->New<filter_container_struct>();
+    s->filter = filter;
+    s->arg = arg;
+    // TODO CPU num
+    dev->GetPciClass()->SetMsi(0, filter_handler_sub, reinterpret_cast<void *>(s));
     return 0;
   }
+  if (ithread != nullptr) {
+    if (!dev->GetPciClass->HasLegacyInterrupt()) {
+      return -1;
+    } 
+    intr_container_struct *s = virtmem_ctrl->New<intr_container_struct>();
+    s->cnt = 0;
+    Function func;
+    func.Init(bus_ithread_sub2, reinterpret_cast<void *>(s));
+    s->task.SetFunc(func);
+    
+    // TODO cpu num
+    dev->GetPciClass->SetLegacyInterrupt(0, bus_ithread_sub1, reinterpret_cast<void *>(s));
+  } 
 }
 
 #endif /* _FREEBSD_BUS_H_ */

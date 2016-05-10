@@ -163,7 +163,7 @@ void TaskCtrl::Register(int cpuid, Task *task) {
   task->_prev = _task_struct[cpuid].bottom_sub;
   _task_struct[cpuid].bottom_sub = task;
 
-  //TODO stateをみて、キューイングによっては叩きおこすようにsubeki
+  //TODO stateをみて、キューイングによっては叩きおこすようにすべき
 }
 
 Task::~Task() {

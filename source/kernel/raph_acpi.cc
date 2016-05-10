@@ -82,94 +82,139 @@ void AcpiCtrl::Shutdown() {
 }
 // TODO remove this
 #include <tty.h>
+static ACPI_STATUS GetIntNum(ACPI_RESOURCE *resource, void *context) {
+  int *irq = reinterpret_cast<int *>(context);
+  switch(resource->Type) {
+  case ACPI_RESOURCE_TYPE_START_DEPENDENT:
+  case ACPI_RESOURCE_TYPE_END_TAG: {
+    return AE_OK;
+  }
+  case ACPI_RESOURCE_TYPE_IRQ: {
+    ACPI_RESOURCE_IRQ *p = &resource->Data.Irq;
+    if (p == nullptr || p->InterruptCount == 0) {
+      return AE_OK;
+    }
+    *irq = p->Interrupts[0];
+    break;
+  }
+  case ACPI_RESOURCE_TYPE_EXTENDED_IRQ: {
+    ACPI_RESOURCE_EXTENDED_IRQ *p = &resource->Data.ExtendedIrq;
+    if (p == nullptr || p->InterruptCount == 0) {
+      return AE_OK;
+    }
+    *irq = p->Interrupts[0];
+    break;
+  }
+  default: {
+    kassert(false);
+  }
+  }
+  
+  return AE_CTRL_TERMINATE;
+}
 
-
-static ACPI_STATUS DisplayOneDevice2(ACPI_HANDLE obj_handle, UINT32 level, void *context, void **ReturnValue) {
+static ACPI_STATUS GetIntLink(ACPI_HANDLE obj_handle, UINT32 level, void *context, void **ReturnValue) {
+  int *setting = reinterpret_cast<int *>(context);
   ACPI_STATUS status;
   ACPI_DEVICE_INFO *info;
-  ACPI_BUFFER  path;
-  char buffer[256];
-  uint8_t *bus = reinterpret_cast<uint8_t *>(context);
-
-  path.Length = sizeof(buffer);
-  path.Pointer = buffer;
-  
-  status = AcpiGetName(obj_handle, ACPI_FULL_PATHNAME, &path);
-  if (!ACPI_SUCCESS(status)) {
-    return AE_OK;
-  }
 
   status = AcpiGetObjectInfo(obj_handle, &info);
-  if (!ACPI_SUCCESS(status)) {
-    return AE_OK;
-  }
-
-  kassert(info->Type == ACPI_TYPE_DEVICE);
-  ACPI_BUFFER buf;
-  ACPI_OBJECT param;
-  buf.Pointer = &param;
-  buf.Length = sizeof(param);
-  
-  status = AcpiEvaluateObjectTyped(obj_handle, "_ADR", nullptr, &buf, ACPI_TYPE_INTEGER);
   if (ACPI_FAILURE(status)) {
     return AE_OK;
   }
 
-  kassert(param.Type == ACPI_TYPE_INTEGER);
-  gtty->Cprintf("%s %x %x\n", path.Pointer, (int)param.Integer.Value, info->Address);
-    
-  // pci_ctrl->InitPciDevices(*bus, param.Integer.Value >> 16, param.Integer.Value & 0xffff);
-  //  AcpiWalkNamespace(ACPI_TYPE_METHOD, obj_handle, 100, DisplayOneDevice3, nullptr, nullptr, nullptr);
+  kassert(info->Type == ACPI_TYPE_DEVICE);
+  if (info->Valid & ACPI_VALID_HID &&
+      !strncmp(info->HardwareId.String, "PNP0C0F", info->HardwareId.Length)) {
+    int irq = -1;
+    AcpiWalkResources(obj_handle, METHOD_NAME__CRS, GetIntNum, &irq);
+
+    int i;
+    if (!strncmp(reinterpret_cast<char *>(&info->Name), "LNKA", 4)) {
+      i = 1;
+    } else if (!strncmp(reinterpret_cast<char *>(&info->Name), "LNKB", 4)) {
+      i = 2;
+    } else if (!strncmp(reinterpret_cast<char *>(&info->Name), "LNKC", 4)) {
+      i = 3;
+    } else if (!strncmp(reinterpret_cast<char *>(&info->Name), "LNKD", 4)) {
+      i = 4;
+    } else {
+      kassert(false);
+    }
+    setting[i] = irq;
+  }
+
   return AE_OK;
 }
 
-static ACPI_STATUS DisplayOneDevice(ACPI_HANDLE obj_handle, UINT32 level, void *context, void **ReturnValue) {
+void AcpiCtrl::SetupLink(int (&interrupt_link_setting)[5]) {
+   // TODO : is MaxDepth valid?
+  AcpiWalkNamespace(ACPI_TYPE_DEVICE, ACPI_ROOT_OBJECT, 100, GetIntLink, nullptr, reinterpret_cast<void *>(interrupt_link_setting), nullptr);
+}
+
+static ACPI_STATUS GetRouteTable(ACPI_HANDLE obj_handle, UINT32 level, void *context, void **ReturnValue) {
+  DevPci *device = reinterpret_cast<DevPci *>(context);
   ACPI_STATUS status;
   ACPI_DEVICE_INFO *info;
-  ACPI_BUFFER  path;
-  char buffer[256];
 
-  path.Length = sizeof(buffer);
-  path.Pointer = buffer;
+  ACPI_BUFFER buf;
+  ACPI_OBJECT param;
+
+  buf.Pointer = &param;
+  buf.Length = sizeof(param);
   
-  status = AcpiGetName(obj_handle, ACPI_FULL_PATHNAME, &path);
-  if (!ACPI_SUCCESS(status)) {
-    return AE_OK;
-  }
-
   status = AcpiGetObjectInfo(obj_handle, &info);
-  if (!ACPI_SUCCESS(status)) {
+  if (ACPI_FAILURE(status)) {
     return AE_OK;
   }
 
   kassert(info->Type == ACPI_TYPE_DEVICE);
   if (info->Flags & ACPI_PCI_ROOT_BRIDGE) {
-    ACPI_BUFFER buf;
-    ACPI_OBJECT param;
-    buf.Pointer = &param;
-    buf.Length = sizeof(param);
-
-    status = AcpiEvaluateObjectTyped(obj_handle, "_ADR", nullptr, &buf, ACPI_TYPE_INTEGER);
+    status = AcpiEvaluateObjectTyped(obj_handle, METHOD_NAME__BBN, nullptr, &buf, ACPI_TYPE_INTEGER);
+    uint8_t bus = 0;
     if (ACPI_SUCCESS(status)) {
       kassert(param.Type == ACPI_TYPE_INTEGER);
-      gtty->Cprintf("root> %s %x\n", path.Pointer, (int)param.Integer.Value);
-      status = AcpiEvaluateObjectTyped(obj_handle, "_BBN", nullptr, &buf, ACPI_TYPE_INTEGER);
-      if (ACPI_SUCCESS(status)) {
-        kassert(param .Type == ACPI_TYPE_INTEGER);
-        uint8_t bus = param.Integer.Value;
-        AcpiWalkNamespace(ACPI_TYPE_DEVICE, obj_handle, 100, DisplayOneDevice2, nullptr, reinterpret_cast<void *>(&bus), nullptr);
-      } else {
-        kassert(false);
+      uint8_t bus = param.Integer.Value;
+    }
+
+    if (bus == device->GetBus()) {
+      buf.Pointer = nullptr;
+      buf.Length = ACPI_ALLOCATE_BUFFER;
+      status = AcpiGetIrqRoutingTable(obj_handle, &buf);
+    
+      ACPI_PCI_ROUTING_TABLE *entry = reinterpret_cast<ACPI_PCI_ROUTING_TABLE *>(buf.Pointer);
+      while((entry != nullptr) && (entry->Length > 0)) {
+        if (((entry->Address >> 16) & 0xFFFF) == device->GetDevice()) {
+          int irq = -1;
+          if (entry->Source == 0) {
+            irq = entry->SourceIndex;
+          } else {
+            int i = 0;
+            if (!strncmp(reinterpret_cast<char *>(&entry->Source), "LNKA", 4)) {
+              i = 1;
+            } else if (!strncmp(reinterpret_cast<char *>(&entry->Source), "LNKB", 4)) {
+              i = 2;
+            } else if (!strncmp(reinterpret_cast<char *>(&entry->Source), "LNKC", 4)) {
+              i = 3;
+            } else if (!strncmp(reinterpret_cast<char *>(&entry->Source), "LNKD", 4)) {
+              i = 4;
+            } else {
+              kassert(false);
+            }
+            irq = pci_ctrl->GetIntLinkSetting(i);
+          }
+          device->SetIrq(irq);
+          gtty->Cprintf("IRQ:%d\n", irq);
+        }
+        entry = reinterpret_cast<ACPI_PCI_ROUTING_TABLE *>(reinterpret_cast<virt_addr>(entry) + entry->Length);
       }
-    } else {
-      kassert(false);
     }
   }
 
   return AE_OK;
 }
 
-void AcpiCtrl::TraversePciNameSpace() {
+void AcpiCtrl::SetupPciIrq(DevPci *device) {
   // TODO : is MaxDepth valid?
-  AcpiWalkNamespace(ACPI_TYPE_DEVICE, ACPI_ROOT_OBJECT, 100, DisplayOneDevice, nullptr, nullptr, nullptr);
+  AcpiWalkNamespace(ACPI_TYPE_DEVICE, ACPI_ROOT_OBJECT, 100, GetRouteTable, nullptr, reinterpret_cast<void *>(device), nullptr);
 }

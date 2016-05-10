@@ -126,6 +126,8 @@ struct FADT {
 struct MCFG;
 struct HPETDT;
 
+class DevPci;
+
 class AcpiCtrl {
 public:
   AcpiCtrl() {}
@@ -135,8 +137,10 @@ public:
   FADT *GetFADT();
   void SetupAcpica();
   void Shutdown();
-  void TraversePciNameSpace();
 private:
+  friend class AcpicaPciCtrl;
+  void SetupLink(int (&interrupt_link_setting)[5]);
+  void SetupPciIrq(DevPci *device);
 };
 
 #endif /* __RAPH_KERNEL_ACPI_H__ */

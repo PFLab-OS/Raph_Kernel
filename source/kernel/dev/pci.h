@@ -56,10 +56,7 @@ public:
   };
   virtual ~PciCtrl() {
   }
-  static void Init() {
-    pci_ctrl = virtmem_ctrl->New<PciCtrl>();
-    pci_ctrl->_Init();
-  }
+  static void Init(); // not defined
   DevPci *InitPciDevices(uint8_t bus, uint8_t device, uint8_t function);
   virt_addr GetVaddr(uint8_t bus, uint8_t device, uint8_t func, uint16_t reg) {
     return _base_addr + ((bus & 0xff) << 20) + ((device & 0x1f) << 15) + ((func & 0x7) << 12) + (reg & 0xfff);
@@ -72,11 +69,18 @@ public:
     void WriteReg(uint8_t bus, uint8_t device, uint8_t func, uint16_t reg, T value) override {
     *(reinterpret_cast<T *>(GetVaddr(bus, device, func, reg))) = value;
   }
+  int GetIntLinkSetting(int link_device) {
+    return _interrupt_link_setting[link_device];
+  }
   // Capabilityへのオフセットを返す
   // 見つからなかった時は0
   uint16_t FindCapability(uint8_t bus, uint8_t device, uint8_t func, CapabilityId id);
-  // エラーの場合flaseが返る
-  bool SetMsi(uint8_t bus, uint8_t device, uint8_t func, uint64_t addr, uint16_t data);
+  bool HasMsi(uint8_t bus, uint8_t device, uint8_t func) {
+    uint16_t offset = FindCapability(bus, device, func, CapabilityId::kMsi);
+    return (offset != 0);
+  }
+  // 先にHasMsiでMsiが使えるか調べる事
+  void SetMsi(uint8_t bus, uint8_t device, uint8_t func, uint64_t addr, uint16_t data);
   static const uint16_t kDevIdentifyReg = 0x2;
   static const uint16_t kVendorIDReg = 0x00;
   static const uint16_t kDeviceIDReg = 0x02;
@@ -128,7 +132,14 @@ public:
   static const uint32_t kRegBaseAddrMaskMemAddr = 0xFFFFFFF0;
   static const uint32_t kRegBaseAddrMaskIoAddr = 0xFFFFFFFC;
 protected:
-  virtual void _Init();
+  virtual void SetupIrq(DevPci *device) = 0;
+  virtual void SetupLink() = 0;
+  void _Init();
+  int _interrupt_link_setting[5];
+  static const int kIntLinkA = 1;
+  static const int kIntLinkB = 1;
+  static const int kIntLinkC = 1;
+  static const int kIntLinkD = 1;
 private:
   template<class T>
   static inline DevPci *_InitPciDevices(uint8_t bus, uint8_t device, uint8_t function) {
@@ -153,13 +164,18 @@ public:
   virtual ~AcpicaPciCtrl() {
   }
   static void Init() {
+    kassert(acpi_ctrl != nullptr);
     AcpicaPciCtrl *acpica_pci_ctrl = virtmem_ctrl->New<AcpicaPciCtrl>();
     pci_ctrl = acpica_pci_ctrl;
     acpica_pci_ctrl->_Init();
   }
-protected:
-  virtual void _Init() override;
 private:
+  virtual void SetupLink() override {
+    acpi_ctrl->SetupLink(_interrupt_link_setting);
+  }
+  virtual void SetupIrq(DevPci *device) override {
+    acpi_ctrl->SetupPciIrq(device);
+  }
 };
 
 // !!! important !!!
@@ -175,31 +191,53 @@ public:
   } // dummy
   template<class T> T ReadReg(uint16_t reg) {
     kassert(pci_ctrl != nullptr);
-    return pci_ctrl->ReadReg<T>(_bus, _device, 0, reg);
+    return pci_ctrl->ReadReg<T>(_bus, _device, _function, reg);
   }
   template<class T> void WriteReg(uint16_t reg, T value) {
     kassert(pci_ctrl != nullptr);
-    pci_ctrl->WriteReg<T>(_bus, _device, 0, reg, value);
+    pci_ctrl->WriteReg<T>(_bus, _device, _function, reg, value);
   }
   uint16_t FindCapability(PciCtrl::CapabilityId id) {
     kassert(pci_ctrl != nullptr);
-    return pci_ctrl->FindCapability(_bus, _device, 0, id);
+    return pci_ctrl->FindCapability(_bus, _device, _function, id);
   } 
-  // 返り値は割り当てられたvector または-1(error)
+  bool HasMsi() {
+    return pci_ctrl->HasMsi(_bus, _device, _function);
+  }
+  // 先にHasMsiでMsiが使えるか調べる事
+  // 返り値は割り当てられたvector
   int SetMsi(int cpuid, int_callback handler, void *arg) {
     kassert(pci_ctrl != nullptr);
     kassert(idt != nullptr);
     int vector = idt->SetIntCallback(cpuid, handler, arg);
-    if(pci_ctrl->SetMsi(_bus, _device, 0, ApicCtrl::Lapic::GetMsiAddr(apic_ctrl->GetApicIdFromCpuId(cpuid)), ApicCtrl::Lapic::GetMsiData(vector))) {
-      return vector;
-    }
-    return -1;
+    pci_ctrl->SetMsi(_bus, _device, _function, ApicCtrl::Lapic::GetMsiAddr(apic_ctrl->GetApicIdFromCpuId(cpuid)), ApicCtrl::Lapic::GetMsiData(vector));
+    return vector;
+  }
+  const uint8_t GetBus() {
+    return _bus;
+  }
+  const uint8_t GetDevice() {
+    return _device;
+  }
+  const uint8_t GetFunction() {
+    return _function;
+  }
+  void SetIrq(int irq) {
+    _irq = irq;
+  }
+  bool HasLegacyInterrupt() {
+    return (_irq != -1);
+  }
+  void SetLegacyInterrupt(int cpuid, ) {
+    int vector = idt->SetIntCallback(cpuid, bus_ithread_sub1, reinterpret_cast<void *>(s));
+    apic_ctrl->SetupIoInt(_irq, apic_ctrl->GetApicIdFromCpuId(cpuid), vector);
   }
 private:
   DevPci();
   const uint8_t _bus;
   const uint8_t _device;
   const uint8_t _function;
+  int _irq = -1;
 };
 
 

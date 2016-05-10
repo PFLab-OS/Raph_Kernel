@@ -98,13 +98,16 @@ public:
   void SetFunc(const Function &func) {
     _func = func;
   }
-private:
   enum class Status {
     kRunning,
     kWaitingInQueue,
     kOutOfQueue,
     kGuard,
   };
+  Status GetStatus() {
+    return _status;
+  }
+private:
   Function _func;
   Task *_next;
   Task *_prev;
