@@ -31,7 +31,7 @@ void ProtocolStack::Setup() {
     socket_table[i].in_use = false;
   }
 
-  RegisterPolling();
+  RegisterPolling(2);
 }
 
 bool ProtocolStack::RegisterSocket(NetSocket *socket, uint16_t l3_ptcl) {
@@ -96,15 +96,13 @@ void ProtocolStack::Handle() {
     NetDev::Packet *new_packet;
     kassert(_main_queue.Pop(new_packet));
 
-    if(FilterPacket(new_packet)) {
-      for(uint32_t i = 0; i < kMaxSocketNumber; i++) {
-        if(socket_table[i].in_use && socket_table[i].l3_ptcl == GetL3PtclType(new_packet->buf)) {
-          // distribute the received packet to duplicated queues
-          NetDev::Packet *dup_packet = reinterpret_cast<NetDev::Packet*>(virtmem_ctrl->Alloc(sizeof(NetDev::Packet)));
-          dup_packet->len = new_packet->len;
-          memcpy(dup_packet->buf, new_packet->buf, new_packet->len);
-          socket_table[i].dup_queue.Push(dup_packet);
-        }
+    for(uint32_t i = 0; i < kMaxSocketNumber; i++) {
+      if(socket_table[i].in_use && socket_table[i].l3_ptcl == GetL3PtclType(new_packet->buf)) {
+        // distribute the received packet to duplicated queues
+        NetDev::Packet *dup_packet = reinterpret_cast<NetDev::Packet*>(virtmem_ctrl->Alloc(sizeof(NetDev::Packet)));
+        dup_packet->len = new_packet->len;
+        memcpy(dup_packet->buf, new_packet->buf, new_packet->len);
+        socket_table[i].dup_queue.Push(dup_packet);
       }
     }
 
@@ -114,18 +112,8 @@ void ProtocolStack::Handle() {
 
 void ProtocolStack::SetDevice(NetDev *dev) {
   _device = dev;
-  _device->GetEthAddr(_eth_addr);
 }
 
 void ProtocolStack::InitPacketQueue() {
   
-}
-
-bool ProtocolStack::FilterPacket(NetDev::Packet *packet) {
-  // filter Ethernet address
-  if(!EthFilterPacket(packet->buf, nullptr, _eth_addr, 0)) {
-    return false;
-  }
-
-  return true;
 }

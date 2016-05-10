@@ -24,6 +24,15 @@
 #include <dev/netdev.h>
 #include <net/ptcl.h>
 
+void NetDevFilterRxPacket(void *self) {
+  NetDev *device = reinterpret_cast<NetDev*>(self);
+
+  // pass all packet in _rx_buffered to _rx_filtered
+  NetDev::Packet *packet;
+  kassert(device->_rx_buffered.Pop(packet));
+  device->_rx_filtered.Push(packet);
+}
+
 const char *NetDevCtrl::kDefaultNetworkInterfaceName = "eth0";
 
 bool NetDevCtrl::RegisterDevice(NetDev *dev, const char *name) {

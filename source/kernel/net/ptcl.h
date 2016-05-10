@@ -79,14 +79,11 @@ private:
   SocketInfo socket_table[kMaxSocketNumber];
 
   // reference to the network device holding this protocol stack
-  DevEthernet *_device;
-  uint8_t _eth_addr[6];
+  NetDev *_device;
 
   SpinLock _lock;
 
   void InitPacketQueue();
-
-  bool FilterPacket(NetDev::Packet *packet);
 };
 
 #endif // __RAPH_KERNEL_NET_PTCL_H__

@@ -32,6 +32,7 @@
 
 class ProtocolStack;
 class DevEthernet;
+void NetDevFilterRxPacket(void *self);
 
 class NetDev {
 public:
@@ -65,6 +66,7 @@ public:
   // そのうちrx_reservedが枯渇して、一切のパケットの受信ができなくなるるよ♪
   NetDevRingBuffer _rx_reserved;
   NetDevFunctionalRingBuffer _rx_buffered;
+  NetDevFunctionalRingBuffer _rx_filtered;
 
   // txパケットの処理の流れ
   // 0. tx_reservedを初期化、バッファを満タンにしておく
@@ -97,13 +99,14 @@ public:
     }
   }
   bool TransmitPacket(Packet *packet) {
+    PrepareTxPacket(packet);
     return _tx_buffered.Push(packet);
   }
   bool ReceivePacket(Packet *&packet) {
-    return _rx_buffered.Pop(packet);
+    return _rx_filtered.Pop(packet);
   }
   void SetReceiveCallback(int cpuid, const Function &func) {
-    _rx_buffered.SetFunction(cpuid, func);
+    _rx_filtered.SetFunction(cpuid, func);
   }
 
   void InitTxPacketBuffer() {
@@ -152,7 +155,11 @@ public:
   }
   void SetProtocolStack(ProtocolStack *stack) { _ptcl_stack = stack; }
 protected:
-  NetDev() {}
+  NetDev() {
+    Function func;
+    func.Init(NetDevFilterRxPacket, this);
+    _rx_buffered.SetFunction(2, func);
+  }
   virtual void ChangeHandleMethodToPolling() = 0;
   virtual void ChangeHandleMethodToInt() = 0;
   SpinLock _lock;
@@ -160,9 +167,15 @@ protected:
   volatile LinkStatus _status = LinkStatus::kDown;
   HandleMethod _method = HandleMethod::kInt;
 
+  // preprocess on packet before transmit
+  void PrepareTxPacket(NetDev::Packet *packet) {}
+
   // IP address
   uint32_t _ipAddr = 0;
- private:
+
+private:
+  friend void NetDevFilterRxPacket(void *self);
+
   static const uint32_t kNetworkInterfaceNameLen = 8;
   // network interface name
   char _name[kNetworkInterfaceNameLen];
@@ -174,7 +187,7 @@ protected:
 class NetDevCtrl {
 public:
   struct NetDevInfo {
-    DevEthernet *device;
+    NetDev *device;
     ProtocolStack *ptcl_stack;
   };
 

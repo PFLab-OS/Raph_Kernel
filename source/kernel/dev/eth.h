@@ -27,6 +27,8 @@
 #include "pci.h"
 #include <mem/virtmem.h>
 
+void DevEthernetFilterRxPacket(void *self);
+
 class DevEthernet : public NetDev {
  public:
   DevEthernet(uint8_t bus, uint8_t device, bool mf) {
@@ -45,6 +47,7 @@ class DevEthernet : public NetDev {
   DevEthernet(DevPci *pci) {
     _pci = pci;
   }
+  void PrepareTxPacket(NetDev::Packet *packet);
   DevPci *_pci;
 };
 
