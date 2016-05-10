@@ -25,23 +25,27 @@
 
 #include "netdev.h"
 #include "pci.h"
+#include <mem/virtmem.h>
 
-class InterfaceDevEthernet {
-public:
+class DevEthernet : public NetDev {
+ public:
+  DevEthernet(uint8_t bus, uint8_t device, bool mf) {
+    _pci = virtmem_ctrl->New<DevPci>(bus, device, mf);
+  } 
+  virtual ~DevEthernet() {
+    virtmem_ctrl->Delete<DevPci>(_pci);
+  }
+  DevPci *GetDevPci() {
+    return _pci;
+  }
   // allocate 6 byte before call
   virtual void GetEthAddr(uint8_t *buffer) = 0;
   virtual void SetupNetInterface() = 0;
-};
-
-class DevEthernet : public NetDev, public InterfaceDevEthernet {
- public:
- DevEthernet(uint8_t bus, uint8_t device, bool mf) : _pci(bus, device, mf) {}
-  virtual ~DevEthernet() {}
-  DevPci *GetDevPci() {
-    return &_pci;
-  }
  protected:
-  DevPci _pci;
+  DevEthernet(DevPci *pci) {
+    _pci = pci;
+  }
+  DevPci *_pci;
 };
 
 class DevEthernetCtrl : public NetDevCtrl {

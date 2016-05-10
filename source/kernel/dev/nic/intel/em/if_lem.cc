@@ -2496,7 +2496,7 @@ lem_setup_interface(device_t dev, struct adapter *adapter)
 	INIT_DEBUGOUT("lem_setup_interface: begin");
 
 	//ifp = adapter->ifp = if_gethandle(dev, IFT_ETHER);
-	ifp = adapter->ifp = dev->GetMasterClass<lE1000>();
+	ifp = adapter->ifp = &dev->GetMasterClass< lE1000>()->_ifp;
 	if (ifp == (void *)NULL) {
 		device_printf(dev, "can not allocate ifnet structure\n");
 		return (-1);
@@ -5001,19 +5001,19 @@ extern BsdDevEthernet *eth;
 bool lE1000::InitPci(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {
   lE1000 *addr = reinterpret_cast<lE1000 *>(virtmem_ctrl->Alloc(sizeof(lE1000)));
   addr = new(addr) lE1000(bus, device, mf);
-  addr->bsd.SetMasterClass(addr);
-  addr->bsd.SetClass(addr->GetBsdDevPci());
-  addr->bsd.adapter = reinterpret_cast<struct adapter *>(virtmem_ctrl->AllocZ(sizeof(adapter)));
+  addr->_bsd.SetMasterClass(addr);
+  addr->_bsd.SetClass(addr->GetBsdDevPci());
+  addr->_bsd.adapter = reinterpret_cast<struct adapter *>(virtmem_ctrl->AllocZ(sizeof(adapter)));
 
-  if (lem_probe(&addr->bsd) == BUS_PROBE_DEFAULT) {
-    kassert(lem_attach(&addr->bsd) == 0);
-    lem_init(addr->bsd.adapter);
+  if (lem_probe(&addr->_bsd) == BUS_PROBE_DEFAULT) {
+    kassert(lem_attach(&addr->_bsd) == 0);
+    lem_init(addr->_bsd.adapter);
     addr->SetupNetInterface();
     addr->SetHandleMethod(HandleMethod::kPolling);
     eth = addr;
     return true;
   } else {
-    virtmem_ctrl->Free(ptr2virtaddr(addr->bsd.adapter));
+    virtmem_ctrl->Free(ptr2virtaddr(addr->_bsd.adapter));
     virtmem_ctrl->Free(ptr2virtaddr(addr));
     return false;
   }  
@@ -5024,17 +5024,17 @@ void lE1000::SetupNetInterface() {
 }
 
 void lE1000::GetEthAddr(uint8_t *buffer) {
-  memcpy(buffer, bsd.adapter->hw.mac.addr, 6);
+  memcpy(buffer, _bsd.adapter->hw.mac.addr, 6);
 }
 
 void lE1000::UpdateLinkStatus() {
-  this->bsd.adapter->hw.mac.get_link_status = 1;
-  lem_update_link_status(this->bsd.adapter);
+  this->_bsd.adapter->hw.mac.get_link_status = 1;
+  lem_update_link_status(this->_bsd.adapter);
 }
 
 void lE1000::PollingHandler(void *arg) {
   lE1000 *that = reinterpret_cast<lE1000 *>(arg);
-  lem_poll(that->bsd.adapter->ifp);
+  lem_poll(that->_bsd.adapter->ifp);
 }
 
 void lE1000::ChangeHandleMethodToPolling() {
@@ -5043,7 +5043,7 @@ void lE1000::ChangeHandleMethodToPolling() {
   _polling.Init(func);
   _polling.Register(0);
   
-  struct adapter *adapter = this->bsd.adapter;
+  struct adapter *adapter = this->_bsd.adapter;
   if_t ifp = adapter->ifp;
   EM_CORE_LOCK(adapter);
   lem_disable_intr(adapter);
@@ -5054,7 +5054,7 @@ void lE1000::ChangeHandleMethodToPolling() {
 void lE1000::ChangeHandleMethodToInt() {
   _polling.Remove();
   
-  struct adapter *adapter = this->bsd.adapter;
+  struct adapter *adapter = this->_bsd.adapter;
   if_t ifp = adapter->ifp;
   EM_CORE_LOCK(adapter);
   lem_enable_intr(adapter);

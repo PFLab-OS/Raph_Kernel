@@ -52,10 +52,15 @@ public:
     return addr;
   }
   template <class T, class... Y>
-  T *Alloc(const Y& ...args) {
+    T *New(const Y& ...args) {
     virt_addr addr = Alloc(sizeof(T));
     T *t = reinterpret_cast<T *>(addr);
     return new(t) T(args...);
+  }
+  template <class T>
+    void Delete(T *c) {
+    c->~T();
+    Free(reinterpret_cast<virt_addr>(c));
   }
   // 仮想メモリ領域を解放するが、物理メモリは解放しない
   void Free(virt_addr addr);

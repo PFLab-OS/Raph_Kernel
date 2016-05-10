@@ -39,14 +39,13 @@
 #include <freebsd/net/if.h>
 #include <freebsd/net/ethernet.h>
 
-class BsdNetDev : public NetDev {
-public:
+struct ifnet {
   int	if_drv_flags;
   void *if_softc;
   int if_capenable;
   int if_capabilities;
 };
-typedef BsdNetDev *if_t;
+typedef ifnet *if_t;
 
 struct BsdDevice;
 

@@ -103,17 +103,6 @@ private:
   SpinLock _lock;
 };
 
-class BsdDevEthernet : public BsdNetDev, public InterfaceDevEthernet {
- public:
-  BsdDevEthernet(uint8_t bus, uint8_t device, bool mf) : _bsd_pci(bus, device, mf) {}
-  virtual ~BsdDevEthernet() {}
-  BsdDevPci *GetBsdDevPci() {
-    return &_bsd_pci;
-  }
- protected:
-  BsdDevPci _bsd_pci;
-};
-
 class BsdDevice {
  public:
   template<class T>
@@ -135,6 +124,20 @@ class BsdDevice {
  private:
   BsdDevPci *_pci = nullptr;
   void *_master;
+};
+
+class BsdDevEthernet : public DevEthernet {
+ public:
+  BsdDevEthernet(uint8_t bus, uint8_t device, bool mf) : DevEthernet(_bsd_pci), _bsd_pci(virtmem_ctrl->New<BsdDevPci>(bus, device, mf)) {
+  }
+  virtual ~BsdDevEthernet() {}
+  BsdDevPci *GetBsdDevPci() {
+    return _bsd_pci;
+  }
+  struct ifnet _ifp;
+ protected:
+  BsdDevPci *_bsd_pci;
+  BsdDevice _bsd;
 };
 
 typedef struct BsdDevice *device_t;

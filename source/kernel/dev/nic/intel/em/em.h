@@ -46,7 +46,6 @@ public:
   static void PollingHandler(void *arg);
   virtual void ChangeHandleMethodToPolling() override;
   virtual void ChangeHandleMethodToInt() override;
-  BsdDevice bsd;
 };
 
 #endif /* __RAPH_KERNEL_E1000_EM_H__ */
