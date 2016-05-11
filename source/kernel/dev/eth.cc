@@ -44,7 +44,9 @@ void DevEthernet::PrepareTxPacket(NetDev::Packet *packet) {
   uint16_t ptcl = GetL3PtclType(packet->buf);
 
   uint8_t eth_saddr[6];
-  uint8_t eth_daddr[6] = {0x08, 0x00, 0x27, 0xc1, 0x5b, 0x93}; // TODO
+  // TODO: 緊急対応します
+  uint8_t eth_daddr[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+//  uint8_t eth_daddr[6] = {0x08, 0x00, 0x27, 0xc1, 0x5b, 0x93}; // TODO
 
   GetEthAddr(eth_saddr);
 

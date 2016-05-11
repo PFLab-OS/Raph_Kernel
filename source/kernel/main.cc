@@ -263,7 +263,7 @@ extern "C" int main() {
           }
         }
       }, nullptr);
-    eth->SetReceiveCallback(2, func);
+    socket.SetReceiveCallback(2, func);
   }
   
   apic_ctrl->StartAPs();

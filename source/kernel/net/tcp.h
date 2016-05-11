@@ -48,8 +48,18 @@ struct TcpHeader {
   uint16_t urgent_pointer;
 } __attribute__ ((packed));
 
-int32_t TcpGenerateHeader(uint8_t *header, uint32_t length, uint32_t saddr, uint32_t daddr, uint16_t sport, uint16_t dport, uint8_t type, uint32_t seq, uint32_t ack);
-bool TcpFilterPacket(uint8_t *packet, uint16_t sport, uint16_t dport, uint8_t type, uint32_t seq, uint32_t ack);
+struct TcpOptionParameters {
+  // If you do not set some options, substiture kIgnoreParameter to them
+  static const uint32_t kIgnore = 0;
+
+  // maximum segment size (only SYN)
+  uint16_t mss;
+  // window scale (only SYN)
+  uint8_t ws;
+};
+
+int32_t TcpGenerateHeader(uint8_t *header, uint32_t length, uint32_t saddr, uint32_t daddr, uint16_t sport, uint16_t dport, uint8_t type, uint32_t seq, uint32_t ack, struct TcpOptionParameters *options);
+bool TcpFilterPacket(uint8_t *packet, uint16_t sport, uint16_t dport, uint8_t type, uint32_t seq, uint32_t ack, struct TcpOptionParameters *options);
 
 // extract sender port
 uint16_t GetSourcePort(uint8_t *packet);
