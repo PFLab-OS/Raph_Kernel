@@ -20,11 +20,13 @@
  * 
  */
 
-#ifndef __RAPH_KERNEL_DEV_TASK_H__
-#define __RAPH_KERNEL_DEV_TASK_H__
+#ifndef __RAPH_KERNEL_TASK_H__
+#define __RAPH_KERNEL_TASK_H__
 
 #include <global.h>
 #include <spinlock.h>
+#include <mem/virtmem.h>
+#include <function.h>
 
 class Task;
 
@@ -59,44 +61,13 @@ class TaskCtrl {
   } *_task_struct = nullptr;
 };
 
-class Function {
- public:
-  Function() {
-  }
-  Function(const Function &func) {
-    _func = func._func;
-    _arg = func._arg;
-  }
-  void Init(void (*func)(void *), void *arg) {
-    _func = func;
-    _arg = arg;
-  }
-  void Execute() {
-    if (_func != nullptr) {
-      _func(_arg);
-    }
-  }
-  volatile bool CanExecute() {
-    return (_func != nullptr);
-  }
-  void Clear() {
-    _func = nullptr;
-  }
-  bool Equal(const Function &func) {
-    return (_func == func._func) && (_arg == func._arg);
-  }
- private:
-  void (*_func)(void *) = nullptr;
-  void *_arg;
-};
-
 class Task {
 public:
   Task() {
   }
   virtual ~Task();
-  void SetFunc(const Function &func) {
-    _func = func;
+  void SetFunc(const GenericFunction &func) {
+    _func.Copy(func);
   }
 private:
   enum class Status {
@@ -105,7 +76,7 @@ private:
     kOutOfQueue,
     kGuard,
   };
-  Function _func;
+  FunctionBase _func;
   Task *_next;
   Task *_prev;
   Status _status = Status::kOutOfQueue;

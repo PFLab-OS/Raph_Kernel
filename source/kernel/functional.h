@@ -39,14 +39,14 @@ class Functional {
   }
   virtual ~Functional() {
   }
-  void SetFunction(int cpuid, const Function &func);
+  void SetFunction(int cpuid, const GenericFunction &func);
  protected:
   void WakeupFunction();
   // 設定された関数を呼び出すべきかどうかを返す
   virtual bool ShouldFunc() = 0;
  private:
   static void Handle(void *p);
-  Function _func;
+  FunctionBase _func;
   Task _task;
   int _cpuid = 0;
   SpinLock _lock;

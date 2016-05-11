@@ -92,7 +92,6 @@ void TaskCtrl::Run() {
   apic_ctrl->SetupTimer();
   while(true) {
     apic_ctrl->StopTimer();
-    Function f;
     int cpuid = apic_ctrl->GetCpuId();
     kassert(_task_struct[cpuid].state == TaskQueueState::kNotRunning);
     _task_struct[cpuid].state = TaskQueueState::kRunning;
