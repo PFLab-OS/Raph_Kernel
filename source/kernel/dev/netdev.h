@@ -105,7 +105,7 @@ public:
   bool ReceivePacket(Packet *&packet) {
     return _rx_filtered.Pop(packet);
   }
-  void SetReceiveCallback(int cpuid, const Function &func) {
+  void SetReceiveCallback(int cpuid, const GenericFunction &func) {
     _rx_filtered.SetFunction(cpuid, func);
   }
 
