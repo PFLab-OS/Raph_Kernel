@@ -155,8 +155,8 @@ public:
   void SetProtocolStack(ProtocolStack *stack) { _ptcl_stack = stack; }
 protected:
   NetDev() {
-    Function packet_filter;
-    packet_filter.Init(FilteringWrapper, this);
+    ClassFunction<NetDev> packet_filter;
+    packet_filter.Init(this, &NetDev::FilterRxPacket, nullptr);
     _rx_buffered.SetFunction(2, packet_filter);
   }
   virtual void ChangeHandleMethodToPolling() = 0;
@@ -167,12 +167,7 @@ protected:
   HandleMethod _method = HandleMethod::kInt;
 
   // filter received packet
-  virtual void FilterRxPacket() = 0;
-
-  static void FilteringWrapper(void *self) {
-    NetDev *device = reinterpret_cast<NetDev*>(self);
-    device->FilterRxPacket();
-  }
+  virtual void FilterRxPacket(void *p) = 0;
 
   // preprocess on packet before transmit
   virtual void PrepareTxPacket(NetDev::Packet *packet) = 0;

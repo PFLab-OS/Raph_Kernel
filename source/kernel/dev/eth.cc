@@ -25,7 +25,7 @@
 #include <net/arp.h>
 #include <net/socket.h>
 
-void DevEthernet::FilterRxPacket() {
+void DevEthernet::FilterRxPacket(void *p) {
   NetDev::Packet *packet;
   kassert(_rx_buffered.Pop(packet));
 

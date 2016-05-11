@@ -47,7 +47,7 @@ protected:
     _pci = pci;
   }
 
-  virtual void FilterRxPacket() override;
+  virtual void FilterRxPacket(void *p) override;
 
   virtual void PrepareTxPacket(NetDev::Packet *packet) override;
   DevPci *_pci;
