@@ -177,12 +177,7 @@ protected:
   // preprocess on packet before transmit
   virtual void PrepareTxPacket(NetDev::Packet *packet) = 0;
 
-  // IP address
-  uint32_t _ipAddr = 0;
-
 private:
-  friend void NetDevFilterRxPacket(void *self);
-
   static const uint32_t kNetworkInterfaceNameLen = 8;
   // network interface name
   char _name[kNetworkInterfaceNameLen];
