@@ -19,9 +19,11 @@
  * Author: Levelfour
  * 
  */
+#include <global.h>
 #include <dev/eth.h>
 #include <net/ptcl.h>
 #include <net/eth.h>
+#include <net/ip.h>
 #include <net/arp.h>
 #include <net/socket.h>
 
@@ -44,14 +46,14 @@ void DevEthernet::PrepareTxPacket(NetDev::Packet *packet) {
   uint16_t ptcl = GetL3PtclType(packet->buf);
 
   uint8_t eth_saddr[6];
-  // TODO: 緊急対応します
-  uint8_t eth_daddr[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
-//  uint8_t eth_daddr[6] = {0x08, 0x00, 0x27, 0xc1, 0x5b, 0x93}; // TODO
+  uint8_t eth_daddr[6];
 
   GetEthAddr(eth_saddr);
 
   // embed MAC address to packet
   if (ptcl == kProtocolIpv4) {
+    uint32_t ipaddr = GetDestIpAddress(packet->buf + sizeof(EthHeader));
+    arp_table->Find(ipaddr, eth_daddr);
     EthGenerateHeader(packet->buf, eth_saddr, eth_daddr, kProtocolIpv4);
   } else if (ptcl == kProtocolArp) {
     uint16_t op = GetArpOperation(packet->buf + sizeof(EthHeader));
@@ -61,6 +63,7 @@ void DevEthernet::PrepareTxPacket(NetDev::Packet *packet) {
       ArpGeneratePacket(packet->buf + sizeof(EthHeader), 0, eth_saddr, 0, nullptr, 0);     
       EthGenerateHeader(packet->buf, eth_saddr, eth_daddr, kProtocolArp);
     } else if (op == ArpSocket::kOpArpReply) {
+      GetDestMacAddress(eth_daddr, packet->buf + sizeof(EthHeader));
       ArpGeneratePacket(packet->buf + sizeof(EthHeader), 0, eth_saddr, 0, eth_daddr, 0);     
       EthGenerateHeader(packet->buf, eth_saddr, eth_daddr, kProtocolArp);
     }

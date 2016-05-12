@@ -80,9 +80,19 @@ void GetSourceMacAddress(uint8_t *buffer, uint8_t *packet) {
   memcpy(buffer, arp->hw_saddr, 6);
 }
 
+void GetDestMacAddress(uint8_t *buffer, uint8_t *packet) {
+  ArpPacket * volatile arp = reinterpret_cast<ArpPacket*>(packet);
+  memcpy(buffer, arp->hw_daddr, 6);
+}
+
 uint32_t GetSourceIpAddress(uint8_t *packet) {
   ArpPacket * volatile arp = reinterpret_cast<ArpPacket*>(packet);
   return ntohl(arp->proto_saddr);
+}
+
+uint32_t GetDestIpAddress(uint8_t *packet) {
+  ArpPacket * volatile arp = reinterpret_cast<ArpPacket*>(packet);
+  return ntohl(arp->proto_daddr);
 }
 
 uint16_t GetArpOperation(uint8_t *packet) {

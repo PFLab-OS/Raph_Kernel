@@ -55,8 +55,14 @@ bool RegisterIpAddress(uint8_t *packet);
 // extract sender MAC address from packet
 void GetSourceMacAddress(uint8_t *buffer, uint8_t *packet);
 
+// extract dest MAC address from packet
+void GetDestMacAddress(uint8_t *buffer, uint8_t *packet);
+
 // extract sender MAC address from packet
 uint32_t GetSourceIpAddress(uint8_t *packet);
+
+// extract dest MAC address from packet
+uint32_t GetDestIpAddress(uint8_t *packet);
 
 // extract operation from packet
 uint16_t GetArpOperation(uint8_t *packet);
