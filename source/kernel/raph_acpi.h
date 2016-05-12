@@ -139,8 +139,7 @@ public:
   void Shutdown();
 private:
   friend class AcpicaPciCtrl;
-  void SetupLink(int (&interrupt_link_setting)[5]);
-  void SetupPciIrq(DevPci *device);
+  int GetPciIntNum(DevPci *device);
 };
 
 #endif /* __RAPH_KERNEL_ACPI_H__ */

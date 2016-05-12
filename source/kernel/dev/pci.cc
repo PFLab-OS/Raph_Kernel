@@ -36,8 +36,6 @@ void PciCtrl::_Init() {
     return;
   }
 
-  this->SetupLink();
-
   for (int i = 0; i * sizeof(MCFGSt) < _mcfg->header.Length - sizeof(ACPISDTHeader); i++) {
     if (i == 1) {
       gtty->Printf("s", "[Pci] info: multiple MCFG tables.\n");

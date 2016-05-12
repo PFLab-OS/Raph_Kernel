@@ -54,6 +54,16 @@ public:
    kMsi = 0x05,
    kPcie = 0x10,
   };
+  enum class IntPin : int {
+    int kInvalid = 0;
+    int kIntA = 1;
+    int kIntB = 2;
+    int kIntC = 3;
+    int kIntD = 4;
+  };
+  PciCtrl() {
+    _irq_container = virtmem_ctrl->New<IrqContainer>();
+  }
   virtual ~PciCtrl() {
   }
   static void Init(); // not defined
@@ -81,6 +91,20 @@ public:
   }
   // 先にHasMsiでMsiが使えるか調べる事
   void SetMsi(uint8_t bus, uint8_t device, uint8_t func, uint64_t addr, uint16_t data);
+  IntPin GetLegacyIntPin(uint8_t bus, uint8_t device, uint8_t func) {
+    return static_cast<IntPin>(ReadReg(bus, device, func, kIntPinReg));
+  }
+  void RegisterLegacyIntHandler(int irq, ioint_callback handler, DevPci *device) {
+    _irq_container_lock;
+    IrqContainer *ic = _irq_container;
+    while(ic->next != nullptr) {
+      if (ic->irq == irq) {
+        
+      }
+      ic = ic->next;
+    }
+    ic->Add(irq);
+  }
   static const uint16_t kDevIdentifyReg = 0x2;
   static const uint16_t kVendorIDReg = 0x00;
   static const uint16_t kDeviceIDReg = 0x02;
@@ -93,6 +117,7 @@ public:
   static const uint16_t kSubVendorIdReg = 0x2c;
   static const uint16_t kSubsystemIdReg = 0x2e;
   static const uint16_t kCapPtrReg = 0x34;
+  static const uint16_t kIntPinReg = 0x3D;
 
   // Capability Registers
   static const uint16_t kCapRegId = 0x0;
@@ -132,14 +157,9 @@ public:
   static const uint32_t kRegBaseAddrMaskMemAddr = 0xFFFFFFF0;
   static const uint32_t kRegBaseAddrMaskIoAddr = 0xFFFFFFFC;
 protected:
-  virtual void SetupIrq(DevPci *device) = 0;
-  virtual void SetupLink() = 0;
+  // 0より小さい場合はLegacyInterruptが存在しない
+  virtual int GetLegacyIntNum(DevPci *device) = 0;
   void _Init();
-  int _interrupt_link_setting[5];
-  static const int kIntLinkA = 1;
-  static const int kIntLinkB = 1;
-  static const int kIntLinkC = 1;
-  static const int kIntLinkD = 1;
 private:
   template<class T>
   static inline DevPci *_InitPciDevices(uint8_t bus, uint8_t device, uint8_t function) {
@@ -157,6 +177,29 @@ private:
   }
   MCFG *_mcfg = nullptr;
   virt_addr _base_addr = 0;
+
+  class IntHandler {
+  public:
+    DevPci *device;
+    ioint_callback callback;
+    IntHandler *next;
+  };
+  class IrqContainer {
+  public:
+    IrqContainer() {
+      irq = -1;
+      next = nullptr;
+    }
+    void Add(int irq) {
+      kassert(next == nullptr);
+      IrqContainer *irq = virtmem_ctrl->New<IrqContainer>();
+    }
+    int irq;
+    Inthandler *inthandler;
+    IrqContainer *next;
+    SpinLock lock;
+  } *_irq_container;
+  SpinLock _irq_container_lock;
 };
 
 class AcpicaPciCtrl : public PciCtrl {
@@ -170,11 +213,8 @@ public:
     acpica_pci_ctrl->_Init();
   }
 private:
-  virtual void SetupLink() override {
-    acpi_ctrl->SetupLink(_interrupt_link_setting);
-  }
-  virtual void SetupIrq(DevPci *device) override {
-    acpi_ctrl->SetupPciIrq(device);
+  virtual int GetLegacyIntNum(DevPci *device) override {
+    return acpi_ctrl->GetPciIntNum(device);
   }
 };
 
@@ -182,7 +222,7 @@ private:
 // 派生クラスはstatic void InitPci(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf); を作成する事
 class DevPci : public Device {
 public:
-  DevPci(uint8_t bus, uint8_t device, uint8_t function) : _bus(bus), _device(device), _function(function) {
+  DevPci(uint8_t bus, uint8_t device, uint8_t function) : _bus(bus), _device(device), _function(function), _irq(pci_ctrl->GetLegacyIntNum(this)) {
   }
   virtual ~DevPci() {
   }
@@ -222,13 +262,17 @@ public:
   const uint8_t GetFunction() {
     return _function;
   }
-  void SetIrq(int irq) {
-    _irq = irq;
+  PciCtrl::IntPin GetLegacyIntPin() {
+    return pci_ctrl->GetLegacyIntPin(_bus, _device, _function);
   }
   bool HasLegacyInterrupt() {
     return (_irq != -1);
   }
-  void SetLegacyInterrupt(int cpuid, ) {
+  void SetLegacyInterrupt(ioint_callback handler, void *arg) {
+    _intarg = arg;
+    int irq = GetLegacyIntNum(this);
+    pci_ctrl->RegisterLegacyIntHandler(irq, handler, this);
+    
     int vector = idt->SetIntCallback(cpuid, bus_ithread_sub1, reinterpret_cast<void *>(s));
     apic_ctrl->SetupIoInt(_irq, apic_ctrl->GetApicIdFromCpuId(cpuid), vector);
   }
@@ -237,7 +281,8 @@ private:
   const uint8_t _bus;
   const uint8_t _device;
   const uint8_t _function;
-  int _irq = -1;
+  const int _irq;
+  void *_intarg;
 };
 
 
