@@ -10,7 +10,7 @@ DEPS= $(filter %.d, $(subst .o,.d, $(OBJS) $(TEST_OBJS)))
 
 TEST = ./unit_test
 
-RAPHFLAGS = -Wall -Wshadow -nostdinc -nostdlib -fno-builtin -mcmodel=large -D__KERNEL__ -I$(realpath ../lib/) -I$(realpath .) -I$(realpath ./acpica/include) -MMD -MP
+RAPHFLAGS = -Wall -Wshadow -nostdinc -nostdlib -fno-builtin -mcmodel=large -D__KERNEL__ -I$(realpath ../Raph_Library/libc/) -I$(realpath .) -I$(realpath ./acpica/include) -MMD -MP
 RAPHCFLAGS = $(RAPHFLAGS) -std=c99
 RAPHCXXFLAGS = $(RAPHFLAGS) -std=c++1y -fno-exceptions -fno-rtti -fno-use-cxa-atexit
 CFLAGS += $(RAPHCFLAGS)
