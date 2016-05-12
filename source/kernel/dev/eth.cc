@@ -52,18 +52,18 @@ void DevEthernet::PrepareTxPacket(NetDev::Packet *packet) {
 
   // embed MAC address to packet
   if (ptcl == kProtocolIpv4) {
-    uint32_t ipaddr = GetDestIpAddress(packet->buf + sizeof(EthHeader));
+    uint32_t ipaddr = IpGetDestIpAddress(packet->buf + sizeof(EthHeader));
     arp_table->Find(ipaddr, eth_daddr);
     EthGenerateHeader(packet->buf, eth_saddr, eth_daddr, kProtocolIpv4);
   } else if (ptcl == kProtocolArp) {
-    uint16_t op = GetArpOperation(packet->buf + sizeof(EthHeader));
+    uint16_t op = ArpGetOperation(packet->buf + sizeof(EthHeader));
 
     if (op == ArpSocket::kOpArpRequest) {
       memset(eth_daddr, 0xff, 6);
       ArpGeneratePacket(packet->buf + sizeof(EthHeader), 0, eth_saddr, 0, nullptr, 0);     
       EthGenerateHeader(packet->buf, eth_saddr, eth_daddr, kProtocolArp);
     } else if (op == ArpSocket::kOpArpReply) {
-      GetDestMacAddress(eth_daddr, packet->buf + sizeof(EthHeader));
+      ArpGetDestMacAddress(eth_daddr, packet->buf + sizeof(EthHeader));
       ArpGeneratePacket(packet->buf + sizeof(EthHeader), 0, eth_saddr, 0, eth_daddr, 0);     
       EthGenerateHeader(packet->buf, eth_saddr, eth_daddr, kProtocolArp);
     }

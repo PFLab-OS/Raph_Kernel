@@ -39,4 +39,7 @@ struct UdpHeader {
 int32_t UdpGenerateHeader(uint8_t *buffer, uint32_t length, uint16_t sport, uint16_t dport);
 bool UdpFilterPacket(uint8_t *packet, uint16_t sport, uint16_t dport);
 
+// extract sender port
+uint16_t UdpGetSourcePort(uint8_t *packet);
+
 #endif // __RAPH_KERNEL_NET_UDP_H__

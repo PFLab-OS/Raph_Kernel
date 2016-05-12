@@ -133,9 +133,9 @@ int32_t Socket::TransmitPacket(const uint8_t *packet, uint32_t length) {
 
     if(rval_ack >= 0) {
       // acknowledgement packet received
-      uint8_t type = GetSessionType(tcp);
-      uint32_t seq = GetSequenceNumber(tcp);
-      uint32_t ack = GetAcknowledgeNumber(tcp);
+      uint8_t type = TcpGetSessionType(tcp);
+      uint32_t seq = TcpGetSequenceNumber(tcp);
+      uint32_t ack = TcpGetAcknowledgeNumber(tcp);
 
       // sequence & acknowledge number validation
       if(type & kFlagACK && seq == _ack && ack == _seq + _packet_length) {
@@ -205,7 +205,7 @@ int32_t Socket::Receive(uint8_t *data, uint32_t length, bool is_raw_packet, bool
 
   // remember source port
   // TODO: 適当なので直す(ポートが途中から違ったら？)
-  _dport = GetSourcePort(packet->buf + offset_l4);
+  _dport = TcpGetSourcePort(packet->buf + offset_l4);
 
   // finalization
   _device_info->ptcl_stack->FreeRxBuffer(GetProtocolStackId(), packet);
@@ -235,9 +235,9 @@ int32_t Socket::ReceivePacket(uint8_t *data, uint32_t length) {
       int32_t rval = Receive(packet, pkt_size, true, false, 0);
   
       if(rval >= 0) {
-        uint8_t type = GetSessionType(tcp);
-        uint32_t seq = GetSequenceNumber(tcp);
-        uint32_t ack = GetAcknowledgeNumber(tcp);
+        uint8_t type = TcpGetSessionType(tcp);
+        uint32_t seq = TcpGetSequenceNumber(tcp);
+        uint32_t ack = TcpGetAcknowledgeNumber(tcp);
   
         // TODO: check if ack number is duplicated
   
@@ -299,7 +299,7 @@ int32_t Socket::Listen() {
     int32_t rval = ReceiveRawPacket(buffer, kBufSize);
 
     if(rval >= 0) {
-      SetAcknowledgeNumber(GetSequenceNumber(tcp) + 1);
+      SetAcknowledgeNumber(TcpGetSequenceNumber(tcp) + 1);
       _state = kStateListen;
     } else {
       return rval;  // failure
@@ -330,12 +330,12 @@ int32_t Socket::Listen() {
 
     if(rval >= 0) {
       // check sequence number
-      if(GetSequenceNumber(tcp) != _ack) {
+      if(TcpGetSequenceNumber(tcp) != _ack) {
         return kErrorInvalidPacketOnWire;
       }
 
       // check acknowledge number
-      if(GetAcknowledgeNumber(tcp) != _seq + 1) {
+      if(TcpGetAcknowledgeNumber(tcp) != _seq + 1) {
         return kErrorInvalidPacketOnWire;
       }
 
@@ -385,13 +385,13 @@ int32_t Socket::Connect() {
 
     if(rval >= 0) {
       // check acknowledge number
-      if(GetAcknowledgeNumber(tcp) != _seq + 1) return kErrorInvalidPacketOnWire;
+      if(TcpGetAcknowledgeNumber(tcp) != _seq + 1) return kErrorInvalidPacketOnWire;
 
       // transmit ACK packet
-      uint32_t t = GetSequenceNumber(tcp);
+      uint32_t t = TcpGetSequenceNumber(tcp);
       SetSessionType(kFlagACK);
       SetSequenceNumber(_seq + 1);
-      SetAcknowledgeNumber(GetSequenceNumber(tcp) + 1);
+      SetAcknowledgeNumber(TcpGetSequenceNumber(tcp) + 1);
       rval = TransmitPacket(buffer, 0);
 
       if(rval >= 0) {
@@ -441,10 +441,10 @@ int32_t Socket::Close() {
 
     if(rval >= 0) {
       // check sequence number
-      if(GetSequenceNumber(tcp) != _ack) return kErrorInvalidPacketOnWire;
+      if(TcpGetSequenceNumber(tcp) != _ack) return kErrorInvalidPacketOnWire;
 
       // check acknowledge number
-      if(GetAcknowledgeNumber(tcp) != _seq + 1) return kErrorInvalidPacketOnWire;
+      if(TcpGetAcknowledgeNumber(tcp) != _seq + 1) return kErrorInvalidPacketOnWire;
 
       _state = kStateFinWait2;
     } else {
@@ -459,10 +459,10 @@ int32_t Socket::Close() {
 
     if(rval >= 0) {
       // check sequence number
-      if(GetSequenceNumber(tcp) != _ack) return kErrorInvalidPacketOnWire;
+      if(TcpGetSequenceNumber(tcp) != _ack) return kErrorInvalidPacketOnWire;
 
       // check acknowledge number
-      if(GetAcknowledgeNumber(tcp) != _seq + 1) return kErrorInvalidPacketOnWire;
+      if(TcpGetAcknowledgeNumber(tcp) != _seq + 1) return kErrorInvalidPacketOnWire;
 
       // transmit ACK packet
       SetSessionType(kFlagACK);
@@ -522,10 +522,10 @@ int32_t Socket::CloseAck() {
 
     if(rval >= 0) {
       // check sequence number
-      if(GetSequenceNumber(tcp) != _ack) return kErrorInvalidPacketOnWire;
+      if(TcpGetSequenceNumber(tcp) != _ack) return kErrorInvalidPacketOnWire;
 
       // check acknowledge number
-      if(GetAcknowledgeNumber(tcp) != _seq + 1) return kErrorInvalidPacketOnWire;
+      if(TcpGetAcknowledgeNumber(tcp) != _seq + 1) return kErrorInvalidPacketOnWire;
 
       _state = kStateClosed;
       _established = false;
@@ -606,7 +606,7 @@ int32_t UdpSocket::ReceivePacket(uint8_t *data, uint32_t length) {
 
   // remember source port
   // TODO: 適当なので直す(ポートが途中から違ったら？)
-  _dport = GetSourcePort(packet->buf + offset_l4);
+  _dport = UdpGetSourcePort(packet->buf + offset_l4);
 
   // finalization
   _device_info->ptcl_stack->FreeRxBuffer(GetProtocolStackId(), packet);
@@ -685,8 +685,8 @@ int32_t ArpSocket::ReceivePacket(uint16_t type, uint32_t *spa, uint8_t *sha) {
     case kOpArpReply:
       RegisterIpAddress(packet->buf + sizeof(EthHeader));
     case kOpArpRequest:
-      if(spa) *spa = GetSourceIpAddress(packet->buf + offset_arp);
-      if(sha) GetSourceMacAddress(sha, packet->buf + offset_arp);
+      if(spa) *spa = ArpGetSourceIpAddress(packet->buf + offset_arp);
+      if(sha) ArpGetSourceMacAddress(sha, packet->buf + offset_arp);
       break;
     default:
       _device_info->ptcl_stack->FreeRxBuffer(GetProtocolStackId(), packet);

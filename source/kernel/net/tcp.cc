@@ -216,25 +216,25 @@ uint16_t CheckSum(uint8_t *buf, uint32_t size, uint32_t saddr, uint32_t daddr) {
 }
 
 // extract sender port
-uint16_t GetSourcePort(uint8_t *packet) {
+uint16_t TcpGetSourcePort(uint8_t *packet) {
   TcpHeader * volatile header = reinterpret_cast<TcpHeader*>(packet);
   return ntohs(header->sport);
 }
 
 // extract sender packet session type
-uint8_t GetSessionType(uint8_t *packet) {
+uint8_t TcpGetSessionType(uint8_t *packet) {
   TcpHeader * volatile header = reinterpret_cast<TcpHeader*>(packet);
   return header->flag;
 }
 
 // extract sender sequence number from packet
-uint32_t GetSequenceNumber(uint8_t *packet) {
+uint32_t TcpGetSequenceNumber(uint8_t *packet) {
   TcpHeader * volatile header = reinterpret_cast<TcpHeader*>(packet);
   return ntohl(header->seq_number);
 }
 
 // extract sender acknowledge number from packet
-uint32_t GetAcknowledgeNumber(uint8_t *packet) {
+uint32_t TcpGetAcknowledgeNumber(uint8_t *packet) {
   TcpHeader * volatile header = reinterpret_cast<TcpHeader*>(packet);
   return ntohl(header->ack_number);
 }
