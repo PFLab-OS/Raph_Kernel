@@ -263,7 +263,7 @@ extern "C" {
     va_list Args;
     va_start(Args, Fmt);
     AcpiOsVprintf(Fmt, Args);
-    va_end (Args);
+    va_end(Args);
   }
 
   void AcpiOsVprintf(const char *Fmt, va_list Args) {

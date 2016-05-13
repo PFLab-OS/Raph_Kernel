@@ -25,7 +25,6 @@
 #include <raph.h>
 
 void Functional::WakeupFunction() {
-  // TODO : CPUを叩きおこす
   if (!_func.CanExecute()) {
     return;
   }

@@ -113,7 +113,7 @@ public:
       // TODO cpuid
       int cpuid = 1;
       int vector = idt->SetIntCallback(cpuid, LegacyIntHandler, reinterpret_cast<void *>(this));
-      apic_ctrl->SetupIoInt(irq, apic_ctrl->GetApicIdFromCpuId(cpuid), vector);
+       apic_ctrl->SetupIoInt(irq, apic_ctrl->GetApicIdFromCpuId(cpuid), vector);
       ic->Add(irq, vector);
       ic->next->inthandler->Add(device);
     }
@@ -196,8 +196,8 @@ private:
     }
     void Add(DevPci *device_) {
       kassert(next == nullptr);
-      IntHandler *ih = virtmem_ctrl->New<IntHandler>();
-      ih->device = device_;
+      next = virtmem_ctrl->New<IntHandler>();
+      next->device = device_;
     }
     DevPci *device;
     IntHandler *next;
@@ -214,10 +214,10 @@ private:
     }
     void Add(int irq_, int vector_) {
       kassert(next == nullptr);
-      IrqContainer *ic = virtmem_ctrl->New<IrqContainer>();
-      ic->irq = irq_;
-      ic->vector = vector_;
-      ic->inthandler = virtmem_ctrl->New<IntHandler>();
+      next = virtmem_ctrl->New<IrqContainer>();
+      next->irq = irq_;
+      next->vector = vector_;
+      next->inthandler = virtmem_ctrl->New<IntHandler>();
     }
     static void Handler(void *arg);
     int irq;

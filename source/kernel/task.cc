@@ -88,14 +88,19 @@ void TaskCtrl::Remove(int cpuid, Task *task) {
   task->_status = Task::Status::kOutOfQueue;  
 }
 
+//TODO remove this
+#include <tty.h>
 void TaskCtrl::Run() {
+  int cpuid = apic_ctrl->GetCpuId();
   apic_ctrl->SetupTimer();
   while(true) {
-    apic_ctrl->StopTimer();
-    Function f;
-    int cpuid = apic_ctrl->GetCpuId();
-    kassert(_task_struct[cpuid].state == TaskQueueState::kNotRunning);
-    _task_struct[cpuid].state = TaskQueueState::kRunning;
+    {
+      Locker locker(_task_struct[cpuid].lock);
+      apic_ctrl->StopTimer();
+      kassert(_task_struct[cpuid].state == TaskQueueState::kNotRunning
+              || _task_struct[cpuid].state == TaskQueueState::kSleeped);
+      _task_struct[cpuid].state = TaskQueueState::kRunning;
+    }
     while (true){
       Task *t;
       {
@@ -141,10 +146,11 @@ void TaskCtrl::Run() {
       _task_struct[cpuid].bottom = _task_struct[cpuid].bottom_sub;
       _task_struct[cpuid].bottom_sub = tmp;
 
-      _task_struct[cpuid].state = TaskQueueState::kNotRunning;
-
       if (_task_struct[cpuid].top->_next != nullptr || _task_struct[cpuid].top_sub->_next != nullptr) {
+        _task_struct[cpuid].state = TaskQueueState::kNotRunning;
         apic_ctrl->StartTimer();
+      } else {
+        _task_struct[cpuid].state = TaskQueueState::kSleeped;
       }
     }
     asm volatile("hlt");
@@ -164,6 +170,9 @@ void TaskCtrl::Register(int cpuid, Task *task) {
   _task_struct[cpuid].bottom_sub = task;
 
   //TODO stateをみて、キューイングによっては叩きおこすようにすべき
+  if (_task_struct[cpuid].state == TaskQueueState::kSleeped) {
+    apic_ctrl->SendIpi(apic_ctrl->GetApicIdFromCpuId(cpuid));
+  }
 }
 
 Task::~Task() {

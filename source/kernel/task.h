@@ -29,10 +29,11 @@
 class Task;
 
 class TaskCtrl {
- public:
+public:
   enum class TaskQueueState {
-    kRunning,
     kNotRunning,
+    kRunning,
+    kSleeped,
   };
   TaskCtrl() {}
   void Setup();

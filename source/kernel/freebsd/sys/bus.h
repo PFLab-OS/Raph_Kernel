@@ -251,6 +251,7 @@ static inline int bus_setup_intr(device_t dev, struct resource *r, int flags, dr
     
     // TODO cpu num
     dev->GetPciClass()->SetLegacyInterrupt(bus_ithread_sub2, reinterpret_cast<void *>(s));
+    return 0;
   } 
 }
 

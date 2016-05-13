@@ -282,7 +282,11 @@ extern "C" int main() {
       }, nullptr);
     eth->SetReceiveCallback(2, func);
   }
-  
+
+  // 各コアは最低限の初期化ののち、TaskCtrlに制御が移さなければならない
+  // 特定のコアで専用の処理をさせたい場合は、TaskCtrlに登録したジョブとして
+  // 実行する事
+
   apic_ctrl->StartAPs();
 
   gtty->Printf("s", "\n\n[kernel] info: initialization completed\n");
@@ -310,7 +314,6 @@ extern "C" int main() {
   return 0;
 }
 
-
 extern "C" int main_of_others() {
 // according to mp spec B.3, system should switch over to Symmetric I/O mode
   apic_ctrl->BootAP();
@@ -319,7 +322,6 @@ extern "C" int main_of_others() {
   idt->SetupProc();
 
   gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetCpuId(), "s", "(apic id:", "d", apic_ctrl->GetApicIdFromCpuId(apic_ctrl->GetCpuId()), "s", ") started.\n");
-  task_ctrl->Run();
 
   PollingFunc p;
  
@@ -418,7 +420,7 @@ extern "C" int main_of_others() {
         tpacket->len = len;
         cnt = timer->ReadMainCnt();
         eth->TransmitPacket(tpacket);
-        // gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
+        gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
         time--;
         }
         if (time != 0) {
@@ -444,7 +446,7 @@ void kernel_panic(const char *class_name, const char *err_str) {
 
 void checkpoint(int id, const char *str) {
   if (id < 0 || apic_ctrl->GetCpuId() == id) {
-    gtty->Printf("s",str);
+    gtty->PrintfRaw("s",str);
   }
 }
 

@@ -40,6 +40,7 @@ class Tty {
   void Init() {
     Function func;
     func.Init(Handle, reinterpret_cast<void *>(this));
+    //TODO cpuid
     _queue.SetFunction(1, func);
   }
   void Cprintf(const char *fmt, ...) {
@@ -92,16 +93,19 @@ class Tty {
   int _cx = 0;
   int _cy = 0;
  private:
-  struct String {
+  class String {
+  public:
     enum class Type {
       kSingle,
       kQueue,
     } type;
-    static const int length = 100;
-    uint8_t str[length];
-    int offset;
-    String *next;
+    String() {
+      type = Type::kSingle;
+      offset = 0;
+      next = nullptr;
+    } 
     static String *New();
+    void Delete();
     void Init() {
       type = Type::kQueue;
       offset = 0;
@@ -126,13 +130,21 @@ class Tty {
     void Exit() {
       Write('\0');
     }
+    static const int length = 100;
+    uint8_t str[length];
+    int offset;
+    String *next;
   };
   static void Handle(void *tty){
     Tty *that = reinterpret_cast<Tty *>(tty);
-    void *str;
-    while(that->_queue.Pop(str)) {
-      Locker locker(that->_lock);
-      that->PrintString(reinterpret_cast<String *>(str));
+    void *s;
+    while(that->_queue.Pop(s)) {
+      String *str = reinterpret_cast<String *>(s);
+      {
+        Locker locker(that->_lock);
+        that->PrintString(str);
+      }
+      str->Delete();
     }
   }
   void Cvprintf_sub(String *str, const char *fmt, va_list args) {
@@ -330,19 +342,11 @@ class Tty {
   } 
   void PrintString(String *str);
   void DoString(String *str) {
-    switch (task_ctrl->GetState(apic_ctrl->GetCpuId())) {
-    case TaskCtrl::TaskQueueState::kNotRunning: {
+    if (apic_ctrl->IsBootupAll()) {
+      _queue.Push(str);
+    } else {
       Locker locker(_lock);
       PrintString(str);
-      break;
-    }
-    case TaskCtrl::TaskQueueState::kRunning: { 
-      _queue.Push(str);
-      break;
-    }
-    default: {
-      kassert(false);
-    }
     }
   }
   FunctionalQueue _queue;
