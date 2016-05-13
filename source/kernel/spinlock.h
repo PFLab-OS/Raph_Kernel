@@ -26,45 +26,71 @@
 #include <stdint.h>
 #include <assert.h>
 
-enum class SpinLockId : int {
-  kNull = -1,
-  kEnd,
+class SpinLockInterface {
+public:
+  SpinLockInterface() {}
+  virtual ~SpinLockInterface() {}
+  virtual volatile unsigned int GetFlag() = 0;
+  virtual volatile int GetProcId() = 0;
+  virtual void Lock() = 0;
+  virtual void Unlock() = 0;
+  virtual int Trylock() = 0;
+  virtual bool IsLocked() = 0;
 };
 
-//
-// 同じロックに対してreadlockしてからwritelockするとデッドロックする
-// そういう場合は最初からwritelockするか、readfreeしてからwritelockすべし
-//
-// Read引数のcallbackは何度も実行される可能性がある事に注意
-//
-// SpinLockを定義する場合は、継承して、getLockId()を書き換える事
-
-class SpinLock {
+// 割り込みハンドラ内では使えないので注意
+class SpinLock : public SpinLockInterface { 
 public:
   SpinLock() {}
   virtual ~SpinLock() {}
-  volatile unsigned int GetFlag() {
+  virtual volatile unsigned int GetFlag() override {
     return _flag;
   }
-  volatile int GetProcId() {
+  virtual volatile int GetProcId() override {
     return _id;
   }
-  // WriteLockを通じてのみアクセスする事!!!!!
-  bool SetFlag(unsigned int old_flag, unsigned int new_flag) {
-    return __sync_bool_compare_and_swap(&_flag, old_flag, new_flag);
-  }
-  virtual SpinLockId getLockId() {
-    return SpinLockId::kNull;
-  }
-  virtual void Lock();
-  void Unlock();
-  int Trylock();
-  bool IsLocked() {
+  virtual void Lock() override;
+  virtual void Unlock() override;
+  virtual int Trylock() override;
+  virtual bool IsLocked() override {
     return ((_flag % 2) == 1);
   }
 protected:
+  bool SetFlag(unsigned int old_flag, unsigned int new_flag) {
+    return __sync_bool_compare_and_swap(&_flag, old_flag, new_flag);
+  }
   volatile unsigned int _flag = 0;
   volatile int _id;
+};
+
+// 割り込みハンドラ内でも使えるSpinLock
+// ロック確保時にI/O割り込みを禁止するため、可能ならSpinLockを使う事
+// また、例外処理中などは使えない
+class IntSpinLock : public SpinLockInterface {
+public:
+  IntSpinLock() {}
+  virtual ~IntSpinLock() {}
+  virtual volatile unsigned int GetFlag() override {
+    return _flag;
+  }
+  virtual volatile int GetProcId() override {
+    return _id;
+  }
+  virtual void Lock() override;
+  virtual void Unlock() override;
+  virtual int Trylock() override;
+  virtual bool IsLocked() override {
+    return ((_flag % 2) == 1);
+  }
+protected:
+  bool SetFlag(unsigned int old_flag, unsigned int new_flag) {
+    return __sync_bool_compare_and_swap(&_flag, old_flag, new_flag);
+  }
+  void DisableInt();
+  void EnableInt();
+  volatile unsigned int _flag = 0;
+  volatile int _id;
+  bool _did_stop_interrupt = false;
 };
 
 class DebugSpinLock : public SpinLock {
@@ -83,31 +109,14 @@ private:
 // 関数からreturnする際に必ずunlockできるので、unlock忘れを防止する
 class Locker {
  public:
- Locker(SpinLock &lock) : _lock(lock) {
+ Locker(SpinLockInterface &lock) : _lock(lock) {
     _lock.Lock();
   }
   ~Locker() {
     _lock.Unlock();
   }
  private:
-  SpinLock &_lock;
-};
-
-class SpinLockCtrl {
- public:
-  SpinLockCtrl() {
-    for(int i = 0; i < 16; i++) {
-      flags[i] = SpinLockId::kEnd;
-    }
-  }
-  SpinLockId getCurrentLock() {
-    return flags[0];
-  }
-  void setCurrentLock(SpinLockId spid) {
-    flags[0] = spid;
-  }
- private:
-  SpinLockId flags[16];
+  SpinLockInterface &_lock;
 };
 
 #endif // __RAPH_KERNEL_SPINLOCK_H__

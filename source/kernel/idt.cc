@@ -30,6 +30,8 @@
 
 namespace C {
 extern "C" void handle_int(Regs *rs) {
+  //TODO 例外処理中のフラグを立て、IntSpinLock内では弾く
+  apic_ctrl->DisableInt();
   int cpuid = apic_ctrl->GetCpuId();
   idt->_handling_cnt[cpuid]++;
   if (idt->_callback[cpuid][rs->n].callback == nullptr) {
@@ -41,6 +43,7 @@ extern "C" void handle_int(Regs *rs) {
     idt->_callback[cpuid][rs->n].callback(rs, idt->_callback[cpuid][rs->n].arg);
   }
   idt->_handling_cnt[cpuid]--;
+  apic_ctrl->EnableInt();
   apic_ctrl->SendEoi();
 }
 }
@@ -92,6 +95,7 @@ void Idt::SetupGeneric() {
       _callback[i][j].callback = nullptr;
     }
   }
+  _is_gen_initialized = true;
 }
 
 void Idt::SetupProc() {

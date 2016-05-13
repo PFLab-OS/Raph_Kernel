@@ -21,7 +21,6 @@
  */
 
 #include <global.h>
-#include <spinlock.h>
 #include <raph_acpi.h>
 #include <apic.h>
 #include <multiboot.h>
@@ -43,7 +42,6 @@
 #include "net/socket.h"
 
 
-SpinLockCtrl *spinlock_ctrl;
 MultibootCtrl *multiboot_ctrl;
 AcpiCtrl *acpi_ctrl;
 ApicCtrl *apic_ctrl;
@@ -102,8 +100,6 @@ uint8_t ip[] = {
 };
 
 extern "C" int main() {
-  SpinLockCtrl _spinlock_ctrl;
-  spinlock_ctrl = &_spinlock_ctrl;
   
   MultibootCtrl _multiboot_ctrl;
   multiboot_ctrl = &_multiboot_ctrl;
@@ -143,7 +139,7 @@ extern "C" int main() {
 
   Keyboard _keyboard;
   keyboard = &_keyboard;
-  
+
   tmpmem_ctrl->Init();
 
   PhysAddr paddr;
@@ -160,7 +156,6 @@ extern "C" int main() {
   } else {
     kernel_panic("timer", "HPET not supported.\n");
   }
-
 
   // timer->Sertup()より後
   apic_ctrl->Setup();

@@ -87,12 +87,12 @@ static ACPI_STATUS GetIntNum(ACPI_RESOURCE *resource, void *context) {
   switch(resource->Type) {
   case ACPI_RESOURCE_TYPE_START_DEPENDENT:
   case ACPI_RESOURCE_TYPE_END_TAG: {
-    return AE_OK;
+    return_ACPI_STATUS (AE_OK);
   }
   case ACPI_RESOURCE_TYPE_IRQ: {
     ACPI_RESOURCE_IRQ *p = &resource->Data.Irq;
     if (p == nullptr || p->InterruptCount == 0) {
-      return AE_OK;
+      return_ACPI_STATUS (AE_OK);
     }
     *irq = p->Interrupts[0];
     break;
@@ -100,7 +100,7 @@ static ACPI_STATUS GetIntNum(ACPI_RESOURCE *resource, void *context) {
   case ACPI_RESOURCE_TYPE_EXTENDED_IRQ: {
     ACPI_RESOURCE_EXTENDED_IRQ *p = &resource->Data.ExtendedIrq;
     if (p == nullptr || p->InterruptCount == 0) {
-      return AE_OK;
+      return_ACPI_STATUS (AE_OK);
     }
     *irq = p->Interrupts[0];
     break;
@@ -110,17 +110,20 @@ static ACPI_STATUS GetIntNum(ACPI_RESOURCE *resource, void *context) {
   }
   }
   
-  return AE_CTRL_TERMINATE;
+  return_ACPI_STATUS (AE_CTRL_TERMINATE);
 }
 
 struct ArgContainer1 {
   DevPci *device;
-  ACPI_PCI_ROUTING_TABLE *entry;
   PciCtrl::IntPin intpin;
+  bool source_not_found;
+  bool source_available_flag;
+  int source_index;
+  char *linkname;
 };
 
 static ACPI_STATUS GetRouteTable(ACPI_HANDLE obj_handle, UINT32 level, void *context, void **ReturnValue) {
-  ArgContainer1 *container = reinterpret_cast<ArgContainer1>(context);
+  ArgContainer1 *container = reinterpret_cast<ArgContainer1 *>(context);
   DevPci *device = container->device;
   ACPI_STATUS status;
   ACPI_DEVICE_INFO *info;
@@ -133,7 +136,7 @@ static ACPI_STATUS GetRouteTable(ACPI_HANDLE obj_handle, UINT32 level, void *con
   
   status = AcpiGetObjectInfo(obj_handle, &info);
   if (ACPI_FAILURE(status)) {
-    return AE_OK;
+    return_ACPI_STATUS (AE_OK);
   }
 
   kassert(info->Type == ACPI_TYPE_DEVICE);
@@ -142,27 +145,47 @@ static ACPI_STATUS GetRouteTable(ACPI_HANDLE obj_handle, UINT32 level, void *con
     uint8_t bus = 0;
     if (ACPI_SUCCESS(status)) {
       kassert(param.Type == ACPI_TYPE_INTEGER);
-      uint8_t bus = param.Integer.Value;
+      bus = param.Integer.Value;
     }
 
     if (bus == device->GetBus()) {
       buf.Pointer = nullptr;
       buf.Length = ACPI_ALLOCATE_BUFFER;
       status = AcpiGetIrqRoutingTable(obj_handle, &buf);
-    
-      ACPI_PCI_ROUTING_TABLE *entry = reinterpret_cast<ACPI_PCI_ROUTING_TABLE *>(buf.Pointer);
-      while((entry != nullptr) && (entry->Length > 0)) {
-        if ((((entry->Address >> 16) & 0xFFFF) == device->GetDevice()) &&
-            (entry->Pin + 1 == container->intpin)) {
-          container->entry = entry;
-          return AE_TERMINATE;
+
+      if (ACPI_SUCCESS(status)) {
+        ACPI_PCI_ROUTING_TABLE *entry = reinterpret_cast<ACPI_PCI_ROUTING_TABLE *>(buf.Pointer);
+        while((entry != nullptr) && (entry->Length > 0)) {
+          if ((((entry->Address >> 16) & 0xFFFF) == device->GetDevice()) &&
+              (entry->Pin + 1 == static_cast<unsigned int>(container->intpin))) {
+
+            if (entry->Source[0] == '\0') {
+              container->source_not_found = false;
+              container->source_available_flag = false;
+              container->source_index = entry->SourceIndex;
+              return_ACPI_STATUS (AE_CTRL_TERMINATE);
+            }
+
+            status = AcpiGetHandle(ACPI_ROOT_OBJECT, entry->Source, &obj_handle);
+
+            if (ACPI_SUCCESS(status)) {
+              status = AcpiGetObjectInfo(obj_handle, &info);
+              if (ACPI_SUCCESS(status)) {
+                container->source_not_found = false;
+                container->source_available_flag = true;
+                container->linkname = reinterpret_cast<char *>(&info->Name);
+          
+                return_ACPI_STATUS (AE_CTRL_TERMINATE);
+              }
+            }
+          }
+          entry = reinterpret_cast<ACPI_PCI_ROUTING_TABLE *>(reinterpret_cast<virt_addr>(entry) + entry->Length);
         }
-        entry = reinterpret_cast<ACPI_PCI_ROUTING_TABLE *>(reinterpret_cast<virt_addr>(entry) + entry->Length);
       }
     }
   }
 
-  return AE_OK;
+  return_ACPI_STATUS (AE_OK);
 }
 
 struct ArgContainer2 {
@@ -171,13 +194,13 @@ struct ArgContainer2 {
 };
 
 static ACPI_STATUS GetIntLink(ACPI_HANDLE obj_handle, UINT32 level, void *context, void **ReturnValue) {
-  ArgContainer2 *container = reinterpret_cast<ArgContainer2>(context);
+  ArgContainer2 *container = reinterpret_cast<ArgContainer2 *>(context);
   ACPI_STATUS status;
   ACPI_DEVICE_INFO *info;
 
   status = AcpiGetObjectInfo(obj_handle, &info);
   if (ACPI_FAILURE(status)) {
-    return AE_OK;
+    return_ACPI_STATUS (AE_OK);
   }
 
   kassert(info->Type == ACPI_TYPE_DEVICE);
@@ -191,7 +214,7 @@ static ACPI_STATUS GetIntLink(ACPI_HANDLE obj_handle, UINT32 level, void *contex
     }
   }
 
-  return AE_OK;
+  return_ACPI_STATUS (AE_OK);
 }
 
 
@@ -204,17 +227,18 @@ int AcpiCtrl::GetPciIntNum(DevPci *device) {
   ArgContainer1 container1;
   container1.device = device;
   container1.intpin = intpin;
-  container1.entry = nullptr;
+  container1.source_not_found = true;
   AcpiWalkNamespace(ACPI_TYPE_DEVICE, ACPI_ROOT_OBJECT, 100, GetRouteTable, nullptr, reinterpret_cast<void *>(&container1), nullptr);
-  if (container1.entry == nullptr) {
+  if (container1.source_not_found) {
     return -1;
   }
-  if (container1.entry->Source == 0) {
-    return container1.entry->SourceIndex;
+  if (!container1.source_available_flag) {
+    return container1.source_index;
   }
 
   ArgContainer2 container2;
-  container2->linkname = reinterpret_cast<char *>(&entry->Source);
+  container2.irq = -1;
+  container2.linkname = container1.linkname;
   AcpiWalkNamespace(ACPI_TYPE_DEVICE, ACPI_ROOT_OBJECT, 100, GetIntLink, nullptr, reinterpret_cast<void *>(&container2), nullptr);
 
   return container2.irq;

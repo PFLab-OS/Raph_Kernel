@@ -25,7 +25,6 @@
 
 // TODO: global namespace
 
-class SpinLockCtrl;
 class AcpiCtrl;
 class ApicCtrl;
 class MultibootCtrl;
@@ -45,7 +44,6 @@ class PciCtrl;
 
 class NetDevCtrl;
 
-extern SpinLockCtrl *spinlock_ctrl;
 extern AcpiCtrl *acpi_ctrl;
 extern ApicCtrl *apic_ctrl;
 extern MultibootCtrl *multiboot_ctrl;

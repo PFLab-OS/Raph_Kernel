@@ -54,6 +54,9 @@ class Idt {
   void SetExceptionCallback(int cpuid, int vector, int_callback callback, void *arg);
   // if 0, cpu is not handling interrupt
   volatile int GetHandlingCnt() {
+    if (!_is_gen_initialized) {
+      return false;
+    }
     return _handling_cnt[apic_ctrl->GetCpuId()];
   }
   struct ReservedIntVector {
@@ -71,6 +74,7 @@ class Idt {
   int *_handling_cnt;
   friend void C::handle_int(Regs *rs);
   SpinLock _lock;
+  bool _is_gen_initialized = false;
 };
 
 #endif // __RAPH_KERNEL_IDT_H__

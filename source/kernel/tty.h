@@ -346,7 +346,7 @@ class Tty {
     }
   }
   FunctionalQueue _queue;
-  SpinLock _lock;
+  IntSpinLock _lock;
 };
 
 #endif // __RAPH_KERNEL_TTY_H__

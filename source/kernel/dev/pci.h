@@ -31,6 +31,7 @@
 #include <idt.h>
 #include <apic.h>
 #include <dev/device.h>
+#include <task.h>
 
 struct MCFGSt {
   uint8_t reserved1[8];
@@ -55,11 +56,11 @@ public:
    kPcie = 0x10,
   };
   enum class IntPin : int {
-    int kInvalid = 0;
-    int kIntA = 1;
-    int kIntB = 2;
-    int kIntC = 3;
-    int kIntD = 4;
+    kInvalid = 0,
+      kIntA = 1,
+      kIntB = 2,
+      kIntC = 3,
+      kIntD = 4,
   };
   PciCtrl() {
     _irq_container = virtmem_ctrl->New<IrqContainer>();
@@ -79,9 +80,6 @@ public:
     void WriteReg(uint8_t bus, uint8_t device, uint8_t func, uint16_t reg, T value) override {
     *(reinterpret_cast<T *>(GetVaddr(bus, device, func, reg))) = value;
   }
-  int GetIntLinkSetting(int link_device) {
-    return _interrupt_link_setting[link_device];
-  }
   // Capabilityへのオフセットを返す
   // 見つからなかった時は0
   uint16_t FindCapability(uint8_t bus, uint8_t device, uint8_t func, CapabilityId id);
@@ -92,18 +90,33 @@ public:
   // 先にHasMsiでMsiが使えるか調べる事
   void SetMsi(uint8_t bus, uint8_t device, uint8_t func, uint64_t addr, uint16_t data);
   IntPin GetLegacyIntPin(uint8_t bus, uint8_t device, uint8_t func) {
-    return static_cast<IntPin>(ReadReg(bus, device, func, kIntPinReg));
+    return static_cast<IntPin>(ReadReg<uint8_t>(bus, device, func, kIntPinReg));
   }
-  void RegisterLegacyIntHandler(int irq, ioint_callback handler, DevPci *device) {
-    _irq_container_lock;
-    IrqContainer *ic = _irq_container;
-    while(ic->next != nullptr) {
-      if (ic->irq == irq) {
-        
+  // 0より小さい場合はLegacyInterruptが存在しない
+  virtual int GetLegacyIntNum(DevPci *device) = 0;
+  void RegisterLegacyIntHandler(int irq, DevPci *device) {
+    {
+      Locker lock(_irq_container_lock);
+      IrqContainer *ic = _irq_container;
+      while(ic->next != nullptr) {
+        IrqContainer *nic = ic->next;
+        if (nic->irq == irq) {
+          IntHandler *ih = nic->inthandler;
+          while(ih->next != nullptr) {
+            ih = ih->next;
+          }
+          ih->Add(device);
+          return;
+        } 
+        ic = nic;
       }
-      ic = ic->next;
+      // TODO cpuid
+      int cpuid = 1;
+      int vector = idt->SetIntCallback(cpuid, LegacyIntHandler, reinterpret_cast<void *>(this));
+      apic_ctrl->SetupIoInt(irq, apic_ctrl->GetApicIdFromCpuId(cpuid), vector);
+      ic->Add(irq, vector);
+      ic->next->inthandler->Add(device);
     }
-    ic->Add(irq);
   }
   static const uint16_t kDevIdentifyReg = 0x2;
   static const uint16_t kVendorIDReg = 0x00;
@@ -157,8 +170,6 @@ public:
   static const uint32_t kRegBaseAddrMaskMemAddr = 0xFFFFFFF0;
   static const uint32_t kRegBaseAddrMaskIoAddr = 0xFFFFFFFC;
 protected:
-  // 0より小さい場合はLegacyInterruptが存在しない
-  virtual int GetLegacyIntNum(DevPci *device) = 0;
   void _Init();
 private:
   template<class T>
@@ -180,26 +191,56 @@ private:
 
   class IntHandler {
   public:
+    IntHandler() {
+      next = nullptr;
+    }
+    void Add(DevPci *device_) {
+      kassert(next == nullptr);
+      IntHandler *ih = virtmem_ctrl->New<IntHandler>();
+      ih->device = device_;
+    }
     DevPci *device;
-    ioint_callback callback;
     IntHandler *next;
   };
   class IrqContainer {
   public:
     IrqContainer() {
       irq = -1;
+      inthandler = nullptr;
       next = nullptr;
+      Function func;
+      func.Init(Handler, reinterpret_cast<void *>(this));
+      task.SetFunc(func);
     }
-    void Add(int irq) {
+    void Add(int irq_, int vector_) {
       kassert(next == nullptr);
-      IrqContainer *irq = virtmem_ctrl->New<IrqContainer>();
+      IrqContainer *ic = virtmem_ctrl->New<IrqContainer>();
+      ic->irq = irq_;
+      ic->vector = vector_;
+      ic->inthandler = virtmem_ctrl->New<IntHandler>();
     }
+    static void Handler(void *arg);
     int irq;
-    Inthandler *inthandler;
+    int vector;
+    IntHandler *inthandler;
     IrqContainer *next;
-    SpinLock lock;
+    Task task;
   } *_irq_container;
-  SpinLock _irq_container_lock;
+  IntSpinLock _irq_container_lock;
+  static void LegacyIntHandler(Regs *rs, void *arg) {
+    PciCtrl *that = reinterpret_cast<PciCtrl *>(arg);
+    Locker locker(that->_irq_container_lock);
+    IrqContainer *ic = that->_irq_container;
+    while(ic->next != nullptr) {
+      IrqContainer *nic = ic->next;
+      if (nic->vector == static_cast<int>(rs->n)) {
+        // TODO cpuid
+        task_ctrl->Register(1, &nic->task);
+        break;
+      }
+      ic = nic;
+    }
+  }
 };
 
 class AcpicaPciCtrl : public PciCtrl {
@@ -222,7 +263,7 @@ private:
 // 派生クラスはstatic void InitPci(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf); を作成する事
 class DevPci : public Device {
 public:
-  DevPci(uint8_t bus, uint8_t device, uint8_t function) : _bus(bus), _device(device), _function(function), _irq(pci_ctrl->GetLegacyIntNum(this)) {
+  DevPci(uint8_t bus, uint8_t device, uint8_t function) : _bus(bus), _device(device), _function(function) {
   }
   virtual ~DevPci() {
   }
@@ -266,23 +307,27 @@ public:
     return pci_ctrl->GetLegacyIntPin(_bus, _device, _function);
   }
   bool HasLegacyInterrupt() {
-    return (_irq != -1);
+    int irq = pci_ctrl->GetLegacyIntNum(this);
+    return irq >= 0;
   }
   void SetLegacyInterrupt(ioint_callback handler, void *arg) {
     _intarg = arg;
-    int irq = GetLegacyIntNum(this);
-    pci_ctrl->RegisterLegacyIntHandler(irq, handler, this);
-    
-    int vector = idt->SetIntCallback(cpuid, bus_ithread_sub1, reinterpret_cast<void *>(s));
-    apic_ctrl->SetupIoInt(_irq, apic_ctrl->GetApicIdFromCpuId(cpuid), vector);
+    _handler = handler;
+    int irq = pci_ctrl->GetLegacyIntNum(this);
+    if (irq >= 0) {
+      pci_ctrl->RegisterLegacyIntHandler(irq, this);
+    }
+  }
+  void LegacyIntHandler() {
+    _handler(_intarg);
   }
 private:
   DevPci();
   const uint8_t _bus;
   const uint8_t _device;
   const uint8_t _function;
-  const int _irq;
   void *_intarg;
+  ioint_callback _handler;
 };
 
 

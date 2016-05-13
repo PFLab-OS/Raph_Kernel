@@ -223,40 +223,12 @@ static inline void filter_handler_sub(void *arg) {
 struct intr_container_struct {
   driver_intr_t ithread;
   void *arg;
-  Task task;
-  SpinLock lock;
-  int cnt;
 };
-static inline void bus_ithread_sub1(Regs *reg, void *arg) {
-  // 割り込みハンドラ
-  intr_container_struct *s = reinterpret_cast<intr_container_struct *>(arg);
-
-  Locker locker(s->lock);
-  kassert(s->cnt >= 0);
-  s->cnt++;
-  if (s->cnt == 1) {
-    kassert(s->task.GetStatus() == Task::Status::kOutOfQueue);
-    task_ctrl->Register(apic_ctrl->GetCpuId(), &s->task);
-  } else {
-    kassert(s->task.GetStatus() != Task::Status::kOutOfQueue);
-  }
-}
 
 static inline void bus_ithread_sub2(void *arg) {
   // タスクハンドラ
   intr_container_struct *s = reinterpret_cast<intr_container_struct *>(arg);
-
-  while(true) {
-    {
-      Locker locker(s->lock);
-      if (s->cnt == 0) {
-        task_ctrl->Remove(apic_ctrl->GetCpuId(), &s->task);
-        break;
-      }
-      s->cnt--;
-    }
-    s->ithread(s->arg);
-  }
+  s->ithread(s->arg);
 }
 
 static inline int bus_setup_intr(device_t dev, struct resource *r, int flags, driver_filter_t filter, driver_intr_t ithread, void *arg, void **cookiep) {
@@ -272,17 +244,13 @@ static inline int bus_setup_intr(device_t dev, struct resource *r, int flags, dr
     return 0;
   }
   if (ithread != nullptr) {
-    if (!dev->GetPciClass->HasLegacyInterrupt()) {
+    if (!dev->GetPciClass()->HasLegacyInterrupt()) {
       return -1;
     } 
     intr_container_struct *s = virtmem_ctrl->New<intr_container_struct>();
-    s->cnt = 0;
-    Function func;
-    func.Init(bus_ithread_sub2, reinterpret_cast<void *>(s));
-    s->task.SetFunc(func);
     
     // TODO cpu num
-    dev->GetPciClass->SetLegacyInterrupt(0, bus_ithread_sub1, reinterpret_cast<void *>(s));
+    dev->GetPciClass()->SetLegacyInterrupt(bus_ithread_sub2, reinterpret_cast<void *>(s));
   } 
 }
 

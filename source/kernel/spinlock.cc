@@ -27,6 +27,7 @@
 
 void SpinLock::Lock() {
 #ifndef __UNIT_TEST__
+  kassert(idt->GetHandlingCnt() == 0);
   if ((_flag % 2) == 1) {
     kassert(_id != apic_ctrl->GetCpuId());
   }
@@ -62,5 +63,52 @@ int SpinLock::Trylock() {
     return 0;
   } else {
     return -1;
+  }
+}
+
+void IntSpinLock::Lock() {
+  if ((_flag % 2) == 1) {
+    kassert(_id != apic_ctrl->GetCpuId());
+  }
+  volatile unsigned int flag = GetFlag();
+  while(true) {
+    if ((flag % 2) != 1) {
+      asm volatile("cli");
+      if (SetFlag(flag, flag + 1)) {
+        this->DisableInt();
+        asm volatile("sti");
+        break;
+      } else {
+        asm volatile("sti");
+      }
+    }
+    flag = GetFlag();
+  }
+  _id = apic_ctrl->GetCpuId();
+}
+
+void IntSpinLock::Unlock() {
+  kassert((_flag % 2) == 1);
+  _id = -1;
+  _flag++;
+  this->EnableInt();
+}
+
+int IntSpinLock::Trylock() {
+  volatile unsigned int flag = GetFlag();
+  if (((flag % 2) == 0) && SetFlag(flag, flag + 1)) {
+    return 0;
+  } else {
+    return -1;
+  }
+}
+
+void IntSpinLock::DisableInt() {
+  _did_stop_interrupt = apic_ctrl->DisableInt();
+}
+
+void IntSpinLock::EnableInt() {
+  if (_did_stop_interrupt) {
+    apic_ctrl->EnableInt();
   }
 }

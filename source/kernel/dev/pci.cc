@@ -55,7 +55,7 @@ void PciCtrl::_Init() {
 
         int maxf = ((ReadReg<uint16_t>(j, k, 0, kHeaderTypeReg) & kHeaderTypeRegFlagMultiFunction) != 0) ? 7 : 0;
         for (int l = 0; l <= maxf; l++) {
-          DevPci *dev = InitPciDevices(j, k, l);
+          InitPciDevices(j, k, l);
         }
       }
     }
@@ -63,7 +63,7 @@ void PciCtrl::_Init() {
 }
 
 DevPci *PciCtrl::InitPciDevices(uint8_t bus, uint8_t device, uint8_t func) {
-  _InitPciDevices<E1000, lE1000, DevPci>(bus, device, func);
+  return _InitPciDevices<E1000, lE1000, DevPci>(bus, device, func);
 }
 
 uint16_t PciCtrl::FindCapability(uint8_t bus, uint8_t device, uint8_t func, CapabilityId id) {
@@ -115,4 +115,16 @@ void PciCtrl::SetMsi(uint8_t bus, uint8_t device, uint8_t func, uint64_t addr, u
     WriteReg<uint16_t>(bus, device, func, offset + kMsiCapReg32MsgData, static_cast<uint16_t>(data));
   }
   WriteReg<uint16_t>(bus, device, func, offset + kMsiCapRegControl, control | kMsiCapRegControlMsiEnableFlag);
+}
+
+void PciCtrl::IrqContainer::Handler(void *arg) {
+  IrqContainer *ic = reinterpret_cast<IrqContainer *>(arg);
+  IntHandler *ih = ic->inthandler;
+  while(ih->next != nullptr) {
+    IntHandler *nih = ih->next;
+    nih->device->LegacyIntHandler();
+    ih = nih;
+  }
+  // TODO cpuid
+  task_ctrl->Remove(1, &ic->task);
 }

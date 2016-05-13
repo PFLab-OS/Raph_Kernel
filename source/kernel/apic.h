@@ -103,6 +103,21 @@ public:
     void SendEoi() {
       _ctrlAddr[kRegEoi] = 0;
     }
+    void EnableInt() {
+      _ctrlAddr[kRegSvr] |= kRegSvrApicEnableFlag;
+    }
+    bool DisableInt() {
+      //TODO 割り込みが無効化されている事を確認
+      if ((_ctrlAddr[kRegSvr] & kRegSvrApicEnableFlag) == 0) {
+        return false;
+      } else {
+        _ctrlAddr[kRegSvr] &= ~kRegSvrApicEnableFlag;
+        return true;
+      }
+    }
+    bool IsIntEnable() {
+      return (_ctrlAddr[kRegSvr] | kRegSvrApicEnableFlag) != 0;
+    }
     void SendIpi(uint8_t destid);
     void SetupTimer();
     void StartTimer() {
@@ -266,6 +281,19 @@ public:
   bool SetupIoInt(uint32_t irq, uint8_t lapicid, uint8_t vector) {
     kassert(vector >= 32);
     return _ioapic.SetupInt(irq, lapicid, vector);
+  }
+  void EnableInt() {
+    _lapic.EnableInt();
+  }
+  // 割り込みを無効化した上で呼び出す事
+  // 戻り値：
+  // true 割り込みが有効化されているのを無効化した
+  // false 元々無効化されていた
+  bool DisableInt() {
+    return _lapic.DisableInt();
+  }
+  void IsIntEnable() {
+    _lapic.IsIntEnable();
   }
   void SendEoi() {
     _lapic.SendEoi();
