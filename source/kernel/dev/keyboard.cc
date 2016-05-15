@@ -74,7 +74,7 @@ void Keyboard::Reset() {
 void Keyboard::Handler(Regs *reg, void *arg) {
   uint8_t data;
   data = inb(kDataPort);
-  if(data < (1 << 7))  keyboard->Write(data);
+  if (data < (1 << 7)) keyboard->Write(data);
 }
 
 const char Keyboard::kScanCode[256] = {

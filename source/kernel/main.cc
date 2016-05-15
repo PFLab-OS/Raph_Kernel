@@ -78,7 +78,7 @@ Callout tt3;
 #define RCV  2
 #define TEST 3
 
-#define FLAG RCV
+#define FLAG QEMU
 #if FLAG == TEST
 #define IP1 192, 168, 100, 117
 #define IP2 192, 168, 100, 254
@@ -207,6 +207,7 @@ extern "C" int main() {
         if(!eth->ReceivePacket(rpacket)) {
           return;
         }
+    gtty->CprintfRaw("m");
         // received packet
         if(rpacket->buf[12] == 0x08 && rpacket->buf[13] == 0x06 && rpacket->buf[21] == 0x02) {
           uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;
@@ -419,8 +420,8 @@ extern "C" int main_of_others() {
         memcpy(tpacket->buf, data, len);
         tpacket->len = len;
         cnt = timer->ReadMainCnt();
-        eth->TransmitPacket(tpacket);
-        gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
+        // eth->TransmitPacket(tpacket);
+        // gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
         time--;
         }
         if (time != 0) {

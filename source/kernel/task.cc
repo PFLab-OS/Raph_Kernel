@@ -51,6 +51,7 @@ void TaskCtrl::Setup() {
 }
 
 void TaskCtrl::Remove(int cpuid, Task *task) {
+  //TODO taskにcpuidを突っ込むべき
   kassert(task->_status != Task::Status::kGuard);
   Locker locker(_task_struct[cpuid].lock);
   switch(task->_status) {
@@ -76,6 +77,7 @@ void TaskCtrl::Remove(int cpuid, Task *task) {
 
     prev->_next = next;
     next->_prev = prev;
+    break;
   }
   case Task::Status::kRunning:
   case Task::Status::kOutOfQueue: {
@@ -161,17 +163,23 @@ void TaskCtrl::Register(int cpuid, Task *task) {
   if (cpuid < 0 || cpuid >= apic_ctrl->GetHowManyCpus()) {
     return;
   }
-  kassert(task->_status == Task::Status::kOutOfQueue);
   Locker locker(_task_struct[cpuid].lock);
+  if (task->_status != Task::Status::kOutOfQueue) {
+    task->_cnt++;
+    gtty->CprintfRaw("!r");
+    return;
+  }
   task->_next = nullptr;
   task->_status = Task::Status::kWaitingInQueue;
+  task->_cnt = 1;
   _task_struct[cpuid].bottom_sub->_next = task;
   task->_prev = _task_struct[cpuid].bottom_sub;
   _task_struct[cpuid].bottom_sub = task;
 
-  //TODO stateをみて、キューイングによっては叩きおこすようにすべき
   if (_task_struct[cpuid].state == TaskQueueState::kSleeped) {
-    apic_ctrl->SendIpi(apic_ctrl->GetApicIdFromCpuId(cpuid));
+    if (apic_ctrl->GetCpuId() != cpuid) {
+      apic_ctrl->SendIpi(apic_ctrl->GetApicIdFromCpuId(cpuid));
+    }
   }
 }
 

@@ -54,7 +54,7 @@ public:
     Task *bottom;
     Task *top_sub;
     Task *bottom_sub;
-    SpinLock lock;
+    IntSpinLock lock;
 
     TaskQueueState state;
   } *_task_struct = nullptr;
@@ -113,6 +113,7 @@ private:
   Task *_next;
   Task *_prev;
   Status _status = Status::kOutOfQueue;
+  int _cnt;
   friend TaskCtrl;
 };
 

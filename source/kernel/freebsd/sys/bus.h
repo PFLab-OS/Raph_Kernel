@@ -225,7 +225,7 @@ struct intr_container_struct {
   void *arg;
 };
 
-static inline void bus_ithread_sub2(void *arg) {
+static inline void bus_ithread_sub(void *arg) {
   // タスクハンドラ
   intr_container_struct *s = reinterpret_cast<intr_container_struct *>(arg);
   s->ithread(s->arg);
@@ -248,9 +248,10 @@ static inline int bus_setup_intr(device_t dev, struct resource *r, int flags, dr
       return -1;
     } 
     intr_container_struct *s = virtmem_ctrl->New<intr_container_struct>();
-    
+    s->ithread = ithread;
+    s->arg = arg;
     // TODO cpu num
-    dev->GetPciClass()->SetLegacyInterrupt(bus_ithread_sub2, reinterpret_cast<void *>(s));
+    dev->GetPciClass()->SetLegacyInterrupt(bus_ithread_sub, reinterpret_cast<void *>(s));
     return 0;
   } 
 }

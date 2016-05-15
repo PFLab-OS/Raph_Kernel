@@ -233,7 +233,8 @@ static inline void callout_reset(struct callout *c, int ticks, timeout_t *func, 
   Function f;
   f.Init(func, arg);
   c->callout.Init(f);
-  c->callout.SetHandler(static_cast<uint32_t>(ticks) * 1000 * 1000 / hz);
+  //TODO cpuid
+  c->callout.SetHandler(1, static_cast<uint32_t>(ticks) * 1000 * 1000 / hz);
 }
 
 #define EVENTHANDLER_REGISTER(...)

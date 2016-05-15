@@ -80,8 +80,7 @@ void AcpiCtrl::Shutdown() {
   AcpiEnterSleepState(5);
   kernel_panic("acpi", "could not halt system");
 }
-// TODO remove this
-#include <tty.h>
+
 static ACPI_STATUS GetIntNum(ACPI_RESOURCE *resource, void *context) {
   int *irq = reinterpret_cast<int *>(context);
   switch(resource->Type) {
