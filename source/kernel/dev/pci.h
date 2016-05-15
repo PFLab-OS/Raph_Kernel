@@ -237,8 +237,9 @@ private:
       IrqContainer *nic = ic->next;
       if (nic->vector == static_cast<int>(rs->n)) {
         // TODO cpuid
-    gtty->CprintfRaw("r");
+        checkpoint(-1,"r");
         task_ctrl->Register(1, &nic->task);
+        checkpoint(-1,"er");
         break;
       }
       ic = nic;

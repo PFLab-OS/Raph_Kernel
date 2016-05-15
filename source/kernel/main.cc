@@ -65,7 +65,7 @@ static uint32_t rnd_next = 1;
 BsdDevEthernet *eth;
 uint64_t cnt;
 int64_t sum;
-static const int stime = 10000;
+static const int stime = 10;
 int time, rtime;
 
 #include <callout.h>
@@ -420,7 +420,7 @@ extern "C" int main_of_others() {
         memcpy(tpacket->buf, data, len);
         tpacket->len = len;
         cnt = timer->ReadMainCnt();
-        // eth->TransmitPacket(tpacket);
+        eth->TransmitPacket(tpacket);
         // gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
         time--;
         }

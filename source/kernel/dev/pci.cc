@@ -126,6 +126,4 @@ void PciCtrl::IrqContainer::Handler(void *arg) {
     nih->device->LegacyIntHandler();
     ih = nih;
   }
-  // TODO cpuid
-  task_ctrl->Remove(1, &ic->task);
 }

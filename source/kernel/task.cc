@@ -50,45 +50,45 @@ void TaskCtrl::Setup() {
   }
 }
 
-void TaskCtrl::Remove(int cpuid, Task *task) {
-  //TODO taskにcpuidを突っ込むべき
-  kassert(task->_status != Task::Status::kGuard);
-  Locker locker(_task_struct[cpuid].lock);
-  switch(task->_status) {
-  case Task::Status::kWaitingInQueue: {
-    Task *next = task->_next;
-    Task *prev = task->_prev;
+// void TaskCtrl::Remove(int cpuid, Task *task) {
+//   //TODO taskにcpuidを突っ込むべき
+//   kassert(task->_status != Task::Status::kGuard);
+//   Locker locker(_task_struct[cpuid].lock);
+//   switch(task->_status) {
+//   case Task::Status::kWaitingInQueue: {
+//     Task *next = task->_next;
+//     Task *prev = task->_prev;
 
-    task->_next = nullptr;
-    task->_prev = nullptr;
+//     task->_next = nullptr;
+//     task->_prev = nullptr;
 
-    kassert(prev != nullptr);
-    prev->_next = next;
+//     kassert(prev != nullptr);
+//     prev->_next = next;
 
-    if (next == nullptr) {
-      if (task == _task_struct[cpuid].bottom) {
-        _task_struct[cpuid].bottom = prev;
-      } else if (task == _task_struct[cpuid].bottom_sub) {
-        _task_struct[cpuid].bottom_sub = prev;
-      } else {
-        kassert(false);
-      }
-    }
+//     if (next == nullptr) {
+//       if (task == _task_struct[cpuid].bottom) {
+//         _task_struct[cpuid].bottom = prev;
+//       } else if (task == _task_struct[cpuid].bottom_sub) {
+//         _task_struct[cpuid].bottom_sub = prev;
+//       } else {
+//         kassert(false);
+//       }
+//     }
 
-    prev->_next = next;
-    next->_prev = prev;
-    break;
-  }
-  case Task::Status::kRunning:
-  case Task::Status::kOutOfQueue: {
-    break;
-  }
-  default:{
-    kassert(false);
-  }
-  }
-  task->_status = Task::Status::kOutOfQueue;  
-}
+//     prev->_next = next;
+//     next->_prev = prev;
+//     break;
+//   }
+//   case Task::Status::kRunning:
+//   case Task::Status::kOutOfQueue: {
+//     break;
+//   }
+//   default:{
+//     kassert(false);
+//   }
+//   }
+//   task->_status = Task::Status::kOutOfQueue;  
+// }
 
 //TODO remove this
 #include <tty.h>
@@ -103,6 +103,7 @@ void TaskCtrl::Run() {
               || _task_struct[cpuid].state == TaskQueueState::kSleeped);
       _task_struct[cpuid].state = TaskQueueState::kRunning;
     }
+    checkpoint(1,"t");
     while (true){
       Task *t;
       {
@@ -122,19 +123,18 @@ void TaskCtrl::Run() {
         }
         kassert(t->_status == Task::Status::kWaitingInQueue);
         t->_status = Task::Status::kRunning;
+        t->_cnt--;
         t->_next = nullptr;
         t->_prev = nullptr;
       }
       
-      t->_func.Execute();
+      t->Execute();
 
-      if (t->_status == Task::Status::kRunning) {
+      {
         Locker locker(_task_struct[cpuid].lock);
-        t->_status = Task::Status::kWaitingInQueue;
-        _task_struct[cpuid].bottom_sub->_next = t;
-        t->_next = nullptr;
-        t->_prev = _task_struct[cpuid].bottom_sub;
-        _task_struct[cpuid].bottom_sub = t;
+        if (t->_status == Task::Status::kRunning) {
+          t->_status = Task::Status::kOutOfQueue;
+        }
       }
     }
     {
@@ -164,14 +164,13 @@ void TaskCtrl::Register(int cpuid, Task *task) {
     return;
   }
   Locker locker(_task_struct[cpuid].lock);
-  if (task->_status != Task::Status::kOutOfQueue) {
-    task->_cnt++;
-    gtty->CprintfRaw("!r");
+  task->_cnt++;
+  if (task->_status == Task::Status::kWaitingInQueue) {
+    checkpoint(1,"!r");
     return;
   }
   task->_next = nullptr;
   task->_status = Task::Status::kWaitingInQueue;
-  task->_cnt = 1;
   _task_struct[cpuid].bottom_sub->_next = task;
   task->_prev = _task_struct[cpuid].bottom_sub;
   _task_struct[cpuid].bottom_sub = task;

@@ -39,7 +39,7 @@ public:
   void Setup();
   // RegisterしたTaskはRemoveを呼び出すまで削除されない
   void Register(int cpuid, Task *task);
-  void Remove(int cpuid, Task *task);
+  // void Remove(int cpuid, Task *task);
   void Run();
   TaskQueueState GetState(int cpuid) {
     if (_task_struct == nullptr) {
@@ -94,6 +94,7 @@ class Function {
 class Task {
 public:
   Task() {
+    _cnt = 0;
   }
   virtual ~Task();
   void SetFunc(const Function &func) {
@@ -107,6 +108,9 @@ public:
   };
   Status GetStatus() {
     return _status;
+  }
+  void Execute() {
+    _func.Execute();
   }
 private:
   Function _func;

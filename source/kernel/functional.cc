@@ -46,7 +46,7 @@ void Functional::Handle(void *p) {
       Locker locker(that->_lock);
       if (!that->ShouldFunc()) {
         that->_state = FunctionState::kNotFunctioning;
-        task_ctrl->Remove(that->_cpuid, &that->_task);
+        // task_ctrl->Remove(that->_cpuid, &that->_task);
         break;
       }
     }
