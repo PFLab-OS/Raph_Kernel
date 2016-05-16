@@ -2,15 +2,15 @@ KERNEL = kernel.elf
 
 NET_OBJS = net/eth.o net/arp.o net/ip.o net/tcp.o net/udp.o net/socket.o net/netctrl.o
 FREEBSD_OBJS = freebsd/sys/taskqueue.o
-OBJS = boot/boot.o boot/bootap.o main.o spinlock.o apic.o raph_acpi.o gdt.o idt.o int.o tty.o task.o queue.o functional.o dev.o acpica.o mem/virtmem.o mem/tmpmem.o mem/paging.o mem/physmem.o $(FREEBSD_OBJS) $(NET_OBJS)
-TEST_OBJS = test_main.o spinlock.o mem/virtmem.o dev/raw.o dev/netdev.o net/test.o $(NET_OBJS)
+OBJS = boot/boot.o boot/bootap.o main.o apic.o raph_acpi.o gdt.o idt.o int.o tty.o queue.o dev.o acpica.o mem/virtmem.o mem/tmpmem.o mem/paging.o mem/physmem.o $(FREEBSD_OBJS) $(NET_OBJS) ../Raph_Library/lib.o
+TEST_OBJS = test_main.o mem/virtmem.o dev/raw.o dev/netdev.o net/test.o $(NET_OBJS) ../Raph_Library/lib.o
 
 BUILD = ../../build/
 DEPS= $(filter %.d, $(subst .o,.d, $(OBJS) $(TEST_OBJS)))
 
 TEST = ./unit_test
 
-RAPHFLAGS = -Wall -Wshadow -nostdinc -nostdlib -fno-builtin -mcmodel=large -D__KERNEL__ -I$(realpath ../Raph_Library/libc/) -I$(realpath .) -I$(realpath ./acpica/include) -MMD -MP
+RAPHFLAGS = -Wall -Wshadow -nostdinc -nostdlib -fno-builtin -mcmodel=large -D__KERNEL__ -I$(realpath ../Raph_Library/libc/) -I$(realpath ../Raph_Library/rlib/) -I$(realpath .) -I$(realpath ./acpica/include) -MMD -MP
 RAPHCFLAGS = $(RAPHFLAGS) -std=c99
 RAPHCXXFLAGS = $(RAPHFLAGS) -std=c++1y -fno-exceptions -fno-rtti -fno-use-cxa-atexit
 CFLAGS += $(RAPHCFLAGS)
@@ -18,7 +18,7 @@ CXXFLAGS += $(RAPHCXXFLAGS)
 
 ASFLAGS += -I$(realpath .)
 
-.PHONY: clean test dev.o acpica.o
+.PHONY: clean test dev.o acpica.o ../Raph_Library/lib.o
 
 default: $(BUILD)$(KERNEL)
 
@@ -45,6 +45,10 @@ dev.o:
 acpica.o:
 	make -C acpica CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)"
 
+../Raph_Library/lib.o:
+	make -C ../Raph_Library CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)"
+
 clean:
 	make -C dev clean
+	make -C acpica clean
 	-rm -f $(OBJS) $(TEST_OBJS) $(DEPS) *.s *.ii
