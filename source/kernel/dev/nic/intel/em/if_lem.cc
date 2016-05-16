@@ -1394,7 +1394,6 @@ lem_poll(if_t ifp)
 static void
 lem_intr(void *arg)
 {
-    gtty->CprintfRaw("1");
   struct adapter	*adapter = reinterpret_cast<struct adapter *>(arg);
   BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<lE1000>();
 	if_t ifp = adapter->ifp;
@@ -1416,7 +1415,6 @@ lem_intr(void *arg)
 	}
 
 	if (reg_icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC)) {
-    gtty->CprintfRaw("2");
 		callout_stop(&adapter->timer);
 		adapter->hw.mac.get_link_status = 1;
 		lem_update_link_status(adapter);
@@ -3772,7 +3770,6 @@ lem_rxeof(struct adapter *adapter, int count, int *done)
       if (e1000->_rx_reserved.Pop(packet)) {
         memcpy(packet->buf, reinterpret_cast<void *>(p2v(adapter->rx_desc_base[i].buffer_addr)), len);
         packet->len = len;
-    gtty->CprintfRaw("#");
         if (!e1000->_rx_buffered.Push(packet)) {
           kassert(e1000->_rx_reserved.Push(packet));
           adapter->dropped_pkts++;

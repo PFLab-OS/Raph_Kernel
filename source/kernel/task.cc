@@ -90,8 +90,6 @@ void TaskCtrl::Setup() {
 //   task->_status = Task::Status::kOutOfQueue;  
 // }
 
-//TODO remove this
-#include <tty.h>
 void TaskCtrl::Run() {
   int cpuid = apic_ctrl->GetCpuId();
   apic_ctrl->SetupTimer();
@@ -103,7 +101,6 @@ void TaskCtrl::Run() {
               || _task_struct[cpuid].state == TaskQueueState::kSleeped);
       _task_struct[cpuid].state = TaskQueueState::kRunning;
     }
-    checkpoint(1,"t");
     while (true){
       Task *t;
       {
@@ -166,7 +163,6 @@ void TaskCtrl::Register(int cpuid, Task *task) {
   Locker locker(_task_struct[cpuid].lock);
   task->_cnt++;
   if (task->_status == Task::Status::kWaitingInQueue) {
-    checkpoint(1,"!r");
     return;
   }
   task->_next = nullptr;

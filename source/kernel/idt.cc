@@ -44,6 +44,7 @@ extern "C" void handle_int(Regs *rs) {
   }
   idt->_handling_cnt[cpuid]--;
   apic_ctrl->EnableInt();
+  //TODO 普通の例外の場合にまずい
   apic_ctrl->SendEoi();
 }
 }

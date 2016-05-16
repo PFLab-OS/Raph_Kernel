@@ -37,7 +37,6 @@ public:
   };
   TaskCtrl() {}
   void Setup();
-  // RegisterしたTaskはRemoveを呼び出すまで削除されない
   void Register(int cpuid, Task *task);
   // void Remove(int cpuid, Task *task);
   void Run();

@@ -49,7 +49,6 @@
   jmp ret_from_int
   .endr
 
-
 .irp    param,8,10,11,12,13,14,17
   .global i\param
   i\param:
@@ -74,7 +73,7 @@
   call *%rax
   jmp ret_from_int
   .endr
-
+  
 ret_from_int:
   popq %rax
   popq %rbx

@@ -85,8 +85,6 @@ Callout tt3;
 #elif FLAG == SND
 #define IP1 192, 168, 100, 117
 #define IP2 192, 168, 100, 104
-// #define IP1 0x00, 0x11, 0x22, 0x34
-// #define IP2 0x00, 0x11, 0x22, 0x33
 #elif FLAG == RCV
 #define IP1 192, 168, 100, 104
 #define IP2 192, 168, 100, 117
@@ -207,7 +205,6 @@ extern "C" int main() {
         if(!eth->ReceivePacket(rpacket)) {
           return;
         }
-    gtty->CprintfRaw("m");
         // received packet
         if(rpacket->buf[12] == 0x08 && rpacket->buf[13] == 0x06 && rpacket->buf[21] == 0x02) {
           uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;

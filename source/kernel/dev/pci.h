@@ -32,8 +32,7 @@
 #include <apic.h>
 #include <dev/device.h>
 #include <task.h>
-//TODO remove this
-#include <tty.h>
+
 struct MCFGSt {
   uint8_t reserved1[8];
   uint64_t ecam_base;
@@ -229,7 +228,6 @@ private:
   } *_irq_container;
   IntSpinLock _irq_container_lock;
   static void LegacyIntHandler(Regs *rs, void *arg) {
-    gtty->CprintfRaw("i");
     PciCtrl *that = reinterpret_cast<PciCtrl *>(arg);
     Locker locker(that->_irq_container_lock);
     IrqContainer *ic = that->_irq_container;
@@ -237,9 +235,7 @@ private:
       IrqContainer *nic = ic->next;
       if (nic->vector == static_cast<int>(rs->n)) {
         // TODO cpuid
-        checkpoint(-1,"r");
         task_ctrl->Register(1, &nic->task);
-        checkpoint(-1,"er");
         break;
       }
       ic = nic;

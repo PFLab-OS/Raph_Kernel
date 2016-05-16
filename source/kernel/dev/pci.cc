@@ -118,7 +118,6 @@ void PciCtrl::SetMsi(uint8_t bus, uint8_t device, uint8_t func, uint64_t addr, u
 }
 
 void PciCtrl::IrqContainer::Handler(void *arg) {
-    gtty->CprintfRaw("h");
   IrqContainer *ic = reinterpret_cast<IrqContainer *>(arg);
   IntHandler *ih = ic->inthandler;
   while(ih->next != nullptr) {

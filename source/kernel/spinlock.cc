@@ -73,13 +73,21 @@ void IntSpinLock::Lock() {
   volatile unsigned int flag = GetFlag();
   while(true) {
     if ((flag % 2) != 1) {
-      asm volatile("cli");
+      uint64_t if_flag;
+      asm volatile("pushfq; popq %0; andq $0x200, %0;":"=r"(if_flag));
+      if (if_flag != 0) {
+        asm volatile("cli;");
+      }
       if (SetFlag(flag, flag + 1)) {
         this->DisableInt();
-        asm volatile("sti");
+        if (if_flag != 0) {
+          asm volatile("sti;");
+        }
         break;
       } else {
-        asm volatile("sti");
+        if (if_flag != 0) {
+          asm volatile("sti;");
+        }
       }
     }
     flag = GetFlag();
