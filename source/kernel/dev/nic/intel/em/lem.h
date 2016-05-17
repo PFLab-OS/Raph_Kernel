@@ -48,6 +48,7 @@ public:
   static void PollingHandler(void *arg);
   virtual void ChangeHandleMethodToPolling() override;
   virtual void ChangeHandleMethodToInt() override;
+  virtual void Transmit(void *) override;
   BsdDevice bsd;
 };
 

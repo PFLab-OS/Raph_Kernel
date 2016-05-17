@@ -190,7 +190,7 @@ static int	lem_attach(device_t);
 // static int	lem_shutdown(device_t);
 // static int	lem_suspend(device_t);
 // static int	lem_resume(device_t);
-// static void	lem_start(if_t);
+static void	lem_start(if_t);
 static void	lem_start_locked(if_t ifp);
 // static int	lem_ioctl(if_t, u_long, caddr_t);
 #if __FreeBSD_version >= 1100036
@@ -947,8 +947,8 @@ lem_start_locked(if_t ifp)
 		}
 	}
 
-        while (!e1000->_tx_buffered.IsEmpty()) {
-	// while (!if_sendq_empty(ifp)) {
+  while (!e1000->_tx_buffered.IsEmpty()) {
+    // while (!if_sendq_empty(ifp)) {
 		// m_head = if_dequeue(ifp);
 
 		// if (m_head == NULL)
@@ -964,9 +964,9 @@ lem_start_locked(if_t ifp)
 		// 	if_sendq_prepend(ifp, m_head);
 		// 	break;
 		// }
-          BsdDevEthernet::Packet *packet;
-          kassert(e1000->_tx_buffered.Pop(packet));
-          lem_xmit(adapter, packet);
+    BsdDevEthernet::Packet *packet;
+    kassert(e1000->_tx_buffered.Pop(packet));
+    lem_xmit(adapter, packet);
 
 		/* Send a copy of the frame to the BPF listener */
 		// if_etherbpfmtap(ifp, m_head);
@@ -991,16 +991,16 @@ lem_start_locked(if_t ifp)
 	return;
 }
 
-// static void
-// lem_start(if_t ifp)
-// {
-//   struct adapter *adapter = reinterpret_cast<struct adapter *>(if_getsoftc(ifp));
+static void
+lem_start(if_t ifp)
+{
+  struct adapter *adapter = reinterpret_cast<struct adapter *>(if_getsoftc(ifp));
 
-// 	EM_TX_LOCK(adapter);
-// 	if (if_getdrvflags(ifp) & IFF_DRV_RUNNING)
-// 		lem_start_locked(ifp);
-// 	EM_TX_UNLOCK(adapter);
-// }
+	EM_TX_LOCK(adapter);
+	if (if_getdrvflags(ifp) & IFF_DRV_RUNNING)
+		lem_start_locked(ifp);
+	EM_TX_UNLOCK(adapter);
+}
 
 /*********************************************************************
  *  Ioctl entry point
@@ -1727,11 +1727,11 @@ lem_xmit(struct adapter *adapter, BsdDevEthernet::Packet *packet)
 		return (error);
 	}
 
-        if (nsegs > (adapter->num_tx_desc_avail - 2)) {
-                adapter->no_tx_desc_avail2++;
+  if (nsegs > (adapter->num_tx_desc_avail - 2)) {
+    adapter->no_tx_desc_avail2++;
 		bus_dmamap_unload(adapter->txtag, map);
 		return (ENOBUFS);
-        }
+  }
 	// m_head = *m_headp;
 
 	/* Do hardware assists */
@@ -1798,21 +1798,21 @@ lem_xmit(struct adapter *adapter, BsdDevEthernet::Packet *packet)
 	// 	}
 	// }
 
-        bus_size_t seg_len;
-        tx_buffer = &adapter->tx_buffer_area[i];
-        ctxd = &adapter->tx_desc_base[i];
-        seg_len = packet->len;
-        memcpy(reinterpret_cast<void *>(p2v(ctxd->buffer_addr)), packet->buf, seg_len);
-        e1000->ReuseTxBuffer(packet);
-        ctxd->lower.data = htole32(
-                                   adapter->txd_cmd | txd_lower | seg_len);
-        ctxd->upper.data =
-          htole32(txd_upper);
-        last = i;
-        if (++i == adapter->num_tx_desc)
-          i = 0;
-        // tx_buffer->m_head = NULL;
-        tx_buffer->next_eop = -1;
+  bus_size_t seg_len;
+  tx_buffer = &adapter->tx_buffer_area[i];
+  ctxd = &adapter->tx_desc_base[i];
+  seg_len = packet->len;
+  memcpy(reinterpret_cast<void *>(p2v(ctxd->buffer_addr)), packet->buf, seg_len);
+  e1000->ReuseTxBuffer(packet);
+  ctxd->lower.data = htole32(
+                             adapter->txd_cmd | txd_lower | seg_len);
+  ctxd->upper.data =
+    htole32(txd_upper);
+  last = i;
+  if (++i == adapter->num_tx_desc)
+    i = 0;
+  // tx_buffer->m_head = NULL;
+  tx_buffer->next_eop = -1;
 
 	adapter->next_avail_tx_desc = i;
 
@@ -2816,7 +2816,7 @@ fail:
 static void
 lem_setup_transmit_structures(struct adapter *adapter)
 {
-        BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<lE1000>();
+  BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<lE1000>();
 	// struct em_buffer *tx_buffer;
 #ifdef DEV_NETMAP
 	/* we are already locked */
@@ -2826,42 +2826,42 @@ lem_setup_transmit_structures(struct adapter *adapter)
 
 	/* Clear the old ring contents */
 	bzero(adapter->tx_desc_base,
-	    (sizeof(struct e1000_tx_desc)) * adapter->num_tx_desc);
+        (sizeof(struct e1000_tx_desc)) * adapter->num_tx_desc);
 
 	/* Free any existing TX buffers */
-// 	for (int i = 0; i < adapter->num_tx_desc; i++, tx_buffer++) {
-// 		tx_buffer = &adapter->tx_buffer_area[i];
-// 		bus_dmamap_sync(adapter->txtag, tx_buffer->map,
-// 		    BUS_DMASYNC_POSTWRITE);
-// 		bus_dmamap_unload(adapter->txtag, tx_buffer->map);
-// 		m_freem(tx_buffer->m_head);
-// 		tx_buffer->m_head = NULL;
-// #ifdef DEV_NETMAP
-// 		if (slot) {
-// 			/* the i-th NIC entry goes to slot si */
-// 			int si = netmap_idx_n2k(&na->tx_rings[0], i);
-// 			uint64_t paddr;
-// 			void *addr;
+  // 	for (int i = 0; i < adapter->num_tx_desc; i++, tx_buffer++) {
+  // 		tx_buffer = &adapter->tx_buffer_area[i];
+  // 		bus_dmamap_sync(adapter->txtag, tx_buffer->map,
+  // 		    BUS_DMASYNC_POSTWRITE);
+  // 		bus_dmamap_unload(adapter->txtag, tx_buffer->map);
+  // 		m_freem(tx_buffer->m_head);
+  // 		tx_buffer->m_head = NULL;
+  // #ifdef DEV_NETMAP
+  // 		if (slot) {
+  // 			/* the i-th NIC entry goes to slot si */
+  // 			int si = netmap_idx_n2k(&na->tx_rings[0], i);
+  // 			uint64_t paddr;
+  // 			void *addr;
 
-// 			addr = PNMB(na, slot + si, &paddr);
-// 			adapter->tx_desc_base[i].buffer_addr = htole64(paddr);
-// 			/* reload the map for netmap mode */
-// 			netmap_load_map(na, adapter->txtag, tx_buffer->map, addr);
-// 		}
-// #endif /* DEV_NETMAP */
-// 		tx_buffer->next_eop = -1;
-// 	}
+  // 			addr = PNMB(na, slot + si, &paddr);
+  // 			adapter->tx_desc_base[i].buffer_addr = htole64(paddr);
+  // 			/* reload the map for netmap mode */
+  // 			netmap_load_map(na, adapter->txtag, tx_buffer->map, addr);
+  // 		}
+  // #endif /* DEV_NETMAP */
+  // 		tx_buffer->next_eop = -1;
+  // 	}
 
-        BsdDevEthernet::Packet *packet;
-        while(e1000->_tx_buffered.Pop(packet)) {
-          kassert(e1000->_tx_reserved.Push(packet));
-        }
+  BsdDevEthernet::Packet *packet;
+  while(e1000->_tx_buffered.Pop(packet)) {
+    kassert(e1000->_tx_reserved.Push(packet));
+  }
 
 	for (int i = 0; i < adapter->num_tx_desc; i++) {
-          PhysAddr paddr;
-          physmem_ctrl->Alloc(paddr, PagingCtrl::ConvertNumToPageSize(MCLBYTES));
-          adapter->tx_desc_base[i].buffer_addr = htole64(paddr.GetAddr());
-        }
+    PhysAddr paddr;
+    physmem_ctrl->Alloc(paddr, PagingCtrl::ConvertNumToPageSize(MCLBYTES));
+    adapter->tx_desc_base[i].buffer_addr = htole64(paddr.GetAddr());
+  }
 
 	/* Reset state */
 	adapter->last_hw_offload = 0;
@@ -2870,7 +2870,7 @@ lem_setup_transmit_structures(struct adapter *adapter)
 	adapter->num_tx_desc_avail = adapter->num_tx_desc;
 
 	bus_dmamap_sync(adapter->txdma.dma_tag, adapter->txdma.dma_map,
-	    BUS_DMASYNC_PREREAD | BUS_DMASYNC_PREWRITE);
+                  BUS_DMASYNC_PREREAD | BUS_DMASYNC_PREWRITE);
 
 	return;
 }
@@ -5067,4 +5067,8 @@ void lE1000::ChangeHandleMethodToInt() {
   lem_enable_intr(adapter);
   if_setcapenablebit(ifp, 0, IFCAP_POLLING);
   EM_CORE_UNLOCK(adapter);
+}
+
+void lE1000::Transmit(void *) {
+  lem_start(this);
 }

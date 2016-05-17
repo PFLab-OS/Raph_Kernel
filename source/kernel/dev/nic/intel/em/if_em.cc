@@ -228,7 +228,7 @@ static int	em_mq_start_locked(if_t,
 		    struct tx_ring *);
 // static void	em_qflush(if_t);
 #else
-// static void	em_start(if_t);
+static void	em_start(if_t);
 static void	em_start_locked(if_t, struct tx_ring *);
 #endif
 // static int	em_ioctl(if_t, u_long, caddr_t);
@@ -1011,19 +1011,19 @@ em_start_locked(if_t ifp, struct tx_ring *txr)
 	return;
 }
 
-// static void
-// em_start(if_t ifp)
-// {
-//   struct adapter	*adapter = reinterpret_cast<struct adapter *>(if_getsoftc(ifp));
-// 	struct tx_ring	*txr = adapter->tx_rings;
+static void
+em_start(if_t ifp)
+{
+  struct adapter	*adapter = reinterpret_cast<struct adapter *>(if_getsoftc(ifp));
+	struct tx_ring	*txr = adapter->tx_rings;
 
-// 	if (if_getdrvflags(ifp) & IFF_DRV_RUNNING) {
-// 		EM_TX_LOCK(txr);
-// 		em_start_locked(ifp, txr);
-// 		EM_TX_UNLOCK(txr);
-// 	}
-// 	return;
-// }
+	if (if_getdrvflags(ifp) & IFF_DRV_RUNNING) {
+		EM_TX_LOCK(txr);
+		em_start_locked(ifp, txr);
+		EM_TX_UNLOCK(txr);
+	}
+	return;
+}
 #else /* EM_MULTIQUEUE */
 /*********************************************************************
  *  Multiqueue Transmit routines 
@@ -2588,10 +2588,10 @@ em_allocate_legacy(struct adapter *adapter)
 		rid = 1;
 	/* We allocate a single interrupt resource */
 	adapter->res = bus_alloc_resource_any(dev,
-	    SYS_RES_IRQ, &rid, RF_SHAREABLE | RF_ACTIVE);
+                                        SYS_RES_IRQ, &rid, RF_SHAREABLE | RF_ACTIVE);
 	if (adapter->res == NULL) {
 		device_printf(dev, "Unable to allocate bus resource: "
-		    "interrupt\n");
+                  "interrupt\n");
 		return (ENXIO);
 	}
 
@@ -2601,20 +2601,20 @@ em_allocate_legacy(struct adapter *adapter)
 	 */
 	TASK_INIT(&adapter->que_task, 0, em_handle_que, adapter);
 	adapter->tq = taskqueue_create_fast("em_taskq", M_NOWAIT,
-	    taskqueue_thread_enqueue, &adapter->tq);
+                                      taskqueue_thread_enqueue, &adapter->tq);
 	taskqueue_start_threads(&adapter->tq, 1, PI_NET, "%s que",
-	    device_get_nameunit(adapter->dev));
+                          device_get_nameunit(adapter->dev));
 	/* Use a TX only tasklet for local timer */
 	TASK_INIT(&txr->tx_task, 0, em_handle_tx, txr);
 	txr->tq = taskqueue_create_fast("em_txq", M_NOWAIT,
-	    taskqueue_thread_enqueue, &txr->tq);
+                                  taskqueue_thread_enqueue, &txr->tq);
 	taskqueue_start_threads(&txr->tq, 1, PI_NET, "%s txq",
-	    device_get_nameunit(adapter->dev));
+                          device_get_nameunit(adapter->dev));
 	TASK_INIT(&adapter->link_task, 0, em_handle_link, adapter);
 	if ((error = bus_setup_intr(dev, adapter->res, INTR_TYPE_NET,
-	    em_irq_fast, NULL, adapter, &adapter->tag)) != 0) {
+                              em_irq_fast, NULL, adapter, &adapter->tag)) != 0) {
 		device_printf(dev, "Failed to register fast interrupt "
-			    "handler: %d\n", error);
+                  "handler: %d\n", error);
 		// taskqueue_free(adapter->tq);
 		adapter->tq = NULL;
 		return (error);
@@ -6359,3 +6359,6 @@ void E1000::ChangeHandleMethodToInt() {
   EM_CORE_UNLOCK(adapter);
 }
 
+void E1000::Transmit(void *) {
+  em_start(this);
+}
