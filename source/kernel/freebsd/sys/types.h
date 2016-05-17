@@ -58,7 +58,8 @@ public:
   }
   virtual ~BsdDevPci() {
   }
-  // 返り値は割り当てられたvector または-1(error)
+  
+  // 返り値は割り当てられたvector
   int SetMsi(int cpuid, ioint_callback handler, void *arg) {
     int i;
     {
@@ -69,13 +70,10 @@ public:
         }
       }
       if (i == kIntMax) {
-        return -1;
+        kernel_panic("PCI", "could not allocate MSI Handler");
       }
     }
     int vector = DevPci::SetMsi(cpuid, HandleSub, reinterpret_cast<void *>(this));
-    if (vector == -1) {
-      return -1;
-    }
     map[i].cpuid = cpuid;
     map[i].vector = vector;
     map[i].handler = handler;

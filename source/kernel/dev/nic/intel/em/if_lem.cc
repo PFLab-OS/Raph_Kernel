@@ -1396,7 +1396,7 @@ static void
 lem_intr(void *arg)
 {
   struct adapter	*adapter = reinterpret_cast<struct adapter *>(arg);
-        BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<lE1000>();
+  BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<lE1000>();
 	if_t ifp = adapter->ifp;
 	u32		reg_icr;
 
@@ -2368,6 +2368,18 @@ lem_allocate_irq(struct adapter *adapter)
 		return (ENXIO);
 	}
 
+  /* Do Legacy setup? */
+  if (lem_use_legacy_irq) {
+    if ((error = bus_setup_intr(dev, adapter->res[0],
+                                INTR_TYPE_NET | INTR_MPSAFE, NULL, lem_intr, adapter,
+                                &adapter->tag[0])) != 0) {
+      device_printf(dev,
+                    "Failed to register interrupt handler");
+			return (error);
+    }
+    return (0);
+  }
+  
 	/*
 	 * Use a Fast interrupt and the associated
 	 * deferred processing contexts.
@@ -2381,16 +2393,11 @@ lem_allocate_irq(struct adapter *adapter)
 	if ((error = bus_setup_intr(dev, adapter->res[0],
 	    INTR_TYPE_NET, lem_irq_fast, NULL, adapter,
 	    &adapter->tag[0])) != 0) {
-		// taskqueue_free(adapter->tq);
-		adapter->tq = NULL;
-		if ((error = bus_setup_intr(dev, adapter->res[0],
-	    	    INTR_TYPE_NET | INTR_MPSAFE, NULL, lem_intr, adapter,
-	    	    &adapter->tag[0])) != 0) {
-			device_printf(dev,
-			    "Failed to register interrupt handler");
-			return (error);
-		}
-		return (0);
+    device_printf(dev, "Failed to register fast interrupt "
+                  "handler: %d\n", error);
+    // taskqueue_free(adapter->tq);
+    adapter->tq = NULL;
+    return (error);
 	}
 	
 	return (0);
@@ -3760,21 +3767,21 @@ lem_rxeof(struct adapter *adapter, int count, int *done)
 		}
 
 		if (accept_frame) {
-                  BsdDevEthernet::Packet *packet;
-                  if (e1000->_rx_reserved.Pop(packet)) {
-                    memcpy(packet->buf, reinterpret_cast<void *>(p2v(adapter->rx_desc_base[i].buffer_addr)), len);
-                    packet->len = len;
-                    if (!e1000->_rx_buffered.Push(packet)) {
-                      kassert(e1000->_rx_reserved.Push(packet));
-                      adapter->dropped_pkts++;
-                    }
-                  } else {
-                    adapter->dropped_pkts++;
-                  }
-// 			if (lem_get_buf(adapter, i) != 0) {
-// 				if_inc_counter(ifp, IFCOUNTER_IQDROPS, 1);
-// 				goto discard;
-// 			}
+      BsdDevEthernet::Packet *packet;
+      if (e1000->_rx_reserved.Pop(packet)) {
+        memcpy(packet->buf, reinterpret_cast<void *>(p2v(adapter->rx_desc_base[i].buffer_addr)), len);
+        packet->len = len;
+        if (!e1000->_rx_buffered.Push(packet)) {
+          kassert(e1000->_rx_reserved.Push(packet));
+          adapter->dropped_pkts++;
+        }
+      } else {
+        adapter->dropped_pkts++;
+      }
+      // 			if (lem_get_buf(adapter, i) != 0) {
+      // 				if_inc_counter(ifp, IFCOUNTER_IQDROPS, 1);
+      // 				goto discard;
+      // 			}
 
 // 			/* Assign correct length to the current fragment */
 // 			mp->m_len = len;
@@ -4999,9 +5006,9 @@ int lem_poll(if_t ifp);
 void lem_update_link_status(struct adapter *adapter);
 
 extern BsdDevEthernet *eth;
-bool lE1000::InitPci(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf) {
+DevPci *lE1000::InitPci(uint8_t bus, uint8_t device, uint8_t function) {
   lE1000 *addr = reinterpret_cast<lE1000 *>(virtmem_ctrl->Alloc(sizeof(lE1000)));
-  addr = new(addr) lE1000(bus, device, mf);
+  addr = new(addr) lE1000(bus, device, function);
   addr->_bsd.SetMasterClass(addr);
   addr->_bsd.SetClass(addr->GetBsdDevPci());
   addr->_bsd.adapter = reinterpret_cast<struct adapter *>(virtmem_ctrl->AllocZ(sizeof(adapter)));
@@ -5010,13 +5017,13 @@ bool lE1000::InitPci(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bo
     kassert(lem_attach(&addr->_bsd) == 0);
     lem_init(addr->_bsd.adapter);
     addr->SetupNetInterface();
-    addr->SetHandleMethod(HandleMethod::kPolling);
+    // addr->SetHandleMethod(HandleMethod::kPolling);
     eth = addr;
-    return true;
+    return addr->GetBsdDevPci();
   } else {
     virtmem_ctrl->Free(ptr2virtaddr(addr->_bsd.adapter));
     virtmem_ctrl->Free(ptr2virtaddr(addr));
-    return false;
+    return nullptr;
   }  
 }
 

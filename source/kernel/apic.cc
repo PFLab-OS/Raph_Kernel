@@ -51,6 +51,7 @@ void ApicCtrl::Setup() {
       break;
     case MADTStType::kIOAPIC:
       {
+        // TODO : multi IOAPIC support
         MADTStIOAPIC *madtStIOAPIC = reinterpret_cast<MADTStIOAPIC *>(ptr);
         _ioapic.SetReg(reinterpret_cast<uint32_t *>(p2v(madtStIOAPIC->ioapicAddr)));
       }
@@ -163,7 +164,7 @@ void ApicCtrl::Lapic::SetupTimer() {
   }
   uint64_t timer2 = timer->ReadMainCnt();
   kassert((timer2 - timer1) > 0);
-  uint32_t base_cnt = 0xFFFFF / ((timer2 - timer1) * timer->GetCntClkPeriod() / (10 * 1000));
+  uint32_t base_cnt = 0xFFFFF / ((timer2 - timer1) * timer->GetCntClkPeriod() / (10 * 1000)); // 10usec
   kassert(base_cnt > 0);
 
   kassert(idt != nullptr);

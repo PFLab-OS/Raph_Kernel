@@ -1,0 +1,3 @@
+[submodule "source/Raph_Library"]
+	path = source/Raph_Library
+	url = git@github.com:Raphine/Raph_Library.git

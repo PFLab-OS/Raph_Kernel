@@ -35,6 +35,7 @@ void PciCtrl::_Init() {
     gtty->Printf("s", "[Pci] error: could not find MCFG table.\n");
     return;
   }
+
   for (int i = 0; i * sizeof(MCFGSt) < _mcfg->header.Length - sizeof(ACPISDTHeader); i++) {
     if (i == 1) {
       gtty->Printf("s", "[Pci] info: multiple MCFG tables.\n");
@@ -51,12 +52,18 @@ void PciCtrl::_Init() {
         if (vid == 0xffff) {
           continue;
         }
-        uint16_t did = ReadReg<uint16_t>(j, k, 0, kDeviceIDReg);
-        bool mf = ReadReg<uint8_t>(j, k, 0, kHeaderTypeReg) & kHeaderTypeRegFlagMultiFunction;
-        InitPciDevices<E1000, lE1000, DevPci>(vid, did, j, k, mf);
+
+        int maxf = ((ReadReg<uint16_t>(j, k, 0, kHeaderTypeReg) & kHeaderTypeRegFlagMultiFunction) != 0) ? 7 : 0;
+        for (int l = 0; l <= maxf; l++) {
+          InitPciDevices(j, k, l);
+        }
       }
     }
   }
+}
+
+DevPci *PciCtrl::InitPciDevices(uint8_t bus, uint8_t device, uint8_t func) {
+  return _InitPciDevices<E1000, lE1000, DevPci>(bus, device, func);
 }
 
 uint16_t PciCtrl::FindCapability(uint8_t bus, uint8_t device, uint8_t func, CapabilityId id) {
@@ -90,10 +97,10 @@ uint16_t PciCtrl::FindCapability(uint8_t bus, uint8_t device, uint8_t func, Capa
   }
 }
 
-bool PciCtrl::SetMsi(uint8_t bus, uint8_t device, uint8_t func, uint64_t addr, uint16_t data) {
+void PciCtrl::SetMsi(uint8_t bus, uint8_t device, uint8_t func, uint64_t addr, uint16_t data) {
   uint16_t offset = FindCapability(bus, device, func, CapabilityId::kMsi);
   if (offset == 0) {
-    return false;
+    return;
   }
   uint16_t control = ReadReg<uint16_t>(bus, device, func, offset + kMsiCapRegControl);
   
@@ -108,5 +115,14 @@ bool PciCtrl::SetMsi(uint8_t bus, uint8_t device, uint8_t func, uint64_t addr, u
     WriteReg<uint16_t>(bus, device, func, offset + kMsiCapReg32MsgData, static_cast<uint16_t>(data));
   }
   WriteReg<uint16_t>(bus, device, func, offset + kMsiCapRegControl, control | kMsiCapRegControlMsiEnableFlag);
-  return true;
+}
+
+void PciCtrl::IrqContainer::Handler(void *arg) {
+  IrqContainer *ic = reinterpret_cast<IrqContainer *>(arg);
+  IntHandler *ih = ic->inthandler;
+  while(ih->next != nullptr) {
+    IntHandler *nih = ih->next;
+    nih->device->LegacyIntHandler();
+    ih = nih;
+  }
 }

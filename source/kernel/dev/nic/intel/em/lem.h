@@ -36,7 +36,7 @@
 class lE1000 : public BsdDevEthernet {
 public:
  lE1000(uint8_t bus, uint8_t device, bool mf) : BsdDevEthernet(bus, device, mf) {}
-  static bool InitPci(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf);
+  static DevPci *InitPci(uint8_t bus, uint8_t device, uint8_t function);
 
   virtual void UpdateLinkStatus() override;
 

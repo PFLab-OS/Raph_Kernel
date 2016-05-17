@@ -34,6 +34,9 @@
 #include <raph.h>
 #include <mem/physmem.h>
 #include <idt.h>
+#include <apic.h>
+#include <global.h>
+#include <task.h>
 #include <freebsd/sys/types.h>
 #include <freebsd/sys/rman.h>
 #include <freebsd/i386/include/resource.h>
@@ -209,25 +212,49 @@ static inline struct resource *bus_alloc_resource_any(device_t dev, int type, in
 }
 
 // defined by Raphine Project
-struct bus_filter_struct {
+struct filter_container_struct {
   driver_filter_t filter;
   void *arg;
 };
-static inline void bus_filter_sub(void *arg) {
-  bus_filter_struct *s = reinterpret_cast<bus_filter_struct *>(arg);
+static inline void filter_handler_sub(void *arg) {
+  filter_container_struct *s = reinterpret_cast<filter_container_struct *>(arg);
   s->filter(s->arg);
 }
+struct intr_container_struct {
+  driver_intr_t ithread;
+  void *arg;
+};
 
-static inline int bus_setup_intr(device_t dev, struct resource *r, int flags, driver_filter_t filter, driver_intr_t handler, void *arg, void **cookiep) {
-  kassert(handler == nullptr);
-  bus_filter_struct *s = reinterpret_cast<bus_filter_struct *>(virtmem_ctrl->Alloc(sizeof(bus_filter_struct)));
-  s->filter = filter;
-  s->arg = arg;
-  if (dev->GetPciClass()->SetMsi(0, bus_filter_sub, reinterpret_cast<void *>(s)) == -1) {
-    return -1;
-  } else {
+static inline void bus_ithread_sub(void *arg) {
+  // タスクハンドラ
+  intr_container_struct *s = reinterpret_cast<intr_container_struct *>(arg);
+  s->ithread(s->arg);
+}
+
+static inline int bus_setup_intr(device_t dev, struct resource *r, int flags, driver_filter_t filter, driver_intr_t ithread, void *arg, void **cookiep) {
+  if (filter != nullptr) {
+    if (!dev->GetPciClass()->HasMsi()) {
+      return -1;
+    }
+    filter_container_struct *s = virtmem_ctrl->New<filter_container_struct>();
+    s->filter = filter;
+    s->arg = arg;
+    // TODO CPU num
+    dev->GetPciClass()->SetMsi(0, filter_handler_sub, reinterpret_cast<void *>(s));
     return 0;
   }
+  if (ithread != nullptr) {
+    if (!dev->GetPciClass()->HasLegacyInterrupt()) {
+      return -1;
+    } 
+    intr_container_struct *s = virtmem_ctrl->New<intr_container_struct>();
+    s->ithread = ithread;
+    s->arg = arg;
+    // TODO cpu num
+    dev->GetPciClass()->SetLegacyInterrupt(bus_ithread_sub, reinterpret_cast<void *>(s));
+    return 0;
+  }
+  return -1;
 }
 
 #endif /* _FREEBSD_BUS_H_ */

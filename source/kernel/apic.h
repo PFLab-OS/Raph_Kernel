@@ -117,6 +117,21 @@ public:
     void SendEoi() {
       _ctrlAddr[kRegEoi] = 0;
     }
+    void EnableInt() {
+      _ctrlAddr[kRegSvr] |= kRegSvrApicEnableFlag;
+    }
+    bool DisableInt() {
+      //TODO 割り込みが無効化されている事を確認
+      if ((_ctrlAddr[kRegSvr] & kRegSvrApicEnableFlag) == 0) {
+        return false;
+      } else {
+        _ctrlAddr[kRegSvr] &= ~kRegSvrApicEnableFlag;
+        return true;
+      }
+    }
+    bool IsIntEnable() {
+      return (_ctrlAddr[kRegSvr] | kRegSvrApicEnableFlag) != 0;
+    }
     void SendIpi(uint8_t destid);
     void SetupTimer();
     void StartTimer() {
@@ -266,34 +281,43 @@ public:
     _started = true;
     _lapic.Setup();
   }
-
+  volatile uint8_t GetApicIdFromCpuId(int cpuid) {
+    return _lapic.GetApicIdFromCpuId(cpuid);
+  }
+  // cpu_ctrlを通して呼びだす事
+  virtual volatile int GetCpuId() {
+    return _lapic.GetCpuId();
+  }
+  virtual volatile bool IsBootupAll() {
+    return _all_bootup;
+  }
+  // cpu_ctrlを通して呼びだす事
+  virtual int GetHowManyCpus() {
+    return _lapic._ncpu;
+  }
   bool SetupIoInt(uint32_t irq, uint8_t lapicid, uint8_t vector) {
     kassert(vector >= 32);
     return _ioapic.SetupInt(irq, lapicid, vector);
   }
-
+  void EnableInt() {
+    _lapic.EnableInt();
+  }
+  // 割り込みを無効化した上で呼び出す事
+  // 戻り値：
+  // true 割り込みが有効化されているのを無効化した
+  // false 元々無効化されていた
+  bool DisableInt() {
+    return _lapic.DisableInt();
+  }
+  void IsIntEnable() {
+    _lapic.IsIntEnable();
+  }
   void SendEoi() {
     _lapic.SendEoi();
   }
 
   void SendIpi(uint8_t destid) {
     _lapic.SendIpi(destid);
-  }
-
-  volatile uint8_t GetApicIdFromCpuId(int cpuid) {
-    return _lapic.GetApicIdFromCpuId(cpuid);
-  }
-
-  virtual volatile int GetCpuId() override {
-    return _lapic.GetCpuId();
-  }
-
-  volatile bool IsBootupAll() {
-    return _all_bootup;
-  }
-
-  virtual int GetHowManyCpus() override {
-    return _lapic._ncpu;
   }
 
   virtual void SetupTimer() override {
