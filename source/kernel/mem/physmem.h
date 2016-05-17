@@ -27,7 +27,7 @@
 #include <assert.h>
 #include <spinlock.h>
 #include <allocator.h>
-#include "virtmem.h"
+#include "kvirtmem.h"
 
 typedef uint64_t phys_addr;
 template <typename ptr> static inline phys_addr ptr2physaddr(ptr *addr) {

@@ -24,7 +24,7 @@
 #include <assert.h>
 #include <global.h>
 #include <raph.h>
-#include "virtmem.h"
+#include "kvirtmem.h"
 #include "physmem.h"
 
 PagingCtrl::PagingCtrl() {

@@ -29,6 +29,7 @@
 #include <mem/physmem.h>
 #include <mem/paging.h>
 #include <mem/tmpmem.h>
+#include <mem/virtmem.h>
 #include <raph_acpi.h>
 #include <task.h>
 #include <timer.h>
@@ -114,7 +115,7 @@ extern "C" int main() {
   Idt _idt;
   idt = &_idt;
 
-  VirtmemCtrl _virtmem_ctrl;
+  KVirtmemCtrl _virtmem_ctrl;
   virtmem_ctrl = &_virtmem_ctrl;
 
   TmpmemCtrl _tmpmem_ctrl;

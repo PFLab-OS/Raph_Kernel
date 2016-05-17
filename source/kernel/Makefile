@@ -2,8 +2,8 @@ KERNEL = kernel.elf
 
 NET_OBJS = net/eth.o net/arp.o net/ip.o net/tcp.o net/udp.o net/socket.o net/netctrl.o
 FREEBSD_OBJS = freebsd/sys/taskqueue.o
-OBJS = boot/boot.o boot/bootap.o main.o apic.o raph_acpi.o gdt.o idt.o int.o tty.o queue.o dev.o acpica.o mem/virtmem.o mem/tmpmem.o mem/paging.o mem/physmem.o $(FREEBSD_OBJS) $(NET_OBJS) ../Raph_Library/lib.o
-TEST_OBJS = test_main.o mem/virtmem.o dev/raw.o dev/netdev.o net/test.o $(NET_OBJS) ../Raph_Library/lib.o
+OBJS = boot/boot.o boot/bootap.o main.o apic.o raph_acpi.o gdt.o idt.o int.o tty.o queue.o dev.o acpica.o mem/kvirtmem.o mem/tmpmem.o mem/paging.o mem/physmem.o $(FREEBSD_OBJS) $(NET_OBJS) ../Raph_Library/lib.o
+TEST_OBJS = test_main.o mem/kvirtmem.o dev/raw.o dev/netdev.o net/test.o $(NET_OBJS) ../Raph_Library/lib.o
 
 BUILD = ../../build/
 DEPS= $(filter %.d, $(subst .o,.d, $(OBJS) $(TEST_OBJS)))

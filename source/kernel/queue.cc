@@ -23,6 +23,7 @@
 #include <queue.h>
 #include <global.h>
 #include <mem/tmpmem.h>
+#include <raph.h>
 
 void Queue::Push(void *data) {
   Container *c = reinterpret_cast<Container *>(tmpmem_ctrl->Alloc(sizeof(Container)));
