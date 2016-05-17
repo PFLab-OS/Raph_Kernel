@@ -51,4 +51,5 @@ acpica.o:
 clean:
 	make -C dev clean
 	make -C acpica clean
+	make -C ../Raph_Library clean
 	-rm -f $(OBJS) $(TEST_OBJS) $(DEPS) *.s *.ii
