@@ -22,8 +22,8 @@
 
 #include "paging.h"
 #include <assert.h>
-#include "../global.h"
-#include "../raph.h"
+#include <global.h>
+#include <raph.h>
 #include "virtmem.h"
 #include "physmem.h"
 

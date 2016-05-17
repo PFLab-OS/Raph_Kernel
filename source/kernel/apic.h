@@ -269,12 +269,14 @@ public:
   uint8_t GetApicIdFromCpuId(int cpuid) {
     return _lapic.GetApicIdFromCpuId(cpuid);
   }
+  // cpu_ctrlを通して呼びだす事
   volatile int GetCpuId() {
     return _lapic.GetCpuId();
   }
   volatile bool IsBootupAll() {
     return _all_bootup;
   }
+  // cpu_ctrlを通して呼びだす事
   int GetHowManyCpus() {
     return _lapic._ncpu;
   }

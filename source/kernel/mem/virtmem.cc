@@ -22,7 +22,7 @@
 
 #include "virtmem.h"
 #include <assert.h>
-#include "../raph.h"
+#include <raph.h>
 #include "physmem.h"
 #include "paging.h"
 

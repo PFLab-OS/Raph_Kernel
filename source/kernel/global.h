@@ -23,6 +23,8 @@
 #ifndef __RAPH_KERNEL_GLOBAL_H__
 #define __RAPH_KERNEL_GLOBAL_H__
 
+#include <libglobal.h>
+
 // TODO: global namespace
 
 class AcpiCtrl;
@@ -32,12 +34,9 @@ class PagingCtrl;
 class PhysmemCtrl;
 class VirtmemCtrl;
 class TmpmemCtrl;
-class TaskCtrl;
 class Gdt;
 class Idt;
 
-class Tty;
-class Timer;
 class Keyboard;
 
 class PciCtrl;
@@ -51,13 +50,9 @@ extern PagingCtrl *paging_ctrl;
 extern PhysmemCtrl *physmem_ctrl;
 extern VirtmemCtrl *virtmem_ctrl;
 extern TmpmemCtrl *tmpmem_ctrl;
-extern TaskCtrl *task_ctrl;
 extern Gdt *gdt;
 extern Idt *idt;
 
-
-extern Tty *gtty;
-extern Timer *timer;
 extern Keyboard *keyboard;
 
 extern PciCtrl *pci_ctrl;

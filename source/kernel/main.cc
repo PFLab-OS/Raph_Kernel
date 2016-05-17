@@ -20,43 +20,40 @@
  * 
  */
 
-#include <global.h>
-#include <raph_acpi.h>
 #include <apic.h>
+#include <cpu.h>
+#include <gdt.h>
+#include <global.h>
+#include <idt.h>
 #include <multiboot.h>
-#include <task.h>
 #include <mem/physmem.h>
 #include <mem/paging.h>
 #include <mem/tmpmem.h>
-#include <gdt.h>
-#include <idt.h>
+#include <raph_acpi.h>
+#include <task.h>
 #include <timer.h>
 #include <tty.h>
 
 #include <dev/hpet.h>
-#include <dev/vga.h>
-#include <dev/pci.h>
 #include <dev/keyboard.h>
+#include <dev/pci.h>
+#include <dev/vga.h>
 
-#include "net/netctrl.h"
-#include "net/socket.h"
+#include <net/netctrl.h>
+#include <net/socket.h>
 
 
-MultibootCtrl *multiboot_ctrl;
 AcpiCtrl *acpi_ctrl;
 ApicCtrl *apic_ctrl;
-PhysmemCtrl *physmem_ctrl;
+MultibootCtrl *multiboot_ctrl;
 PagingCtrl *paging_ctrl;
-VirtmemCtrl *virtmem_ctrl;
+PhysmemCtrl *physmem_ctrl;
 TmpmemCtrl *tmpmem_ctrl;
-TaskCtrl *task_ctrl;
+VirtmemCtrl *virtmem_ctrl;
+
 Gdt *gdt;
 Idt *idt;
-Timer *timer;
-
-Tty *gtty;
 Keyboard *keyboard;
-
 PciCtrl *pci_ctrl;
 
 static uint32_t rnd_next = 1;
@@ -107,6 +104,9 @@ extern "C" int main() {
 
   ApicCtrl _apic_ctrl;
   apic_ctrl = &_apic_ctrl;
+
+  CpuCtrl _cpu_ctrl;
+  cpu_ctrl = &_cpu_ctrl;
 
   Gdt _gdt;
   gdt = &_gdt;
@@ -197,7 +197,7 @@ extern "C" int main() {
   kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 5) + 1));
   kassert(!paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - 4096 * 6));
 
-  gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetCpuId(), "s", "(apic id:", "d", apic_ctrl->GetApicIdFromCpuId(apic_ctrl->GetCpuId()), "s", ") started.\n");
+  gtty->Printf("s", "[cpu] info: #", "d", cpu_ctrl->GetId(), "s", "(apic id:", "d", apic_ctrl->GetApicIdFromCpuId(cpu_ctrl->GetId()), "s", ") started.\n");
   if (eth != nullptr) {
     Function func;
     func.Init([](void *){
@@ -319,12 +319,11 @@ extern "C" int main_of_others() {
   gdt->SetupProc();
   idt->SetupProc();
 
-  gtty->Printf("s", "[cpu] info: #", "d", apic_ctrl->GetCpuId(), "s", "(apic id:", "d", apic_ctrl->GetApicIdFromCpuId(apic_ctrl->GetCpuId()), "s", ") started.\n");
-
-  PollingFunc p;
+  gtty->Printf("s", "[cpu] info: #", "d", cpu_ctrl->GetId(), "s", "(apic id:", "d", apic_ctrl->GetApicIdFromCpuId(cpu_ctrl->GetId()), "s", ") started.\n");
  
-  // ループ性能測定用
-  // if (apic_ctrl->GetCpuId() == 4) {
+  // ループ性能測定用 
+  // PollingFunc p;
+  // if (cpu_ctrl->GetId() == 4) {
   //   static int hoge = 0;
   //   p.Init([](void *){
   //       int hoge2 = timer->GetUsecFromCnt(timer->ReadMainCnt()) - hoge;
@@ -335,7 +334,7 @@ extern "C" int main_of_others() {
   // }
   
   // ワンショット性能測定用
-  if (apic_ctrl->GetCpuId() == 5) {
+  if (cpu_ctrl->GetId() == 5) {
     new(&tt1) Callout;
     Function func;
     func.Init([](void *){
@@ -348,7 +347,7 @@ extern "C" int main_of_others() {
     tt1.SetHandler(10);
   }
 
-  if (apic_ctrl->GetCpuId() == 6 && eth != nullptr) {
+  if (cpu_ctrl->GetId() == 6 && eth != nullptr) {
 #if FLAG != RCV
     new(&tt3) Callout;
     Function func;
@@ -369,7 +368,7 @@ extern "C" int main_of_others() {
 #endif
   }
 
-  if (apic_ctrl->GetCpuId() == 3 && eth != nullptr) {
+  if (cpu_ctrl->GetId() == 3 && eth != nullptr) {
     cnt = 0;
     new(&tt2) Callout;
     Function func;
@@ -443,7 +442,7 @@ void kernel_panic(const char *class_name, const char *err_str) {
 }
 
 void checkpoint(int id, const char *str) {
-  if (id < 0 || apic_ctrl->GetCpuId() == id) {
+  if (id < 0 || cpu_ctrl->GetId() == id) {
     gtty->PrintfRaw("s",str);
   }
 }
