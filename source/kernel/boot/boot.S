@@ -22,7 +22,6 @@
 
 #define ASM_FILE
 #include "multiboot2.h"
-#include <mem/virtmem.h>
 #include <mem/paging.h>
 #include <gdt.h>
 
