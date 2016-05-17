@@ -39,3 +39,8 @@ bool UdpFilterPacket(uint8_t *packet, uint16_t sport, uint16_t dport) {
   return (!sport || ntohs(header->sport) == sport)
       && (!dport || ntohs(header->dport) == dport);
 }
+
+uint16_t UdpGetSourcePort(uint8_t *packet) {
+  UdpHeader * volatile header = reinterpret_cast<UdpHeader*>(packet);
+  return ntohs(header->sport);
+}

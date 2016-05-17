@@ -261,7 +261,7 @@ extern "C" int main() {
           }
         }
       }, nullptr);
-    eth->SetReceiveCallback(2, func);
+    socket.SetReceiveCallback(2, func);
   }
 
   // 各コアは最低限の初期化ののち、TaskCtrlに制御が移さなければならない

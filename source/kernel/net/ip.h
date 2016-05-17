@@ -56,4 +56,6 @@ struct Ipv4Header {
 int32_t IpGenerateHeader(uint8_t *buffer, uint32_t length, uint8_t type, uint32_t saddr, uint32_t daddr);
 bool IpFilterPacket(uint8_t *packet, uint8_t type, uint32_t saddr, uint32_t daddr);
 
+uint32_t IpGetDestIpAddress(uint8_t *packet);
+
 #endif // __RAPH_KERNEL_NET_IP_H__

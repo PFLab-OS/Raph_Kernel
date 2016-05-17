@@ -78,6 +78,11 @@ bool IpFilterPacket(uint8_t *packet, uint8_t type, uint32_t saddr, uint32_t dadd
       && (!daddr || ntohl(header->daddr) == daddr);
 }
 
+uint32_t IpGetDestIpAddress(uint8_t *packet) {
+  Ipv4Header * volatile header = reinterpret_cast<Ipv4Header*>(packet);
+  return ntohl(header->daddr);
+}
+
 uint16_t CheckSum(uint8_t *buf, uint32_t size) {
   uint64_t sum = 0;
 

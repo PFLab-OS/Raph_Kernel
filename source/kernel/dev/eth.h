@@ -27,13 +27,10 @@
 #include <dev/pci.h>
 #include <mem/virtmem.h>
 
-void DevEthernetFilterRxPacket(void *self);
-
 class DevEthernet : public NetDev {
 public:
   DevEthernet(uint8_t bus, uint8_t device, bool mf) {
     _pci = virtmem_ctrl->New<DevPci>(bus, device, mf);
-    SetPacketFilter(DevEthernetFilterRxPacket);
   } 
   virtual ~DevEthernet() {
     virtmem_ctrl->Delete<DevPci>(_pci);
@@ -49,6 +46,9 @@ protected:
   DevEthernet(DevPci *pci) {
     _pci = pci;
   }
+
+  virtual void FilterRxPacket(void *p) override;
+
   virtual void PrepareTxPacket(NetDev::Packet *packet) override;
   DevPci *_pci;
 };

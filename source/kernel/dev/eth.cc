@@ -19,26 +19,26 @@
  * Author: Levelfour
  * 
  */
+#include <global.h>
 #include <dev/eth.h>
 #include <net/ptcl.h>
 #include <net/eth.h>
+#include <net/ip.h>
 #include <net/arp.h>
 #include <net/socket.h>
 
-void DevEthernetFilterRxPacket(void *self) {
-  DevEthernet *device = reinterpret_cast<DevEthernet*>(self);
-
+void DevEthernet::FilterRxPacket(void *p) {
   NetDev::Packet *packet;
-  kassert(device->_rx_buffered.Pop(packet));
+  kassert(_rx_buffered.Pop(packet));
 
   // filter by my MAC addresss
   uint8_t eth_addr[6];
-  device->GetEthAddr(eth_addr);
+  GetEthAddr(eth_addr);
 
   if (EthFilterPacket(packet->buf, nullptr, eth_addr, 0)) {
-    device->_rx_filtered.Push(packet);
+    _rx_filtered.Push(packet);
   } else {
-    device->ReuseRxBuffer(packet);
+    ReuseRxBuffer(packet);
   }
 }
 
@@ -46,21 +46,24 @@ void DevEthernet::PrepareTxPacket(NetDev::Packet *packet) {
   uint16_t ptcl = GetL3PtclType(packet->buf);
 
   uint8_t eth_saddr[6];
-  uint8_t eth_daddr[6] = {0x08, 0x00, 0x27, 0xc1, 0x5b, 0x93}; // TODO
+  uint8_t eth_daddr[6];
 
   GetEthAddr(eth_saddr);
 
   // embed MAC address to packet
   if (ptcl == kProtocolIpv4) {
+    uint32_t ipaddr = IpGetDestIpAddress(packet->buf + sizeof(EthHeader));
+    arp_table->Find(ipaddr, eth_daddr);
     EthGenerateHeader(packet->buf, eth_saddr, eth_daddr, kProtocolIpv4);
   } else if (ptcl == kProtocolArp) {
-    uint16_t op = GetArpOperation(packet->buf + sizeof(EthHeader));
+    uint16_t op = ArpGetOperation(packet->buf + sizeof(EthHeader));
 
     if (op == ArpSocket::kOpArpRequest) {
       memset(eth_daddr, 0xff, 6);
       ArpGeneratePacket(packet->buf + sizeof(EthHeader), 0, eth_saddr, 0, nullptr, 0);     
       EthGenerateHeader(packet->buf, eth_saddr, eth_daddr, kProtocolArp);
     } else if (op == ArpSocket::kOpArpReply) {
+      ArpGetDestMacAddress(eth_daddr, packet->buf + sizeof(EthHeader));
       ArpGeneratePacket(packet->buf + sizeof(EthHeader), 0, eth_saddr, 0, eth_daddr, 0);     
       EthGenerateHeader(packet->buf, eth_saddr, eth_daddr, kProtocolArp);
     }

@@ -75,17 +75,27 @@ bool RegisterIpAddress(uint8_t *packet) {
   return arp_table->Add(arp->proto_saddr, arp->hw_saddr);
 }
 
-void GetSourceMacAddress(uint8_t *buffer, uint8_t *packet) {
+void ArpGetSourceMacAddress(uint8_t *buffer, uint8_t *packet) {
   ArpPacket * volatile arp = reinterpret_cast<ArpPacket*>(packet);
   memcpy(buffer, arp->hw_saddr, 6);
 }
 
-uint32_t GetSourceIpAddress(uint8_t *packet) {
+void ArpGetDestMacAddress(uint8_t *buffer, uint8_t *packet) {
+  ArpPacket * volatile arp = reinterpret_cast<ArpPacket*>(packet);
+  memcpy(buffer, arp->hw_daddr, 6);
+}
+
+uint32_t ArpGetSourceIpAddress(uint8_t *packet) {
   ArpPacket * volatile arp = reinterpret_cast<ArpPacket*>(packet);
   return ntohl(arp->proto_saddr);
 }
 
-uint16_t GetArpOperation(uint8_t *packet) {
+uint32_t ArpGetDestIpAddress(uint8_t *packet) {
+  ArpPacket * volatile arp = reinterpret_cast<ArpPacket*>(packet);
+  return ntohl(arp->proto_daddr);
+}
+
+uint16_t ArpGetOperation(uint8_t *packet) {
   ArpPacket * volatile arp = reinterpret_cast<ArpPacket*>(packet);
   return ntohs(arp->op);
 }
