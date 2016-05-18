@@ -1394,11 +1394,11 @@ lem_poll(if_t ifp)
 static void
 lem_intr(void *arg)
 {
+  checkpoint(-1,"*");
   struct adapter	*adapter = reinterpret_cast<struct adapter *>(arg);
   BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<lE1000>();
 	if_t ifp = adapter->ifp;
 	u32		reg_icr;
-
 
 	if ((if_getcapenable(ifp) & IFCAP_POLLING) ||
 	    ((if_getdrvflags(ifp) & IFF_DRV_RUNNING) == 0))
@@ -4243,9 +4243,9 @@ lem_get_wakeup(device_t dev)
          * We have the eeprom settings, now apply the special cases
          * where the eeprom may be wrong or the board won't support
          * wake on lan on a particular port
-	 */
+         */
 	device_id = pci_get_device(dev);
-        switch (device_id) {
+  switch (device_id) {
 	case E1000_DEV_ID_82546GB_PCIE:
 		adapter->wol = 0;
 		break;
@@ -4258,13 +4258,13 @@ lem_get_wakeup(device_t dev)
 			adapter->wol = 0;
 		break;
 	case E1000_DEV_ID_82546GB_QUAD_COPPER_KSP3:
-                /* if quad port adapter, disable WoL on all but port A */
+    /* if quad port adapter, disable WoL on all but port A */
 		if (global_quad_port_a != 0)
 			adapter->wol = 0;
 		/* Reset for multiple quad port adapters */
 		if (++global_quad_port_a == 4)
 			global_quad_port_a = 0;
-                break;
+    break;
 	}
 	return;
 }

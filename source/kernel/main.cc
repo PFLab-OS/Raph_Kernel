@@ -272,8 +272,8 @@ extern "C" int main() {
 
   gtty->Printf("s", "\n\n[kernel] info: initialization completed\n");
 
-  shell->Setup();
-  shell->Register("test", shell_test);
+  // shell->Setup();
+  // shell->Register("test", shell_test);
   
   do {
     // print keyboard_input
