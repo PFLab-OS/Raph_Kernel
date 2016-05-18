@@ -48,6 +48,7 @@ public:
   static void PollingHandler(void *arg);
   virtual void ChangeHandleMethodToPolling() override;
   virtual void ChangeHandleMethodToInt() override;
+  virtual void Transmit(void *) override;
 };
 
 #endif /* __RAPH_KERNEL_E1000_LEM_H__ */
