@@ -1394,7 +1394,6 @@ lem_poll(if_t ifp)
 static void
 lem_intr(void *arg)
 {
-  checkpoint(-1,"*");
   struct adapter	*adapter = reinterpret_cast<struct adapter *>(arg);
   BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<lE1000>();
 	if_t ifp = adapter->ifp;
