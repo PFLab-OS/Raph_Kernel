@@ -210,7 +210,8 @@ private:
       next = nullptr;
       Function func;
       func.Init(Handler, reinterpret_cast<void *>(this));
-      task.SetFunc(func);
+      // TODO cpuid
+      ctask.SetFunc(1, func);
     }
     void Add(int irq_, int vector_) {
       kassert(next == nullptr);
@@ -224,7 +225,7 @@ private:
     int vector;
     IntHandler *inthandler;
     IrqContainer *next;
-    Task task;
+    CountableTask ctask;
   } *_irq_container;
   IntSpinLock _irq_container_lock;
   static void LegacyIntHandler(Regs *rs, void *arg) {
@@ -234,8 +235,7 @@ private:
     while(ic->next != nullptr) {
       IrqContainer *nic = ic->next;
       if (nic->vector == static_cast<int>(rs->n)) {
-        // TODO cpuid
-        task_ctrl->Register(1, &nic->task);
+        nic->ctask.Inc();
         break;
       }
       ic = nic;
