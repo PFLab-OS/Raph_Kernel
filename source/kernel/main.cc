@@ -69,7 +69,6 @@ int64_t sum;
 static const int stime = 10000;
 int time, rtime;
 
-#include <callout.h>
 Callout tt1;
 Callout tt2;
 Callout tt3;
