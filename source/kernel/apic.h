@@ -65,18 +65,8 @@ struct MADTStIOAPIC {
 
 class Regs;
 
-class ApicCtrlInterface {
-public:
-  virtual void Setup() = 0;
-  virtual volatile int GetCpuId() = 0;
-  virtual int GetHowManyCpus() = 0;
-  virtual void SetupTimer() = 0;
-  virtual void StartTimer() = 0;
-  virtual void StopTimer() = 0;
-};
-
 #ifndef __UNIT_TEST__
-class ApicCtrl : public ApicCtrlInterface {
+class ApicCtrl {
 public:
   static constexpr int lapicMaxNumber = 128;
 
@@ -265,7 +255,7 @@ public:
   };
 
   ApicCtrl() {}
-  virtual void Setup() override;
+  void Setup();
 
   void SetMADT(MADT *table) {
     _madt = table;
@@ -285,14 +275,14 @@ public:
     return _lapic.GetApicIdFromCpuId(cpuid);
   }
   // cpu_ctrlを通して呼びだす事
-  virtual volatile int GetCpuId() {
+  volatile int GetCpuId() {
     return _lapic.GetCpuId();
   }
-  virtual volatile bool IsBootupAll() {
+  volatile bool IsBootupAll() {
     return _all_bootup;
   }
   // cpu_ctrlを通して呼びだす事
-  virtual int GetHowManyCpus() {
+  int GetHowManyCpus() {
     return _lapic._ncpu;
   }
   bool SetupIoInt(uint32_t irq, uint8_t lapicid, uint8_t vector) {
@@ -320,15 +310,15 @@ public:
     _lapic.SendIpi(destid);
   }
 
-  virtual void SetupTimer() override {
+  void SetupTimer() {
     _lapic.SetupTimer();
   }
 
-  virtual void StartTimer() override {
+  void StartTimer() {
     _lapic.StartTimer();
   }
 
-  virtual void StopTimer() override {
+  void StopTimer() {
     _lapic.StopTimer();
   }
 
