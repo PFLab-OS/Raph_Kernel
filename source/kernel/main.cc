@@ -66,7 +66,7 @@ static uint32_t rnd_next = 1;
 BsdDevEthernet *eth;
 uint64_t cnt;
 int64_t sum;
-static const int stime = 10000;
+static const int stime = 3000;
 int time, rtime;
 
 Callout tt1;
