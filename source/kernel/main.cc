@@ -403,7 +403,7 @@ extern "C" int main_of_others() {
         }
 #if FLAG != RCV
         if (cnt != 0) {
-          tt2.SetHandler(10);
+          tt2.SetHandler(1000);
           return;
         }
         for(int k = 0; k < 1; k++) {
@@ -440,7 +440,7 @@ extern "C" int main_of_others() {
           time--;
         }
         if (time != 0) {
-          tt2.SetHandler(10);
+          tt2.SetHandler(1000);
         }
 #else
         gtty->Printf("s", "[debug] info: Link is Up\n");
