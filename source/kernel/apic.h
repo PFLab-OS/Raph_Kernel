@@ -123,7 +123,7 @@ public:
       return (_ctrlAddr[kRegSvr] | kRegSvrApicEnableFlag) != 0;
     }
     void SendIpi(uint8_t destid);
-    void SetupTimer();
+    void SetupTimer(int interval);
     void StartTimer() {
       volatile uint32_t tmp = _ctrlAddr[kRegTimerInitCnt];
       _ctrlAddr[kRegTimerInitCnt] = tmp;
@@ -310,8 +310,8 @@ public:
     _lapic.SendIpi(destid);
   }
 
-  void SetupTimer() {
-    _lapic.SetupTimer();
+  void SetupTimer(int interval) {
+    _lapic.SetupTimer(interval);
   }
 
   void StartTimer() {
