@@ -66,10 +66,9 @@ static uint32_t rnd_next = 1;
 BsdDevEthernet *eth;
 uint64_t cnt;
 int64_t sum;
-static const int stime = 10;
+static const int stime = 3000;
 int time, rtime;
 
-#include <callout.h>
 Callout tt1;
 Callout tt2;
 Callout tt3;
@@ -94,8 +93,10 @@ Callout tt3;
 #define IP2 10, 0, 2, 15
 #endif
 
-uint8_t ip1[] = {IP1};
-uint8_t ip2[] = {IP2};
+
+uint8_t ip[] = {
+  IP1,
+};
 
 void shell_test(int argc, const char* argv[]) {  //this function is for testing
   gtty->Printf("s", "shell-test function is called\n");
@@ -184,7 +185,7 @@ extern "C" int main() {
 
   idt->SetupProc();
 
-  InitNetCtrl();
+  // InitNetCtrl();
 
   acpi_ctrl->SetupAcpica();
   //  acpi_ctrl->Shutdown();
@@ -212,56 +213,86 @@ extern "C" int main() {
 
   gtty->Printf("s", "[cpu] info: #", "d", cpu_ctrl->GetId(), "s", "(apic id:", "d", apic_ctrl->GetApicIdFromCpuId(cpu_ctrl->GetId()), "s", ") started.\n");
   if (eth != nullptr) {
-    static ArpSocket socket;
-    if(socket.Open() < 0) {
-      gtty->Printf("s", "[error] failed to open socket\n");
-    }
-    socket.SetIpAddr(inet_atoi(ip1));
     Function func;
     func.Init([](void *){
-        uint32_t ipaddr;
-        uint8_t macaddr[6];
-
-        int32_t rval = socket.ReceivePacket(0, &ipaddr, macaddr);
-
-        if(rval == ArpSocket::kOpArpReply) {
+        BsdDevEthernet::Packet *rpacket;
+        if(!eth->ReceivePacket(rpacket)) {
+          return;
+        }
+        // received packet
+        if(rpacket->buf[12] == 0x08 && rpacket->buf[13] == 0x06 && rpacket->buf[21] == 0x02) {
           uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;
           cnt = 0;
-          gtty->Printf(
-                       "s", "[arp] reply received; ",
-                       "x", macaddr[0], "s", ":",
-                       "x", macaddr[1], "s", ":",
-                       "x", macaddr[2], "s", ":",
-                       "x", macaddr[3], "s", ":",
-                       "x", macaddr[4], "s", ":",
-                       "x", macaddr[5], "s", " is ",
-                       "d", (ipaddr >> 24) & 0xff, "s", ".",
-                       "d", (ipaddr >> 16) & 0xff, "s", ".",
-                       "d", (ipaddr >> 8) & 0xff, "s", ".",
-                       "d", (ipaddr >> 0) & 0xff, "s", " (");
-          gtty->Printf("s", "latency:", "d", l, "s", "us)\n");
-        } else if(rval == ArpSocket::kOpArpRequest) {
-          gtty->Printf(
-                       "s", "[arp] request received; ",
-                       "x", macaddr[0], "s", ":",
-                       "x", macaddr[1], "s", ":",
-                       "x", macaddr[2], "s", ":",
-                       "x", macaddr[3], "s", ":",
-                       "x", macaddr[4], "s", ":",
-                       "x", macaddr[5], "s", " is ",
-                       "d", (ipaddr >> 24) & 0xff, "s", ".",
-                       "d", (ipaddr >> 16) & 0xff, "s", ".",
-                       "d", (ipaddr >> 8) & 0xff, "s", ".",
-                       "d", (ipaddr >> 0) & 0xff, "s", "\n");
-
-          if(socket.TransmitPacket(ArpSocket::kOpArpReply, ipaddr, macaddr) >= 0) {
-            gtty->Printf("s", "[arp] reply sent\n");
-          } else {
-            gtty->Printf("s", "[arp] failed to sent ARP reply\n");
-          }
+          sum += l;
+          rtime++;
+          // ARP packet
+          char buf[40];
+          memcpy(buf, rpacket->buf,40);
+          // gtty->Printf(
+          //              "s", "ARP Reply received; ",
+          //              "x", rpacket->buf[22], "s", ":",
+          //              "x", rpacket->buf[23], "s", ":",
+          //              "x", rpacket->buf[24], "s", ":",
+          //              "x", rpacket->buf[25], "s", ":",
+          //              "x", rpacket->buf[26], "s", ":",
+          //              "x", rpacket->buf[27], "s", " is ",
+          //              "d", rpacket->buf[28], "s", ".",
+          //              "d", rpacket->buf[29], "s", ".",
+          //              "d", rpacket->buf[30], "s", ".",
+          //              "d", rpacket->buf[31], "s", " ",
+          //              "s","latency:","d",l,"s","us\n");
         }
+        if(rpacket->buf[12] == 0x08 && rpacket->buf[13] == 0x06 && rpacket->buf[21] == 0x01 && (memcmp(rpacket->buf + 38, ip, 4) == 0)) {
+          // ARP packet
+          uint8_t data[] = {
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target MAC Address
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source MAC Address
+            0x08, 0x06, // Type: ARP
+            // ARP Packet
+            0x00, 0x01, // HardwareType: Ethernet
+            0x08, 0x00, // ProtocolType: IPv4
+            0x06, // HardwareLength
+            0x04, // ProtocolLength
+            0x00, 0x02, // Operation: ARP Reply
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source Hardware Address
+            0x00, 0x00, 0x00, 0x00, // Source Protocol Address
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
+            0x00, 0x00, 0x00, 0x00, // Target Protocol Address
+          };
+          memcpy(data, rpacket->buf + 6, 6);
+          eth->GetEthAddr(data + 6);
+          memcpy(data + 22, data + 6, 6);
+          memcpy(data + 28, ip, 4);
+          memcpy(data + 32, rpacket->buf + 22, 6);
+          memcpy(data + 38, rpacket->buf + 28, 4);
+
+          uint32_t len = sizeof(data)/sizeof(uint8_t);
+          BsdDevEthernet::Packet *tpacket;
+          kassert(eth->GetTxPacket(tpacket));
+          memcpy(tpacket->buf, data, len);
+          tpacket->len = len;
+          eth->TransmitPacket(tpacket);
+          // gtty->Printf(
+          //              "s", "ARP Request received; ",
+          //              "x", rpacket->buf[22], "s", ":",
+          //              "x", rpacket->buf[23], "s", ":",
+          //              "x", rpacket->buf[24], "s", ":",
+          //              "x", rpacket->buf[25], "s", ":",
+          //              "x", rpacket->buf[26], "s", ":",
+          //              "x", rpacket->buf[27], "s", ",",
+          //              "d", rpacket->buf[28], "s", ".",
+          //              "d", rpacket->buf[29], "s", ".",
+          //              "d", rpacket->buf[30], "s", ".",
+          //              "d", rpacket->buf[31], "s", " says who's ",
+          //              "d", rpacket->buf[38], "s", ".",
+          //              "d", rpacket->buf[39], "s", ".",
+          //              "d", rpacket->buf[40], "s", ".",
+          //              "d", rpacket->buf[41], "s", "\n");
+          // gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
+        }
+        eth->ReuseRxBuffer(rpacket);
       }, nullptr);
-    socket.SetReceiveCallback(2, func);
+    eth->SetReceiveCallback(2, func);
   }
 
   // 各コアは最低限の初期化ののち、TaskCtrlに制御が移さなければならない
@@ -272,8 +303,8 @@ extern "C" int main() {
 
   gtty->Printf("s", "\n\n[kernel] info: initialization completed\n");
 
-  shell->Setup();
-  shell->Register("test", shell_test);
+  // shell->Setup();
+  // shell->Register("test", shell_test);
   
   do {
     // print keyboard_input
@@ -349,7 +380,9 @@ extern "C" int main_of_others() {
             gtty->Printf("s","Link is Down, please wait...\n");
           }
         }
-        tt3.SetHandler(1000*1000*3);
+        if (rtime != stime) {
+          tt3.SetHandler(1000*1000*3);
+        }
       }, nullptr);
     tt3.Init(func);
     tt3.SetHandler(1000*1000*3);
@@ -372,31 +405,44 @@ extern "C" int main_of_others() {
         }
 #if FLAG != RCV
         if (cnt != 0) {
-          tt2.SetHandler(10);
+          tt2.SetHandler(1000);
           return;
         }
         for(int k = 0; k < 1; k++) {
           if (time == 0) {
             break;
           }
-
-          ArpSocket socket;
-          if(socket.Open() < 0) {
-            gtty->Printf("s", "[error] failed to open socket\n");
-          } else {
-            socket.SetIpAddr(inet_atoi(ip1));
-            cnt = timer->ReadMainCnt();
-            if(socket.TransmitPacket(ArpSocket::kOpArpRequest, inet_atoi(ip2), nullptr) < 0) {
-              gtty->Printf("s", "[arp] failed to transmit request\n");
-            } else {
-              gtty->Printf("s", "[arp] request sent\n");
-            }
-          }
-
+          uint8_t data[] = {
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, // Target MAC Address
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source MAC Address
+            0x08, 0x06, // Type: ARP
+            // ARP Packet
+            0x00, 0x01, // HardwareType: Ethernet
+            0x08, 0x00, // ProtocolType: IPv4
+            0x06, // HardwareLength
+            0x04, // ProtocolLength
+            0x00, 0x01, // Operation: ARP Request
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source Hardware Address
+            0x00, 0x00, 0x00, 0x00, // Source Protocol Address
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
+            // Target Protocol Address
+            IP2,
+          };
+          eth->GetEthAddr(data + 6);
+          memcpy(data + 22, data + 6, 6);
+          memcpy(data + 28, ip, 4);
+          uint32_t len = sizeof(data)/sizeof(uint8_t);
+          BsdDevEthernet::Packet *tpacket;
+          kassert(eth->GetTxPacket(tpacket));
+          memcpy(tpacket->buf, data, len);
+          tpacket->len = len;
+          cnt = timer->ReadMainCnt();
+          eth->TransmitPacket(tpacket);
+          // gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
           time--;
         }
         if (time != 0) {
-          tt2.SetHandler(10);
+          tt2.SetHandler(1000);
         }
 #else
         gtty->Printf("s", "[debug] info: Link is Up\n");

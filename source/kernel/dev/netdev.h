@@ -26,6 +26,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <buf.h>
+#include <function.h>
 #include <spinlock.h>
 #include <polling.h>
 #include <freebsd/sys/param.h>
@@ -80,7 +81,7 @@ public:
   // ReuseTxBufferで開放しなければならない。サボるとそのうちtx_reservedが枯渇
   // して、一切のパケットの送信ができなくなるよ♪
   NetDevRingBuffer _tx_reserved;
-  NetDevRingBuffer _tx_buffered;
+  NetDevFunctionalRingBuffer _tx_buffered;
 
   void ReuseRxBuffer(Packet *packet) {
     kassert(_rx_reserved.Push(packet));
@@ -157,10 +158,17 @@ protected:
   NetDev() {
     ClassFunction<NetDev> packet_filter;
     packet_filter.Init(this, &NetDev::FilterRxPacket, nullptr);
+    // TODO cpuid
     _rx_buffered.SetFunction(2, packet_filter);
+
+    // TODO cpuid
+    ClassFunction<NetDev> func;
+    func.Init(this, &NetDev::Transmit, nullptr);
+    _tx_buffered.SetFunction(0, func);
   }
   virtual void ChangeHandleMethodToPolling() = 0;
   virtual void ChangeHandleMethodToInt() = 0;
+  virtual void Transmit(void *) = 0;
   SpinLock _lock;
   PollingFunc _polling;
   volatile LinkStatus _status = LinkStatus::kDown;
