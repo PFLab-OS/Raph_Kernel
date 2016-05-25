@@ -1,18 +1,25 @@
 KERNEL = kernel.elf
+
 NET_OBJS = net/eth.o net/arp.o net/ip.o net/tcp.o net/udp.o net/socket.o net/netctrl.o net/ptcl.o
-OBJS = boot/boot.o boot/bootap.o main.o spinlock.o apic.o acpi.o gdt.o idt.o int.o tty.o task.o queue.o functional.o dev.o shell.o mem/virtmem.o mem/tmpmem.o mem/paging.o mem/physmem.o $(DEV_OBJS) $(NET_OBJS)
-TEST_OBJS = test_main.o spinlock.o functional.o task.o mem/virtmem.o dev/raw.o dev/netdev.o net/test.o $(NET_OBJS)
+FREEBSD_OBJS = freebsd/sys/taskqueue.o
+OBJS = boot/boot.o boot/bootap.o main.o apic.o raph_acpi.o gdt.o idt.o int.o tty.o queue.o dev.o acpica.o mem/kvirtmem.o shell.o mem/tmpmem.o mem/paging.o mem/physmem.o $(FREEBSD_OBJS) $(NET_OBJS) ../Raph_Library/lib.o
+TEST_OBJS = test_main.o mem/kvirtmem.o dev/raw.o dev/netdev.o net/test.o $(NET_OBJS) ../Raph_Library/lib.o
 
 BUILD = ../../build/
-DEPS= $(filter %.d,$(OBJS:%.o=%.d) $(TEST_OBJS:%.o=%.d))
+DEPS= $(filter %.d, $(subst .o,.d, $(OBJS) $(TEST_OBJS)))
 
 TEST = ./unit_test
 
-CXXFLAGS += -Wall -Wshadow -nostdinc -nostdlib -fno-exceptions -fno-rtti -fno-use-cxa-atexit -fno-threadsafe-statics -mcmodel=large -D__KERNEL__ -std=c++11 -I$(realpath ../lib/) -I$(realpath .) -MMD -MP
+INCLUDE_PATH = -I$(realpath ../Raph_Library/libc/) -I$(realpath ../Raph_Library/rlib/) -I$(realpath .) -I$(realpath ./acpica/include)
+RAPHFLAGS = -Wall -Wshadow -nostdinc -nostdlib -fno-builtin -mcmodel=large -D__KERNEL__ $(INCLUDE_PATH) -MMD -MP
+RAPHCFLAGS = $(RAPHFLAGS) -std=c99
+RAPHCXXFLAGS = $(RAPHFLAGS) -std=c++1y -fno-exceptions -fno-rtti -fno-use-cxa-atexit -fno-threadsafe-statics
+CFLAGS += $(RAPHCFLAGS)
+CXXFLAGS += $(RAPHCXXFLAGS)
 
-ASFLAGS += -I$(realpath .)
+ASFLAGS += $(INCLUDE_PATH)
 
-.PHONY: clean test
+.PHONY: clean test dev.o acpica.o ../Raph_Library/lib.o
 
 default: $(BUILD)$(KERNEL)
 
@@ -34,8 +41,16 @@ $(BUILD)$(KERNEL): $(OBJS) kernel.ld
 	$(LD) -nostdinc -nostdlib -Tkernel.ld $(OBJS) -o $@
 
 dev.o:
-	make CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)" -C dev obj
+	make -C dev CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
+
+acpica.o:
+	make -C acpica CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)"
+
+../Raph_Library/lib.o:
+	make -C ../Raph_Library CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)"
 
 clean:
 	make -C dev clean
+	make -C acpica clean
+	make -C ../Raph_Library clean
 	-rm -f $(OBJS) $(TEST_OBJS) $(TEST) $(DEPS) *.s *.ii

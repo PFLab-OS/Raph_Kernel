@@ -35,50 +35,94 @@
 
 #include <mem/virtmem.h>
 #include <global.h>
+#include <dev/netdev.h>
+#include <freebsd/net/if.h>
 #include <freebsd/net/ethernet.h>
 
 struct ifnet {
-  int	if_drv_flags;		/* driver-managed status flags */
+  int	if_drv_flags;
   void *if_softc;
+  int if_capenable;
+  int if_capabilities;
 };
-typedef struct ifnet * if_t;
+typedef ifnet *if_t;
+
+struct BsdDevice;
+
+// Raphineでは未定義
+// static inline if_t if_gethandle(uint8_t type);
 
 static inline int if_setdrvflagbits(if_t ifp, int set_flags, int clear_flags)
 {
-  ((struct ifnet *)ifp)->if_drv_flags |= set_flags;
-  ((struct ifnet *)ifp)->if_drv_flags &= ~clear_flags;
+  ifp->if_drv_flags |= set_flags;
+  ifp->if_drv_flags &= ~clear_flags;
 
   return (0);
 }
 
 static inline int if_getdrvflags(if_t ifp) {
-  return ((struct ifnet *)ifp)->if_drv_flags;
+  return ifp->if_drv_flags;
 }
 
 static inline int if_setdrvflags(if_t ifp, int flags) {
-  ((struct ifnet *)ifp)->if_drv_flags = flags;
+  ifp->if_drv_flags = flags;
   return (0);
 }
 
 static inline void *if_getsoftc(if_t ifp) {
-  return ((struct ifnet *)ifp)->if_softc;
+  return ifp->if_softc;
 }
 
 static inline int if_setsoftc(if_t ifp, void *softc)
 {
-  ((struct ifnet *)ifp)->if_softc = softc;
+  ifp->if_softc = softc;
   return (0);
-}
-
-static inline if_t if_gethandle(uint8_t type) {
-  return reinterpret_cast<if_t>(virtmem_ctrl->Alloc(sizeof(struct ifnet)));
 }
 
 static inline int if_getmtu(if_t ifp) {
   return ETHERMTU;
 }
 
+static inline int if_setcapabilities(if_t ifp, int capabilities)
+{
+  ifp->if_capabilities = capabilities;
+  return (0);
+}
+
+static inline int if_setcapabilitiesbit(if_t ifp, int setbit, int clearbit)
+{
+  ifp->if_capabilities |= setbit;
+  ifp->if_capabilities &= ~clearbit;
+
+  return (0);
+}
+
+static inline int if_getcapabilities(if_t ifp)
+{
+  return ifp->if_capabilities;
+}
+
 static inline int if_getcapenable(if_t ifp) {
+  return ifp->if_capenable;
+}
+
+static inline int if_setcapenablebit(if_t ifp, int setcap, int clearcap) {
+  if(setcap) {
+    ifp->if_capenable |= setcap;
+  }
+  if(clearcap) {
+    ifp->if_capenable &= ~clearcap;
+  }
+
+  return 0;
+}
+
+static inline int if_setcapenable(if_t ifp, int capenable) {
+  ifp->if_capenable = capenable;
+  return (0);
+}
+
+static inline int if_setdev(if_t ifp, void *dev) {
   return 0;
 }
 

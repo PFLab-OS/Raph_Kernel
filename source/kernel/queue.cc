@@ -23,28 +23,33 @@
 #include <queue.h>
 #include <global.h>
 #include <mem/tmpmem.h>
+#include <raph.h>
 
 void Queue::Push(void *data) {
-  Locker locker(_lock);
   Container *c = reinterpret_cast<Container *>(tmpmem_ctrl->Alloc(sizeof(Container)));
+  c->data = data;
+  c->next = nullptr;
+  Locker locker(_lock);
   kassert(_last->next == nullptr);
   _last->next = c;
   _last = c;
-  c->data = data;
-  c->next = nullptr;
 }
 
 bool Queue::Pop(void *&data) {
-  Locker locker(_lock);
-  if (IsEmpty()) {
-    return false;
+  Container *c;
+  {
+    Locker locker(_lock);
+    if (IsEmpty()) {
+      return false;
+    }
+    c = _first.next;
+    kassert(c != nullptr);
+    _first.next = c->next;
+    if (_last == c) {
+      _last = &_first;
+    }
   }
-  Container *c = _first.next;
-  kassert(c != nullptr);
   data = c->data;
-  _first.next = c->next;
-  if (_last == c) {
-    _last = &_first;
-  }
+  tmpmem_ctrl->Free(reinterpret_cast<virt_addr>(c));
   return true;
 }

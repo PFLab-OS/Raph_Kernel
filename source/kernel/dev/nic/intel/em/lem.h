@@ -26,21 +26,18 @@
 #include <stdint.h>
 #include <mem/physmem.h>
 #include <mem/virtmem.h>
-#include <polling.h>
 #include <global.h>
 #include <dev/pci.h>
 #include <buf.h>
+#include <dev/eth.h>
 #include <freebsd/sys/param.h>
-#include "bem.h"
+#include <freebsd/sys/types.h>
 
-class lE1000 : public bE1000, Polling {
+class lE1000 : public BsdDevEthernet {
 public:
- lE1000(uint8_t bus, uint8_t device, bool mf) : bE1000(bus, device, mf) {}
-  static bool InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf);
-  // from Polling
-  virtual void Handle() override;
+ lE1000(uint8_t bus, uint8_t device, bool mf) : BsdDevEthernet(bus, device, mf) {}
+  static DevPci *InitPci(uint8_t bus, uint8_t device, uint8_t function);
 
-  BsdDriver bsd;
   virtual void UpdateLinkStatus() override;
 
   virtual void SetupNetInterface() override;
@@ -48,6 +45,10 @@ public:
   // allocate 6 byte before call
   virtual void GetEthAddr(uint8_t *buffer) override;
  private:
+  static void PollingHandler(void *arg);
+  virtual void ChangeHandleMethodToPolling() override;
+  virtual void ChangeHandleMethodToInt() override;
+  virtual void Transmit(void *) override;
 };
 
 #endif /* __RAPH_KERNEL_E1000_LEM_H__ */

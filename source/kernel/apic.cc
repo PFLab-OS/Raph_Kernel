@@ -22,7 +22,7 @@
 
 #include <assert.h>
 #include <mem/virtmem.h>
-#include <acpi.h>
+#include <raph_acpi.h>
 #include <apic.h>
 #include <timer.h>
 #include <global.h>
@@ -51,6 +51,7 @@ void ApicCtrl::Setup() {
       break;
     case MADTStType::kIOAPIC:
       {
+        // TODO : multi IOAPIC support
         MADTStIOAPIC *madtStIOAPIC = reinterpret_cast<MADTStIOAPIC *>(ptr);
         _ioapic.SetReg(reinterpret_cast<uint32_t *>(p2v(madtStIOAPIC->ioapicAddr)));
       }
@@ -102,7 +103,7 @@ void ApicCtrl::Lapic::Setup() {
     return;
   }
 
-  _ctrlAddr[kRegSvr] = kRegSvrApicEnableFlag | Idt::ReservedIntVector::kSpurious;
+  _ctrlAddr[kRegSvr] = kRegSvrApicEnableFlag | Idt::ReservedIntVector::kError;
 
   // disable all local interrupt sources
   _ctrlAddr[kRegLvtTimer] = kRegLvtMask | kRegTimerPeriodic;
@@ -112,10 +113,10 @@ void ApicCtrl::Lapic::Setup() {
   _ctrlAddr[kRegLvtPerformanceCnt] = kRegLvtMask;
   _ctrlAddr[kRegLvtLint0] = kRegLvtMask;
   _ctrlAddr[kRegLvtLint1] = kRegLvtMask;
-  _ctrlAddr[kRegLvtErr] = kRegLvtMask | Idt::ReservedIntVector::kLapicErr;
+  _ctrlAddr[kRegLvtErr] = kRegLvtMask | Idt::ReservedIntVector::kError;
 
   kassert(idt != nullptr);
-  idt->SetIntCallback(Idt::ReservedIntVector::kIpi, IpiCallback);
+  idt->SetExceptionCallback(GetApicId(), Idt::ReservedIntVector::kIpi, IpiCallback, nullptr);
 }
 
 void ApicCtrl::Lapic::Start(uint8_t apicId, uint64_t entryPoint) {
@@ -151,7 +152,7 @@ void ApicCtrl::Lapic::WriteIcr(uint32_t hi, uint32_t lo) {
   GetApicId();
 }
 
-void ApicCtrl::Lapic::SetupTimer(uint32_t irq) {
+void ApicCtrl::Lapic::SetupTimer(int interval) {
   _ctrlAddr[kRegDivConfig] = kDivVal16;
   _ctrlAddr[kRegTimerInitCnt] = 0xFFFFFFFF;
   uint64_t timer1 = timer->ReadMainCnt();
@@ -163,11 +164,11 @@ void ApicCtrl::Lapic::SetupTimer(uint32_t irq) {
   }
   uint64_t timer2 = timer->ReadMainCnt();
   kassert((timer2 - timer1) > 0);
-  uint32_t base_cnt = 0xFFFFF / ((timer2 - timer1) * timer->GetCntClkPeriod() / (10 * 1000));
+  uint32_t base_cnt = 0xFFFFF / ((timer2 - timer1) * timer->GetCntClkPeriod() / (interval * 1000));
   kassert(base_cnt > 0);
 
   kassert(idt != nullptr);
-  idt->SetIntCallback(irq, TmrCallback);
+  int irq = idt->SetIntCallback(GetApicId(), TmrCallback, nullptr);
   _ctrlAddr[kRegTimerInitCnt] = base_cnt;
       
   _ctrlAddr[kRegLvtTimer] = kRegLvtMask | kRegTimerPeriodic | irq;

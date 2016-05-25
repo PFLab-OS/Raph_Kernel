@@ -44,48 +44,48 @@
 void
 e1000_write_pci_cfg(struct e1000_hw *hw, u32 reg, u16 *value)
 {
-  ((struct e1000_osdep *)hw->back)->dev->parent->WriteReg<uint16_t>(static_cast<uint16_t>(reg), *value);
+  ((struct e1000_osdep *)hw->back)->dev->GetPciClass()->WriteReg<uint16_t>(static_cast<uint16_t>(reg), *value);
 }
 
 void
 e1000_read_pci_cfg(struct e1000_hw *hw, u32 reg, u16 *value)
 {
-  *value = ((struct e1000_osdep *)hw->back)->dev->parent->ReadReg<uint16_t>(static_cast<uint16_t>(reg));
+  *value = ((struct e1000_osdep *)hw->back)->dev->GetPciClass()->ReadReg<uint16_t>(static_cast<uint16_t>(reg));
 }
 
 void
 e1000_pci_set_mwi(struct e1000_hw *hw)
 {
-  ((struct e1000_osdep *)hw->back)->dev->parent->WriteReg<uint16_t>(PCICtrl::kCommandReg, (hw->bus.pci_cmd_word | PCICtrl::kCommandRegMemWriteInvalidateFlag));
+  ((struct e1000_osdep *)hw->back)->dev->GetPciClass()->WriteReg<uint16_t>(PciCtrl::kCommandReg, (hw->bus.pci_cmd_word | PciCtrl::kCommandRegMemWriteInvalidateFlag));
 }
 
 void
 e1000_pci_clear_mwi(struct e1000_hw *hw)
 {
-  ((struct e1000_osdep *)hw->back)->dev->parent->WriteReg<uint16_t>(PCICtrl::kCommandReg, (hw->bus.pci_cmd_word & ~PCICtrl::kCommandRegMemWriteInvalidateFlag));
+  ((struct e1000_osdep *)hw->back)->dev->GetPciClass()->WriteReg<uint16_t>(PciCtrl::kCommandReg, (hw->bus.pci_cmd_word & ~PciCtrl::kCommandRegMemWriteInvalidateFlag));
 }
 
 /*
- * Read the PCI Express capabilities
+ * Read the Pci Express capabilities
  */
 int32_t
 e1000_read_pcie_cap_reg(struct e1000_hw *hw, u32 reg, u16 *value)
 {
-  DevPCI *dev = ((struct e1000_osdep *)hw->back)->dev->parent;
-  uint16_t offset = dev->FindCapability(PCICtrl::CapabilityId::kPcie);
+  DevPci *dev = ((struct e1000_osdep *)hw->back)->dev->GetPciClass();
+  uint16_t offset = dev->FindCapability(PciCtrl::CapabilityId::kPcie);
 
   *value = dev->ReadReg<uint16_t>(static_cast<uint16_t>(offset + reg));
   return (E1000_SUCCESS);
 }
 
 /*
- * Write the PCI Express capabilities
+ * Write the Pci Express capabilities
  */
 int32_t
 e1000_write_pcie_cap_reg(struct e1000_hw *hw, u32 reg, u16 *value)
 {
-  DevPCI *dev = ((struct e1000_osdep *)hw->back)->dev->parent;
-  uint16_t offset = dev->FindCapability(PCICtrl::CapabilityId::kPcie);
+  DevPci *dev = ((struct e1000_osdep *)hw->back)->dev->GetPciClass();
+  uint16_t offset = dev->FindCapability(PciCtrl::CapabilityId::kPcie);
 
   dev->WriteReg<uint16_t>(static_cast<uint16_t>(offset + reg), *value);
   return (E1000_SUCCESS);

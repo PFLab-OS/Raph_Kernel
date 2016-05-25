@@ -26,7 +26,7 @@
 
 const char *NetDevCtrl::kDefaultNetworkInterfaceName = "eth0";
 
-bool NetDevCtrl::RegisterDevice(DevEthernet *dev, const char *name) {
+bool NetDevCtrl::RegisterDevice(NetDev *dev, const char *name) {
   if(_current_device_number < kMaxDevNumber) {
     // succeed to register
     dev->SetName(name);

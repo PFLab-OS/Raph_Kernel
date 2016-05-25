@@ -28,7 +28,7 @@
 #include <stdint.h>
 #include <raph.h>
 #include <mem/physmem.h>
-#include <acpi.h>
+#include <raph_acpi.h>
 #include <timer.h>
 #include <apic.h>
 #include <global.h>
@@ -78,7 +78,7 @@ class Hpet : public Timer {
   virtual volatile uint64_t ReadMainCnt() override {
     return _reg[kRegMainCnt];
   }
-  void SetInt(uint8_t lapicid, uint64_t cnt) {
+  void SetInt(uint8_t cpuid, uint64_t cnt) {
     int id = 0;
     int table;
     uint32_t routecap = (_reg[GetRegTmrOfN(id, kBaseRegTmrConfigCap)] & kRegTmrConfigCapBaseMaskIntRouteCap) >> 32;
@@ -101,7 +101,7 @@ class Hpet : public Timer {
       kRegTmrConfigCapBaseFlagTypeNonPer;
     _reg[GetRegTmrOfN(id, kBaseRegTmrCmp)] = cnt;
     kassert(apic_ctrl != nullptr);
-    kassert(apic_ctrl->SetupIoInt(table, lapicid, 38));
+    kassert(apic_ctrl->SetupIoInt(table, apic_ctrl->GetApicIdFromCpuId(cpuid), 38));
   }
  private:
   void Disable(int table) {

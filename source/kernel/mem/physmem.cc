@@ -39,7 +39,7 @@ PhysmemCtrl::PhysmemCtrl() {
 }
 
 #else
-#include "../raph.h"
+#include <raph.h>
 PhysmemCtrl::PhysmemCtrl() {
   _allocated_area = _allocated_area_buffer.Alloc();
   _allocated_area->start_addr = 0;

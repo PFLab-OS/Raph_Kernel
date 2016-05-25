@@ -24,6 +24,7 @@
 #define __RAPH_KERNEL_NET_SOCKET_H__
 
 #include <stdint.h>
+#include <functional.h>
 #include <dev/eth.h>
 
 class NetSocket {
@@ -54,12 +55,16 @@ public:
   static const int32_t kErrorInsufficientBuffer     = - 0x1005;
   // device internal error
   static const int32_t kErrorDeviceInternal         = - 0x1007;
+  // TCP acknowledgement number is wrong
+  static const int32_t kErrorTcpAcknowledgement     = - 0x1008;
 
   // open socket, which internally fetch an available network device
   int32_t Open();
 
   void SetProtocolStackId(uint32_t id) { _ptcl_stack_id = id; }
   uint32_t GetProtocolStackId() { return _ptcl_stack_id; }
+
+  void SetReceiveCallback(int apicid, const Function &func);
 
 protected:
   // reference to network device info

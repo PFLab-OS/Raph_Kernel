@@ -32,10 +32,10 @@
 
 #include "../../../dev/pci.h"
 
-#define PCIR_COMMAND PCICtrl::kCommandReg
-#define PCIR_REVID PCICtrl::kRegRevisionId
-#define PCIR_SUBVEND_0 PCICtrl::kSubVendorIdReg
-#define PCIR_SUBDEV_0 PCICtrl::kSubsystemIdReg
+#define PCIR_COMMAND PciCtrl::kCommandReg
+#define PCIR_REVID PciCtrl::kRegRevisionId
+#define PCIR_SUBVEND_0 PciCtrl::kSubVendorIdReg
+#define PCIR_SUBDEV_0 PciCtrl::kSubsystemIdReg
 
 #define	PCIY_PMG	0x01	/* PCI Power Management */
 #define	PCIY_AGP	0x02	/* AGP */

@@ -26,19 +26,25 @@
 #include <apic.h>
 #include <gdt.h>
 #include <global.h>
+#include <tty.h>
 
 namespace C {
 extern "C" void handle_int(Regs *rs) {
-  idt->_handling_cnt[apic_ctrl->GetApicId()]++;
-  if (idt->_callback[apic_ctrl->GetApicId()][rs->n] == nullptr) {
+  //TODO 例外処理中のフラグを立て、IntSpinLock内では弾く
+  apic_ctrl->DisableInt();
+  int cpuid = apic_ctrl->GetCpuId();
+  idt->_handling_cnt[cpuid]++;
+  if (idt->_callback[cpuid][rs->n].callback == nullptr) {
     if (gtty != nullptr) {
       gtty->PrintfRaw("s","[kernel] error: unimplemented interrupt ", "d", rs->n, "s", " ");
     }
     asm volatile("cli; hlt; nop; nop; hlt; nop; hlt;"::"a"(rs->rip));
   } else {
-    idt->_callback[apic_ctrl->GetApicId()][rs->n](rs);
+    idt->_callback[cpuid][rs->n].callback(rs, idt->_callback[cpuid][rs->n].arg);
   }
-  idt->_handling_cnt[apic_ctrl->GetApicId()]--;
+  idt->_handling_cnt[cpuid]--;
+  apic_ctrl->EnableInt();
+  //TODO 普通の例外の場合にまずい
   apic_ctrl->SendEoi();
 }
 }
@@ -81,15 +87,16 @@ void Idt::SetupGeneric() {
   _idtr[4] = (idt_addr >> 48) & 0xffff;
   kassert(virtmem_ctrl != nullptr);
   kassert(apic_ctrl != nullptr);
-  _callback = reinterpret_cast<idt_callback **>(virtmem_ctrl->Alloc(sizeof(idt_callback *) * apic_ctrl->GetHowManyCpus()));
+  _callback = reinterpret_cast<IntCallback **>(virtmem_ctrl->Alloc(sizeof(IntCallback *) * apic_ctrl->GetHowManyCpus()));
   _handling_cnt = reinterpret_cast<int *>(virtmem_ctrl->Alloc(sizeof(int) * apic_ctrl->GetHowManyCpus()));
   for (int i = 0; i < apic_ctrl->GetHowManyCpus(); i++) {
-    _callback[i] = reinterpret_cast<idt_callback *>(virtmem_ctrl->Alloc(sizeof(idt_callback) * 256));
+    _callback[i] = reinterpret_cast<IntCallback *>(virtmem_ctrl->Alloc(sizeof(IntCallback) * 256));
     _handling_cnt[i] = 0;
     for (int j = 0; j < 256; j++) {
-      _callback[i][j] = nullptr;
+      _callback[i][j].callback = nullptr;
     }
   }
+  _is_gen_initialized = true;
 }
 
 void Idt::SetupProc() {
@@ -97,17 +104,30 @@ void Idt::SetupProc() {
   asm volatile ("sti;");
 }
 
-void Idt::SetGate(idt_callback gate, int n, uint8_t dpl, bool trap, uint8_t ist) {
+void Idt::SetGate(idt_callback gate, int vector, uint8_t dpl, bool trap, uint8_t ist) {
   virt_addr vaddr = reinterpret_cast<virt_addr>(gate);
-  phys_addr addr = vaddr; // TODO やばくね？
   uint32_t type = trap ? 0xF : 0xE;
-  idt_def[n].entry[0] = (addr & 0xFFFF) | (KERNEL_CS << 16);
-  idt_def[n].entry[1] = (addr & 0xFFFF0000) | (type << 8) | ((dpl & 0x3) << 13) | kIdtPresent | ist;
-  idt_def[n].entry[2] = addr >> 32;
-  idt_def[n].entry[3] = 0;
+  idt_def[vector].entry[0] = (vaddr & 0xFFFF) | (KERNEL_CS << 16);
+  idt_def[vector].entry[1] = (vaddr & 0xFFFF0000) | (type << 8) | ((dpl & 0x3) << 13) | kIdtPresent | ist;
+  idt_def[vector].entry[2] = vaddr >> 32;
+  idt_def[vector].entry[3] = 0;
 }
 
-void Idt::SetIntCallback(int n, idt_callback callback) {
-  kassert(apic_ctrl != nullptr);
-  _callback[apic_ctrl->GetApicId()][n] = callback;
+int Idt::SetIntCallback(int cpuid, int_callback callback, void *arg) {
+  Locker locker(_lock);
+  for(int vector = 64; vector < 256; vector++) {
+    if (_callback[cpuid][vector].callback == nullptr) {
+      _callback[cpuid][vector].callback = callback;
+      _callback[cpuid][vector].arg = arg;
+      return vector;
+    }
+  }
+  return ReservedIntVector::kError;
+}
+
+void Idt::SetExceptionCallback(int cpuid, int vector, int_callback callback, void *arg) {
+  kassert(vector < 64 && vector >= 1);
+  Locker locker(_lock);
+  _callback[cpuid][vector].callback = callback;
+  _callback[cpuid][vector].arg = arg;
 }

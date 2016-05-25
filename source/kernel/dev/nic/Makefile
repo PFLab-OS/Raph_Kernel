@@ -1,16 +1,19 @@
-NIC_ARCHIVE = ../nic.o
-NIC_OBJS = intel.o
-DEPS= $(filter %.d,$(NIC_OBJS:%.o=%.d))
+OBJS = intel.o
 
-obj: $(NIC_ARCHIVE)
+DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))
 
-$(NIC_ARCHIVE): $(NIC_OBJS)
+.PHONY: clean intel.o
+
+default: ../nic.o
+
+-include $(DEPS)
+
+../nic.o: $(OBJS)
 	ld -r $^ -o $@
 
 intel.o:
-	make CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)" -C intel obj
+	make -C intel CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
 
 clean:
 	make -C intel clean
-	-rm -f $(NIC_OBJS) $(DEPS) *.s *.ii
-
+	-rm -f $(OBJS) $(TEST_OBJS) $(DEPS) *.s *.ii

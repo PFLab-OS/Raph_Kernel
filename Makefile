@@ -42,7 +42,10 @@ cpimg: image
 hd: image /dev/sdb
 	sudo dd if=$(IMAGE) of=/dev/sdb
 
-disk: $(IMAGE)
+disk:
+	make diskclean
+	make $(IMAGE)
+	make image
 
 mount: $(IMAGE)
 	sh disk.sh mount

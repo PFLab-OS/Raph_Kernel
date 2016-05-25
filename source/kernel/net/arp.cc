@@ -42,16 +42,16 @@ int32_t ArpGeneratePacket(uint8_t *buffer, uint16_t op, uint8_t *smacaddr, uint3
   packet->protocol = htons(kProtocolIpv4);
   packet->hlen = 6;
   packet->plen = 4;
-  packet->op = htons(op);
-  memcpy(packet->hw_saddr, smacaddr, 6);
-  packet->proto_saddr = htonl(sipaddr);
-  packet->proto_daddr = htonl(dipaddr);
+  if(op) packet->op = htons(op);
+  if(smacaddr) memcpy(packet->hw_saddr, smacaddr, 6);
+  if(sipaddr) packet->proto_saddr = htonl(sipaddr);
+  if(dipaddr) packet->proto_daddr = htonl(dipaddr);
   switch(op) {
     case ArpSocket::kOpArpRequest:
       memset(packet->hw_daddr, 0, 6);
       break;
 	case ArpSocket::kOpArpReply:
-      memcpy(packet->hw_daddr, dmacaddr, 6);
+      if(dmacaddr) memcpy(packet->hw_daddr, dmacaddr, 6);
       break;
     default:
       // unknown ARP operation
@@ -75,14 +75,29 @@ bool RegisterIpAddress(uint8_t *packet) {
   return arp_table->Add(arp->proto_saddr, arp->hw_saddr);
 }
 
-void GetSourceMacAddress(uint8_t *buffer, uint8_t *packet) {
+void ArpGetSourceMacAddress(uint8_t *buffer, uint8_t *packet) {
   ArpPacket * volatile arp = reinterpret_cast<ArpPacket*>(packet);
   memcpy(buffer, arp->hw_saddr, 6);
 }
 
-uint32_t GetSourceIpAddress(uint8_t *packet) {
+void ArpGetDestMacAddress(uint8_t *buffer, uint8_t *packet) {
+  ArpPacket * volatile arp = reinterpret_cast<ArpPacket*>(packet);
+  memcpy(buffer, arp->hw_daddr, 6);
+}
+
+uint32_t ArpGetSourceIpAddress(uint8_t *packet) {
   ArpPacket * volatile arp = reinterpret_cast<ArpPacket*>(packet);
   return ntohl(arp->proto_saddr);
+}
+
+uint32_t ArpGetDestIpAddress(uint8_t *packet) {
+  ArpPacket * volatile arp = reinterpret_cast<ArpPacket*>(packet);
+  return ntohl(arp->proto_daddr);
+}
+
+uint16_t ArpGetOperation(uint8_t *packet) {
+  ArpPacket * volatile arp = reinterpret_cast<ArpPacket*>(packet);
+  return ntohs(arp->op);
 }
 
 /*

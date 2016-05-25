@@ -26,10 +26,9 @@
 #include <global.h>
 #include <apic.h>
 
-// this file should be put in dev/...?
 class Keyboard {
  public:
-  void Setup(int lapicid);
+  void Setup(int cpuid);
   void Write(uint8_t code);
   uint8_t Read();
   char GetCh();
@@ -37,8 +36,8 @@ class Keyboard {
   bool Underflow();
   int Count();
   void Reset();
-  static void Handler (Regs *reg);
  private:
+  static void Handler (Regs *reg, void *arg);
   static const int kbufSize = 100;
   static const char kScanCode[256];
   static const int kDataPort = 0x60;

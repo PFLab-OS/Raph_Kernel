@@ -21,7 +21,9 @@
  */
 
 #include "tmpmem.h"
+#include <global.h>
 #include <mem/virtmem.h>
+#include <raph.h>
 
 void TmpmemCtrl::Init() {
   Locker locker(_lock);

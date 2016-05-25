@@ -23,28 +23,25 @@
 #ifndef __RAPH_KERNEL_GLOBAL_H__
 #define __RAPH_KERNEL_GLOBAL_H__
 
+#include <libglobal.h>
+
 // TODO: global namespace
 
-class SpinLockCtrl;
 class AcpiCtrl;
 class MultibootCtrl;
 class PagingCtrl;
 class PhysmemCtrl;
 class VirtmemCtrl;
 class TmpmemCtrl;
-class TaskCtrl;
 class Gdt;
 class Idt;
 
-class Tty;
-class Timer;
 class Keyboard;
 
-class PCICtrl;
+class PciCtrl;
 
 class NetDevCtrl;
 
-extern SpinLockCtrl *spinlock_ctrl;
 extern AcpiCtrl *acpi_ctrl;
 
 #ifndef __UNIT_TEST__
@@ -60,16 +57,12 @@ extern PagingCtrl *paging_ctrl;
 extern PhysmemCtrl *physmem_ctrl;
 extern VirtmemCtrl *virtmem_ctrl;
 extern TmpmemCtrl *tmpmem_ctrl;
-extern TaskCtrl *task_ctrl;
 extern Gdt *gdt;
 extern Idt *idt;
 
-
-extern Tty *gtty;
-extern Timer *timer;
 extern Keyboard *keyboard;
 
-extern PCICtrl *pci_ctrl;
+extern PciCtrl *pci_ctrl;
 
 /*
  * Network Controllers

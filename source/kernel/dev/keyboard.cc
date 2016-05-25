@@ -25,9 +25,11 @@
 #include <idt.h>
 #include <dev/keyboard.h>
 
-void Keyboard::Setup(int lapicid) {
-  apic_ctrl->SetupIoInt(ApicCtrl::Ioapic::kIrqKeyboard, lapicid, Idt::ReservedIntVector::kKeyboard);
-  idt->SetIntCallback(Idt::ReservedIntVector::kKeyboard, Keyboard::Handler);
+void Keyboard::Setup(int cpuid) {
+  kassert(apic_ctrl != nullptr);
+  kassert(idt != nullptr);
+  int vector = idt->SetIntCallback(cpuid, Keyboard::Handler, nullptr);
+  apic_ctrl->SetupIoInt(ApicCtrl::Ioapic::kIrqKeyboard, apic_ctrl->GetApicIdFromCpuId(cpuid), vector);
 }
 
 void Keyboard::Write(uint8_t code){
@@ -69,10 +71,10 @@ void Keyboard::Reset() {
 }
 
 
-void Keyboard::Handler(Regs *reg) { //static
+void Keyboard::Handler(Regs *reg, void *arg) {
   uint8_t data;
   data = inb(kDataPort);
-  if(data < (1 << 7))  keyboard->Write(data);
+  if (data < (1 << 7)) keyboard->Write(data);
 }
 
 const char Keyboard::kScanCode[256] = {

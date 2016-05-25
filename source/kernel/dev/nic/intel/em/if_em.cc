@@ -216,8 +216,8 @@ static const char *em_strings[] = {
 /*********************************************************************
  *  Function prototypes
  *********************************************************************/
-int	em_probe(device_t);
-int	em_attach(device_t);
+static int	em_probe(device_t);
+static int	em_attach(device_t);
 // static int	em_detach(device_t);
 // static int	em_shutdown(device_t);
 // static int	em_suspend(device_t);
@@ -228,14 +228,14 @@ static int	em_mq_start_locked(if_t,
 		    struct tx_ring *);
 // static void	em_qflush(if_t);
 #else
-// static void	em_start(if_t);
+static void	em_start(if_t);
 static void	em_start_locked(if_t, struct tx_ring *);
 #endif
 // static int	em_ioctl(if_t, u_long, caddr_t);
 #if __FreeBSD_version >= 1100036
 static uint64_t	em_get_counter(if_t, ift_counter);
 #endif
-void	em_init(struct adapter *);
+static void	em_init(struct adapter *);
 static void	em_init_locked(struct adapter *);
 static void	em_stop(struct adapter *);
 // static void	em_media_status(if_t, struct ifmediareq *);
@@ -264,7 +264,7 @@ static void	em_initialize_receive_unit(struct adapter *);
 // static void	em_free_receive_structures(struct adapter *);
 // static void	em_free_receive_buffers(struct rx_ring *);
 
-// static void	em_enable_intr(struct adapter *);
+static void	em_enable_intr(struct adapter *);
 static void	em_disable_intr(struct adapter *);
 static void	em_update_stats_counters(struct adapter *);
 // static void	em_add_hw_stats(struct adapter *adapter);
@@ -281,12 +281,12 @@ static int	em_fixup_rx(struct rx_ring *);
 // static void	em_set_promisc(struct adapter *);
 // static void	em_disable_promisc(struct adapter *);
 static void	em_set_multi(struct adapter *);
-void	em_update_link_status(struct adapter *);
+static void	em_update_link_status(struct adapter *);
 static void	em_refresh_mbufs(struct rx_ring *, int);
 // static void	em_register_vlan(void *, if_t, u16);
 // static void	em_unregister_vlan(void *, if_t, u16);
 // static void	em_setup_vlan_hw_support(struct adapter *);
-static int	em_xmit(struct tx_ring *, bE1000::Packet *);
+static int	em_xmit(struct tx_ring *, BsdDevEthernet::Packet *);
 static int	em_dma_malloc(struct adapter *, bus_size_t,
 		    struct em_dma_alloc *, int);
 // static void	em_dma_free(struct adapter *, struct em_dma_alloc *);
@@ -309,15 +309,15 @@ static void	em_get_wakeup(device_t);
 // static void	em_led_func(void *, int);
 static void	em_disable_aspm(struct adapter *);
 
-// static int	em_irq_fast(void *);
+static int	em_irq_fast(void *);
 
 /* MSIX handlers */
 // static void	em_msix_tx(void *);
 // static void	em_msix_rx(void *);
 // static void	em_msix_link(void *);
-// static void	em_handle_tx(void *context, int pending);
+static void	em_handle_tx(void *context, int pending);
 // static void	em_handle_rx(void *context, int pending);
-// static void	em_handle_link(void *context, int pending);
+static void	em_handle_link(void *context, int pending);
 
 #ifdef EM_MULTIQUEUE
 static void	em_enable_vectors_82574(struct adapter *);
@@ -331,7 +331,7 @@ static void	em_enable_vectors_82574(struct adapter *);
 static __inline void em_rx_discard(struct rx_ring *, int);
 
 #ifdef DEVICE_POLLING
-int em_poll(if_t ifp);
+static int em_poll(if_t ifp);
 #endif /* POLLING */
 
 /*********************************************************************
@@ -408,7 +408,8 @@ static int em_smart_pwr_down = FALSE;
 // SYSCTL_INT(_hw_em, OID_AUTO, sbp, CTLFLAG_RDTUN, &em_debug_sbp, 0,
 //     "Show bad packets in promiscuous mode");
 
-// static int em_enable_msix = TRUE;
+// RaphineはMSIXをサポートしていない
+static int em_enable_msix = FALSE;
 // SYSCTL_INT(_hw_em, OID_AUTO, enable_msix, CTLFLAG_RDTUN, &em_enable_msix, 0,
 //     "Enable MSI-X interrupts");
 
@@ -959,7 +960,7 @@ static void
 em_start_locked(if_t ifp, struct tx_ring *txr)
 {
   struct adapter	*adapter = reinterpret_cast<struct adapter *>(if_getsoftc(ifp));
-  bE1000 *e1000 = adapter->dev->parent;
+  BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
 	// struct mbuf	*m_head;
 
 	EM_TX_LOCK_ASSERT(txr);
@@ -993,7 +994,7 @@ em_start_locked(if_t ifp, struct tx_ring *txr)
 		// 	if_sendq_prepend(ifp, m_head);
 		// 	break;
 		// }
-                bE1000::Packet *packet;
+                BsdDevEthernet::Packet *packet;
                 kassert(e1000->_tx_buffered.Pop(packet));
                 em_xmit(txr, packet);
                 e1000->ReuseTxBuffer(packet);
@@ -1010,19 +1011,19 @@ em_start_locked(if_t ifp, struct tx_ring *txr)
 	return;
 }
 
-// static void
-// em_start(if_t ifp)
-// {
-//   struct adapter	*adapter = reinterpret_cast<struct adapter *>(if_getsoftc(ifp));
-// 	struct tx_ring	*txr = adapter->tx_rings;
+static void
+em_start(if_t ifp)
+{
+  struct adapter	*adapter = reinterpret_cast<struct adapter *>(if_getsoftc(ifp));
+	struct tx_ring	*txr = adapter->tx_rings;
 
-// 	if (if_getdrvflags(ifp) & IFF_DRV_RUNNING) {
-// 		EM_TX_LOCK(txr);
-// 		em_start_locked(ifp, txr);
-// 		EM_TX_UNLOCK(txr);
-// 	}
-// 	return;
-// }
+	if (if_getdrvflags(ifp) & IFF_DRV_RUNNING) {
+		EM_TX_LOCK(txr);
+		em_start_locked(ifp, txr);
+		EM_TX_UNLOCK(txr);
+	}
+	return;
+}
 #else /* EM_MULTIQUEUE */
 /*********************************************************************
  *  Multiqueue Transmit routines 
@@ -1472,11 +1473,11 @@ em_init_locked(struct adapter *adapter)
 	 * Only enable interrupts if we are not polling, make sure
 	 * they are off otherwise.
 	 */
-	// if (if_getcapenable(ifp) & IFCAP_POLLING)
-		em_disable_intr(adapter);
-	// else
+        if (if_getcapenable(ifp) & IFCAP_POLLING)
+          em_disable_intr(adapter);
+        else
 #endif /* DEVICE_POLLING */
-		// em_enable_intr(adapter);
+          em_enable_intr(adapter);
 
 	/* AMT based hardware can now take control from firmware */
 	if (adapter->has_manage && adapter->has_amt)
@@ -1504,7 +1505,7 @@ int
 em_poll(if_t ifp)
 {
   struct adapter *adapter = reinterpret_cast<struct adapter *>(if_getsoftc(ifp));
-  bE1000 *e1000 = adapter->dev->parent;
+  BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
 	struct tx_ring	*txr = adapter->tx_rings;
 	struct rx_ring	*rxr = adapter->rx_rings;
 	// u32		reg_icr;
@@ -1553,78 +1554,80 @@ em_poll(if_t ifp)
  *  Fast Legacy/MSI Combined Interrupt Service routine  
  *
  *********************************************************************/
-// static int
-// em_irq_fast(void *arg)
-// {
-// 	struct adapter	*adapter = arg;
-// 	if_t ifp;
-// 	u32		reg_icr;
+static int
+em_irq_fast(void *arg)
+{
+  struct adapter	*adapter = reinterpret_cast<struct adapter *>(arg);
+	if_t ifp;
+	u32		reg_icr;
 
-// 	ifp = adapter->ifp;
+	ifp = adapter->ifp;
 
-// 	reg_icr = E1000_READ_REG(&adapter->hw, E1000_ICR);
+	reg_icr = E1000_READ_REG(&adapter->hw, E1000_ICR);
 
-// 	/* Hot eject?  */
-// 	if (reg_icr == 0xffffffff)
-// 		return FILTER_STRAY;
+	/* Hot eject?  */
+	if (reg_icr == 0xffffffff)
+		return FILTER_STRAY;
 
-// 	/* Definitely not our interrupt.  */
-// 	if (reg_icr == 0x0)
-// 		return FILTER_STRAY;
+	/* Definitely not our interrupt.  */
+	if (reg_icr == 0x0)
+		return FILTER_STRAY;
 
-// 	/*
-// 	 * Starting with the 82571 chip, bit 31 should be used to
-// 	 * determine whether the interrupt belongs to us.
-// 	 */
-// 	if (adapter->hw.mac.type >= e1000_82571 &&
-// 	    (reg_icr & E1000_ICR_INT_ASSERTED) == 0)
-// 		return FILTER_STRAY;
+	/*
+	 * Starting with the 82571 chip, bit 31 should be used to
+	 * determine whether the interrupt belongs to us.
+	 */
+	if (adapter->hw.mac.type >= e1000_82571 &&
+	    (reg_icr & E1000_ICR_INT_ASSERTED) == 0)
+		return FILTER_STRAY;
 
-// 	em_disable_intr(adapter);
-// 	taskqueue_enqueue(adapter->tq, &adapter->que_task);
+	em_disable_intr(adapter);
+	taskqueue_enqueue(adapter->tq, &adapter->que_task);
 
-// 	/* Link status change */
-// 	if (reg_icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC)) {
-// 		adapter->hw.mac.get_link_status = 1;
-// 		taskqueue_enqueue(taskqueue_fast, &adapter->link_task);
-// 	}
+	/* Link status change */
+	if (reg_icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC)) {
+		adapter->hw.mac.get_link_status = 1;
+		taskqueue_enqueue(taskqueue_fast, &adapter->link_task);
+	}
 
-// 	if (reg_icr & E1000_ICR_RXO)
-// 		adapter->rx_overruns++;
-// 	return FILTER_HANDLED;
-// }
+	if (reg_icr & E1000_ICR_RXO)
+		adapter->rx_overruns++;
+	return FILTER_HANDLED;
+}
 
 /* Combined RX/TX handler, used by Legacy and MSI */
-// static void
-// em_handle_que(void *context, int pending)
-// {
-// 	struct adapter	*adapter = context;
-// 	if_t ifp = adapter->ifp;
-// 	struct tx_ring	*txr = adapter->tx_rings;
-// 	struct rx_ring	*rxr = adapter->rx_rings;
+static void
+em_handle_que(void *context, int pending)
+{
+  struct adapter	*adapter = reinterpret_cast<struct adapter *>(context);
+  BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
+	if_t ifp = adapter->ifp;
+	struct tx_ring	*txr = adapter->tx_rings;
+	struct rx_ring	*rxr = adapter->rx_rings;
 
-// 	if (if_getdrvflags(ifp) & IFF_DRV_RUNNING) {
-// 		bool more = em_rxeof(rxr, adapter->rx_process_limit, NULL);
+	if (if_getdrvflags(ifp) & IFF_DRV_RUNNING) {
+		bool more = em_rxeof(rxr, adapter->rx_process_limit, NULL);
 
-// 		EM_TX_LOCK(txr);
-// 		em_txeof(txr);
-// #ifdef EM_MULTIQUEUE
-// 		if (!drbr_empty(ifp, txr->br))
-// 			em_mq_start_locked(ifp, txr);
-// #else
-// 		if (!if_sendq_empty(ifp))
-// 			em_start_locked(ifp, txr);
-// #endif
-// 		EM_TX_UNLOCK(txr);
-// 		if (more) {
-// 			taskqueue_enqueue(adapter->tq, &adapter->que_task);
-// 			return;
-// 		}
-// 	}
+		EM_TX_LOCK(txr);
+		em_txeof(txr);
+#ifdef EM_MULTIQUEUE
+		if (!drbr_empty(ifp, txr->br))
+			em_mq_start_locked(ifp, txr);
+#else
+		// if (!if_sendq_empty(ifp))
+                if (!e1000->_tx_buffered.IsEmpty())
+                  em_start_locked(ifp, txr);
+#endif
+		EM_TX_UNLOCK(txr);
+		if (more) {
+			taskqueue_enqueue(adapter->tq, &adapter->que_task);
+			return;
+		}
+	}
 
-// 	em_enable_intr(adapter);
-// 	return;
-// }
+	em_enable_intr(adapter);
+	return;
+}
 
 
 /*********************************************************************
@@ -1722,7 +1725,7 @@ em_poll(if_t ifp)
 // em_handle_rx(void *context, int pending)
 // {
 // 	struct rx_ring	*rxr = context;
-// 	struct adapter	*adapter = rxr->adapter;
+// 	struct adapter	*adapter = reinterpret_cast<struct adapter *>(rxr->adapter);
 //         bool            more;
 
 // 	more = em_rxeof(rxr, adapter->rx_process_limit, NULL);
@@ -1734,57 +1737,61 @@ em_poll(if_t ifp)
 // 	}
 // }
 
-// static void
-// em_handle_tx(void *context, int pending)
-// {
-// 	struct tx_ring	*txr = context;
-// 	struct adapter	*adapter = txr->adapter;
-// 	if_t ifp = adapter->ifp;
+static void
+em_handle_tx(void *context, int pending)
+{
+  struct tx_ring	*txr = reinterpret_cast<struct tx_ring *>(context);
+	struct adapter	*adapter = reinterpret_cast<struct adapter *>(txr->adapter);
+        BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
+	if_t ifp = adapter->ifp;
 
-// 	EM_TX_LOCK(txr);
-// 	em_txeof(txr);
-// #ifdef EM_MULTIQUEUE
-// 	if (!drbr_empty(ifp, txr->br))
-// 		em_mq_start_locked(ifp, txr);
-// #else
-// 	if (!if_sendq_empty(ifp))
-// 		em_start_locked(ifp, txr);
-// #endif
-// 	E1000_WRITE_REG(&adapter->hw, E1000_IMS, txr->ims);
-// 	EM_TX_UNLOCK(txr);
-// }
+	EM_TX_LOCK(txr);
+	em_txeof(txr);
+#ifdef EM_MULTIQUEUE
+	if (!drbr_empty(ifp, txr->br))
+		em_mq_start_locked(ifp, txr);
+#else
+	// if (!if_sendq_empty(ifp))
+        if (!e1000->_tx_buffered.IsEmpty())
+		em_start_locked(ifp, txr);
+#endif
+	E1000_WRITE_REG(&adapter->hw, E1000_IMS, txr->ims);
+	EM_TX_UNLOCK(txr);
+}
 
-// static void
-// em_handle_link(void *context, int pending)
-// {
-// 	struct adapter	*adapter = context;
-// 	struct tx_ring	*txr = adapter->tx_rings;
-// 	if_t ifp = adapter->ifp;
+static void
+em_handle_link(void *context, int pending)
+{
+  struct adapter	*adapter = reinterpret_cast<struct adapter *>(context);
+  BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
+	struct tx_ring	*txr = adapter->tx_rings;
+	if_t ifp = adapter->ifp;
 
-// 	if (!(if_getdrvflags(ifp) & IFF_DRV_RUNNING))
-// 		return;
+	if (!(if_getdrvflags(ifp) & IFF_DRV_RUNNING))
+		return;
 
-// 	EM_CORE_LOCK(adapter);
-// 	callout_stop(&adapter->timer);
-// 	em_update_link_status(adapter);
-// 	callout_reset(&adapter->timer, hz, em_local_timer, adapter);
-// 	E1000_WRITE_REG(&adapter->hw, E1000_IMS,
-// 	    EM_MSIX_LINK | E1000_IMS_LSC);
-// 	if (adapter->link_active) {
-// 		for (int i = 0; i < adapter->num_queues; i++, txr++) {
-// 			EM_TX_LOCK(txr);
-// #ifdef EM_MULTIQUEUE
-// 			if (!drbr_empty(ifp, txr->br))
-// 				em_mq_start_locked(ifp, txr);
-// #else
-// 			if (if_sendq_empty(ifp))
-// 				em_start_locked(ifp, txr);
-// #endif
-// 			EM_TX_UNLOCK(txr);
-// 		}
-// 	}
-// 	EM_CORE_UNLOCK(adapter);
-// }
+	EM_CORE_LOCK(adapter);
+	callout_stop(&adapter->timer);
+	em_update_link_status(adapter);
+	callout_reset(&adapter->timer, hz, em_local_timer, adapter);
+	E1000_WRITE_REG(&adapter->hw, E1000_IMS,
+	    EM_MSIX_LINK | E1000_IMS_LSC);
+	if (adapter->link_active) {
+		for (int i = 0; i < adapter->num_queues; i++, txr++) {
+			EM_TX_LOCK(txr);
+#ifdef EM_MULTIQUEUE
+			if (!drbr_empty(ifp, txr->br))
+				em_mq_start_locked(ifp, txr);
+#else
+			// if (if_sendq_empty(ifp))
+                        if (!e1000->_tx_buffered.IsEmpty())
+                          em_start_locked(ifp, txr);
+#endif
+			EM_TX_UNLOCK(txr);
+		}
+	}
+	EM_CORE_UNLOCK(adapter);
+}
 
 
 /*********************************************************************
@@ -1904,7 +1911,7 @@ em_poll(if_t ifp)
  **********************************************************************/
 
 static int
-em_xmit(struct tx_ring *txr, bE1000::Packet *packet)
+em_xmit(struct tx_ring *txr, BsdDevEthernet::Packet *packet)
 {
 	struct adapter		*adapter = txr->adapter;
 	// bus_dma_segment_t	segs[EM_MAX_SCATTER];
@@ -2393,10 +2400,9 @@ em_update_link_status(struct adapter *adapter)
 {
 	struct e1000_hw *hw = &adapter->hw;
 	// if_t ifp = adapter->ifp;
-	device_t dev = adapter->dev;
 	struct tx_ring *txr = adapter->tx_rings;
 	u32 link_check = 0;
-        bE1000 *e1000 = dev->parent;
+        BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
 
 	/* Get the cached link value or read phy for real */
 	switch (hw->phy.media_type) {
@@ -2448,7 +2454,7 @@ em_update_link_status(struct adapter *adapter)
 		adapter->smartspeed = 0;
 		// if_setbaudrate(ifp, adapter->link_speed * 1000000);
 		// if_link_state_change(ifp, LINK_STATE_UP);
-                e1000->SetStatus(bE1000::LinkStatus::Up);
+                e1000->SetStatus(BsdDevEthernet::LinkStatus::kUp);
 	} else if (!link_check && (adapter->link_active == 1)) {
 		// if_setbaudrate(ifp, 0);
 		adapter->link_speed = 0;
@@ -2460,7 +2466,7 @@ em_update_link_status(struct adapter *adapter)
 		for (int i = 0; i < adapter->num_queues; i++, txr++)
 			txr->busy = EM_TX_IDLE;
 		// if_link_state_change(ifp, LINK_STATE_DOWN);
-                e1000->SetStatus(bE1000::LinkStatus::Down);
+                e1000->SetStatus(BsdDevEthernet::LinkStatus::kDown);
 	}
 }
 
@@ -2572,8 +2578,8 @@ int
 em_allocate_legacy(struct adapter *adapter)
 {
 	device_t dev = adapter->dev;
-	// struct tx_ring	*txr = adapter->tx_rings;
-	int /* error, */ rid = 0;
+        struct tx_ring	*txr = adapter->tx_rings;
+	int error, rid = 0;
 
 	/* Manually turn off all interrupts */
 	E1000_WRITE_REG(&adapter->hw, E1000_IMC, 0xffffffff);
@@ -2582,10 +2588,10 @@ em_allocate_legacy(struct adapter *adapter)
 		rid = 1;
 	/* We allocate a single interrupt resource */
 	adapter->res = bus_alloc_resource_any(dev,
-	    SYS_RES_IRQ, &rid, RF_SHAREABLE | RF_ACTIVE);
+                                        SYS_RES_IRQ, &rid, RF_SHAREABLE | RF_ACTIVE);
 	if (adapter->res == NULL) {
 		device_printf(dev, "Unable to allocate bus resource: "
-		    "interrupt\n");
+                  "interrupt\n");
 		return (ENXIO);
 	}
 
@@ -2593,26 +2599,26 @@ em_allocate_legacy(struct adapter *adapter)
 	 * Allocate a fast interrupt and the associated
 	 * deferred processing contexts.
 	 */
-	// TASK_INIT(&adapter->que_task, 0, em_handle_que, adapter);
-	// adapter->tq = taskqueue_create_fast("em_taskq", M_NOWAIT,
-	//     taskqueue_thread_enqueue, &adapter->tq);
-	// taskqueue_start_threads(&adapter->tq, 1, PI_NET, "%s que",
-	//     device_get_nameunit(adapter->dev));
-	// /* Use a TX only tasklet for local timer */
-	// TASK_INIT(&txr->tx_task, 0, em_handle_tx, txr);
-	// txr->tq = taskqueue_create_fast("em_txq", M_NOWAIT,
-	//     taskqueue_thread_enqueue, &txr->tq);
-	// taskqueue_start_threads(&txr->tq, 1, PI_NET, "%s txq",
-	//     device_get_nameunit(adapter->dev));
-	// TASK_INIT(&adapter->link_task, 0, em_handle_link, adapter);
-	// if ((error = bus_setup_intr(dev, adapter->res, INTR_TYPE_NET,
-	//     em_irq_fast, NULL, adapter, &adapter->tag)) != 0) {
-	// 	device_printf(dev, "Failed to register fast interrupt "
-	// 		    "handler: %d\n", error);
-	// 	taskqueue_free(adapter->tq);
-	// 	adapter->tq = NULL;
-	// 	return (error);
-	// }
+	TASK_INIT(&adapter->que_task, 0, em_handle_que, adapter);
+	adapter->tq = taskqueue_create_fast("em_taskq", M_NOWAIT,
+                                      taskqueue_thread_enqueue, &adapter->tq);
+	taskqueue_start_threads(&adapter->tq, 1, PI_NET, "%s que",
+                          device_get_nameunit(adapter->dev));
+	/* Use a TX only tasklet for local timer */
+	TASK_INIT(&txr->tx_task, 0, em_handle_tx, txr);
+	txr->tq = taskqueue_create_fast("em_txq", M_NOWAIT,
+                                  taskqueue_thread_enqueue, &txr->tq);
+	taskqueue_start_threads(&txr->tq, 1, PI_NET, "%s txq",
+                          device_get_nameunit(adapter->dev));
+	TASK_INIT(&adapter->link_task, 0, em_handle_link, adapter);
+	if ((error = bus_setup_intr(dev, adapter->res, INTR_TYPE_NET,
+                              em_irq_fast, NULL, adapter, &adapter->tag)) != 0) {
+		device_printf(dev, "Failed to register fast interrupt "
+                  "handler: %d\n", error);
+		// taskqueue_free(adapter->tq);
+		adapter->tq = NULL;
+		return (error);
+	}
 	
 	return (0);
 }
@@ -3201,13 +3207,14 @@ em_setup_interface(device_t dev, struct adapter *adapter)
 
 	INIT_DEBUGOUT("em_setup_interface: begin");
 
-	ifp = adapter->ifp = if_gethandle(IFT_ETHER);
+	// ifp = adapter->ifp = if_gethandle(dev, IFT_ETHER);
+	ifp = adapter->ifp = &dev->GetMasterClass<E1000>()->_ifp;
 	if (ifp == 0) {
 		device_printf(dev, "can not allocate ifnet structure\n");
 		return (-1);
 	}
 	// if_initname(ifp, device_get_name(dev), device_get_unit(dev));
-	// if_setdev(ifp, dev);
+        if_setdev(ifp, reinterpret_cast<void *>(dev));
 	// if_setinitfn(ifp, em_init);
 	if_setsoftc(ifp, adapter);
 	// if_setflags(ifp, IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST);
@@ -3227,20 +3234,20 @@ em_setup_interface(device_t dev, struct adapter *adapter)
 
 	// ether_ifattach(ifp, adapter->hw.mac.addr);
 
-	// if_setcapabilities(ifp, 0);
-	// if_setcapenable(ifp, 0);
+        if_setcapabilities(ifp, 0);
+        if_setcapenable(ifp, 0);
 
 
-	// if_setcapabilitiesbit(ifp, IFCAP_HWCSUM | IFCAP_VLAN_HWCSUM |
-	//     IFCAP_TSO4, 0);
+        if_setcapabilitiesbit(ifp, IFCAP_HWCSUM | IFCAP_VLAN_HWCSUM |
+                              IFCAP_TSO4, 0);
 	/*
 	 * Tell the upper layer(s) we
 	 * support full VLAN capability
 	 */
 	// if_setifheaderlen(ifp, sizeof(struct ether_vlan_header));
-	// if_setcapabilitiesbit(ifp, IFCAP_VLAN_HWTAGGING | IFCAP_VLAN_HWTSO |
-	//     IFCAP_VLAN_MTU, 0);
-	// if_setcapenable(ifp, if_getcapabilities(ifp));
+        if_setcapabilitiesbit(ifp, IFCAP_VLAN_HWTAGGING | IFCAP_VLAN_HWTSO |
+                              IFCAP_VLAN_MTU, 0);
+        if_setcapenable(ifp, if_getcapabilities(ifp));
 
 	/*
 	** Don't turn this on by default, if vlans are
@@ -3250,17 +3257,17 @@ em_setup_interface(device_t dev, struct adapter *adapter)
 	** using vlans directly on the em driver you can
 	** enable this and get full hardware tag filtering.
 	*/
-// 	if_setcapabilitiesbit(ifp, IFCAP_VLAN_HWFILTER,0);
+ 	if_setcapabilitiesbit(ifp, IFCAP_VLAN_HWFILTER,0);
 
-// #ifdef DEVICE_POLLING
-// 	if_setcapabilitiesbit(ifp, IFCAP_POLLING,0);
-// #endif
+#ifdef DEVICE_POLLING
+ 	if_setcapabilitiesbit(ifp, IFCAP_POLLING,0);
+#endif
 
 	/* Enable only WOL MAGIC by default */
-	// if (adapter->wol) {
-	// 	if_setcapabilitiesbit(ifp, IFCAP_WOL, 0);
-	// 	if_setcapenablebit(ifp, IFCAP_WOL_MAGIC, 0);
-	// }
+	if (adapter->wol) {
+		if_setcapabilitiesbit(ifp, IFCAP_WOL, 0);
+		if_setcapenablebit(ifp, IFCAP_WOL_MAGIC, 0);
+	}
 		
 	/*
 	 * Specify the media types supported by this adapter and register
@@ -3443,7 +3450,7 @@ em_allocate_queues(struct adapter *adapter)
 		// snprintf(txr->mtx_name, sizeof(txr->mtx_name), "%s:tx(%d)",
 		//     device_get_nameunit(dev), txr->me);
 		// mtx_init(&txr->tx_mtx, txr->mtx_name, NULL, MTX_DEF);
-                new(&txr->tx_mtx) SpinLock;
+                new(&txr->tx_mtx) mtx;
 
 		if (em_dma_malloc(adapter, tsize,
 			&txr->txdma, BUS_DMA_NOWAIT)) {
@@ -3480,7 +3487,7 @@ em_allocate_queues(struct adapter *adapter)
 		// snprintf(rxr->mtx_name, sizeof(rxr->mtx_name), "%s:rx(%d)",
 		//     device_get_nameunit(dev), txr->me);
 		// mtx_init(&rxr->rx_mtx, rxr->mtx_name, NULL, MTX_DEF);
-                new(&rxr->rx_mtx.lock) SpinLock;
+                new(&rxr->rx_mtx) mtx;
 
 		if (em_dma_malloc(adapter, rsize,
 			&rxr->rxdma, BUS_DMA_NOWAIT)) {
@@ -3532,7 +3539,7 @@ em_allocate_transmit_buffers(struct tx_ring *txr)
 	device_t dev = adapter->dev;
 	struct em_buffer *txbuf;
 	int error, i;
-        bE1000 *e1000 = dev->parent;
+        BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
 
 	/*
 	 * Setup DMA descriptor areas.
@@ -3589,7 +3596,7 @@ static void
 em_setup_transmit_ring(struct tx_ring *txr)
 {
 	struct adapter *adapter = txr->adapter;
-        bE1000 *e1000 = adapter->dev->parent;
+        BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
 	struct em_buffer *txbuf;
 	int i;
 #ifdef DEV_NETMAP
@@ -3636,7 +3643,7 @@ em_setup_transmit_ring(struct tx_ring *txr)
           txbuf->next_eop = -1;
         }
 
-        bE1000::Packet *packet;
+        BsdDevEthernet::Packet *packet;
         while(e1000->_tx_buffered.Pop(packet)) {
           kassert(e1000->_tx_reserved.Push(packet));
         }
@@ -4308,10 +4315,9 @@ static int
 em_allocate_receive_buffers(struct rx_ring *rxr)
 {
 	struct adapter		*adapter = rxr->adapter;
-	device_t		dev = adapter->dev;
 	struct em_buffer	*rxbuf;
 	int			error;
-        bE1000 *e1000 = dev->parent;
+        BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
 
 	rxr->rx_buffers = reinterpret_cast<struct em_buffer *>(virtmem_ctrl->AllocZ(sizeof(struct em_buffer) * adapter->num_rx_desc));
 	// rxr->rx_buffers = malloc(sizeof(struct em_buffer) *
@@ -4368,7 +4374,7 @@ static int
 em_setup_receive_ring(struct rx_ring *rxr)
 {
 	struct	adapter 	*adapter = rxr->adapter;
-        bE1000 *e1000 = adapter->dev->parent;
+        BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
         // struct em_buffer	*rxbuf;
 	// bus_dma_segment_t	seg[1];
 	int			rsize, /* nsegs, */ error = 0;
@@ -4400,7 +4406,7 @@ em_setup_receive_ring(struct rx_ring *rxr)
 	// 		rxbuf->m_head = NULL; /* mark as freed */
 	// 	}
 	// }
-        bE1000::Packet *packet;
+        BsdDevEthernet::Packet *packet;
         while(e1000->_rx_buffered.Pop(packet)) {
           kassert(e1000->_rx_reserved.Push(packet));
         }
@@ -4617,16 +4623,16 @@ em_initialize_receive_unit(struct adapter *adapter)
 	}
 
 	rxcsum = E1000_READ_REG(hw, E1000_RXCSUM);
-// 	if (if_getcapenable(ifp) & IFCAP_RXCSUM) {
-// #ifdef EM_MULTIQUEUE
-// 		rxcsum |= E1000_RXCSUM_TUOFL |
-// 			  E1000_RXCSUM_IPOFL |
-// 			  E1000_RXCSUM_PCSD;
-// #else
-// 		rxcsum |= E1000_RXCSUM_TUOFL;
-// #endif
-// 	} else
-// 		rxcsum &= ~E1000_RXCSUM_TUOFL;
+ 	if (if_getcapenable(ifp) & IFCAP_RXCSUM) {
+#ifdef EM_MULTIQUEUE
+          rxcsum |= E1000_RXCSUM_TUOFL |
+            E1000_RXCSUM_IPOFL |
+            E1000_RXCSUM_PCSD;
+#else
+          rxcsum |= E1000_RXCSUM_TUOFL;
+#endif
+ 	} else
+          rxcsum &= ~E1000_RXCSUM_TUOFL;
 
 	E1000_WRITE_REG(hw, E1000_RXCSUM, rxcsum);
 
@@ -4786,7 +4792,7 @@ em_rxeof(struct rx_ring *rxr, int count, int *done)
 	int			i, processed, rxdone = 0;
 	bool			eop;
 	struct e1000_rx_desc	*cur;
-        bE1000 *e1000 = adapter->dev->parent;
+        BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
 
 	EM_RX_LOCK(rxr);
 
@@ -4828,7 +4834,7 @@ em_rxeof(struct rx_ring *rxr, int count, int *done)
 			goto next_desc;
 		}
 
-                bE1000::Packet *packet;
+                BsdDevEthernet::Packet *packet;
                 if (e1000->_rx_reserved.Pop(packet)) {
                   memcpy(packet->buf, reinterpret_cast<void *>(p2v(rxr->rx_base[i].buffer_addr)), len);
                   packet->len = len;
@@ -5119,18 +5125,18 @@ em_fixup_rx(struct rx_ring *rxr)
 // 	E1000_WRITE_REG(hw, E1000_RCTL, reg);
 // }
 
-// static void
-// em_enable_intr(struct adapter *adapter)
-// {
-// 	struct e1000_hw *hw = &adapter->hw;
-// 	u32 ims_mask = IMS_ENABLE_MASK;
+static void
+em_enable_intr(struct adapter *adapter)
+{
+	struct e1000_hw *hw = &adapter->hw;
+	u32 ims_mask = IMS_ENABLE_MASK;
 
-// 	if (hw->mac.type == e1000_82574) {
-// 		E1000_WRITE_REG(hw, EM_EIAC, EM_MSIX_MASK);
-// 		ims_mask |= EM_MSIX_MASK;
-// 	} 
-// 	E1000_WRITE_REG(hw, E1000_IMS, ims_mask);
-// }
+	if (hw->mac.type == e1000_82574) {
+		E1000_WRITE_REG(hw, EM_EIAC, EM_MSIX_MASK);
+		ims_mask |= EM_MSIX_MASK;
+	} 
+	E1000_WRITE_REG(hw, E1000_IMS, ims_mask);
+}
 
 static void
 em_disable_intr(struct adapter *adapter)
@@ -6255,3 +6261,104 @@ DB_COMMAND(em_dump_queue, em_ddb_dump_queue)
 
 }
 #endif
+
+/*
+ *
+ * Copyright (c) 2016 Raphine Project
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ * Author: Liva
+ * 
+ */
+
+#include "em.h"
+#include "e1000_raph.h"
+#include "e1000_hw.h"
+#include "if_em.h"
+
+int	em_probe(device_t);
+int	em_attach(device_t);
+void	em_init(struct adapter *);
+int em_poll(if_t ifp);
+void em_update_link_status(struct adapter *adapter);
+
+extern BsdDevEthernet *eth;
+DevPci *E1000::InitPci(uint8_t bus, uint8_t device, uint8_t function) {
+  E1000 *addr = reinterpret_cast<E1000 *>(virtmem_ctrl->Alloc(sizeof(E1000)));
+  addr = new(addr) E1000(bus, device, function);
+  addr->_bsd.SetMasterClass(addr);
+  addr->_bsd.SetClass(addr->GetBsdDevPci());
+  addr->_bsd.adapter = reinterpret_cast<struct adapter *>(virtmem_ctrl->AllocZ(sizeof(adapter)));
+  if (em_probe(&addr->_bsd) == BUS_PROBE_DEFAULT) {
+    kassert(em_attach(&addr->_bsd) == 0);
+    em_init(addr->_bsd.adapter);
+    addr->SetupNetInterface();
+    addr->SetHandleMethod(HandleMethod::kPolling);
+    eth = addr;
+    return addr->GetBsdDevPci();
+  } else {
+    virtmem_ctrl->Free(ptr2virtaddr(addr->_bsd.adapter));
+    virtmem_ctrl->Free(ptr2virtaddr(addr));
+    return nullptr;
+  }  
+}
+
+void E1000::SetupNetInterface() {
+  netdev_ctrl->RegisterDevice(this, "eth0");
+}
+
+void E1000::GetEthAddr(uint8_t *buffer) {
+  memcpy(buffer, _bsd.adapter->hw.mac.addr, 6);
+}
+
+void E1000::UpdateLinkStatus() {
+  this->_bsd.adapter->hw.mac.get_link_status = 1;
+  em_update_link_status(this->_bsd.adapter);
+}
+
+void E1000::PollingHandler(void *arg) {
+  E1000 *that = reinterpret_cast<E1000 *>(arg);
+  em_poll(that->_bsd.adapter->ifp);
+}
+
+void E1000::ChangeHandleMethodToPolling() {
+  Function func;
+  func.Init(PollingHandler, reinterpret_cast<void *>(this));
+  _polling.Init(func);
+  _polling.Register(0);
+  
+  struct adapter *adapter = this->_bsd.adapter;
+  if_t ifp = adapter->ifp;
+  EM_CORE_LOCK(adapter);
+  em_disable_intr(adapter);
+  if_setcapenablebit(ifp, IFCAP_POLLING, 0);
+  EM_CORE_UNLOCK(adapter);
+}
+
+void E1000::ChangeHandleMethodToInt() {
+  _polling.Remove();
+  
+  struct adapter *adapter = this->_bsd.adapter;
+  if_t ifp = adapter->ifp;
+  EM_CORE_LOCK(adapter);
+  em_enable_intr(adapter);
+  if_setcapenablebit(ifp, 0, IFCAP_POLLING);
+  EM_CORE_UNLOCK(adapter);
+}
+
+void E1000::Transmit(void *) {
+  em_start(&_ifp);
+}

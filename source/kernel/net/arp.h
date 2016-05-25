@@ -53,10 +53,19 @@ bool ArpFilterPacket(uint8_t *packet, uint16_t op, uint8_t *smacaddr, uint32_t s
 bool RegisterIpAddress(uint8_t *packet);
 
 // extract sender MAC address from packet
-void GetSourceMacAddress(uint8_t *buffer, uint8_t *packet);
+void ArpGetSourceMacAddress(uint8_t *buffer, uint8_t *packet);
+
+// extract dest MAC address from packet
+void ArpGetDestMacAddress(uint8_t *buffer, uint8_t *packet);
 
 // extract sender MAC address from packet
-uint32_t GetSourceIpAddress(uint8_t *packet);
+uint32_t ArpGetSourceIpAddress(uint8_t *packet);
+
+// extract dest MAC address from packet
+uint32_t ArpGetDestIpAddress(uint8_t *packet);
+
+// extract operation from packet
+uint16_t ArpGetOperation(uint8_t *packet);
 
 class ArpTable {
 public:

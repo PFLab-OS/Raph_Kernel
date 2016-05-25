@@ -36,8 +36,8 @@ const uint8_t kBcastAddress[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 
 int32_t EthGenerateHeader(uint8_t *buffer, uint8_t *saddr, uint8_t *daddr, uint16_t type) {
   EthHeader * volatile header = reinterpret_cast<EthHeader*>(buffer);
-  memcpy(header->daddr, daddr, 6);
-  memcpy(header->saddr, saddr, 6);
+  if(daddr) memcpy(header->daddr, daddr, 6);
+  if(saddr) memcpy(header->saddr, saddr, 6);
   header->type = htons(type);
   return 0;
 }

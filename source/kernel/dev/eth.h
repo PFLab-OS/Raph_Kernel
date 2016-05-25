@@ -23,15 +23,34 @@
 #ifndef __RAPH_KERNEL_DEV_ETH_H__
 #define __RAPH_KERNEL_DEV_ETH_H__
 
-#include "netdev.h"
-#include "pci.h"
+#include <dev/netdev.h>
+#include <dev/pci.h>
+#include <mem/virtmem.h>
 
-class DevEthernet : public DevPCI, public NetDev {
+class DevEthernet : public NetDev {
 public:
-  DevEthernet(uint8_t bus, uint8_t device, bool mf) : DevPCI(bus, device, mf) {}
+  DevEthernet(uint8_t bus, uint8_t device, bool mf) {
+    _pci = virtmem_ctrl->New<DevPci>(bus, device, mf);
+  } 
+  virtual ~DevEthernet() {
+    virtmem_ctrl->Delete<DevPci>(_pci);
+  }
+  DevPci *GetDevPci() {
+    return _pci;
+  }
   // allocate 6 byte before call
   virtual void GetEthAddr(uint8_t *buffer) = 0;
   virtual void SetupNetInterface() = 0;
+
+protected:
+  DevEthernet(DevPci *pci) {
+    _pci = pci;
+  }
+
+  virtual void FilterRxPacket(void *p) override;
+
+  virtual void PrepareTxPacket(NetDev::Packet *packet) override;
+  DevPci *_pci;
 };
 
 class DevEthernetCtrl : public NetDevCtrl {

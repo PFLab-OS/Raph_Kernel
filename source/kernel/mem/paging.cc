@@ -22,9 +22,9 @@
 
 #include "paging.h"
 #include <assert.h>
-#include "../global.h"
-#include "../raph.h"
-#include "virtmem.h"
+#include <global.h>
+#include <raph.h>
+#include "kvirtmem.h"
 #include "physmem.h"
 
 PagingCtrl::PagingCtrl() {

@@ -32,6 +32,7 @@
 #define _EM_COMPAT_H_
 
 #include <spinlock.h>
+#include <freebsd/sys/taskqueue.h>
 #include "e1000_raph.h"
 /*
 #include <sys/param.h>

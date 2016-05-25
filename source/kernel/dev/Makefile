@@ -1,16 +1,19 @@
-DEV_ARCHIVE = ../dev.o
-DEV_OBJS = pci.o netdev.o keyboard.o nic.o
-DEPS= $(filter %.d,$(DEV_OBJS:%.o=%.d))
+OBJS = pci.o nic.o netdev.o eth.o keyboard.o
 
-obj: $(DEV_ARCHIVE)
+DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))
 
-$(DEV_ARCHIVE): $(DEV_OBJS)
+.PHONY: clean nic.o
+
+default: ../dev.o
+
+-include $(DEPS)
+
+../dev.o: $(OBJS)
 	ld -r $^ -o $@
 
 nic.o:
-	make CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)" -C nic obj
+	make -C nic CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
 
 clean:
 	make -C nic clean
-	-rm -f $(DEV_OBJS) $(DEPS) *.s *.ii
-
+	-rm -f $(OBJS) $(TEST_OBJS) $(DEPS) *.s *.ii

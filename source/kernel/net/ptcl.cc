@@ -25,107 +25,136 @@
 #include <net/eth.h>
 #include <net/ptcl.h>
 
-void ProtocolStack::Setup() {
-  // init socket table
-  for(uint32_t i = 0; i < kMaxSocketNumber; i++) {
-    socket_table[i].in_use = false;
+void DeviceBufferHandler(void *self) {
+  ProtocolStack *ptcl_stack = reinterpret_cast<ProtocolStack*>(self);
+
+  NetDev::Packet *packet = nullptr;
+
+  while(ptcl_stack->_device->ReceivePacket(packet)) {
+    NetDev::Packet *dup_packet;
+    kassert(ptcl_stack->GetMainQueuePacket(dup_packet));
+
+    dup_packet->len = packet->len;
+    memcpy(dup_packet->buf, packet->buf, packet->len);
+
+    // insert into main queue at first
+    ptcl_stack->_main_queue.Push(dup_packet);
+
+    // free network device buffer as soon as possible
+    ptcl_stack->_device->ReuseRxBuffer(packet);
+  }
+}
+
+void MainQueueHandler(void *self) {
+  ProtocolStack *ptcl_stack = reinterpret_cast<ProtocolStack*>(self);
+
+  NetDev::Packet *new_packet;
+  kassert(ptcl_stack->_main_queue.Pop(new_packet));
+
+  for(uint32_t i = 0; i < ptcl_stack->kMaxSocketNumber; i++) {
+    if(ptcl_stack->_socket_table[i].in_use && ptcl_stack->_socket_table[i].l3_ptcl == GetL3PtclType(new_packet->buf)) {
+      // distribute the received packet to duplicated queues
+      if(!ptcl_stack->_socket_table[i].dup_queue.IsFull()) {
+        NetDev::Packet *dup_packet;
+        kassert(ptcl_stack->_socket_table[i].reserved_queue.Pop(dup_packet));
+
+        dup_packet->len = new_packet->len;
+        memcpy(dup_packet->buf, new_packet->buf, new_packet->len);
+        ptcl_stack->_socket_table[i].dup_queue.Push(dup_packet);
+      }
+    }
   }
 
-  RegisterPolling();
+  ptcl_stack->ReuseMainQueuePacket(new_packet);
+}
+
+void ProtocolStack::Setup() {
+  InitPacketQueue();
+
+  // init socket table
+  for(uint32_t i = 0; i < kMaxSocketNumber; i++) {
+    _socket_table[i].in_use = false;
+  }
+
+  // set callback functions
+  Function main_queue_callback;
+  main_queue_callback.Init(MainQueueHandler, this);
+  _main_queue.SetFunction(2, main_queue_callback);
 }
 
 bool ProtocolStack::RegisterSocket(NetSocket *socket, uint16_t l3_ptcl) {
   if(_current_socket_number < kMaxSocketNumber) {
+    int32_t socket_id = -1;
+
     for(uint32_t id = 0; id < kMaxSocketNumber; id++) {
-      if(!socket_table[id].in_use) {
+      if(!_socket_table[id].in_use) {
         // set id to socket
         socket->SetProtocolStackId(id);
-        socket_table[id].in_use = true;
-        socket_table[id].l3_ptcl = l3_ptcl;
+        _socket_table[id].in_use = true;
+        _socket_table[id].l3_ptcl = l3_ptcl;
+        socket_id = id;
         break;
       }
     }
+
+    // initialize reserved buffer for duplicated queue
+    kassert(socket_id != -1);
+    while(!_socket_table[socket_id].reserved_queue.IsFull()) {
+      NetDev::Packet *packet = reinterpret_cast<NetDev::Packet *>(virtmem_ctrl->Alloc(sizeof(NetDev::Packet)));
+      kassert(_socket_table[socket_id].reserved_queue.Push(packet));
+    }
+
     _current_socket_number++;
     return true;
   } else {
     // no enough buffer for the new socket
     return false;
   }
+
+  return false;
 }
 
 bool ProtocolStack::RemoveSocket(NetSocket *socket) {
   uint32_t id = socket->GetProtocolStackId();
-  socket_table[id].in_use = false;
+  _socket_table[id].in_use = false;
   _current_socket_number--;
   socket->SetProtocolStackId(-1);
   return true;
 }
 
 bool ProtocolStack::ReceivePacket(uint32_t socket_id, NetDev::Packet *&packet) {
-  if(!socket_table[socket_id].in_use) {
+  if(!_socket_table[socket_id].in_use) {
     // invalid socket id
     return false;
   }
 
-  return socket_table[socket_id].dup_queue.Pop(packet);
+  return _socket_table[socket_id].dup_queue.Pop(packet);
 }
 
-void ProtocolStack::FreeRxBuffer(NetDev::Packet *packet) {
-  virtmem_ctrl->Free(reinterpret_cast<virt_addr>(packet));
+void ProtocolStack::FreeRxBuffer(uint32_t socket_id, NetDev::Packet *packet) {
+  kassert(_socket_table[socket_id].reserved_queue.Push(packet));
 }
 
-void ProtocolStack::Handle() {
-  Locker locker(_lock);
-
-  NetDev::Packet *packet = nullptr;
-
-  if(_device->ReceivePacket(packet)) {
-    NetDev::Packet *dup_packet = reinterpret_cast<NetDev::Packet*>(virtmem_ctrl->Alloc(sizeof(NetDev::Packet)));
-    dup_packet->len = packet->len;
-    memcpy(dup_packet->buf, packet->buf, packet->len);
-
-    // insert into main queue at first
-    _main_queue.Push(dup_packet);
-
-    // free network device buffer as soon as possible
-    _device->ReuseRxBuffer(packet);
-  }
-
-  if(!_main_queue.IsEmpty()) {
-    // new packets arrived from network device
-    NetDev::Packet *new_packet;
-    kassert(_main_queue.Pop(new_packet));
-
-    if(FilterPacket(new_packet)) {
-      for(uint32_t i = 0; i < kMaxSocketNumber; i++) {
-        if(socket_table[i].in_use && socket_table[i].l3_ptcl == GetL3PtclType(new_packet->buf)) {
-          // distribute the received packet to duplicated queues
-          NetDev::Packet *dup_packet = reinterpret_cast<NetDev::Packet*>(virtmem_ctrl->Alloc(sizeof(NetDev::Packet)));
-          dup_packet->len = new_packet->len;
-          memcpy(dup_packet->buf, new_packet->buf, new_packet->len);
-          socket_table[i].dup_queue.Push(dup_packet);
-        }
-      }
-    }
-
-    virtmem_ctrl->Free(reinterpret_cast<virt_addr>(new_packet));
-  }
-}
-
-void ProtocolStack::SetDevice(DevEthernet *dev) {
+void ProtocolStack::SetDevice(NetDev *dev) {
   _device = dev;
-  _device->GetEthAddr(_eth_addr);
+
+  // set callback function
+  Function network_device_callback;
+  network_device_callback.Init(DeviceBufferHandler, this);
+  _device->SetReceiveCallback(2, network_device_callback);
 }
 
 void ProtocolStack::InitPacketQueue() {
-  
+  while(!_reserved_main_queue.IsFull()) {
+    NetDev::Packet *packet = reinterpret_cast<NetDev::Packet *>(virtmem_ctrl->Alloc(sizeof(NetDev::Packet)));
+    kassert(_reserved_main_queue.Push(packet));
+  }
 }
 
-bool ProtocolStack::FilterPacket(NetDev::Packet *packet) {
-  // filter Ethernet address
-  if(!EthFilterPacket(packet->buf, nullptr, _eth_addr, 0)) {
-    return false;
-  }
+bool ProtocolStack::GetMainQueuePacket(NetDev::Packet *&packet) {
+  return _reserved_main_queue.Pop(packet);
+}
 
-  return true;
+void ProtocolStack::ReuseMainQueuePacket(NetDev::Packet *packet) {
+  kassert(_reserved_main_queue.Push(packet));
 }

@@ -23,9 +23,7 @@
 #ifndef __RAPH_KERNEL_NET_PTCL_H__
 #define __RAPH_KERNEL_NET_PTCL_H__
 
-#include <buf.h>
-#include <polling.h>
-#include <spinlock.h>
+#include <functional.h>
 #include <dev/netdev.h>
 #include <net/socket.h>
 
@@ -37,7 +35,7 @@ const uint16_t kProtocolArp  = 0x0806;
 const uint8_t kProtocolTcp         = 0x06;
 const uint8_t kProtocolUdp         = 0x11;
 
-class ProtocolStack : public Polling {
+class ProtocolStack final {
 public:
   ProtocolStack() {}
 
@@ -54,21 +52,29 @@ public:
 
   // !!N.B.!! YOU MUST use FreeRxBuffer to free packet
   // fetched by ProtocolStack::ReceivePacket
-  void FreeRxBuffer(NetDev::Packet *packet);
+  void FreeRxBuffer(uint32_t socket_id, NetDev::Packet *packet);
 
-  // pop packet from main queue, then duplicate it into duplicated queue
-  void Handle() override;
-
-  void SetDevice(DevEthernet *dev);
+  void SetDevice(NetDev *dev);
 
 private:
+  // fetch packet from network device buffer
+  friend void DeviceBufferHandler(void *self);
+
+  // duplicate packets in main queue then insert into dup queues
+  friend void MainQueueHandler(void *self);
+
+  friend NetSocket;
+
   // packet queue (inserted from network device)
-  static const uint32_t kQueueDepth = 300;
+  static const uint32_t kQueueDepth = 100;
   typedef RingBuffer <NetDev::Packet*, kQueueDepth> PacketQueue;
-  PacketQueue _main_queue;
+  typedef FunctionalRingBuffer <NetDev::Packet*, kQueueDepth> PacketFunctionalQueue;
+  PacketFunctionalQueue _main_queue;
+  PacketQueue _reserved_main_queue;
 
   struct SocketInfo {
-    PacketQueue dup_queue;
+    PacketFunctionalQueue dup_queue;
+    PacketQueue reserved_queue;
     bool in_use;
     uint16_t l3_ptcl;
   };
@@ -76,17 +82,15 @@ private:
   // duplicated queue
   static const uint32_t kMaxSocketNumber = 8;
   uint32_t _current_socket_number = 0;
-  SocketInfo socket_table[kMaxSocketNumber];
+  SocketInfo _socket_table[kMaxSocketNumber];
 
   // reference to the network device holding this protocol stack
-  DevEthernet *_device;
-  uint8_t _eth_addr[6];
-
-  SpinLock _lock;
+  NetDev *_device;
 
   void InitPacketQueue();
 
-  bool FilterPacket(NetDev::Packet *packet);
+  bool GetMainQueuePacket(NetDev::Packet *&packet);
+  void ReuseMainQueuePacket(NetDev::Packet *packet);
 };
 
 #endif // __RAPH_KERNEL_NET_PTCL_H__

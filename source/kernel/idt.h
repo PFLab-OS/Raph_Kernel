@@ -25,6 +25,7 @@
 
 #include <stdint.h>
 #include <apic.h>
+#include <spinlock.h>
 
 struct Regs {
   uint64_t rax, rbx, rcx, rdx, rbp, rsi, rdi, r8, r9, r10, r11, r12, r13, r14, r15;
@@ -33,6 +34,8 @@ struct Regs {
 }__attribute__((__packed__));
 
 typedef void (*idt_callback)(Regs *rs);
+typedef void (*int_callback)(Regs *rs, void *arg);
+typedef void (*ioint_callback)(void *arg);
 
 namespace C {
   extern "C" void handle_int(Regs *rs);
@@ -42,24 +45,36 @@ class Idt {
  public:
   void SetupGeneric();
   void SetupProc();
-  void SetIntCallback(int n, idt_callback callback);
+  // I/O等用の割り込みハンドラ
+  // 確保したvectorが返る(vector >= 64)
+  // 確保できなかった場合はReservedIntVector::kErrorが返る
+  int SetIntCallback(int cpuid, int_callback callback, void *arg);
+  // 例外等用の割り込みハンドラ
+  // vector < 64でなければならない
+  void SetExceptionCallback(int cpuid, int vector, int_callback callback, void *arg);
   // if 0, cpu is not handling interrupt
   volatile int GetHandlingCnt() {
-    return _handling_cnt[apic_ctrl->GetApicId()];
+    if (!_is_gen_initialized) {
+      return false;
+    }
+    return _handling_cnt[apic_ctrl->GetCpuId()];
   }
   struct ReservedIntVector {
-    static const int kIpi      = 32;
-    static const int kSpurious = 33;
-    static const int kLapicErr = 34;
-    static const int kKeyboard = 64;
+    static const int kIpi      = 33;
+    static const int kError    = 63;
   };
  private:
-  void SetGate(void (*gate)(Regs *rs), int n, uint8_t dpl, bool trap, uint8_t ist);
+  void SetGate(idt_callback gate, int vector, uint8_t dpl, bool trap, uint8_t ist);
   static const uint32_t kIdtPresent = 1 << 15;
   volatile uint16_t _idtr[5];
-  idt_callback **_callback;
+  struct IntCallback {
+    int_callback callback;
+    void *arg;
+  } **_callback;
   int *_handling_cnt;
   friend void C::handle_int(Regs *rs);
+  SpinLock _lock;
+  bool _is_gen_initialized = false;
 };
 
 #endif // __RAPH_KERNEL_IDT_H__

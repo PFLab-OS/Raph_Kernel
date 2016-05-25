@@ -298,6 +298,7 @@ struct adapter {
 	/* FreeBSD operating-system-specific structures. */
 	struct e1000_osdep osdep;
 	device_t	dev;
+        lE1000          *e1000;
 	struct cdev	*led_dev;
 
 	struct resource *memory;
@@ -496,9 +497,9 @@ typedef struct _DESCRIPTOR_PAIR
 	uint32_t   elements;
 } DESC_ARRAY, *PDESC_ARRAY;
 
-#define	EM_CORE_LOCK_INIT(_sc, _name)   new(&(_sc)->core_mtx.lock) SpinLock;
-#define	EM_TX_LOCK_INIT(_sc, _name)     new(&(_sc)->tx_mtx.lock) SpinLock;
-#define	EM_RX_LOCK_INIT(_sc, _name)     new(&(_sc)->rx_mtx.lock) SpinLock;
+#define	EM_CORE_LOCK_INIT(_sc, _name)   new(&(_sc)->core_mtx) mtx;
+#define	EM_TX_LOCK_INIT(_sc, _name)     new(&(_sc)->tx_mtx) mtx;
+#define	EM_RX_LOCK_INIT(_sc, _name)     new(&(_sc)->rx_mtx) mtx;
 #define	EM_CORE_LOCK_DESTROY(_sc)	
 #define	EM_TX_LOCK_DESTROY(_sc)		
 #define	EM_RX_LOCK_DESTROY(_sc)		

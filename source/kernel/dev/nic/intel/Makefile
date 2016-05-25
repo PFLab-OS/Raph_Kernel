@@ -1,16 +1,19 @@
-INTEL_ARCHIVE = ../intel.o
-INTEL_OBJS = em.o
-DEPS= $(filter %.d,$(INTEL_OBJS:%.o=%.d))
+OBJS = em.o
 
-obj: $(INTEL_ARCHIVE)
+DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))
 
-$(INTEL_ARCHIVE): $(INTEL_OBJS)
+.PHONY: clean em.o
+
+default: ../intel.o
+
+-include $(DEPS)
+
+../intel.o: $(OBJS)
 	ld -r $^ -o $@
 
 em.o:
-	make CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)" -C em obj
+	make -C em CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
 
 clean:
 	make -C em clean
-	-rm -f $(INTEL_OBJS) $(DEPS) *.s *.ii
-
+	-rm -f $(OBJS) $(TEST_OBJS) $(DEPS) *.s *.ii
