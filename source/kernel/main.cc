@@ -380,7 +380,9 @@ extern "C" int main_of_others() {
             gtty->Printf("s","Link is Down, please wait...\n");
           }
         }
-        tt3.SetHandler(1000*1000*3);
+        if (rtime != stime) {
+          tt3.SetHandler(1000*1000*3);
+        }
       }, nullptr);
     tt3.Init(func);
     tt3.SetHandler(1000*1000*3);
