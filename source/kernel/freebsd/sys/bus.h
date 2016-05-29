@@ -170,14 +170,12 @@ struct resource {
   idt_callback gate;
 };
 
-static inline struct resource *bus_alloc_resource_any(device_t dev, int type, int *rid, u_int flags);
-
 static inline struct resource *bus_alloc_resource_any(device_t dev, int type, int *rid, u_int flags) {
-  int bar = *rid;
   struct resource *r;
-  uint32_t addr = dev->GetPciClass()->ReadReg<uint32_t>(static_cast<uint32_t>(bar));
   switch(type) {
   case SYS_RES_MEMORY: {
+    int bar = *rid;
+    uint32_t addr = dev->GetPciClass()->ReadReg<uint32_t>(static_cast<uint32_t>(bar));
     if ((addr & PciCtrl::kRegBaseAddrFlagIo) != 0) {
       return NULL;
     }
@@ -193,6 +191,8 @@ static inline struct resource *bus_alloc_resource_any(device_t dev, int type, in
     break;
   }
   case SYS_RES_IOPORT: {
+    int bar = *rid;
+    uint32_t addr = dev->GetPciClass()->ReadReg<uint32_t>(static_cast<uint32_t>(bar));
     if ((addr & PciCtrl::kRegBaseAddrFlagIo) == 0) {
       return NULL;
     }
@@ -232,28 +232,28 @@ static inline void bus_ithread_sub(void *arg) {
 }
 
 static inline int bus_setup_intr(device_t dev, struct resource *r, int flags, driver_filter_t filter, driver_intr_t ithread, void *arg, void **cookiep) {
-  if (filter != nullptr) {
-    if (!dev->GetPciClass()->HasMsi()) {
-      return -1;
-    }
-    filter_container_struct *s = virtmem_ctrl->New<filter_container_struct>();
-    s->filter = filter;
-    s->arg = arg;
-    // TODO CPU num
-    dev->GetPciClass()->SetMsi(0, filter_handler_sub, reinterpret_cast<void *>(s));
-    return 0;
-  }
-  if (ithread != nullptr) {
-    if (!dev->GetPciClass()->HasLegacyInterrupt()) {
-      return -1;
-    } 
-    intr_container_struct *s = virtmem_ctrl->New<intr_container_struct>();
-    s->ithread = ithread;
-    s->arg = arg;
-    // TODO cpu num
-    dev->GetPciClass()->SetLegacyInterrupt(bus_ithread_sub, reinterpret_cast<void *>(s));
-    return 0;
-  }
+  // if (filter != nullptr) {
+  //   if (!dev->GetPciClass()->HasMsi()) {
+  //     return -1;
+  //   }
+  //   filter_container_struct *s = virtmem_ctrl->New<filter_container_struct>();
+  //   s->filter = filter;
+  //   s->arg = arg;
+  //   // TODO CPU num
+  //   dev->GetPciClass()->SetMsi(0, filter_handler_sub, reinterpret_cast<void *>(s));
+  //   return 0;
+  // }
+  // if (ithread != nullptr) {
+  //   if (!dev->GetPciClass()->HasLegacyInterrupt()) {
+  //     return -1;
+  //   } 
+  //   intr_container_struct *s = virtmem_ctrl->New<intr_container_struct>();
+  //   s->ithread = ithread;
+  //   s->arg = arg;
+  //   // TODO cpu num
+  //   dev->GetPciClass()->SetLegacyInterrupt(bus_ithread_sub, reinterpret_cast<void *>(s));
+  //   return 0;
+  // }
   return -1;
 }
 
