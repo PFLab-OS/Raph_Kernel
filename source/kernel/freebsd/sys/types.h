@@ -125,17 +125,16 @@ class BsdDevice {
 };
 
 class BsdDevEthernet : public DevEthernet {
- public:
-  BsdDevEthernet(uint8_t bus, uint8_t device, bool mf) : DevEthernet(_bsd_pci), _bsd_pci(virtmem_ctrl->New<BsdDevPci>(bus, device, mf)) {
+public:
+  BsdDevEthernet(uint8_t bus, uint8_t device, bool mf) : DevEthernet(&_bsd_pci), _bsd_pci(bus, device, mf) {
+    _bsd.SetClass(&_bsd_pci);
   }
   virtual ~BsdDevEthernet() {}
-  BsdDevPci *GetBsdDevPci() {
-    return _bsd_pci;
-  }
   struct ifnet _ifp;
- protected:
-  BsdDevPci *_bsd_pci;
+protected:
   BsdDevice _bsd;
+private:
+  BsdDevPci _bsd_pci;
 };
 
 typedef struct BsdDevice *device_t;

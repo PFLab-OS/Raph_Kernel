@@ -6300,7 +6300,6 @@ DevPci *E1000::InitPci(uint8_t bus, uint8_t device, uint8_t function) {
   E1000 *addr = reinterpret_cast<E1000 *>(virtmem_ctrl->Alloc(sizeof(E1000)));
   addr = new(addr) E1000(bus, device, function);
   addr->_bsd.SetMasterClass(addr);
-  addr->_bsd.SetClass(addr->GetBsdDevPci());
   addr->_bsd.adapter = reinterpret_cast<struct adapter *>(virtmem_ctrl->AllocZ(sizeof(adapter)));
   if (em_probe(&addr->_bsd) == BUS_PROBE_DEFAULT) {
     kassert(em_attach(&addr->_bsd) == 0);
@@ -6308,7 +6307,7 @@ DevPci *E1000::InitPci(uint8_t bus, uint8_t device, uint8_t function) {
     addr->SetupNetInterface();
     addr->SetHandleMethod(HandleMethod::kPolling);
     eth = addr;
-    return addr->GetBsdDevPci();
+    return addr->_bsd.GetPciClass();
   } else {
     virtmem_ctrl->Free(ptr2virtaddr(addr->_bsd.adapter));
     virtmem_ctrl->Free(ptr2virtaddr(addr));
