@@ -470,7 +470,7 @@ void checkpoint(int id, const char *str) {
 
 void _kassert(const char *file, int line, const char *func) {
   if (gtty != nullptr) {
-    gtty->PrintfRaw("s", "assertion failed at ", "s", file, "s", " l.", "d", line, "s", " (", "s", func, "s", ") Kernel stopped!");
+    gtty->Cprintf("assertion failed at %s l.%d (%s)\ncpuid: %d\n", file, line, func, cpu_ctrl->GetId());
   }
   while(true){
     asm volatile("cli;hlt");
