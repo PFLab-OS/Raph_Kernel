@@ -96,6 +96,10 @@ void Idt::SetupGeneric() {
       _callback[i][j].callback = nullptr;
     }
   }
+  // x86 specific
+  for (int i = 0; i < apic_ctrl->GetHowManyCpus(); i++) {
+    SetExceptionCallback(i, 14, HandlePageFault, nullptr);
+  }
   _is_gen_initialized = true;
 }
 
@@ -130,4 +134,15 @@ void Idt::SetExceptionCallback(int cpuid, int vector, int_callback callback, voi
   Locker locker(_lock);
   _callback[cpuid][vector].callback = callback;
   _callback[cpuid][vector].arg = arg;
+}
+
+void Idt::HandlePageFault(Regs *rs, void *arg) {
+  if (gtty != nullptr) {
+    uint64_t addr;
+    asm volatile("movq %%cr2, %0;":"=r"(addr));
+    gtty->CprintfRaw("\nunexpected page fault occured!\naddress: %x\n", addr);
+  }
+  while(true){
+    asm volatile("cli;hlt");
+  }
 }
