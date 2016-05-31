@@ -184,7 +184,6 @@ AcpiTbLoadNamespace (
      * .Pointer field is not validated until after call to AcpiTbValidateTable.
      */
     AcpiGbl_DSDT = Table->Pointer;
-
     /*
      * Optionally copy the entire DSDT to local memory (instead of simply
      * mapping it.) There are some BIOSs that corrupt or replace the original

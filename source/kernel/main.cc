@@ -151,7 +151,7 @@ extern "C" int main() {
 
   Shell _shell;
   shell = &_shell;
-  
+
   tmpmem_ctrl->Init();
 
   PhysAddr paddr;
@@ -467,6 +467,15 @@ void kernel_panic(const char *class_name, const char *err_str) {
 void checkpoint(int id, const char *str) {
   if (id < 0 || cpu_ctrl->GetId() == id) {
     gtty->PrintfRaw("s",str);
+  }
+}
+
+extern "C" void abort() {
+  if (gtty != nullptr) {
+    gtty->Cprintf("system stopped by unexpected error.\n");
+  }
+  while(true){
+    asm volatile("cli;hlt");
   }
 }
 
