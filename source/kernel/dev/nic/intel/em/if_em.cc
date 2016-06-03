@@ -1358,7 +1358,7 @@ static void
 em_init_locked(struct adapter *adapter)
 {
 	if_t ifp = adapter->ifp;
-	// device_t	dev = adapter->dev;
+  device_t	dev = adapter->dev;
 
 	INIT_DEBUGOUT("em_init: begin");
 
@@ -2343,7 +2343,7 @@ em_local_timer(void *arg)
 	if_t ifp = adapter->ifp;
 	struct tx_ring	*txr = adapter->tx_rings;
 	// struct rx_ring	*rxr = adapter->rx_rings;
-        // u32		trigger = 0;
+  // u32		trigger = 0;
 
 	EM_CORE_LOCK_ASSERT(adapter);
 
@@ -2400,6 +2400,7 @@ em_update_link_status(struct adapter *adapter)
 {
 	struct e1000_hw *hw = &adapter->hw;
 	// if_t ifp = adapter->ifp;
+  device_t dev = adapter->dev;
 	struct tx_ring *txr = adapter->tx_rings;
 	u32 link_check = 0;
         BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
@@ -2578,7 +2579,7 @@ int
 em_allocate_legacy(struct adapter *adapter)
 {
 	device_t dev = adapter->dev;
-        struct tx_ring	*txr = adapter->tx_rings;
+  struct tx_ring	*txr = adapter->tx_rings;
 	int error, rid = 0;
 
 	/* Manually turn off all interrupts */
@@ -3039,7 +3040,7 @@ em_flush_desc_rings(struct adapter *adapter)
 static void
 em_reset(struct adapter *adapter)
 {
-	// device_t	dev = adapter->dev;
+  device_t	dev = adapter->dev;
 	if_t ifp = adapter->ifp;
 	struct e1000_hw	*hw = &adapter->hw;
 	u16		rx_buffer_size;
@@ -3407,7 +3408,7 @@ em_dma_malloc(struct adapter *adapter, bus_size_t size,
 static int
 em_allocate_queues(struct adapter *adapter)
 {
-	// device_t		dev = adapter->dev;
+  device_t		dev = adapter->dev;
 	struct tx_ring		*txr = NULL;
 	struct rx_ring		*rxr = NULL;
 	int rsize, tsize, error = E1000_SUCCESS;
@@ -3539,7 +3540,7 @@ em_allocate_transmit_buffers(struct tx_ring *txr)
 	device_t dev = adapter->dev;
 	struct em_buffer *txbuf;
 	int error, i;
-        BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
+  BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
 
 	/*
 	 * Setup DMA descriptor areas.
@@ -4315,9 +4316,10 @@ static int
 em_allocate_receive_buffers(struct rx_ring *rxr)
 {
 	struct adapter		*adapter = rxr->adapter;
+  device_t                dev = adapter->dev;
 	struct em_buffer	*rxbuf;
 	int			error;
-        BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
+  BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
 
 	rxr->rx_buffers = reinterpret_cast<struct em_buffer *>(virtmem_ctrl->AllocZ(sizeof(struct em_buffer) * adapter->num_rx_desc));
 	// rxr->rx_buffers = malloc(sizeof(struct em_buffer) *
@@ -6324,8 +6326,18 @@ void E1000::GetEthAddr(uint8_t *buffer) {
 }
 
 void E1000::UpdateLinkStatus() {
-  this->_bsd.adapter->hw.mac.get_link_status = 1;
-  em_update_link_status(this->_bsd.adapter);
+  if (GetHandleMethod() == HandleMethod::kPolling) {
+    u32		reg_icr;
+    struct adapter *adapter = this->_bsd.adapter;
+		reg_icr = E1000_READ_REG(&adapter->hw, E1000_ICR);
+		if (reg_icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC)) {
+			callout_stop(&adapter->timer);
+			adapter->hw.mac.get_link_status = 1;
+			em_update_link_status(adapter);
+			callout_reset(&adapter->timer, hz,
+                    em_local_timer, adapter);
+		}
+  }
 }
 
 void E1000::PollingHandler(void *arg) {

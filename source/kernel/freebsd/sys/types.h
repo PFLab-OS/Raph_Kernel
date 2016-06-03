@@ -40,66 +40,13 @@
 
 #include <stdint.h>
 #include <raph.h>
-#include <dev/pci.h>
-#include <dev/eth.h>
-#include <freebsd/net/if_var.h>
 
 typedef	unsigned char	u_char;
 typedef	unsigned short	u_short;
 typedef	unsigned int	u_int;
 typedef	unsigned long	u_long;
 
-class BsdDevPci : public DevPci {
-public:
-  BsdDevPci(uint8_t bus, uint8_t device, bool mf) : DevPci(bus, device, mf) {
-    for (int i = 0; i < kIntMax; i++) {
-      map[i].handler = nullptr;
-    }
-  }
-  virtual ~BsdDevPci() {
-  }
-  
-  // 返り値は割り当てられたvector
-  int SetMsi(int cpuid, ioint_callback handler, void *arg) {
-    int i;
-    {
-      Locker locker(_lock);
-      for (i = 0; i < kIntMax; i++) {
-        if (map[i].handler == nullptr) {
-          break;
-        }
-      }
-      if (i == kIntMax) {
-        kernel_panic("PCI", "could not allocate MSI Handler");
-      }
-    }
-    int vector = DevPci::SetMsi(cpuid, HandleSub, reinterpret_cast<void *>(this));
-    map[i].cpuid = cpuid;
-    map[i].vector = vector;
-    map[i].handler = handler;
-    map[i].arg = arg;
-    return vector;
-  }
-private:
-  static void HandleSub(Regs *rs, void *arg) {
-    BsdDevPci *that = reinterpret_cast<BsdDevPci *>(arg);
-    Locker locker(that->_lock);
-    for (int i = 0; i < kIntMax; i++) {
-      if (static_cast<unsigned int>(that->map[i].vector) == rs->n && that->map[i].cpuid == apic_ctrl->GetCpuId()) {
-        that->map[i].handler(that->map[i].arg);
-        break;
-      }
-    }
-  }
-  static const int kIntMax = 10;
-  struct IntMap {
-    int cpuid;
-    int vector;
-    ioint_callback handler;
-    void *arg;
-  } map[kIntMax];
-  SpinLock _lock;
-};
+class BsdDevPci;
 
 class BsdDevice {
  public:
@@ -122,19 +69,6 @@ class BsdDevice {
  private:
   BsdDevPci *_pci = nullptr;
   void *_master;
-};
-
-class BsdDevEthernet : public DevEthernet {
-public:
-  BsdDevEthernet(uint8_t bus, uint8_t device, bool mf) : DevEthernet(&_bsd_pci), _bsd_pci(bus, device, mf) {
-    _bsd.SetClass(&_bsd_pci);
-  }
-  virtual ~BsdDevEthernet() {}
-  struct ifnet _ifp;
-protected:
-  BsdDevice _bsd;
-private:
-  BsdDevPci _bsd_pci;
 };
 
 typedef struct BsdDevice *device_t;

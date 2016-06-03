@@ -117,9 +117,8 @@ void PciCtrl::SetMsi(uint8_t bus, uint8_t device, uint8_t func, uint64_t addr, u
   WriteReg<uint16_t>(bus, device, func, offset + kMsiCapRegControl, control | kMsiCapRegControlMsiEnableFlag);
 }
 
-void PciCtrl::IrqContainer::Handler(void *arg) {
-  IrqContainer *ic = reinterpret_cast<IrqContainer *>(arg);
-  IntHandler *ih = ic->inthandler;
+void PciCtrl::IrqContainer::Handle() {
+  IntHandler *ih = inthandler;
   while(ih->next != nullptr) {
     IntHandler *nih = ih->next;
     nih->device->LegacyIntHandler();

@@ -38,12 +38,15 @@ extern struct taskqueue *taskqueue_fast;
 
 typedef void (*taskqueue_enqueue_fn)(void *context);
 
-#define TASK_INIT(task, priority, func, context) do {	\
-        new(&((task)->ta_task)) Task;                   \
-	(task)->ta_pending = 0;				\
-	(task)->ta_func = (func);			\
-	(task)->ta_context = (context);			\
-} while (0)
+#define TASK_INIT(task, priority, func, context) do {             \
+    new(&((task)->ta_task)) Task;                                 \
+    Function f;                                                   \
+    f.Init(__taskqueue_handle, reinterpret_cast<void *>(task));   \
+    (task)->ta_task.SetFunc(f);                                   \
+    (task)->ta_pending = 0;                                       \
+    (task)->ta_func = (func);                                     \
+    (task)->ta_context = (context);                               \
+  } while (0)
 
 #define taskqueue_create_fast(...) (nullptr)
 #define taskqueue_start_threads(...) (0)
@@ -55,9 +58,6 @@ static void __taskqueue_handle(void *arg) {
 }
 
 static inline int taskqueue_enqueue(struct taskqueue *queue, struct task *task) {
-  Function func;
-  func.Init(__taskqueue_handle, reinterpret_cast<void *>(task));
-  task->ta_task.SetFunc(func);
   // TODO cpuidの管理をどうするか
   task_ctrl->Register(0, &task->ta_task);
   return 0;
