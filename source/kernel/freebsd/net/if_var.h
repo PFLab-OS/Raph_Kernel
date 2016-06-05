@@ -126,4 +126,22 @@ static inline int if_setdev(if_t ifp, void *dev) {
   return 0;
 }
 
+#include <dev/eth.h>
+#include <freebsd/sys/types.h>
+#include <freebsd/sys/bus.h>
+
+// should be defined at ethernet.h
+class BsdDevEthernet : public DevEthernet {
+public:
+  BsdDevEthernet(uint8_t bus, uint8_t device, bool mf) : DevEthernet(&_bsd_pci), _bsd_pci(bus, device, mf) {
+    _bsd.SetClass(&_bsd_pci);
+  }
+  virtual ~BsdDevEthernet() {}
+  struct ifnet _ifp;
+protected:
+  BsdDevice _bsd;
+private:
+  BsdDevPci _bsd_pci;
+};
+
 #endif /* _FREEBSD_NET_IF_VAR_H_ */

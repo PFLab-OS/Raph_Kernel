@@ -62,7 +62,7 @@ PciCtrl *pci_ctrl;
 
 static uint32_t rnd_next = 1;
 
-#include <freebsd/sys/types.h>
+#include <freebsd/net/if_var.h>
 BsdDevEthernet *eth;
 uint64_t cnt;
 int64_t sum;
@@ -89,7 +89,7 @@ Callout tt3;
 #define IP1 192, 168, 100, 104
 #define IP2 192, 168, 100, 117
 #elif FLAG == QEMU
-#define IP1 10, 0, 2, 5
+#define IP1 10, 0, 2, 9
 #define IP2 10, 0, 2, 15
 #endif
 
@@ -151,7 +151,7 @@ extern "C" int main() {
 
   Shell _shell;
   shell = &_shell;
-  
+
   tmpmem_ctrl->Init();
 
   PhysAddr paddr;
@@ -194,7 +194,7 @@ extern "C" int main() {
 
   gtty->Init();
 
-  //  keyboard->Setup(1);
+  keyboard->Setup(1);
 
   cnt = 0;
   sum = 0;
@@ -390,63 +390,78 @@ extern "C" int main_of_others() {
   }
 
   if (cpu_ctrl->GetId() == 3 && eth != nullptr) {
+    static int state = 0;
     cnt = 0;
     new(&tt2) Callout;
     Function func;
     func.Init([](void *){
-        if (!apic_ctrl->IsBootupAll()) {
-          tt2.SetHandler(1000);
-          return;
-        }
-        eth->UpdateLinkStatus();
-        if (eth->GetStatus() != BsdDevEthernet::LinkStatus::kUp) {
-          tt2.SetHandler(1000);
-          return;
-        }
-#if FLAG != RCV
-        if (cnt != 0) {
-          tt2.SetHandler(1000);
-          return;
-        }
-        for(int k = 0; k < 1; k++) {
-          if (time == 0) {
-            break;
+        if (state == 0) {
+          if (!apic_ctrl->IsBootupAll()) {
+            tt2.SetHandler(1000);
+            return;
+          } else {
+            state = 1;
           }
-          uint8_t data[] = {
-            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, // Target MAC Address
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source MAC Address
-            0x08, 0x06, // Type: ARP
-            // ARP Packet
-            0x00, 0x01, // HardwareType: Ethernet
-            0x08, 0x00, // ProtocolType: IPv4
-            0x06, // HardwareLength
-            0x04, // ProtocolLength
-            0x00, 0x01, // Operation: ARP Request
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source Hardware Address
-            0x00, 0x00, 0x00, 0x00, // Source Protocol Address
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
-            // Target Protocol Address
-            IP2,
-          };
-          eth->GetEthAddr(data + 6);
-          memcpy(data + 22, data + 6, 6);
-          memcpy(data + 28, ip, 4);
-          uint32_t len = sizeof(data)/sizeof(uint8_t);
-          BsdDevEthernet::Packet *tpacket;
-          kassert(eth->GetTxPacket(tpacket));
-          memcpy(tpacket->buf, data, len);
-          tpacket->len = len;
-          cnt = timer->ReadMainCnt();
-          eth->TransmitPacket(tpacket);
-          // gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
-          time--;
         }
-        if (time != 0) {
-          tt2.SetHandler(1000);
+        if (state == 1) {
+          eth->UpdateLinkStatus();
+          if (eth->GetStatus() != BsdDevEthernet::LinkStatus::kUp) {
+            tt2.SetHandler(1000);
+            return;
+          }
+          state = 2;
         }
+        if (state == 2) {
+          state = 3;
+          tt2.SetHandler(0);
+          return ;
+        }
+        if (state == 3) {
+#if FLAG != RCV
+          if (cnt != 0) {
+            tt2.SetHandler(1000);
+            return;
+          }
+          for(int k = 0; k < 1; k++) {
+            if (time == 0) {
+              break;
+            }
+            uint8_t data[] = {
+              0xff, 0xff, 0xff, 0xff, 0xff, 0xff, // Target MAC Address
+              0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source MAC Address
+              0x08, 0x06, // Type: ARP
+              // ARP Packet
+              0x00, 0x01, // HardwareType: Ethernet
+              0x08, 0x00, // ProtocolType: IPv4
+              0x06, // HardwareLength
+              0x04, // ProtocolLength
+              0x00, 0x01, // Operation: ARP Request
+              0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source Hardware Address
+              0x00, 0x00, 0x00, 0x00, // Source Protocol Address
+              0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
+              // Target Protocol Address
+              IP2,
+            };
+            eth->GetEthAddr(data + 6);
+            memcpy(data + 22, data + 6, 6);
+            memcpy(data + 28, ip, 4);
+            uint32_t len = sizeof(data)/sizeof(uint8_t);
+            BsdDevEthernet::Packet *tpacket;
+            kassert(eth->GetTxPacket(tpacket));
+            memcpy(tpacket->buf, data, len);
+            tpacket->len = len;
+            cnt = timer->ReadMainCnt();
+            eth->TransmitPacket(tpacket);
+            // gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
+            time--;
+          }
+          if (time != 0) {
+            tt2.SetHandler(1000);
+          }
 #else
-        gtty->Printf("s", "[debug] info: Link is Up\n");
+          gtty->Printf("s", "[debug] info: Link is Up\n");
 #endif
+        }
       }, nullptr);
     tt2.Init(func);
     tt2.SetHandler(10);
@@ -456,7 +471,9 @@ extern "C" int main_of_others() {
 }
 
 void kernel_panic(const char *class_name, const char *err_str) {
-  gtty->PrintfRaw("s", "\n[","s",class_name,"s","] error: ","s",err_str);
+  if (gtty != nullptr) {
+    gtty->PrintfRaw("s", "\n[","s",class_name,"s","] error: ","s",err_str);
+  }
   while(true) {
     asm volatile("cli;hlt;");
   }
@@ -468,9 +485,18 @@ void checkpoint(int id, const char *str) {
   }
 }
 
+extern "C" void abort() {
+  if (gtty != nullptr) {
+    gtty->Cprintf("system stopped by unexpected error.\n");
+  }
+  while(true){
+    asm volatile("cli;hlt");
+  }
+}
+
 void _kassert(const char *file, int line, const char *func) {
   if (gtty != nullptr) {
-    gtty->PrintfRaw("s", "assertion failed at ", "s", file, "s", " l.", "d", line, "s", " (", "s", func, "s", ") Kernel stopped!");
+    gtty->Cprintf("assertion failed at %s l.%d (%s)\ncpuid: %d\n", file, line, func, cpu_ctrl->GetId());
   }
   while(true){
     asm volatile("cli;hlt");

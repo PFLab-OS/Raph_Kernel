@@ -113,7 +113,7 @@ public:
       // TODO cpuid
       int cpuid = 1;
       int vector = idt->SetIntCallback(cpuid, LegacyIntHandler, reinterpret_cast<void *>(this));
-       apic_ctrl->SetupIoInt(irq, apic_ctrl->GetApicIdFromCpuId(cpuid), vector);
+      apic_ctrl->SetupIoInt(irq, apic_ctrl->GetApicIdFromCpuId(cpuid), vector);
       ic->Add(irq, vector);
       ic->next->inthandler->Add(device);
     }
@@ -208,10 +208,6 @@ private:
       irq = -1;
       inthandler = nullptr;
       next = nullptr;
-      Function func;
-      func.Init(Handler, reinterpret_cast<void *>(this));
-      // TODO cpuid
-      ctask.SetFunc(1, func);
     }
     void Add(int irq_, int vector_) {
       kassert(next == nullptr);
@@ -220,12 +216,11 @@ private:
       next->vector = vector_;
       next->inthandler = virtmem_ctrl->New<IntHandler>();
     }
-    static void Handler(void *arg);
+    void Handle();
     int irq;
     int vector;
     IntHandler *inthandler;
     IrqContainer *next;
-    CountableTask ctask;
   } *_irq_container;
   IntSpinLock _irq_container_lock;
   static void LegacyIntHandler(Regs *rs, void *arg) {
@@ -235,7 +230,7 @@ private:
     while(ic->next != nullptr) {
       IrqContainer *nic = ic->next;
       if (nic->vector == static_cast<int>(rs->n)) {
-        nic->ctask.Inc();
+        nic->Handle();
         break;
       }
       ic = nic;

@@ -382,10 +382,10 @@ AcpiExStartTraceOpcode (
     ACPI_PARSE_OBJECT       *Op,
     ACPI_WALK_STATE         *WalkState)
 {
-
+  
     ACPI_FUNCTION_NAME (ExStartTraceOpcode);
 
-
+    
     if (AcpiExInterpreterTraceEnabled (NULL) &&
         (AcpiGbl_TraceFlags & ACPI_TRACE_OPCODE))
     {
