@@ -130,7 +130,6 @@ public:
     void *_iarg;
   };
   BsdDevPci(uint8_t bus, uint8_t device, bool mf) : DevPci(bus, device, mf) {
-    SetupLegacyIntContainers();
   }
   virtual ~BsdDevPci() {
   }
@@ -159,6 +158,9 @@ public:
   IntContainer *GetIntContainerStruct(int id) {
     if (_is_legacy_interrupt_enable) {
       if (id == 0) {
+        if (_icontainer_list == nullptr) {
+          SetupLegacyIntContainers();
+        }
         return &_icontainer_list[id];
       } else {
         return NULL;
@@ -185,7 +187,7 @@ private:
   }
 
   bool _is_legacy_interrupt_enable = true;
-  IntContainer *_icontainer_list;
+  IntContainer *_icontainer_list = nullptr;
 };
 
 static inline uint8_t bus_space_read_1(bus_space_tag_t space, bus_space_handle_t handle, bus_size_t offset) {
