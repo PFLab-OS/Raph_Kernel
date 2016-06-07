@@ -66,10 +66,9 @@ static uint32_t rnd_next = 1;
 BsdDevEthernet *eth;
 uint64_t cnt;
 int64_t sum;
-static const int stime = 10000;
+static const int stime = 3000;
 int time, rtime;
 
-#include <callout.h>
 Callout tt1;
 Callout tt2;
 Callout tt3;
@@ -319,7 +318,9 @@ extern "C" int main_of_others() {
             gtty->Printf("s","Link is Down, please wait...\n");
           }
         }
-        tt3.SetHandler(1000*1000*3);
+        if (rtime != stime) {
+          tt3.SetHandler(1000*1000*3);
+        }
       }, nullptr);
     tt3.Init(func);
     tt3.SetHandler(1000*1000*3);
@@ -348,7 +349,7 @@ extern "C" int main_of_others() {
         }
 #if FLAG != RCV
         if (cnt != 0) {
-          tt2.SetHandler(10);
+          tt2.SetHandler(1000);
           return;
         }
         for(int k = 0; k < 1; k++) {
@@ -364,7 +365,7 @@ extern "C" int main_of_others() {
           time--;
         }
         if (time != 0) {
-          tt2.SetHandler(10);
+          tt2.SetHandler(1000);
         }
 #else
         gtty->Printf("s", "[debug] info: Link is Up\n");

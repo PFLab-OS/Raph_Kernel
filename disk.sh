@@ -7,7 +7,6 @@ umount() {
 }
 
 loopsetup() {
-    umount
     set -- $(sudo kpartx -av ${IMAGE})
     LOOPDEVICE=$8
     MAPPEDDEVICE=/dev/mapper/$3
@@ -15,7 +14,7 @@ loopsetup() {
 
 mount() {
     loopsetup
-    mkdir ${MOUNT_DIR}
+    sudo mkdir ${MOUNT_DIR}
     sudo mount -t ext2 ${MAPPEDDEVICE} ${MOUNT_DIR}
 }
 
@@ -28,6 +27,7 @@ if [ $1 = "umount" ]; then
 fi
 
 if [ $1 = "grub-install" ]; then
+    umount
     loopsetup
     sudo mkfs -t ext2 ${MAPPEDDEVICE}
     mount
