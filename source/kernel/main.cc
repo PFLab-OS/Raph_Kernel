@@ -188,6 +188,14 @@ extern "C" int main() {
 
   // InitNetCtrl();
 
+  // dummy reserved queueの確保
+  // この確保を行うとNICの割り込みハンドラが動作しない
+  RingBuffer<NetDev::Packet *, 100> dummy_queue;
+  while(!dummy_queue.IsFull()) {
+    NetDev::Packet *packet = reinterpret_cast<NetDev::Packet*>(virtmem_ctrl->Alloc(sizeof(NetDev::Packet)));
+    kassert(dummy_queue.Push(packet));
+  }
+
   acpi_ctrl->SetupAcpica();
   //  acpi_ctrl->Shutdown();
 
