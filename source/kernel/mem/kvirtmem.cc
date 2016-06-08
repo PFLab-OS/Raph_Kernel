@@ -87,3 +87,19 @@ extern "C" void *sbrk(intptr_t increment) {
   }
   return reinterpret_cast<void *>(addr);
 }
+
+void *operator new(size_t size) {
+  return reinterpret_cast<void *>(virtmem_ctrl->Alloc(size));
+}
+ 
+void *operator new[](size_t size) {
+  return reinterpret_cast<void *>(virtmem_ctrl->Alloc(size));
+}
+ 
+void operator delete(void *p) {
+  virtmem_ctrl->Free(reinterpret_cast<virt_addr>(p));
+}
+ 
+void operator delete[](void *p) {
+  virtmem_ctrl->Free(reinterpret_cast<virt_addr>(p));
+}
