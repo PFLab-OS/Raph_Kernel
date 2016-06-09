@@ -83,11 +83,21 @@ public:
   // Capabilityへのオフセットを返す
   // 見つからなかった時は0
   uint16_t FindCapability(uint8_t bus, uint8_t device, uint8_t func, CapabilityId id);
-  bool HasMsi(uint8_t bus, uint8_t device, uint8_t func) {
+  int GetMsiCount(uint8_t bus, uint8_t device, uint8_t func) {
     uint16_t offset = FindCapability(bus, device, func, CapabilityId::kMsi);
-    return (offset != 0);
+    if (offset == 0) {
+      return 0;
+    }
+
+    uint16_t control = ReadReg<uint16_t>(bus, device, func, offset + kMsiCapRegControl);
+    uint16_t cap = (control & kMsiCapRegControlMultiMsgCapMask) >> kMsiCapRegControlMultiMsgCapOffset;
+    int count = 1;
+    for (; cap > 0; cap--) {
+      count *= 2;
+    }
+    return count;
   }
-  // 先にHasMsiでMsiが使えるか調べる事
+  // 先にGetMsiCountでMsiが使えるか調べる事
   void SetMsi(uint8_t bus, uint8_t device, uint8_t func, uint64_t addr, uint16_t data);
   IntPin GetLegacyIntPin(uint8_t bus, uint8_t device, uint8_t func) {
     return static_cast<IntPin>(ReadReg<uint8_t>(bus, device, func, kIntPinReg));
@@ -149,6 +159,9 @@ public:
   // Message Control for MSI
   // see PCI Local Bus Specification 6.8.1.3
   static const uint16_t kMsiCapRegControlMsiEnableFlag = 1 << 0;
+  static const uint16_t kMsiCapRegControlMultiMsgCapOffset = 1;
+  static const uint16_t kMsiCapRegControlMultiMsgCapMask = 7 << kMsiCapRegControlMultiMsgCapOffset;
+  static const uint16_t kMsiCapRegControlMultiMsgEnableOffset = 4;
   static const uint16_t kMsiCapRegControlAddr64Flag = 1 << 7;
 
   static const uint16_t kCommandRegBusMasterEnableFlag = 1 << 2;
@@ -276,18 +289,16 @@ public:
   uint16_t FindCapability(PciCtrl::CapabilityId id) {
     kassert(pci_ctrl != nullptr);
     return pci_ctrl->FindCapability(_bus, _device, _function, id);
-  } 
-  bool HasMsi() {
-    return pci_ctrl->HasMsi(_bus, _device, _function);
   }
-  // 先にHasMsiでMsiが使えるか調べる事
-  // 返り値は割り当てられたvector
-  int SetMsi(int cpuid, int_callback handler, void *arg) {
+  // MSIに割り当てられるメッセージの数を返す
+  // 0の場合はMSIをサポートしていない
+  int GetMsiCount() {
+    return pci_ctrl->GetMsiCount(_bus, _device, _function);
+  }
+  // 先にGetMsiCountでMsiが使えるか調べる事
+  void SetMsi(int cpuid, int vector) {
     kassert(pci_ctrl != nullptr);
-    kassert(idt != nullptr);
-    int vector = idt->SetIntCallback(cpuid, handler, arg);
     pci_ctrl->SetMsi(_bus, _device, _function, ApicCtrl::Lapic::GetMsiAddr(apic_ctrl->GetApicIdFromCpuId(cpuid)), ApicCtrl::Lapic::GetMsiData(vector));
-    return vector;
   }
   const uint8_t GetBus() {
     return _bus;

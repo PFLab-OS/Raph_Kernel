@@ -33,15 +33,19 @@
 #include <bus.h>
 
 static inline int pci_alloc_msi(device_t dev, int *count) {
-  if (!dev->GetPciClass()->HasMsi()) {
-    return 0;
+  int dcount = dev->GetPciClass()->GetMsiCount();
+  if (dcount == 0) {
+    return -1;
   }
-  //   // TODO CPU num
-  //   dev->GetPciClass()->SetMsi(1, filter_handler_sub, reinterpret_cast<void *>(s));
+  if (dcount < *count) {
+    *count = dcount;
+  }
+  dev->GetPciClass()->SetupMsi();
+  return 0;
 }
 
 static inline int pci_alloc_msix(device_t dev, int *count) {
-  return 0;
+  return -1;
 }
 
 #endif /* _PCIVAR_H_ */
