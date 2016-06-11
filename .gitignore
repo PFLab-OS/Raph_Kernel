@@ -56,3 +56,8 @@ hoge.c
 
 # Makefile
 *.d
+
+GPATH
+GRTAGS
+GSYMS
+GTAGS
