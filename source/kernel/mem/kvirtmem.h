@@ -40,94 +40,11 @@ public:
   virtual virt_addr Alloc(size_t size) override;
   // 仮想メモリ領域を解放するが、物理メモリは解放しない
   virtual void Free(virt_addr addr) override;
+  virtual virt_addr Sbrk(int64_t increment) override;
 private:
-  // AreaManagerはAreaManagerの実体とその直後のメモリ空間を管理する
-  class AreaManager {
-  public:
-    AreaManager(AreaManager *next, AreaManager *prev, size_t size) {
-      kassert(size == align(size, 8));
-      _next = next;
-      _prev = prev;
-      _size = size;
-      _is_allocated = false;
-      kassert(size >= kSizeMin);
-    }
-    AreaManager *GetNext() {
-      return _next;
-    }
-    AreaManager *GetPrev() {
-      return _prev;
-    }
-    size_t GetSize() {
-      // AreaManagerを含まないサイズ
-      return _size - GetAreaManagerSize();
-    }
-    bool IsAllocated() {
-      return _is_allocated;
-    }
-    void Allocate() {
-      _is_allocated = true;
-    }
-    void Free() {
-      _is_allocated = false;
-    }
-    bool UnifyWithNext() {
-      if (_is_allocated) {
-        return false;
-      }
-      if ((!_next->_is_allocated) && (GetAddr() + _size == _next->GetAddr())) {
-        _size += _next->_size;
-        _next = _next->_next;
-        _next->_prev = this;
-        return true;
-      }
-      return false;
-    }
-    AreaManager *Divide(size_t size) {
-      // sizeはAreaManagerを含まないサイズ!!!
-      kassert(size == align(size, 8));
-      size_t esize = size + AreaManager::GetAreaManagerSize();
-      kassert(esize <= _size);
-      if (esize + AreaManager::GetAreaManagerSize() + kSizeMin > _size) {
-        // divideできなかった
-        return nullptr;
-      }
-      kassert(_size == align(_size, 8));
-      AreaManager *next = new(reinterpret_cast<AreaManager *>(reinterpret_cast<size_t>(this) + esize)) AreaManager(_next, this, _size - esize);
-      _size = esize;
-      _next = next;
-      next->_next->_prev = next;
-      return _next;
-    }
-    // areaは未初期化でOK
-    void Append(AreaManager *area, size_t size) {
-      area = new(area) AreaManager(this->_next, this, size);
-      this->_next->_prev = area;
-      this->_next = area;
-    }
-    virt_addr GetAreaStartAddr() {
-      return static_cast<virt_addr>(reinterpret_cast<size_t>(this) + GetAreaManagerSize());
-    }
-    static size_t GetAreaManagerSize() {
-      return alignUp(sizeof(AreaManager), 8);
-    }
-    size_t GetAddr() {
-      return reinterpret_cast<size_t>(this);
-    }
-private:
-    AreaManager *_next;
-    AreaManager *_prev;
-    size_t _size;   // AreaManagerを含んだサイズ
-    bool _is_allocated;
-    static const size_t kSizeMin = 16;
-  };
-  AreaManager *_first;
-  AreaManager *_list;
-  AreaManager *_last_freed = nullptr;
-  virt_addr _heap_end;
-  static AreaManager *GetAreaManager(virt_addr addr) {
-    return reinterpret_cast<AreaManager *>(addr - AreaManager::GetAreaManagerSize());
-  }
+  virt_addr _heap_allocated_end;
+  virt_addr _brk_end;
+  virt_addr _heap_limit;
   SpinLock _lock;
 };
 

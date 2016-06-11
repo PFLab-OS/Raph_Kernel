@@ -135,8 +135,6 @@ static inline int pci_find_cap(device_t dev, int capability, int *capreg)
   }
 }
 
-#define device_printf(...)
-
 static inline void device_set_desc_copy(device_t dev, const char* desc) {
 }
 
@@ -192,6 +190,7 @@ struct sysctl_oid {
 #define SYSCTL_ADD_PROC(...)
 
 #define hz 1000
+#define reciprocal_of_hz 1000  /* 1000000 / hz */
 
 typedef void timeout_t (void *);
 
@@ -234,7 +233,7 @@ static inline void callout_reset(struct callout *c, int ticks, timeout_t *func, 
   f.Init(func, arg);
   c->callout.Init(f);
   //TODO cpuid
-  c->callout.SetHandler(1, static_cast<uint32_t>(ticks) * 1000 * 1000 / hz);
+  c->callout.SetHandler(1, static_cast<uint32_t>(ticks) * reciprocal_of_hz);
 }
 
 #define EVENTHANDLER_REGISTER(...)
@@ -263,7 +262,7 @@ struct adapter *device_get_softc(device_t dev);
 
 // replacement of ticks
 static inline int get_ticks() {
-  return (timer->GetUsecFromCnt(timer->ReadMainCnt()) * hz) / 1000000;
+  return timer->GetUsecFromCnt(timer->ReadMainCnt()) / reciprocal_of_hz;
 }
 
 #define KASSERT(cmp, comment) kassert(cmp)

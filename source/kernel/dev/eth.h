@@ -30,6 +30,7 @@
 class DevEthernet : public NetDev {
 public:
   DevEthernet(uint8_t bus, uint8_t device, bool mf) {
+    //TODO is this needed?
     _pci = virtmem_ctrl->New<DevPci>(bus, device, mf);
   } 
   virtual ~DevEthernet() {
