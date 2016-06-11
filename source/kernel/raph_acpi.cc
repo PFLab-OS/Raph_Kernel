@@ -37,10 +37,11 @@ extern "C" {
 #include <raph_acpi.h>
 #include <dev/pci.h>
 
-#define ACPI_MAX_INIT_TABLES    16
+#define ACPI_MAX_INIT_TABLES    128
 static ACPI_TABLE_DESC      TableArray[ACPI_MAX_INIT_TABLES];
 
 void AcpiCtrl::Setup() {
+  bzero(TableArray, sizeof(ACPI_TABLE_DESC) * ACPI_MAX_INIT_TABLES);
   AcpiInitializeTables (TableArray, ACPI_MAX_INIT_TABLES, TRUE);
 
   ACPI_TABLE_HEADER *table;

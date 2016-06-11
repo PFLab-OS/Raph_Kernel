@@ -468,6 +468,10 @@ void checkpoint(int id, const char *str) {
   }
 }
 
+void checkpoint(const char *func, const int line) {
+  gtty->CprintfRaw("[%s:%d]", func, line);
+}
+
 void _kassert(const char *file, int line, const char *func) {
   if (gtty != nullptr) {
     gtty->PrintfRaw("s", "assertion failed at ", "s", file, "s", " l.", "d", line, "s", " (", "s", func, "s", ") Kernel stopped!");
