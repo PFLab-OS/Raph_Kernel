@@ -129,6 +129,35 @@ int Idt::SetIntCallback(int cpuid, int_callback callback, void *arg) {
   return ReservedIntVector::kError;
 }
 
+int Idt::SetIntCallback(int cpuid, int_callback *callback, void **arg, int range) {
+  int _range = 1;
+  while(_range < range) {
+    _range *= 2;
+  }
+  if (range != _range) {
+    return ReservedIntVector::kError;
+  }
+  Locker locker(_lock);
+  int vector = range > 64 ? range : 64;
+  for(; vector < 256; vector += range) {
+    int i;
+    for (i = 0; i < range; i++) {
+      if (_callback[cpuid][vector + i].callback != nullptr) {
+        break;
+      }
+    }
+    if (i != range) {
+      continue;
+    }
+    for (i = 0; i < range; i++) {
+      _callback[cpuid][vector + i].callback = callback[i];
+      _callback[cpuid][vector + i].arg = arg[i];
+    }
+    return vector;
+  }
+  return ReservedIntVector::kError;
+}
+
 void Idt::SetExceptionCallback(int cpuid, int vector, int_callback callback, void *arg) {
   kassert(vector < 64 && vector >= 1);
   Locker locker(_lock);

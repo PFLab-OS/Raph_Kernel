@@ -88,6 +88,9 @@ enum intr_polarity {
 	INTR_POLARITY_LOW = 2
 };
 
+// TODO
+// PCI Specific
+// should be BsdBus
 class BsdDevPci : public DevPci {
 public:
   class IntContainer {
@@ -173,15 +176,39 @@ public:
       }
     }
   }
+  void SetupMsi() {
+    if (_icontainer_list != nullptr) {
+      // TODO 割り込み開放
+      delete[] _icontainer_list;
+    }
+    int count = GetMsiCount();
+    if (count == 0) {
+      return;
+    }
+    _icontainer_list = new IntContainer[count];
+    int_callback callbacks[count];
+    void *args[count];
+    for (int i = 0; i < count; i++) {
+      callbacks[i] = HandleSubInt;
+      args[i] = reinterpret_cast<void *>(_icontainer_list + i);
+    }
+    // TODO cpuid
+    int cpuid = 1;
+    int vector = idt->SetIntCallback(cpuid, callbacks, args, count);
+    SetMsi(cpuid, vector);
+  }
 private:
   void SetupLegacyIntContainers() {
-    _icontainer_list = reinterpret_cast<IntContainer *>(virtmem_ctrl->Alloc(sizeof(IntContainer) * 1));
+    _icontainer_list = new IntContainer[1];
     for (int i = 0; i < 1; i++) {
-      new(&_icontainer_list[i]) IntContainer;
-      SetLegacyInterrupt(HandleSub, reinterpret_cast<void *>(_icontainer_list + i));
+      SetLegacyInterrupt(HandleSubLegacy, reinterpret_cast<void *>(_icontainer_list + i));
     }
   }
-  static void HandleSub(void *arg) {
+  static void HandleSubLegacy(void *arg) {
+    IntContainer *icontainer = reinterpret_cast<IntContainer *>(arg);
+    icontainer->Handle();
+  }
+  static void HandleSubInt(Regs *rs, void *arg) {
     IntContainer *icontainer = reinterpret_cast<IntContainer *>(arg);
     icontainer->Handle();
   }
