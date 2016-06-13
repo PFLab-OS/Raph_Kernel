@@ -470,7 +470,7 @@ extern "C" int main_of_others() {
   return 0;
 }
 
-void kernel_panic(const char *class_name, const char *err_str) {
+extern "C" void kernel_panic(const char *class_name, const char *err_str) {
   if (gtty != nullptr) {
     gtty->PrintfRaw("s", "\n[","s",class_name,"s","] error: ","s",err_str);
   }
@@ -479,13 +479,13 @@ void kernel_panic(const char *class_name, const char *err_str) {
   }
 }
 
-void checkpoint(int id, const char *str) {
+extern "C" void checkpoint(int id, const char *str) {
   if (id < 0 || cpu_ctrl->GetId() == id) {
     gtty->PrintfRaw("s",str);
   }
 }
 
-void checkpoint(const char *func, const int line) {
+extern "C" void _checkpoint(const char *func, const int line) {
   gtty->CprintfRaw("[%s:%d]", func, line);
 }
 
@@ -498,7 +498,7 @@ extern "C" void abort() {
   }
 }
 
-void _kassert(const char *file, int line, const char *func) {
+extern "C" void _kassert(const char *file, int line, const char *func) {
   if (gtty != nullptr) {
     gtty->Cprintf("assertion failed at %s l.%d (%s)\ncpuid: %d\n", file, line, func, cpu_ctrl->GetId());
   }
