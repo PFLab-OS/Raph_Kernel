@@ -28,6 +28,7 @@
 #include <net/ip.h>
 #include <net/tcp.h>
 #include <net/ptcl.h>
+#include <arpa/inet.h>
 
 // offset in header
 static const uint8_t kSrcPortOffset     = 0;
