@@ -31,6 +31,7 @@
 #include <net/udp.h>
 #include <net/tcp.h>
 #include <net/ptcl.h>
+#include <arpa/inet.h>
 
 int32_t NetSocket::Open() {
   if((_device_info = netdev_ctrl->GetDeviceInfo()) == nullptr) {

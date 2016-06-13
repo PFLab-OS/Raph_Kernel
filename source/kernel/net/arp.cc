@@ -26,6 +26,7 @@
 #include <mem/virtmem.h>
 #include <net/socket.h>
 #include <net/arp.h>
+#include <arpa/inet.h>
 
 // hardware type
 const uint16_t kHWEthernet = 0x0001;
