@@ -20,35 +20,22 @@
  * 
  */
 
-#include <raph.h>
-#include <task.h>
-#include "taskqueue.h"
+#include <sys/rman.h>
+#include <sys/bus-raph.h>
 
-extern "C" {
+bus_space_tag_t rman_get_bustag(struct resource *r) {
+  return r->type;
+}
 
-  struct taskqueue *taskqueue_fast = nullptr;
-  
-  static void __taskqueue_handle(void *arg) {
-    struct task *task = reinterpret_cast<struct task *>(arg);
-    task->ta_func(task->ta_context, task->ta_pending);
-    task->ta_pending++;
+bus_space_handle_t rman_get_bushandle(struct resource *r) {
+  bus_space_handle_t h;
+  switch(r->type) {
+  case BUS_SPACE_PIO:
+  case BUS_SPACE_MEMIO:
+    h = r->addr;
+    break;
+  default:
+    kassert(false);
   }
-
-
-  void _task_init(struct task *t, int priority, task_fn_t *func, void *context) {
-    new(&(t->ta_task)) Task;
-    Function f;
-    f.Init(__taskqueue_handle, reinterpret_cast<void *>(t));
-    t->ta_task.SetFunc(f);
-    t->ta_pending = 0;
-    t->ta_func = (func);
-    t->ta_context = (context);
-  }
-
-  int taskqueue_enqueue(struct taskqueue *queue, struct task *task) {
-    // TODO cpuidの管理をどうするか
-    task_ctrl->Register(0, &task->ta_task);
-    return 0;
-  }
-
+  return h;
 }

@@ -32,6 +32,12 @@
 #ifndef _FREEBSD_SYS_RMAN_H_
 #define	_FREEBSD_SYS_RMAN_H_	1
 
+#include <sys/bus.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
+
 #define	RF_ALLOCATED	0x0001	/* resource has been reserved */
 #define	RF_ACTIVE	0x0002	/* resource allocation has been activated */
 #define	RF_SHAREABLE	0x0004	/* resource permits contemporaneous sharing */
@@ -40,5 +46,12 @@
 #define	RF_FIRSTSHARE	0x0020	/* first in sharing list */
 #define	RF_PREFETCHABLE	0x0040	/* resource is prefetchable */
 #define	RF_OPTIONAL	0x0080	/* for bus_alloc_resources() */
+
+  bus_space_tag_t rman_get_bustag(struct resource *r);
+  bus_space_handle_t rman_get_bushandle(struct resource *r);
+
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
 
 #endif /* _FREEBSD_SYS_RMAN_H_ */

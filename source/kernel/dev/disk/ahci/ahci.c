@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <freebsd/sys/bus.h>
+#include <sys/bus.h>
 
 /* #include <sys/cdefs.h> */
 /* __FBSDID("$FreeBSD$"); */
@@ -50,6 +50,10 @@
 /* #include <cam/cam_sim.h> */
 /* #include <cam/cam_xpt_sim.h> */
 /* #include <cam/cam_debug.h> */
+
+#include <sys/param.h>
+#include "ahci.h"
+
 
 /* local prototypes */
 static void ahci_intr(void *data);

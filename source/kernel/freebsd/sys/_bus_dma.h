@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2000 Doug Rabson
+ * Copyright 2006 John-Mark Gurney.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,21 +24,48 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD$
+ *
  */
 
-#ifndef _FREEBSD_SYS__TASK_H_
-#define _FREEBSD_SYS__TASK_H_
+#ifndef _SYS__BUS_DMA_H_
+#define _SYS__BUS_DMA_H_
 
-#include <sys/types.h>
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
 
-typedef void task_fn_t(void *context, int pending);
+  typedef int bus_dmasync_op_t;
 
-struct task {
-  u_short	ta_pending;		/* (q) count times queued */
-  task_fn_t *ta_func;		/* (c) task handler */
-  void	*ta_context;		/* (c) argument for handler */
-  Task ta_task;
-};
+  /*
+   *	bus_dma_tag_t
+   *
+   *	A machine-dependent opaque type describing the characteristics
+   *	of how to perform DMA mappings.  This structure encapsultes
+   *	information concerning address and alignment restrictions, number
+   *	of S/G segments, amount of data per S/G segment, etc.
+   */
+  typedef struct bus_dma_tag	*bus_dma_tag_t;
 
+  /*
+   *	bus_dmamap_t
+   *
+   *	DMA mapping instance information.
+   */
+  typedef struct bus_dmamap	*bus_dmamap_t;
 
-#endif /* _FREEBSD_SYS__TASK_H_ */
+  /*
+   * A function that performs driver-specific synchronization on behalf of
+   * busdma.
+   */
+  typedef enum {
+    BUS_DMA_LOCK	= 0x01,
+    BUS_DMA_UNLOCK	= 0x02,
+  } bus_dma_lock_op_t;
+
+  typedef void bus_dma_lock_t(void *, bus_dma_lock_op_t);
+
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
+
+#endif /* !_SYS__BUS_DMA_H_ */

@@ -20,35 +20,28 @@
  * 
  */
 
-#include <raph.h>
-#include <task.h>
-#include "taskqueue.h"
+#ifndef _FREEBSD_NET_IF_VAR_RAPH_H_
+#define _FREEBSD_NET_IF_VAR_RAPH_H_
 
-extern "C" {
+#include <dev/eth.h>
+#include <net/if_var.h>
+#include <sys/types-raph.h>
+#include <sys/bus-raph.h>
 
-  struct taskqueue *taskqueue_fast = nullptr;
-  
-  static void __taskqueue_handle(void *arg) {
-    struct task *task = reinterpret_cast<struct task *>(arg);
-    task->ta_func(task->ta_context, task->ta_pending);
-    task->ta_pending++;
+// should be defined at ethernet.h
+struct BsdDevice;
+class BsdDevEthernet : public DevEthernet {
+public:
+  BsdDevEthernet(uint8_t bus, uint8_t device, bool mf) : DevEthernet(&_bsd_pci), _bsd_pci(bus, device, mf) {
+    _bsd.SetClass(&_bsd_pci);
   }
+  virtual ~BsdDevEthernet() {}
+  struct ifnet _ifp;
+protected:
+  BsdDevice _bsd;
+private:
+  BsdDevPci _bsd_pci;
+};
 
 
-  void _task_init(struct task *t, int priority, task_fn_t *func, void *context) {
-    new(&(t->ta_task)) Task;
-    Function f;
-    f.Init(__taskqueue_handle, reinterpret_cast<void *>(t));
-    t->ta_task.SetFunc(f);
-    t->ta_pending = 0;
-    t->ta_func = (func);
-    t->ta_context = (context);
-  }
-
-  int taskqueue_enqueue(struct taskqueue *queue, struct task *task) {
-    // TODO cpuidの管理をどうするか
-    task_ctrl->Register(0, &task->ta_task);
-    return 0;
-  }
-
-}
+#endif /* _FREEBSD_NET_IF_VAR_RAPH_H_ */

@@ -34,6 +34,7 @@
 
 #include "e1000_api.h"
 #include <dev/pci.h>
+#include <freebsd/sys/types-raph.h>
 
 /*
  * NOTE: the following routines using the e1000 

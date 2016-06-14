@@ -1,11 +1,10 @@
 /*-
- * Copyright (c) 1982, 1986, 1991, 1993, 1994
- *	The Regents of the University of California.  All rights reserved.
- * (c) UNIX System Laboratories, Inc.
- * All or some portions of this file are derived from material licensed
- * to the University of California by American Telephone and Telegraph
- * Co. or Unix System Laboratories, Inc. and are reproduced herein with
- * the permission of UNIX System Laboratories, Inc.
+ * Copyright (c) 2001 David E. O'Brien
+ * Copyright (c) 1990 The Regents of the University of California.
+ * All rights reserved.
+ *
+ * This code is derived from software contributed to Berkeley by
+ * William Jolitz.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -15,6 +14,10 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
+ * 3. All advertising materials mentioning features or use of this software
+ *    must display the following acknowledgement:
+ *	This product includes software developed by the University of
+ *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -31,36 +34,19 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	@(#)types.h	8.6 (Berkeley) 2/19/95
+ *	from: @(#)param.h	5.8 (Berkeley) 6/28/91
  * $FreeBSD$
  */
 
-#ifndef _FREEBSD_SYS_TYPES_H_
-#define _FREEBSD_SYS_TYPES_H_
+#ifndef _X86_INCLUDE__ALIGN_H_
+#define	_X86_INCLUDE__ALIGN_H_
 
-#include <sys/cdefs.h>
+/*
+ * Round p (pointer or byte index) up to a correctly-aligned value
+ * for all data types (int, long, ...).   The result is unsigned int
+ * and must be cast to any desired pointer type.
+ */
+#define	_ALIGNBYTES	(sizeof(register_t) - 1)
+#define	_ALIGN(p)	(((uintptr_t)(p) + _ALIGNBYTES) & ~_ALIGNBYTES)
 
-#include <stdint.h>
-
-#include <sys/_types.h>
-
-typedef	unsigned char	u_char;
-typedef	unsigned short	u_short;
-typedef	unsigned int	u_int;
-typedef	unsigned long	u_long;
-
-typedef uint8_t       u_int8_t;       /* unsigned integrals (deprecated) */
-typedef uint16_t      u_int16_t;
-typedef uint32_t      u_int32_t;
-typedef uint64_t      u_int64_t;
-
-typedef	__vm_offset_t	vm_offset_t;
-// typedef	__vm_ooffset_t	vm_ooffset_t;
-typedef	__vm_paddr_t	vm_paddr_t;
-// typedef	__vm_pindex_t	vm_pindex_t;
-typedef	__vm_size_t	vm_size_t;
-
-struct BsdDevice;
-typedef struct BsdDevice *device_t;
-
-#endif /* _FREEBSD_SYS_TYPES_H_ */
+#endif /* !_X86_INCLUDE__ALIGN_H_ */

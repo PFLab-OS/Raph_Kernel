@@ -31,16 +31,15 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include <raph.h>
-#include <mem/physmem.h>
-#include <idt.h>
-#include <apic.h>
-#include <global.h>
-#include <task.h>
-#include <dev/pci.h>
-#include <freebsd/sys/types.h>
-#include <freebsd/sys/rman.h>
-#include <freebsd/i386/include/resource.h>
+#include <sys/types.h>
+#include <machine/_bus.h>
+#include <sys/_bus_dma.h>
+#include <machine/resource.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
+
 
 #define	FILTER_STRAY		0x01
 #define	FILTER_HANDLED		0x02
@@ -49,12 +48,9 @@
 typedef enum {
   BUS_SPACE_MEMIO,
   BUS_SPACE_PIO
-} bus_space_tag_t;
+};
 
 typedef uint64_t bus_space_handle_t;
-
-typedef void *bus_addr_t;
-typedef int bus_size_t;
 
 typedef int (*driver_filter_t)(void*);
 typedef void (*driver_intr_t)(void*);
@@ -88,281 +84,22 @@ enum intr_polarity {
 	INTR_POLARITY_LOW = 2
 };
 
-// TODO
-// PCI Specific
-// should be BsdBus
-class BsdDevPci : public DevPci {
-public:
-  class IntContainer {
-  public:
-    IntContainer() {
-      Function func;
-      func.Init(HandleSub, reinterpret_cast<void *>(this));
-      // TODO cpuid
-      _ctask.SetFunc(1, func);
-    }
-    void Handle() {
-      if (_filter != nullptr) {
-        _filter(_farg);
-      }
-      if (_ithread != nullptr) {
-        _ctask.Inc();
-      }
-    }
-    void SetFilter(driver_filter_t filter, void *arg) {
-      _filter = filter;
-      _farg = arg;
-    }
-    void SetIthread(driver_intr_t ithread, void *arg) {
-      _ithread = ithread;
-      _iarg = arg;
-    }
-  private:
-    static void HandleSub(void *arg) {
-      IntContainer *that = reinterpret_cast<IntContainer *>(arg);
-      if (that->_ithread != nullptr) {
-        that->_ithread(that->_iarg);
-      }
-    }
-    CountableTask _ctask;
-    
-    driver_filter_t _filter = nullptr;
-    void *_farg;
-    
-    driver_intr_t _ithread = nullptr;
-    void *_iarg;
-  };
-  BsdDevPci(uint8_t bus, uint8_t device, bool mf) : DevPci(bus, device, mf) {
-  }
-  virtual ~BsdDevPci() {
-  }
+  uint8_t bus_space_read_1(bus_space_tag_t space, bus_space_handle_t handle, bus_size_t offset);
+  uint16_t bus_space_read_2(bus_space_tag_t space, bus_space_handle_t handle, bus_size_t offset);
+  uint32_t bus_space_read_4(bus_space_tag_t space, bus_space_handle_t handle, bus_size_t offset);
+  void bus_space_write_1(bus_space_tag_t space, bus_space_handle_t handle, bus_size_t offset, uint8_t value);
+  void bus_space_write_2(bus_space_tag_t space, bus_space_handle_t handle, bus_size_t offset, uint16_t value);
+  void bus_space_write_4(bus_space_tag_t space, bus_space_handle_t handle, bus_size_t offset, uint32_t value);
+
+  struct resource;
+  struct resource *bus_alloc_resource_any(device_t dev, int type, int *rid, u_int flags);
+  int bus_setup_intr(device_t dev, struct resource *r, int flags, driver_filter_t filter, driver_intr_t ithread, void *arg, void **cookiep);
+  int device_printf(device_t dev, const char *fmt, ...) __attribute__ ((format (printf, 2, 3)));;
+
+  bus_dma_tag_t bus_get_dma_tag(device_t dev);
+
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
   
-  // 返り値は割り当てられたvector
-  // int SetMsi(int cpuid, ioint_callback handler, void *arg) {
-  //   int i;
-  //   {
-  //     Locker locker(_lock);
-  //     for (i = 0; i < kIntMax; i++) {
-  //       if (map[i].handler == nullptr) {
-  //         break;
-  //       }
-  //     }
-  //     if (i == kIntMax) {
-  //       kernel_panic("PCI", "could not allocate MSI Handler");
-  //     }
-  //   }
-  //   int vector = DevPci::SetMsi(cpuid, HandleSub, reinterpret_cast<void *>(this));
-  //   map[i].cpuid = cpuid;
-  //   map[i].vector = vector;
-  //   map[i].handler = handler;
-  //   map[i].arg = arg;
-  //   return vector;
-  // }
-  IntContainer *GetIntContainerStruct(int id) {
-    if (_is_legacy_interrupt_enable) {
-      if (id == 0) {
-        if (_icontainer_list == nullptr) {
-          SetupLegacyIntContainers();
-        }
-        return &_icontainer_list[id];
-      } else {
-        return NULL;
-      }
-    } else {
-      if (id <= 0) {
-        return NULL;
-      } else {
-        return &_icontainer_list[id - 1];
-      }
-    }
-  }
-  void SetupMsi() {
-    if (_icontainer_list != nullptr) {
-      // TODO 割り込み開放
-      delete[] _icontainer_list;
-    }
-    int count = GetMsiCount();
-    if (count == 0) {
-      return;
-    }
-    _icontainer_list = new IntContainer[count];
-    int_callback callbacks[count];
-    void *args[count];
-    for (int i = 0; i < count; i++) {
-      callbacks[i] = HandleSubInt;
-      args[i] = reinterpret_cast<void *>(_icontainer_list + i);
-    }
-    // TODO cpuid
-    int cpuid = 1;
-    int vector = idt->SetIntCallback(cpuid, callbacks, args, count);
-    SetMsi(cpuid, vector);
-  }
-private:
-  void SetupLegacyIntContainers() {
-    _icontainer_list = new IntContainer[1];
-    for (int i = 0; i < 1; i++) {
-      SetLegacyInterrupt(HandleSubLegacy, reinterpret_cast<void *>(_icontainer_list + i));
-    }
-  }
-  static void HandleSubLegacy(void *arg) {
-    IntContainer *icontainer = reinterpret_cast<IntContainer *>(arg);
-    icontainer->Handle();
-  }
-  static void HandleSubInt(Regs *rs, void *arg) {
-    IntContainer *icontainer = reinterpret_cast<IntContainer *>(arg);
-    icontainer->Handle();
-  }
-
-  bool _is_legacy_interrupt_enable = true;
-  IntContainer *_icontainer_list = nullptr;
-};
-
-static inline uint8_t bus_space_read_1(bus_space_tag_t space, bus_space_handle_t handle, bus_size_t offset) {
-  switch(space) {
-  case BUS_SPACE_MEMIO:
-    return reinterpret_cast<volatile uint8_t *>(handle)[offset / sizeof(uint8_t)];
-  case BUS_SPACE_PIO:
-    return inb(handle + offset);
-  default:
-    kassert(false);
-  }
-}
-
-static inline uint16_t bus_space_read_2(bus_space_tag_t space, bus_space_handle_t handle, bus_size_t offset) {
-  switch(space) {
-  case BUS_SPACE_MEMIO:
-    return reinterpret_cast<volatile uint16_t *>(handle)[offset / sizeof(uint16_t)];
-  case BUS_SPACE_PIO:
-    return inw(handle + offset);
-  default:
-    kassert(false);
-  }
-}
-
-static inline uint32_t bus_space_read_4(bus_space_tag_t space, bus_space_handle_t handle, bus_size_t offset) {
-  switch(space) {
-  case BUS_SPACE_MEMIO:
-    return reinterpret_cast<volatile uint32_t *>(handle)[offset / sizeof(uint32_t)];
-  case BUS_SPACE_PIO:
-    return inl(handle + offset);
-  default:
-    kassert(false);
-  }
-}
-
-static inline void bus_space_write_1(bus_space_tag_t space, bus_space_handle_t handle, bus_size_t offset, uint8_t value) {
-  switch(space) {
-  case BUS_SPACE_MEMIO:
-    reinterpret_cast<volatile uint8_t *>(handle)[offset / sizeof(uint8_t)] = value;
-    return;
-  case BUS_SPACE_PIO:
-    outb(handle + offset, value);
-    return;
-  default:
-    kassert(false);
-  }
-}
-
-static inline void bus_space_write_2(bus_space_tag_t space, bus_space_handle_t handle, bus_size_t offset, uint16_t value) {
-  switch(space) {
-  case BUS_SPACE_MEMIO:
-    reinterpret_cast<volatile uint16_t *>(handle)[offset / sizeof(uint16_t)] = value;
-    return;
-  case BUS_SPACE_PIO:
-    outw(handle + offset, value);
-    return;
-  default:
-    kassert(false);
-  }
-}
-
-static inline void bus_space_write_4(bus_space_tag_t space, bus_space_handle_t handle, bus_size_t offset, uint32_t value) {
-  switch(space) {
-  case BUS_SPACE_MEMIO:
-    reinterpret_cast<volatile uint32_t *>(handle)[offset / sizeof(uint32_t)] = value;
-    return;
-  case BUS_SPACE_PIO:
-    outl(handle + offset, value);
-    return;
-  default:
-    kassert(false);
-  }
-}
-
-struct resource {
-  phys_addr addr;
-  bus_space_tag_t type;
-  union {
-    struct {
-      bool is_prefetchable;
-    } mem;
-  } data;
-  idt_callback gate;
-  BsdDevPci::IntContainer *icontainer = NULL;
-};
-
-static inline struct resource *bus_alloc_resource_any(device_t dev, int type, int *rid, u_int flags) {
-  struct resource *r;
-  switch(type) {
-  case SYS_RES_MEMORY: {
-    int bar = *rid;
-    uint32_t addr = dev->GetPciClass()->ReadReg<uint32_t>(static_cast<uint32_t>(bar));
-    if ((addr & PciCtrl::kRegBaseAddrFlagIo) != 0) {
-      return NULL;
-    }
-    r = virtmem_ctrl->New<resource>();
-    r->type = BUS_SPACE_MEMIO;
-    r->data.mem.is_prefetchable = ((addr & PciCtrl::kRegBaseAddrIsPrefetchable) != 0);
-    r->addr = addr & PciCtrl::kRegBaseAddrMaskMemAddr;
-
-    if ((addr & PciCtrl::kRegBaseAddrMaskMemType) == PciCtrl::kRegBaseAddrValueMemType64) {
-      r->addr |= static_cast<uint64_t>(dev->GetPciClass()->ReadReg<uint32_t>(static_cast<uint32_t>(bar + 4))) << 32;
-    }
-    r->addr = p2v(r->addr);
-    break;
-  }
-  case SYS_RES_IOPORT: {
-    int bar = *rid;
-    uint32_t addr = dev->GetPciClass()->ReadReg<uint32_t>(static_cast<uint32_t>(bar));
-    if ((addr & PciCtrl::kRegBaseAddrFlagIo) == 0) {
-      return NULL;
-    }
-    r = virtmem_ctrl->New<resource>();
-    r->type = BUS_SPACE_PIO;
-    r->addr = addr & PciCtrl::kRegBaseAddrMaskIoAddr;
-    break;
-  }
-  case SYS_RES_IRQ: {
-    r = virtmem_ctrl->New<resource>();
-    r->icontainer = dev->GetPciClass()->GetIntContainerStruct(*rid);
-    break;
-  }
-  default: {
-    kassert(false);
-  }
-  }
-  return r;
-}
-
-static inline int bus_setup_intr(device_t dev, struct resource *r, int flags, driver_filter_t filter, driver_intr_t ithread, void *arg, void **cookiep) {
-  if (r->icontainer == NULL) {
-    return -1;
-  }
-  r->icontainer->SetFilter(filter, arg);
-  r->icontainer->SetIthread(ithread, arg);
-  return 0;
-}
-
-#include <tty.h>
-#include <global.h>
-static inline int device_printf(device_t dev, const char *fmt, ...) __attribute__ ((format (printf, 2, 3)));;
-static inline int device_printf(device_t dev, const char *fmt, ...) {
-  gtty->Cprintf("[pci device]:");
-  va_list args;
-  va_start(args, fmt);
-  gtty->Cvprintf(fmt, args);
-  va_end(args);
-  return 0;  // TODO fix this
-}
-
 #endif /* _FREEBSD_BUS_H_ */

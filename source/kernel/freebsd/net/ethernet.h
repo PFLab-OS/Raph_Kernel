@@ -20,5 +20,16 @@
 #define ETHERMIN  (ETHER_MIN_LEN-ETHER_HDR_LEN-ETHER_CRC_LEN)
 #define ETHERMTU_JUMBO  (ETHER_MAX_LEN_JUMBO - ETHER_HDR_LEN - ETHER_CRC_LEN)
 
+/*
+ * 802.1q Virtual LAN header.
+ */
+struct ether_vlan_header {
+	uint8_t evl_dhost[ETHER_ADDR_LEN];
+	uint8_t evl_shost[ETHER_ADDR_LEN];
+	uint16_t evl_encap_proto;
+	uint16_t evl_tag;
+	uint16_t evl_proto;
+} __packed;
+
 #endif /* _FREEBSD_NET_ETHERNET_H_ */
 

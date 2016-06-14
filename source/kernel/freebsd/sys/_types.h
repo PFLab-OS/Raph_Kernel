@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2000 Doug Rabson
+ * Copyright (c) 2002 Mike Barcroft <mike@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,19 +26,9 @@
  * $FreeBSD$
  */
 
-#ifndef _FREEBSD_SYS__TASK_H_
-#define _FREEBSD_SYS__TASK_H_
+#ifndef _SYS__TYPES_H_
+#define _SYS__TYPES_H_
 
-#include <sys/types.h>
+#include <machine/_types.h>
 
-typedef void task_fn_t(void *context, int pending);
-
-struct task {
-  u_short	ta_pending;		/* (q) count times queued */
-  task_fn_t *ta_func;		/* (c) task handler */
-  void	*ta_context;		/* (c) argument for handler */
-  Task ta_task;
-};
-
-
-#endif /* _FREEBSD_SYS__TASK_H_ */
+#endif /* !_SYS__TYPES_H_ */

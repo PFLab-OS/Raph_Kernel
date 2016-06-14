@@ -33,13 +33,13 @@
 #include <global.h>
 #include <freebsd/sys/errno.h>
 #include <freebsd/sys/param.h>
-#include <freebsd/sys/bus.h>
+#include <freebsd/sys/bus-raph.h>
 #include <freebsd/sys/types.h>
 #include <freebsd/sys/bus_dma.h>
 #include <freebsd/sys/endian.h>
 #include <freebsd/dev/pci/pcireg.h>
 #include <freebsd/net/if.h>
-#include <freebsd/net/if_var.h>
+#include <freebsd/net/if_var-raph.h>
 #include <freebsd/net/if_types.h>
 
 typedef bool boolean_t;
@@ -57,22 +57,6 @@ static inline int sprintf(const char *s, const char *format, ...) {
 #define BUS_PROBE_NOWILDCARD  (-2000000000) /* No wildcard device matches */
 
 typedef char *caddr_t;
-
-struct ahd_linux_dma_tag {
-  bus_size_t      alignment;
-  bus_size_t      boundary;
-  bus_size_t      maxsize;
-};
-typedef struct ahd_linux_dma_tag* bus_dma_tag_t;
-
-typedef unsigned long long dma_addr_t;
-typedef dma_addr_t bus_dmamap_t;
-
-typedef struct bus_dma_segment
-{
-   dma_addr_t      ds_addr;
-   bus_size_t      ds_len;
-} bus_dma_segment_t;
 
 struct ifmedia {};
 
@@ -238,23 +222,6 @@ static inline void callout_reset(struct callout *c, int ticks, timeout_t *func, 
 
 #define EVENTHANDLER_REGISTER(...)
 #define EVENTHANDLER_DEREGISTER(...)
-
-static inline bus_space_tag_t rman_get_bustag(struct resource *r) {
-  return r->type;
-}
-
-static inline bus_space_handle_t rman_get_bushandle(struct resource *r) {
-  bus_space_handle_t h;
-  switch(r->type) {
-  case BUS_SPACE_PIO:
-  case BUS_SPACE_MEMIO:
-    h = r->addr;
-    break;
-  default:
-    kassert(false);
-  }
-  return h;
-}
 
 struct adapter *device_get_softc(device_t dev);
 

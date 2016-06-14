@@ -103,6 +103,8 @@
 #include "e1000_api.h"
 #include "if_em.h"
 
+#include <freebsd/sys/rman.h>
+
 #include <timer.h>
 #include <global.h>
 /*********************************************************************

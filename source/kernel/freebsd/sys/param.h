@@ -38,6 +38,10 @@
 #ifndef _FREEBSD_PARAM_H_
 #define _FREEBSD_PARAM_H_
 
+#ifndef LOCORE
+#include <sys/types.h>
+#endif
+
 #define nitems(x) (sizeof((x)) / sizeof((x)[0]))
 #define rounddown(x, y) (((x)/(y))*(y))
 #define rounddown2(x, y) ((x)&(~((y)-1)))          /* if y is power of two */
@@ -48,6 +52,8 @@
 /* Macros for min/max. */
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
+
+#include <machine/param.h>
 
 /*
  * Constants related to network buffer management.
@@ -62,6 +68,33 @@
 #endif	/* MCLSHIFT */
 
 #define MCLBYTES	(1 << MCLSHIFT)	/* size of an mbuf cluster */
+
+/* clicks to bytes */
+#ifndef ctob
+#define ctob(x) ((x)<<PAGE_SHIFT)
+#endif
+
+#if PAGE_SIZE < 2048
+#define	MJUMPAGESIZE	MCLBYTES
+#elif PAGE_SIZE <= 8192
+#define	MJUMPAGESIZE	PAGE_SIZE
+#else
+#define	MJUMPAGESIZE	(8 * 1024)
+#endif
+
+#define	MJUM9BYTES	(9 * 1024)	/* jumbo cluster 9k */
+#define	MJUM16BYTES	(16 * 1024)	/* jumbo cluster 16k */
+
+/* bytes to clicks */
+#ifndef btoc
+#define btoc(x) (((vm_offset_t)(x)+PAGE_MASK)>>PAGE_SHIFT)
+#endif
+
+#define dbtoc(db)                       /* calculates devblks to pages */ \
+        ((db + (ctodb(1) - 1)) >> (PAGE_SHIFT - DEV_BSHIFT))
+
+#define ctodb(db)                       /* calculates pages to devblks */ \
+        ((db) << (PAGE_SHIFT - DEV_BSHIFT))
 
 
 #endif /* _FREEBSD_PARAM_H_ */

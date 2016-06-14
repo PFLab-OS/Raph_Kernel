@@ -62,7 +62,7 @@ PciCtrl *pci_ctrl;
 
 static uint32_t rnd_next = 1;
 
-#include <freebsd/net/if_var.h>
+#include <freebsd/net/if_var-raph.h>
 BsdDevEthernet *eth;
 uint64_t cnt;
 int64_t sum;

@@ -20,35 +20,29 @@
  * 
  */
 
-#include <raph.h>
-#include <task.h>
-#include "taskqueue.h"
+#include <sys/types.h>
 
-extern "C" {
+class BsdDevPci;
 
-  struct taskqueue *taskqueue_fast = nullptr;
-  
-  static void __taskqueue_handle(void *arg) {
-    struct task *task = reinterpret_cast<struct task *>(arg);
-    task->ta_func(task->ta_context, task->ta_pending);
-    task->ta_pending++;
+class BsdDevice {
+ public:
+  template<class T>
+    void SetMasterClass(T *master) {
+    _master = reinterpret_cast<void *>(master);
   }
-
-
-  void _task_init(struct task *t, int priority, task_fn_t *func, void *context) {
-    new(&(t->ta_task)) Task;
-    Function f;
-    f.Init(__taskqueue_handle, reinterpret_cast<void *>(t));
-    t->ta_task.SetFunc(f);
-    t->ta_pending = 0;
-    t->ta_func = (func);
-    t->ta_context = (context);
+  template<class T>
+    T *GetMasterClass() {
+    return reinterpret_cast<T *>(_master);
   }
-
-  int taskqueue_enqueue(struct taskqueue *queue, struct task *task) {
-    // TODO cpuidの管理をどうするか
-    task_ctrl->Register(0, &task->ta_task);
-    return 0;
+  void SetClass(BsdDevPci *pci) {
+    _pci = pci;
   }
-
-}
+  BsdDevPci *GetPciClass() {
+    kassert(_pci != nullptr);
+    return _pci;
+  }
+  struct adapter *adapter;
+ private:
+  BsdDevPci *_pci = nullptr;
+  void *_master;
+};

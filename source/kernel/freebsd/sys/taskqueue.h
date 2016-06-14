@@ -29,39 +29,29 @@
 #ifndef _FREEBSD_SYS_TASKQUEUE_H_
 #define _FREEBSD_SYS_TASKQUEUE_H_
 
-#include <raph.h>
-#include <task.h>
-#include <freebsd/sys/_task.h>
+#include <sys/_task.h>
 
-struct taskqueue;
-extern struct taskqueue *taskqueue_fast;
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
 
-typedef void (*taskqueue_enqueue_fn)(void *context);
+  struct taskqueue;
+  extern struct taskqueue *taskqueue_fast;
 
-#define TASK_INIT(task, priority, func, context) do {             \
-    new(&((task)->ta_task)) Task;                                 \
-    Function f;                                                   \
-    f.Init(__taskqueue_handle, reinterpret_cast<void *>(task));   \
-    (task)->ta_task.SetFunc(f);                                   \
-    (task)->ta_pending = 0;                                       \
-    (task)->ta_func = (func);                                     \
-    (task)->ta_context = (context);                               \
-  } while (0)
+  typedef void (*taskqueue_enqueue_fn)(void *context);
 
+  void _task_init(struct task *t, int priority, task_fn_t *func, void *context);
+
+#define TASK_INIT(task, priority, func, context) \
+  _task_init(task, priority, func, context);
+  
 #define taskqueue_create_fast(...) (nullptr)
 #define taskqueue_start_threads(...) (0)
 
-static void __taskqueue_handle(void *arg) {
-  struct task *task = reinterpret_cast<struct task *>(arg);
-  task->ta_func(task->ta_context, task->ta_pending);
-  task->ta_pending++;
-}
+  int taskqueue_enqueue(struct taskqueue *queue, struct task *task);
 
-static inline int taskqueue_enqueue(struct taskqueue *queue, struct task *task) {
-  // TODO cpuidの管理をどうするか
-  task_ctrl->Register(0, &task->ta_task);
-  return 0;
+#ifdef __cplusplus
 }
-
+#endif /* __cplusplus */
 
 #endif /* _FREEBSD_SYS_TASKQUEUE_H_ */

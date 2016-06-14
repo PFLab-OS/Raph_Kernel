@@ -32,7 +32,7 @@
 #include <dev/eth.h>
 #include <freebsd/sys/param.h>
 #include <freebsd/sys/types.h>
-#include <freebsd/net/if_var.h>
+#include <freebsd/net/if_var-raph.h>
 
 class lE1000 : public BsdDevEthernet {
 public:

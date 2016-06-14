@@ -30,7 +30,7 @@
 #include <dev/eth.h>
 #include <dev/pci.h>
 #include <freebsd/sys/types.h>
-#include <freebsd/net/if_var.h>
+#include <freebsd/net/if_var-raph.h>
 
 class E1000 : public BsdDevEthernet {
 public:
