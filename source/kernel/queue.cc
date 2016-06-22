@@ -22,11 +22,11 @@
 
 #include <queue.h>
 #include <global.h>
-#include <mem/tmpmem.h>
+#include <mem/virtmem.h>
 #include <raph.h>
 
 void Queue::Push(void *data) {
-  Container *c = reinterpret_cast<Container *>(tmpmem_ctrl->Alloc(sizeof(Container)));
+  Container *c = reinterpret_cast<Container *>(virtmem_ctrl->Alloc(sizeof(Container)));
   c->data = data;
   c->next = nullptr;
   Locker locker(_lock);
@@ -50,6 +50,6 @@ bool Queue::Pop(void *&data) {
     }
   }
   data = c->data;
-  tmpmem_ctrl->Free(reinterpret_cast<virt_addr>(c));
+  virtmem_ctrl->Free(reinterpret_cast<virt_addr>(c));
   return true;
 }

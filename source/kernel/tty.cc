@@ -21,8 +21,7 @@
  */
 
 #include <tty.h>
-#include <mem/tmpmem.h>
-
+#include <mem/virtmem.h>
 
 void Tty::PrintString(String *str) {
   for(int i = 0; i < String::length; i++) {
@@ -37,7 +36,7 @@ void Tty::PrintString(String *str) {
 }
 
 Tty::String *Tty::String::New() {
-  String *str = reinterpret_cast<String *>(tmpmem_ctrl->Alloc(sizeof(String)));
+  String *str = reinterpret_cast<String *>(virtmem_ctrl->Alloc(sizeof(String)));
   new(str) String;
   str->Init();
   return str;
@@ -47,5 +46,5 @@ void Tty::String::Delete() {
   if (next != nullptr) {
     next->Delete();
   }
-  tmpmem_ctrl->Free(reinterpret_cast<virt_addr>(this));
+  virtmem_ctrl->Free(reinterpret_cast<virt_addr>(this));
 }
