@@ -20,30 +20,12 @@
  * 
  */
 
-#include <sys/types.h>
-#include <raph.h>
+#include <sys/kernel.h>
+#include <timer.h>
+#include <global.h>
 
-class BsdDevPci;
-
-class BsdDevice {
- public:
-  template<class T>
-    void SetMasterClass(T *master) {
-    _master = reinterpret_cast<void *>(master);
+extern "C" {
+  int get_ticks() {
+    return timer->GetUsecFromCnt(timer->ReadMainCnt()) / reciprocal_of_hz;
   }
-  template<class T>
-    T *GetMasterClass() {
-    return reinterpret_cast<T *>(_master);
-  }
-  void SetClass(BsdDevPci *pci) {
-    _pci = pci;
-  }
-  BsdDevPci *GetPciClass() {
-    kassert(_pci != nullptr);
-    return _pci;
-  }
-  struct adapter *adapter;
- private:
-  BsdDevPci *_pci = nullptr;
-  void *_master;
-};
+}

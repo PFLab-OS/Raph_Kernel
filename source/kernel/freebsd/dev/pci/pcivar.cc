@@ -20,30 +20,24 @@
  * 
  */
 
-#include <sys/types.h>
-#include <raph.h>
+#include <dev/pci/pcivar.h>
+#include <sys/types-raph.h>
+#include <sys/bus-raph.h>
 
-class BsdDevPci;
+extern "C" {
+  int pci_alloc_msi(device_t dev, int *count) {
+    int dcount = dev->GetPciClass()->GetMsiCount();
+    if (dcount == 0) {
+      return -1;
+    }
+    if (dcount < *count) {
+      *count = dcount;
+    }
+    dev->GetPciClass()->SetupMsi();
+    return 0;
+  }
 
-class BsdDevice {
- public:
-  template<class T>
-    void SetMasterClass(T *master) {
-    _master = reinterpret_cast<void *>(master);
+  int pci_alloc_msix(device_t dev, int *count) {
+    return -1;
   }
-  template<class T>
-    T *GetMasterClass() {
-    return reinterpret_cast<T *>(_master);
-  }
-  void SetClass(BsdDevPci *pci) {
-    _pci = pci;
-  }
-  BsdDevPci *GetPciClass() {
-    kassert(_pci != nullptr);
-    return _pci;
-  }
-  struct adapter *adapter;
- private:
-  BsdDevPci *_pci = nullptr;
-  void *_master;
-};
+}

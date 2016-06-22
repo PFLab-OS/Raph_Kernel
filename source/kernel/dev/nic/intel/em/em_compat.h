@@ -32,11 +32,11 @@
 #define _EM_COMPAT_H_
 
 #include <spinlock.h>
-#include <freebsd/sys/taskqueue.h>
+#include <sys/taskqueue.h>
 #include "e1000_raph.h"
-/*
+
 #include <sys/param.h>
-#include <sys/mbuf.h>
+/*#include <sys/mbuf.h>
 #include <sys/socket.h>
 #include <sys/sockio.h>
 

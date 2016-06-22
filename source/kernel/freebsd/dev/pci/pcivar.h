@@ -30,22 +30,17 @@
 #ifndef _PCIVAR_H_
 #define	_PCIVAR_H_
 
-#include <bus.h>
+#include <sys/types.h>
 
-static inline int pci_alloc_msi(device_t dev, int *count) {
-  int dcount = dev->GetPciClass()->GetMsiCount();
-  if (dcount == 0) {
-    return -1;
-  }
-  if (dcount < *count) {
-    *count = dcount;
-  }
-  dev->GetPciClass()->SetupMsi();
-  return 0;
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
+
+  int pci_alloc_msi(device_t dev, int *count);
+  int pci_alloc_msix(device_t dev, int *count);
+
+#ifdef __cplusplus
 }
-
-static inline int pci_alloc_msix(device_t dev, int *count) {
-  return -1;
-}
-
+#endif /* __cplusplus */
+  
 #endif /* _PCIVAR_H_ */

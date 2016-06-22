@@ -36,11 +36,11 @@
 #ifndef _FREEBSD_OS_H_
 #define _FREEBSD_OS_H_
 
-/* #include <sys/types.h> */
-/* #include <sys/param.h> */
-/* #include <sys/systm.h> */
-/* #include <sys/lock.h> */
-/* #include <sys/mutex.h> */
+#include <sys/types.h>
+#include <sys/param.h>
+#include <sys/systm.h>
+#include <sys/lock.h>
+#include <sys/mutex.h>
 /* #include <sys/mbuf.h> */
 /* #include <sys/protosw.h> */
 /* #include <sys/socket.h> */

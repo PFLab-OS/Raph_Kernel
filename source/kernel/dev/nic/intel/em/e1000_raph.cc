@@ -58,7 +58,3 @@ uint16_t pci_get_subdevice(device_t dev) {
     kassert(false);
   }
 }
-
-struct adapter *device_get_softc(device_t dev) {
-  return dev->adapter;
-}

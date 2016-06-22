@@ -36,10 +36,10 @@ extern "C" {
 
 
   void _task_init(struct task *t, int priority, task_fn_t *func, void *context) {
-    new(&(t->ta_task)) Task;
+    t->ta_task = new Task;
     Function f;
     f.Init(__taskqueue_handle, reinterpret_cast<void *>(t));
-    t->ta_task.SetFunc(f);
+    t->ta_task->SetFunc(f);
     t->ta_pending = 0;
     t->ta_func = (func);
     t->ta_context = (context);
@@ -47,7 +47,7 @@ extern "C" {
 
   int taskqueue_enqueue(struct taskqueue *queue, struct task *task) {
     // TODO cpuidの管理をどうするか
-    task_ctrl->Register(0, &task->ta_task);
+    task_ctrl->Register(0, task->ta_task);
     return 0;
   }
 

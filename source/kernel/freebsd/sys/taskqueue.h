@@ -30,6 +30,7 @@
 #define _FREEBSD_SYS_TASKQUEUE_H_
 
 #include <sys/_task.h>
+#include <sys/_callout.h>
 
 #ifdef __cplusplus
 extern "C" {

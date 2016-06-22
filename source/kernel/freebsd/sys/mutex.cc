@@ -20,30 +20,22 @@
  * 
  */
 
-#include <sys/types.h>
-#include <raph.h>
+#include <sys/lock.h>
+#include <sys/mutex.h>
+#include <spinlock.h>
 
-class BsdDevPci;
+void	_mtx_init(struct lock_object *l) {
+  l->lock = new SpinLock();
+}
 
-class BsdDevice {
- public:
-  template<class T>
-    void SetMasterClass(T *master) {
-    _master = reinterpret_cast<void *>(master);
-  }
-  template<class T>
-    T *GetMasterClass() {
-    return reinterpret_cast<T *>(_master);
-  }
-  void SetClass(BsdDevPci *pci) {
-    _pci = pci;
-  }
-  BsdDevPci *GetPciClass() {
-    kassert(_pci != nullptr);
-    return _pci;
-  }
-  struct adapter *adapter;
- private:
-  BsdDevPci *_pci = nullptr;
-  void *_master;
-};
+void	_mtx_destroy(struct lock_object *l) {
+  delete l->lock;
+}
+
+void __mtx_lock(struct lock_object *l) {
+  l->lock->Lock();
+}
+
+void __mtx_unlock(struct lock_object *l) {
+  l->lock->Unlock();
+}

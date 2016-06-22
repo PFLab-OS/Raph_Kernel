@@ -26,33 +26,30 @@
 
 #include <sys/bus.h>
 
-/* #include <sys/cdefs.h> */
+#include <sys/cdefs.h>
 /* __FBSDID("$FreeBSD$"); */
 
-/* #include <sys/param.h> */
+#include <sys/param.h>
 /* #include <sys/module.h> */
-/* #include <sys/systm.h> */
+#include <sys/systm.h>
 /* #include <sys/kernel.h> */
-/* #include <sys/bus.h> */
+#include <sys/bus.h>
 /* #include <sys/conf.h> */
 /* #include <sys/endian.h> */
 /* #include <sys/malloc.h> */
-/* #include <sys/lock.h> */
-/* #include <sys/mutex.h> */
+#include <sys/lock.h>
+#include <sys/mutex.h>
 /* #include <machine/stdarg.h> */
 /* #include <machine/resource.h> */
-/* #include <machine/bus.h> */
-/* #include <sys/rman.h> */
-/* #include "ahci.h" */
+#include <machine/bus.h>
+#include <sys/rman.h>
+#include "ahci.h"
 
 /* #include <cam/cam.h> */
 /* #include <cam/cam_ccb.h> */
 /* #include <cam/cam_sim.h> */
 /* #include <cam/cam_xpt_sim.h> */
 /* #include <cam/cam_debug.h> */
-
-#include <sys/param.h>
-#include "ahci.h"
 
 
 /* local prototypes */

@@ -45,44 +45,65 @@ extern "C" {
 #define	FILTER_HANDLED		0x02
 #define	FILTER_SCHEDULE_THREAD	0x04
 
-typedef enum {
-  BUS_SPACE_MEMIO,
-  BUS_SPACE_PIO
-};
 
-typedef uint64_t bus_space_handle_t;
+  /**
+   * @brief State of the device.
+   */
+  typedef enum device_state {
+    DS_NOTPRESENT = 10,		/**< @brief not probed or probe failed */
+    DS_ALIVE = 20,			/**< @brief probe succeeded */
+    DS_ATTACHING = 25,		/**< @brief currently attaching */
+    DS_ATTACHED = 30,		/**< @brief attach method called */
+    DS_BUSY = 40			/**< @brief device is open */
+  } device_state_t;
 
-typedef int (*driver_filter_t)(void*);
-typedef void (*driver_intr_t)(void*);
+  enum {
+    BUS_SPACE_MEMIO,
+    BUS_SPACE_PIO
+  };
 
-enum intr_type {
-	INTR_TYPE_TTY = 1,
-	INTR_TYPE_BIO = 2,
-	INTR_TYPE_NET = 4,
-	INTR_TYPE_CAM = 8,
-	INTR_TYPE_MISC = 16,
-	INTR_TYPE_CLK = 32,
-	INTR_TYPE_AV = 64,
-	INTR_EXCL = 256,		/* exclusive interrupt */
-	INTR_MPSAFE = 512,		/* this interrupt is SMP safe */
-	INTR_ENTROPY = 1024,		/* this interrupt provides entropy */
-	INTR_MD1 = 4096,		/* flag reserved for MD use */
-	INTR_MD2 = 8192,		/* flag reserved for MD use */
-	INTR_MD3 = 16384,		/* flag reserved for MD use */
-	INTR_MD4 = 32768		/* flag reserved for MD use */
-};
+  typedef uint64_t bus_space_handle_t;
 
-enum intr_trigger {
-	INTR_TRIGGER_CONFORM = 0,
-	INTR_TRIGGER_EDGE = 1,
-	INTR_TRIGGER_LEVEL = 2
-};
+  typedef int (*driver_filter_t)(void*);
+  typedef void (*driver_intr_t)(void*);
 
-enum intr_polarity {
-	INTR_POLARITY_CONFORM = 0,
-	INTR_POLARITY_HIGH = 1,
-	INTR_POLARITY_LOW = 2
-};
+  enum intr_type {
+    INTR_TYPE_TTY = 1,
+    INTR_TYPE_BIO = 2,
+    INTR_TYPE_NET = 4,
+    INTR_TYPE_CAM = 8,
+    INTR_TYPE_MISC = 16,
+    INTR_TYPE_CLK = 32,
+    INTR_TYPE_AV = 64,
+    INTR_EXCL = 256,		/* exclusive interrupt */
+    INTR_MPSAFE = 512,		/* this interrupt is SMP safe */
+    INTR_ENTROPY = 1024,		/* this interrupt provides entropy */
+    INTR_MD1 = 4096,		/* flag reserved for MD use */
+    INTR_MD2 = 8192,		/* flag reserved for MD use */
+    INTR_MD3 = 16384,		/* flag reserved for MD use */
+    INTR_MD4 = 32768		/* flag reserved for MD use */
+  };
+
+  enum intr_trigger {
+    INTR_TRIGGER_CONFORM = 0,
+    INTR_TRIGGER_EDGE = 1,
+    INTR_TRIGGER_LEVEL = 2
+  };
+
+  enum intr_polarity {
+    INTR_POLARITY_CONFORM = 0,
+    INTR_POLARITY_HIGH = 1,
+    INTR_POLARITY_LOW = 2
+  };
+
+  struct devclass {
+  };
+  typedef struct devclass		*devclass_t;
+
+  struct kobj_class {
+  };
+  typedef struct kobj_class	driver_t;
+
 
   uint8_t bus_space_read_1(bus_space_tag_t space, bus_space_handle_t handle, bus_size_t offset);
   uint16_t bus_space_read_2(bus_space_tag_t space, bus_space_handle_t handle, bus_size_t offset);
@@ -97,6 +118,63 @@ enum intr_polarity {
   int device_printf(device_t dev, const char *fmt, ...) __attribute__ ((format (printf, 2, 3)));;
 
   bus_dma_tag_t bus_get_dma_tag(device_t dev);
+
+  /*
+   * Access functions for device.
+   */
+  device_t	device_add_child(device_t dev, const char *name, int unit);
+  device_t	device_add_child_ordered(device_t dev, u_int order,
+                                     const char *name, int unit);
+  void	device_busy(device_t dev);
+  int	device_delete_child(device_t dev, device_t child);
+  int	device_delete_children(device_t dev);
+  int	device_attach(device_t dev);
+  int	device_detach(device_t dev);
+  void	device_disable(device_t dev);
+  void	device_enable(device_t dev);
+  device_t	device_find_child(device_t dev, const char *classname,
+                              int unit);
+  const char	*device_get_desc(device_t dev);
+  devclass_t	device_get_devclass(device_t dev);
+  driver_t	*device_get_driver(device_t dev);
+  u_int32_t	device_get_flags(device_t dev);
+  device_t	device_get_parent(device_t dev);
+  int	device_get_children(device_t dev, device_t **listp, int *countp);
+  void	*device_get_ivars(device_t dev);
+  void	device_set_ivars(device_t dev, void *ivars);
+  const	char *device_get_name(device_t dev);
+  const	char *device_get_nameunit(device_t dev);
+  void	*device_get_softc(device_t dev);
+  device_state_t	device_get_state(device_t dev);
+  int	device_get_unit(device_t dev);
+  struct sysctl_ctx_list *device_get_sysctl_ctx(device_t dev);
+  struct sysctl_oid *device_get_sysctl_tree(device_t dev);
+  int	device_is_alive(device_t dev);	/* did probe succeed? */
+  int	device_is_attached(device_t dev);	/* did attach succeed? */
+  int	device_is_enabled(device_t dev);
+  int	device_is_suspended(device_t dev);
+  int	device_is_quiet(device_t dev);
+  device_t device_lookup_by_name(const char *name);
+  int	device_print_prettyname(device_t dev);
+  int	device_printf(device_t dev, const char *, ...) __printflike(2, 3);
+  int	device_probe(device_t dev);
+  int	device_probe_and_attach(device_t dev);
+  int	device_probe_child(device_t bus, device_t dev);
+  int	device_quiesce(device_t dev);
+  void	device_quiet(device_t dev);
+  void	device_set_desc(device_t dev, const char* desc);
+  void	device_set_desc_copy(device_t dev, const char* desc);
+  int	device_set_devclass(device_t dev, const char *classname);
+  int	device_set_devclass_fixed(device_t dev, const char *classname);
+  int	device_set_driver(device_t dev, driver_t *driver);
+  void	device_set_flags(device_t dev, u_int32_t flags);
+  void	device_set_softc(device_t dev, void *softc);
+  void	device_free_softc(void *softc);
+  void	device_claim_softc(device_t dev);
+  int	device_set_unit(device_t dev, int unit);	/* XXX DONT USE XXX */
+  int	device_shutdown(device_t dev);
+  void	device_unbusy(device_t dev);
+  void	device_verbose(device_t dev);
 
 #ifdef __cplusplus
 }

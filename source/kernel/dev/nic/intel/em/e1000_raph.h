@@ -119,9 +119,6 @@ static inline int pci_find_cap(device_t dev, int capability, int *capreg)
   }
 }
 
-static inline void device_set_desc_copy(device_t dev, const char* desc) {
-}
-
 uint16_t pci_get_vendor(device_t dev);
 uint16_t pci_get_device(device_t dev);
 uint16_t pci_get_subvendor(device_t dev);
@@ -173,64 +170,10 @@ struct sysctl_oid {
 
 #define SYSCTL_ADD_PROC(...)
 
-#define hz 1000
-#define reciprocal_of_hz 1000  /* 1000000 / hz */
-
-typedef void timeout_t (void *);
-
-struct callout {
-  LckCallout callout;
-};
-
-struct mtx {
-  SpinLock lock;
-};
-
-static inline void callout_init_mtx(struct callout *c, struct mtx *mutex, int flags) {
-  new(&c->callout) LckCallout;
-  c->callout.SetLock(&mutex->lock);
-}
-
-static inline int callout_stop(struct callout *c) {
-  bool flag = c->callout.CanExecute();
-  c->callout.Cancel();
-  return flag ? 1 : 0;
-}
-
-static inline int callout_drain(struct callout *c) {
-  int r = callout_stop(c);
-  while(true) {
-    volatile bool flag = c->callout.IsHandling();
-    if (!flag) {
-      break;
-    }
-  }
-  return r;
-}
-
-static inline void callout_reset(struct callout *c, int ticks, timeout_t *func, void *arg) {
-  c->callout.Cancel();
-  if (ticks < 0) {
-    ticks = 1;
-  }
-  Function f;
-  f.Init(func, arg);
-  c->callout.Init(f);
-  //TODO cpuid
-  c->callout.SetHandler(1, static_cast<uint32_t>(ticks) * reciprocal_of_hz);
-}
-
 #define EVENTHANDLER_REGISTER(...)
 #define EVENTHANDLER_DEREGISTER(...)
 
-struct adapter *device_get_softc(device_t dev);
-
 #define bootverbose 0
-
-// replacement of ticks
-static inline int get_ticks() {
-  return timer->GetUsecFromCnt(timer->ReadMainCnt()) / reciprocal_of_hz;
-}
 
 #define KASSERT(cmp, comment) kassert(cmp)
 

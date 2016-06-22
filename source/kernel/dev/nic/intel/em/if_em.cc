@@ -31,66 +31,66 @@
 
 ******************************************************************************/
 /*$FreeBSD$*/
-/*
-#ifndef EM_STANDALONE_BUILD
-#include "opt_em.h"
-#include "opt_ddb.h"
-#include "opt_inet.h"
-#include "opt_inet6.h"
-#endif
 
-#ifdef HAVE_KERNEL_OPTION_HEADERS
-#include "opt_device_polling.h"
-#endif
+// #ifndef EM_STANDALONE_BUILD
+// #include "opt_em.h"
+// #include "opt_ddb.h"
+// #include "opt_inet.h"
+// #include "opt_inet6.h"
+// #endif
+
+// #ifdef HAVE_KERNEL_OPTION_HEADERS
+// #include "opt_device_polling.h"
+// #endif
 
 #include <sys/param.h>
-#include <sys/systm.h>
-#ifdef DDB
-#include <sys/types.h>
-#include <ddb/ddb.h>
-#endif
-#include <sys/buf_ring.h>
+// #include <sys/systm.h>
+// #ifdef DDB
+// #include <sys/types.h>
+// #include <ddb/ddb.h>
+// #endif
+// #include <sys/buf_ring.h>
 #include <sys/bus.h>
-#include <sys/endian.h>
+// #include <sys/endian.h>
 #include <sys/kernel.h>
-#include <sys/kthread.h>
-#include <sys/malloc.h>
-#include <sys/mbuf.h>
-#include <sys/module.h>
+// #include <sys/kthread.h>
+// #include <sys/malloc.h>
+// #include <sys/mbuf.h>
+// #include <sys/module.h>
 #include <sys/rman.h>
-#include <sys/smp.h>
-#include <sys/socket.h>
-#include <sys/sockio.h>
-#include <sys/sysctl.h>
+// #include <sys/smp.h>
+// #include <sys/socket.h>
+// #include <sys/sockio.h>
+// #include <sys/sysctl.h>
 #include <sys/taskqueue.h>
 #include <sys/eventhandler.h>
 #include <machine/bus.h>
-#include <machine/resource.h>
+// #include <machine/resource.h>
 
-#include <net/bpf.h>
-#include <net/ethernet.h>
-#include <net/if.h>
-#include <net/if_var.h>
-#include <net/if_arp.h>
-#include <net/if_dl.h>
-#include <net/if_media.h>
+// #include <net/bpf.h>
+// #include <net/ethernet.h>
+// #include <net/if.h>
+// #include <net/if_var.h>
+// #include <net/if_arp.h>
+// #include <net/if_dl.h>
+// #include <net/if_media.h>
 
-#include <net/if_types.h>
-#include <net/if_vlan_var.h>
+// #include <net/if_types.h>
+// #include <net/if_vlan_var.h>
 
-#include <netinet/in_systm.h>
-#include <netinet/in.h>
-#include <netinet/if_ether.h>
-#include <netinet/ip.h>
-#include <netinet/ip6.h>
-#include <netinet/tcp.h>
-#include <netinet/udp.h>
+// #include <netinet/in_systm.h>
+// #include <netinet/in.h>
+// #include <netinet/if_ether.h>
+// #include <netinet/ip.h>
+// #include <netinet/ip6.h>
+// #include <netinet/tcp.h>
+// #include <netinet/udp.h>
 
-#include <machine/in_cksum.h>
-#include <dev/led/led.h>
+// #include <machine/in_cksum.h>
+// #include <dev/led/led.h>
 #include <dev/pci/pcivar.h>
 #include <dev/pci/pcireg.h>
-*/
+
 #include <stdint.h>
 #include <string.h>
 #include <mem/paging.h>
@@ -522,7 +522,7 @@ em_attach(device_t dev)
 	// 	return (ENXIO);
 	// }
 
-	adapter = device_get_softc(dev);
+	adapter = reinterpret_cast<struct adapter *>(device_get_softc(dev));
 	adapter->dev = adapter->osdep.dev = dev;
 	hw = &adapter->hw;
 	EM_CORE_LOCK_INIT(adapter, device_get_nameunit(dev));
@@ -5269,7 +5269,7 @@ em_is_valid_ether_addr(u8 *addr)
 static void
 em_get_wakeup(device_t dev)
 {
-	struct adapter	*adapter = device_get_softc(dev);
+	struct adapter	*adapter = reinterpret_cast<struct adapter *>(device_get_softc(dev));
 	u16		eeprom_data = 0, device_id, apme_mask;
 
 	adapter->has_manage = e1000_enable_mng_pass_thru(&adapter->hw);
@@ -6243,7 +6243,7 @@ DB_COMMAND(em_reset_dev, em_ddb_reset_dev)
 		device_t dev;
 		dev = devclass_get_device(dc, index);
 		if (device_get_driver(dev) == &em_driver) {
-			struct adapter *adapter = device_get_softc(dev);
+			struct adapter *adapter = reinterpret_cast<struct adapter *>(device_get_softc(dev));
 			em_init_locked(adapter);
 		}
 	}
@@ -6260,7 +6260,7 @@ DB_COMMAND(em_dump_queue, em_ddb_dump_queue)
 		device_t dev;
 		dev = devclass_get_device(dc, index);
 		if (device_get_driver(dev) == &em_driver)
-			em_print_debug_info(device_get_softc(dev));
+			em_print_debug_info(reinterpret_cast<struct adapter *>(device_get_softc(dev)));
 	}
 
 }

@@ -1,6 +1,6 @@
 /*-
- * Copyright (c) 2000 Doug Rabson
- * All rights reserved.
+ * Copyright (c) 1991, 1993
+ *	The Regents of the University of California.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -10,11 +10,14 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
+ * 4. Neither the name of the University nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+ * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -23,24 +26,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
+ *	@(#)queue.h	8.5 (Berkeley) 8/20/94
  * $FreeBSD$
  */
 
-#ifndef _FREEBSD_SYS__TASK_H_
-#define _FREEBSD_SYS__TASK_H_
+#ifndef _SYS_QUEUE_H_
+#define	_SYS_QUEUE_H_
 
-#include <sys/types.h>
+#include <sys/cdefs.h>
 
-typedef void task_fn_t(void *context, int pending);
-
-class Task;
-
-struct task {
-  u_short	ta_pending;		/* (q) count times queued */
-  task_fn_t *ta_func;		/* (c) task handler */
-  void	*ta_context;		/* (c) argument for handler */
-  Task *ta_task;
-};
-
-
-#endif /* _FREEBSD_SYS__TASK_H_ */
+#endif /* !_SYS_QUEUE_H_ */

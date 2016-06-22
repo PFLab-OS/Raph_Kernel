@@ -162,4 +162,11 @@ extern "C" {
     return 0;  // TODO fix this
   }
 
+  void device_set_desc_copy(device_t dev, const char* desc) {
+  }
+
+  void *device_get_softc(device_t dev) {
+    return dev->adapter;
+  }
+
 }

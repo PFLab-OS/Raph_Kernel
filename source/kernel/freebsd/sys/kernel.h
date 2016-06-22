@@ -1,5 +1,8 @@
 /*-
- * Copyright (c) 1982, 1986, 1991, 1993, 1994
+ * Copyright (c) 1995 Terrence R. Lambert
+ * All rights reserved.
+ *
+ * Copyright (c) 1990, 1993
  *	The Regents of the University of California.  All rights reserved.
  * (c) UNIX System Laboratories, Inc.
  * All or some portions of this file are derived from material licensed
@@ -15,6 +18,10 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
+ * 3. All advertising materials mentioning features or use of this software
+ *    must display the following acknowledgement:
+ *	This product includes software developed by the University of
+ *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -31,46 +38,25 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	@(#)types.h	8.6 (Berkeley) 2/19/95
+ *	@(#)kernel.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD$
  */
 
-#ifndef _FREEBSD_SYS_TYPES_H_
-#define _FREEBSD_SYS_TYPES_H_
+#ifndef _SYS_KERNEL_H_
+#define	_SYS_KERNEL_H_
 
-#include <sys/cdefs.h>
-#include <sys/_types.h>
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
 
-#if __BSD_VISIBLE
-typedef	unsigned char	u_char;
-typedef	unsigned short	u_short;
-typedef	unsigned int	u_int;
-typedef	unsigned long	u_long;
-#ifndef _KERNEL
-typedef	unsigned short	ushort;		/* Sys V compatibility */
-typedef	unsigned int	uint;		/* Sys V compatibility */
-#endif
-#endif
+#define hz 1000
+#define reciprocal_of_hz 1000  /* 1000000 / hz */
 
-/*
- * XXX POSIX sized integrals that should appear only in <sys/stdint.h>.
- */
-#include <sys/_stdint.h>
+  // replacement of ticks
+  int get_ticks();
 
-typedef __uint8_t       u_int8_t;       /* unsigned integrals (deprecated) */
-typedef __uint16_t      u_int16_t;
-typedef __uint32_t      u_int32_t;
-typedef __uint64_t      u_int64_t;
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
 
-typedef	__int64_t	sbintime_t;
-
-typedef	__vm_offset_t	vm_offset_t;
-// typedef	__vm_ooffset_t	vm_ooffset_t;
-typedef	__vm_paddr_t	vm_paddr_t;
-// typedef	__vm_pindex_t	vm_pindex_t;
-typedef	__vm_size_t	vm_size_t;
-
-struct BsdDevice;
-typedef struct BsdDevice *device_t;
-
-#endif /* _FREEBSD_SYS_TYPES_H_ */
+#endif /* !_SYS_KERNEL_H_*/

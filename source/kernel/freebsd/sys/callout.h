@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 1982, 1986, 1991, 1993, 1994
+ * Copyright (c) 1990, 1993
  *	The Regents of the University of California.  All rights reserved.
  * (c) UNIX System Laboratories, Inc.
  * All or some portions of this file are derived from material licensed
@@ -31,46 +31,31 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	@(#)types.h	8.6 (Berkeley) 2/19/95
+ *	@(#)callout.h	8.2 (Berkeley) 1/21/94
  * $FreeBSD$
  */
 
-#ifndef _FREEBSD_SYS_TYPES_H_
-#define _FREEBSD_SYS_TYPES_H_
+#ifndef _SYS_CALLOUT_H_
+#define _SYS_CALLOUT_H_
 
-#include <sys/cdefs.h>
-#include <sys/_types.h>
+#include <sys/_callout.h>
 
-#if __BSD_VISIBLE
-typedef	unsigned char	u_char;
-typedef	unsigned short	u_short;
-typedef	unsigned int	u_int;
-typedef	unsigned long	u_long;
-#ifndef _KERNEL
-typedef	unsigned short	ushort;		/* Sys V compatibility */
-typedef	unsigned int	uint;		/* Sys V compatibility */
+#ifdef _KERNEL
+
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
+
+  struct mtx;
+  void callout_init_mtx(struct callout *c, struct mtx *mutex, int flags);
+  int callout_stop(struct callout *c);
+  int callout_drain(struct callout *c);
+  void callout_reset(struct callout *c, int ticks, void func(void *), void *arg);
+  
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
+
 #endif
-#endif
 
-/*
- * XXX POSIX sized integrals that should appear only in <sys/stdint.h>.
- */
-#include <sys/_stdint.h>
-
-typedef __uint8_t       u_int8_t;       /* unsigned integrals (deprecated) */
-typedef __uint16_t      u_int16_t;
-typedef __uint32_t      u_int32_t;
-typedef __uint64_t      u_int64_t;
-
-typedef	__int64_t	sbintime_t;
-
-typedef	__vm_offset_t	vm_offset_t;
-// typedef	__vm_ooffset_t	vm_ooffset_t;
-typedef	__vm_paddr_t	vm_paddr_t;
-// typedef	__vm_pindex_t	vm_pindex_t;
-typedef	__vm_size_t	vm_size_t;
-
-struct BsdDevice;
-typedef struct BsdDevice *device_t;
-
-#endif /* _FREEBSD_SYS_TYPES_H_ */
+#endif /* _SYS_CALLOUT_H_ */

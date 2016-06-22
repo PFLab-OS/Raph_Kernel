@@ -52,22 +52,22 @@
 // #include "opt_device_polling.h"
 // #endif
 
-// #include <sys/param.h>
-// #include <sys/systm.h>
-// #include <sys/bus.h>
+#include <sys/param.h>
+#include <sys/systm.h>
+#include <sys/bus.h>
 // #include <sys/endian.h>
-// #include <sys/kernel.h>
+#include <sys/kernel.h>
 // #include <sys/kthread.h>
 // #include <sys/malloc.h>
 // #include <sys/mbuf.h>
 // #include <sys/module.h>
-// #include <sys/rman.h>
+#include <sys/rman.h>
 // #include <sys/socket.h>
 // #include <sys/sockio.h>
 // #include <sys/sysctl.h>
-// #include <sys/taskqueue.h>
-// #include <sys/eventhandler.h>
-// #include <machine/bus.h>
+#include <sys/taskqueue.h>
+#include <sys/eventhandler.h>
+#include <machine/bus.h>
 // #include <machine/resource.h>
 
 // #include <net/bpf.h>
@@ -105,9 +105,8 @@
 #include "e1000_raph.h"
 #include "e1000_osdep.h"
 #include "e1000_api.h"
+#include "e1000_hw.h"
 #include "if_lem.h"
-
-#include <freebsd/sys/rman.h>
 
 /*********************************************************************
  *  Legacy Em Driver version:
@@ -428,7 +427,7 @@ lem_attach(device_t dev)
 
 	INIT_DEBUGOUT("lem_attach: begin");
 
-	adapter = device_get_softc(dev);
+	adapter = reinterpret_cast<struct adapter *>(device_get_softc(dev));
 	adapter->dev = adapter->osdep.dev = dev;
 	EM_CORE_LOCK_INIT(adapter, device_get_nameunit(dev));
 	EM_TX_LOCK_INIT(adapter, device_get_nameunit(dev));
@@ -4210,7 +4209,7 @@ lem_is_valid_ether_addr(u8 *addr)
 static void
 lem_get_wakeup(device_t dev)
 {
-	struct adapter	*adapter = device_get_softc(dev);
+	struct adapter	*adapter = reinterpret_cast<struct adapter *>(device_get_softc(dev));
 	u16		eeprom_data = 0, device_id, apme_mask;
 
 	adapter->has_manage = e1000_enable_mng_pass_thru(&adapter->hw);
@@ -4995,11 +4994,6 @@ lem_get_counter(if_t ifp, ift_counter cnt)
  * Author: Liva
  * 
  */
-
-#include "lem.h"
-#include "e1000_raph.h"
-#include "e1000_hw.h"
-#include "if_lem.h"
 
 int	lem_probe(device_t);
 int	lem_attach(device_t);
