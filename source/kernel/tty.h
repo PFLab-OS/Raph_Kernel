@@ -31,7 +31,6 @@
 #include <queue.h>
 #include <task.h>
 #include <global.h>
-#include <apic.h>
 
 class Tty {
  public:
@@ -342,7 +341,8 @@ class Tty {
   } 
   void PrintString(String *str);
   void DoString(String *str) {
-    if (apic_ctrl->IsBootupAll()) {
+    // TODO cpuid
+    if (task_ctrl->GetState(1) == TaskCtrl::TaskQueueState::kNotStarted) {
       _queue.Push(str);
     } else {
       Locker locker(_lock);
