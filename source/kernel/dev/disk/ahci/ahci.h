@@ -477,6 +477,17 @@ struct ahci_enclosure {
 	int			ichannels;
 };
 
+struct ahci_controller_irq {
+  struct ahci_controller	*ctlr;
+  struct resource		*r_irq;
+  void			*handle;
+  int			r_irq_rid;
+  int			mode;
+#define	AHCI_IRQ_MODE_ALL	0
+#define	AHCI_IRQ_MODE_AFTER	1
+#define	AHCI_IRQ_MODE_ONE	2
+};
+
 /* structure describing a AHCI controller */
 struct ahci_controller {
 	device_t		dev;
@@ -492,16 +503,7 @@ struct ahci_controller {
 	struct resource		*r_msix_table;
 	struct resource		*r_msix_pba;
 	struct rman		sc_iomem;
-	struct ahci_controller_irq {
-		struct ahci_controller	*ctlr;
-		struct resource		*r_irq;
-		void			*handle;
-		int			r_irq_rid;
-		int			mode;
-#define	AHCI_IRQ_MODE_ALL	0
-#define	AHCI_IRQ_MODE_AFTER	1
-#define	AHCI_IRQ_MODE_ONE	2
-	} irqs[AHCI_MAX_IRQS];
+  struct ahci_controller_irq irqs[AHCI_MAX_IRQS];
 	uint32_t		caps;		/* Controller capabilities */
 	uint32_t		caps2;		/* Controller capabilities */
 	uint32_t		capsem;		/* Controller capabilities */

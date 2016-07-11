@@ -97,6 +97,7 @@
 #ifndef _X86_BUS_H_
 #define _X86_BUS_H_
 
+#include <machine/_bus.h>
 
 #ifndef __GNUCLIKE_ASM
 # ifndef lint
@@ -123,5 +124,7 @@
 
 #define BUS_SPACE_INVALID_DATA	(~0)
 #define BUS_SPACE_UNRESTRICTED	(~0)
+
+#include <machine/bus_dma.h>
 
 #endif /* _X86_BUS_H_ */

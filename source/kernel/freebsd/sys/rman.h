@@ -32,7 +32,12 @@
 #ifndef _FREEBSD_SYS_RMAN_H_
 #define	_FREEBSD_SYS_RMAN_H_	1
 
-#include <sys/bus.h>
+#ifndef _KERNEL
+#include <sys/queue.h>
+#else
+#include <machine/_bus.h>
+#include <machine/resource.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -47,6 +52,8 @@ extern "C" {
 #define	RF_PREFETCHABLE	0x0040	/* resource is prefetchable */
 #define	RF_OPTIONAL	0x0080	/* for bus_alloc_resources() */
 
+  struct rman {
+  };
   bus_space_tag_t rman_get_bustag(struct resource *r);
   bus_space_handle_t rman_get_bushandle(struct resource *r);
 

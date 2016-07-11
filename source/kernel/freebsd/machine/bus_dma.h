@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2002 Mike Barcroft <mike@FreeBSD.org>
+ * Copyright (c) 2005 Scott Long
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,11 +26,9 @@
  * $FreeBSD$
  */
 
-#ifndef _SYS__TYPES_H_
-#define _SYS__TYPES_H_
+#ifndef _AMD64_BUS_DMA_H_
+#define _AMD64_BUS_DMA_H_
 
-#include <machine/_types.h>
+#include <sys/bus_dma.h>
 
-typedef __uintmax_t     __rman_res_t;
-
-#endif /* !_SYS__TYPES_H_ */
+#endif /* _AMD64_BUS_DMA_H_ */

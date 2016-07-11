@@ -40,6 +40,8 @@
 
 #include <sys/callout.h>
 
+#include <sys/libkern.h>
+
 /* Timeouts */
 typedef void timeout_t(void *);	/* timeout function type */
 

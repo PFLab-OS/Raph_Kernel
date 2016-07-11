@@ -1,7 +1,7 @@
 KERNEL = kernel.elf
 
 NET_OBJS = net/eth.o net/arp.o net/ip.o net/tcp.o net/udp.o net/socket.o net/netctrl.o net/ptcl.o
-OBJS = boot/boot.o boot/bootap.o main.o apic.o raph_acpi.o gdt.o idt.o int.o tty.o queue.o freebsd.o dev.o acpica.o mem/kvirtmem.o shell.o mem/tmpmem.o mem/paging.o mem/physmem.o mem/dlmalloc.o $(NET_OBJS) ../Raph_Library/lib.o
+OBJS = boot/boot.o boot/bootap.o main.o apic.o raph_acpi.o gdt.o idt.o int.o freebsd.o dev.o acpica.o mem/kvirtmem.o shell.o mem/paging.o mem/physmem.o mem/dlmalloc.o $(NET_OBJS) ../Raph_Library/lib.o
 TEST_OBJS = test_main.o mem/kvirtmem.o dev/raw.o dev/netdev.o net/test.o $(NET_OBJS) ../Raph_Library/lib.o
 
 BUILD = ../../build/
@@ -10,7 +10,7 @@ DEPS= $(filter %.d, $(subst .o,.d, $(OBJS) $(TEST_OBJS)))
 TEST = ./unit_test
 
 INCLUDE_PATH = -I$(realpath ../Raph_Library/libc/) -I$(realpath ../Raph_Library/rlib/) -I$(realpath ./)  -I$(realpath ./freebsd/) -I$(realpath ./acpica/include/)
-RAPHFLAGS = -Wall -Wshadow -nostdinc -nostdlib -fno-builtin -mcmodel=large -D__KERNEL__ -D_KERNEL $(INCLUDE_PATH) -MMD -MP
+RAPHFLAGS = -Wall -Wshadow -nostdinc -nostdlib -fno-builtin -mcmodel=large -D__KERNEL__ -D_KERNEL -Dbootverbose=0 $(INCLUDE_PATH) -MMD -MP
 RAPHCFLAGS = $(RAPHFLAGS) -std=c99
 RAPHCXXFLAGS = $(RAPHFLAGS) -std=c++1y -fno-exceptions -fno-rtti -fno-use-cxa-atexit -fno-threadsafe-statics
 CFLAGS += $(RAPHCFLAGS)

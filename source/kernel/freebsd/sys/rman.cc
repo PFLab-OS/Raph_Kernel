@@ -22,6 +22,7 @@
 
 #include <sys/rman.h>
 #include <sys/bus-raph.h>
+#include <sys/rman-raph.h>
 
 bus_space_tag_t rman_get_bustag(struct resource *r) {
   return r->type;

@@ -28,7 +28,6 @@
 #include <multiboot.h>
 #include <mem/physmem.h>
 #include <mem/paging.h>
-#include <mem/tmpmem.h>
 #include <mem/virtmem.h>
 #include <raph_acpi.h>
 #include <task.h>
@@ -50,7 +49,6 @@ ApicCtrl *apic_ctrl;
 MultibootCtrl *multiboot_ctrl;
 PagingCtrl *paging_ctrl;
 PhysmemCtrl *physmem_ctrl;
-TmpmemCtrl *tmpmem_ctrl;
 VirtmemCtrl *virtmem_ctrl;
 
 Gdt *gdt;
@@ -128,9 +126,6 @@ extern "C" int main() {
   KVirtmemCtrl _virtmem_ctrl;
   virtmem_ctrl = &_virtmem_ctrl;
 
-  TmpmemCtrl _tmpmem_ctrl;
-  tmpmem_ctrl = &_tmpmem_ctrl;
-  
   PhysmemCtrl _physmem_ctrl;
   physmem_ctrl = &_physmem_ctrl;
   
@@ -151,8 +146,6 @@ extern "C" int main() {
 
   Shell _shell;
   shell = &_shell;
-
-  tmpmem_ctrl->Init();
 
   PhysAddr paddr;
   physmem_ctrl->Alloc(paddr, PagingCtrl::kPageSize * 2);

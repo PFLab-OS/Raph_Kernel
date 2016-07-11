@@ -20,36 +20,23 @@
  * 
  */
 
-#include <queue.h>
-#include <global.h>
-#include <mem/tmpmem.h>
-#include <raph.h>
+#include <sys/rman.h>
+#include <sys/bus-raph.h>
 
-void Queue::Push(void *data) {
-  Container *c = reinterpret_cast<Container *>(tmpmem_ctrl->Alloc(sizeof(Container)));
-  c->data = data;
-  c->next = nullptr;
-  Locker locker(_lock);
-  kassert(_last->next == nullptr);
-  _last->next = c;
-  _last = c;
-}
+#ifndef _FREEBSD_RMAN_RAPH_H_
+#define _FREEBSD_RMAN_RAPH_H_
 
-bool Queue::Pop(void *&data) {
-  Container *c;
-  {
-    Locker locker(_lock);
-    if (IsEmpty()) {
-      return false;
-    }
-    c = _first.next;
-    kassert(c != nullptr);
-    _first.next = c->next;
-    if (_last == c) {
-      _last = &_first;
-    }
-  }
-  data = c->data;
-  tmpmem_ctrl->Free(reinterpret_cast<virt_addr>(c));
-  return true;
-}
+struct resource {
+  phys_addr addr;
+  bus_space_tag_t type;
+  union {
+    struct {
+      bool is_prefetchable;
+    } mem;
+  } data;
+  idt_callback gate;
+  BsdDevPci::IntContainer *icontainer = NULL;
+};
+
+#endif // _FREEBSD_RMAN_RAPH_H_
+

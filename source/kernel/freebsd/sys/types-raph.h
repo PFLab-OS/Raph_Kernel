@@ -22,6 +22,7 @@
 
 #include <sys/types.h>
 #include <raph.h>
+#include <list.h>
 
 class BsdDevPci;
 
@@ -42,8 +43,17 @@ class BsdDevice {
     kassert(_pci != nullptr);
     return _pci;
   }
+  void AddChild(const char *name, int unit) {
+    BsdDevice *child = _children.PushBack()->GetObject();
+    child->name = name;
+    child->unit = unit;
+  }
   struct adapter *adapter;
+  void *ivar;
+  int unit = 0;
+  const char *name;
  private:
   BsdDevPci *_pci = nullptr;
   void *_master;
+  ObjectList<BsdDevice> _children;
 };

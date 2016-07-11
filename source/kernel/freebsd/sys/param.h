@@ -42,6 +42,22 @@
 #include <sys/types.h>
 #endif
 
+#ifdef _KERNEL
+#include <sys/cdefs.h>
+#include <sys/errno.h>
+#ifndef LOCORE
+// #include <sys/time.h>
+// #include <sys/priority.h>
+#endif
+
+#ifndef FALSE
+#define FALSE   0
+#endif
+#ifndef TRUE
+#define TRUE    1
+#endif
+#endif
+
 #define nitems(x) (sizeof((x)) / sizeof((x)[0]))
 #define rounddown(x, y) (((x)/(y))*(y))
 #define rounddown2(x, y) ((x)&(~((y)-1)))          /* if y is power of two */

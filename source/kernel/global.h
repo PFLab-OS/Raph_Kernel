@@ -32,7 +32,6 @@ class MultibootCtrl;
 class PagingCtrl;
 class PhysmemCtrl;
 class VirtmemCtrl;
-class TmpmemCtrl;
 class Gdt;
 class Idt;
 
@@ -56,7 +55,6 @@ extern MultibootCtrl *multiboot_ctrl;
 extern PagingCtrl *paging_ctrl;
 extern PhysmemCtrl *physmem_ctrl;
 extern VirtmemCtrl *virtmem_ctrl;
-extern TmpmemCtrl *tmpmem_ctrl;
 extern Gdt *gdt;
 extern Idt *idt;
 

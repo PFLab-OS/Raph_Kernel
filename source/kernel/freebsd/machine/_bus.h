@@ -31,6 +31,8 @@
 #ifndef AMD64_INCLUDE__BUS_H
 #define AMD64_INCLUDE__BUS_H
 
+#include <stdint.h>
+
 /*
  * Bus address and size types
  */

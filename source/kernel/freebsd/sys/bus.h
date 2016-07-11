@@ -32,9 +32,10 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <sys/types.h>
+#include <machine/resource.h>
+// #include <machine/_limits.h>
 #include <machine/_bus.h>
 #include <sys/_bus_dma.h>
-#include <machine/resource.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -175,7 +176,82 @@ extern "C" {
   int	device_shutdown(device_t dev);
   void	device_unbusy(device_t dev);
   void	device_verbose(device_t dev);
+  
+  /*
+ * Access functions for device resources.
+ */
 
+int	resource_int_value(const char *name, int unit, const char *resname,
+			   int *result);
+
+  /**
+ * Some convenience defines for probe routines to return.  These are just
+ * suggested values, and there's nothing magical about them.
+ * BUS_PROBE_SPECIFIC is for devices that cannot be reprobed, and that no
+ * possible other driver may exist (typically legacy drivers who don't fallow
+ * all the rules, or special needs drivers).  BUS_PROBE_VENDOR is the
+ * suggested value that vendor supplied drivers use.  This is for source or
+ * binary drivers that are not yet integrated into the FreeBSD tree.  Its use
+ * in the base OS is prohibited.  BUS_PROBE_DEFAULT is the normal return value
+ * for drivers to use.  It is intended that nearly all of the drivers in the
+ * tree should return this value.  BUS_PROBE_LOW_PRIORITY are for drivers that
+ * have special requirements like when there are two drivers that support
+ * overlapping series of hardware devices.  In this case the one that supports
+ * the older part of the line would return this value, while the one that
+ * supports the newer ones would return BUS_PROBE_DEFAULT.  BUS_PROBE_GENERIC
+ * is for drivers that wish to have a generic form and a specialized form,
+ * like is done with the pci bus and the acpi pci bus.  BUS_PROBE_HOOVER is
+ * for those busses that implement a generic device place-holder for devices on
+ * the bus that have no more specific driver for them (aka ugen).
+ * BUS_PROBE_NOWILDCARD or lower means that the device isn't really bidding
+ * for a device node, but accepts only devices that its parent has told it
+ * use this driver.
+ */
+#define BUS_PROBE_SPECIFIC	0	/* Only I can use this device */
+#define BUS_PROBE_VENDOR	(-10)	/* Vendor supplied driver */
+#define BUS_PROBE_DEFAULT	(-20)	/* Base OS default driver */
+#define BUS_PROBE_LOW_PRIORITY	(-40)	/* Older, less desirable drivers */
+#define BUS_PROBE_GENERIC	(-100)	/* generic driver for dev */
+#define BUS_PROBE_HOOVER	(-1000000) /* Driver for any dev on bus */
+#define BUS_PROBE_NOWILDCARD	(-2000000000) /* No wildcard device matches */
+
+/**
+ * During boot, the device tree is scanned multiple times.  Each scan,
+ * or pass, drivers may be attached to devices.  Each driver
+ * attachment is assigned a pass number.  Drivers may only probe and
+ * attach to devices if their pass number is less than or equal to the
+ * current system-wide pass number.  The default pass is the last pass
+ * and is used by most drivers.  Drivers needed by the scheduler are
+ * probed in earlier passes.
+ */
+#define	BUS_PASS_ROOT		0	/* Used to attach root0. */
+#define	BUS_PASS_BUS		10	/* Busses and bridges. */
+#define	BUS_PASS_CPU		20	/* CPU devices. */
+#define	BUS_PASS_RESOURCE	30	/* Resource discovery. */
+#define	BUS_PASS_INTERRUPT	40	/* Interrupt controllers. */
+#define	BUS_PASS_TIMER		50	/* Timers and clocks. */
+#define	BUS_PASS_SCHEDULER	60	/* Start scheduler. */
+#define	BUS_PASS_DEFAULT	__INT_MAX /* Everything else. */
+
+#define	BUS_PASS_ORDER_FIRST	0
+#define	BUS_PASS_ORDER_EARLY	2
+#define	BUS_PASS_ORDER_MIDDLE	5
+#define	BUS_PASS_ORDER_LATE	7
+#define	BUS_PASS_ORDER_LAST	9
+
+#define bus_read_1(r, o) \
+  bus_space_read_1(rman_get_bustag(r), rman_get_bushandle(r), (o))
+#define bus_write_1(r, o, v)                                          \
+  bus_space_write_1(rman_get_bustag(r), rman_get_bushandle(r), (o), (v))
+#define bus_read_2(r, o) \
+  bus_space_read_2(rman_get_bustag(r), rman_get_bushandle(r), (o))
+#define bus_write_2(r, o, v)                                          \
+  bus_space_write_2(rman_get_bustag(r), rman_get_bushandle(r), (o), (v))
+#define bus_read_4(r, o) \
+  bus_space_read_4(rman_get_bustag(r), rman_get_bushandle(r), (o))
+#define bus_write_4(r, o, v)                                          \
+  bus_space_write_4(rman_get_bustag(r), rman_get_bushandle(r), (o), (v))
+  
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

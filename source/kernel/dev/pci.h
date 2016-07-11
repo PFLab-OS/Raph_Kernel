@@ -134,6 +134,9 @@ public:
   static const uint16_t kCommandReg = 0x04;
   static const uint16_t kStatusReg = 0x06;
   static const uint16_t kRegRevisionId = 0x08;
+  static const uint16_t kRegInterfaceClassCode = 0x09;
+  static const uint16_t kRegSubClassCode = 0x0A;
+  static const uint16_t kRegBaseClassCode = 0x0B;
   static const uint16_t kHeaderTypeReg = 0x0E;
   static const uint16_t kBaseAddressReg0 = 0x10;
   static const uint16_t kBaseAddressReg1 = 0x14;

@@ -91,8 +91,8 @@
 
 // #include <machine/in_cksum.h>
 // #include <dev/led/led.h>
-// #include <dev/pci/pcivar.h>
-// #include <dev/pci/pcireg.h>
+#include <dev/pci/pcivar.h>
+#include <dev/pci/pcireg.h>
 
 #include <stdint.h>
 #include <string.h>

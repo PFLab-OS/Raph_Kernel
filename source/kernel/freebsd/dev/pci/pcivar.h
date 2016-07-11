@@ -36,8 +36,25 @@
 extern "C" {
 #endif /* __cplusplus */
 
+  int pci_msi_count(device_t dev);
+  int pci_msix_count(device_t dev);
   int pci_alloc_msi(device_t dev, int *count);
   int pci_alloc_msix(device_t dev, int *count);
+  int pci_release_msi(device_t dev);
+
+  uint16_t pci_get_vendor(device_t dev);
+  uint16_t pci_get_device(device_t dev);
+  uint32_t pci_get_devid(device_t dev);
+  uint8_t pci_get_class(device_t dev);
+  uint8_t pci_get_subclass(device_t dev);
+  uint8_t pci_get_progif(device_t dev);
+  uint8_t pci_get_revid(device_t dev);
+  uint16_t pci_get_subvendor(device_t dev);
+  uint16_t pci_get_subdevice(device_t dev);
+  void pci_write_config(device_t dev, int reg, uint32_t val, int width);
+  uint32_t pci_read_config(device_t dev, int reg, int width);
+  int pci_enable_busmaster(device_t dev);
+  int pci_find_cap(device_t dev, int capability, int *capreg);
 
 #ifdef __cplusplus
 }

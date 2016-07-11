@@ -24,6 +24,8 @@
 #include <mem/physmem.h>
 #include <sys/bus-raph.h>
 #include <sys/types-raph.h>
+#include <sys/rman-raph.h>
+#include <sys/errno.h>
 #include <tty.h>
 #include <global.h>
 
@@ -167,6 +169,27 @@ extern "C" {
 
   void *device_get_softc(device_t dev) {
     return dev->adapter;
+  }
+  
+  int	resource_int_value(const char *name, int unit, const char *resname,
+                         int *result) {
+    return ENOENT;
+  }
+
+  void *device_get_ivars(device_t dev) {
+    return dev->ivar;
+  }
+
+  void device_set_ivars(device_t dev, void *ivar) {
+    dev->ivar = ivar;
+  }
+
+  int	device_get_unit(device_t dev) {
+    return dev->unit;
+  }
+  
+  const	char *device_get_name(device_t dev) {
+    return dev->name;
   }
 
 }

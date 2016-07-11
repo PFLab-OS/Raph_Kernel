@@ -99,10 +99,7 @@ public:
     }
   }
   void SetupMsi() {
-    if (_icontainer_list != nullptr) {
-      // TODO 割り込み開放
-      delete[] _icontainer_list;
-    }
+    ReleaseMsi();
     int count = GetMsiCount();
     if (count == 0) {
       return;
@@ -118,6 +115,12 @@ public:
     int cpuid = 1;
     int vector = idt->SetIntCallback(cpuid, callbacks, args, count);
     SetMsi(cpuid, vector);
+  }
+  void ReleaseMsi() {
+    if (_icontainer_list != nullptr) {
+      // TODO 割り込み開放
+      delete[] _icontainer_list;
+    }
   }
 private:
   void SetupLegacyIntContainers() {
@@ -137,18 +140,6 @@ private:
 
   bool _is_legacy_interrupt_enable = true;
   IntContainer *_icontainer_list = nullptr;
-};
-
-struct resource {
-  phys_addr addr;
-  bus_space_tag_t type;
-  union {
-    struct {
-      bool is_prefetchable;
-    } mem;
-  } data;
-  idt_callback gate;
-  BsdDevPci::IntContainer *icontainer = NULL;
 };
 
 #endif // _FREEBSD_BUS_RAPH_H_

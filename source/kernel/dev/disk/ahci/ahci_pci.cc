@@ -28,16 +28,16 @@
 __FBSDID("$FreeBSD$");
 
 #include <sys/param.h>
-#include <sys/module.h>
+/* #include <sys/module.h> */
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
-#include <sys/conf.h>
-#include <sys/endian.h>
-#include <sys/malloc.h>
+/* #include <sys/conf.h> */
+/* #include <sys/endian.h> */
+/* #include <sys/malloc.h> */
 #include <sys/lock.h>
 #include <sys/mutex.h>
-#include <machine/stdarg.h>
+/* #include <machine/stdarg.h> */
 #include <machine/resource.h>
 #include <machine/bus.h>
 #include <sys/rman.h>
@@ -46,7 +46,7 @@ __FBSDID("$FreeBSD$");
 #include "ahci.h"
 
 static int force_ahci = 1;
-TUNABLE_INT("hw.ahci.force", &force_ahci);
+/* TUNABLE_INT("hw.ahci.force", &force_ahci); */
 
 static const struct {
 	uint32_t	id;
@@ -340,8 +340,8 @@ ahci_probe(device_t dev)
 			if (pci_get_vendor(dev) == 0x197b &&
 			    (pci_read_config(dev, 0xdf, 1) & 0x40) == 0)
 				return (ENXIO);
-			snprintf(buf, sizeof(buf), "%s AHCI SATA controller",
-			    ahci_ids[i].name);
+			// snprintf(buf, sizeof(buf), "%s AHCI SATA controller",
+			//     ahci_ids[i].name);
 			device_set_desc_copy(dev, buf);
 			return (BUS_PROBE_DEFAULT);
 		}
@@ -366,8 +366,8 @@ ahci_ata_probe(device_t dev)
 	for (i = 0; ahci_ids[i].id != 0; i++) {
 		if (ahci_ids[i].id == devid &&
 		    ahci_ids[i].rev <= revid) {
-			snprintf(buf, sizeof(buf), "%s AHCI SATA controller",
-			    ahci_ids[i].name);
+			// snprintf(buf, sizeof(buf), "%s AHCI SATA controller",
+			//     ahci_ids[i].name);
 			device_set_desc_copy(dev, buf);
 			return (BUS_PROBE_DEFAULT);
 		}
@@ -401,7 +401,7 @@ ahci_pci_read_msix_bars(device_t dev, uint8_t *table_bar, uint8_t *pba_bar)
 static int
 ahci_pci_attach(device_t dev)
 {
-	struct ahci_controller *ctlr = device_get_softc(dev);
+	struct ahci_controller *ctlr = reinterpret_cast<ahci_controller *>(device_get_softc(dev));
 	int	error, i;
 	uint32_t devid = pci_get_devid(dev);
 	uint8_t revid = pci_get_revid(dev);
@@ -565,68 +565,68 @@ ahci_pci_detach(device_t dev)
 	return (0);
 }
 
-static int
-ahci_pci_suspend(device_t dev)
-{
-	struct ahci_controller *ctlr = device_get_softc(dev);
+// static int
+// ahci_pci_suspend(device_t dev)
+// {
+// 	struct ahci_controller *ctlr = reinterpret_cast<ahci_controller *>(device_get_softc(dev));
 
-	bus_generic_suspend(dev);
-	/* Disable interupts, so the state change(s) doesn't trigger */
-	ATA_OUTL(ctlr->r_mem, AHCI_GHC,
-	     ATA_INL(ctlr->r_mem, AHCI_GHC) & (~AHCI_GHC_IE));
-	return 0;
-}
+// 	bus_generic_suspend(dev);
+// 	/* Disable interupts, so the state change(s) doesn't trigger */
+// 	ATA_OUTL(ctlr->r_mem, AHCI_GHC,
+// 	     ATA_INL(ctlr->r_mem, AHCI_GHC) & (~AHCI_GHC_IE));
+// 	return 0;
+// }
 
-static int
-ahci_pci_resume(device_t dev)
-{
-	int res;
+// static int
+// ahci_pci_resume(device_t dev)
+// {
+// 	int res;
 
-	if ((res = ahci_pci_ctlr_reset(dev)) != 0)
-		return (res);
-	ahci_ctlr_setup(dev);
-	return (bus_generic_resume(dev));
-}
+// 	if ((res = ahci_pci_ctlr_reset(dev)) != 0)
+// 		return (res);
+// 	ahci_ctlr_setup(dev);
+// 	return (bus_generic_resume(dev));
+// }
 
-devclass_t ahci_devclass;
-static device_method_t ahci_methods[] = {
-	DEVMETHOD(device_probe,     ahci_probe),
-	DEVMETHOD(device_attach,    ahci_pci_attach),
-	DEVMETHOD(device_detach,    ahci_pci_detach),
-	DEVMETHOD(device_suspend,   ahci_pci_suspend),
-	DEVMETHOD(device_resume,    ahci_pci_resume),
-	DEVMETHOD(bus_print_child,  ahci_print_child),
-	DEVMETHOD(bus_alloc_resource,       ahci_alloc_resource),
-	DEVMETHOD(bus_release_resource,     ahci_release_resource),
-	DEVMETHOD(bus_setup_intr,   ahci_setup_intr),
-	DEVMETHOD(bus_teardown_intr,ahci_teardown_intr),
-	DEVMETHOD(bus_child_location_str, ahci_child_location_str),
-	DEVMETHOD(bus_get_dma_tag,  ahci_get_dma_tag),
-	DEVMETHOD_END
-};
-static driver_t ahci_driver = {
-        "ahci",
-        ahci_methods,
-        sizeof(struct ahci_controller)
-};
-DRIVER_MODULE(ahci, pci, ahci_driver, ahci_devclass, NULL, NULL);
-static device_method_t ahci_ata_methods[] = {
-	DEVMETHOD(device_probe,     ahci_ata_probe),
-	DEVMETHOD(device_attach,    ahci_pci_attach),
-	DEVMETHOD(device_detach,    ahci_pci_detach),
-	DEVMETHOD(device_suspend,   ahci_pci_suspend),
-	DEVMETHOD(device_resume,    ahci_pci_resume),
-	DEVMETHOD(bus_print_child,  ahci_print_child),
-	DEVMETHOD(bus_alloc_resource,       ahci_alloc_resource),
-	DEVMETHOD(bus_release_resource,     ahci_release_resource),
-	DEVMETHOD(bus_setup_intr,   ahci_setup_intr),
-	DEVMETHOD(bus_teardown_intr,ahci_teardown_intr),
-	DEVMETHOD(bus_child_location_str, ahci_child_location_str),
-	DEVMETHOD_END
-};
-static driver_t ahci_ata_driver = {
-        "ahci",
-        ahci_ata_methods,
-        sizeof(struct ahci_controller)
-};
-DRIVER_MODULE(ahci, atapci, ahci_ata_driver, ahci_devclass, NULL, NULL);
+/* devclass_t ahci_devclass; */
+/* static device_method_t ahci_methods[] = { */
+/* 	DEVMETHOD(device_probe,     ahci_probe), */
+/* 	DEVMETHOD(device_attach,    ahci_pci_attach), */
+/* 	DEVMETHOD(device_detach,    ahci_pci_detach), */
+/* 	DEVMETHOD(device_suspend,   ahci_pci_suspend), */
+/* 	DEVMETHOD(device_resume,    ahci_pci_resume), */
+/* 	DEVMETHOD(bus_print_child,  ahci_print_child), */
+/* 	DEVMETHOD(bus_alloc_resource,       ahci_alloc_resource), */
+/* 	DEVMETHOD(bus_release_resource,     ahci_release_resource), */
+/* 	DEVMETHOD(bus_setup_intr,   ahci_setup_intr), */
+/* 	DEVMETHOD(bus_teardown_intr,ahci_teardown_intr), */
+/* 	DEVMETHOD(bus_child_location_str, ahci_child_location_str), */
+/* 	DEVMETHOD(bus_get_dma_tag,  ahci_get_dma_tag), */
+/* 	DEVMETHOD_END */
+/* }; */
+/* static driver_t ahci_driver = { */
+/*         "ahci", */
+/*         ahci_methods, */
+/*         sizeof(struct ahci_controller) */
+/* }; */
+/* DRIVER_MODULE(ahci, pci, ahci_driver, ahci_devclass, NULL, NULL); */
+/* static device_method_t ahci_ata_methods[] = { */
+/* 	DEVMETHOD(device_probe,     ahci_ata_probe), */
+/* 	DEVMETHOD(device_attach,    ahci_pci_attach), */
+/* 	DEVMETHOD(device_detach,    ahci_pci_detach), */
+/* 	DEVMETHOD(device_suspend,   ahci_pci_suspend), */
+/* 	DEVMETHOD(device_resume,    ahci_pci_resume), */
+/* 	DEVMETHOD(bus_print_child,  ahci_print_child), */
+/* 	DEVMETHOD(bus_alloc_resource,       ahci_alloc_resource), */
+/* 	DEVMETHOD(bus_release_resource,     ahci_release_resource), */
+/* 	DEVMETHOD(bus_setup_intr,   ahci_setup_intr), */
+/* 	DEVMETHOD(bus_teardown_intr,ahci_teardown_intr), */
+/* 	DEVMETHOD(bus_child_location_str, ahci_child_location_str), */
+/* 	DEVMETHOD_END */
+/* }; */
+/* static driver_t ahci_ata_driver = { */
+/*         "ahci", */
+/*         ahci_ata_methods, */
+/*         sizeof(struct ahci_controller) */
+/* }; */
+/* DRIVER_MODULE(ahci, atapci, ahci_ata_driver, ahci_devclass, NULL, NULL); */
