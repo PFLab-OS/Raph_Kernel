@@ -32,9 +32,9 @@
 #include <freebsd/sys/types.h>
 #include <freebsd/net/if_var-raph.h>
 
-class E1000 : public BsdDevEthernet {
+class E1000 : public BsdDevPciEthernet {
 public:
-  E1000(uint8_t bus, uint8_t device, bool mf) : BsdDevEthernet(bus, device, mf) {}
+  E1000(uint8_t bus, uint8_t device, uint8_t function) : BsdDevPciEthernet(bus, device, function) {}
   static DevPci *InitPci(uint8_t bus, uint8_t device, uint8_t function);
 
   virtual void UpdateLinkStatus() override;
@@ -43,11 +43,14 @@ public:
 
   // allocate 6 byte before call
   virtual void GetEthAddr(uint8_t *buffer) override;
- private:
+private:
   static void PollingHandler(void *arg);
   virtual void ChangeHandleMethodToPolling() override;
   virtual void ChangeHandleMethodToInt() override;
   virtual void Transmit(void *) override;
+  struct adapter *GetAdapter() {
+    return reinterpret_cast<struct adapter *>(_bsd.softc);
+  }
 };
 
 #endif /* __RAPH_KERNEL_E1000_EM_H__ */

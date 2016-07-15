@@ -168,7 +168,7 @@ extern "C" {
   }
 
   void *device_get_softc(device_t dev) {
-    return dev->adapter;
+    return dev->softc;
   }
   
   int	resource_int_value(const char *name, int unit, const char *resname,

@@ -288,7 +288,7 @@ static void	em_refresh_mbufs(struct rx_ring *, int);
 // static void	em_register_vlan(void *, if_t, u16);
 // static void	em_unregister_vlan(void *, if_t, u16);
 // static void	em_setup_vlan_hw_support(struct adapter *);
-static int	em_xmit(struct tx_ring *, BsdDevEthernet::Packet *);
+static int	em_xmit(struct tx_ring *, BsdDevPciEthernet::Packet *);
 static int	em_dma_malloc(struct adapter *, bus_size_t,
 		    struct em_dma_alloc *, int);
 // static void	em_dma_free(struct adapter *, struct em_dma_alloc *);
@@ -962,7 +962,7 @@ static void
 em_start_locked(if_t ifp, struct tx_ring *txr)
 {
   struct adapter	*adapter = reinterpret_cast<struct adapter *>(if_getsoftc(ifp));
-  BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
+  BsdDevPciEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
 	// struct mbuf	*m_head;
 
 	EM_TX_LOCK_ASSERT(txr);
@@ -996,7 +996,7 @@ em_start_locked(if_t ifp, struct tx_ring *txr)
 		// 	if_sendq_prepend(ifp, m_head);
 		// 	break;
 		// }
-                BsdDevEthernet::Packet *packet;
+                BsdDevPciEthernet::Packet *packet;
                 kassert(e1000->_tx_buffered.Pop(packet));
                 em_xmit(txr, packet);
                 e1000->ReuseTxBuffer(packet);
@@ -1507,7 +1507,7 @@ int
 em_poll(if_t ifp)
 {
   struct adapter *adapter = reinterpret_cast<struct adapter *>(if_getsoftc(ifp));
-  BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
+  BsdDevPciEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
 	struct tx_ring	*txr = adapter->tx_rings;
 	struct rx_ring	*rxr = adapter->rx_rings;
 	// u32		reg_icr;
@@ -1602,7 +1602,7 @@ static void
 em_handle_que(void *context, int pending)
 {
   struct adapter	*adapter = reinterpret_cast<struct adapter *>(context);
-  BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
+  BsdDevPciEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
 	if_t ifp = adapter->ifp;
 	struct tx_ring	*txr = adapter->tx_rings;
 	struct rx_ring	*rxr = adapter->rx_rings;
@@ -1744,7 +1744,7 @@ em_handle_tx(void *context, int pending)
 {
   struct tx_ring	*txr = reinterpret_cast<struct tx_ring *>(context);
 	struct adapter	*adapter = reinterpret_cast<struct adapter *>(txr->adapter);
-        BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
+        BsdDevPciEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
 	if_t ifp = adapter->ifp;
 
 	EM_TX_LOCK(txr);
@@ -1765,7 +1765,7 @@ static void
 em_handle_link(void *context, int pending)
 {
   struct adapter	*adapter = reinterpret_cast<struct adapter *>(context);
-  BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
+  BsdDevPciEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
 	struct tx_ring	*txr = adapter->tx_rings;
 	if_t ifp = adapter->ifp;
 
@@ -1913,7 +1913,7 @@ em_handle_link(void *context, int pending)
  **********************************************************************/
 
 static int
-em_xmit(struct tx_ring *txr, BsdDevEthernet::Packet *packet)
+em_xmit(struct tx_ring *txr, BsdDevPciEthernet::Packet *packet)
 {
 	struct adapter		*adapter = txr->adapter;
 	// bus_dma_segment_t	segs[EM_MAX_SCATTER];
@@ -2405,7 +2405,7 @@ em_update_link_status(struct adapter *adapter)
   device_t dev = adapter->dev;
 	struct tx_ring *txr = adapter->tx_rings;
 	u32 link_check = 0;
-        BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
+        BsdDevPciEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
 
 	/* Get the cached link value or read phy for real */
 	switch (hw->phy.media_type) {
@@ -2457,7 +2457,7 @@ em_update_link_status(struct adapter *adapter)
 		adapter->smartspeed = 0;
 		// if_setbaudrate(ifp, adapter->link_speed * 1000000);
 		// if_link_state_change(ifp, LINK_STATE_UP);
-                e1000->SetStatus(BsdDevEthernet::LinkStatus::kUp);
+                e1000->SetStatus(BsdDevPciEthernet::LinkStatus::kUp);
 	} else if (!link_check && (adapter->link_active == 1)) {
 		// if_setbaudrate(ifp, 0);
 		adapter->link_speed = 0;
@@ -2469,7 +2469,7 @@ em_update_link_status(struct adapter *adapter)
 		for (int i = 0; i < adapter->num_queues; i++, txr++)
 			txr->busy = EM_TX_IDLE;
 		// if_link_state_change(ifp, LINK_STATE_DOWN);
-                e1000->SetStatus(BsdDevEthernet::LinkStatus::kDown);
+                e1000->SetStatus(BsdDevPciEthernet::LinkStatus::kDown);
 	}
 }
 
@@ -3542,7 +3542,7 @@ em_allocate_transmit_buffers(struct tx_ring *txr)
 	device_t dev = adapter->dev;
 	struct em_buffer *txbuf;
 	int error, i;
-  BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
+  BsdDevPciEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
 
 	/*
 	 * Setup DMA descriptor areas.
@@ -3599,7 +3599,7 @@ static void
 em_setup_transmit_ring(struct tx_ring *txr)
 {
 	struct adapter *adapter = txr->adapter;
-        BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
+        BsdDevPciEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
 	struct em_buffer *txbuf;
 	int i;
 #ifdef DEV_NETMAP
@@ -3646,7 +3646,7 @@ em_setup_transmit_ring(struct tx_ring *txr)
           txbuf->next_eop = -1;
         }
 
-        BsdDevEthernet::Packet *packet;
+        BsdDevPciEthernet::Packet *packet;
         while(e1000->_tx_buffered.Pop(packet)) {
           kassert(e1000->_tx_reserved.Push(packet));
         }
@@ -4321,7 +4321,7 @@ em_allocate_receive_buffers(struct rx_ring *rxr)
   device_t                dev = adapter->dev;
 	struct em_buffer	*rxbuf;
 	int			error;
-  BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
+  BsdDevPciEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
 
 	rxr->rx_buffers = reinterpret_cast<struct em_buffer *>(virtmem_ctrl->AllocZ(sizeof(struct em_buffer) * adapter->num_rx_desc));
 	// rxr->rx_buffers = malloc(sizeof(struct em_buffer) *
@@ -4378,7 +4378,7 @@ static int
 em_setup_receive_ring(struct rx_ring *rxr)
 {
 	struct	adapter 	*adapter = rxr->adapter;
-        BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
+        BsdDevPciEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
         // struct em_buffer	*rxbuf;
 	// bus_dma_segment_t	seg[1];
 	int			rsize, /* nsegs, */ error = 0;
@@ -4410,7 +4410,7 @@ em_setup_receive_ring(struct rx_ring *rxr)
 	// 		rxbuf->m_head = NULL; /* mark as freed */
 	// 	}
 	// }
-        BsdDevEthernet::Packet *packet;
+        BsdDevPciEthernet::Packet *packet;
         while(e1000->_rx_buffered.Pop(packet)) {
           kassert(e1000->_rx_reserved.Push(packet));
         }
@@ -4796,7 +4796,7 @@ em_rxeof(struct rx_ring *rxr, int count, int *done)
 	int			i, processed, rxdone = 0;
 	bool			eop;
 	struct e1000_rx_desc	*cur;
-        BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
+        BsdDevPciEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
 
 	EM_RX_LOCK(rxr);
 
@@ -4838,7 +4838,7 @@ em_rxeof(struct rx_ring *rxr, int count, int *done)
 			goto next_desc;
 		}
 
-                BsdDevEthernet::Packet *packet;
+                BsdDevPciEthernet::Packet *packet;
                 if (e1000->_rx_reserved.Pop(packet)) {
                   memcpy(packet->buf, reinterpret_cast<void *>(p2v(rxr->rx_base[i].buffer_addr)), len);
                   packet->len = len;
@@ -6292,6 +6292,7 @@ DB_COMMAND(em_dump_queue, em_ddb_dump_queue)
 #include "e1000_raph.h"
 #include "e1000_hw.h"
 #include "if_em.h"
+#include <stdlib.h>
 
 int	em_probe(device_t);
 int	em_attach(device_t);
@@ -6299,22 +6300,21 @@ void	em_init(struct adapter *);
 int em_poll(if_t ifp);
 void em_update_link_status(struct adapter *adapter);
 
-extern BsdDevEthernet *eth;
+extern BsdDevPciEthernet *eth;
 DevPci *E1000::InitPci(uint8_t bus, uint8_t device, uint8_t function) {
-  E1000 *addr = reinterpret_cast<E1000 *>(virtmem_ctrl->Alloc(sizeof(E1000)));
-  addr = new(addr) E1000(bus, device, function);
+  E1000 *addr = new E1000(bus, device, function);
   addr->_bsd.SetMasterClass(addr);
-  addr->_bsd.adapter = reinterpret_cast<struct adapter *>(virtmem_ctrl->AllocZ(sizeof(adapter)));
+  addr->_bsd.softc = calloc(1, sizeof(struct adapter));
   if (em_probe(&addr->_bsd) == BUS_PROBE_DEFAULT) {
     kassert(em_attach(&addr->_bsd) == 0);
-    em_init(addr->_bsd.adapter);
+    em_init(addr->GetAdapter());
     addr->SetupNetInterface();
     addr->SetHandleMethod(HandleMethod::kPolling);
     eth = addr;
     return addr->_bsd.GetPciClass();
   } else {
-    virtmem_ctrl->Free(ptr2virtaddr(addr->_bsd.adapter));
-    virtmem_ctrl->Free(ptr2virtaddr(addr));
+    free(addr->GetAdapter());
+    delete addr;
     return nullptr;
   }  
 }
@@ -6324,13 +6324,13 @@ void E1000::SetupNetInterface() {
 }
 
 void E1000::GetEthAddr(uint8_t *buffer) {
-  memcpy(buffer, _bsd.adapter->hw.mac.addr, 6);
+  memcpy(buffer, GetAdapter()->hw.mac.addr, 6);
 }
 
 void E1000::UpdateLinkStatus() {
   if (GetHandleMethod() == HandleMethod::kPolling) {
     u32		reg_icr;
-    struct adapter *adapter = this->_bsd.adapter;
+    struct adapter *adapter = GetAdapter();
 		reg_icr = E1000_READ_REG(&adapter->hw, E1000_ICR);
 		if (reg_icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC)) {
 			callout_stop(&adapter->timer);
@@ -6344,7 +6344,7 @@ void E1000::UpdateLinkStatus() {
 
 void E1000::PollingHandler(void *arg) {
   E1000 *that = reinterpret_cast<E1000 *>(arg);
-  em_poll(that->_bsd.adapter->ifp);
+  em_poll(that->GetAdapter()->ifp);
 }
 
 void E1000::ChangeHandleMethodToPolling() {
@@ -6353,7 +6353,7 @@ void E1000::ChangeHandleMethodToPolling() {
   _polling.Init(func);
   _polling.Register(0);
   
-  struct adapter *adapter = this->_bsd.adapter;
+  struct adapter *adapter = GetAdapter();
   if_t ifp = adapter->ifp;
   EM_CORE_LOCK(adapter);
   em_disable_intr(adapter);
@@ -6364,7 +6364,7 @@ void E1000::ChangeHandleMethodToPolling() {
 void E1000::ChangeHandleMethodToInt() {
   _polling.Remove();
   
-  struct adapter *adapter = this->_bsd.adapter;
+  struct adapter *adapter = GetAdapter();
   if_t ifp = adapter->ifp;
   EM_CORE_LOCK(adapter);
   em_enable_intr(adapter);

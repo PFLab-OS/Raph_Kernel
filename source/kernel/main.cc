@@ -61,7 +61,7 @@ PciCtrl *pci_ctrl;
 static uint32_t rnd_next = 1;
 
 #include <freebsd/net/if_var-raph.h>
-BsdDevEthernet *eth;
+BsdDevPciEthernet *eth;
 uint64_t cnt;
 int64_t sum;
 static const int stime = 3000;
@@ -208,7 +208,7 @@ extern "C" int main() {
   if (eth != nullptr) {
     Function func;
     func.Init([](void *){
-        BsdDevEthernet::Packet *rpacket;
+        BsdDevPciEthernet::Packet *rpacket;
         if(!eth->ReceivePacket(rpacket)) {
           return;
         }
@@ -260,7 +260,7 @@ extern "C" int main() {
           memcpy(data + 38, rpacket->buf + 28, 4);
 
           uint32_t len = sizeof(data)/sizeof(uint8_t);
-          BsdDevEthernet::Packet *tpacket;
+          BsdDevPciEthernet::Packet *tpacket;
           kassert(eth->GetTxPacket(tpacket));
           memcpy(tpacket->buf, data, len);
           tpacket->len = len;
@@ -367,7 +367,7 @@ extern "C" int main_of_others() {
         if (rtime > 0) {
           gtty->Printf("s","ARP Reply average latency:","d",sum / rtime,"s","us [","d",rtime,"s","/","d",stime,"s","]\n");
         } else {
-          if (eth->GetStatus() == BsdDevEthernet::LinkStatus::kUp) {
+          if (eth->GetStatus() == BsdDevPciEthernet::LinkStatus::kUp) {
             gtty->Printf("s","Link is Up, but no ARP Reply\n");
           } else {
             gtty->Printf("s","Link is Down, please wait...\n");
@@ -398,7 +398,7 @@ extern "C" int main_of_others() {
         }
         if (state == 1) {
           eth->UpdateLinkStatus();
-          if (eth->GetStatus() != BsdDevEthernet::LinkStatus::kUp) {
+          if (eth->GetStatus() != BsdDevPciEthernet::LinkStatus::kUp) {
             tt2.SetHandler(1000);
             return;
           }
@@ -439,7 +439,7 @@ extern "C" int main_of_others() {
             memcpy(data + 22, data + 6, 6);
             memcpy(data + 28, ip, 4);
             uint32_t len = sizeof(data)/sizeof(uint8_t);
-            BsdDevEthernet::Packet *tpacket;
+            BsdDevPciEthernet::Packet *tpacket;
             kassert(eth->GetTxPacket(tpacket));
             memcpy(tpacket->buf, data, len);
             tpacket->len = len;

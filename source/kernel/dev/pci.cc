@@ -26,8 +26,9 @@
 #include <tty.h>
 #include "pci.h"
 
-#include "nic/intel/em/em.h"
-#include "nic/intel/em/lem.h"
+#include <dev/nic/intel/em/em.h>
+#include <dev/nic/intel/em/lem.h>
+#include <dev/disk/ahci/ahci-raph.h>
 
 void PciCtrl::_Init() {
   _mcfg = acpi_ctrl->GetMCFG();
@@ -63,7 +64,7 @@ void PciCtrl::_Init() {
 }
 
 DevPci *PciCtrl::InitPciDevices(uint8_t bus, uint8_t device, uint8_t func) {
-  return _InitPciDevices<E1000, lE1000, DevPci>(bus, device, func);
+  return _InitPciDevices<E1000, lE1000, Ahci, DevPci>(bus, device, func);
 }
 
 uint16_t PciCtrl::FindCapability(uint8_t bus, uint8_t device, uint8_t func, CapabilityId id) {

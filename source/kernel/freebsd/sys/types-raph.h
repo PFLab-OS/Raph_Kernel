@@ -20,6 +20,9 @@
  * 
  */
 
+#ifndef __RAPH_KERNEL_FREEBSD_SYS_TYPES_RAPH_H__
+#define __RAPH_KERNEL_FREEBSD_SYS_TYPES_RAPH_H__
+
 #include <sys/types.h>
 #include <raph.h>
 #include <list.h>
@@ -43,12 +46,12 @@ class BsdDevice {
     kassert(_pci != nullptr);
     return _pci;
   }
-  void AddChild(const char *name, int unit) {
+  void AddChild(const char *name_, int unit_) {
     BsdDevice *child = _children.PushBack()->GetObject();
-    child->name = name;
-    child->unit = unit;
+    child->name = name_;
+    child->unit = unit_;
   }
-  struct adapter *adapter;
+  void *softc;
   void *ivar;
   int unit = 0;
   const char *name;
@@ -57,3 +60,5 @@ class BsdDevice {
   void *_master;
   ObjectList<BsdDevice> _children;
 };
+
+#endif // __RAPH_KERNEL_FREEBSD_SYS_TYPES_RAPH_H__

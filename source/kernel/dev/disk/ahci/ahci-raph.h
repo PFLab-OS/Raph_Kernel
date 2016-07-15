@@ -20,32 +20,37 @@
  * 
  */
 
-#ifndef __RAPH_KERNEL_DEV_ETH_H__
-#define __RAPH_KERNEL_DEV_ETH_H__
+#ifndef __RAPH_KERNEL_DEV_DISK_AHCI_AHCI_RAPH_H__
+#define __RAPH_KERNEL_DEV_DISK_AHCI_AHCI_RAPH_H__
 
-#include <dev/netdev.h>
-#include <dev/pci.h>
-#include <mem/virtmem.h>
+#include <sys/types-raph.h>
+#include <sys/bus-raph.h>
 
-class DevEthernet : public NetDev {
+class DevDisk {
 public:
-  DevEthernet() {
-  } 
-  virtual ~DevEthernet() {
+  DevDisk() {
   }
-  // allocate 6 byte before call
-  virtual void GetEthAddr(uint8_t *buffer) = 0;
-  virtual void SetupNetInterface() = 0;
+};
 
+class BsdDevPciDisk : public DevDisk {
+public:
+  BsdDevPciDisk(uint8_t bus, uint8_t device, uint8_t function) : DevDisk(), _bsd_pci(bus, device, function) {
+    _bsd.SetClass(&_bsd_pci);
+  }
+  virtual ~BsdDevPciDisk() {
+  }
 protected:
-
-  virtual void FilterRxPacket(void *p) override;
-
-  virtual void PrepareTxPacket(NetDev::Packet *packet) override;
+  BsdDevice _bsd;
+private:
+  BsdDevPci _bsd_pci;
 };
 
-class DevEthernetCtrl : public NetDevCtrl {
-  DevEthernet *_devTable[kMaxDevNumber] = {nullptr};
+class Ahci : public BsdDevPciDisk {
+public:
+  Ahci(uint8_t bus, uint8_t device, uint8_t function) : BsdDevPciDisk(bus, device, function) {
+  }
+  static DevPci *InitPci(uint8_t bus, uint8_t device, uint8_t function);
+
 };
 
-#endif /* __RAPH_KERNEL_DEV_ETH_H__ */
+#endif // __RAPH_KERNEL_DEV_DISK_AHCI_AHCI_RAPH_H__

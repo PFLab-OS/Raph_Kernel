@@ -34,9 +34,9 @@
 #include <freebsd/sys/types.h>
 #include <freebsd/net/if_var-raph.h>
 
-class lE1000 : public BsdDevEthernet {
+class lE1000 : public BsdDevPciEthernet {
 public:
- lE1000(uint8_t bus, uint8_t device, bool mf) : BsdDevEthernet(bus, device, mf) {}
+ lE1000(uint8_t bus, uint8_t device, uint8_t function) : BsdDevPciEthernet(bus, device, function) {}
   static DevPci *InitPci(uint8_t bus, uint8_t device, uint8_t function);
 
   virtual void UpdateLinkStatus() override;
@@ -50,6 +50,9 @@ public:
   virtual void ChangeHandleMethodToPolling() override;
   virtual void ChangeHandleMethodToInt() override;
   virtual void Transmit(void *) override;
+  struct adapter *GetAdapter() {
+    return reinterpret_cast<struct adapter *>(_bsd.softc);
+  }
 };
 
 #endif /* __RAPH_KERNEL_E1000_LEM_H__ */

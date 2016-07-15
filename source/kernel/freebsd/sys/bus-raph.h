@@ -27,8 +27,8 @@
 #include <global.h>
 #include <dev/pci.h>
 
-#ifndef _FREEBSD_BUS_RAPH_H_
-#define _FREEBSD_BUS_RAPH_H_
+#ifndef __RAPH_KERNEL_FREEBSD_SYS_BUS_RAPH_H__
+#define __RAPH_KERNEL_FREEBSD_SYS_BUS_RAPH_H__
 
 
 // TODO
@@ -75,7 +75,7 @@ public:
     driver_intr_t _ithread = nullptr;
     void *_iarg;
   };
-  BsdDevPci(uint8_t bus, uint8_t device, bool mf) : DevPci(bus, device, mf) {
+  BsdDevPci(uint8_t bus, uint8_t device, uint8_t function) : DevPci(bus, device, function) {
   }
   virtual ~BsdDevPci() {
   }
@@ -142,4 +142,4 @@ private:
   IntContainer *_icontainer_list = nullptr;
 };
 
-#endif // _FREEBSD_BUS_RAPH_H_
+#endif // __RAPH_KERNEL_FREEBSD_SYS_BUS_RAPH_H__

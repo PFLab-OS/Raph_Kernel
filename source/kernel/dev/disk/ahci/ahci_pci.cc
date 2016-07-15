@@ -630,3 +630,41 @@ ahci_pci_detach(device_t dev)
 /*         sizeof(struct ahci_controller) */
 /* }; */
 /* DRIVER_MODULE(ahci, atapci, ahci_ata_driver, ahci_devclass, NULL, NULL); */
+
+/*
+ *
+ * Copyright (c) 2016 Raphine Project
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ * Author: Liva
+ * 
+ */
+#include "ahci-raph.h"
+#include <stdlib.h>
+
+DevPci *Ahci::InitPci(uint8_t bus, uint8_t device, uint8_t function) {
+  Ahci *addr = new Ahci(bus, device, function);
+  addr->_bsd.SetMasterClass(addr);
+  addr->_bsd.softc = calloc(1, sizeof(struct ahci_controller));
+  if (ahci_probe(&addr->_bsd) == BUS_PROBE_DEFAULT) {
+    kassert(ahci_pci_attach(&addr->_bsd) == 0);
+  } else {
+    free(addr->_bsd.softc);
+    delete addr;
+    return nullptr;
+  }
+}
+
