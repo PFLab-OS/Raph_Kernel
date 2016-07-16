@@ -32,7 +32,7 @@
 #include <sys/param.h>
 /* #include <sys/module.h> */
 #include <sys/systm.h>
-/* #include <sys/kernel.h> */
+#include <sys/kernel.h>
 #include <sys/bus.h>
 /* #include <sys/conf.h> */
 /* #include <sys/endian.h> */
@@ -44,6 +44,7 @@
 #include <machine/bus.h>
 #include <sys/rman.h>
 #include "ahci.h"
+#include "ahci-raph.h"
 
 /* #include <cam/cam.h> */
 // #include <cam/cam_ccb.h>
@@ -168,181 +169,185 @@ ahci_ctlr_reset(device_t dev)
 int
 ahci_attach(device_t dev)
 {
-// 	struct ahci_controller *ctlr = reinterpret_cast<struct ahci_controller *>(device_get_softc(dev));
-// 	int error, i, u, speed, unit;
-// 	u_int32_t version;
-// 	device_t child;
+ 	struct ahci_controller *ctlr = reinterpret_cast<struct ahci_controller *>(device_get_softc(dev));
+ 	int error, i, u, speed, unit;
+ 	u_int32_t version;
+	device_t child;
 
-// 	ctlr->dev = dev;
-// 	ctlr->ccc = 0;
-// 	resource_int_value(device_get_name(dev),
-// 	    device_get_unit(dev), "ccc", &ctlr->ccc);
+	ctlr->dev = dev;
+	ctlr->ccc = 0;
+	resource_int_value(device_get_name(dev),
+	    device_get_unit(dev), "ccc", &ctlr->ccc);
 
-// 	/* Setup our own memory management for channels. */
-// 	ctlr->sc_iomem.rm_start = rman_get_start(ctlr->r_mem);
-// 	ctlr->sc_iomem.rm_end = rman_get_end(ctlr->r_mem);
-// 	ctlr->sc_iomem.rm_type = RMAN_ARRAY;
-// 	ctlr->sc_iomem.rm_descr = "I/O memory addresses";
-// 	if ((error = rman_init(&ctlr->sc_iomem)) != 0) {
-// 		ahci_free_mem(dev);
-// 		return (error);
-// 	}
-// 	if ((error = rman_manage_region(&ctlr->sc_iomem,
-// 	    rman_get_start(ctlr->r_mem), rman_get_end(ctlr->r_mem))) != 0) {
-// 		ahci_free_mem(dev);
-// 		rman_fini(&ctlr->sc_iomem);
-// 		return (error);
-// 	}
-// 	/* Get the HW capabilities */
-// 	version = ATA_INL(ctlr->r_mem, AHCI_VS);
-// 	ctlr->caps = ATA_INL(ctlr->r_mem, AHCI_CAP);
-// 	if (version >= 0x00010200)
-// 		ctlr->caps2 = ATA_INL(ctlr->r_mem, AHCI_CAP2);
-// 	if (ctlr->caps & AHCI_CAP_EMS)
-// 		ctlr->capsem = ATA_INL(ctlr->r_mem, AHCI_EM_CTL);
+	/* Setup our own memory management for channels. */
+	ctlr->sc_iomem.rm_start = rman_get_start(ctlr->r_mem);
+	ctlr->sc_iomem.rm_end = rman_get_end(ctlr->r_mem);
+	ctlr->sc_iomem.rm_type = RMAN_ARRAY;
+	ctlr->sc_iomem.rm_descr = "I/O memory addresses";
+	if ((error = rman_init(&ctlr->sc_iomem)) != 0) {
+		ahci_free_mem(dev);
+		return (error);
+	}
+	if ((error = rman_manage_region(&ctlr->sc_iomem,
+	    rman_get_start(ctlr->r_mem), rman_get_end(ctlr->r_mem))) != 0) {
+		ahci_free_mem(dev);
+		rman_fini(&ctlr->sc_iomem);
+		return (error);
+	}
+	/* Get the HW capabilities */
+	version = ATA_INL(ctlr->r_mem, AHCI_VS);
+	ctlr->caps = ATA_INL(ctlr->r_mem, AHCI_CAP);
+	if (version >= 0x00010200)
+		ctlr->caps2 = ATA_INL(ctlr->r_mem, AHCI_CAP2);
+	if (ctlr->caps & AHCI_CAP_EMS)
+		ctlr->capsem = ATA_INL(ctlr->r_mem, AHCI_EM_CTL);
 
-// 	if (ctlr->quirks & AHCI_Q_FORCE_PI) {
-// 		/*
-// 		 * Enable ports. 
-// 		 * The spec says that BIOS sets up bits corresponding to
-// 		 * available ports. On platforms where this information
-// 		 * is missing, the driver can define available ports on its own.
-// 		 */
-// 		int nports = (ctlr->caps & AHCI_CAP_NPMASK) + 1;
-// 		int nmask = (1 << nports) - 1;
+	if (ctlr->quirks & AHCI_Q_FORCE_PI) {
+		/*
+		 * Enable ports. 
+		 * The spec says that BIOS sets up bits corresponding to
+		 * available ports. On platforms where this information
+		 * is missing, the driver can define available ports on its own.
+		 */
+		int nports = (ctlr->caps & AHCI_CAP_NPMASK) + 1;
+		int nmask = (1 << nports) - 1;
 
-// 		ATA_OUTL(ctlr->r_mem, AHCI_PI, nmask);
-// 		device_printf(dev, "Forcing PI to %d ports (mask = %x)\n",
-// 		    nports, nmask);
-// 	}
+		ATA_OUTL(ctlr->r_mem, AHCI_PI, nmask);
+		device_printf(dev, "Forcing PI to %d ports (mask = %x)\n",
+		    nports, nmask);
+	}
 
-// 	ctlr->ichannels = ATA_INL(ctlr->r_mem, AHCI_PI);
+	ctlr->ichannels = ATA_INL(ctlr->r_mem, AHCI_PI);
 
-// 	/* Identify and set separate quirks for HBA and RAID f/w Marvells. */
-// 	if ((ctlr->quirks & AHCI_Q_ALTSIG) &&
-// 	    (ctlr->caps & AHCI_CAP_SPM) == 0)
-// 		ctlr->quirks |= AHCI_Q_NOBSYRES;
+	/* Identify and set separate quirks for HBA and RAID f/w Marvells. */
+	if ((ctlr->quirks & AHCI_Q_ALTSIG) &&
+	    (ctlr->caps & AHCI_CAP_SPM) == 0)
+		ctlr->quirks |= AHCI_Q_NOBSYRES;
 
-// 	if (ctlr->quirks & AHCI_Q_1CH) {
-// 		ctlr->caps &= ~AHCI_CAP_NPMASK;
-// 		ctlr->ichannels &= 0x01;
-// 	}
-// 	if (ctlr->quirks & AHCI_Q_2CH) {
-// 		ctlr->caps &= ~AHCI_CAP_NPMASK;
-// 		ctlr->caps |= 1;
-// 		ctlr->ichannels &= 0x03;
-// 	}
-// 	if (ctlr->quirks & AHCI_Q_4CH) {
-// 		ctlr->caps &= ~AHCI_CAP_NPMASK;
-// 		ctlr->caps |= 3;
-// 		ctlr->ichannels &= 0x0f;
-// 	}
-// 	ctlr->channels = MAX(flsl(ctlr->ichannels),
-// 	    (ctlr->caps & AHCI_CAP_NPMASK) + 1);
-// 	if (ctlr->quirks & AHCI_Q_NOPMP)
-// 		ctlr->caps &= ~AHCI_CAP_SPM;
-// 	if (ctlr->quirks & AHCI_Q_NONCQ)
-// 		ctlr->caps &= ~AHCI_CAP_SNCQ;
-// 	if ((ctlr->caps & AHCI_CAP_CCCS) == 0)
-// 		ctlr->ccc = 0;
-// 	ctlr->emloc = ATA_INL(ctlr->r_mem, AHCI_EM_LOC);
+	if (ctlr->quirks & AHCI_Q_1CH) {
+		ctlr->caps &= ~AHCI_CAP_NPMASK;
+		ctlr->ichannels &= 0x01;
+	}
+	if (ctlr->quirks & AHCI_Q_2CH) {
+		ctlr->caps &= ~AHCI_CAP_NPMASK;
+		ctlr->caps |= 1;
+		ctlr->ichannels &= 0x03;
+	}
+	if (ctlr->quirks & AHCI_Q_4CH) {
+		ctlr->caps &= ~AHCI_CAP_NPMASK;
+		ctlr->caps |= 3;
+		ctlr->ichannels &= 0x0f;
+	}
+	ctlr->channels = MAX(flsl(ctlr->ichannels),
+	    (ctlr->caps & AHCI_CAP_NPMASK) + 1);
+	if (ctlr->quirks & AHCI_Q_NOPMP)
+		ctlr->caps &= ~AHCI_CAP_SPM;
+	if (ctlr->quirks & AHCI_Q_NONCQ)
+		ctlr->caps &= ~AHCI_CAP_SNCQ;
+	if ((ctlr->caps & AHCI_CAP_CCCS) == 0)
+		ctlr->ccc = 0;
+	ctlr->emloc = ATA_INL(ctlr->r_mem, AHCI_EM_LOC);
 
-// 	/* Create controller-wide DMA tag. */
-// 	if (bus_dma_tag_create(bus_get_dma_tag(dev), 1, 0,
-// 	    (ctlr->caps & AHCI_CAP_64BIT) ? BUS_SPACE_MAXADDR :
-// 	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL,
-// 	    BUS_SPACE_MAXSIZE, BUS_SPACE_UNRESTRICTED, BUS_SPACE_MAXSIZE,
-// 	    0, NULL, NULL, &ctlr->dma_tag)) {
-// 		ahci_free_mem(dev);
-// 		rman_fini(&ctlr->sc_iomem);
-// 		return (ENXIO);
-// 	}
+	/* Create controller-wide DMA tag. */
+	if (bus_dma_tag_create(bus_get_dma_tag(dev), 1, 0,
+	    (ctlr->caps & AHCI_CAP_64BIT) ? BUS_SPACE_MAXADDR :
+	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL,
+	    BUS_SPACE_MAXSIZE, BUS_SPACE_UNRESTRICTED, BUS_SPACE_MAXSIZE,
+	    0, NULL, NULL, &ctlr->dma_tag)) {
+		ahci_free_mem(dev);
+		rman_fini(&ctlr->sc_iomem);
+		return (ENXIO);
+	}
 
-// 	ahci_ctlr_setup(dev);
+	ahci_ctlr_setup(dev);
 
-// 	/* Setup interrupts. */
-// 	if ((error = ahci_setup_interrupt(dev)) != 0) {
-// 		bus_dma_tag_destroy(ctlr->dma_tag);
-// 		ahci_free_mem(dev);
-// 		rman_fini(&ctlr->sc_iomem);
-// 		return (error);
-// 	}
+	/* Setup interrupts. */
+	if ((error = ahci_setup_interrupt(dev)) != 0) {
+		bus_dma_tag_destroy(ctlr->dma_tag);
+		ahci_free_mem(dev);
+		rman_fini(&ctlr->sc_iomem);
+		return (error);
+	}
 
-// 	i = 0;
-// 	for (u = ctlr->ichannels; u != 0; u >>= 1)
-// 		i += (u & 1);
-// 	ctlr->direct = (ctlr->msi && (ctlr->numirqs > 1 || i <= 3));
-// 	resource_int_value(device_get_name(dev), device_get_unit(dev),
-// 	    "direct", &ctlr->direct);
-// 	/* Announce HW capabilities. */
-// 	speed = (ctlr->caps & AHCI_CAP_ISS) >> AHCI_CAP_ISS_SHIFT;
-// 	device_printf(dev,
-// 		    "AHCI v%x.%02x with %d %sGbps ports, Port Multiplier %s%s\n",
-// 		    ((version >> 20) & 0xf0) + ((version >> 16) & 0x0f),
-// 		    ((version >> 4) & 0xf0) + (version & 0x0f),
-// 		    (ctlr->caps & AHCI_CAP_NPMASK) + 1,
-// 		    ((speed == 1) ? "1.5":((speed == 2) ? "3":
-// 		    ((speed == 3) ? "6":"?"))),
-// 		    (ctlr->caps & AHCI_CAP_SPM) ?
-// 		    "supported" : "not supported",
-// 		    (ctlr->caps & AHCI_CAP_FBSS) ?
-// 		    " with FBS" : "");
-// 	if (ctlr->quirks != 0) {
-// 		device_printf(dev, "quirks=0x%b\n", ctlr->quirks,
-// 		    AHCI_Q_BIT_STRING);
-// 	}
-// 	if (bootverbose) {
-// 		device_printf(dev, "Caps:%s%s%s%s%s%s%s%s %sGbps",
-// 		    (ctlr->caps & AHCI_CAP_64BIT) ? " 64bit":"",
-// 		    (ctlr->caps & AHCI_CAP_SNCQ) ? " NCQ":"",
-// 		    (ctlr->caps & AHCI_CAP_SSNTF) ? " SNTF":"",
-// 		    (ctlr->caps & AHCI_CAP_SMPS) ? " MPS":"",
-// 		    (ctlr->caps & AHCI_CAP_SSS) ? " SS":"",
-// 		    (ctlr->caps & AHCI_CAP_SALP) ? " ALP":"",
-// 		    (ctlr->caps & AHCI_CAP_SAL) ? " AL":"",
-// 		    (ctlr->caps & AHCI_CAP_SCLO) ? " CLO":"",
-// 		    ((speed == 1) ? "1.5":((speed == 2) ? "3":
-// 		    ((speed == 3) ? "6":"?"))));
-// 		printf("%s%s%s%s%s%s %dcmd%s%s%s %dports\n",
-// 		    (ctlr->caps & AHCI_CAP_SAM) ? " AM":"",
-// 		    (ctlr->caps & AHCI_CAP_SPM) ? " PM":"",
-// 		    (ctlr->caps & AHCI_CAP_FBSS) ? " FBS":"",
-// 		    (ctlr->caps & AHCI_CAP_PMD) ? " PMD":"",
-// 		    (ctlr->caps & AHCI_CAP_SSC) ? " SSC":"",
-// 		    (ctlr->caps & AHCI_CAP_PSC) ? " PSC":"",
-// 		    ((ctlr->caps & AHCI_CAP_NCS) >> AHCI_CAP_NCS_SHIFT) + 1,
-// 		    (ctlr->caps & AHCI_CAP_CCCS) ? " CCC":"",
-// 		    (ctlr->caps & AHCI_CAP_EMS) ? " EM":"",
-// 		    (ctlr->caps & AHCI_CAP_SXS) ? " eSATA":"",
-// 		    (ctlr->caps & AHCI_CAP_NPMASK) + 1);
-// 	}
-// 	if (bootverbose && version >= 0x00010200) {
-// 		device_printf(dev, "Caps2:%s%s%s%s%s%s\n",
-// 		    (ctlr->caps2 & AHCI_CAP2_DESO) ? " DESO":"",
-// 		    (ctlr->caps2 & AHCI_CAP2_SADM) ? " SADM":"",
-// 		    (ctlr->caps2 & AHCI_CAP2_SDS) ? " SDS":"",
-// 		    (ctlr->caps2 & AHCI_CAP2_APST) ? " APST":"",
-// 		    (ctlr->caps2 & AHCI_CAP2_NVMP) ? " NVMP":"",
-// 		    (ctlr->caps2 & AHCI_CAP2_BOH) ? " BOH":"");
-// 	}
-// 	/* Attach all channels on this controller */
-// 	for (unit = 0; unit < ctlr->channels; unit++) {
-// 		child = device_add_child(dev, "ahcich", -1);
-// 		if (child == NULL) {
-// 			device_printf(dev, "failed to add channel device\n");
-// 			continue;
-// 		}
-// 		device_set_ivars(child, (void *)(intptr_t)unit);
-// 		if ((ctlr->ichannels & (1 << unit)) == 0)
-// 			device_disable(child);
-// 	}
-// 	if (ctlr->caps & AHCI_CAP_EMS) {
+	i = 0;
+	for (u = ctlr->ichannels; u != 0; u >>= 1)
+		i += (u & 1);
+	ctlr->direct = (ctlr->msi && (ctlr->numirqs > 1 || i <= 3));
+	resource_int_value(device_get_name(dev), device_get_unit(dev),
+	    "direct", &ctlr->direct);
+	/* Announce HW capabilities. */
+	speed = (ctlr->caps & AHCI_CAP_ISS) >> AHCI_CAP_ISS_SHIFT;
+	device_printf(dev,
+		    "AHCI v%x.%02x with %d %sGbps ports, Port Multiplier %s%s\n",
+		    ((version >> 20) & 0xf0) + ((version >> 16) & 0x0f),
+		    ((version >> 4) & 0xf0) + (version & 0x0f),
+		    (ctlr->caps & AHCI_CAP_NPMASK) + 1,
+		    ((speed == 1) ? "1.5":((speed == 2) ? "3":
+		    ((speed == 3) ? "6":"?"))),
+		    (ctlr->caps & AHCI_CAP_SPM) ?
+		    "supported" : "not supported",
+		    (ctlr->caps & AHCI_CAP_FBSS) ?
+		    " with FBS" : "");
+	if (ctlr->quirks != 0) {
+		device_printf(dev, "quirks=0x%b\n", ctlr->quirks,
+		    AHCI_Q_BIT_STRING);
+	}
+	if (bootverbose) {
+		device_printf(dev, "Caps:%s%s%s%s%s%s%s%s %sGbps",
+		    (ctlr->caps & AHCI_CAP_64BIT) ? " 64bit":"",
+		    (ctlr->caps & AHCI_CAP_SNCQ) ? " NCQ":"",
+		    (ctlr->caps & AHCI_CAP_SSNTF) ? " SNTF":"",
+		    (ctlr->caps & AHCI_CAP_SMPS) ? " MPS":"",
+		    (ctlr->caps & AHCI_CAP_SSS) ? " SS":"",
+		    (ctlr->caps & AHCI_CAP_SALP) ? " ALP":"",
+		    (ctlr->caps & AHCI_CAP_SAL) ? " AL":"",
+		    (ctlr->caps & AHCI_CAP_SCLO) ? " CLO":"",
+		    ((speed == 1) ? "1.5":((speed == 2) ? "3":
+		    ((speed == 3) ? "6":"?"))));
+		printf("%s%s%s%s%s%s %dcmd%s%s%s %dports\n",
+		    (ctlr->caps & AHCI_CAP_SAM) ? " AM":"",
+		    (ctlr->caps & AHCI_CAP_SPM) ? " PM":"",
+		    (ctlr->caps & AHCI_CAP_FBSS) ? " FBS":"",
+		    (ctlr->caps & AHCI_CAP_PMD) ? " PMD":"",
+		    (ctlr->caps & AHCI_CAP_SSC) ? " SSC":"",
+		    (ctlr->caps & AHCI_CAP_PSC) ? " PSC":"",
+		    ((ctlr->caps & AHCI_CAP_NCS) >> AHCI_CAP_NCS_SHIFT) + 1,
+		    (ctlr->caps & AHCI_CAP_CCCS) ? " CCC":"",
+		    (ctlr->caps & AHCI_CAP_EMS) ? " EM":"",
+		    (ctlr->caps & AHCI_CAP_SXS) ? " eSATA":"",
+		    (ctlr->caps & AHCI_CAP_NPMASK) + 1);
+	}
+	if (bootverbose && version >= 0x00010200) {
+		device_printf(dev, "Caps2:%s%s%s%s%s%s\n",
+		    (ctlr->caps2 & AHCI_CAP2_DESO) ? " DESO":"",
+		    (ctlr->caps2 & AHCI_CAP2_SADM) ? " SADM":"",
+		    (ctlr->caps2 & AHCI_CAP2_SDS) ? " SDS":"",
+		    (ctlr->caps2 & AHCI_CAP2_APST) ? " APST":"",
+		    (ctlr->caps2 & AHCI_CAP2_NVMP) ? " NVMP":"",
+		    (ctlr->caps2 & AHCI_CAP2_BOH) ? " BOH":"");
+	}
+	/* Attach all channels on this controller */
+ 	for (unit = 0; unit < ctlr->channels; unit++) {
+ 		//child = device_add_child(dev, "ahcich", -1);
+    AhciChannel *channel = AhciChannel::Init(dev->GetMasterClass<AhciCtrl>());
+    child = channel->GetDevice();
+  
+ 		if (child == NULL) {
+      device_printf(dev, "failed to add channel device\n");
+      continue;
+ 		}
+ 		device_set_ivars(child, (void *)(intptr_t)unit);
+ 		if ((ctlr->ichannels & (1 << unit)) == 0)
+ 			device_disable(child);
+ 	}
+ 	if (ctlr->caps & AHCI_CAP_EMS) {
+    kassert(false);
 // 		child = device_add_child(dev, "ahciem", -1);
 // 		if (child == NULL)
 // 			device_printf(dev, "failed to add enclosure device\n");
 // 		else
 // 			device_set_ivars(child, (void *)(intptr_t)-1);
-// 	}
+ 	}
 // 	bus_generic_attach(dev);
  	return (0);
 }
@@ -654,17 +659,17 @@ ahci_free_mem(device_t dev)
 // 	return (ctlr->dma_tag);
 // }
 
-// static int
-// ahci_ch_probe(device_t dev)
-// {
+static int
+ahci_ch_probe(device_t dev)
+{
 
-// 	device_set_desc_copy(dev, "AHCI channel");
-// 	return (BUS_PROBE_DEFAULT);
-// }
+ 	device_set_desc_copy(dev, "AHCI channel");
+ 	return (BUS_PROBE_DEFAULT);
+}
 
-// static int
-// ahci_ch_attach(device_t dev)
-// {
+static int
+ahci_ch_attach(device_t dev)
+{
 // 	struct ahci_controller *ctlr = reinterpret_cast<struct ahci_controller *>(device_get_softc(device_get_parent(dev)));
 // 	struct ahci_channel *ch = reinterpret_cast<struct ahci_channel *>(device_get_softc(dev));
 // 	struct cam_devq *devq;
@@ -785,7 +790,7 @@ ahci_free_mem(device_t dev)
 // 		    ahci_ch_pm, ch);
 // 	}
 // 	mtx_unlock(&ch->mtx);
-// 	return (0);
+ 	return (0);
 
 // err3:
 // 	xpt_bus_deregister(cam_sim_path(ch->sim));
@@ -798,7 +803,7 @@ ahci_free_mem(device_t dev)
 // 	mtx_unlock(&ch->mtx);
 // 	mtx_destroy(&ch->mtx);
 // 	return (error);
-// }
+}
 
 // static int
 // ahci_ch_detach(device_t dev)
@@ -2737,3 +2742,40 @@ struct ahci_dc_cb_args {
 // }
 /* MODULE_VERSION(ahci, 1); */
 /* MODULE_DEPEND(ahci, cam, 1, 1, 1); */
+
+/*
+ *
+ * Copyright (c) 2016 Raphine Project
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ * Author: Liva
+ * 
+ */
+#include <stdlib.h>
+
+AhciChannel *AhciChannel::Init(AhciCtrl *ctrl) {
+  AhciChannel *addr = new AhciChannel(ctrl);
+  addr->_bsd.SetMasterClass(addr);
+  addr->_bsd.softc = calloc(1, sizeof(struct ahci_channel));
+  if (ahci_ch_probe(&addr->_bsd) == BUS_PROBE_DEFAULT) {
+    kassert(ahci_ch_attach(&addr->_bsd) == 0);
+    return addr;
+  } else {
+    free(addr->_bsd.softc);
+    delete addr;
+    return nullptr;
+  }
+}

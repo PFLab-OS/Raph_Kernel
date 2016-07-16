@@ -20,6 +20,7 @@
  * 
  */
 
+#include <sys/kernel.h>
 #include <sys/rman.h>
 #include <sys/bus-raph.h>
 #include <sys/rman-raph.h>

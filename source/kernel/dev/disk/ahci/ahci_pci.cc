@@ -655,12 +655,14 @@ ahci_pci_detach(device_t dev)
 #include "ahci-raph.h"
 #include <stdlib.h>
 
-DevPci *Ahci::InitPci(uint8_t bus, uint8_t device, uint8_t function) {
-  Ahci *addr = new Ahci(bus, device, function);
+DevPci *AhciCtrl::InitPci(uint8_t bus, uint8_t device, uint8_t function) {
+  AhciCtrl *addr = new AhciCtrl(bus, device, function);
   addr->_bsd.SetMasterClass(addr);
   addr->_bsd.softc = calloc(1, sizeof(struct ahci_controller));
   if (ahci_probe(&addr->_bsd) == BUS_PROBE_DEFAULT) {
     kassert(ahci_pci_attach(&addr->_bsd) == 0);
+    kassert(false);
+    return addr->_bsd.GetPciClass();
   } else {
     free(addr->_bsd.softc);
     delete addr;

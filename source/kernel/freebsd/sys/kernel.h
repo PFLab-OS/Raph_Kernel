@@ -49,12 +49,19 @@
 extern "C" {
 #endif /* __cplusplus */
 
+#ifdef _KERNEL
+
+  /* for intrhook below */
+#include <sys/queue.h>
+
 #define hz 1000
 #define reciprocal_of_hz 1000  /* 1000000 / hz */
 
   // replacement of ticks
   int get_ticks();
 
+#endif /* _KERNEL */
+  
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

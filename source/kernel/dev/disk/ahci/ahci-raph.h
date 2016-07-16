@@ -45,12 +45,24 @@ private:
   BsdDevPci _bsd_pci;
 };
 
-class Ahci : public BsdDevPciDisk {
+class AhciCtrl : public BsdDevPciDisk {
 public:
-  Ahci(uint8_t bus, uint8_t device, uint8_t function) : BsdDevPciDisk(bus, device, function) {
+  AhciCtrl(uint8_t bus, uint8_t device, uint8_t function) : BsdDevPciDisk(bus, device, function) {
   }
   static DevPci *InitPci(uint8_t bus, uint8_t device, uint8_t function);
+};
 
+class AhciChannel {
+public:
+  AhciChannel(AhciCtrl *ctrl) : _ctrl(ctrl) {
+  }
+  static AhciChannel *Init(AhciCtrl *ctrl);
+  device_t GetDevice() {
+    return &_bsd;
+  }
+private:
+  AhciCtrl *_ctrl;
+  BsdDevice _bsd;
 };
 
 #endif // __RAPH_KERNEL_DEV_DISK_AHCI_AHCI_RAPH_H__

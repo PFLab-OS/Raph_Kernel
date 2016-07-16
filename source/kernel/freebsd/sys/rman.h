@@ -52,10 +52,36 @@ extern "C" {
 #define	RF_PREFETCHABLE	0x0040	/* resource is prefetchable */
 #define	RF_OPTIONAL	0x0080	/* for bus_alloc_resources() */
 
+  enum	rman_type { RMAN_UNINIT = 0, RMAN_GAUGE, RMAN_ARRAY };
+
+  /*
+   * String length exported to userspace for resource names, etc.
+   */
+#define RM_TEXTLEN	32
+
+#define	RM_MAX_END	(~(rman_res_t)0)
+
+#define	RMAN_IS_DEFAULT_RANGE(s,e)	((s) == 0 && (e) == RM_MAX_END)
+
+#ifdef _KERNEL
+
+  struct resource_i;
+
+  TAILQ_HEAD(resource_head, resource_i);
+
   struct rman {
+    struct	resource_head 	rm_list;
+    struct	mtx *rm_mtx;	/* mutex used to protect rm_list */
+    TAILQ_ENTRY(rman)	rm_link; /* link in list of all rmans */
+    rman_res_t	rm_start;	/* index of globally first entry */
+    rman_res_t	rm_end;	/* index of globally last entry */
+    enum	rman_type rm_type; /* what type of resource this is */
+    const	char *rm_descr;	/* text descripion of this resource */
   };
   bus_space_tag_t rman_get_bustag(struct resource *r);
   bus_space_handle_t rman_get_bushandle(struct resource *r);
+
+#endif /* _KERNEL */
 
 #ifdef __cplusplus
 }

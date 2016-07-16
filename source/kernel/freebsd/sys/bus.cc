@@ -20,8 +20,8 @@
  * 
  */
 
-
 #include <mem/physmem.h>
+#include <sys/kernel.h>
 #include <sys/bus-raph.h>
 #include <sys/types-raph.h>
 #include <sys/rman-raph.h>
