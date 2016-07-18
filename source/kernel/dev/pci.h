@@ -63,11 +63,14 @@ public:
       kIntD = 4,
   };
   PciCtrl() {
-    _irq_container = virtmem_ctrl->New<IrqContainer>();
+    _irq_container = new IrqContainer();
   }
   virtual ~PciCtrl() {
   }
-  static void Init(); // not defined
+  static void Init() {
+    kassert(pci_ctrl != nullptr);
+    pci_ctrl->_Init();
+  }
   DevPci *InitPciDevices(uint8_t bus, uint8_t device, uint8_t function);
   virt_addr GetVaddr(uint8_t bus, uint8_t device, uint8_t func, uint16_t reg) {
     return _base_addr + ((bus & 0xff) << 20) + ((device & 0x1f) << 15) + ((func & 0x7) << 12) + (reg & 0xfff);
@@ -182,9 +185,8 @@ public:
   static const uint32_t kRegBaseAddrIsPrefetchable = 1 << 3;
   static const uint32_t kRegBaseAddrMaskMemAddr = 0xFFFFFFF0;
   static const uint32_t kRegBaseAddrMaskIoAddr = 0xFFFFFFFC;
-protected:
-  void _Init();
 private:
+  void _Init();
   template<class T>
   static inline DevPci *_InitPciDevices(uint8_t bus, uint8_t device, uint8_t function) {
     return T::InitPci(bus, device, function);
@@ -254,12 +256,6 @@ private:
 class AcpicaPciCtrl : public PciCtrl {
 public:
   virtual ~AcpicaPciCtrl() {
-  }
-  static void Init() {
-    kassert(acpi_ctrl != nullptr);
-    AcpicaPciCtrl *acpica_pci_ctrl = virtmem_ctrl->New<AcpicaPciCtrl>();
-    pci_ctrl = acpica_pci_ctrl;
-    acpica_pci_ctrl->_Init();
   }
 private:
   virtual int GetLegacyIntNum(DevPci *device) override {

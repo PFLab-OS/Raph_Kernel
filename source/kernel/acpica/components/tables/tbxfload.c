@@ -93,7 +93,7 @@ AcpiLoadTables (
         ACPI_EXCEPTION ((AE_INFO, Status, "During Region initialization"));
         return_ACPI_STATUS (Status);
     }
-
+    
     /* Load the namespace from the tables */
 
     Status = AcpiTbLoadNamespace ();

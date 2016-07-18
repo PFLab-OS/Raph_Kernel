@@ -169,7 +169,7 @@ void Idt::HandlePageFault(Regs *rs, void *arg) {
   if (gtty != nullptr) {
     uint64_t addr;
     asm volatile("movq %%cr2, %0;":"=r"(addr));
-    gtty->CprintfRaw("\nunexpected page fault occured!\naddress: %x\n", addr);
+    gtty->CprintfRaw("\nunexpected page fault occured!\naddress: %llx\n", addr);
   }
   while(true){
     asm volatile("cli;hlt");

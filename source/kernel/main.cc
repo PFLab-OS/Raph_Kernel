@@ -44,19 +44,33 @@
 #include <net/socket.h>
 
 
-AcpiCtrl *acpi_ctrl;
-ApicCtrl *apic_ctrl;
-MultibootCtrl *multiboot_ctrl;
-PagingCtrl *paging_ctrl;
-PhysmemCtrl *physmem_ctrl;
-VirtmemCtrl *virtmem_ctrl;
+AcpiCtrl *acpi_ctrl = nullptr;
+ApicCtrl *apic_ctrl = nullptr;
+MultibootCtrl *multiboot_ctrl = nullptr;
+PagingCtrl *paging_ctrl = nullptr;
+PhysmemCtrl *physmem_ctrl = nullptr;
+VirtmemCtrl *virtmem_ctrl = nullptr;
+Gdt *gdt = nullptr;
+Idt *idt = nullptr;
+Keyboard *keyboard = nullptr;
+Shell *shell = nullptr;
+PciCtrl *pci_ctrl = nullptr;
 
-Gdt *gdt;
-Idt *idt;
-Keyboard *keyboard;
-Shell *shell;
-
-PciCtrl *pci_ctrl;
+MultibootCtrl _multiboot_ctrl;
+AcpiCtrl _acpi_ctrl;
+ApicCtrl _apic_ctrl;
+CpuCtrl _cpu_ctrl;
+Gdt _gdt;
+Idt _idt;
+KVirtmemCtrl _virtmem_ctrl;
+PhysmemCtrl _physmem_ctrl;
+PagingCtrl _paging_ctrl;
+TaskCtrl _task_ctrl;
+Hpet _htimer;
+Vga _vga;
+Keyboard _keyboard;
+Shell _shell;
+AcpicaPciCtrl _acpica_pci_ctrl;
 
 static uint32_t rnd_next = 1;
 
@@ -105,47 +119,33 @@ void shell_test(int argc, const char* argv[]) {  //this function is for testing
 
 extern "C" int main() {
   
-  MultibootCtrl _multiboot_ctrl;
-  multiboot_ctrl = &_multiboot_ctrl;
+  multiboot_ctrl = new (&_multiboot_ctrl) MultibootCtrl;
 
-  AcpiCtrl _acpi_ctrl;
-  acpi_ctrl = &_acpi_ctrl;
+  acpi_ctrl = new (&_acpi_ctrl) AcpiCtrl;
 
-  ApicCtrl _apic_ctrl;
-  apic_ctrl = &_apic_ctrl;
+  apic_ctrl = new (&_apic_ctrl) ApicCtrl;
 
-  CpuCtrl _cpu_ctrl;
-  cpu_ctrl = &_cpu_ctrl;
+  cpu_ctrl = new (&_cpu_ctrl) CpuCtrl;
 
-  Gdt _gdt;
-  gdt = &_gdt;
+  gdt = new (&_gdt) Gdt;
   
-  Idt _idt;
-  idt = &_idt;
+  idt = new (&_idt) Idt;
 
-  KVirtmemCtrl _virtmem_ctrl;
-  virtmem_ctrl = &_virtmem_ctrl;
+  virtmem_ctrl = new (&_virtmem_ctrl) KVirtmemCtrl;
 
-  PhysmemCtrl _physmem_ctrl;
-  physmem_ctrl = &_physmem_ctrl;
+  physmem_ctrl = new (&_physmem_ctrl) PhysmemCtrl;
   
-  PagingCtrl _paging_ctrl;
-  paging_ctrl = &_paging_ctrl;
+  paging_ctrl = new (&_paging_ctrl) PagingCtrl;
 
-  TaskCtrl _task_ctrl;
-  task_ctrl = &_task_ctrl;
+  task_ctrl = new (&_task_ctrl) TaskCtrl;
   
-  Hpet _htimer;
-  timer = &_htimer;
+  timer = new (&_htimer) Hpet;
 
-  Vga _vga;
-  gtty = &_vga;
+  gtty = new (&_vga) Vga;
 
-  Keyboard _keyboard;
-  keyboard = &_keyboard;
+  keyboard = new (&_keyboard) Keyboard;
 
-  Shell _shell;
-  shell = &_shell;
+  shell = new (&_shell) Shell;
 
   PhysAddr paddr;
   physmem_ctrl->Alloc(paddr, PagingCtrl::kPageSize * 2);
@@ -180,10 +180,13 @@ extern "C" int main() {
 
   // InitNetCtrl();
 
+  pci_ctrl = new (&_acpica_pci_ctrl) AcpicaPciCtrl;
+  
   acpi_ctrl->SetupAcpica();
-  //  acpi_ctrl->Shutdown();
+  // acpi_ctrl->Shutdown();
 
-  InitDevices<AcpicaPciCtrl, Device>();
+  InitDevices<PciCtrl, Device>();
+  kassert(false);
 
   gtty->Init();
 
@@ -493,7 +496,7 @@ extern "C" void abort() {
 
 extern "C" void _kassert(const char *file, int line, const char *func) {
   if (gtty != nullptr) {
-    gtty->Cprintf("assertion failed at %s l.%d (%s)\ncpuid: %d\n", file, line, func, cpu_ctrl->GetId());
+    gtty->Cprintf("assertion failed at %s l.%d (%s) cpuid: %d\n", file, line, func, cpu_ctrl->GetId());
   }
   while(true){
     asm volatile("cli;hlt");
