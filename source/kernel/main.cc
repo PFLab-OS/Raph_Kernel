@@ -43,7 +43,6 @@
 #include <net/netctrl.h>
 #include <net/socket.h>
 
-
 AcpiCtrl *acpi_ctrl = nullptr;
 ApicCtrl *apic_ctrl = nullptr;
 MultibootCtrl *multiboot_ctrl = nullptr;
@@ -147,12 +146,13 @@ extern "C" int main() {
 
   shell = new (&_shell) Shell;
 
+  multiboot_ctrl->Setup();
+  
   PhysAddr paddr;
   physmem_ctrl->Alloc(paddr, PagingCtrl::kPageSize * 2);
   extern int kKernelEndAddr;
   kassert(paging_ctrl->MapPhysAddrToVirtAddr(reinterpret_cast<virt_addr>(&kKernelEndAddr) - PagingCtrl::kPageSize * 4, paddr, PagingCtrl::kPageSize * 2, PDE_WRITE_BIT, PTE_WRITE_BIT | PTE_GLOBAL_BIT));
 
-  multiboot_ctrl->Setup();
   
   acpi_ctrl->Setup();
 
