@@ -147,7 +147,9 @@ extern "C" int main() {
   shell = new (&_shell) Shell;
 
   multiboot_ctrl->Setup();
-  
+
+  paging_ctrl->MapAllPhysMemory();
+
   PhysAddr paddr;
   physmem_ctrl->Alloc(paddr, PagingCtrl::kPageSize * 2);
   extern int kKernelEndAddr;
@@ -186,7 +188,6 @@ extern "C" int main() {
   // acpi_ctrl->Shutdown();
 
   InitDevices<PciCtrl, Device>();
-  kassert(false);
 
   gtty->Init();
 

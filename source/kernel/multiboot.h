@@ -71,7 +71,6 @@ public:
         break;
       }
     }
-    kassert(false);
   }
   phys_addr GetPhysMemoryEnd() {
     return _phys_memory_end;
