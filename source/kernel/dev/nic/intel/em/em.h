@@ -39,8 +39,6 @@ public:
 
   virtual void UpdateLinkStatus() override;
 
-  virtual void SetupNetInterface() override;
-
   // allocate 6 byte before call
   virtual void GetEthAddr(uint8_t *buffer) override;
  private:

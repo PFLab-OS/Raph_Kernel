@@ -41,7 +41,6 @@ public:
   }
   // allocate 6 byte before call
   virtual void GetEthAddr(uint8_t *buffer) = 0;
-  virtual void SetupNetInterface() = 0;
 
 protected:
   DevEthernet(DevPci *pci) {

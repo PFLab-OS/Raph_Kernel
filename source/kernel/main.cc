@@ -180,7 +180,7 @@ extern "C" int main() {
 
   idt->SetupProc();
 
-  // InitNetCtrl();
+  InitNetCtrl();
 
   pci_ctrl = new (&_acpica_pci_ctrl) AcpicaPciCtrl;
   
