@@ -66,7 +66,7 @@ private:
   friend NetSocket;
 
   // packet queue (inserted from network device)
-  static const uint32_t kQueueDepth = 100;
+  static const uint32_t kQueueDepth = 30;
   typedef RingBuffer <NetDev::Packet*, kQueueDepth> PacketQueue;
   typedef FunctionalRingBuffer <NetDev::Packet*, kQueueDepth> PacketFunctionalQueue;
   PacketFunctionalQueue _main_queue;
