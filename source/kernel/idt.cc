@@ -96,6 +96,10 @@ void Idt::SetupGeneric() {
       _callback[i][j].callback = nullptr;
     }
   }
+  // x86 specific
+  for (int i = 0; i < apic_ctrl->GetHowManyCpus(); i++) {
+    SetExceptionCallback(i, 14, HandlePageFault, nullptr);
+  }
   _is_gen_initialized = true;
 }
 
@@ -125,9 +129,49 @@ int Idt::SetIntCallback(int cpuid, int_callback callback, void *arg) {
   return ReservedIntVector::kError;
 }
 
+int Idt::SetIntCallback(int cpuid, int_callback *callback, void **arg, int range) {
+  int _range = 1;
+  while(_range < range) {
+    _range *= 2;
+  }
+  if (range != _range) {
+    return ReservedIntVector::kError;
+  }
+  Locker locker(_lock);
+  int vector = range > 64 ? range : 64;
+  for(; vector < 256; vector += range) {
+    int i;
+    for (i = 0; i < range; i++) {
+      if (_callback[cpuid][vector + i].callback != nullptr) {
+        break;
+      }
+    }
+    if (i != range) {
+      continue;
+    }
+    for (i = 0; i < range; i++) {
+      _callback[cpuid][vector + i].callback = callback[i];
+      _callback[cpuid][vector + i].arg = arg[i];
+    }
+    return vector;
+  }
+  return ReservedIntVector::kError;
+}
+
 void Idt::SetExceptionCallback(int cpuid, int vector, int_callback callback, void *arg) {
   kassert(vector < 64 && vector >= 1);
   Locker locker(_lock);
   _callback[cpuid][vector].callback = callback;
   _callback[cpuid][vector].arg = arg;
+}
+
+void Idt::HandlePageFault(Regs *rs, void *arg) {
+  if (gtty != nullptr) {
+    uint64_t addr;
+    asm volatile("movq %%cr2, %0;":"=r"(addr));
+    gtty->CprintfRaw("\nunexpected page fault occured!\naddress: %llx\n", addr);
+  }
+  while(true){
+    asm volatile("cli;hlt");
+  }
 }

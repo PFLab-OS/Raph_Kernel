@@ -63,11 +63,14 @@ public:
       kIntD = 4,
   };
   PciCtrl() {
-    _irq_container = virtmem_ctrl->New<IrqContainer>();
+    _irq_container = new IrqContainer();
   }
   virtual ~PciCtrl() {
   }
-  static void Init(); // not defined
+  static void Init() {
+    kassert(pci_ctrl != nullptr);
+    pci_ctrl->_Init();
+  }
   DevPci *InitPciDevices(uint8_t bus, uint8_t device, uint8_t function);
   virt_addr GetVaddr(uint8_t bus, uint8_t device, uint8_t func, uint16_t reg) {
     return _base_addr + ((bus & 0xff) << 20) + ((device & 0x1f) << 15) + ((func & 0x7) << 12) + (reg & 0xfff);
@@ -83,11 +86,21 @@ public:
   // Capabilityへのオフセットを返す
   // 見つからなかった時は0
   uint16_t FindCapability(uint8_t bus, uint8_t device, uint8_t func, CapabilityId id);
-  bool HasMsi(uint8_t bus, uint8_t device, uint8_t func) {
+  int GetMsiCount(uint8_t bus, uint8_t device, uint8_t func) {
     uint16_t offset = FindCapability(bus, device, func, CapabilityId::kMsi);
-    return (offset != 0);
+    if (offset == 0) {
+      return 0;
+    }
+
+    uint16_t control = ReadReg<uint16_t>(bus, device, func, offset + kMsiCapRegControl);
+    uint16_t cap = (control & kMsiCapRegControlMultiMsgCapMask) >> kMsiCapRegControlMultiMsgCapOffset;
+    int count = 1;
+    for (; cap > 0; cap--) {
+      count *= 2;
+    }
+    return count;
   }
-  // 先にHasMsiでMsiが使えるか調べる事
+  // 先にGetMsiCountでMsiが使えるか調べる事
   void SetMsi(uint8_t bus, uint8_t device, uint8_t func, uint64_t addr, uint16_t data);
   IntPin GetLegacyIntPin(uint8_t bus, uint8_t device, uint8_t func) {
     return static_cast<IntPin>(ReadReg<uint8_t>(bus, device, func, kIntPinReg));
@@ -113,7 +126,7 @@ public:
       // TODO cpuid
       int cpuid = 1;
       int vector = idt->SetIntCallback(cpuid, LegacyIntHandler, reinterpret_cast<void *>(this));
-       apic_ctrl->SetupIoInt(irq, apic_ctrl->GetApicIdFromCpuId(cpuid), vector);
+      apic_ctrl->SetupIoInt(irq, apic_ctrl->GetApicIdFromCpuId(cpuid), vector);
       ic->Add(irq, vector);
       ic->next->inthandler->Add(device);
     }
@@ -149,6 +162,9 @@ public:
   // Message Control for MSI
   // see PCI Local Bus Specification 6.8.1.3
   static const uint16_t kMsiCapRegControlMsiEnableFlag = 1 << 0;
+  static const uint16_t kMsiCapRegControlMultiMsgCapOffset = 1;
+  static const uint16_t kMsiCapRegControlMultiMsgCapMask = 7 << kMsiCapRegControlMultiMsgCapOffset;
+  static const uint16_t kMsiCapRegControlMultiMsgEnableOffset = 4;
   static const uint16_t kMsiCapRegControlAddr64Flag = 1 << 7;
 
   static const uint16_t kCommandRegBusMasterEnableFlag = 1 << 2;
@@ -169,9 +185,8 @@ public:
   static const uint32_t kRegBaseAddrIsPrefetchable = 1 << 3;
   static const uint32_t kRegBaseAddrMaskMemAddr = 0xFFFFFFF0;
   static const uint32_t kRegBaseAddrMaskIoAddr = 0xFFFFFFFC;
-protected:
-  void _Init();
 private:
+  void _Init();
   template<class T>
   static inline DevPci *_InitPciDevices(uint8_t bus, uint8_t device, uint8_t function) {
     return T::InitPci(bus, device, function);
@@ -208,10 +223,6 @@ private:
       irq = -1;
       inthandler = nullptr;
       next = nullptr;
-      Function func;
-      func.Init(Handler, reinterpret_cast<void *>(this));
-      // TODO cpuid
-      ctask.SetFunc(1, func);
     }
     void Add(int irq_, int vector_) {
       kassert(next == nullptr);
@@ -220,12 +231,11 @@ private:
       next->vector = vector_;
       next->inthandler = virtmem_ctrl->New<IntHandler>();
     }
-    static void Handler(void *arg);
+    void Handle();
     int irq;
     int vector;
     IntHandler *inthandler;
     IrqContainer *next;
-    CountableTask ctask;
   } *_irq_container;
   IntSpinLock _irq_container_lock;
   static void LegacyIntHandler(Regs *rs, void *arg) {
@@ -235,7 +245,7 @@ private:
     while(ic->next != nullptr) {
       IrqContainer *nic = ic->next;
       if (nic->vector == static_cast<int>(rs->n)) {
-        nic->ctask.Inc();
+        nic->Handle();
         break;
       }
       ic = nic;
@@ -246,12 +256,6 @@ private:
 class AcpicaPciCtrl : public PciCtrl {
 public:
   virtual ~AcpicaPciCtrl() {
-  }
-  static void Init() {
-    kassert(acpi_ctrl != nullptr);
-    AcpicaPciCtrl *acpica_pci_ctrl = virtmem_ctrl->New<AcpicaPciCtrl>();
-    pci_ctrl = acpica_pci_ctrl;
-    acpica_pci_ctrl->_Init();
   }
 private:
   virtual int GetLegacyIntNum(DevPci *device) override {
@@ -281,18 +285,16 @@ public:
   uint16_t FindCapability(PciCtrl::CapabilityId id) {
     kassert(pci_ctrl != nullptr);
     return pci_ctrl->FindCapability(_bus, _device, _function, id);
-  } 
-  bool HasMsi() {
-    return pci_ctrl->HasMsi(_bus, _device, _function);
   }
-  // 先にHasMsiでMsiが使えるか調べる事
-  // 返り値は割り当てられたvector
-  int SetMsi(int cpuid, int_callback handler, void *arg) {
+  // MSIに割り当てられるメッセージの数を返す
+  // 0の場合はMSIをサポートしていない
+  int GetMsiCount() {
+    return pci_ctrl->GetMsiCount(_bus, _device, _function);
+  }
+  // 先にGetMsiCountでMsiが使えるか調べる事
+  void SetMsi(int cpuid, int vector) {
     kassert(pci_ctrl != nullptr);
-    kassert(idt != nullptr);
-    int vector = idt->SetIntCallback(cpuid, handler, arg);
     pci_ctrl->SetMsi(_bus, _device, _function, ApicCtrl::Lapic::GetMsiAddr(apic_ctrl->GetApicIdFromCpuId(cpuid)), ApicCtrl::Lapic::GetMsiData(vector));
-    return vector;
   }
   const uint8_t GetBus() {
     return _bus;

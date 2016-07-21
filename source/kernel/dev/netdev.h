@@ -153,6 +153,7 @@ public:
   HandleMethod GetHandleMethod() {
     return _method;
   }
+  void SetupNetInterface();
   void SetProtocolStack(ProtocolStack *stack) { _ptcl_stack = stack; }
 protected:
   NetDev() {

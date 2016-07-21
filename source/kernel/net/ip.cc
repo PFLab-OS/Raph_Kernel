@@ -25,6 +25,7 @@
 #include <mem/physmem.h>
 #include <mem/virtmem.h>
 #include <net/ip.h>
+#include <arpa/inet.h>
 
 // offset in header
 const uint32_t kProtocolTypeOffset = 9;

@@ -37,6 +37,7 @@
 #include <apic.h>
 #include <global.h>
 #include <task.h>
+#include <dev/pci.h>
 #include <freebsd/sys/types.h>
 #include <freebsd/sys/rman.h>
 #include <freebsd/i386/include/resource.h>
@@ -85,6 +86,135 @@ enum intr_polarity {
 	INTR_POLARITY_CONFORM = 0,
 	INTR_POLARITY_HIGH = 1,
 	INTR_POLARITY_LOW = 2
+};
+
+// TODO
+// PCI Specific
+// should be BsdBus
+class BsdDevPci : public DevPci {
+public:
+  class IntContainer {
+  public:
+    IntContainer() {
+      Function func;
+      func.Init(HandleSub, reinterpret_cast<void *>(this));
+      // TODO cpuid
+      _ctask.SetFunc(1, func);
+    }
+    void Handle() {
+      if (_filter != nullptr) {
+        _filter(_farg);
+      }
+      if (_ithread != nullptr) {
+        _ctask.Inc();
+      }
+    }
+    void SetFilter(driver_filter_t filter, void *arg) {
+      _filter = filter;
+      _farg = arg;
+    }
+    void SetIthread(driver_intr_t ithread, void *arg) {
+      _ithread = ithread;
+      _iarg = arg;
+    }
+  private:
+    static void HandleSub(void *arg) {
+      IntContainer *that = reinterpret_cast<IntContainer *>(arg);
+      if (that->_ithread != nullptr) {
+        that->_ithread(that->_iarg);
+      }
+    }
+    CountableTask _ctask;
+    
+    driver_filter_t _filter = nullptr;
+    void *_farg;
+    
+    driver_intr_t _ithread = nullptr;
+    void *_iarg;
+  };
+  BsdDevPci(uint8_t bus, uint8_t device, bool mf) : DevPci(bus, device, mf) {
+  }
+  virtual ~BsdDevPci() {
+  }
+  
+  // 返り値は割り当てられたvector
+  // int SetMsi(int cpuid, ioint_callback handler, void *arg) {
+  //   int i;
+  //   {
+  //     Locker locker(_lock);
+  //     for (i = 0; i < kIntMax; i++) {
+  //       if (map[i].handler == nullptr) {
+  //         break;
+  //       }
+  //     }
+  //     if (i == kIntMax) {
+  //       kernel_panic("PCI", "could not allocate MSI Handler");
+  //     }
+  //   }
+  //   int vector = DevPci::SetMsi(cpuid, HandleSub, reinterpret_cast<void *>(this));
+  //   map[i].cpuid = cpuid;
+  //   map[i].vector = vector;
+  //   map[i].handler = handler;
+  //   map[i].arg = arg;
+  //   return vector;
+  // }
+  IntContainer *GetIntContainerStruct(int id) {
+    if (_is_legacy_interrupt_enable) {
+      if (id == 0) {
+        if (_icontainer_list == nullptr) {
+          SetupLegacyIntContainers();
+        }
+        return &_icontainer_list[id];
+      } else {
+        return NULL;
+      }
+    } else {
+      if (id <= 0) {
+        return NULL;
+      } else {
+        return &_icontainer_list[id - 1];
+      }
+    }
+  }
+  void SetupMsi() {
+    if (_icontainer_list != nullptr) {
+      // TODO 割り込み開放
+      delete[] _icontainer_list;
+    }
+    int count = GetMsiCount();
+    if (count == 0) {
+      return;
+    }
+    _icontainer_list = new IntContainer[count];
+    int_callback callbacks[count];
+    void *args[count];
+    for (int i = 0; i < count; i++) {
+      callbacks[i] = HandleSubInt;
+      args[i] = reinterpret_cast<void *>(_icontainer_list + i);
+    }
+    // TODO cpuid
+    int cpuid = 1;
+    int vector = idt->SetIntCallback(cpuid, callbacks, args, count);
+    SetMsi(cpuid, vector);
+  }
+private:
+  void SetupLegacyIntContainers() {
+    _icontainer_list = new IntContainer[1];
+    for (int i = 0; i < 1; i++) {
+      SetLegacyInterrupt(HandleSubLegacy, reinterpret_cast<void *>(_icontainer_list + i));
+    }
+  }
+  static void HandleSubLegacy(void *arg) {
+    IntContainer *icontainer = reinterpret_cast<IntContainer *>(arg);
+    icontainer->Handle();
+  }
+  static void HandleSubInt(Regs *rs, void *arg) {
+    IntContainer *icontainer = reinterpret_cast<IntContainer *>(arg);
+    icontainer->Handle();
+  }
+
+  bool _is_legacy_interrupt_enable = true;
+  IntContainer *_icontainer_list = nullptr;
 };
 
 static inline uint8_t bus_space_read_1(bus_space_tag_t space, bus_space_handle_t handle, bus_size_t offset) {
@@ -168,20 +298,19 @@ struct resource {
     } mem;
   } data;
   idt_callback gate;
+  BsdDevPci::IntContainer *icontainer = NULL;
 };
 
-static inline struct resource *bus_alloc_resource_any(device_t dev, int type, int *rid, u_int flags);
-
 static inline struct resource *bus_alloc_resource_any(device_t dev, int type, int *rid, u_int flags) {
-  int bar = *rid;
   struct resource *r;
-  uint32_t addr = dev->GetPciClass()->ReadReg<uint32_t>(static_cast<uint32_t>(bar));
   switch(type) {
   case SYS_RES_MEMORY: {
+    int bar = *rid;
+    uint32_t addr = dev->GetPciClass()->ReadReg<uint32_t>(static_cast<uint32_t>(bar));
     if ((addr & PciCtrl::kRegBaseAddrFlagIo) != 0) {
       return NULL;
     }
-    r = reinterpret_cast<struct resource *>(virtmem_ctrl->Alloc(sizeof(struct resource)));
+    r = virtmem_ctrl->New<resource>();
     r->type = BUS_SPACE_MEMIO;
     r->data.mem.is_prefetchable = ((addr & PciCtrl::kRegBaseAddrIsPrefetchable) != 0);
     r->addr = addr & PciCtrl::kRegBaseAddrMaskMemAddr;
@@ -193,15 +322,19 @@ static inline struct resource *bus_alloc_resource_any(device_t dev, int type, in
     break;
   }
   case SYS_RES_IOPORT: {
+    int bar = *rid;
+    uint32_t addr = dev->GetPciClass()->ReadReg<uint32_t>(static_cast<uint32_t>(bar));
     if ((addr & PciCtrl::kRegBaseAddrFlagIo) == 0) {
       return NULL;
     }
-    r = reinterpret_cast<struct resource *>(virtmem_ctrl->Alloc(sizeof(struct resource)));
+    r = virtmem_ctrl->New<resource>();
     r->type = BUS_SPACE_PIO;
     r->addr = addr & PciCtrl::kRegBaseAddrMaskIoAddr;
     break;
   }
   case SYS_RES_IRQ: {
+    r = virtmem_ctrl->New<resource>();
+    r->icontainer = dev->GetPciClass()->GetIntContainerStruct(*rid);
     break;
   }
   default: {
@@ -211,50 +344,25 @@ static inline struct resource *bus_alloc_resource_any(device_t dev, int type, in
   return r;
 }
 
-// defined by Raphine Project
-struct filter_container_struct {
-  driver_filter_t filter;
-  void *arg;
-};
-static inline void filter_handler_sub(void *arg) {
-  filter_container_struct *s = reinterpret_cast<filter_container_struct *>(arg);
-  s->filter(s->arg);
-}
-struct intr_container_struct {
-  driver_intr_t ithread;
-  void *arg;
-};
-
-static inline void bus_ithread_sub(void *arg) {
-  // タスクハンドラ
-  intr_container_struct *s = reinterpret_cast<intr_container_struct *>(arg);
-  s->ithread(s->arg);
-}
-
 static inline int bus_setup_intr(device_t dev, struct resource *r, int flags, driver_filter_t filter, driver_intr_t ithread, void *arg, void **cookiep) {
-  if (filter != nullptr) {
-    if (!dev->GetPciClass()->HasMsi()) {
-      return -1;
-    }
-    filter_container_struct *s = virtmem_ctrl->New<filter_container_struct>();
-    s->filter = filter;
-    s->arg = arg;
-    // TODO CPU num
-    dev->GetPciClass()->SetMsi(0, filter_handler_sub, reinterpret_cast<void *>(s));
-    return 0;
+  if (r->icontainer == NULL) {
+    return -1;
   }
-  if (ithread != nullptr) {
-    if (!dev->GetPciClass()->HasLegacyInterrupt()) {
-      return -1;
-    } 
-    intr_container_struct *s = virtmem_ctrl->New<intr_container_struct>();
-    s->ithread = ithread;
-    s->arg = arg;
-    // TODO cpu num
-    dev->GetPciClass()->SetLegacyInterrupt(bus_ithread_sub, reinterpret_cast<void *>(s));
-    return 0;
-  }
-  return -1;
+  r->icontainer->SetFilter(filter, arg);
+  r->icontainer->SetIthread(ithread, arg);
+  return 0;
+}
+
+#include <tty.h>
+#include <global.h>
+static inline int device_printf(device_t dev, const char *fmt, ...) __attribute__ ((format (printf, 2, 3)));;
+static inline int device_printf(device_t dev, const char *fmt, ...) {
+  gtty->Cprintf("[pci device]:");
+  va_list args;
+  va_start(args, fmt);
+  gtty->Cvprintf(fmt, args);
+  va_end(args);
+  return 0;  // TODO fix this
 }
 
 #endif /* _FREEBSD_BUS_H_ */

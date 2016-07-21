@@ -95,7 +95,6 @@ AcpiNsInitializeObjects (
     ACPI_STATUS             Status;
     ACPI_INIT_WALK_INFO     Info;
 
-
     ACPI_FUNCTION_TRACE (NsInitializeObjects);
 
 

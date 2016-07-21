@@ -145,7 +145,6 @@ AcpiHwDerivePciId (
 
     ACPI_FUNCTION_TRACE (HwDerivePciId);
 
-
     if (!PciId)
     {
         return_ACPI_STATUS (AE_BAD_PARAMETER);

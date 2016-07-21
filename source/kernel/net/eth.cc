@@ -25,6 +25,7 @@
 #include <mem/physmem.h>
 #include <mem/virtmem.h>
 #include <net/eth.h>
+#include <arpa/inet.h>
 
 // field offset in Ethernet header
 const uint32_t kDstAddrOffset      = 0;

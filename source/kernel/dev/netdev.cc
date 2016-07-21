@@ -23,8 +23,13 @@
 #include <mem/virtmem.h>
 #include <dev/netdev.h>
 #include <net/ptcl.h>
+#include <global.h>
 
 const char *NetDevCtrl::kDefaultNetworkInterfaceName = "eth0";
+
+void NetDev::SetupNetInterface() {
+//  netdev_ctrl->RegisterDevice(this, "eth0");
+}
 
 bool NetDevCtrl::RegisterDevice(NetDev *dev, const char *name) {
   if(_current_device_number < kMaxDevNumber) {
