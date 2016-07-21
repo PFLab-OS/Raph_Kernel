@@ -90,7 +90,7 @@ Callout tt3;
 #define RCV  2
 #define TEST 3
 
-#define FLAG SND
+#define FLAG QEMU
 #if FLAG == TEST
 #define IP1 192, 168, 100, 117
 #define IP2 192, 168, 100, 254
