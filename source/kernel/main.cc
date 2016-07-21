@@ -226,6 +226,8 @@ extern "C" int main() {
           cnt = 0;
           sum += l;
           rtime++;
+        } else if(rval == ArpSocket::kOpArpRequest) {
+          socket.TransmitPacket(ArpSocket::kOpArpReply, ipaddr, macaddr);
         }
       }, nullptr);
     socket.SetReceiveCallback(2, func);
