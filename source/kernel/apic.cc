@@ -149,6 +149,8 @@ void ApicCtrl::Lapic::WriteIcr(uint32_t hi, uint32_t lo) {
   // wait for write to finish, by reading
   GetApicId();
   _ctrlAddr[kRegIcrLo] = lo;
+  // refer to ia32-sdm vol-3 10-20
+  _ctrlAddr[kRegIcrLo] |= (lo & kDeliverModeInit) ? 0 : kRegIcrLevelAssert;
   GetApicId();
 }
 
