@@ -24,6 +24,7 @@
 #include <mem/physmem.h>
 #include <mem/virtmem.h>
 #include <net/udp.h>
+#include <arpa/inet.h>
 
 int32_t UdpGenerateHeader(uint8_t *buffer, uint32_t length, uint16_t sport, uint16_t dport) {
   UdpHeader * volatile header = reinterpret_cast<UdpHeader*>(buffer);

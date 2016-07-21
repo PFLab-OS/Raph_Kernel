@@ -93,7 +93,7 @@ AcpiLoadTables (
         ACPI_EXCEPTION ((AE_INFO, Status, "During Region initialization"));
         return_ACPI_STATUS (Status);
     }
-
+    
     /* Load the namespace from the tables */
 
     Status = AcpiTbLoadNamespace ();
@@ -184,7 +184,6 @@ AcpiTbLoadNamespace (
      * .Pointer field is not validated until after call to AcpiTbValidateTable.
      */
     AcpiGbl_DSDT = Table->Pointer;
-
     /*
      * Optionally copy the entire DSDT to local memory (instead of simply
      * mapping it.) There are some BIOSs that corrupt or replace the original

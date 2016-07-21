@@ -24,6 +24,7 @@
 #include <assert.h>
 #include <global.h>
 #include <raph.h>
+#include <multiboot.h>
 #include "kvirtmem.h"
 #include "physmem.h"
 
@@ -31,6 +32,18 @@ PagingCtrl::PagingCtrl() {
   extern PageTable initial_PML4T;
   phys_addr pml4t_addr = reinterpret_cast<phys_addr>(&initial_PML4T);
   _pml4t = reinterpret_cast<PageTable *>(p2v(pml4t_addr));
+}
+
+void PagingCtrl::MapAllPhysMemory() {
+  for (virt_addr vaddr = 0;
+       vaddr < multiboot_ctrl->GetPhysMemoryEnd();
+       vaddr += 0x200000) {
+    if (!IsVirtAddrMapped(PhysmemCtrl::kLinearMapOffset + vaddr)) {
+      PhysAddr paddr;
+      paddr.SetAddr(vaddr);
+      Map2MPageToVirtAddr(PhysmemCtrl::kLinearMapOffset + vaddr, paddr, PDE_WRITE_BIT, PDE_WRITE_BIT || PDE_GLOBAL_BIT);
+    }
+  }
 }
 
 void PagingCtrl::ConvertVirtMemToPhysMem(virt_addr vaddr, PhysAddr &paddr) {
@@ -132,6 +145,35 @@ bool PagingCtrl::Map4KPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr
   if ((entry & PTE_PRESENT_BIT) == 0) {
     pt->entry[GetPTIndex(vaddr)] = paddr.GetAddr() | page_flag | PTE_PRESENT_BIT;
     return true;
+  } else {
+    return false;
+  }
+}
+
+bool PagingCtrl::Map2MPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr pst_flag, phys_addr page_flag) {
+  Locker locker(_lock);
+  entry_type entry = _pml4t->entry[GetPML4TIndex(vaddr)];
+  if ((entry & PML4E_PRESENT_BIT) == 0) {
+    PhysAddr tpaddr;
+    physmem_ctrl->Alloc(tpaddr, kPageSize);
+    bzero(reinterpret_cast<void *>(tpaddr.GetVirtAddr()), kPageSize);
+    entry = _pml4t->entry[GetPML4TIndex(vaddr)] = tpaddr.GetAddr() | pst_flag | PML4E_PRESENT_BIT;
+  }
+  PageTable *pdpt = reinterpret_cast<PageTable *>(p2v(GetPML4EMaskedAddr(entry)));
+  entry = pdpt->entry[GetPDPTIndex(vaddr)];
+  if ((entry & PDPTE_PRESENT_BIT) == 0) {
+    PhysAddr tpaddr;
+    physmem_ctrl->Alloc(tpaddr, kPageSize);
+    bzero(reinterpret_cast<void *>(tpaddr.GetVirtAddr()), kPageSize);
+    entry = pdpt->entry[GetPDPTIndex(vaddr)] = tpaddr.GetAddr() | pst_flag | PDPTE_PRESENT_BIT;
+  }
+  if ((entry & PDPTE_1GPAGE_BIT) != 0) {
+    return false;
+  }
+  PageTable *pd = reinterpret_cast<PageTable *>(p2v(GetPDPTEMaskedAddr(entry)));
+  entry = pd->entry[GetPDIndex(vaddr)];
+  if ((entry & PDE_PRESENT_BIT) == 0) {
+    pd->entry[GetPDIndex(vaddr)] = paddr.GetAddr() | pst_flag | PDE_PRESENT_BIT | PDE_2MPAGE_BIT;
   } else {
     return false;
   }

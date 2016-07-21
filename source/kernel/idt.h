@@ -49,6 +49,10 @@ class Idt {
   // 確保したvectorが返る(vector >= 64)
   // 確保できなかった場合はReservedIntVector::kErrorが返る
   int SetIntCallback(int cpuid, int_callback callback, void *arg);
+  // 一括で連続したvectorを確保する
+  // rangeは2のn乗である必要がある
+  // 戻り値は先頭vectorで、rangeで割り切れる事を保証する
+  int SetIntCallback(int cpuid, int_callback *callback, void **arg, int range);
   // 例外等用の割り込みハンドラ
   // vector < 64でなければならない
   void SetExceptionCallback(int cpuid, int vector, int_callback callback, void *arg);
@@ -65,6 +69,7 @@ class Idt {
   };
  private:
   void SetGate(idt_callback gate, int vector, uint8_t dpl, bool trap, uint8_t ist);
+  static void HandlePageFault(Regs *rs, void *arg);
   static const uint32_t kIdtPresent = 1 << 15;
   volatile uint16_t _idtr[5];
   struct IntCallback {

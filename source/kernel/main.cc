@@ -28,7 +28,6 @@
 #include <multiboot.h>
 #include <mem/physmem.h>
 #include <mem/paging.h>
-#include <mem/tmpmem.h>
 #include <mem/virtmem.h>
 #include <raph_acpi.h>
 #include <task.h>
@@ -43,26 +42,39 @@
 
 #include <net/netctrl.h>
 #include <net/socket.h>
+#include <arpa/inet.h>
 
+AcpiCtrl *acpi_ctrl = nullptr;
+ApicCtrl *apic_ctrl = nullptr;
+MultibootCtrl *multiboot_ctrl = nullptr;
+PagingCtrl *paging_ctrl = nullptr;
+PhysmemCtrl *physmem_ctrl = nullptr;
+VirtmemCtrl *virtmem_ctrl = nullptr;
+Gdt *gdt = nullptr;
+Idt *idt = nullptr;
+Keyboard *keyboard = nullptr;
+Shell *shell = nullptr;
+PciCtrl *pci_ctrl = nullptr;
 
-AcpiCtrl *acpi_ctrl;
-ApicCtrl *apic_ctrl;
-MultibootCtrl *multiboot_ctrl;
-PagingCtrl *paging_ctrl;
-PhysmemCtrl *physmem_ctrl;
-TmpmemCtrl *tmpmem_ctrl;
-VirtmemCtrl *virtmem_ctrl;
-
-Gdt *gdt;
-Idt *idt;
-Keyboard *keyboard;
-Shell *shell;
-
-PciCtrl *pci_ctrl;
+MultibootCtrl _multiboot_ctrl;
+AcpiCtrl _acpi_ctrl;
+ApicCtrl _apic_ctrl;
+CpuCtrl _cpu_ctrl;
+Gdt _gdt;
+Idt _idt;
+KVirtmemCtrl _virtmem_ctrl;
+PhysmemCtrl _physmem_ctrl;
+PagingCtrl _paging_ctrl;
+TaskCtrl _task_ctrl;
+Hpet _htimer;
+Vga _vga;
+Keyboard _keyboard;
+Shell _shell;
+AcpicaPciCtrl _acpica_pci_ctrl;
 
 static uint32_t rnd_next = 1;
 
-#include <freebsd/sys/types.h>
+#include <freebsd/net/if_var.h>
 BsdDevEthernet *eth;
 uint64_t cnt;
 int64_t sum;
@@ -78,18 +90,18 @@ Callout tt3;
 #define RCV  2
 #define TEST 3
 
-#define FLAG QEMU 
+#define FLAG SND
 #if FLAG == TEST
 #define IP1 192, 168, 100, 117
 #define IP2 192, 168, 100, 254
 #elif FLAG == SND
-#define IP1 192, 168, 100, 117
+#define IP1 192, 168, 100, 100
 #define IP2 192, 168, 100, 104
 #elif FLAG == RCV
 #define IP1 192, 168, 100, 104
-#define IP2 192, 168, 100, 117
+#define IP2 192, 168, 100, 100
 #elif FLAG == QEMU
-#define IP1 10, 0, 2, 5
+#define IP1 10, 0, 2, 9
 #define IP2 10, 0, 2, 15
 #endif
 
@@ -105,59 +117,43 @@ void shell_test(int argc, const char* argv[]) {  //this function is for testing
 
 extern "C" int main() {
   
-  MultibootCtrl _multiboot_ctrl;
-  multiboot_ctrl = &_multiboot_ctrl;
+  multiboot_ctrl = new (&_multiboot_ctrl) MultibootCtrl;
 
-  AcpiCtrl _acpi_ctrl;
-  acpi_ctrl = &_acpi_ctrl;
+  acpi_ctrl = new (&_acpi_ctrl) AcpiCtrl;
 
-  ApicCtrl _apic_ctrl;
-  apic_ctrl = &_apic_ctrl;
+  apic_ctrl = new (&_apic_ctrl) ApicCtrl;
 
-  CpuCtrl _cpu_ctrl;
-  cpu_ctrl = &_cpu_ctrl;
+  cpu_ctrl = new (&_cpu_ctrl) CpuCtrl;
 
-  Gdt _gdt;
-  gdt = &_gdt;
+  gdt = new (&_gdt) Gdt;
   
-  Idt _idt;
-  idt = &_idt;
+  idt = new (&_idt) Idt;
 
-  KVirtmemCtrl _virtmem_ctrl;
-  virtmem_ctrl = &_virtmem_ctrl;
+  virtmem_ctrl = new (&_virtmem_ctrl) KVirtmemCtrl;
 
-  TmpmemCtrl _tmpmem_ctrl;
-  tmpmem_ctrl = &_tmpmem_ctrl;
+  physmem_ctrl = new (&_physmem_ctrl) PhysmemCtrl;
   
-  PhysmemCtrl _physmem_ctrl;
-  physmem_ctrl = &_physmem_ctrl;
+  paging_ctrl = new (&_paging_ctrl) PagingCtrl;
+
+  task_ctrl = new (&_task_ctrl) TaskCtrl;
   
-  PagingCtrl _paging_ctrl;
-  paging_ctrl = &_paging_ctrl;
+  timer = new (&_htimer) Hpet;
 
-  TaskCtrl _task_ctrl;
-  task_ctrl = &_task_ctrl;
-  
-  Hpet _htimer;
-  timer = &_htimer;
+  gtty = new (&_vga) Vga;
 
-  Vga _vga;
-  gtty = &_vga;
+  keyboard = new (&_keyboard) Keyboard;
 
-  Keyboard _keyboard;
-  keyboard = &_keyboard;
+  shell = new (&_shell) Shell;
 
-  Shell _shell;
-  shell = &_shell;
-  
-  tmpmem_ctrl->Init();
+  multiboot_ctrl->Setup();
+
+  paging_ctrl->MapAllPhysMemory();
 
   PhysAddr paddr;
   physmem_ctrl->Alloc(paddr, PagingCtrl::kPageSize * 3);
   extern int kKernelEndAddr;
   kassert(paging_ctrl->MapPhysAddrToVirtAddr(reinterpret_cast<virt_addr>(&kKernelEndAddr) - PagingCtrl::kPageSize * 5, paddr, PagingCtrl::kPageSize * 3, PDE_WRITE_BIT, PTE_WRITE_BIT | PTE_GLOBAL_BIT));
 
-  multiboot_ctrl->Setup();
   
   acpi_ctrl->Setup();
 
@@ -185,14 +181,16 @@ extern "C" int main() {
 
   InitNetCtrl();
 
+  pci_ctrl = new (&_acpica_pci_ctrl) AcpicaPciCtrl;
+  
   acpi_ctrl->SetupAcpica();
-  //  acpi_ctrl->Shutdown();
+  // acpi_ctrl->Shutdown();
 
-  InitDevices<AcpicaPciCtrl, Device>();
+  InitDevices<PciCtrl, Device>();
 
   gtty->Init();
 
-  //  keyboard->Setup(1);
+  keyboard->Setup(1);
 
   cnt = 0;
   sum = 0;
@@ -211,7 +209,7 @@ extern "C" int main() {
   kassert(!paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - 4096 * 7));
 
   gtty->Printf("s", "[cpu] info: #", "d", cpu_ctrl->GetId(), "s", "(apic id:", "d", apic_ctrl->GetApicIdFromCpuId(cpu_ctrl->GetId()), "s", ") started.\n");
-    if (eth != nullptr) {
+  if (eth != nullptr) {
     static ArpSocket socket;
     if(socket.Open() < 0) {
       gtty->Printf("s", "[error] failed to open socket\n");
@@ -221,9 +219,8 @@ extern "C" int main() {
     func.Init([](void *){
         uint32_t ipaddr;
         uint8_t macaddr[6];
-
+        
         int32_t rval = socket.ReceivePacket(0, &ipaddr, macaddr);
-
         if(rval == ArpSocket::kOpArpReply) {
           uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;
           cnt = 0;
@@ -380,22 +377,37 @@ extern "C" int main_of_others() {
   return 0;
 }
 
-void kernel_panic(const char *class_name, const char *err_str) {
-  gtty->PrintfRaw("s", "\n[","s",class_name,"s","] error: ","s",err_str);
+extern "C" void kernel_panic(const char *class_name, const char *err_str) {
+  if (gtty != nullptr) {
+    gtty->PrintfRaw("s", "\n[","s",class_name,"s","] error: ","s",err_str);
+  }
   while(true) {
     asm volatile("cli;hlt;");
   }
 }
 
-void checkpoint(int id, const char *str) {
+extern "C" void checkpoint(int id, const char *str) {
   if (id < 0 || cpu_ctrl->GetId() == id) {
     gtty->PrintfRaw("s",str);
   }
 }
 
-void _kassert(const char *file, int line, const char *func) {
+extern "C" void _checkpoint(const char *func, const int line) {
+  gtty->CprintfRaw("[%s:%d]", func, line);
+}
+
+extern "C" void abort() {
   if (gtty != nullptr) {
-    gtty->PrintfRaw("s", "assertion failed at ", "s", file, "s", " l.", "d", line, "s", " (", "s", func, "s", ") Kernel stopped!");
+    gtty->Cprintf("system stopped by unexpected error.\n");
+  }
+  while(true){
+    asm volatile("cli;hlt");
+  }
+}
+
+extern "C" void _kassert(const char *file, int line, const char *func) {
+  if (gtty != nullptr) {
+    gtty->Cprintf("assertion failed at %s l.%d (%s) cpuid: %d\n", file, line, func, cpu_ctrl->GetId());
   }
   while(true){
     asm volatile("cli;hlt");

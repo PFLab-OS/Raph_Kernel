@@ -246,7 +246,7 @@ AcpiEvPciConfigRegionSetup (
             if (AcpiEvIsPciRootBridge (PciRootNode))
             {
                 /* Install a handler for this PCI root bridge */
-
+              
                 Status = AcpiInstallAddressSpaceHandler (
                     (ACPI_HANDLE) PciRootNode,
                     ACPI_ADR_SPACE_PCI_CONFIG,

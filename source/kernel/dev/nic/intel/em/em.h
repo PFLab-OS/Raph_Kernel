@@ -30,6 +30,7 @@
 #include <dev/eth.h>
 #include <dev/pci.h>
 #include <freebsd/sys/types.h>
+#include <freebsd/net/if_var.h>
 
 class E1000 : public BsdDevEthernet {
 public:
@@ -37,8 +38,6 @@ public:
   static DevPci *InitPci(uint8_t bus, uint8_t device, uint8_t function);
 
   virtual void UpdateLinkStatus() override;
-
-  virtual void SetupNetInterface() override;
 
   // allocate 6 byte before call
   virtual void GetEthAddr(uint8_t *buffer) override;

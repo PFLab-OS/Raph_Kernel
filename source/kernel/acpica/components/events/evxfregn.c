@@ -122,7 +122,6 @@ AcpiInstallAddressSpaceHandler (
     }
 
     /* Run all _REG methods for this address space */
-
     AcpiEvExecuteRegMethods (Node, SpaceId, ACPI_REG_CONNECT);
 
 
