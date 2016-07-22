@@ -99,6 +99,10 @@ void halt(int argc, const char* argv[]) {
   acpi_ctrl->Shutdown();
 }
 
+void reset(int argc, const char* argv[]) {
+  acpi_ctrl->Reset();
+}
+
 void bench(int argc, const char* argv[]) {
   if (argc != 2) {
     gtty->Cprintf("invalid argument.\n");
@@ -328,6 +332,7 @@ extern "C" int main() {
 
   shell->Setup();
   shell->Register("halt", halt);
+  shell->Register("reset", reset);
   shell->Register("bench", bench);
   
   // print keyboard_input

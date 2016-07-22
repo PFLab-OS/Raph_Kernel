@@ -82,6 +82,10 @@ void AcpiCtrl::Shutdown() {
   kernel_panic("acpi", "could not halt system");
 }
 
+void AcpiCtrl::Reset() {
+  AcpiReset();
+}
+
 static ACPI_STATUS GetIntNum(ACPI_RESOURCE *resource, void *context) {
   int *irq = reinterpret_cast<int *>(context);
   switch(resource->Type) {
