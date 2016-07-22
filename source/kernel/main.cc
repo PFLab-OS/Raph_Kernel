@@ -85,34 +85,120 @@ Callout tt1;
 Callout tt2;
 Callout tt3;
 
-#define QEMU 0
-#define SND  1
-#define RCV  2
-#define TEST 3
+uint8_t ip1[] = {0, 0, 0, 0};
+uint8_t ip2[] = {0, 0, 0, 0};
+enum class BenchState {
+  kIdle,
+  kSnd,
+  kRcv,
+  kQemu,
+};
+BenchState bstate = BenchState::kIdle;
 
-#define FLAG QEMU
-#if FLAG == TEST
-#define IP1 192, 168, 100, 117
-#define IP2 192, 168, 100, 254
-#elif FLAG == SND
-#define IP1 192, 168, 100, 100
-#define IP2 192, 168, 100, 104
-#elif FLAG == RCV
-#define IP1 192, 168, 100, 104
-#define IP2 192, 168, 100, 100
-#elif FLAG == QEMU
-#define IP1 10, 0, 2, 9
-#define IP2 10, 0, 2, 15
-#endif
+void halt(int argc, const char* argv[]) {
+  acpi_ctrl->Shutdown();
+}
 
-uint8_t ip1[] = {IP1};
-uint8_t ip2[] = {IP2};
+void bench(int argc, const char* argv[]) {
+  if (argc != 2) {
+    gtty->Cprintf("invalid argument.\n");
+    return;
+  }
+  if (eth == nullptr) {
+    gtty->Cprintf("no ethernet interface.\n");
+    return;
+  }
+  if (strcmp(argv[1], "snd") == 0) {
+    uint8_t ip1_[] = {192, 168, 100, 100};
+    uint8_t ip2_[] = {192, 168, 100, 104};
+    memcpy(ip1, ip1_, 4);
+    memcpy(ip2, ip2_, 4);
+    bstate = BenchState::kSnd;
+  } else if (strcmp(argv[1], "rcv") == 0) {
+    uint8_t ip1_[] = {192, 168, 100, 104};
+    uint8_t ip2_[] = {192, 168, 100, 100};
+    memcpy(ip1, ip1_, 4);
+    memcpy(ip2, ip2_, 4);
+    bstate = BenchState::kRcv;
+  } else if (strcmp(argv[1], "qemu") == 0) {
+    uint8_t ip1_[] = {10, 0, 2, 9};
+    uint8_t ip2_[] = {10, 0, 2, 15};
+    memcpy(ip1, ip1_, 4);
+    memcpy(ip2, ip2_, 4);
+    bstate = BenchState::kQemu;
+  } else {
+    gtty->Cprintf("invalid argument.\n");
+    return;
+  }
 
-void shell_test(int argc, const char* argv[]) {  //this function is for testing
-  gtty->Printf("s", "shell-test function is called\n");
-  gtty->Printf("d", argc, "s", " arguments.\n");
-  for (int i =0; i < argc; i++) gtty->Printf("s", argv[i], "s", "\n");
-  if (argv[argc] == nullptr) gtty->Printf("s", "the last member is nullptr.\n");
+  {
+    static ArpSocket socket;
+    if(socket.Open() < 0) {
+      gtty->Printf("s", "[error] failed to open socket\n");
+    } else {
+      socket.SetIpAddr(inet_atoi(ip1));
+    }
+    cnt = 0;
+    new(&tt2) Callout;
+    Function func;
+    func.Init([](void *){
+        if (!apic_ctrl->IsBootupAll()) {
+          tt2.SetHandler(1000);
+          return;
+        }
+        eth->UpdateLinkStatus();
+        if (eth->GetStatus() != BsdDevEthernet::LinkStatus::kUp) {
+          tt2.SetHandler(1000);
+          return;
+        }
+        if (bstate != BenchState::kRcv) {
+          if (cnt != 0) {
+            tt2.SetHandler(1000);
+            return;
+          }
+          for(int k = 0; k < 1; k++) {
+            if (time == 0) {
+              break;
+            }
+
+            cnt = timer->ReadMainCnt();
+            if(socket.TransmitPacket(ArpSocket::kOpArpRequest, inet_atoi(ip2), nullptr) < 0) {
+              gtty->Printf("s", "[arp] failed to transmit request\n");
+            }
+          
+            time--;
+          }
+          if (time != 0) {
+            tt2.SetHandler(1000);
+          }
+        } else {
+          gtty->Printf("s", "[debug] info: Link is Up\n");
+        }
+      }, nullptr);
+    tt2.Init(func);
+    tt2.SetHandler(3, 10);
+  }
+
+  if (bstate != BenchState::kRcv) {
+    new(&tt3) Callout;
+    Function func;
+    func.Init([](void *){
+        if (rtime > 0) {
+          gtty->Printf("s","ARP Reply average latency:","d",sum / rtime,"s","us [","d",rtime,"s","/","d",stime,"s","]\n");
+        } else {
+          if (eth->GetStatus() == BsdDevEthernet::LinkStatus::kUp) {
+            gtty->Printf("s","Link is Up, but no ARP Reply\n");
+          } else {
+            gtty->Printf("s","Link is Down, please wait...\n");
+          }
+        }
+        if (rtime != stime) {
+          tt3.SetHandler(1000*1000*3);
+        }
+      }, nullptr);
+    tt3.Init(func);
+    tt3.SetHandler(6, 1000*1000*3);
+  }
 }
 
 extern "C" int main() {
@@ -184,7 +270,6 @@ extern "C" int main() {
   pci_ctrl = new (&_acpica_pci_ctrl) AcpicaPciCtrl;
   
   acpi_ctrl->SetupAcpica();
-  // acpi_ctrl->Shutdown();
 
   InitDevices<PciCtrl, Device>();
 
@@ -241,26 +326,25 @@ extern "C" int main() {
 
   gtty->Printf("s", "\n\n[kernel] info: initialization completed\n");
 
-  // shell->Setup();
-  // shell->Register("test", shell_test);
+  shell->Setup();
+  shell->Register("halt", halt);
+  shell->Register("bench", bench);
   
-  do {
-    // print keyboard_input
-    // TODO: Functional FIFOにすべき
-    PollingFunc _keyboard_polling;
-    Function func;
-    func.Init([](void *) {
-        // print keyboard_input
-        while(keyboard->Count() > 0) {
-          char ch[2] = {'\0','\0'};
-          ch[0] = keyboard->GetCh();
-          gtty->Printf("s", ch);
-          shell->ReadCh(ch[0]);
-        }
-      }, nullptr);
-    _keyboard_polling.Init(func);
-    // _keyboard_polling.Register(1);
-  } while(0);
+  // print keyboard_input
+  // TODO: Functional FIFOにすべき
+  PollingFunc _keyboard_polling;
+  Function func;
+  func.Init([](void *) {
+      // print keyboard_input
+      while(keyboard->Count() > 0) {
+        char ch[2] = {'\0','\0'};
+        ch[0] = keyboard->GetCh();
+        gtty->Printf("s", ch);
+        shell->ReadCh(ch[0]);
+      }
+    }, nullptr);
+  _keyboard_polling.Init(func);
+  _keyboard_polling.Register(1);
   
   task_ctrl->Run();
 
@@ -304,77 +388,6 @@ extern "C" int main_of_others() {
     tt1.SetHandler(10);
   }
 
-    if (cpu_ctrl->GetId() == 6 && eth != nullptr) {
-#if FLAG != RCV
-    new(&tt3) Callout;
-    Function func;
-    func.Init([](void *){
-        if (rtime > 0) {
-          gtty->Printf("s","ARP Reply average latency:","d",sum / rtime,"s","us [","d",rtime,"s","/","d",stime,"s","]\n");
-        } else {
-          if (eth->GetStatus() == BsdDevEthernet::LinkStatus::kUp) {
-            gtty->Printf("s","Link is Up, but no ARP Reply\n");
-          } else {
-            gtty->Printf("s","Link is Down, please wait...\n");
-          }
-        }
-        if (rtime != stime) {
-          tt3.SetHandler(1000*1000*3);
-        }
-      }, nullptr);
-    tt3.Init(func);
-    tt3.SetHandler(1000*1000*3);
-#endif
-  }
-
-  if (cpu_ctrl->GetId() == 3 && eth != nullptr) {
-    static ArpSocket socket;
-    if(socket.Open() < 0) {
-      gtty->Printf("s", "[error] failed to open socket\n");
-    } else {
-      socket.SetIpAddr(inet_atoi(ip1));
-    }
-    cnt = 0;
-    new(&tt2) Callout;
-    Function func;
-    func.Init([](void *){
-        if (!apic_ctrl->IsBootupAll()) {
-          tt2.SetHandler(1000);
-          return;
-        }
-        eth->UpdateLinkStatus();
-        if (eth->GetStatus() != BsdDevEthernet::LinkStatus::kUp) {
-          tt2.SetHandler(1000);
-          return;
-        }
-#if FLAG != RCV
-        if (cnt != 0) {
-          tt2.SetHandler(1000);
-          return;
-        }
-        for(int k = 0; k < 1; k++) {
-          if (time == 0) {
-            break;
-          }
-
-          cnt = timer->ReadMainCnt();
-          if(socket.TransmitPacket(ArpSocket::kOpArpRequest, inet_atoi(ip2), nullptr) < 0) {
-            gtty->Printf("s", "[arp] failed to transmit request\n");
-          }
-          
-          time--;
-        }
-        if (time != 0) {
-          tt2.SetHandler(1000);
-        }
-#else
-        gtty->Printf("s", "[debug] info: Link is Up\n");
-#endif
-      }, nullptr);
-    tt2.Init(func);
-    tt2.SetHandler(10);
-  }
-  
   task_ctrl->Run();
   return 0;
 }
