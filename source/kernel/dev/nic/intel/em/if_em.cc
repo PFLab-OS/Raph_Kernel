@@ -6319,10 +6319,6 @@ DevPci *E1000::InitPci(uint8_t bus, uint8_t device, uint8_t function) {
   }  
 }
 
-void E1000::SetupNetInterface() {
-  netdev_ctrl->RegisterDevice(this, "eth0");
-}
-
 void E1000::GetEthAddr(uint8_t *buffer) {
   memcpy(buffer, GetAdapter()->hw.mac.addr, 6);
 }

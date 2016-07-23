@@ -69,7 +69,7 @@ SECTIONS{
    *      0 - 0x1000 : PML4T
    * 0x1000 - 0x2000 : PDPT1 (mapped onto PML4T[0] & PML4T[256]) 
    * 0x2000 - 0x3000 : PDPT2 (mapped onto PML4T[511]) 
-   * 0x3000 - 0x4000 : PD1 (mapped onto PDPT1[0])                << 1GB linear mapping
+   * 0x3000 - 0x4000 : PD1 (mapped onto PDPT1[0])                << 4GB linear mapping
    * 0x4000 - 0x5000 : PD2 (mapped onto PDPT1[1])
    * 0x5000 - 0x6000 : PD3 (mapped onto PDPT1[2])
    * 0x6000 - 0x7000 : PD4 (mapped onto PDPT1[3])

@@ -42,21 +42,35 @@
 
 #include <net/netctrl.h>
 #include <net/socket.h>
+#include <arpa/inet.h>
 
+AcpiCtrl *acpi_ctrl = nullptr;
+ApicCtrl *apic_ctrl = nullptr;
+MultibootCtrl *multiboot_ctrl = nullptr;
+PagingCtrl *paging_ctrl = nullptr;
+PhysmemCtrl *physmem_ctrl = nullptr;
+VirtmemCtrl *virtmem_ctrl = nullptr;
+Gdt *gdt = nullptr;
+Idt *idt = nullptr;
+Keyboard *keyboard = nullptr;
+Shell *shell = nullptr;
+PciCtrl *pci_ctrl = nullptr;
 
-AcpiCtrl *acpi_ctrl;
-ApicCtrl *apic_ctrl;
-MultibootCtrl *multiboot_ctrl;
-PagingCtrl *paging_ctrl;
-PhysmemCtrl *physmem_ctrl;
-VirtmemCtrl *virtmem_ctrl;
-
-Gdt *gdt;
-Idt *idt;
-Keyboard *keyboard;
-Shell *shell;
-
-PciCtrl *pci_ctrl;
+MultibootCtrl _multiboot_ctrl;
+AcpiCtrl _acpi_ctrl;
+ApicCtrl _apic_ctrl;
+CpuCtrl _cpu_ctrl;
+Gdt _gdt;
+Idt _idt;
+KVirtmemCtrl _virtmem_ctrl;
+PhysmemCtrl _physmem_ctrl;
+PagingCtrl _paging_ctrl;
+TaskCtrl _task_ctrl;
+Hpet _htimer;
+Vga _vga;
+Keyboard _keyboard;
+Shell _shell;
+AcpicaPciCtrl _acpica_pci_ctrl;
 
 static uint32_t rnd_next = 1;
 
@@ -71,88 +85,165 @@ Callout tt1;
 Callout tt2;
 Callout tt3;
 
-#define QEMU 0
-#define SND  1
-#define RCV  2
-#define TEST 3
-
-#define FLAG QEMU 
-#if FLAG == TEST
-#define IP1 192, 168, 100, 117
-#define IP2 192, 168, 100, 254
-#elif FLAG == SND
-#define IP1 192, 168, 100, 117
-#define IP2 192, 168, 100, 104
-#elif FLAG == RCV
-#define IP1 192, 168, 100, 104
-#define IP2 192, 168, 100, 117
-#elif FLAG == QEMU
-#define IP1 10, 0, 2, 9
-#define IP2 10, 0, 2, 15
-#endif
-
-
-uint8_t ip[] = {
-  IP1,
+uint8_t ip1[] = {0, 0, 0, 0};
+uint8_t ip2[] = {0, 0, 0, 0};
+enum class BenchState {
+  kIdle,
+  kSnd,
+  kRcv,
+  kQemu,
 };
+BenchState bstate = BenchState::kIdle;
 
-void shell_test(int argc, const char* argv[]) {  //this function is for testing
-  gtty->Printf("s", "shell-test function is called\n");
-  gtty->Printf("d", argc, "s", " arguments.\n");
-  for (int i =0; i < argc; i++) gtty->Printf("s", argv[i], "s", "\n");
-  if (argv[argc] == nullptr) gtty->Printf("s", "the last member is nullptr.\n");
+void halt(int argc, const char* argv[]) {
+  acpi_ctrl->Shutdown();
+}
+
+void reset(int argc, const char* argv[]) {
+  acpi_ctrl->Reset();
+}
+
+void bench(int argc, const char* argv[]) {
+  if (argc != 2) {
+    gtty->Cprintf("invalid argument.\n");
+    return;
+  }
+  if (eth == nullptr) {
+    gtty->Cprintf("no ethernet interface.\n");
+    return;
+  }
+  if (strcmp(argv[1], "snd") == 0) {
+    uint8_t ip1_[] = {192, 168, 100, 100};
+    uint8_t ip2_[] = {192, 168, 100, 104};
+    memcpy(ip1, ip1_, 4);
+    memcpy(ip2, ip2_, 4);
+    bstate = BenchState::kSnd;
+  } else if (strcmp(argv[1], "rcv") == 0) {
+    uint8_t ip1_[] = {192, 168, 100, 104};
+    uint8_t ip2_[] = {192, 168, 100, 100};
+    memcpy(ip1, ip1_, 4);
+    memcpy(ip2, ip2_, 4);
+    bstate = BenchState::kRcv;
+  } else if (strcmp(argv[1], "qemu") == 0) {
+    uint8_t ip1_[] = {10, 0, 2, 9};
+    uint8_t ip2_[] = {10, 0, 2, 15};
+    memcpy(ip1, ip1_, 4);
+    memcpy(ip2, ip2_, 4);
+    bstate = BenchState::kQemu;
+  } else {
+    gtty->Cprintf("invalid argument.\n");
+    return;
+  }
+
+  {
+    static ArpSocket socket;
+    if(socket.Open() < 0) {
+      gtty->Printf("s", "[error] failed to open socket\n");
+    } else {
+      socket.SetIpAddr(inet_atoi(ip1));
+    }
+    cnt = 0;
+    new(&tt2) Callout;
+    Function func;
+    func.Init([](void *){
+        if (!apic_ctrl->IsBootupAll()) {
+          tt2.SetHandler(1000);
+          return;
+        }
+        eth->UpdateLinkStatus();
+        if (eth->GetStatus() != BsdDevPciEthernet::LinkStatus::kUp) {
+          tt2.SetHandler(1000);
+          return;
+        }
+        if (bstate != BenchState::kRcv) {
+          if (cnt != 0) {
+            tt2.SetHandler(1000);
+            return;
+          }
+          for(int k = 0; k < 1; k++) {
+            if (time == 0) {
+              break;
+            }
+
+            cnt = timer->ReadMainCnt();
+            if(socket.TransmitPacket(ArpSocket::kOpArpRequest, inet_atoi(ip2), nullptr) < 0) {
+              gtty->Printf("s", "[arp] failed to transmit request\n");
+            }
+          
+            time--;
+          }
+          if (time != 0) {
+            tt2.SetHandler(1000);
+          }
+        } else {
+          gtty->Printf("s", "[debug] info: Link is Up\n");
+        }
+      }, nullptr);
+    tt2.Init(func);
+    tt2.SetHandler(3, 10);
+  }
+
+  if (bstate != BenchState::kRcv) {
+    new(&tt3) Callout;
+    Function func;
+    func.Init([](void *){
+        if (rtime > 0) {
+          gtty->Printf("s","ARP Reply average latency:","d",sum / rtime,"s","us [","d",rtime,"s","/","d",stime,"s","]\n");
+        } else {
+          if (eth->GetStatus() == BsdDevPciEthernet::LinkStatus::kUp) {
+            gtty->Printf("s","Link is Up, but no ARP Reply\n");
+          } else {
+            gtty->Printf("s","Link is Down, please wait...\n");
+          }
+        }
+        if (rtime != stime) {
+          tt3.SetHandler(1000*1000*3);
+        }
+      }, nullptr);
+    tt3.Init(func);
+    tt3.SetHandler(6, 1000*1000*3);
+  }
 }
 
 extern "C" int main() {
   
-  MultibootCtrl _multiboot_ctrl;
-  multiboot_ctrl = &_multiboot_ctrl;
+  multiboot_ctrl = new (&_multiboot_ctrl) MultibootCtrl;
 
-  AcpiCtrl _acpi_ctrl;
-  acpi_ctrl = &_acpi_ctrl;
+  acpi_ctrl = new (&_acpi_ctrl) AcpiCtrl;
 
-  ApicCtrl _apic_ctrl;
-  apic_ctrl = &_apic_ctrl;
+  apic_ctrl = new (&_apic_ctrl) ApicCtrl;
 
-  CpuCtrl _cpu_ctrl;
-  cpu_ctrl = &_cpu_ctrl;
+  cpu_ctrl = new (&_cpu_ctrl) CpuCtrl;
 
-  Gdt _gdt;
-  gdt = &_gdt;
+  gdt = new (&_gdt) Gdt;
   
-  Idt _idt;
-  idt = &_idt;
+  idt = new (&_idt) Idt;
 
-  KVirtmemCtrl _virtmem_ctrl;
-  virtmem_ctrl = &_virtmem_ctrl;
+  virtmem_ctrl = new (&_virtmem_ctrl) KVirtmemCtrl;
 
-  PhysmemCtrl _physmem_ctrl;
-  physmem_ctrl = &_physmem_ctrl;
+  physmem_ctrl = new (&_physmem_ctrl) PhysmemCtrl;
   
-  PagingCtrl _paging_ctrl;
-  paging_ctrl = &_paging_ctrl;
+  paging_ctrl = new (&_paging_ctrl) PagingCtrl;
 
-  TaskCtrl _task_ctrl;
-  task_ctrl = &_task_ctrl;
+  task_ctrl = new (&_task_ctrl) TaskCtrl;
   
-  Hpet _htimer;
-  timer = &_htimer;
+  timer = new (&_htimer) Hpet;
 
-  Vga _vga;
-  gtty = &_vga;
+  gtty = new (&_vga) Vga;
 
-  Keyboard _keyboard;
-  keyboard = &_keyboard;
+  keyboard = new (&_keyboard) Keyboard;
 
-  Shell _shell;
-  shell = &_shell;
-
-  PhysAddr paddr;
-  physmem_ctrl->Alloc(paddr, PagingCtrl::kPageSize * 2);
-  extern int kKernelEndAddr;
-  kassert(paging_ctrl->MapPhysAddrToVirtAddr(reinterpret_cast<virt_addr>(&kKernelEndAddr) - PagingCtrl::kPageSize * 4, paddr, PagingCtrl::kPageSize * 2, PDE_WRITE_BIT, PTE_WRITE_BIT | PTE_GLOBAL_BIT));
+  shell = new (&_shell) Shell;
 
   multiboot_ctrl->Setup();
+
+  paging_ctrl->MapAllPhysMemory();
+
+  PhysAddr paddr;
+  physmem_ctrl->Alloc(paddr, PagingCtrl::kPageSize * 3);
+  extern int kKernelEndAddr;
+  kassert(paging_ctrl->MapPhysAddrToVirtAddr(reinterpret_cast<virt_addr>(&kKernelEndAddr) - PagingCtrl::kPageSize * 5, paddr, PagingCtrl::kPageSize * 3, PDE_WRITE_BIT, PTE_WRITE_BIT | PTE_GLOBAL_BIT));
+
   
   acpi_ctrl->Setup();
 
@@ -178,12 +269,13 @@ extern "C" int main() {
 
   idt->SetupProc();
 
-  // InitNetCtrl();
+  InitNetCtrl();
 
+  pci_ctrl = new (&_acpica_pci_ctrl) AcpicaPciCtrl;
+  
   acpi_ctrl->SetupAcpica();
-  //  acpi_ctrl->Shutdown();
 
-  InitDevices<AcpicaPciCtrl, Device>();
+  InitDevices<PciCtrl, Device>();
 
   gtty->Init();
 
@@ -202,92 +294,34 @@ extern "C" int main() {
   kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 3) + 1));
   kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 4) + 1));
   kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 5) + 1));
-  kassert(!paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - 4096 * 6));
+  kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 6) + 1));
+  kassert(!paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - 4096 * 7));
 
   gtty->Printf("s", "[cpu] info: #", "d", cpu_ctrl->GetId(), "s", "(apic id:", "d", apic_ctrl->GetApicIdFromCpuId(cpu_ctrl->GetId()), "s", ") started.\n");
   if (eth != nullptr) {
+    static ArpSocket socket;
+    if(socket.Open() < 0) {
+      gtty->Printf("s", "[error] failed to open socket\n");
+    }
+    socket.SetIpAddr(inet_atoi(ip1));
     Function func;
     func.Init([](void *){
-        BsdDevPciEthernet::Packet *rpacket;
-        if(!eth->ReceivePacket(rpacket)) {
-          return;
-        }
-        // received packet
-        if(rpacket->buf[12] == 0x08 && rpacket->buf[13] == 0x06 && rpacket->buf[21] == 0x02) {
+        uint32_t ipaddr;
+        uint8_t macaddr[6];
+        
+        int32_t rval = socket.ReceivePacket(0, &ipaddr, macaddr);
+        if(rval == ArpSocket::kOpArpReply) {
           uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;
           cnt = 0;
           sum += l;
           rtime++;
-          // ARP packet
-          char buf[40];
-          memcpy(buf, rpacket->buf,40);
-          // gtty->Printf(
-          //              "s", "ARP Reply received; ",
-          //              "x", rpacket->buf[22], "s", ":",
-          //              "x", rpacket->buf[23], "s", ":",
-          //              "x", rpacket->buf[24], "s", ":",
-          //              "x", rpacket->buf[25], "s", ":",
-          //              "x", rpacket->buf[26], "s", ":",
-          //              "x", rpacket->buf[27], "s", " is ",
-          //              "d", rpacket->buf[28], "s", ".",
-          //              "d", rpacket->buf[29], "s", ".",
-          //              "d", rpacket->buf[30], "s", ".",
-          //              "d", rpacket->buf[31], "s", " ",
-          //              "s","latency:","d",l,"s","us\n");
+        } else if(rval == ArpSocket::kOpArpRequest) {
+          socket.TransmitPacket(ArpSocket::kOpArpReply, ipaddr, macaddr);
         }
-        if(rpacket->buf[12] == 0x08 && rpacket->buf[13] == 0x06 && rpacket->buf[21] == 0x01 && (memcmp(rpacket->buf + 38, ip, 4) == 0)) {
-          // ARP packet
-          uint8_t data[] = {
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target MAC Address
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source MAC Address
-            0x08, 0x06, // Type: ARP
-            // ARP Packet
-            0x00, 0x01, // HardwareType: Ethernet
-            0x08, 0x00, // ProtocolType: IPv4
-            0x06, // HardwareLength
-            0x04, // ProtocolLength
-            0x00, 0x02, // Operation: ARP Reply
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source Hardware Address
-            0x00, 0x00, 0x00, 0x00, // Source Protocol Address
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
-            0x00, 0x00, 0x00, 0x00, // Target Protocol Address
-          };
-          memcpy(data, rpacket->buf + 6, 6);
-          eth->GetEthAddr(data + 6);
-          memcpy(data + 22, data + 6, 6);
-          memcpy(data + 28, ip, 4);
-          memcpy(data + 32, rpacket->buf + 22, 6);
-          memcpy(data + 38, rpacket->buf + 28, 4);
-
-          uint32_t len = sizeof(data)/sizeof(uint8_t);
-          BsdDevPciEthernet::Packet *tpacket;
-          kassert(eth->GetTxPacket(tpacket));
-          memcpy(tpacket->buf, data, len);
-          tpacket->len = len;
-          eth->TransmitPacket(tpacket);
-          // gtty->Printf(
-          //              "s", "ARP Request received; ",
-          //              "x", rpacket->buf[22], "s", ":",
-          //              "x", rpacket->buf[23], "s", ":",
-          //              "x", rpacket->buf[24], "s", ":",
-          //              "x", rpacket->buf[25], "s", ":",
-          //              "x", rpacket->buf[26], "s", ":",
-          //              "x", rpacket->buf[27], "s", ",",
-          //              "d", rpacket->buf[28], "s", ".",
-          //              "d", rpacket->buf[29], "s", ".",
-          //              "d", rpacket->buf[30], "s", ".",
-          //              "d", rpacket->buf[31], "s", " says who's ",
-          //              "d", rpacket->buf[38], "s", ".",
-          //              "d", rpacket->buf[39], "s", ".",
-          //              "d", rpacket->buf[40], "s", ".",
-          //              "d", rpacket->buf[41], "s", "\n");
-          // gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
-        }
-        eth->ReuseRxBuffer(rpacket);
       }, nullptr);
-    eth->SetReceiveCallback(2, func);
+    socket.SetReceiveCallback(2, func);
   }
-
+ 
   // 各コアは最低限の初期化ののち、TaskCtrlに制御が移さなければならない
   // 特定のコアで専用の処理をさせたい場合は、TaskCtrlに登録したジョブとして
   // 実行する事
@@ -296,26 +330,26 @@ extern "C" int main() {
 
   gtty->Printf("s", "\n\n[kernel] info: initialization completed\n");
 
-  // shell->Setup();
-  // shell->Register("test", shell_test);
+  shell->Setup();
+  shell->Register("halt", halt);
+  shell->Register("reset", reset);
+  shell->Register("bench", bench);
   
-  do {
-    // print keyboard_input
-    // TODO: Functional FIFOにすべき
-    PollingFunc _keyboard_polling;
-    Function func;
-    func.Init([](void *) {
-        // print keyboard_input
-        while(keyboard->Count() > 0) {
-          char ch[2] = {'\0','\0'};
-          ch[0] = keyboard->GetCh();
-          gtty->Printf("s", ch);
-          shell->ReadCh(ch[0]);
-        }
-      }, nullptr);
-    _keyboard_polling.Init(func);
-    // _keyboard_polling.Register(1);
-  } while(0);
+  // print keyboard_input
+  // TODO: Functional FIFOにすべき
+  PollingFunc _keyboard_polling;
+  Function func;
+  func.Init([](void *) {
+      // print keyboard_input
+      while(keyboard->Count() > 0) {
+        char ch[2] = {'\0','\0'};
+        ch[0] = keyboard->GetCh();
+        gtty->Printf("s", ch);
+        shell->ReadCh(ch[0]);
+      }
+    }, nullptr);
+  _keyboard_polling.Init(func);
+  _keyboard_polling.Register(1);
   
   task_ctrl->Run();
 
@@ -359,106 +393,6 @@ extern "C" int main_of_others() {
     tt1.SetHandler(10);
   }
 
-  if (cpu_ctrl->GetId() == 6 && eth != nullptr) {
-#if FLAG != RCV
-    new(&tt3) Callout;
-    Function func;
-    func.Init([](void *){
-        if (rtime > 0) {
-          gtty->Printf("s","ARP Reply average latency:","d",sum / rtime,"s","us [","d",rtime,"s","/","d",stime,"s","]\n");
-        } else {
-          if (eth->GetStatus() == BsdDevPciEthernet::LinkStatus::kUp) {
-            gtty->Printf("s","Link is Up, but no ARP Reply\n");
-          } else {
-            gtty->Printf("s","Link is Down, please wait...\n");
-          }
-        }
-        if (rtime != stime) {
-          tt3.SetHandler(1000*1000*3);
-        }
-      }, nullptr);
-    tt3.Init(func);
-    tt3.SetHandler(1000*1000*3);
-#endif
-  }
-
-  if (cpu_ctrl->GetId() == 3 && eth != nullptr) {
-    static int state = 0;
-    cnt = 0;
-    new(&tt2) Callout;
-    Function func;
-    func.Init([](void *){
-        if (state == 0) {
-          if (!apic_ctrl->IsBootupAll()) {
-            tt2.SetHandler(1000);
-            return;
-          } else {
-            state = 1;
-          }
-        }
-        if (state == 1) {
-          eth->UpdateLinkStatus();
-          if (eth->GetStatus() != BsdDevPciEthernet::LinkStatus::kUp) {
-            tt2.SetHandler(1000);
-            return;
-          }
-          state = 2;
-        }
-        if (state == 2) {
-          state = 3;
-          tt2.SetHandler(0);
-          return ;
-        }
-        if (state == 3) {
-#if FLAG != RCV
-          if (cnt != 0) {
-            tt2.SetHandler(1000);
-            return;
-          }
-          for(int k = 0; k < 1; k++) {
-            if (time == 0) {
-              break;
-            }
-            uint8_t data[] = {
-              0xff, 0xff, 0xff, 0xff, 0xff, 0xff, // Target MAC Address
-              0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source MAC Address
-              0x08, 0x06, // Type: ARP
-              // ARP Packet
-              0x00, 0x01, // HardwareType: Ethernet
-              0x08, 0x00, // ProtocolType: IPv4
-              0x06, // HardwareLength
-              0x04, // ProtocolLength
-              0x00, 0x01, // Operation: ARP Request
-              0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source Hardware Address
-              0x00, 0x00, 0x00, 0x00, // Source Protocol Address
-              0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
-              // Target Protocol Address
-              IP2,
-            };
-            eth->GetEthAddr(data + 6);
-            memcpy(data + 22, data + 6, 6);
-            memcpy(data + 28, ip, 4);
-            uint32_t len = sizeof(data)/sizeof(uint8_t);
-            BsdDevPciEthernet::Packet *tpacket;
-            kassert(eth->GetTxPacket(tpacket));
-            memcpy(tpacket->buf, data, len);
-            tpacket->len = len;
-            cnt = timer->ReadMainCnt();
-            eth->TransmitPacket(tpacket);
-            // gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
-            time--;
-          }
-          if (time != 0) {
-            tt2.SetHandler(1000);
-          }
-#else
-          gtty->Printf("s", "[debug] info: Link is Up\n");
-#endif
-        }
-      }, nullptr);
-    tt2.Init(func);
-    tt2.SetHandler(10);
-  }
   task_ctrl->Run();
   return 0;
 }
@@ -493,7 +427,7 @@ extern "C" void abort() {
 
 extern "C" void _kassert(const char *file, int line, const char *func) {
   if (gtty != nullptr) {
-    gtty->Cprintf("assertion failed at %s l.%d (%s)\ncpuid: %d\n", file, line, func, cpu_ctrl->GetId());
+    gtty->Cprintf("assertion failed at %s l.%d (%s) cpuid: %d\n", file, line, func, cpu_ctrl->GetId());
   }
   while(true){
     asm volatile("cli;hlt");

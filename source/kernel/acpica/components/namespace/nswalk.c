@@ -373,6 +373,7 @@ AcpiNsWalkNamespace (
 
             NodePreviouslyVisited = TRUE;
         }
+
     }
 
     /* Complete walk, not terminated by user function */

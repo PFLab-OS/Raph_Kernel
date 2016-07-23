@@ -241,6 +241,8 @@ extern "C" {
   }
 
   ACPI_STATUS AcpiOsInstallInterruptHandler(UINT32 InterruptLevel, ACPI_OSD_HANDLER Handler, void *Context) {
+    kassert(apic_ctrl != nullptr);
+    kassert(idt != nullptr);
     // TODO fix cpuid
     int cpuid = 1;
     int vector = idt->SetIntCallback(cpuid, AcpiHandlerSub, Context);
@@ -267,6 +269,7 @@ extern "C" {
   }
 
   void AcpiOsVprintf(const char *Fmt, va_list Args) {
+    kassert(gtty != nullptr);
     gtty->Cvprintf(Fmt, Args);
   }
 
@@ -366,6 +369,7 @@ extern "C" {
   }
   
   ACPI_STATUS AcpiOsReadPciConfiguration (ACPI_PCI_ID *PciId, UINT32 Register, UINT64 *Value, UINT32 Width) {
+    kassert(pci_ctrl != nullptr);
     switch(Width) {
     case 8: {
       *(reinterpret_cast<uint8_t *>(Value)) = pci_ctrl->ReadReg<uint8_t>(PciId->Bus, PciId->Device, PciId->Function, Register);
@@ -388,6 +392,7 @@ extern "C" {
   }
 
   ACPI_STATUS AcpiOsWritePciConfiguration (ACPI_PCI_ID *PciId, UINT32 Register, ACPI_INTEGER Value, UINT32 Width) {
+    kassert(pci_ctrl != nullptr);
     switch(Width) {
     case 8: {
       pci_ctrl->WriteReg<uint8_t>(PciId->Bus, PciId->Device, PciId->Function, Register, Value);

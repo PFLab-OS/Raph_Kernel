@@ -73,6 +73,7 @@ typedef uint64_t entry_type;
 class PagingCtrl {
  public:
   PagingCtrl();
+  void MapAllPhysMemory();
   void ConvertVirtMemToPhysMem(virt_addr vaddr, PhysAddr &paddr);
   bool IsVirtAddrMapped(virt_addr vaddr);
   // 4Kページを仮想メモリにマッピングする
@@ -87,6 +88,7 @@ class PagingCtrl {
   //
   // write_bitを立てるのを忘れないように
   bool Map4KPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr pst_flag, phys_addr page_flag);
+  bool Map2MPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr pst_flag, phys_addr page_flag);
   bool MapPhysAddrToVirtAddr(virt_addr vaddr, PhysAddr &paddr, size_t size, phys_addr pst_flag, phys_addr page_flag) {
     kassert(size == align(size, kPageSize));
     phys_addr addr = paddr.GetAddr();
