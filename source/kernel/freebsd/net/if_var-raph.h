@@ -29,17 +29,12 @@
 #include <sys/bus-raph.h>
 
 // should be defined at ethernet.h
-class BsdDevPciEthernet : public DevEthernet {
+class BsdEthernet : public DevEthernet {
 public:
-  BsdDevPciEthernet(uint8_t bus, uint8_t device, uint8_t function) : DevEthernet(), _bsd_pci(bus, device, function) {
-    _bsd.SetClass(&_bsd_pci);
+  BsdEthernet() : DevEthernet() {
   }
-  virtual ~BsdDevPciEthernet() {}
+  virtual ~BsdEthernet() {}
   struct ifnet _ifp;
-protected:
-  BsdDevice _bsd;
-private:
-  BsdDevPci _bsd_pci;
 };
 
 

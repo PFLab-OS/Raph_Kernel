@@ -21,6 +21,7 @@
  */
 
 #include <sys/bus.h>
+#include <sys/types-raph.h>
 #include <raph.h>
 #include <task.h>
 #include <idt.h>
@@ -30,11 +31,29 @@
 #ifndef __RAPH_KERNEL_FREEBSD_SYS_BUS_RAPH_H__
 #define __RAPH_KERNEL_FREEBSD_SYS_BUS_RAPH_H__
 
+class BsdDevBus : public BsdDevice {
+public:
+protected:
+  virtual int DevMethodBusProbe() = 0;
+  virtual int DevMethodBusAttach() = 0;
+  virtual void DevMethodBusInit() = 0;
+private:
+  virtual int DevMethodProbe() override final {
+    if (DevMethodBusProbe() == BUS_PROBE_DEFAULT) {
+      return 0;
+    } else {
+      return -1;
+    }
+  }
+  virtual int DevMethodAttach() override final {
+    return DevMethodBusAttach();
+  }
+  virtual void DevMethodInit() override final {
+    DevMethodBusInit();
+  }
+};
 
-// TODO
-// PCI Specific
-// should be BsdBus
-class BsdDevPci : public DevPci {
+class BsdDevPci : public BsdDevBus {
 public:
   class IntContainer {
   public:
@@ -75,11 +94,11 @@ public:
     driver_intr_t _ithread = nullptr;
     void *_iarg;
   };
-  BsdDevPci(uint8_t bus, uint8_t device, uint8_t function) : DevPci(bus, device, function) {
+  BsdDevPci(uint8_t bus, uint8_t device, uint8_t function) : _pci(bus, device, function) {
+    SetClass(this);
   }
   virtual ~BsdDevPci() {
   }
-  
   IntContainer *GetIntContainerStruct(int id) {
     if (_is_legacy_interrupt_enable) {
       if (id == 0) {
@@ -100,7 +119,7 @@ public:
   }
   void SetupMsi() {
     ReleaseMsi();
-    int count = GetMsiCount();
+    int count = _pci.GetMsiCount();
     if (count == 0) {
       return;
     }
@@ -114,7 +133,7 @@ public:
     // TODO cpuid
     int cpuid = 1;
     int vector = idt->SetIntCallback(cpuid, callbacks, args, count);
-    SetMsi(cpuid, vector);
+    _pci.SetMsi(cpuid, vector);
   }
   void ReleaseMsi() {
     if (_icontainer_list != nullptr) {
@@ -122,11 +141,14 @@ public:
       delete[] _icontainer_list;
     }
   }
+  DevPci &GetDevPci() {
+    return _pci;
+  }
 private:
   void SetupLegacyIntContainers() {
     _icontainer_list = new IntContainer[1];
     for (int i = 0; i < 1; i++) {
-      SetLegacyInterrupt(HandleSubLegacy, reinterpret_cast<void *>(_icontainer_list + i));
+      _pci.SetLegacyInterrupt(HandleSubLegacy, reinterpret_cast<void *>(_icontainer_list + i));
     }
   }
   static void HandleSubLegacy(void *arg) {
@@ -138,6 +160,7 @@ private:
     icontainer->Handle();
   }
 
+  DevPci _pci;
   bool _is_legacy_interrupt_enable = true;
   IntContainer *_icontainer_list = nullptr;
 };

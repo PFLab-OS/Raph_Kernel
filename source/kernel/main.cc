@@ -75,7 +75,7 @@ AcpicaPciCtrl _acpica_pci_ctrl;
 static uint32_t rnd_next = 1;
 
 #include <freebsd/net/if_var-raph.h>
-BsdDevPciEthernet *eth;
+BsdEthernet *eth;
 uint64_t cnt;
 int64_t sum;
 static const int stime = 3000;
@@ -151,7 +151,7 @@ void bench(int argc, const char* argv[]) {
           return;
         }
         eth->UpdateLinkStatus();
-        if (eth->GetStatus() != BsdDevPciEthernet::LinkStatus::kUp) {
+        if (eth->GetStatus() != BsdEthernet::LinkStatus::kUp) {
           tt2.SetHandler(1000);
           return;
         }
@@ -190,7 +190,7 @@ void bench(int argc, const char* argv[]) {
         if (rtime > 0) {
           gtty->Printf("s","ARP Reply average latency:","d",sum / rtime,"s","us [","d",rtime,"s","/","d",stime,"s","]\n");
         } else {
-          if (eth->GetStatus() == BsdDevPciEthernet::LinkStatus::kUp) {
+          if (eth->GetStatus() == BsdEthernet::LinkStatus::kUp) {
             gtty->Printf("s","Link is Up, but no ARP Reply\n");
           } else {
             gtty->Printf("s","Link is Down, please wait...\n");

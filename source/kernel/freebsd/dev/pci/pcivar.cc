@@ -28,7 +28,7 @@
 extern "C" {
 
   int pci_msi_count(device_t dev) {
-    return dev->GetPciClass()->GetMsiCount();
+    return dev->GetPciClass()->GetDevPci().GetMsiCount();
   }
 
   int pci_msix_count(device_t dev) {
@@ -36,7 +36,7 @@ extern "C" {
   }
 
   int pci_alloc_msi(device_t dev, int *count) {
-    int dcount = dev->GetPciClass()->GetMsiCount();
+    int dcount = dev->GetPciClass()->GetDevPci().GetMsiCount();
     if (dcount == 0) {
       return -1;
     }
@@ -57,37 +57,37 @@ extern "C" {
   }
 
   uint16_t pci_get_vendor(device_t dev) {
-    return dev->GetPciClass()->ReadReg<uint16_t>(PciCtrl::kVendorIDReg);
+    return dev->GetPciClass()->GetDevPci().ReadReg<uint16_t>(PciCtrl::kVendorIDReg);
   }
 
   uint16_t pci_get_device(device_t dev) {
-    return dev->GetPciClass()->ReadReg<uint16_t>(PciCtrl::kDeviceIDReg);
+    return dev->GetPciClass()->GetDevPci().ReadReg<uint16_t>(PciCtrl::kDeviceIDReg);
   }
 
   uint32_t pci_get_devid(device_t dev) {
-    return (static_cast<uint32_t>(dev->GetPciClass()->ReadReg<uint16_t>(PciCtrl::kDeviceIDReg)) << 16) | dev->GetPciClass()->ReadReg<uint16_t>(PciCtrl::kVendorIDReg);
+    return (static_cast<uint32_t>(dev->GetPciClass()->GetDevPci().ReadReg<uint16_t>(PciCtrl::kDeviceIDReg)) << 16) | dev->GetPciClass()->GetDevPci().ReadReg<uint16_t>(PciCtrl::kVendorIDReg);
   }
 
   uint8_t pci_get_class(device_t dev) {
-    return dev->GetPciClass()->ReadReg<uint8_t>(PciCtrl::kRegBaseClassCode);
+    return dev->GetPciClass()->GetDevPci().ReadReg<uint8_t>(PciCtrl::kRegBaseClassCode);
   }
 
   uint8_t pci_get_subclass(device_t dev) {
-    return dev->GetPciClass()->ReadReg<uint8_t>(PciCtrl::kRegSubClassCode);
+    return dev->GetPciClass()->GetDevPci().ReadReg<uint8_t>(PciCtrl::kRegSubClassCode);
   }
   
   uint8_t pci_get_progif(device_t dev) {
-    return dev->GetPciClass()->ReadReg<uint8_t>(PciCtrl::kRegInterfaceClassCode);
+    return dev->GetPciClass()->GetDevPci().ReadReg<uint8_t>(PciCtrl::kRegInterfaceClassCode);
   }
   
   uint8_t pci_get_revid(device_t dev) {
-    return dev->GetPciClass()->ReadReg<uint8_t>(PciCtrl::kRegRevisionId);
+    return dev->GetPciClass()->GetDevPci().ReadReg<uint8_t>(PciCtrl::kRegRevisionId);
   }
 
   uint16_t pci_get_subvendor(device_t dev) {
-    switch(dev->GetPciClass()->ReadReg<uint8_t>(PciCtrl::kHeaderTypeReg) & PciCtrl::kHeaderTypeRegMaskDeviceType) {
+    switch(dev->GetPciClass()->GetDevPci().ReadReg<uint8_t>(PciCtrl::kHeaderTypeReg) & PciCtrl::kHeaderTypeRegMaskDeviceType) {
     case PciCtrl::kHeaderTypeRegValueDeviceTypeNormal:
-      return dev->GetPciClass()->ReadReg<uint16_t>(PciCtrl::kSubVendorIdReg);
+      return dev->GetPciClass()->GetDevPci().ReadReg<uint16_t>(PciCtrl::kSubVendorIdReg);
     case PciCtrl::kHeaderTypeRegValueDeviceTypeBridge:
       return 0xffff;
     case PciCtrl::kHeaderTypeRegValueDeviceTypeCardbus:
@@ -97,9 +97,9 @@ extern "C" {
   }
 
   uint16_t pci_get_subdevice(device_t dev) {
-    switch(dev->GetPciClass()->ReadReg<uint8_t>(PciCtrl::kHeaderTypeReg) & PciCtrl::kHeaderTypeRegMaskDeviceType) {
+    switch(dev->GetPciClass()->GetDevPci().ReadReg<uint8_t>(PciCtrl::kHeaderTypeReg) & PciCtrl::kHeaderTypeRegMaskDeviceType) {
     case PciCtrl::kHeaderTypeRegValueDeviceTypeNormal:
-      return dev->GetPciClass()->ReadReg<uint16_t>(PciCtrl::kSubsystemIdReg);
+      return dev->GetPciClass()->GetDevPci().ReadReg<uint16_t>(PciCtrl::kSubsystemIdReg);
     case PciCtrl::kHeaderTypeRegValueDeviceTypeBridge:
       return 0xffff;
     case PciCtrl::kHeaderTypeRegValueDeviceTypeCardbus:
@@ -111,13 +111,13 @@ extern "C" {
   void pci_write_config(device_t dev, int reg, uint32_t val, int width) {
     switch (width) {
     case 1:
-      dev->GetPciClass()->WriteReg<uint8_t>(static_cast<uint16_t>(reg), static_cast<uint8_t>(val));
+      dev->GetPciClass()->GetDevPci().WriteReg<uint8_t>(static_cast<uint16_t>(reg), static_cast<uint8_t>(val));
       return;
     case 2:
-      dev->GetPciClass()->WriteReg<uint16_t>(static_cast<uint16_t>(reg), static_cast<uint16_t>(val));
+      dev->GetPciClass()->GetDevPci().WriteReg<uint16_t>(static_cast<uint16_t>(reg), static_cast<uint16_t>(val));
       return;
     case 4:
-      dev->GetPciClass()->WriteReg<uint32_t>(static_cast<uint16_t>(reg), static_cast<uint32_t>(val));
+      dev->GetPciClass()->GetDevPci().WriteReg<uint32_t>(static_cast<uint16_t>(reg), static_cast<uint32_t>(val));
       return;
     default:
       kassert(false);
@@ -128,11 +128,11 @@ extern "C" {
   uint32_t pci_read_config(device_t dev, int reg, int width) {
     switch (width) {
     case 1:
-      return dev->GetPciClass()->ReadReg<uint8_t>(static_cast<uint16_t>(reg));
+      return dev->GetPciClass()->GetDevPci().ReadReg<uint8_t>(static_cast<uint16_t>(reg));
     case 2:
-      return dev->GetPciClass()->ReadReg<uint16_t>(static_cast<uint16_t>(reg));
+      return dev->GetPciClass()->GetDevPci().ReadReg<uint16_t>(static_cast<uint16_t>(reg));
     case 4:
-      return dev->GetPciClass()->ReadReg<uint32_t>(static_cast<uint16_t>(reg));
+      return dev->GetPciClass()->GetDevPci().ReadReg<uint32_t>(static_cast<uint16_t>(reg));
     default:
       kassert(false);
       return 0;
@@ -140,7 +140,7 @@ extern "C" {
   }
 
   int pci_enable_busmaster(device_t dev) {
-    dev->GetPciClass()->WriteReg<uint16_t>(PciCtrl::kCommandReg, dev->GetPciClass()->ReadReg<uint16_t>(PciCtrl::kCommandReg) | PciCtrl::kCommandRegBusMasterEnableFlag);
+    dev->GetPciClass()->GetDevPci().WriteReg<uint16_t>(PciCtrl::kCommandReg, dev->GetPciClass()->GetDevPci().ReadReg<uint16_t>(PciCtrl::kCommandReg) | PciCtrl::kCommandRegBusMasterEnableFlag);
     return 0;
   }
 
@@ -154,7 +154,7 @@ extern "C" {
       kassert(false);
     }
     uint16_t cap;
-    if ((cap = dev->GetPciClass()->FindCapability(id)) != 0) {
+    if ((cap = dev->GetPciClass()->GetDevPci().FindCapability(id)) != 0) {
       *capreg = cap;
       return 0;
     } else {

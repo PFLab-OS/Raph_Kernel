@@ -102,32 +102,32 @@ static void ahcipoll(struct cam_sim *sim);
 #define RECOVERY_REQUEST_SENSE	2
 #define recovery_slot		spriv_field1
 
-// int
-// ahci_ctlr_setup(device_t dev)
-// {
-// 	struct ahci_controller *ctlr = reinterpret_cast<struct ahci_controller *>(device_get_softc(dev));
-// 	/* Clear interrupts */
-// 	ATA_OUTL(ctlr->r_mem, AHCI_IS, ATA_INL(ctlr->r_mem, AHCI_IS));
-// 	/* Configure CCC */
-// 	if (ctlr->ccc) {
-// 		ATA_OUTL(ctlr->r_mem, AHCI_CCCP, ATA_INL(ctlr->r_mem, AHCI_PI));
-// 		ATA_OUTL(ctlr->r_mem, AHCI_CCCC,
-// 		    (ctlr->ccc << AHCI_CCCC_TV_SHIFT) |
-// 		    (4 << AHCI_CCCC_CC_SHIFT) |
-// 		    AHCI_CCCC_EN);
-// 		ctlr->cccv = (ATA_INL(ctlr->r_mem, AHCI_CCCC) &
-// 		    AHCI_CCCC_INT_MASK) >> AHCI_CCCC_INT_SHIFT;
-// 		if (bootverbose) {
-// 			device_printf(dev,
-// 			    "CCC with %dms/4cmd enabled on vector %d\n",
-// 			    ctlr->ccc, ctlr->cccv);
-// 		}
-// 	}
-// 	/* Enable AHCI interrupts */
-// 	ATA_OUTL(ctlr->r_mem, AHCI_GHC,
-// 	    ATA_INL(ctlr->r_mem, AHCI_GHC) | AHCI_GHC_IE);
-// 	return (0);
-// }
+int
+ahci_ctlr_setup(device_t dev)
+{
+	struct ahci_controller *ctlr = reinterpret_cast<struct ahci_controller *>(device_get_softc(dev));
+	/* Clear interrupts */
+	ATA_OUTL(ctlr->r_mem, AHCI_IS, ATA_INL(ctlr->r_mem, AHCI_IS));
+	/* Configure CCC */
+	if (ctlr->ccc) {
+		ATA_OUTL(ctlr->r_mem, AHCI_CCCP, ATA_INL(ctlr->r_mem, AHCI_PI));
+		ATA_OUTL(ctlr->r_mem, AHCI_CCCC,
+		    (ctlr->ccc << AHCI_CCCC_TV_SHIFT) |
+		    (4 << AHCI_CCCC_CC_SHIFT) |
+		    AHCI_CCCC_EN);
+		ctlr->cccv = (ATA_INL(ctlr->r_mem, AHCI_CCCC) &
+		    AHCI_CCCC_INT_MASK) >> AHCI_CCCC_INT_SHIFT;
+		if (bootverbose) {
+			device_printf(dev,
+			    "CCC with %dms/4cmd enabled on vector %d\n",
+			    ctlr->ccc, ctlr->cccv);
+		}
+	}
+	/* Enable AHCI interrupts */
+	ATA_OUTL(ctlr->r_mem, AHCI_GHC,
+	    ATA_INL(ctlr->r_mem, AHCI_GHC) | AHCI_GHC_IE);
+	return (0);
+}
 
 int
 ahci_ctlr_reset(device_t dev)
@@ -304,18 +304,18 @@ ahci_attach(device_t dev)
 		    (ctlr->caps & AHCI_CAP_SCLO) ? " CLO":"",
 		    ((speed == 1) ? "1.5":((speed == 2) ? "3":
 		    ((speed == 3) ? "6":"?"))));
-		printf("%s%s%s%s%s%s %dcmd%s%s%s %dports\n",
-		    (ctlr->caps & AHCI_CAP_SAM) ? " AM":"",
-		    (ctlr->caps & AHCI_CAP_SPM) ? " PM":"",
-		    (ctlr->caps & AHCI_CAP_FBSS) ? " FBS":"",
-		    (ctlr->caps & AHCI_CAP_PMD) ? " PMD":"",
-		    (ctlr->caps & AHCI_CAP_SSC) ? " SSC":"",
-		    (ctlr->caps & AHCI_CAP_PSC) ? " PSC":"",
-		    ((ctlr->caps & AHCI_CAP_NCS) >> AHCI_CAP_NCS_SHIFT) + 1,
-		    (ctlr->caps & AHCI_CAP_CCCS) ? " CCC":"",
-		    (ctlr->caps & AHCI_CAP_EMS) ? " EM":"",
-		    (ctlr->caps & AHCI_CAP_SXS) ? " eSATA":"",
-		    (ctlr->caps & AHCI_CAP_NPMASK) + 1);
+		// printf("%s%s%s%s%s%s %dcmd%s%s%s %dports\n",
+		//     (ctlr->caps & AHCI_CAP_SAM) ? " AM":"",
+		//     (ctlr->caps & AHCI_CAP_SPM) ? " PM":"",
+		//     (ctlr->caps & AHCI_CAP_FBSS) ? " FBS":"",
+		//     (ctlr->caps & AHCI_CAP_PMD) ? " PMD":"",
+		//     (ctlr->caps & AHCI_CAP_SSC) ? " SSC":"",
+		//     (ctlr->caps & AHCI_CAP_PSC) ? " PSC":"",
+		//     ((ctlr->caps & AHCI_CAP_NCS) >> AHCI_CAP_NCS_SHIFT) + 1,
+		//     (ctlr->caps & AHCI_CAP_CCCS) ? " CCC":"",
+		//     (ctlr->caps & AHCI_CAP_EMS) ? " EM":"",
+		//     (ctlr->caps & AHCI_CAP_SXS) ? " eSATA":"",
+		//     (ctlr->caps & AHCI_CAP_NPMASK) + 1);
 	}
 	if (bootverbose && version >= 0x00010200) {
 		device_printf(dev, "Caps2:%s%s%s%s%s%s\n",
@@ -330,15 +330,15 @@ ahci_attach(device_t dev)
  	for (unit = 0; unit < ctlr->channels; unit++) {
  		//child = device_add_child(dev, "ahcich", -1);
     AhciChannel *channel = AhciChannel::Init(dev->GetMasterClass<AhciCtrl>());
-    child = channel->GetDevice();
+    child = channel;
   
  		if (child == NULL) {
       device_printf(dev, "failed to add channel device\n");
       continue;
  		}
  		device_set_ivars(child, (void *)(intptr_t)unit);
- 		if ((ctlr->ichannels & (1 << unit)) == 0)
- 			device_disable(child);
+ 		// if ((ctlr->ichannels & (1 << unit)) == 0)
+ 		// 	device_disable(child);
  	}
  	if (ctlr->caps & AHCI_CAP_EMS) {
     kassert(false);
@@ -395,139 +395,139 @@ ahci_free_mem(device_t dev)
 // 	ctlr->r_msix_pba = ctlr->r_mem = ctlr->r_msix_table = NULL;
 }
 
-// int
-// ahci_setup_interrupt(device_t dev)
-// {
-// 	struct ahci_controller *ctlr = reinterpret_cast<struct ahci_controller *>(device_get_softc(dev));
-// 	int i;
+int
+ahci_setup_interrupt(device_t dev)
+{
+	struct ahci_controller *ctlr = reinterpret_cast<struct ahci_controller *>(device_get_softc(dev));
+	int i;
 
-// 	/* Check for single MSI vector fallback. */
-// 	if (ctlr->numirqs > 1 &&
-// 	    (ATA_INL(ctlr->r_mem, AHCI_GHC) & AHCI_GHC_MRSM) != 0) {
-// 		device_printf(dev, "Falling back to one MSI\n");
-// 		ctlr->numirqs = 1;
-// 	}
+	/* Check for single MSI vector fallback. */
+	if (ctlr->numirqs > 1 &&
+	    (ATA_INL(ctlr->r_mem, AHCI_GHC) & AHCI_GHC_MRSM) != 0) {
+		device_printf(dev, "Falling back to one MSI\n");
+		ctlr->numirqs = 1;
+	}
 
-// 	/* Ensure we don't overrun irqs. */
-// 	if (ctlr->numirqs > AHCI_MAX_IRQS) {
-// 		device_printf(dev, "Too many irqs %d > %d (clamping)\n",
-// 		    ctlr->numirqs, AHCI_MAX_IRQS);
-// 		ctlr->numirqs = AHCI_MAX_IRQS;
-// 	}
+	/* Ensure we don't overrun irqs. */
+	if (ctlr->numirqs > AHCI_MAX_IRQS) {
+		device_printf(dev, "Too many irqs %d > %d (clamping)\n",
+		    ctlr->numirqs, AHCI_MAX_IRQS);
+		ctlr->numirqs = AHCI_MAX_IRQS;
+	}
 
-// 	/* Allocate all IRQs. */
-// 	for (i = 0; i < ctlr->numirqs; i++) {
-// 		ctlr->irqs[i].ctlr = ctlr;
-// 		ctlr->irqs[i].r_irq_rid = i + (ctlr->msi ? 1 : 0);
-// 		if (ctlr->channels == 1 && !ctlr->ccc && ctlr->msi)
-// 			ctlr->irqs[i].mode = AHCI_IRQ_MODE_ONE;
-// 		else if (ctlr->numirqs == 1 || i >= ctlr->channels ||
-// 		    (ctlr->ccc && i == ctlr->cccv))
-// 			ctlr->irqs[i].mode = AHCI_IRQ_MODE_ALL;
-// 		else if (i == ctlr->numirqs - 1)
-// 			ctlr->irqs[i].mode = AHCI_IRQ_MODE_AFTER;
-// 		else
-// 			ctlr->irqs[i].mode = AHCI_IRQ_MODE_ONE;
-// 		if (!(ctlr->irqs[i].r_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ,
-// 		    &ctlr->irqs[i].r_irq_rid, RF_SHAREABLE | RF_ACTIVE))) {
-// 			device_printf(dev, "unable to map interrupt\n");
-// 			return (ENXIO);
-// 		}
-// 		if ((bus_setup_intr(dev, ctlr->irqs[i].r_irq, ATA_INTR_FLAGS, NULL,
-// 		    (ctlr->irqs[i].mode != AHCI_IRQ_MODE_ONE) ? ahci_intr :
-// 		     ((ctlr->quirks & AHCI_Q_EDGEIS) ? ahci_intr_one_edge :
-// 		      ahci_intr_one),
-// 		    &ctlr->irqs[i], &ctlr->irqs[i].handle))) {
-// 			/* SOS XXX release r_irq */
-// 			device_printf(dev, "unable to setup interrupt\n");
-// 			return (ENXIO);
-// 		}
-// 		if (ctlr->numirqs > 1) {
-// 			bus_describe_intr(dev, ctlr->irqs[i].r_irq,
-// 			    ctlr->irqs[i].handle,
-// 			    ctlr->irqs[i].mode == AHCI_IRQ_MODE_ONE ?
-// 			    "ch%d" : "%d", i);
-// 		}
-// 	}
-// 	return (0);
-// }
+	/* Allocate all IRQs. */
+	for (i = 0; i < ctlr->numirqs; i++) {
+		ctlr->irqs[i].ctlr = ctlr;
+		ctlr->irqs[i].r_irq_rid = i + (ctlr->msi ? 1 : 0);
+		if (ctlr->channels == 1 && !ctlr->ccc && ctlr->msi)
+			ctlr->irqs[i].mode = AHCI_IRQ_MODE_ONE;
+		else if (ctlr->numirqs == 1 || i >= ctlr->channels ||
+		    (ctlr->ccc && i == ctlr->cccv))
+			ctlr->irqs[i].mode = AHCI_IRQ_MODE_ALL;
+		else if (i == ctlr->numirqs - 1)
+			ctlr->irqs[i].mode = AHCI_IRQ_MODE_AFTER;
+		else
+			ctlr->irqs[i].mode = AHCI_IRQ_MODE_ONE;
+		if (!(ctlr->irqs[i].r_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ,
+		    &ctlr->irqs[i].r_irq_rid, RF_SHAREABLE | RF_ACTIVE))) {
+			device_printf(dev, "unable to map interrupt\n");
+			return (ENXIO);
+		}
+		if ((bus_setup_intr(dev, ctlr->irqs[i].r_irq, ATA_INTR_FLAGS, NULL,
+		    (ctlr->irqs[i].mode != AHCI_IRQ_MODE_ONE) ? ahci_intr :
+		     ((ctlr->quirks & AHCI_Q_EDGEIS) ? ahci_intr_one_edge :
+		      ahci_intr_one),
+		    &ctlr->irqs[i], &ctlr->irqs[i].handle))) {
+			/* SOS XXX release r_irq */
+			device_printf(dev, "unable to setup interrupt\n");
+			return (ENXIO);
+		}
+		if (ctlr->numirqs > 1) {
+			// bus_describe_intr(dev, ctlr->irqs[i].r_irq,
+			//     ctlr->irqs[i].handle,
+			//     ctlr->irqs[i].mode == AHCI_IRQ_MODE_ONE ?
+			//     "ch%d" : "%d", i);
+		}
+	}
+	return (0);
+}
 
 /*
  * Common case interrupt handler.
  */
-// static void
-// ahci_intr(void *data)
-// {
-// 	struct ahci_controller_irq *irq = reinterpret_cast<ahci_controller_irq *>(data);
-// 	struct ahci_controller *ctlr = irq->ctlr;
-// 	u_int32_t is, ise = 0;
-// 	void *arg;
-// 	int unit;
+static void
+ahci_intr(void *data)
+{
+	struct ahci_controller_irq *irq = reinterpret_cast<ahci_controller_irq *>(data);
+	struct ahci_controller *ctlr = irq->ctlr;
+	u_int32_t is, ise = 0;
+	void *arg;
+	int unit;
 
-// 	if (irq->mode == AHCI_IRQ_MODE_ALL) {
-// 		unit = 0;
-// 		if (ctlr->ccc)
-// 			is = ctlr->ichannels;
-// 		else
-// 			is = ATA_INL(ctlr->r_mem, AHCI_IS);
-// 	} else {	/* AHCI_IRQ_MODE_AFTER */
-// 		unit = irq->r_irq_rid - 1;
-// 		is = ATA_INL(ctlr->r_mem, AHCI_IS);
-// 	}
-// 	/* CCC interrupt is edge triggered. */
-// 	if (ctlr->ccc)
-// 		ise = 1 << ctlr->cccv;
-// 	/* Some controllers have edge triggered IS. */
-// 	if (ctlr->quirks & AHCI_Q_EDGEIS)
-// 		ise |= is;
-// 	if (ise != 0)
-// 		ATA_OUTL(ctlr->r_mem, AHCI_IS, ise);
-// 	for (; unit < ctlr->channels; unit++) {
-// 		if ((is & (1 << unit)) != 0 &&
-// 		    (arg = ctlr->interrupt[unit].argument)) {
-// 				ctlr->interrupt[unit].function(arg);
-// 		}
-// 	}
-// 	/* AHCI declares level triggered IS. */
-// 	if (!(ctlr->quirks & AHCI_Q_EDGEIS))
-// 		ATA_OUTL(ctlr->r_mem, AHCI_IS, is);
-// 	ATA_RBL(ctlr->r_mem, AHCI_IS);
-// }
+	if (irq->mode == AHCI_IRQ_MODE_ALL) {
+		unit = 0;
+		if (ctlr->ccc)
+			is = ctlr->ichannels;
+		else
+			is = ATA_INL(ctlr->r_mem, AHCI_IS);
+	} else {	/* AHCI_IRQ_MODE_AFTER */
+		unit = irq->r_irq_rid - 1;
+		is = ATA_INL(ctlr->r_mem, AHCI_IS);
+	}
+	/* CCC interrupt is edge triggered. */
+	if (ctlr->ccc)
+		ise = 1 << ctlr->cccv;
+	/* Some controllers have edge triggered IS. */
+	if (ctlr->quirks & AHCI_Q_EDGEIS)
+		ise |= is;
+	if (ise != 0)
+		ATA_OUTL(ctlr->r_mem, AHCI_IS, ise);
+	for (; unit < ctlr->channels; unit++) {
+		if ((is & (1 << unit)) != 0 &&
+		    (arg = ctlr->interrupt[unit].argument)) {
+				ctlr->interrupt[unit].function(arg);
+		}
+	}
+	/* AHCI declares level triggered IS. */
+	if (!(ctlr->quirks & AHCI_Q_EDGEIS))
+		ATA_OUTL(ctlr->r_mem, AHCI_IS, is);
+	ATA_RBL(ctlr->r_mem, AHCI_IS);
+}
 
 /*
  * Simplified interrupt handler for multivector MSI mode.
  */
-// static void
-// ahci_intr_one(void *data)
-// {
-// 	struct ahci_controller_irq *irq = reinterpret_cast<ahci_controller_irq *>(data);
-// 	struct ahci_controller *ctlr = irq->ctlr;
-// 	void *arg;
-// 	int unit;
+static void
+ahci_intr_one(void *data)
+{
+	struct ahci_controller_irq *irq = reinterpret_cast<ahci_controller_irq *>(data);
+	struct ahci_controller *ctlr = irq->ctlr;
+	void *arg;
+	int unit;
 
-// 	unit = irq->r_irq_rid - 1;
-// 	if ((arg = ctlr->interrupt[unit].argument))
-// 	    ctlr->interrupt[unit].function(arg);
-// 	/* AHCI declares level triggered IS. */
-// 	ATA_OUTL(ctlr->r_mem, AHCI_IS, 1 << unit);
-// 	ATA_RBL(ctlr->r_mem, AHCI_IS);
-// }
+	unit = irq->r_irq_rid - 1;
+	if ((arg = ctlr->interrupt[unit].argument))
+	    ctlr->interrupt[unit].function(arg);
+	/* AHCI declares level triggered IS. */
+	ATA_OUTL(ctlr->r_mem, AHCI_IS, 1 << unit);
+	ATA_RBL(ctlr->r_mem, AHCI_IS);
+}
 
-// static void
-// ahci_intr_one_edge(void *data)
-// {
-// 	struct ahci_controller_irq *irq = reinterpret_cast<ahci_controller_irq *>(data);
-// 	struct ahci_controller *ctlr = irq->ctlr;
-// 	void *arg;
-// 	int unit;
+static void
+ahci_intr_one_edge(void *data)
+{
+	struct ahci_controller_irq *irq = reinterpret_cast<ahci_controller_irq *>(data);
+	struct ahci_controller *ctlr = irq->ctlr;
+	void *arg;
+	int unit;
 
-// 	unit = irq->r_irq_rid - 1;
-// 	/* Some controllers have edge triggered IS. */
-// 	ATA_OUTL(ctlr->r_mem, AHCI_IS, 1 << unit);
-// 	if ((arg = ctlr->interrupt[unit].argument))
-// 		ctlr->interrupt[unit].function(arg);
-// 	ATA_RBL(ctlr->r_mem, AHCI_IS);
-// }
+	unit = irq->r_irq_rid - 1;
+	/* Some controllers have edge triggered IS. */
+	ATA_OUTL(ctlr->r_mem, AHCI_IS, 1 << unit);
+	if ((arg = ctlr->interrupt[unit].argument))
+		ctlr->interrupt[unit].function(arg);
+	ATA_RBL(ctlr->r_mem, AHCI_IS);
+}
 
 // struct resource *
 // ahci_alloc_resource(device_t dev, device_t child, int type, int *rid,
@@ -2768,14 +2768,22 @@ struct ahci_dc_cb_args {
 
 AhciChannel *AhciChannel::Init(AhciCtrl *ctrl) {
   AhciChannel *addr = new AhciChannel(ctrl);
-  addr->_bsd.SetMasterClass(addr);
-  addr->_bsd.softc = calloc(1, sizeof(struct ahci_channel));
-  if (ahci_ch_probe(&addr->_bsd) == BUS_PROBE_DEFAULT) {
-    kassert(ahci_ch_attach(&addr->_bsd) == 0);
+  if (addr->InitBsdDevice(addr, sizeof(struct ahci_channel)) == 0) {
     return addr;
   } else {
-    free(addr->_bsd.softc);
     delete addr;
     return nullptr;
-  }
+  }    
+}
+
+int AhciChannel::DevMethodBusProbe() {
+  return ahci_ch_probe(this);
+}
+
+int AhciChannel::DevMethodBusAttach() {
+  return ahci_ch_attach(this);
+}
+
+void AhciChannel::DevMethodBusInit() {
+  kassert(false);
 }

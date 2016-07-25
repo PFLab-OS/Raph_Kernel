@@ -24,7 +24,7 @@
 #include <sys/kernel.h>
 #include <sys/bus-raph.h>
 #include <sys/types-raph.h>
-#include <sys/rman-raph.h>
+#include <sys/rman.h>
 #include <sys/errno.h>
 #include <tty.h>
 #include <global.h>
@@ -108,50 +108,51 @@ extern "C" {
     switch(type) {
     case SYS_RES_MEMORY: {
       int bar = *rid;
-      uint32_t addr = dev->GetPciClass()->ReadReg<uint32_t>(static_cast<uint32_t>(bar));
+      uint32_t addr = dev->GetPciClass()->GetDevPci().ReadReg<uint32_t>(static_cast<uint32_t>(bar));
       if ((addr & PciCtrl::kRegBaseAddrFlagIo) != 0) {
         return NULL;
       }
-      r = virtmem_ctrl->New<resource>();
-      r->type = BUS_SPACE_MEMIO;
-      r->data.mem.is_prefetchable = ((addr & PciCtrl::kRegBaseAddrIsPrefetchable) != 0);
-      r->addr = addr & PciCtrl::kRegBaseAddrMaskMemAddr;
+      r = new resource;
+      r->r_bustag = BUS_SPACE_MEMIO;
+      r->r_bushandle = addr & PciCtrl::kRegBaseAddrMaskMemAddr;
 
       if ((addr & PciCtrl::kRegBaseAddrMaskMemType) == PciCtrl::kRegBaseAddrValueMemType64) {
-        r->addr |= static_cast<uint64_t>(dev->GetPciClass()->ReadReg<uint32_t>(static_cast<uint32_t>(bar + 4))) << 32;
+        r->r_bushandle |= static_cast<uint64_t>(dev->GetPciClass()->GetDevPci().ReadReg<uint32_t>(static_cast<uint32_t>(bar + 4))) << 32;
       }
-      r->addr = p2v(r->addr);
+      r->r_bushandle = p2v(r->r_bushandle);
       break;
     }
     case SYS_RES_IOPORT: {
       int bar = *rid;
-      uint32_t addr = dev->GetPciClass()->ReadReg<uint32_t>(static_cast<uint32_t>(bar));
+      uint32_t addr = dev->GetPciClass()->GetDevPci().ReadReg<uint32_t>(static_cast<uint32_t>(bar));
       if ((addr & PciCtrl::kRegBaseAddrFlagIo) == 0) {
         return NULL;
       }
-      r = virtmem_ctrl->New<resource>();
-      r->type = BUS_SPACE_PIO;
-      r->addr = addr & PciCtrl::kRegBaseAddrMaskIoAddr;
+      r = new resource;
+      r->r_bustag = BUS_SPACE_PIO;
+      r->r_bushandle = addr & PciCtrl::kRegBaseAddrMaskIoAddr;
       break;
     }
     case SYS_RES_IRQ: {
-      r = virtmem_ctrl->New<resource>();
-      r->icontainer = dev->GetPciClass()->GetIntContainerStruct(*rid);
+      r = new resource;
+      r->r_bushandle = *rid;
       break;
     }
     default: {
       kassert(false);
     }
     }
+    r->__r_i = int_alloc_resource();
     return r;
   }
   
   int bus_setup_intr(device_t dev, struct resource *r, int flags, driver_filter_t filter, driver_intr_t ithread, void *arg, void **cookiep) {
-    if (r->icontainer == NULL) {
+    BsdDevPci::IntContainer *icontainer = dev->GetPciClass()->GetIntContainerStruct(r->r_bushandle);
+    if (icontainer == NULL) {
       return -1;
     }
-    r->icontainer->SetFilter(filter, arg);
-    r->icontainer->SetIthread(ithread, arg);
+    icontainer->SetFilter(filter, arg);
+    icontainer->SetIthread(ithread, arg);
     return 0;
   }
 

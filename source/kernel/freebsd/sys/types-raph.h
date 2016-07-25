@@ -26,13 +26,14 @@
 #include <sys/types.h>
 #include <raph.h>
 #include <list.h>
+#include <stdlib.h>
 
 class BsdDevPci;
 
 class BsdDevice {
  public:
   template<class T>
-    void SetMasterClass(T *master) {
+  void SetMasterClass(T *master) {
     _master = reinterpret_cast<void *>(master);
   }
   template<class T>
@@ -46,15 +47,31 @@ class BsdDevice {
     kassert(_pci != nullptr);
     return _pci;
   }
-  void AddChild(const char *name_, int unit_) {
-    BsdDevice *child = _children.PushBack()->GetObject();
-    child->name = name_;
-    child->unit = unit_;
-  }
+  // void AddChild(const char *name_, int unit_) {
+  //   BsdDevice *child = _children.PushBack()->GetObject();
+  //   child->name = name_;
+  //   child->unit = unit_;
+  // }
   void *softc;
   void *ivar;
   int unit = 0;
   const char *name;
+protected:
+  virtual int DevMethodProbe() = 0;
+  virtual int DevMethodAttach() = 0;
+  virtual void DevMethodInit() = 0;
+  template<class T>
+  int InitBsdDevice(T *master, size_t size_of_softc) {
+    SetMasterClass(master);
+    softc = calloc(1, size_of_softc);
+    if (DevMethodProbe() == 0 && DevMethodAttach() == 0) {
+      DevMethodInit();
+      return 0;
+    } else {
+      free(softc);
+      return -1;
+    }
+  }
  private:
   BsdDevPci *_pci = nullptr;
   void *_master;

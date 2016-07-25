@@ -65,6 +65,12 @@ extern "C" {
 
 #ifdef _KERNEL
 
+  struct resource {
+    struct resource_i       *__r_i;
+    bus_space_tag_t         r_bustag; /* bus_space tag */
+    bus_space_handle_t      r_bushandle;    /* bus_space handle */
+  };
+  
   struct resource_i;
 
   TAILQ_HEAD(resource_head, resource_i);
@@ -80,7 +86,15 @@ extern "C" {
   };
   bus_space_tag_t rman_get_bustag(struct resource *r);
   bus_space_handle_t rman_get_bushandle(struct resource *r);
+  rman_res_t      rman_get_end(struct resource *);
 
+  rman_res_t      rman_get_start(struct resource *);
+  int     rman_fini(struct rman *rm);
+  int     rman_init(struct rman *rm);
+  int     rman_manage_region(struct rman *rm, rman_res_t start, rman_res_t end);
+
+  // Raph_Kernel original
+  struct resource_i *int_alloc_resource();
 #endif /* _KERNEL */
 
 #ifdef __cplusplus

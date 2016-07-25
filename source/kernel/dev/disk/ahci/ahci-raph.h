@@ -26,43 +26,32 @@
 #include <sys/types-raph.h>
 #include <sys/bus-raph.h>
 
-class DevDisk {
+class AhciCtrl : public BsdDevPci {
 public:
-  DevDisk() {
-  }
-};
-
-class BsdDevPciDisk : public DevDisk {
-public:
-  BsdDevPciDisk(uint8_t bus, uint8_t device, uint8_t function) : DevDisk(), _bsd_pci(bus, device, function) {
-    _bsd.SetClass(&_bsd_pci);
-  }
-  virtual ~BsdDevPciDisk() {
-  }
-protected:
-  BsdDevice _bsd;
-private:
-  BsdDevPci _bsd_pci;
-};
-
-class AhciCtrl : public BsdDevPciDisk {
-public:
-  AhciCtrl(uint8_t bus, uint8_t device, uint8_t function) : BsdDevPciDisk(bus, device, function) {
+  AhciCtrl(uint8_t bus, uint8_t device, uint8_t function) : BsdDevPci(bus, device, function) {
   }
   static DevPci *InitPci(uint8_t bus, uint8_t device, uint8_t function);
+private:
+  virtual int DevMethodBusProbe() override final;
+  virtual int DevMethodBusAttach() override final;
+  virtual void DevMethodBusInit() override final;
 };
 
-class AhciChannel {
+class BsdDevAhci : public BsdDevBus {
+public:
+private:
+};
+
+class AhciChannel : public BsdDevAhci {
 public:
   AhciChannel(AhciCtrl *ctrl) : _ctrl(ctrl) {
   }
   static AhciChannel *Init(AhciCtrl *ctrl);
-  device_t GetDevice() {
-    return &_bsd;
-  }
 private:
+  virtual int DevMethodBusProbe() override final;
+  virtual int DevMethodBusAttach() override final;
+  virtual void DevMethodBusInit() override final;
   AhciCtrl *_ctrl;
-  BsdDevice _bsd;
 };
 
 #endif // __RAPH_KERNEL_DEV_DISK_AHCI_AHCI_RAPH_H__

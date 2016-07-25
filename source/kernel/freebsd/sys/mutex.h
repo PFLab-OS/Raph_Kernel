@@ -37,7 +37,11 @@
 #include <sys/_mutex.h>
 
 #ifdef _KERNEL
+// #include <sys/pcpu.h>
+// #include <sys/lock_profile.h>
 #include <sys/lockstat.h>
+// #include <machine/atomic.h>
+#include <machine/cpufunc.h>
 
 #ifdef __cplusplus
 extern "C" {

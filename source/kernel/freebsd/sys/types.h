@@ -69,7 +69,14 @@ typedef	quad_t *	qaddr_t;
 typedef	char *		caddr_t;	/* core address */
 typedef	const char *	c_caddr_t;	/* core address, pointer to const */
 
+typedef	__register_t	register_t;
+
 typedef	__int64_t	sbintime_t;
+
+#ifndef _SIZE_T_DECLARED
+typedef	__size_t	size_t;
+#define	_SIZE_T_DECLARED
+#endif
 
 typedef	__vm_offset_t	vm_offset_t;
 // typedef	__vm_ooffset_t	vm_ooffset_t;
