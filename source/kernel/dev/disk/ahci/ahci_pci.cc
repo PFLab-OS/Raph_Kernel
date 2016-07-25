@@ -671,7 +671,3 @@ int AhciCtrl::DevMethodBusProbe() {
 int AhciCtrl::DevMethodBusAttach() {
   return ahci_pci_attach(this);
 }
-
-void AhciCtrl::DevMethodBusInit() {
-  kassert(false);
-}

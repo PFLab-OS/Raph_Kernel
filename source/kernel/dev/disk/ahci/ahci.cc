@@ -2783,7 +2783,3 @@ int AhciChannel::DevMethodBusProbe() {
 int AhciChannel::DevMethodBusAttach() {
   return ahci_ch_attach(this);
 }
-
-void AhciChannel::DevMethodBusInit() {
-  kassert(false);
-}

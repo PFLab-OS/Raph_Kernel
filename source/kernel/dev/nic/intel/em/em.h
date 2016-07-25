@@ -65,7 +65,6 @@ public:
 private:
   virtual int DevMethodBusProbe() override final;
   virtual int DevMethodBusAttach() override final;
-  virtual void DevMethodBusInit() override final;
   E1000BsdEthernet _bsd_eth;
 };
 

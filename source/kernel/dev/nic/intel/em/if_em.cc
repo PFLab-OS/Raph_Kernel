@@ -6307,14 +6307,12 @@ int E1000::DevMethodBusProbe() {
 }
 
 int E1000::DevMethodBusAttach() {
-  return em_attach(this);
-}
-
-void E1000::DevMethodBusInit() {
+  int rval = em_attach(this);
   em_init(reinterpret_cast<struct adapter *>(softc));
   _bsd_eth.SetupNetInterface();
   _bsd_eth.SetHandleMethod(E1000BsdEthernet::HandleMethod::kPolling);
   eth = &_bsd_eth;
+  return rval;
 }
 
 DevPci *E1000::InitPci(uint8_t bus, uint8_t device, uint8_t function) {

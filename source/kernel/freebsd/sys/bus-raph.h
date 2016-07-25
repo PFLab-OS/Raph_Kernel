@@ -36,7 +36,6 @@ public:
 protected:
   virtual int DevMethodBusProbe() = 0;
   virtual int DevMethodBusAttach() = 0;
-  virtual void DevMethodBusInit() = 0;
 private:
   virtual int DevMethodProbe() override final {
     if (DevMethodBusProbe() == BUS_PROBE_DEFAULT) {
@@ -47,9 +46,6 @@ private:
   }
   virtual int DevMethodAttach() override final {
     return DevMethodBusAttach();
-  }
-  virtual void DevMethodInit() override final {
-    DevMethodBusInit();
   }
 };
 

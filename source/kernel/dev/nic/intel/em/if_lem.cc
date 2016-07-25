@@ -5004,14 +5004,12 @@ int lE1000::DevMethodBusProbe() {
 }
 
 int lE1000::DevMethodBusAttach() {
-  return lem_attach(this);
-}
-
-void lE1000::DevMethodBusInit() {
+  int rval = lem_attach(this);
   lem_init(reinterpret_cast<struct adapter *>(softc));
   _bsd_eth.SetupNetInterface();
   //_bsd_eth.SetHandleMethod(HandleMethod::kPolling);
   eth = &_bsd_eth;
+  return rval;
 }
 
 DevPci *lE1000::InitPci(uint8_t bus, uint8_t device, uint8_t function) {

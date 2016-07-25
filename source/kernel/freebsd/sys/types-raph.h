@@ -59,13 +59,11 @@ class BsdDevice {
 protected:
   virtual int DevMethodProbe() = 0;
   virtual int DevMethodAttach() = 0;
-  virtual void DevMethodInit() = 0;
   template<class T>
   int InitBsdDevice(T *master, size_t size_of_softc) {
     SetMasterClass(master);
     softc = calloc(1, size_of_softc);
     if (DevMethodProbe() == 0 && DevMethodAttach() == 0) {
-      DevMethodInit();
       return 0;
     } else {
       free(softc);
