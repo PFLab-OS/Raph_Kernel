@@ -36,7 +36,7 @@ extern "C" void handle_int(Regs *rs) {
   idt->_handling_cnt[cpuid]++;
   if (idt->_callback[cpuid][rs->n].callback == nullptr) {
     if (gtty != nullptr) {
-      gtty->PrintfRaw("s","[kernel] error: unimplemented interrupt ", "d", rs->n, "s", " ");
+      gtty->CprintfRaw("[kernel] error: unimplemented interrupt %d at cpuid: %d\n", rs->n, cpuid);
     }
     asm volatile("cli; hlt; nop; nop; hlt; nop; hlt;"::"a"(rs->rip));
   } else {

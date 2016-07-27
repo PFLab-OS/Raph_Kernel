@@ -326,7 +326,7 @@ extern "C" int main() {
 
   gtty->Printf("s", "[cpu] info: #", "d", cpu_ctrl->GetId(), "s", "(apic id:", "d", apic_ctrl->GetApicIdFromCpuId(cpu_ctrl->GetId()), "s", ") started.\n");
   if (eth != nullptr) {
-        Function func;
+    Function func;
     func.Init([](void *){
         BsdDevEthernet::Packet *rpacket;
         if(!eth->ReceivePacket(rpacket)) {
