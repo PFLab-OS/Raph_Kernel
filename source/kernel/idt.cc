@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2015 Project Raphine
+ * Copyright (c) 2015 Raphine Project
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
