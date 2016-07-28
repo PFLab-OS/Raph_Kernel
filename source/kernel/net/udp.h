@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2016 Project Raphine
+ * Copyright (c) 2016 Raphine Project
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -24,10 +24,8 @@
 #define __RAPH_KERNEL_NET_UDP_H__
 
 #include <stdint.h>
-#include "layer.h"
-#include "ip.h"
 
-struct UDPHeader {
+struct UdpHeader {
   // source port
   uint16_t sport;
   // destination port
@@ -38,18 +36,10 @@ struct UDPHeader {
   uint16_t checksum;
 } __attribute__ ((packed));
 
-class UDPCtrl : public L4Ctrl {
-  static const uint32_t kDstPortOffset = 2;
+int32_t UdpGenerateHeader(uint8_t *buffer, uint32_t length, uint16_t sport, uint16_t dport);
+bool UdpFilterPacket(uint8_t *packet, uint16_t sport, uint16_t dport);
 
-public:
-  UDPCtrl() {}
-  virtual int32_t GenerateHeader(uint8_t *buffer,
-                                 uint32_t length,
-                                 uint16_t sport,
-                                 uint16_t dport);
-  virtual bool FilterPacket(uint8_t *packet,
-                            uint16_t sport,
-                            uint16_t dport);
-};
+// extract sender port
+uint16_t UdpGetSourcePort(uint8_t *packet);
 
 #endif // __RAPH_KERNEL_NET_UDP_H__

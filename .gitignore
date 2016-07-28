@@ -18,8 +18,6 @@ Desktop.ini
 testcase/test.c
 hoge.c
 
-
-
 # Object files
 *.o
 *.ko
@@ -58,3 +56,8 @@ hoge.c
 
 # Makefile
 *.d
+
+GPATH
+GRTAGS
+GSYMS
+GTAGS

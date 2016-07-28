@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2015 Project Raphine
+ * Copyright (c) 2015 Raphine Project
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -20,41 +20,158 @@
  * 
  */
 
-#include "idt.h"
-#include "mem/virtmem.h"
-#include "mem/physmem.h"
+#include <idt.h>
+#include <mem/virtmem.h>
+#include <mem/physmem.h>
+#include <apic.h>
+#include <gdt.h>
+#include <global.h>
+#include <tty.h>
 
-extern "C" void dummy_int(Regs *rs) {
-  asm volatile("hlt; nop; nop; hlt; nop; hlt;"::"a"(rs->n),"c"(rs->rbx));
+namespace C {
+extern "C" void handle_int(Regs *rs) {
+  //TODO 例外処理中のフラグを立て、IntSpinLock内では弾く
+  apic_ctrl->DisableInt();
+  int cpuid = apic_ctrl->GetCpuId();
+  idt->_handling_cnt[cpuid]++;
+  if (idt->_callback[cpuid][rs->n].callback == nullptr) {
+    if (gtty != nullptr) {
+      gtty->CprintfRaw("[kernel] error: unimplemented interrupt %d at cpuid: %d\n", rs->n, cpuid);
+    }
+    asm volatile("cli; hlt; nop; nop; hlt; nop; hlt;"::"a"(rs->rip));
+  } else {
+    idt->_callback[cpuid][rs->n].callback(rs, idt->_callback[cpuid][rs->n].arg);
+  }
+  idt->_handling_cnt[cpuid]--;
+  apic_ctrl->EnableInt();
+  //TODO 普通の例外の場合にまずい
+  apic_ctrl->SendEoi();
+}
 }
 
-extern void (*vectors[256])(Regs *rs);
-extern void (*idt_vectors[256])(Regs *rs);
+extern idt_callback vectors[256];
+extern idt_callback idt_vectors[256];
 
 struct idt_entity {
   uint32_t entry[4];
 } __attribute__((aligned(8))) idt_def[256];
 
-void Idt::Setup() {
+void Idt::SetupGeneric() {
   for (int i = 0; i < 256; i++) {
-    SetGate(idt_vectors[i], i, 0, false);
+    uint8_t ist;
+    switch (i) {
+    case 8:
+      ist = 1;
+      break;
+    case 2:
+      ist = 2;
+      break;
+    case 1:
+    case 3:
+      ist = 3;
+      break;
+    case 18:
+      ist = 4;
+      break;
+    default:
+      ist = 5;
+      break;
+    };
+    SetGate(idt_vectors[i], i, 0, false, ist);
   }
-  static volatile uint16_t idtr[5];
   virt_addr idt_addr = reinterpret_cast<virt_addr>(idt_def);
-  idtr[0] = 8*256-1;
-  idtr[1] = idt_addr & 0xffff;
-  idtr[2] = (idt_addr >> 16) & 0xffff;
-  idtr[3] = (idt_addr >> 32) & 0xffff;
-  idtr[4] = (idt_addr >> 48) & 0xffff;
-  asm volatile ("lidt (%0)"::"r"(idtr));
+  _idtr[0] = 8*256-1;
+  _idtr[1] = idt_addr & 0xffff;
+  _idtr[2] = (idt_addr >> 16) & 0xffff;
+  _idtr[3] = (idt_addr >> 32) & 0xffff;
+  _idtr[4] = (idt_addr >> 48) & 0xffff;
+  kassert(virtmem_ctrl != nullptr);
+  kassert(apic_ctrl != nullptr);
+  _callback = reinterpret_cast<IntCallback **>(virtmem_ctrl->Alloc(sizeof(IntCallback *) * apic_ctrl->GetHowManyCpus()));
+  _handling_cnt = reinterpret_cast<int *>(virtmem_ctrl->Alloc(sizeof(int) * apic_ctrl->GetHowManyCpus()));
+  for (int i = 0; i < apic_ctrl->GetHowManyCpus(); i++) {
+    _callback[i] = reinterpret_cast<IntCallback *>(virtmem_ctrl->Alloc(sizeof(IntCallback) * 256));
+    _handling_cnt[i] = 0;
+    for (int j = 0; j < 256; j++) {
+      _callback[i][j].callback = nullptr;
+    }
+  }
+  // x86 specific
+  for (int i = 0; i < apic_ctrl->GetHowManyCpus(); i++) {
+    SetExceptionCallback(i, 14, HandlePageFault, nullptr);
+  }
+  _is_gen_initialized = true;
 }
 
-void Idt::SetGate(void (*gate)(Regs *rs), int n, uint8_t dpl, bool trap) {
+void Idt::SetupProc() {
+  asm volatile ("lidt (%0)"::"r"(_idtr));
+  asm volatile ("sti;");
+}
+
+void Idt::SetGate(idt_callback gate, int vector, uint8_t dpl, bool trap, uint8_t ist) {
   virt_addr vaddr = reinterpret_cast<virt_addr>(gate);
-  phys_addr addr = vaddr;
   uint32_t type = trap ? 0xF : 0xE;
-  idt_def[n].entry[0] = (addr & 0xFFFF) | (KERNEL_CS << 16);
-  idt_def[n].entry[1] = (addr & 0xFFFF0000) | (type << 8) | ((dpl & 0x3) << 13) | kIdtPresent;
-  idt_def[n].entry[2] = addr >> 32;
-  idt_def[n].entry[3] = 0;
+  idt_def[vector].entry[0] = (vaddr & 0xFFFF) | (KERNEL_CS << 16);
+  idt_def[vector].entry[1] = (vaddr & 0xFFFF0000) | (type << 8) | ((dpl & 0x3) << 13) | kIdtPresent | ist;
+  idt_def[vector].entry[2] = vaddr >> 32;
+  idt_def[vector].entry[3] = 0;
+}
+
+int Idt::SetIntCallback(int cpuid, int_callback callback, void *arg) {
+  Locker locker(_lock);
+  for(int vector = 64; vector < 256; vector++) {
+    if (_callback[cpuid][vector].callback == nullptr) {
+      _callback[cpuid][vector].callback = callback;
+      _callback[cpuid][vector].arg = arg;
+      return vector;
+    }
+  }
+  return ReservedIntVector::kError;
+}
+
+int Idt::SetIntCallback(int cpuid, int_callback *callback, void **arg, int range) {
+  int _range = 1;
+  while(_range < range) {
+    _range *= 2;
+  }
+  if (range != _range) {
+    return ReservedIntVector::kError;
+  }
+  Locker locker(_lock);
+  int vector = range > 64 ? range : 64;
+  for(; vector < 256; vector += range) {
+    int i;
+    for (i = 0; i < range; i++) {
+      if (_callback[cpuid][vector + i].callback != nullptr) {
+        break;
+      }
+    }
+    if (i != range) {
+      continue;
+    }
+    for (i = 0; i < range; i++) {
+      _callback[cpuid][vector + i].callback = callback[i];
+      _callback[cpuid][vector + i].arg = arg[i];
+    }
+    return vector;
+  }
+  return ReservedIntVector::kError;
+}
+
+void Idt::SetExceptionCallback(int cpuid, int vector, int_callback callback, void *arg) {
+  kassert(vector < 64 && vector >= 1);
+  Locker locker(_lock);
+  _callback[cpuid][vector].callback = callback;
+  _callback[cpuid][vector].arg = arg;
+}
+
+void Idt::HandlePageFault(Regs *rs, void *arg) {
+  if (gtty != nullptr) {
+    uint64_t addr;
+    asm volatile("movq %%cr2, %0;":"=r"(addr));
+    gtty->CprintfRaw("\nunexpected page fault occured!\naddress: %llx\n", addr);
+  }
+  while(true){
+    asm volatile("cli;hlt");
+  }
 }

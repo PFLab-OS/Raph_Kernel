@@ -25,25 +25,52 @@
 
 #include <stdint.h>
 #include <assert.h>
-#include "../spinlock.h"
-#include "../list.h"
-#include "virtmem.h"
+#include <spinlock.h>
+#include <allocator.h>
+#include "kvirtmem.h"
 
 typedef uint64_t phys_addr;
+
+class PhysAddr;
+
+class PhysmemCtrl {
+ public:
+  PhysmemCtrl();
+  // Allocate,Free,Reserveでは、ページサイズに拡張したsizeを渡す事
+  void Alloc(PhysAddr &paddr, size_t size);
+  void Free(PhysAddr &paddr, size_t size);
+  // addrはページサイズにアラインされている事
+  void Reserve(phys_addr addr, size_t size);
+  // Alloc内部で再度Allocが呼ばれるような場合を回避するための処理
+  // page structure table用なので、4Kメモリしか割り当てられない
+  void AllocFromBuffer(PhysAddr &paddr);
+  static const virt_addr kLinearMapOffset = 0xffff800000000000;
+ private:
+  struct AllocatedArea {
+    phys_addr start_addr;
+    phys_addr end_addr;
+    AllocatedArea *next;
+  } *_allocated_area;
+  Allocator<AllocatedArea> _allocated_area_buffer;
+  SpinLock _lock;
+  bool _alloc_lock = false;
+};
+
 template <typename ptr> static inline phys_addr ptr2physaddr(ptr *addr) {
   return reinterpret_cast<phys_addr>(addr);
 }
 
 // リニアマップされた仮想アドレスを物理アドレスから取得する
 static inline virt_addr p2v(phys_addr addr) {
-  return reinterpret_cast<virt_addr>(0xffff800000000000 + addr);
+  return reinterpret_cast<virt_addr>(PhysmemCtrl::kLinearMapOffset + addr);
 }
 
 // ストレートマップド仮想メモリを物理メモリに変換する
 // カーネル仮想メモリ等は変換できないのでk2pを使う
 static inline phys_addr v2p(virt_addr addr) {
-  kassert(addr >= 0xffff800000000000);
-  return reinterpret_cast<phys_addr>(addr - 0xffff800000000000);
+  //TODO 上限
+  kassert(addr >= PhysmemCtrl::kLinearMapOffset);
+  return reinterpret_cast<phys_addr>(addr - PhysmemCtrl::kLinearMapOffset);
 }
 
 template <typename ptr> static inline ptr *p2v(ptr *addr) {
@@ -79,28 +106,6 @@ public:
 private:
   bool _is_initialized;
   phys_addr _addr;
-};
-
-class PhysmemCtrl {
- public:
-  PhysmemCtrl();
-  // Allocate,Free,Reserveでは、ページサイズに拡張したsizeを渡す事
-  void Alloc(PhysAddr &paddr, size_t size);
-  void Free(PhysAddr &paddr, size_t size);
-  // addrはページサイズにアラインされている事
-  void Reserve(phys_addr addr, size_t size);
-  // Alloc内部で再度Allocが呼ばれるような場合を回避するための処理
-  // page structure table用なので、4Kメモリしか割り当てられない
-  void AllocFromBuffer(PhysAddr &paddr);
- private:
-  struct AllocatedArea {
-    phys_addr start_addr;
-    phys_addr end_addr;
-    AllocatedArea *next;
-  } *_allocated_area;
-  List<AllocatedArea> _allocated_area_buffer;
-  SpinLock _lock;
-  bool _alloc_lock = false;
 };
 
 #endif // __RAPH_KERNEL_MEM_PHYSMEM_H__

@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2015 Project Raphine
+ * Copyright (c) 2015 Raphine Project
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -23,11 +23,9 @@
 #ifndef __RAPH_KERNEL_IDT_H__
 #define __RAPH_KERNEL_IDT_H__
 
-#define KERNEL_CS (0x10)
-#define KERNEL_DS (0x18)
-
-#ifndef ASM_FILE
 #include <stdint.h>
+#include <apic.h>
+#include <spinlock.h>
 
 struct Regs {
   uint64_t rax, rbx, rcx, rdx, rbp, rsi, rdi, r8, r9, r10, r11, r12, r13, r14, r15;
@@ -35,13 +33,53 @@ struct Regs {
   uint64_t rsp, ss;
 }__attribute__((__packed__));
 
+typedef void (*idt_callback)(Regs *rs);
+typedef void (*int_callback)(Regs *rs, void *arg);
+typedef void (*ioint_callback)(void *arg);
+
+namespace C {
+  extern "C" void handle_int(Regs *rs);
+}
+
 class Idt {
  public:
-  void Setup();
+  void SetupGeneric();
+  void SetupProc();
+  // I/O等用の割り込みハンドラ
+  // 確保したvectorが返る(vector >= 64)
+  // 確保できなかった場合はReservedIntVector::kErrorが返る
+  int SetIntCallback(int cpuid, int_callback callback, void *arg);
+  // 一括で連続したvectorを確保する
+  // rangeは2のn乗である必要がある
+  // 戻り値は先頭vectorで、rangeで割り切れる事を保証する
+  int SetIntCallback(int cpuid, int_callback *callback, void **arg, int range);
+  // 例外等用の割り込みハンドラ
+  // vector < 64でなければならない
+  void SetExceptionCallback(int cpuid, int vector, int_callback callback, void *arg);
+  // if 0, cpu is not handling interrupt
+  volatile int GetHandlingCnt() {
+    if (!_is_gen_initialized) {
+      return false;
+    }
+    return _handling_cnt[apic_ctrl->GetCpuId()];
+  }
+  struct ReservedIntVector {
+    static const int kIpi      = 33;
+    static const int kError    = 63;
+  };
  private:
-  void SetGate(void (*gate)(Regs *rs), int n, uint8_t dpl, bool trap);
+  void SetGate(idt_callback gate, int vector, uint8_t dpl, bool trap, uint8_t ist);
+  static void HandlePageFault(Regs *rs, void *arg);
   static const uint32_t kIdtPresent = 1 << 15;
+  volatile uint16_t _idtr[5];
+  struct IntCallback {
+    int_callback callback;
+    void *arg;
+  } **_callback;
+  int *_handling_cnt;
+  friend void C::handle_int(Regs *rs);
+  SpinLock _lock;
+  bool _is_gen_initialized = false;
 };
 
-#endif // ! ASM_FILE
 #endif // __RAPH_KERNEL_IDT_H__
