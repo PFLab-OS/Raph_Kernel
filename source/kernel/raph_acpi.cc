@@ -102,6 +102,10 @@ void AcpiCtrl::GlobalEventHandler(void *) {
   Shutdown();
 }
 
+void AcpiCtrl::Reset() {
+  AcpiReset();
+}
+
 static ACPI_STATUS GetIntNum(ACPI_RESOURCE *resource, void *context) {
   int *irq = reinterpret_cast<int *>(context);
   switch(resource->Type) {

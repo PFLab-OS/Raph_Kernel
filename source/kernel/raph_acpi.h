@@ -137,6 +137,7 @@ public:
   HPETDT *GetHPETDT();
   FADT *GetFADT();
   void SetupAcpica();
+  void Reset();
   void Shutdown();
 private:
   friend class AcpicaPciCtrl;
