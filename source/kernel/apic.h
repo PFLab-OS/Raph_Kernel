@@ -220,12 +220,12 @@ public:
       if ((Read(kRegRedTbl + 2 * irq) | kRegRedTblFlagMask) == 0) {
         return false;
       }
+      Write(kRegRedTbl + 2 * irq + 1, lapicid << kRegRedTblOffsetDest);
       Write(kRegRedTbl + 2 * irq,
             kRegRedTblFlagValueDeliveryLow |
             kRegRedTblFlagDestModePhys |
             kRegRedTblFlagTriggerModeEdge |
             vector);
-      Write(kRegRedTbl + 2 * irq + 1, lapicid << kRegRedTblOffsetDest);
       return true;
     }
     static const int kIrqKeyboard = 1;

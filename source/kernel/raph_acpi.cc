@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2015 Project Raphine
+ * Copyright (c) 2015 Raphine Project
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -36,6 +36,9 @@ extern "C" {
 #include <apic.h>
 #include <raph_acpi.h>
 #include <dev/pci.h>
+#include <tty.h>
+#include <task.h>
+#include <global.h>
 
 #define ACPI_MAX_INIT_TABLES    128
 static ACPI_TABLE_DESC      TableArray[ACPI_MAX_INIT_TABLES];
@@ -67,12 +70,24 @@ FADT *AcpiCtrl::GetFADT() {
   return reinterpret_cast<FADT *>(table);
 }
 
+void AcpiGlobalEventHandler(UINT32 type, ACPI_HANDLE device, UINT32 num, void *context) {
+  //TODO cpuid
+  if (num == ACPI_EVENT_POWER_BUTTON) {
+    task_ctrl->Register(1, reinterpret_cast<Task *>(context));
+  }
+}
+
 void AcpiCtrl::SetupAcpica() {
   kassert(!ACPI_FAILURE(AcpiInitializeSubsystem()));
   kassert(!ACPI_FAILURE(AcpiReallocateRootTable()));
   kassert(!ACPI_FAILURE(AcpiEnableSubsystem(ACPI_FULL_INITIALIZATION)));
   kassert(!ACPI_FAILURE(AcpiLoadTables()));
   kassert(!ACPI_FAILURE(AcpiInitializeObjects(ACPI_FULL_INITIALIZATION)));
+
+  ClassFunction<AcpiCtrl> func;
+  func.Init(this, &AcpiCtrl::GlobalEventHandler, nullptr);
+  _global_event_task.SetFunc(func);
+   AcpiInstallGlobalEventHandler(AcpiGlobalEventHandler, reinterpret_cast<void *>(&_global_event_task));
 } 
   
 void AcpiCtrl::Shutdown() {
@@ -80,6 +95,11 @@ void AcpiCtrl::Shutdown() {
   asm volatile("cli;");
   AcpiEnterSleepState(5);
   kernel_panic("acpi", "could not halt system");
+}
+
+void AcpiCtrl::GlobalEventHandler(void *) {
+  gtty->Cprintf("shutting down the system...\n");
+  Shutdown();
 }
 
 void AcpiCtrl::Reset() {

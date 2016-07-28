@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2015 Project Raphine
+ * Copyright (c) 2015 Raphine Project
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -25,8 +25,9 @@
 
 #include <stdint.h>
 #include <string.h>
-#include "global.h"
-#include "mem/physmem.h"
+#include <task.h>
+#include <global.h>
+#include <mem/physmem.h>
 
 // see acpi spec
 
@@ -141,6 +142,8 @@ public:
 private:
   friend class AcpicaPciCtrl;
   int GetPciIntNum(DevPci *device);
+  void GlobalEventHandler(void *);
+  Task _global_event_task;
 };
 
 #endif /* __RAPH_KERNEL_ACPI_H__ */
