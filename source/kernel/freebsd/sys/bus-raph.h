@@ -126,6 +126,7 @@ public:
       callbacks[i] = HandleSubInt;
       args[i] = reinterpret_cast<void *>(_icontainer_list + i);
     }
+    _is_legacy_interrupt_enable = false;
     // TODO cpuid
     int cpuid = 1;
     int vector = idt->SetIntCallback(cpuid, callbacks, args, count);
