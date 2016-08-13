@@ -5071,6 +5071,6 @@ void lE1000::lE1000BsdEthernet::ChangeHandleMethodToInt() {
   EM_CORE_UNLOCK(adapter);
 }
 
-void lE1000::lE1000BsdEthernet::Transmit(void *) {
+void lE1000::lE1000BsdEthernet::Transmit(Task *, void *) {
   lem_start(&_ifp);
 }

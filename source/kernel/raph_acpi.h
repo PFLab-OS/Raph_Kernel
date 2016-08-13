@@ -142,7 +142,7 @@ public:
 private:
   friend class AcpicaPciCtrl;
   int GetPciIntNum(DevPci *device);
-  void GlobalEventHandler(void *);
+  void GlobalEventHandler(Task *, void *);
   Task _global_event_task;
 };
 

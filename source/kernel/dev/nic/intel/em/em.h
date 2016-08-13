@@ -50,7 +50,7 @@ public:
     virtual void GetEthAddr(uint8_t *buffer) override;
     virtual void ChangeHandleMethodToPolling() override;
     virtual void ChangeHandleMethodToInt() override;
-    virtual void Transmit(void *) override;
+    virtual void Transmit(Task *, void *) override;
     E1000 &GetMasterClass() {
       return _master;
     }

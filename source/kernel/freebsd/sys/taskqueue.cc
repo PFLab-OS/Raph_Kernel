@@ -28,7 +28,7 @@ extern "C" {
 
   struct taskqueue *taskqueue_fast = nullptr;
   
-  static void __taskqueue_handle(void *arg) {
+  static void __taskqueue_handle(Task *, void *arg) {
     struct task *task = reinterpret_cast<struct task *>(arg);
     task->ta_func(task->ta_context, task->ta_pending);
     task->ta_pending++;
@@ -37,7 +37,7 @@ extern "C" {
 
   void _task_init(struct task *t, int priority, task_fn_t *func, void *context) {
     t->ta_task = new Task;
-    Function f;
+    Function2<Task> f;
     f.Init(__taskqueue_handle, reinterpret_cast<void *>(t));
     t->ta_task->SetFunc(f);
     t->ta_pending = 0;

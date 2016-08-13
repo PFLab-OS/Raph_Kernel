@@ -38,7 +38,7 @@ public:
 
 protected:
 
-  virtual void FilterRxPacket(void *p) override;
+  virtual void FilterRxPacket(Task *, void *p) override;
 
   virtual void PrepareTxPacket(NetDev::Packet *packet) override;
 };
