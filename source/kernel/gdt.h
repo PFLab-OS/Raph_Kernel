@@ -34,6 +34,7 @@
 #include <mem/paging.h>
 #include <global.h>
 #include <cpu.h>
+#include <cpuinfo.h>
 
 class Gdt {
  public:
@@ -72,7 +73,7 @@ class Gdt {
 
 class IntStackInfo {
 public:
-  IntStackInfo() {
+  IntStackInfo() : _cpuinfo(cpu_ctrl->GetId()) {
     SetSignature();
   }
   // IMPORTANT: do not call in the outside of stack handler
@@ -90,11 +91,10 @@ public:
     addr -= Size();
     IntStackInfo *that = reinterpret_cast<IntStackInfo *>(addr);
     new(that) IntStackInfo();
-    that->_cpuid = cpu_ctrl->GetId();
     return addr;
   }
-  int GetCpuId() {
-    return _cpuid;
+  CurrentCpuInfo &GetCpuInfo() {
+    return _cpuinfo;
   }
 private:
   static int Size() {
@@ -107,7 +107,7 @@ private:
     kassert(_signature == reinterpret_cast<uint64_t>(this));
   }
   uint64_t _signature;
-  int _cpuid;
+  CurrentCpuInfo _cpuinfo;
 };
 
 #endif // ! ASM_FILE

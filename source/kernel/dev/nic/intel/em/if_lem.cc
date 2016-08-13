@@ -5075,6 +5075,6 @@ void lE1000::ChangeHandleMethodToInt() {
   EM_CORE_UNLOCK(adapter);
 }
 
-void lE1000::Transmit(void *) {
+void lE1000::Transmit(Task *, void *) {
   lem_start(&_ifp);
 }

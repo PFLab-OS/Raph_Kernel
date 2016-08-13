@@ -6366,6 +6366,6 @@ void E1000::ChangeHandleMethodToInt() {
   EM_CORE_UNLOCK(adapter);
 }
 
-void E1000::Transmit(void *) {
+void E1000::Transmit(Task *, void *) {
   em_start(&_ifp);
 }

@@ -32,7 +32,7 @@ namespace C {
 extern "C" void handle_int(Regs *rs) {
   //TODO 例外処理中のフラグを立て、IntSpinLock内では弾く
   apic_ctrl->DisableInt();
-  int cpuid = IntStackInfo::GetStackInfo()->GetCpuId();
+  int cpuid = IntStackInfo::GetStackInfo()->GetCpuInfo().GetId();
   idt->_handling_cnt[cpuid]++;
   if (idt->_callback[cpuid][rs->n].callback == nullptr) {
     if (gtty != nullptr) {

@@ -304,8 +304,8 @@ extern "C" int main() {
       gtty->Printf("s", "[error] failed to open socket\n");
     }
     socket.SetIpAddr(inet_atoi(ip1));
-    Function func;
-    func.Init([](void *){
+    Function2<Task> func;
+    func.Init([](Task *, void *){
         uint32_t ipaddr;
         uint8_t macaddr[6];
         

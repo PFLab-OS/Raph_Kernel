@@ -40,7 +40,7 @@ typedef void (*taskqueue_enqueue_fn)(void *context);
 
 #define TASK_INIT(task, priority, func, context) do {             \
     new(&((task)->ta_task)) Task;                                 \
-    Function f;                                                   \
+    Function2<Task> f;                                            \
     f.Init(__taskqueue_handle, reinterpret_cast<void *>(task));   \
     (task)->ta_task.SetFunc(f);                                   \
     (task)->ta_pending = 0;                                       \
@@ -51,7 +51,7 @@ typedef void (*taskqueue_enqueue_fn)(void *context);
 #define taskqueue_create_fast(...) (nullptr)
 #define taskqueue_start_threads(...) (0)
 
-static void __taskqueue_handle(void *arg) {
+static void __taskqueue_handle(Task *, void *arg) {
   struct task *task = reinterpret_cast<struct task *>(arg);
   task->ta_func(task->ta_context, task->ta_pending);
   task->ta_pending++;
