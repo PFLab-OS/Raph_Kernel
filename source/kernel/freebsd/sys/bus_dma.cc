@@ -22,6 +22,8 @@
 
 #include <sys/bus.h>
 #include <sys/bus_dma.h>
+#include <raph.h>
+#include <mem/paging.h>
 
 extern "C" {
 
@@ -41,6 +43,29 @@ extern "C" {
                          void *filtfuncarg, bus_size_t maxsize, int nsegments,
                          bus_size_t maxsegsz, int flags, bus_dma_lock_t *lockfunc,
                          void *lockfuncarg, bus_dma_tag_t *dmat) {
+    *dmat = new bus_dma_tag;
+    (*dmat)->size = PagingCtrl::RoundUpAddrOnPageBoundary(maxsize);
+    return 0;
+  }
+
+  int bus_dmamem_alloc(bus_dma_tag_t dmat, void** vaddr, int flags,
+                       bus_dmamap_t *mapp) {
+    physmem_ctrl->Alloc(dmat->paddr, dmat->size);
+    *vaddr = reinterpret_cast<void *>(p2v(dmat->paddr.GetAddr()));
+    return 0;
+  }
+
+  void bus_dmamem_free(bus_dma_tag_t dmat, void *vaddr, bus_dmamap_t map) {
+    physmem_ctrl->Free(dmat->paddr, dmat->size);
+  }
+
+  int bus_dmamap_load(bus_dma_tag_t dmat, bus_dmamap_t map, void *buf,
+		    bus_size_t buflen, bus_dmamap_callback_t *callback,
+                      void *callback_arg, int flags) {
+    bus_dma_segment_t segs[0];
+    segs[0].ds_addr = reinterpret_cast<bus_addr_t>(dmat->paddr.GetAddr());
+    segs[0].ds_len = dmat->size;
+    callback(callback_arg, segs,1, 0);
     return 0;
   }
 

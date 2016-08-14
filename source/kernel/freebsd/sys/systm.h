@@ -45,4 +45,6 @@
 /* Timeouts */
 typedef void timeout_t(void *);	/* timeout function type */
 
+void    DELAY(int usec);
+
 #endif /* !_SYS_SYSTM_H_ */

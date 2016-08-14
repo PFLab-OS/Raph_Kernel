@@ -115,6 +115,7 @@ extern "C" {
 
   struct resource;
   struct resource *bus_alloc_resource_any(device_t dev, int type, int *rid, u_int flags);
+  int bus_release_resource(device_t dev, int type, int rid, struct resource *r);
   int bus_setup_intr(device_t dev, struct resource *r, int flags, driver_filter_t filter, driver_intr_t ithread, void *arg, void **cookiep);
   int device_printf(device_t dev, const char *fmt, ...) __attribute__ ((format (printf, 2, 3)));;
 

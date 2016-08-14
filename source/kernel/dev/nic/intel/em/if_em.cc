@@ -3309,76 +3309,69 @@ em_setup_interface(device_t dev, struct adapter *adapter)
 /*
  * Manage DMA'able memory.
  */
-// static void
-// em_dmamap_cb(void *arg, bus_dma_segment_t *segs, int nseg, int error)
-// {
-// 	if (error)
-// 		return;
-// 	*(bus_addr_t *) arg = segs[0].ds_addr;
-// }
+static void
+em_dmamap_cb(void *arg, bus_dma_segment_t *segs, int nseg, int error)
+{
+	if (error)
+		return;
+	*(bus_addr_t *) arg = segs[0].ds_addr;
+}
 
 static int
 em_dma_malloc(struct adapter *adapter, bus_size_t size,
               struct em_dma_alloc *dma, int mapflags)
 {
-  PhysAddr paddr;
-  physmem_ctrl->Alloc(paddr, PagingCtrl::RoundUpAddrOnPageBoundary(size));
-  dma->dma_paddr = reinterpret_cast<bus_addr_t>(paddr.GetAddr());
-  dma->dma_vaddr = reinterpret_cast<caddr_t>(p2v(paddr.GetAddr()));
+  	int error;
 
-  return (0);
+  	error = bus_dma_tag_create(bus_get_dma_tag(adapter->dev), /* parent */
+  				EM_DBA_ALIGN, 0,	/* alignment, bounds */
+  				BUS_SPACE_MAXADDR,	/* lowaddr */
+  				BUS_SPACE_MAXADDR,	/* highaddr */
+  				NULL, NULL,		/* filter, filterarg */
+  				size,			/* maxsize */
+  				1,			/* nsegments */
+  				size,			/* maxsegsize */
+  				0,			/* flags */
+  				NULL,			/* lockfunc */
+  				NULL,			/* lockarg */
+  				&dma->dma_tag);
+  	if (error) {
+  		device_printf(adapter->dev,
+  		    "%s: bus_dma_tag_create failed: %d\n",
+  		    __func__, error);
+  		goto fail_0;
+  	}
 
-  // 	int error;
+  	error = bus_dmamem_alloc(dma->dma_tag, (void**) &dma->dma_vaddr,
+  	    BUS_DMA_NOWAIT | BUS_DMA_COHERENT, &dma->dma_map);
+  	if (error) {
+  		device_printf(adapter->dev,
+  		    "%s: bus_dmamem_alloc(%ju) failed: %d\n",
+  		    __func__, (uintmax_t)size, error);
+  		goto fail_2;
+  	}
 
-  // 	error = bus_dma_tag_create(bus_get_dma_tag(adapter->dev), /* parent */
-  // 				EM_DBA_ALIGN, 0,	/* alignment, bounds */
-  // 				BUS_SPACE_MAXADDR,	/* lowaddr */
-  // 				BUS_SPACE_MAXADDR,	/* highaddr */
-  // 				NULL, NULL,		/* filter, filterarg */
-  // 				size,			/* maxsize */
-  // 				1,			/* nsegments */
-  // 				size,			/* maxsegsize */
-  // 				0,			/* flags */
-  // 				NULL,			/* lockfunc */
-  // 				NULL,			/* lockarg */
-  // 				&dma->dma_tag);
-  // 	if (error) {
-  // 		device_printf(adapter->dev,
-  // 		    "%s: bus_dma_tag_create failed: %d\n",
-  // 		    __func__, error);
-  // 		goto fail_0;
-  // 	}
+  	dma->dma_paddr = 0;
+  	error = bus_dmamap_load(dma->dma_tag, dma->dma_map, dma->dma_vaddr,
+  	    size, em_dmamap_cb, &dma->dma_paddr, mapflags | BUS_DMA_NOWAIT);
+  	if (error || dma->dma_paddr == 0) {
+  		device_printf(adapter->dev,
+  		    "%s: bus_dmamap_load failed: %d\n",
+  		    __func__, error);
+  		goto fail_3;
+  	}
 
-  // 	error = bus_dmamem_alloc(dma->dma_tag, (void**) &dma->dma_vaddr,
-  // 	    BUS_DMA_NOWAIT | BUS_DMA_COHERENT, &dma->dma_map);
-  // 	if (error) {
-  // 		device_printf(adapter->dev,
-  // 		    "%s: bus_dmamem_alloc(%ju) failed: %d\n",
-  // 		    __func__, (uintmax_t)size, error);
-  // 		goto fail_2;
-  // 	}
+  	return (0);
 
-  // 	dma->dma_paddr = 0;
-  // 	error = bus_dmamap_load(dma->dma_tag, dma->dma_map, dma->dma_vaddr,
-  // 	    size, em_dmamap_cb, &dma->dma_paddr, mapflags | BUS_DMA_NOWAIT);
-  // 	if (error || dma->dma_paddr == 0) {
-  // 		device_printf(adapter->dev,
-  // 		    "%s: bus_dmamap_load failed: %d\n",
-  // 		    __func__, error);
-  // 		goto fail_3;
-  // 	}
+  fail_3:
+  	bus_dmamap_unload(dma->dma_tag, dma->dma_map);
+  fail_2:
+  	bus_dmamem_free(dma->dma_tag, dma->dma_vaddr, dma->dma_map);
+  	bus_dma_tag_destroy(dma->dma_tag);
+  fail_0:
+  	dma->dma_tag = NULL;
 
-  // 	return (0);
-
-  // fail_3:
-  // 	bus_dmamap_unload(dma->dma_tag, dma->dma_map);
-  // fail_2:
-  // 	bus_dmamem_free(dma->dma_tag, dma->dma_vaddr, dma->dma_map);
-  // 	bus_dma_tag_destroy(dma->dma_tag);
-  // fail_0:
-  // 	dma->dma_tag = NULL;
-
-  // 	return (error);
+  	return (error);
 }
 
 // static void

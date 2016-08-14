@@ -28,9 +28,9 @@
 
 extern "C" {
 
-  void callout_init_mtx(struct callout *c, struct mtx *mutex, int flags) {
+  void _callout_init_lock(struct callout *c, struct lock_object *lock, int flags) {
     c->callout = new LckCallout();
-    c->callout->SetLock(mutex->lock_object.lock);
+    c->callout->SetLock(lock->lock);
   }
 
   int callout_stop(struct callout *c) {
@@ -50,7 +50,9 @@ extern "C" {
     return r;
   }
 
-  void callout_reset(struct callout *c, int ticks, void func(void *), void *arg) {
+  int callout_reset(struct callout *c, int ticks, void func(void *), void *arg) {
+    bool pending = c->callout->IsPending();
+    
     c->callout->Cancel();
     if (ticks < 0) {
       ticks = 1;
@@ -60,6 +62,21 @@ extern "C" {
     c->callout->Init(f);
     //TODO cpuid
     c->callout->SetHandler(1, static_cast<uint32_t>(ticks) * reciprocal_of_hz);
+
+    return pending ? 1 : 0;
+  }
+
+  int	callout_schedule(struct callout *c, int ticks) {
+    bool pending = c->callout->IsPending();
+    
+    c->callout->Cancel();
+    if (ticks < 0) {
+      ticks = 1;
+    }
+    //TODO cpuid
+    c->callout->SetHandler(1, static_cast<uint32_t>(ticks) * reciprocal_of_hz);
+
+    return pending ? 1 : 0;
   }
     
 }

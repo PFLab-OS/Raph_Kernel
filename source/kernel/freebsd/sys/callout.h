@@ -46,11 +46,17 @@
 extern "C" {
 #endif /* __cplusplus */
 
-  struct mtx;
-  void callout_init_mtx(struct callout *c, struct mtx *mutex, int flags);
+  struct lock_object;
+  void  _callout_init_lock(struct callout *, struct lock_object *, int);
   int callout_stop(struct callout *c);
   int callout_drain(struct callout *c);
-  void callout_reset(struct callout *c, int ticks, void func(void *), void *arg);
+  int callout_reset(struct callout *c, int ticks, void func(void *), void *arg);
+  int	callout_schedule(struct callout *, int);
+
+  #define callout_init_mtx(c, mtx, flags)                                 \
+        _callout_init_lock((c), ((mtx) != NULL) ? &(mtx)->lock_object : \
+            NULL, (flags))
+  
   
 #ifdef __cplusplus
 }

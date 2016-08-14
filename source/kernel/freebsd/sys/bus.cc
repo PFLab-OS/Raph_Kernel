@@ -145,6 +145,10 @@ extern "C" {
     r->__r_i = int_alloc_resource();
     return r;
   }
+
+  int bus_release_resource(device_t dev, int type, int rid, struct resource *r) {
+    // TODO
+  }
   
   int bus_setup_intr(device_t dev, struct resource *r, int flags, driver_filter_t filter, driver_intr_t ithread, void *arg, void **cookiep) {
     BsdDevPci::IntContainer *icontainer = dev->GetPciClass()->GetIntContainerStruct(r->r_bushandle);

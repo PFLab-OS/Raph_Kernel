@@ -27,6 +27,24 @@
  * $FreeBSD$
  */
 
+#include <sys/cdefs.h>
+
+typedef u_int target_id_t;
+
+typedef union {
+	LIST_ENTRY(DiskBlock) le;
+	SLIST_ENTRY(DiskBlock) sle;
+	TAILQ_ENTRY(DiskBlock) tqe;
+	STAILQ_ENTRY(DiskBlock) stqe;
+} DiskBlockEntry;
+
+struct DiskBlock {
+  DiskBlockEntry  xpt_links;
+  DiskBlockEntry  sim_links;
+  DiskBlockEntry  periph_links;
+  target_id_t     target_id;      /* Target device ID */
+};
+
 /* ATA register defines */
 #define ATA_DATA                        0       /* (RW) data */
 
@@ -379,7 +397,8 @@ struct ahci_slot {
     struct ahci_channel		*ch;		/* Channel */
     u_int8_t			slot;           /* Number of this slot */
     enum ahci_slot_states	state;          /* Slot state */
-    union ccb			*ccb;		/* CCB occupying slot */
+  DiskBlock *ccb;
+  //  union ccb			*ccb;		/* CCB occupying slot */
     struct ata_dmaslot          dma;            /* DMA data of this slot */
     struct callout              timeout;        /* Execution timeout */
 };
@@ -390,7 +409,7 @@ struct ahci_device {
 	u_int			bytecount;
 	u_int			atapi;
 	u_int			tags;
-	u_int			caps;
+	// u_int			caps;
 };
 
 struct ahci_led {
@@ -410,8 +429,8 @@ struct ahci_channel {
 	struct resource		*r_irq;         /* Interrupt of this channel */
 	void			*ih;            /* Interrupt handle */
 	struct ata_dma		dma;            /* DMA data */
-	struct cam_sim		*sim;
-	struct cam_path		*path;
+	// struct cam_sim		*sim;
+	// struct cam_path		*path;
 	uint32_t		caps;		/* Controller capabilities */
 	uint32_t		caps2;		/* Controller capabilities */
 	uint32_t		chcaps;		/* Channel capabilities */
@@ -429,7 +448,8 @@ struct ahci_channel {
 
 	void			(*start)(struct ahci_channel *);
 
-	union ccb		*hold[AHCI_MAX_SLOTS];
+  DiskBlock *hold[AHCI_MAX_SLOTS];
+  //  union ccb		*hold[AHCI_MAX_SLOTS];
 	struct ahci_slot	slot[AHCI_MAX_SLOTS];
 	uint32_t		oslots;		/* Occupied slots */
 	uint32_t		rslots;		/* Running slots */
@@ -449,7 +469,9 @@ struct ahci_channel {
 	int			resetpolldiv;	/* Hard-reset poll divider. */
 	int			listening;	/* SUD bit is cleared. */
 	int			wrongccs;	/* CCS field in CMD was wrong */
-	union ccb		*frozen;	/* Frozen command */
+  DiskBlock       *frozen;  /* Frozen command */
+  //  union ccb		*frozen;	/* Frozen command */
+  
 	struct callout		pm_timer;	/* Power management events */
 	struct callout		reset_timer;	/* Hard-reset timeout */
 
@@ -457,7 +479,8 @@ struct ahci_channel {
 	struct ahci_device	curr[16];	/* Current settings */
 
 	struct mtx_padalign	mtx;		/* state lock */
-	STAILQ_HEAD(, ccb_hdr)	doneq;		/* queue of completed CCBs */
+  STAILQ_HEAD(, DiskBlock)	doneq;		/* queue of completed CCBs */
+  //  STAILQ_HEAD(, ccb_hdr)	doneq;		/* queue of completed CCBs */
 	int			batch;		/* doneq is in use */
 };
 

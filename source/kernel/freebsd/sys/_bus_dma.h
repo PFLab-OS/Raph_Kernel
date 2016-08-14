@@ -30,42 +30,40 @@
 #ifndef _SYS__BUS_DMA_H_
 #define _SYS__BUS_DMA_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif /* __cplusplus */
+#include <mem/physmem.h>
 
-  typedef int bus_dmasync_op_t;
+typedef int bus_dmasync_op_t;
 
-  /*
-   *	bus_dma_tag_t
-   *
-   *	A machine-dependent opaque type describing the characteristics
-   *	of how to perform DMA mappings.  This structure encapsultes
-   *	information concerning address and alignment restrictions, number
-   *	of S/G segments, amount of data per S/G segment, etc.
-   */
-  typedef struct bus_dma_tag	*bus_dma_tag_t;
+/*
+ *	bus_dma_tag_t
+ *
+ *	A machine-dependent opaque type describing the characteristics
+ *	of how to perform DMA mappings.  This structure encapsultes
+ *	information concerning address and alignment restrictions, number
+ *	of S/G segments, amount of data per S/G segment, etc.
+ */
+struct bus_dma_tag {
+  bus_size_t size;
+  PhysAddr paddr;
+};
+typedef struct bus_dma_tag	*bus_dma_tag_t;
 
-  /*
-   *	bus_dmamap_t
-   *
-   *	DMA mapping instance information.
-   */
-  typedef struct bus_dmamap	*bus_dmamap_t;
+/*
+ *	bus_dmamap_t
+ *
+ *	DMA mapping instance information.
+ */
+typedef struct bus_dmamap	*bus_dmamap_t;
 
-  /*
-   * A function that performs driver-specific synchronization on behalf of
-   * busdma.
-   */
-  typedef enum {
-    BUS_DMA_LOCK	= 0x01,
-    BUS_DMA_UNLOCK	= 0x02,
-  } bus_dma_lock_op_t;
+/*
+ * A function that performs driver-specific synchronization on behalf of
+ * busdma.
+ */
+typedef enum {
+  BUS_DMA_LOCK	= 0x01,
+  BUS_DMA_UNLOCK	= 0x02,
+} bus_dma_lock_op_t;
 
-  typedef void bus_dma_lock_t(void *, bus_dma_lock_op_t);
-
-#ifdef __cplusplus
-}
-#endif /* __cplusplus */
+typedef void bus_dma_lock_t(void *, bus_dma_lock_op_t);
 
 #endif /* !_SYS__BUS_DMA_H_ */
