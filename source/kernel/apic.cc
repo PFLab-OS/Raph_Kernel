@@ -166,7 +166,7 @@ void ApicCtrl::Lapic::SetupTimer(int interval) {
   }
   uint64_t timer2 = timer->ReadMainCnt();
   kassert((timer2 - timer1) > 0);
-  uint32_t base_cnt = 0xFFFFF / ((timer2 - timer1) * timer->GetCntClkPeriod() / (interval * 1000));
+  uint32_t base_cnt = ((int64_t)interval * 1000 * 0xFFFFF) / ((timer2 - timer1) * timer->GetCntClkPeriod());
   kassert(base_cnt > 0);
 
   kassert(idt != nullptr);
