@@ -20,8 +20,10 @@
  * 
  */
 
+#include <sys/kernel.h>
 #include <sys/bus.h>
 #include <sys/types-raph.h>
+#include <sys/rman.h>
 #include <raph.h>
 #include <task.h>
 #include <idt.h>
@@ -33,9 +35,26 @@
 
 class BsdDevBus : public BsdDevice {
 public:
-protected:
+  BsdDevBus(BsdDevice *parent, char *name, int unit) : BsdDevice(parent, name, unit) {
+    SetBusClass(this);
+  }
+  BsdDevBus() {
+    SetBusClass(this);
+  }
   virtual int DevMethodBusProbe() = 0;
   virtual int DevMethodBusAttach() = 0;
+  virtual int DevMethodBusSetupIntr(struct resource *r, int flags, driver_filter_t *filter, driver_intr_t *ithread, void *arg, void **cookiep) {
+    kernel_panic("bus", "no method\n");
+    return -1;
+  }
+  virtual struct resource *DevMethodBusAllocResource(int type, int *rid, rman_res_t start, rman_res_t end, rman_res_t count, u_int flags) {
+    kernel_panic("bus", "no method\n");
+    return nullptr;
+  }
+  virtual int DevMethodBusReleaseResource(int type, int rid, struct resource *r) {
+    kernel_panic("bus", "no method\n");
+    return -1;
+  }
 private:
   virtual int DevMethodProbe() override final {
     if (DevMethodBusProbe() == BUS_PROBE_DEFAULT) {
@@ -61,17 +80,17 @@ public:
     }
     void Handle() {
       if (_filter != nullptr) {
-        _filter(_farg);
+        (*_filter)(_farg);
       }
       if (_ithread != nullptr) {
         _ctask.Inc();
       }
     }
-    void SetFilter(driver_filter_t filter, void *arg) {
+    void SetFilter(driver_filter_t *filter, void *arg) {
       _filter = filter;
       _farg = arg;
     }
-    void SetIthread(driver_intr_t ithread, void *arg) {
+    void SetIthread(driver_intr_t *ithread, void *arg) {
       _ithread = ithread;
       _iarg = arg;
     }
@@ -79,19 +98,19 @@ public:
     static void HandleSub(void *arg) {
       IntContainer *that = reinterpret_cast<IntContainer *>(arg);
       if (that->_ithread != nullptr) {
-        that->_ithread(that->_iarg);
+        (*that->_ithread)(that->_iarg);
       }
     }
     CountableTask _ctask;
     
-    driver_filter_t _filter = nullptr;
+    driver_filter_t *_filter = nullptr;
     void *_farg;
     
-    driver_intr_t _ithread = nullptr;
+    driver_intr_t *_ithread = nullptr;
     void *_iarg;
   };
   BsdDevPci(uint8_t bus, uint8_t device, uint8_t function) : _pci(bus, device, function) {
-    SetClass(this);
+    SetPciClass(this);
   }
   virtual ~BsdDevPci() {
   }
@@ -142,6 +161,60 @@ public:
     return _pci;
   }
 private:
+  virtual int DevMethodBusSetupIntr(struct resource *r, int flags, driver_filter_t *filter, driver_intr_t *ithread, void *arg, void **cookiep) override {
+    IntContainer *icontainer = GetIntContainerStruct(r->r_bushandle);
+    if (icontainer == NULL) {
+      return -1;
+    }
+    icontainer->SetFilter(filter, arg);
+    icontainer->SetIthread(ithread, arg);
+    return 0;
+  }
+  virtual struct resource *DevMethodBusAllocResource(int type, int *rid, rman_res_t start, rman_res_t end, rman_res_t count, u_int flags) {
+    struct resource *r;
+    switch(type) {
+    case SYS_RES_MEMORY: {
+      int bar = *rid;
+      uint32_t addr = GetDevPci().ReadReg<uint32_t>(static_cast<uint32_t>(bar));
+      if ((addr & PciCtrl::kRegBaseAddrFlagIo) != 0) {
+        return NULL;
+      }
+      r = rman_reserve_resource(nullptr, 0, ~0, 1, 0, this);
+      r->r_bustag = BUS_SPACE_MEMIO;
+      r->r_bushandle = addr & PciCtrl::kRegBaseAddrMaskMemAddr;
+
+      if ((addr & PciCtrl::kRegBaseAddrMaskMemType) == PciCtrl::kRegBaseAddrValueMemType64) {
+        r->r_bushandle |= static_cast<uint64_t>(GetDevPci().ReadReg<uint32_t>(static_cast<uint32_t>(bar + 4))) << 32;
+      }
+      r->r_bushandle = p2v(r->r_bushandle);
+      break;
+    }
+    case SYS_RES_IOPORT: {
+      int bar = *rid;
+      uint32_t addr = GetDevPci().ReadReg<uint32_t>(static_cast<uint32_t>(bar));
+      if ((addr & PciCtrl::kRegBaseAddrFlagIo) == 0) {
+        return NULL;
+      }
+      r = rman_reserve_resource(nullptr, 0, ~0, 1, 0, this);
+      r->r_bustag = BUS_SPACE_PIO;
+      r->r_bushandle = addr & PciCtrl::kRegBaseAddrMaskIoAddr;
+      break;
+    }
+    case SYS_RES_IRQ: {
+      r = rman_reserve_resource(nullptr, 0, ~0, 1, 0, this);
+      r->r_bushandle = *rid;
+      break;
+    }
+    default: {
+      kassert(false);
+    }
+    }
+    return r;
+  }
+  virtual int DevMethodBusReleaseResource(int type, int rid, struct resource *r) override {
+    // TODO
+    rman_release_resource(r);
+  }
   void SetupLegacyIntContainers() {
     _icontainer_list = new IntContainer[1];
     for (int i = 0; i < 1; i++) {

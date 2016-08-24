@@ -5007,7 +5007,8 @@ int lE1000::DevMethodBusAttach() {
 
 DevPci *lE1000::InitPci(uint8_t bus, uint8_t device, uint8_t function) {
   lE1000 *addr = new lE1000(bus, device, function);
-  if (addr->InitBsdDevice(addr, sizeof(struct adapter)) == 0) {
+  addr->InitBsdDevice(addr, sizeof(struct adapter));
+  if (addr->ProbeAndAttach() == 0) {
     return &addr->GetDevPci();
   } else {
     delete addr;

@@ -103,61 +103,21 @@ extern "C" {
     }
   }
 
-  struct resource *bus_alloc_resource_any(device_t dev, int type, int *rid, u_int flags) {
-    struct resource *r;
-    switch(type) {
-    case SYS_RES_MEMORY: {
-      int bar = *rid;
-      uint32_t addr = dev->GetPciClass()->GetDevPci().ReadReg<uint32_t>(static_cast<uint32_t>(bar));
-      if ((addr & PciCtrl::kRegBaseAddrFlagIo) != 0) {
-        return NULL;
-      }
-      r = new resource;
-      r->r_bustag = BUS_SPACE_MEMIO;
-      r->r_bushandle = addr & PciCtrl::kRegBaseAddrMaskMemAddr;
+  int bus_generic_attach(device_t dev) {
+    dev->ProbeAndAttachChildren();
+    return 0;
+  }
 
-      if ((addr & PciCtrl::kRegBaseAddrMaskMemType) == PciCtrl::kRegBaseAddrValueMemType64) {
-        r->r_bushandle |= static_cast<uint64_t>(dev->GetPciClass()->GetDevPci().ReadReg<uint32_t>(static_cast<uint32_t>(bar + 4))) << 32;
-      }
-      r->r_bushandle = p2v(r->r_bushandle);
-      break;
-    }
-    case SYS_RES_IOPORT: {
-      int bar = *rid;
-      uint32_t addr = dev->GetPciClass()->GetDevPci().ReadReg<uint32_t>(static_cast<uint32_t>(bar));
-      if ((addr & PciCtrl::kRegBaseAddrFlagIo) == 0) {
-        return NULL;
-      }
-      r = new resource;
-      r->r_bustag = BUS_SPACE_PIO;
-      r->r_bushandle = addr & PciCtrl::kRegBaseAddrMaskIoAddr;
-      break;
-    }
-    case SYS_RES_IRQ: {
-      r = new resource;
-      r->r_bushandle = *rid;
-      break;
-    }
-    default: {
-      kassert(false);
-    }
-    }
-    r->__r_i = int_alloc_resource();
-    return r;
+  struct resource *bus_alloc_resource_any(device_t dev, int type, int *rid, u_int flags) {
+    return dev->GetBusClass()->DevMethodBusAllocResource(type, rid, 0, ~0, 1, flags);
   }
 
   int bus_release_resource(device_t dev, int type, int rid, struct resource *r) {
-    // TODO
+    return dev->GetBusClass()->DevMethodBusReleaseResource(type, rid, r);
   }
   
   int bus_setup_intr(device_t dev, struct resource *r, int flags, driver_filter_t filter, driver_intr_t ithread, void *arg, void **cookiep) {
-    BsdDevPci::IntContainer *icontainer = dev->GetPciClass()->GetIntContainerStruct(r->r_bushandle);
-    if (icontainer == NULL) {
-      return -1;
-    }
-    icontainer->SetFilter(filter, arg);
-    icontainer->SetIthread(ithread, arg);
-    return 0;
+    return dev->GetBusClass()->DevMethodBusSetupIntr(r, flags, &filter, &ithread, arg, cookiep);
   }
 
   int device_printf(device_t dev, const char *fmt, ...) {
@@ -174,6 +134,10 @@ extern "C" {
 
   void *device_get_softc(device_t dev) {
     return dev->softc;
+  }
+  
+  device_t	device_get_parent(device_t dev) {
+    return dev->GetParent();
   }
   
   int	resource_int_value(const char *name, int unit, const char *resname,

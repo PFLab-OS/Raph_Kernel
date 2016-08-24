@@ -36,7 +36,7 @@ extern "C" void handle_int(Regs *rs) {
   idt->_handling_cnt[cpuid]++;
   if (idt->_callback[cpuid][rs->n].callback == nullptr) {
     if (gtty != nullptr) {
-      gtty->CprintfRaw("[kernel] error: unimplemented interrupt %d at cpuid: %d\n", rs->n, cpuid);
+      gtty->CprintfRaw("[kernel] error: unimplemented interrupt %d at cpuid: %d\nrip: %llx rbp: %llx\n", rs->n, cpuid, rs->rip, rs->rbp);
     }
     asm volatile("cli; hlt; nop; nop; hlt; nop; hlt;"::"a"(rs->rip));
   } else {
@@ -169,7 +169,8 @@ void Idt::HandlePageFault(Regs *rs, void *arg) {
   if (gtty != nullptr) {
     uint64_t addr;
     asm volatile("movq %%cr2, %0;":"=r"(addr));
-    gtty->CprintfRaw("\nunexpected page fault occured!\naddress: %llx\n", addr);
+    int cpuid = IntStackInfo::GetStackInfo()->GetCpuInfo().GetId();
+    gtty->CprintfRaw("\nunexpected page fault occured at cpuid %d!\naddress: %llx rip: %llx rbp: %llx\n", cpuid, addr, rs->rip, rs->rbp);
   }
   while(true){
     asm volatile("cli;hlt");

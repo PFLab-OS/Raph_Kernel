@@ -8,7 +8,7 @@ BUILD = ../../build/
 DEPS= $(filter %.d, $(subst .o,.d, $(OBJS) $(TEST_OBJS)))
 
 INCLUDE_PATH = -I$(realpath ../Raph_Library/libc/) -I$(realpath ../Raph_Library/rlib/) -I$(realpath ./)  -I$(realpath ./freebsd/) -I$(realpath ./acpica/include/)
-RAPHFLAGS = -Wall -Wshadow -nostdinc -nostdlib -fno-builtin -mcmodel=large -D__KERNEL__ -D_KERNEL -Dbootverbose=0 $(INCLUDE_PATH) -MMD -MP
+RAPHFLAGS = -g -Wall -Wshadow -nostdinc -nostdlib -fno-builtin -mcmodel=large -D__KERNEL__ -D_KERNEL -Dbootverbose=0 $(INCLUDE_PATH) -MMD -MP
 RAPHCFLAGS = $(RAPHFLAGS) -std=c99
 RAPHCXXFLAGS = $(RAPHFLAGS) -std=c++1y -fno-exceptions -fno-rtti -fno-use-cxa-atexit -fno-threadsafe-statics
 CFLAGS += $(RAPHCFLAGS)

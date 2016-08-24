@@ -40,6 +40,8 @@ class PciCtrl;
 
 class NetDevCtrl;
 
+class BsdDevPciCtrl;
+
 extern AcpiCtrl *acpi_ctrl;
 
 #ifndef __UNIT_TEST__

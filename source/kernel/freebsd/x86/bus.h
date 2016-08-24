@@ -127,4 +127,14 @@
 
 #include <machine/bus_dma.h>
 
+static __inline int
+bus_space_subregion(bus_space_tag_t t __unused, bus_space_handle_t bsh,
+                    bus_size_t offset, bus_size_t size __unused,
+                    bus_space_handle_t *nbshp)
+{
+
+	*nbshp = bsh + offset;
+        return (0);
+}
+
 #endif /* _X86_BUS_H_ */

@@ -26,15 +26,6 @@
 #include <sys/bus-raph.h>
 
 extern "C" {
-
-  bus_space_tag_t rman_get_bustag(struct resource *r) {
-    return r->r_bustag;
-  }
-
-  bus_space_handle_t rman_get_bushandle(struct resource *r) {
-    return r->r_bushandle;
-  }
-
   struct resource_i {
     struct resource         r_r;
     TAILQ_ENTRY(resource_i) r_link;
@@ -44,13 +35,47 @@ extern "C" {
     rman_res_t      r_end;          /* index of the last entry (inclusive) */
     u_int   r_flags;
     void    *r_virtual;     /* virtual address of this resource */
-    struct device *r_dev;   /* device which has allocated this resource */
+    device_t r_dev;   /* device which has allocated this resource */
     struct rman *r_rm;      /* resource manager from whence this came */
     int     r_rid;          /* optional rid for this resource. */
   };
 
-  struct resource_i *int_alloc_resource() {
+  static struct resource_i *int_alloc_resource() {
     return new resource_i;
+  }
+
+  struct resource *rman_reserve_resource(struct rman *rm, rman_res_t start,
+                                         rman_res_t end, rman_res_t count,
+                                         u_int flags, device_t dev) {
+    struct resource *r = new resource;
+    r->__r_i = int_alloc_resource();
+    r->__r_i->r_start = start;
+    r->__r_i->r_end = end;
+    r->__r_i->r_flags = flags;
+    r->__r_i->r_dev = dev;
+    r->__r_i->r_rm = rm;
+    return r;
+  }
+
+  int	rman_release_resource(struct resource *r) {
+    delete r;
+    return 0;
+  }
+
+  void rman_set_bustag(struct resource *_r, bus_space_tag_t _t){
+    _r->r_bustag = _t;
+  }
+  
+  bus_space_tag_t rman_get_bustag(struct resource *r) {
+    return r->r_bustag;
+  }
+
+  void rman_set_bushandle(struct resource *_r, bus_space_handle_t _h) {
+    _r->r_bushandle = _h;
+  }
+
+  bus_space_handle_t rman_get_bushandle(struct resource *r) {
+    return r->r_bushandle;
   }
 
   int rman_fini(struct rman *rm) {

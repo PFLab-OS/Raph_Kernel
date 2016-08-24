@@ -83,18 +83,43 @@ extern "C" {
     rman_res_t	rm_end;	/* index of globally last entry */
     enum	rman_type rm_type; /* what type of resource this is */
     const	char *rm_descr;	/* text descripion of this resource */
-  };
-  bus_space_tag_t rman_get_bustag(struct resource *r);
-  bus_space_handle_t rman_get_bushandle(struct resource *r);
-  rman_res_t      rman_get_end(struct resource *);
+  }; 
+  int	rman_activate_resource(struct resource *r);
+  int	rman_adjust_resource(struct resource *r, rman_res_t start, rman_res_t end);
+  int	rman_await_resource(struct resource *r, int pri, int timo);
+  int	rman_first_free_region(struct rman *rm, rman_res_t *start, rman_res_t *end);
+  bus_space_handle_t rman_get_bushandle(struct resource *);
+  bus_space_tag_t rman_get_bustag(struct resource *);
+  rman_res_t	rman_get_end(struct resource *);
+  struct device *rman_get_device(struct resource *);
+  u_int	rman_get_flags(struct resource *);
+  int	rman_get_rid(struct resource *);
+  rman_res_t	rman_get_size(struct resource *);
+  rman_res_t	rman_get_start(struct resource *);
+  void   *rman_get_virtual(struct resource *);
+  int	rman_deactivate_resource(struct resource *r);
+  int	rman_fini(struct rman *rm);
+  int	rman_init(struct rman *rm);
+  int	rman_init_from_resource(struct rman *rm, struct resource *r);
+  int	rman_last_free_region(struct rman *rm, rman_res_t *start, rman_res_t *end);
+  uint32_t rman_make_alignment_flags(uint32_t size);
+  int	rman_manage_region(struct rman *rm, rman_res_t start, rman_res_t end);
+  int	rman_is_region_manager(struct resource *r, struct rman *rm);
+  int	rman_release_resource(struct resource *r);
+  struct resource *rman_reserve_resource(struct rman *rm, rman_res_t start,
+                                         rman_res_t end, rman_res_t count,
+                                         u_int flags, device_t dev);
+  struct resource *rman_reserve_resource_bound(struct rman *rm, rman_res_t start,
+                                               rman_res_t end, rman_res_t count, rman_res_t bound,
+                                               u_int flags, device_t dev);
+  void	rman_set_bushandle(struct resource *_r, bus_space_handle_t _h);
+  void	rman_set_bustag(struct resource *_r, bus_space_tag_t _t);
+  void	rman_set_device(struct resource *_r, device_t _dev);
+  void	rman_set_end(struct resource *_r, rman_res_t _end);
+  void	rman_set_rid(struct resource *_r, int _rid);
+  void	rman_set_start(struct resource *_r, rman_res_t _start);
+  void	rman_set_virtual(struct resource *_r, void *_v);
 
-  rman_res_t      rman_get_start(struct resource *);
-  int     rman_fini(struct rman *rm);
-  int     rman_init(struct rman *rm);
-  int     rman_manage_region(struct rman *rm, rman_res_t start, rman_res_t end);
-
-  // Raph_Kernel original
-  struct resource_i *int_alloc_resource();
 #endif /* _KERNEL */
 
 #ifdef __cplusplus

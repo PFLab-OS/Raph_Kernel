@@ -276,7 +276,6 @@ extern "C" int main() {
   acpi_ctrl->SetupAcpica();
 
   InitDevices<PciCtrl, Device>();
-
   gtty->Init();
 
   keyboard->Setup(1);

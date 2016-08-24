@@ -114,6 +114,7 @@ extern "C" {
   void bus_space_write_4(bus_space_tag_t space, bus_space_handle_t handle, bus_size_t offset, uint32_t value);
 
   struct resource;
+  int bus_generic_attach(device_t dev);
   struct resource *bus_alloc_resource_any(device_t dev, int type, int *rid, u_int flags);
   int bus_release_resource(device_t dev, int type, int rid, struct resource *r);
   int bus_setup_intr(device_t dev, struct resource *r, int flags, driver_filter_t filter, driver_intr_t ithread, void *arg, void **cookiep);

@@ -46,8 +46,8 @@
 #include "ahci.h"
 #include "ahci-raph.h"
 
-/* #include <cam/cam.h> */
- // #include <cam/cam_ccb.h>
+#include <cam/cam.h>
+#include <cam/cam_ccb.h>
 /* #include <cam/cam_sim.h> */
 /* #include <cam/cam_xpt_sim.h> */
 /* #include <cam/cam_debug.h> */
@@ -65,12 +65,12 @@ static void ahci_ch_pm(void *arg);
 static void ahci_ch_intr(void *arg);
 static void ahci_ch_intr_direct(void *arg);
 static void ahci_ch_intr_main(struct ahci_channel *ch, uint32_t istatus);
-static void ahci_begin_transaction(struct ahci_channel *ch, DiskBlock *ccb);
+static void ahci_begin_transaction(struct ahci_channel *ch, union ccb *ccb);
 static void ahci_dmasetprd(void *arg, bus_dma_segment_t *segs, int nsegs, int error);
 static void ahci_execute_transaction(struct ahci_slot *slot);
 static void ahci_timeout(struct ahci_slot *slot);
 static void ahci_end_transaction(struct ahci_slot *slot, enum ahci_err_type et);
-static int ahci_setup_fis(struct ahci_channel *ch, struct ahci_cmd_tab *ctp, DiskBlock *ccb, int tag);
+static int ahci_setup_fis(struct ahci_channel *ch, struct ahci_cmd_tab *ctp, union ccb *ccb, int tag);
 static void ahci_dmainit(device_t dev);
 static void ahci_dmasetupc_cb(void *xsc, bus_dma_segment_t *segs, int nsegs, int error);
 static void ahci_dmafini(device_t dev);
@@ -88,10 +88,10 @@ static int ahci_sata_phy_reset(struct ahci_channel *ch);
 static int ahci_wait_ready(struct ahci_channel *ch, int t, int t0);
 
 static void ahci_issue_recovery(struct ahci_channel *ch);
-static void ahci_process_read_log(struct ahci_channel *ch, DiskBlock *ccb);
-static void ahci_process_request_sense(struct ahci_channel *ch, DiskBlock *ccb);
+static void ahci_process_read_log(struct ahci_channel *ch, union ccb *ccb);
+static void ahci_process_request_sense(struct ahci_channel *ch, union ccb *ccb);
 
-static void ahciaction(struct cam_sim *sim, DiskBlock *ccb);
+static void ahciaction(struct cam_sim *sim, union ccb *ccb);
 static void ahcipoll(struct cam_sim *sim);
 
 // static MALLOC_DEFINE(M_AHCI, "AHCI driver", "AHCI driver data buffers");
@@ -329,9 +329,7 @@ ahci_attach(device_t dev)
 	/* Attach all channels on this controller */
  	for (unit = 0; unit < ctlr->channels; unit++) {
  		//child = device_add_child(dev, "ahcich", -1);
-    AhciChannel *channel = AhciChannel::Init(dev->GetMasterClass<AhciCtrl>());
-    child = channel;
-  
+    child = AhciChannel::Init(dev->GetMasterClass<AhciCtrl>());
  		if (child == NULL) {
       device_printf(dev, "failed to add channel device\n");
       continue;
@@ -348,7 +346,7 @@ ahci_attach(device_t dev)
 // 		else
 // 			device_set_ivars(child, (void *)(intptr_t)-1);
  	}
-// 	bus_generic_attach(dev);
+ 	bus_generic_attach(dev);
  	return (0);
 }
 
@@ -529,90 +527,90 @@ ahci_intr_one_edge(void *data)
 	ATA_RBL(ctlr->r_mem, AHCI_IS);
 }
 
-// struct resource *
-// ahci_alloc_resource(device_t dev, device_t child, int type, int *rid,
-//     rman_res_t start, rman_res_t end, rman_res_t count, u_int flags)
-// {
-// 	struct ahci_controller *ctlr = reinterpret_cast<struct ahci_controller *>(device_get_softc(dev));
-// 	struct resource *res;
-// 	rman_res_t st;
-// 	int offset, size, unit;
+struct resource *
+ahci_alloc_resource(device_t dev, device_t child, int type, int *rid,
+    rman_res_t start, rman_res_t end, rman_res_t count, u_int flags)
+{
+	struct ahci_controller *ctlr = reinterpret_cast<struct ahci_controller *>(device_get_softc(dev));
+	struct resource *res;
+	rman_res_t st;
+	int offset, size, unit;
 
-// 	unit = (intptr_t)device_get_ivars(child);
-// 	res = NULL;
-// 	switch (type) {
-// 	case SYS_RES_MEMORY:
-// 		if (unit >= 0) {
-// 			offset = AHCI_OFFSET + (unit << 7);
-// 			size = 128;
-// 		} else if (*rid == 0) {
-// 			offset = AHCI_EM_CTL;
-// 			size = 4;
-// 		} else {
-// 			offset = (ctlr->emloc & 0xffff0000) >> 14;
-// 			size = (ctlr->emloc & 0x0000ffff) << 2;
-// 			if (*rid != 1) {
-// 				if (*rid == 2 && (ctlr->capsem &
-// 				    (AHCI_EM_XMT | AHCI_EM_SMB)) == 0)
-// 					offset += size;
-// 				else
-// 					break;
-// 			}
-// 		}
-// 		st = rman_get_start(ctlr->r_mem);
-// 		res = rman_reserve_resource(&ctlr->sc_iomem, st + offset,
-// 		    st + offset + size - 1, size, RF_ACTIVE, child);
-// 		if (res) {
-// 			bus_space_handle_t bsh;
-// 			bus_space_tag_t bst;
-// 			bsh = rman_get_bushandle(ctlr->r_mem);
-// 			bst = rman_get_bustag(ctlr->r_mem);
-// 			bus_space_subregion(bst, bsh, offset, 128, &bsh);
-// 			rman_set_bushandle(res, bsh);
-// 			rman_set_bustag(res, bst);
-// 		}
-// 		break;
-// 	case SYS_RES_IRQ:
-// 		if (*rid == ATA_IRQ_RID)
-// 			res = ctlr->irqs[0].r_irq;
-// 		break;
-// 	}
-// 	return (res);
-// }
+	unit = (intptr_t)device_get_ivars(child);
+	res = NULL;
+	switch (type) {
+	case SYS_RES_MEMORY:
+		if (unit >= 0) {
+			offset = AHCI_OFFSET + (unit << 7);
+			size = 128;
+		} else if (*rid == 0) {
+			offset = AHCI_EM_CTL;
+			size = 4;
+		} else {
+			offset = (ctlr->emloc & 0xffff0000) >> 14;
+			size = (ctlr->emloc & 0x0000ffff) << 2;
+			if (*rid != 1) {
+				if (*rid == 2 && (ctlr->capsem &
+				    (AHCI_EM_XMT | AHCI_EM_SMB)) == 0)
+					offset += size;
+				else
+					break;
+			}
+		}
+		st = rman_get_start(ctlr->r_mem);
+		res = rman_reserve_resource(&ctlr->sc_iomem, st + offset,
+		    st + offset + size - 1, size, RF_ACTIVE, child);
+		if (res) {
+			bus_space_handle_t bsh;
+			bus_space_tag_t bst;
+			bsh = rman_get_bushandle(ctlr->r_mem);
+			bst = rman_get_bustag(ctlr->r_mem);
+			bus_space_subregion(bst, bsh, offset, 128, &bsh);
+			rman_set_bushandle(res, bsh);
+			rman_set_bustag(res, bst);
+		}
+		break;
+	case SYS_RES_IRQ:
+		if (*rid == ATA_IRQ_RID)
+			res = ctlr->irqs[0].r_irq;
+		break;
+	}
+	return (res);
+}
 
-// int
-// ahci_release_resource(device_t dev, device_t child, int type, int rid,
-//     struct resource *r)
-// {
+int
+ahci_release_resource(device_t dev, device_t child, int type, int rid,
+    struct resource *r)
+{
 
-// 	switch (type) {
-// 	case SYS_RES_MEMORY:
-// 		rman_release_resource(r);
-// 		return (0);
-// 	case SYS_RES_IRQ:
-// 		if (rid != ATA_IRQ_RID)
-// 			return (ENOENT);
-// 		return (0);
-// 	}
-// 	return (EINVAL);
-// }
+	switch (type) {
+	case SYS_RES_MEMORY:
+		rman_release_resource(r);
+		return (0);
+	case SYS_RES_IRQ:
+		if (rid != ATA_IRQ_RID)
+			return (ENOENT);
+		return (0);
+	}
+	return (EINVAL);
+}
 
-// int
-// ahci_setup_intr(device_t dev, device_t child, struct resource *irq, 
-//     int flags, driver_filter_t *filter, driver_intr_t *function, 
-//     void *argument, void **cookiep)
-// {
-// 	struct ahci_controller *ctlr = reinterpret_cast<struct ahci_controller *>(device_get_softc(dev));
-// 	int unit = (intptr_t)device_get_ivars(child);
+int
+ahci_setup_intr(device_t dev, device_t child, struct resource *irq, 
+    int flags, driver_filter_t *filter, driver_intr_t *function, 
+    void *argument, void **cookiep)
+{
+	struct ahci_controller *ctlr = reinterpret_cast<struct ahci_controller *>(device_get_softc(dev));
+	int unit = (intptr_t)device_get_ivars(child);
 
-// 	if (filter != NULL) {
-// 		printf("ahci.c: we cannot use a filter here\n");
-// 		return (EINVAL);
-// 	}
-// 	ctlr->interrupt[unit].function = function;
-// 	ctlr->interrupt[unit].argument = argument;
-// 	return (0);
-// }
+	if (*filter != NULL) {
+		// printf("ahci.c: we cannot use a filter here\n");
+		return (EINVAL);
+	}
+	ctlr->interrupt[unit].function = *function;
+	ctlr->interrupt[unit].argument = argument;
+	return (0);
+}
 
 // int
 // ahci_teardown_intr(device_t dev, device_t child, struct resource *irq,
@@ -1077,7 +1075,7 @@ ahci_phy_check_events(struct ahci_channel *ch, u_int32_t serr)
 	if (((ch->pm_level == 0) && (serr & ATA_SE_PHY_CHANGED)) ||
 	    ((ch->pm_level != 0 || ch->listening) && (serr & ATA_SE_EXCHANGED))) {
 		u_int32_t status = ATA_INL(ch->r_mem, AHCI_P_SSTS);
-    DiskBlock *ccb;
+    union ccb *ccb;
 
 		if (bootverbose) {
 			if ((status & ATA_SS_DET_MASK) != ATA_SS_DET_NO_DEVICE)
@@ -1105,7 +1103,7 @@ static void
 ahci_cpd_check_events(struct ahci_channel *ch)
 {
 	u_int32_t status;
-	// DiskBlock *ccb;
+	// union ccb *ccb;
 	device_t dev;
 
 	if (ch->pm_level == 0)
@@ -1155,7 +1153,7 @@ ahci_notify_events(struct ahci_channel *ch, u_int32_t status)
 }
 
 static void
-ahci_done(struct ahci_channel *ch, DiskBlock *ccb)
+ahci_done(struct ahci_channel *ch, union ccb *ccb)
 {
 
 	mtx_assert(&ch->mtx, MA_OWNED);
@@ -1165,7 +1163,7 @@ ahci_done(struct ahci_channel *ch, DiskBlock *ccb)
 	// 	return;
 	// }
 
-	STAILQ_INSERT_TAIL(&ch->doneq, ccb, sim_links.stqe);
+	STAILQ_INSERT_TAIL(&ch->doneq, &ccb->ccb_h, sim_links.stqe);
 }
 
 static void
@@ -1188,9 +1186,9 @@ static void
 ahci_ch_intr_direct(void *arg)
 {
 	struct ahci_channel *ch = (struct ahci_channel *)arg;
-  struct DiskBlock *ccb_h;
+  struct ccb_hdr *ccb_h;
 	uint32_t istatus;
-  STAILQ_HEAD(, DiskBlock) tmp_doneq = STAILQ_HEAD_INITIALIZER(tmp_doneq);
+  STAILQ_HEAD(, ccb_hdr) tmp_doneq = STAILQ_HEAD_INITIALIZER(tmp_doneq);
 
 	/* Read interrupt statuses. */
 	istatus = ATA_INL(ch->r_mem, AHCI_P_IS);
@@ -1209,7 +1207,7 @@ ahci_ch_intr_direct(void *arg)
 	mtx_unlock(&ch->mtx);
   while ((ccb_h = STAILQ_FIRST(&tmp_doneq)) != NULL) {
 	 	STAILQ_REMOVE_HEAD(&tmp_doneq, sim_links.stqe);
-	// 	xpt_done_direct((DiskBlock *)ccb_h);
+	// 	xpt_done_direct((union ccb *)ccb_h);
   }
 }
 
@@ -1321,7 +1319,7 @@ ahci_ch_intr_main(struct ahci_channel *ch, uint32_t istatus)
 	/* On error, complete the rest of commands with error statuses. */
 	if (err) {
     if (ch->frozen) {
-		 	DiskBlock *fccb = ch->frozen;
+		 	union ccb *fccb = ch->frozen;
 		 	ch->frozen = NULL;
       //     fccb->ccb_h.status = CAM_REQUEUE_REQ | CAM_RELEASE_SIMQ;
       // if (!(fccb->ccb_h.status & CAM_DEV_QFRZN)) {
@@ -1335,12 +1333,12 @@ ahci_ch_intr_main(struct ahci_channel *ch, uint32_t istatus)
 			if (((err >> i) & 1) == 0)
 				continue;
 			if (port >= 0 &&
-          ch->slot[i].ccb->target_id != port)
+          ch->slot[i].ccb->ccb_h.target_id != port)
 				continue;
 			if (istatus & AHCI_P_IX_TFE) {
 			    if (port != -2) {
 				/* Task File Error */
-				if (ch->numtslotspd[ch->slot[i].ccb->target_id] == 0) {
+				if (ch->numtslotspd[ch->slot[i].ccb->ccb_h.target_id] == 0) {
 					/* Untagged operation. */
 					if (i == ccs)
 						et = AHCI_ERR_TFE;
@@ -1377,7 +1375,7 @@ ahci_ch_intr_main(struct ahci_channel *ch, uint32_t istatus)
 
 // /* Must be called with channel locked. */
 // static int
-// ahci_check_collision(struct ahci_channel *ch, DiskBlock *ccb)
+// ahci_check_collision(struct ahci_channel *ch, union ccb *ccb)
 // {
 // 	int t = ccb->ccb_h.target_id;
 
@@ -1427,7 +1425,7 @@ ahci_ch_intr_main(struct ahci_channel *ch, uint32_t istatus)
 
 // /* Must be called with channel locked. */
 // static void
-// ahci_begin_transaction(struct ahci_channel *ch, DiskBlock *ccb)
+// ahci_begin_transaction(struct ahci_channel *ch, union ccb *ccb)
 // {
 // 	struct ahci_slot *slot;
 // 	int tag, tags;
@@ -1514,7 +1512,7 @@ ahci_ch_intr_main(struct ahci_channel *ch, uint32_t istatus)
 // 	struct ahci_channel *ch = slot->ch;
 // 	struct ahci_cmd_tab *ctp;
 // 	struct ahci_cmd_list *clp;
-// 	DiskBlock *ccb = slot->ccb;
+// 	union ccb *ccb = slot->ccb;
 // 	int port = ccb->ccb_h.target_id & 0x0f;
 // 	int fis_size, i, softreset;
 // 	uint8_t *fis = ch->dma.rfis + 0x40;
@@ -1737,7 +1735,7 @@ ahci_ch_intr_main(struct ahci_channel *ch, uint32_t istatus)
 
 // 	/* Handle frozen command. */
 // 	if (ch->frozen) {
-// 		DiskBlock *fccb = ch->frozen;
+// 		union ccb *fccb = ch->frozen;
 // 		ch->frozen = NULL;
 // 		fccb->ccb_h.status = CAM_REQUEUE_REQ | CAM_RELEASE_SIMQ;
 // 		if (!(fccb->ccb_h.status & CAM_DEV_QFRZN)) {
@@ -1771,224 +1769,224 @@ ahci_ch_intr_main(struct ahci_channel *ch, uint32_t istatus)
 // 	}
 // }
 
-// /* Must be called with channel locked. */
-// static void
-// ahci_end_transaction(struct ahci_slot *slot, enum ahci_err_type et)
-// {
-// 	struct ahci_channel *ch = slot->ch;
-// 	DiskBlock *ccb = slot->ccb;
-// 	struct ahci_cmd_list *clp;
-// 	int lastto;
-// 	uint32_t sig;
+/* Must be called with channel locked. */
+static void
+ahci_end_transaction(struct ahci_slot *slot, enum ahci_err_type et)
+{
+	struct ahci_channel *ch = slot->ch;
+	union ccb *ccb = slot->ccb;
+	struct ahci_cmd_list *clp;
+	int lastto;
+	uint32_t sig;
 
-// 	bus_dmamap_sync(ch->dma.work_tag, ch->dma.work_map,
-// 	    BUS_DMASYNC_POSTREAD | BUS_DMASYNC_POSTWRITE);
-// 	clp = (struct ahci_cmd_list *)
-// 	    (ch->dma.work + AHCI_CL_OFFSET + (AHCI_CL_SIZE * slot->slot));
-// 	/* Read result registers to the result struct
-// 	 * May be incorrect if several commands finished same time,
-// 	 * so read only when sure or have to.
-// 	 */
-// 	if (ccb->ccb_h.func_code == XPT_ATA_IO) {
-// 		struct ata_res *res = &ccb->ataio.res;
+	bus_dmamap_sync(ch->dma.work_tag, ch->dma.work_map,
+	    BUS_DMASYNC_POSTREAD | BUS_DMASYNC_POSTWRITE);
+	clp = (struct ahci_cmd_list *)
+	    (ch->dma.work + AHCI_CL_OFFSET + (AHCI_CL_SIZE * slot->slot));
+	/* Read result registers to the result struct
+	 * May be incorrect if several commands finished same time,
+	 * so read only when sure or have to.
+	 */
+	// if (ccb->ccb_h.func_code == XPT_ATA_IO) {
+	// 	struct ata_res *res = &ccb->ataio.res;
 
-// 		if ((et == AHCI_ERR_TFE) ||
-// 		    (ccb->ataio.cmd.flags & CAM_ATAIO_NEEDRESULT)) {
-// 			u_int8_t *fis = ch->dma.rfis + 0x40;
+	// 	if ((et == AHCI_ERR_TFE) ||
+	// 	    (ccb->ataio.cmd.flags & CAM_ATAIO_NEEDRESULT)) {
+	// 		u_int8_t *fis = ch->dma.rfis + 0x40;
 
-// 			bus_dmamap_sync(ch->dma.rfis_tag, ch->dma.rfis_map,
-// 			    BUS_DMASYNC_POSTREAD);
-// 			if (ch->fbs_enabled) {
-// 				fis += ccb->ccb_h.target_id * 256;
-// 				res->status = fis[2];
-// 				res->error = fis[3];
-// 			} else {
-// 				uint16_t tfd = ATA_INL(ch->r_mem, AHCI_P_TFD);
+	// 		bus_dmamap_sync(ch->dma.rfis_tag, ch->dma.rfis_map,
+	// 		    BUS_DMASYNC_POSTREAD);
+	// 		if (ch->fbs_enabled) {
+	// 			fis += ccb->ccb_h.target_id * 256;
+	// 			res->status = fis[2];
+	// 			res->error = fis[3];
+	// 		} else {
+	// 			uint16_t tfd = ATA_INL(ch->r_mem, AHCI_P_TFD);
 
-// 				res->status = tfd;
-// 				res->error = tfd >> 8;
-// 			}
-// 			res->lba_low = fis[4];
-// 			res->lba_mid = fis[5];
-// 			res->lba_high = fis[6];
-// 			res->device = fis[7];
-// 			res->lba_low_exp = fis[8];
-// 			res->lba_mid_exp = fis[9];
-// 			res->lba_high_exp = fis[10];
-// 			res->sector_count = fis[12];
-// 			res->sector_count_exp = fis[13];
+	// 			res->status = tfd;
+	// 			res->error = tfd >> 8;
+	// 		}
+	// 		res->lba_low = fis[4];
+	// 		res->lba_mid = fis[5];
+	// 		res->lba_high = fis[6];
+	// 		res->device = fis[7];
+	// 		res->lba_low_exp = fis[8];
+	// 		res->lba_mid_exp = fis[9];
+	// 		res->lba_high_exp = fis[10];
+	// 		res->sector_count = fis[12];
+	// 		res->sector_count_exp = fis[13];
 
-// 			/*
-// 			 * Some weird controllers do not return signature in
-// 			 * FIS receive area. Read it from PxSIG register.
-// 			 */
-// 			if ((ch->quirks & AHCI_Q_ALTSIG) &&
-// 			    (ccb->ataio.cmd.flags & CAM_ATAIO_CONTROL) &&
-// 			    (ccb->ataio.cmd.control & ATA_A_RESET) == 0) {
-// 				sig = ATA_INL(ch->r_mem,  AHCI_P_SIG);
-// 				res->lba_high = sig >> 24;
-// 				res->lba_mid = sig >> 16;
-// 				res->lba_low = sig >> 8;
-// 				res->sector_count = sig;
-// 			}
-// 		} else
-// 			bzero(res, sizeof(*res));
-// 		if ((ccb->ataio.cmd.flags & CAM_ATAIO_FPDMA) == 0 &&
-// 		    (ccb->ccb_h.flags & CAM_DIR_MASK) != CAM_DIR_NONE &&
-// 		    (ch->quirks & AHCI_Q_NOCOUNT) == 0) {
-// 			ccb->ataio.resid =
-// 			    ccb->ataio.dxfer_len - le32toh(clp->bytecount);
-// 		}
-// 	} else {
-// 		if ((ccb->ccb_h.flags & CAM_DIR_MASK) != CAM_DIR_NONE &&
-// 		    (ch->quirks & AHCI_Q_NOCOUNT) == 0) {
-// 			ccb->csio.resid =
-// 			    ccb->csio.dxfer_len - le32toh(clp->bytecount);
-// 		}
-// 	}
-// 	if ((ccb->ccb_h.flags & CAM_DIR_MASK) != CAM_DIR_NONE) {
-// 		bus_dmamap_sync(ch->dma.data_tag, slot->dma.data_map,
-// 		    (ccb->ccb_h.flags & CAM_DIR_IN) ?
-// 		    BUS_DMASYNC_POSTREAD : BUS_DMASYNC_POSTWRITE);
-// 		bus_dmamap_unload(ch->dma.data_tag, slot->dma.data_map);
-// 	}
-// 	if (et != AHCI_ERR_NONE)
-// 		ch->eslots |= (1 << slot->slot);
-// 	/* In case of error, freeze device for proper recovery. */
-// 	if ((et != AHCI_ERR_NONE) && (!ch->recoverycmd) &&
-// 	    !(ccb->ccb_h.status & CAM_DEV_QFRZN)) {
-// 		xpt_freeze_devq(ccb->ccb_h.path, 1);
-// 		ccb->ccb_h.status |= CAM_DEV_QFRZN;
-// 	}
-// 	/* Set proper result status. */
-// 	ccb->ccb_h.status &= ~CAM_STATUS_MASK;
-// 	switch (et) {
-// 	case AHCI_ERR_NONE:
-// 		ccb->ccb_h.status |= CAM_REQ_CMP;
-// 		if (ccb->ccb_h.func_code == XPT_SCSI_IO)
-// 			ccb->csio.scsi_status = SCSI_STATUS_OK;
-// 		break;
-// 	case AHCI_ERR_INVALID:
-// 		ch->fatalerr = 1;
-// 		ccb->ccb_h.status |= CAM_REQ_INVALID;
-// 		break;
-// 	case AHCI_ERR_INNOCENT:
-// 		ccb->ccb_h.status |= CAM_REQUEUE_REQ;
-// 		break;
-// 	case AHCI_ERR_TFE:
-// 	case AHCI_ERR_NCQ:
-// 		if (ccb->ccb_h.func_code == XPT_SCSI_IO) {
-// 			ccb->ccb_h.status |= CAM_SCSI_STATUS_ERROR;
-// 			ccb->csio.scsi_status = SCSI_STATUS_CHECK_COND;
-// 		} else {
-// 			ccb->ccb_h.status |= CAM_ATA_STATUS_ERROR;
-// 		}
-// 		break;
-// 	case AHCI_ERR_SATA:
-// 		ch->fatalerr = 1;
-// 		if (!ch->recoverycmd) {
-// 			xpt_freeze_simq(ch->sim, 1);
-// 			ccb->ccb_h.status &= ~CAM_STATUS_MASK;
-// 			ccb->ccb_h.status |= CAM_RELEASE_SIMQ;
-// 		}
-// 		ccb->ccb_h.status |= CAM_UNCOR_PARITY;
-// 		break;
-// 	case AHCI_ERR_TIMEOUT:
-// 		if (!ch->recoverycmd) {
-// 			xpt_freeze_simq(ch->sim, 1);
-// 			ccb->ccb_h.status &= ~CAM_STATUS_MASK;
-// 			ccb->ccb_h.status |= CAM_RELEASE_SIMQ;
-// 		}
-// 		ccb->ccb_h.status |= CAM_CMD_TIMEOUT;
-// 		break;
-// 	default:
-// 		ch->fatalerr = 1;
-// 		ccb->ccb_h.status |= CAM_REQ_CMP_ERR;
-// 	}
-// 	/* Free slot. */
-// 	ch->oslots &= ~(1 << slot->slot);
-// 	ch->rslots &= ~(1 << slot->slot);
-// 	ch->aslots &= ~(1 << slot->slot);
-// 	slot->state = AHCI_SLOT_EMPTY;
-// 	slot->ccb = NULL;
-// 	/* Update channel stats. */
-// 	ch->numrslots--;
-// 	ch->numrslotspd[ccb->ccb_h.target_id]--;
-// 	if ((ccb->ccb_h.func_code == XPT_ATA_IO) &&
-// 	    (ccb->ataio.cmd.flags & CAM_ATAIO_FPDMA)) {
-// 		ch->numtslots--;
-// 		ch->numtslotspd[ccb->ccb_h.target_id]--;
-// 	}
-// 	/* Cancel timeout state if request completed normally. */
-// 	if (et != AHCI_ERR_TIMEOUT) {
-// 		lastto = (ch->toslots == (1 << slot->slot));
-// 		ch->toslots &= ~(1 << slot->slot);
-// 		if (lastto)
-// 			xpt_release_simq(ch->sim, TRUE);
-// 	}
-// 	/* If it was first request of reset sequence and there is no error,
-// 	 * proceed to second request. */
-// 	if ((ccb->ccb_h.func_code == XPT_ATA_IO) &&
-// 	    (ccb->ataio.cmd.flags & CAM_ATAIO_CONTROL) &&
-// 	    (ccb->ataio.cmd.control & ATA_A_RESET) &&
-// 	    et == AHCI_ERR_NONE) {
-// 		ccb->ataio.cmd.control &= ~ATA_A_RESET;
-// 		ahci_begin_transaction(ch, ccb);
-// 		return;
-// 	}
-// 	/* If it was our READ LOG command - process it. */
-// 	if (ccb->ccb_h.recovery_type == RECOVERY_READ_LOG) {
-// 		ahci_process_read_log(ch, ccb);
-// 	/* If it was our REQUEST SENSE command - process it. */
-// 	} else if (ccb->ccb_h.recovery_type == RECOVERY_REQUEST_SENSE) {
-// 		ahci_process_request_sense(ch, ccb);
-// 	/* If it was NCQ or ATAPI command error, put result on hold. */
-// 	} else if (et == AHCI_ERR_NCQ ||
-// 	    ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_SCSI_STATUS_ERROR &&
-// 	     (ccb->ccb_h.flags & CAM_DIS_AUTOSENSE) == 0)) {
-// 		ch->hold[slot->slot] = ccb;
-// 		ch->numhslots++;
-// 	} else
-// 		ahci_done(ch, ccb);
-// 	/* If we have no other active commands, ... */
-// 	if (ch->rslots == 0) {
-// 		/* if there was fatal error - reset port. */
-// 		if (ch->toslots != 0 || ch->fatalerr) {
-// 			ahci_reset(ch);
-// 		} else {
-// 			/* if we have slots in error, we can reinit port. */
-// 			if (ch->eslots != 0) {
-// 				ahci_stop(ch);
-// 				ahci_clo(ch);
-// 				ahci_start(ch, 1);
-// 			}
-// 			/* if there commands on hold, we can do READ LOG. */
-// 			if (!ch->recoverycmd && ch->numhslots)
-// 				ahci_issue_recovery(ch);
-// 		}
-// 	/* If all the rest of commands are in timeout - give them chance. */
-// 	} else if ((ch->rslots & ~ch->toslots) == 0 &&
-// 	    et != AHCI_ERR_TIMEOUT)
-// 		ahci_rearm_timeout(ch);
-// 	/* Unfreeze frozen command. */
-// 	if (ch->frozen && !ahci_check_collision(ch, ch->frozen)) {
-// 		DiskBlock *fccb = ch->frozen;
-// 		ch->frozen = NULL;
-// 		ahci_begin_transaction(ch, fccb);
-// 		xpt_release_simq(ch->sim, TRUE);
-// 	}
-// 	/* Start PM timer. */
-// 	if (ch->numrslots == 0 && ch->pm_level > 3 &&
-// 	    (ch->curr[ch->pm_present ? 15 : 0].caps & CTS_SATA_CAPS_D_PMREQ)) {
-// 		callout_schedule(&ch->pm_timer,
-// 		    (ch->pm_level == 4) ? hz / 1000 : hz / 8);
-// 	}
-// }
+	// 		/*
+	// 		 * Some weird controllers do not return signature in
+	// 		 * FIS receive area. Read it from PxSIG register.
+	// 		 */
+	// 		if ((ch->quirks & AHCI_Q_ALTSIG) &&
+	// 		    (ccb->ataio.cmd.flags & CAM_ATAIO_CONTROL) &&
+	// 		    (ccb->ataio.cmd.control & ATA_A_RESET) == 0) {
+	// 			sig = ATA_INL(ch->r_mem,  AHCI_P_SIG);
+	// 			res->lba_high = sig >> 24;
+	// 			res->lba_mid = sig >> 16;
+	// 			res->lba_low = sig >> 8;
+	// 			res->sector_count = sig;
+	// 		}
+	// 	} else
+	// 		bzero(res, sizeof(*res));
+	// 	if ((ccb->ataio.cmd.flags & CAM_ATAIO_FPDMA) == 0 &&
+	// 	    (ccb->ccb_h.flags & CAM_DIR_MASK) != CAM_DIR_NONE &&
+	// 	    (ch->quirks & AHCI_Q_NOCOUNT) == 0) {
+	// 		ccb->ataio.resid =
+	// 		    ccb->ataio.dxfer_len - le32toh(clp->bytecount);
+	// 	}
+	// } else {
+	// 	if ((ccb->ccb_h.flags & CAM_DIR_MASK) != CAM_DIR_NONE &&
+	// 	    (ch->quirks & AHCI_Q_NOCOUNT) == 0) {
+	// 		ccb->csio.resid =
+	// 		    ccb->csio.dxfer_len - le32toh(clp->bytecount);
+	// 	}
+	// }
+	// if ((ccb->ccb_h.flags & CAM_DIR_MASK) != CAM_DIR_NONE) {
+	// 	bus_dmamap_sync(ch->dma.data_tag, slot->dma.data_map,
+	// 	    (ccb->ccb_h.flags & CAM_DIR_IN) ?
+	// 	    BUS_DMASYNC_POSTREAD : BUS_DMASYNC_POSTWRITE);
+	// 	bus_dmamap_unload(ch->dma.data_tag, slot->dma.data_map);
+	// }
+	// if (et != AHCI_ERR_NONE)
+	// 	ch->eslots |= (1 << slot->slot);
+	// /* In case of error, freeze device for proper recovery. */
+	// if ((et != AHCI_ERR_NONE) && (!ch->recoverycmd) &&
+	//     !(ccb->ccb_h.status & CAM_DEV_QFRZN)) {
+	// 	xpt_freeze_devq(ccb->path, 1);
+	// 	ccb->ccb_h.status |= CAM_DEV_QFRZN;
+	// }
+	// /* Set proper result status. */
+	// ccb->ccb_h.status &= ~CAM_STATUS_MASK;
+	// switch (et) {
+	// case AHCI_ERR_NONE:
+	// 	ccb->ccb_h.status |= CAM_REQ_CMP;
+	// 	if (ccb->func_code == XPT_SCSI_IO)
+	// 		ccb->csio.scsi_status = SCSI_STATUS_OK;
+	// 	break;
+	// case AHCI_ERR_INVALID:
+	// 	ch->fatalerr = 1;
+	// 	ccb->ccb_h.status |= CAM_REQ_INVALID;
+	// 	break;
+	// case AHCI_ERR_INNOCENT:
+	// 	ccb->ccb_h.status |= CAM_REQUEUE_REQ;
+	// 	break;
+	// case AHCI_ERR_TFE:
+	// case AHCI_ERR_NCQ:
+	// 	if (ccb->func_code == XPT_SCSI_IO) {
+	// 		ccb->ccb_h.status |= CAM_SCSI_STATUS_ERROR;
+	// 		ccb->csio.scsi_status = SCSI_STATUS_CHECK_COND;
+	// 	} else {
+	// 		ccb->ccb_h.status |= CAM_ATA_STATUS_ERROR;
+	// 	}
+	// 	break;
+	// case AHCI_ERR_SATA:
+	// 	ch->fatalerr = 1;
+	// 	if (!ch->recoverycmd) {
+	// 		xpt_freeze_simq(ch->sim, 1);
+	// 		ccb->ccb_h.status &= ~CAM_STATUS_MASK;
+	// 		ccb->ccb_h.status |= CAM_RELEASE_SIMQ;
+	// 	}
+	// 	ccb->ccb_h.status |= CAM_UNCOR_PARITY;
+	// 	break;
+	// case AHCI_ERR_TIMEOUT:
+	// 	if (!ch->recoverycmd) {
+	// 		xpt_freeze_simq(ch->sim, 1);
+	// 		ccb->ccb_h.status &= ~CAM_STATUS_MASK;
+	// 		ccb->ccb_h.status |= CAM_RELEASE_SIMQ;
+	// 	}
+	// 	ccb->ccb_h.status |= CAM_CMD_TIMEOUT;
+	// 	break;
+	// default:
+	// 	ch->fatalerr = 1;
+	// 	ccb->ccb_h.status |= CAM_REQ_CMP_ERR;
+	// }
+	// /* Free slot. */
+	// ch->oslots &= ~(1 << slot->slot);
+	// ch->rslots &= ~(1 << slot->slot);
+	// ch->aslots &= ~(1 << slot->slot);
+	// slot->state = AHCI_SLOT_EMPTY;
+	// slot->ccb = NULL;
+	// /* Update channel stats. */
+	// ch->numrslots--;
+	// ch->numrslotspd[ccb->ccb_h.target_id]--;
+	// if ((ccb->func_code == XPT_ATA_IO) &&
+	//     (ccb->ataio.cmd.flags & CAM_ATAIO_FPDMA)) {
+	// 	ch->numtslots--;
+	// 	ch->numtslotspd[ccb->ccb_h.target_id]--;
+	// }
+	// /* Cancel timeout state if request completed normally. */
+	// if (et != AHCI_ERR_TIMEOUT) {
+	// 	lastto = (ch->toslots == (1 << slot->slot));
+	// 	ch->toslots &= ~(1 << slot->slot);
+	// 	if (lastto)
+	// 		xpt_release_simq(ch->sim, TRUE);
+	// }
+	// /* If it was first request of reset sequence and there is no error,
+	//  * proceed to second request. */
+	// if ((ccb->ccb_h.func_code == XPT_ATA_IO) &&
+	//     (ccb->ataio.cmd.flags & CAM_ATAIO_CONTROL) &&
+	//     (ccb->ataio.cmd.control & ATA_A_RESET) &&
+	//     et == AHCI_ERR_NONE) {
+	// 	ccb->ataio.cmd.control &= ~ATA_A_RESET;
+	// 	ahci_begin_transaction(ch, ccb);
+	// 	return;
+	// }
+	// /* If it was our READ LOG command - process it. */
+	// if (ccb->ccb_h.recovery_type == RECOVERY_READ_LOG) {
+	// 	ahci_process_read_log(ch, ccb);
+	// /* If it was our REQUEST SENSE command - process it. */
+	// } else if (ccb->ccb_h.recovery_type == RECOVERY_REQUEST_SENSE) {
+	// 	ahci_process_request_sense(ch, ccb);
+	// /* If it was NCQ or ATAPI command error, put result on hold. */
+	// } else if (et == AHCI_ERR_NCQ ||
+	//     ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_SCSI_STATUS_ERROR &&
+	//      (ccb->ccb_h.flags & CAM_DIS_AUTOSENSE) == 0)) {
+	// 	ch->hold[slot->slot] = ccb;
+	// 	ch->numhslots++;
+	// } else
+	// 	ahci_done(ch, ccb);
+	// /* If we have no other active commands, ... */
+	// if (ch->rslots == 0) {
+	// 	/* if there was fatal error - reset port. */
+	// 	if (ch->toslots != 0 || ch->fatalerr) {
+	// 		ahci_reset(ch);
+	// 	} else {
+	// 		/* if we have slots in error, we can reinit port. */
+	// 		if (ch->eslots != 0) {
+	// 			ahci_stop(ch);
+	// 			ahci_clo(ch);
+	// 			ahci_start(ch, 1);
+	// 		}
+	// 		/* if there commands on hold, we can do READ LOG. */
+	// 		if (!ch->recoverycmd && ch->numhslots)
+	// 			ahci_issue_recovery(ch);
+	// 	}
+	// /* If all the rest of commands are in timeout - give them chance. */
+	// } else if ((ch->rslots & ~ch->toslots) == 0 &&
+	//     et != AHCI_ERR_TIMEOUT)
+	// 	ahci_rearm_timeout(ch);
+	// /* Unfreeze frozen command. */
+	// if (ch->frozen && !ahci_check_collision(ch, ch->frozen)) {
+	// 	union ccb *fccb = ch->frozen;
+	// 	ch->frozen = NULL;
+	// 	ahci_begin_transaction(ch, fccb);
+	// 	xpt_release_simq(ch->sim, TRUE);
+	// }
+	// /* Start PM timer. */
+	// if (ch->numrslots == 0 && ch->pm_level > 3 &&
+	//     (ch->curr[ch->pm_present ? 15 : 0].caps & CTS_SATA_CAPS_D_PMREQ)) {
+	// 	callout_schedule(&ch->pm_timer,
+	// 	    (ch->pm_level == 4) ? hz / 1000 : hz / 8);
+	// }
+}
 
 // static void
 // ahci_issue_recovery(struct ahci_channel *ch)
 // {
-// 	DiskBlock *ccb;
+// 	union ccb *ccb;
 // 	struct ccb_ataio *ataio;
 // 	struct ccb_scsiio *csio;
 // 	int i;
@@ -2062,7 +2060,7 @@ ahci_ch_intr_main(struct ahci_channel *ch, uint32_t istatus)
 // }
 
 // static void
-// ahci_process_read_log(struct ahci_channel *ch, DiskBlock *ccb)
+// ahci_process_read_log(struct ahci_channel *ch, union ccb *ccb)
 // {
 // 	uint8_t *data;
 // 	struct ata_res *res;
@@ -2121,7 +2119,7 @@ ahci_ch_intr_main(struct ahci_channel *ch, uint32_t istatus)
 // }
 
 // static void
-// ahci_process_request_sense(struct ahci_channel *ch, DiskBlock *ccb)
+// ahci_process_request_sense(struct ahci_channel *ch, union ccb *ccb)
 // {
 // 	int i;
 
@@ -2307,7 +2305,7 @@ ahci_reset(struct ahci_channel *ch)
 	}
 	/* Requeue freezed command. */
   if (ch->frozen) {
-	 	DiskBlock *fccb = ch->frozen;
+	 	union ccb *fccb = ch->frozen;
 	 	ch->frozen = NULL;
 	// 	fccb->ccb_h.status = CAM_REQUEUE_REQ | CAM_RELEASE_SIMQ;
 	// 	if (!(fccb->ccb_h.status & CAM_DEV_QFRZN)) {
@@ -2383,7 +2381,7 @@ ahci_reset(struct ahci_channel *ch)
 }
 
 // static int
-// ahci_setup_fis(struct ahci_channel *ch, struct ahci_cmd_tab *ctp, DiskBlock *ccb, int tag)
+// ahci_setup_fis(struct ahci_channel *ch, struct ahci_cmd_tab *ctp, union ccb *ccb, int tag)
 // {
 // 	u_int8_t *fis = &ctp->cfis[0];
 
@@ -2523,7 +2521,7 @@ ahci_sata_phy_reset(struct ahci_channel *ch)
 }
 
 // static int
-// ahci_check_ids(struct ahci_channel *ch, DiskBlock *ccb)
+// ahci_check_ids(struct ahci_channel *ch, union ccb *ccb)
 // {
 
 // 	if (ccb->ccb_h.target_id > ((ch->caps & AHCI_CAP_SPM) ? 15 : 0)) {
@@ -2540,7 +2538,7 @@ ahci_sata_phy_reset(struct ahci_channel *ch)
 // }
 
 // static void
-// ahciaction(struct cam_sim *sim, DiskBlock *ccb)
+// ahciaction(struct cam_sim *sim, union ccb *ccb)
 // {
 // 	struct ahci_channel *ch;
 
@@ -2768,13 +2766,7 @@ ahci_sata_phy_reset(struct ahci_channel *ch)
 #include <stdlib.h>
 
 AhciChannel *AhciChannel::Init(AhciCtrl *ctrl) {
-  AhciChannel *addr = new AhciChannel(ctrl);
-  if (addr->InitBsdDevice(addr, sizeof(struct ahci_channel)) == 0) {
-    return addr;
-  } else {
-    delete addr;
-    return nullptr;
-  }    
+  return new AhciChannel(ctrl);
 }
 
 int AhciChannel::DevMethodBusProbe() {
@@ -2783,4 +2775,16 @@ int AhciChannel::DevMethodBusProbe() {
 
 int AhciChannel::DevMethodBusAttach() {
   return ahci_ch_attach(this);
+}
+
+int AhciChannel::DevMethodBusSetupIntr(struct resource *r, int flags, driver_filter_t *filter, driver_intr_t *ithread, void *arg, void **cookiep) {
+  return ahci_setup_intr(this->GetParent(), this, r, flags, filter, ithread, arg, cookiep);
+}
+
+struct resource *AhciChannel::DevMethodBusAllocResource(int type, int *rid, rman_res_t start, rman_res_t end, rman_res_t count, u_int flags) {
+  return ahci_alloc_resource(this->GetParent(), this, type, rid, start, end, count, flags);
+}
+
+int AhciChannel::DevMethodBusReleaseResource(int type, int rid, struct resource *r) {
+  return ahci_release_resource(this->GetParent(), this, type, rid, r);
 }
