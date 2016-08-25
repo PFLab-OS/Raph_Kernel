@@ -164,7 +164,6 @@ void bench(int argc, const char* argv[]) {
             if (time == 0) {
               break;
             }
-	    
             cnt = timer->ReadMainCnt();
             if(socket.TransmitPacket(ArpSocket::kOpArpRequest, inet_atoi(ip2), nullptr) < 0) {
               gtty->Cprintf("[arp] failed to transmit request\n");
@@ -300,7 +299,7 @@ extern "C" int main() {
   if (eth != nullptr) {
     static ArpSocket socket;
     if(socket.Open() < 0) {
-      gtty->Printf("s", "[error] failed to open socket\n");
+      gtty->Cprintf("[error] failed to open socket\n");
     }
     socket.SetIpAddr(inet_atoi(ip1));
     Function func;
