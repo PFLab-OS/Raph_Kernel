@@ -206,7 +206,7 @@ void bench(int argc, const char* argv[]) {
               tt2.SetHandler(1000);
             }
           } else {
-            gtty->Printf("s", "[debug] info: Link is Up\n");
+            gtty->Cprintf("[debug] info: Link is Up\n");
           }
         }
       }, nullptr);
@@ -219,12 +219,12 @@ void bench(int argc, const char* argv[]) {
     Function func;
     func.Init([](void *){
         if (rtime > 0) {
-          gtty->Printf("s","ARP Reply average latency:","d",sum / rtime,"s","us [","d",rtime,"s","/","d",stime,"s","]\n");
+          gtty->Cprintf("ARP Reply average latency: %d us [%d / %d]\n", sum / rtime, rtime, stime);
         } else {
           if (eth->GetStatus() == BsdDevEthernet::LinkStatus::kUp) {
-            gtty->Printf("s","Link is Up, but no ARP Reply\n");
+            gtty->Cprintf("Link is Up, but no ARP Reply\n");
           } else {
-            gtty->Printf("s","Link is Down, please wait...\n");
+            gtty->Cprintf("Link is Down, please wait...\n");
           }
         }
         if (rtime != stime) {
@@ -279,7 +279,7 @@ extern "C" int main() {
   acpi_ctrl->Setup();
 
   if (timer->Setup()) {
-    gtty->Printf("s","[timer] info: HPET supported.\n");
+    gtty->Cprintf("[timer] info: HPET supported.\n");
   } else {
     kernel_panic("timer", "HPET not supported.\n");
   }
@@ -328,7 +328,7 @@ extern "C" int main() {
   kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 6) + 1));
   kassert(!paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - 4096 * 7));
 
-  gtty->Printf("s", "[cpu] info: #", "d", cpu_ctrl->GetId(), "s", "(apic id:", "d", apic_ctrl->GetApicIdFromCpuId(cpu_ctrl->GetId()), "s", ") started.\n");
+  gtty->Cprintf("[cpu] info: #%d (apic id: %d) started.\n", cpu_ctrl->GetId(), apic_ctrl->GetApicIdFromCpuId(cpu_ctrl->GetId());
   if (eth != nullptr) {
     Function func;
     func.Init([](void *){
@@ -418,7 +418,7 @@ extern "C" int main() {
 
   apic_ctrl->StartAPs();
 
-  gtty->Printf("s", "\n\n[kernel] info: initialization completed\n");
+  gtty->Cprintf("\n\n[kernel] info: initialization completed\n");
 
   shell->Setup();
   shell->Register("halt", halt);
@@ -434,7 +434,7 @@ extern "C" int main() {
       while(keyboard->Count() > 0) {
         char ch[2] = {'\0','\0'};
         ch[0] = keyboard->GetCh();
-        gtty->Printf("s", ch);
+        gtty->Cprintf(ch);
         shell->ReadCh(ch[0]);
       }
     }, nullptr);
@@ -455,7 +455,7 @@ extern "C" int main_of_others() {
   gdt->SetupProc();
   idt->SetupProc();
 
-  gtty->Printf("s", "[cpu] info: #", "d", cpu_ctrl->GetId(), "s", "(apic id:", "d", apic_ctrl->GetApicIdFromCpuId(cpu_ctrl->GetId()), "s", ") started.\n");
+  gtty->Cprintf("[cpu] info: #%d (apic id: %d) started.\n", cpu_ctrl->GetId(), apic_ctrl->GetApicIdFromCpuId(cpu_ctrl->GetId()));
  
   // ループ性能測定用 
   // PollingFunc p;
@@ -489,7 +489,7 @@ extern "C" int main_of_others() {
 
 extern "C" void kernel_panic(const char *class_name, const char *err_str) {
   if (gtty != nullptr) {
-    gtty->PrintfRaw("s", "\n[","s",class_name,"s","] error: ","s",err_str);
+    gtty->CprintfRaw("\n[%s] error: %s",class_name, err_str);
   }
   while(true) {
     asm volatile("cli;hlt;");
@@ -498,7 +498,7 @@ extern "C" void kernel_panic(const char *class_name, const char *err_str) {
 
 extern "C" void checkpoint(int id, const char *str) {
   if (id < 0 || cpu_ctrl->GetId() == id) {
-    gtty->PrintfRaw("s",str);
+    gtty->CprintfRaw(str);
   }
 }
 
