@@ -85,7 +85,9 @@ public:
       if(_ctrlAddr == nullptr) {
         return 0;
       }
-      uint32_t apic_id = _ctrlAddr[kRegId] >> 24;
+      GetCpuIdFromApicId(GetApicId());
+    }   
+    int GetCpuIdFromApicId(uint32_t apic_id) {
       for(int n = 0; n < _ncpu; n++) {
         if(apic_id == _apicIds[n]) {
           return n;

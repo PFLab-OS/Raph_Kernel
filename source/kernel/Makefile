@@ -1,7 +1,7 @@
 KERNEL = kernel.elf
 
 NET_OBJS = net/eth.o net/arp.o net/ip.o net/tcp.o net/udp.o net/socket.o net/netctrl.o net/ptcl.o
-OBJS = boot/boot.o boot/bootap.o main.o apic.o raph_acpi.o gdt.o idt.o int.o freebsd.o dev.o acpica.o mem/kvirtmem.o shell.o mem/paging.o mem/physmem.o mem/dlmalloc.o $(NET_OBJS) ../Raph_Library/lib.o
+OBJS = boot/boot.o boot/bootap.o main.o apic.o raph_acpi.o gdt.o idt.o int.o freebsd.o dev.o acpica.o mem/kvirtmem.o shell.o mem/paging.o mem/physmem.o mem/dlmalloc.o mem/kstack.o $(NET_OBJS) ../Raph_Library/lib.o
 TEST_OBJS = mem/kvirtmem.o dev/raw.o dev/netdev.o $(NET_OBJS) ../Raph_Library/lib.o
 
 BUILD = ../../build/

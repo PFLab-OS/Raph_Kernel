@@ -34,6 +34,7 @@
 #include <timer.h>
 #include <tty.h>
 #include <shell.h>
+#include <mem/kstack.h>
 
 #include <dev/hpet.h>
 #include <dev/keyboard.h>
@@ -239,11 +240,7 @@ extern "C" int main() {
 
   paging_ctrl->MapAllPhysMemory();
 
-  PhysAddr paddr;
-  physmem_ctrl->Alloc(paddr, PagingCtrl::kPageSize * 3);
-  extern int kKernelEndAddr;
-  kassert(paging_ctrl->MapPhysAddrToVirtAddr(reinterpret_cast<virt_addr>(&kKernelEndAddr) - PagingCtrl::kPageSize * 5, paddr, PagingCtrl::kPageSize * 3, PDE_WRITE_BIT, PTE_WRITE_BIT | PTE_GLOBAL_BIT));
-
+  KernelStackCtrl::Init();
   
   acpi_ctrl->Setup();
 
@@ -284,17 +281,6 @@ extern "C" int main() {
   sum = 0;
   time = stime;
   rtime = 0;
-
-  extern int kKernelEndAddr;
-  // stackは16K
-  kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr)));
-  kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 1) + 1));
-  kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 2) + 1));
-  kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 3) + 1));
-  kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 4) + 1));
-  kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 5) + 1));
-  kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 6) + 1));
-  kassert(!paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - 4096 * 7));
 
   gtty->Printf("s", "[cpu] info: #", "d", cpu_ctrl->GetId(), "s", "(apic id:", "d", apic_ctrl->GetApicIdFromCpuId(cpu_ctrl->GetId()), "s", ") started.\n");
   if (eth != nullptr) {
@@ -358,7 +344,10 @@ extern "C" int main() {
 }
 
 extern "C" int main_of_others() {
-// according to mp spec B.3, system should switch over to Symmetric I/O mode
+  // according to mp spec B.3, system should switch over to Symmetric I/O mode
+  
+  kassert(cpu_ctrl->GetId() == apic_ctrl->GetCpuId());
+  
   apic_ctrl->BootAP();
 
   gdt->SetupProc();
@@ -377,7 +366,7 @@ extern "C" int main_of_others() {
   //     }, nullptr);
   //   p.Register();
   // }
-  
+
   // ワンショット性能測定用
   if (cpu_ctrl->GetId() == 5) {
     new(&tt1) Callout;

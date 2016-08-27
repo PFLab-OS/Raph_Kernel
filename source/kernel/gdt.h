@@ -34,7 +34,6 @@
 #include <mem/paging.h>
 #include <global.h>
 #include <cpu.h>
-#include <cpuinfo.h>
 
 class Gdt {
  public:
@@ -69,45 +68,6 @@ class Gdt {
     uint16_t reserved6;
     uint16_t iomap;
   } __attribute__((packed));
-};
-
-class IntStackInfo {
-public:
-  IntStackInfo() : _cpuinfo(cpu_ctrl->GetId()) {
-    SetSignature();
-  }
-  // IMPORTANT: do not call in the outside of stack handler
-  static IntStackInfo *GetStackInfo() {
-    uint64_t rsp;
-    asm volatile("movq %%rsp, %0":"=r"(rsp));
-    IntStackInfo *that = reinterpret_cast<IntStackInfo *>(alignUp(rsp, PagingCtrl::kPageSize) - Size());
-    that->ValidateSignature();
-    return that;
-  }
-  // addr : end of stack
-  // return value : updated end of stack
-  static virt_addr SetupStackInfo(virt_addr addr) {
-    kassert(align(addr, PagingCtrl::kPageSize) == addr);
-    addr -= Size();
-    IntStackInfo *that = reinterpret_cast<IntStackInfo *>(addr);
-    new(that) IntStackInfo();
-    return addr;
-  }
-  CurrentCpuInfo &GetCpuInfo() {
-    return _cpuinfo;
-  }
-private:
-  static int Size() {
-    return alignUp(sizeof(IntStackInfo), 8);
-  }
-  void SetSignature() {
-    _signature = reinterpret_cast<uint64_t>(this);
-  }
-  void ValidateSignature() {
-    kassert(_signature == reinterpret_cast<uint64_t>(this));
-  }
-  uint64_t _signature;
-  CurrentCpuInfo _cpuinfo;
 };
 
 #endif // ! ASM_FILE

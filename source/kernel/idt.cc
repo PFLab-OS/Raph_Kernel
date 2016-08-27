@@ -24,6 +24,7 @@
 #include <mem/virtmem.h>
 #include <mem/physmem.h>
 #include <apic.h>
+#include <mem/kstack.h>
 #include <gdt.h>
 #include <global.h>
 #include <tty.h>
@@ -32,7 +33,7 @@ namespace C {
 extern "C" void handle_int(Regs *rs) {
   //TODO 例外処理中のフラグを立て、IntSpinLock内では弾く
   apic_ctrl->DisableInt();
-  int cpuid = IntStackInfo::GetStackInfo()->GetCpuInfo().GetId();
+  int cpuid = cpu_ctrl->GetId();
   idt->_handling_cnt[cpuid]++;
   if (idt->_callback[cpuid][rs->n].callback == nullptr) {
     if (gtty != nullptr) {
@@ -44,7 +45,7 @@ extern "C" void handle_int(Regs *rs) {
   }
   idt->_handling_cnt[cpuid]--;
   apic_ctrl->EnableInt();
-  //TODO 普通の例外の場合にまずい
+  //TODO 普通の割り込みの場合にまずい
   apic_ctrl->SendEoi();
 }
 }
@@ -169,7 +170,7 @@ void Idt::HandlePageFault(Regs *rs, void *arg) {
   if (gtty != nullptr) {
     uint64_t addr;
     asm volatile("movq %%cr2, %0;":"=r"(addr));
-    int cpuid = IntStackInfo::GetStackInfo()->GetCpuInfo().GetId();
+    int cpuid = cpu_ctrl->GetId();
     gtty->CprintfRaw("\nunexpected page fault occured at cpuid %d!\naddress: %llx rip: %llx rbp: %llx\n", cpuid, addr, rs->rip, rs->rbp);
   }
   while(true){

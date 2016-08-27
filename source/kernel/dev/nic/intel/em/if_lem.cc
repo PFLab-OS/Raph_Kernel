@@ -5000,7 +5000,7 @@ int lE1000::DevMethodBusAttach() {
   int rval = lem_attach(this);
   lem_init(reinterpret_cast<struct adapter *>(softc));
   _bsd_eth.SetupNetInterface();
-  //_bsd_eth.SetHandleMethod(HandleMethod::kPolling);
+  // _bsd_eth.SetHandleMethod(lE1000BsdEthernet::HandleMethod::kPolling);
   eth = &_bsd_eth;
   return rval;
 }

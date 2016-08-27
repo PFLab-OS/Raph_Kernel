@@ -27,6 +27,7 @@
 #include <timer.h>
 #include <global.h>
 #include <idt.h>
+#include <mem/kstack.h>
 
 extern "C" void entryothers();
 extern "C" void entry();
@@ -82,8 +83,7 @@ void ApicCtrl::StartAPs() {
       continue;
     }
     _started = false;
-    static const int stack_size = 4096*5;
-    *stack_of_others = ((virtmem_ctrl->Alloc(stack_size + 8) + stack_size + 7) / 8) * 8 - 8;
+    *stack_of_others = KernelStackCtrl::GetCtrl().AllocThreadStack(i);
     _lapic.Start(_lapic._apicIds[i], reinterpret_cast<uint64_t>(entryothers));
     while(!_started) {}
   }
