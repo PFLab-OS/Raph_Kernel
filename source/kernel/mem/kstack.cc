@@ -51,6 +51,7 @@ void KernelStackCtrl::Init() {
 
   new (&_ctrl) KernelStackCtrl();
   _ctrl.InitFirstStack();
+  _is_initialized = true;
 }
 
 void KernelStackCtrl::InitFirstStack() {

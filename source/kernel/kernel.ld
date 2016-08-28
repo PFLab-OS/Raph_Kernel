@@ -54,9 +54,7 @@ SECTIONS{
     lock_data_end = .;
     *(.gnu.linkonce.b*)
 
-    virt_memory_end = .;
     . = ALIGN(0x1000);
-    virt_allocatedmemory_end = .;
 
     initial_PML4T = . - kLinearAddrOffset;
     /* kLinearAddrOffset is subtracted because 32bit code refers to initial_PML4T */

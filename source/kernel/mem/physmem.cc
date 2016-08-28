@@ -135,13 +135,12 @@ void PhysmemCtrl::Free(PhysAddr &paddr, size_t size) {
   }
 }
 
-// TODO: テスト書く
-void PhysmemCtrl::Reserve(phys_addr addr, size_t size) {
+void PhysmemCtrl::ReserveSub(phys_addr addr, size_t size) {
   kassert(size > 0);
   kassert(size % PagingCtrl::kPageSize == 0);
   kassert(addr % PagingCtrl::kPageSize == 0);
-  AllocatedArea *allocated_area = _allocated_area;
   AllocatedArea *fraged_area = nullptr;
+  AllocatedArea *allocated_area = _allocated_area;
   while(allocated_area->next) {
     if (fraged_area == nullptr &&
         allocated_area->next->start_addr == allocated_area->end_addr) {
@@ -157,7 +156,7 @@ void PhysmemCtrl::Reserve(phys_addr addr, size_t size) {
         break;
       }
       allocated_area->end_addr = allocated_area->next->start_addr;
-      Reserve(allocated_area->next->start_addr, addr + size - allocated_area->next->start_addr);
+      ReserveSub(allocated_area->next->start_addr, addr + size - allocated_area->next->start_addr);
       return;
     }
     if (allocated_area->next->start_addr >= addr) {
@@ -171,7 +170,7 @@ void PhysmemCtrl::Reserve(phys_addr addr, size_t size) {
       }
       phys_addr tmp = allocated_area->next->start_addr;
       allocated_area->next->start_addr = addr;
-      Reserve(tmp, addr + size - tmp);
+      ReserveSub(tmp, addr + size - tmp);
       return;
     }
     allocated_area = allocated_area->next;

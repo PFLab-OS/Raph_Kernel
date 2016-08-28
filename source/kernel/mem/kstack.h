@@ -42,6 +42,9 @@ private:
 class KernelStackCtrl {
 public:
   static void Init();
+  static bool IsInitialized() {
+    return _is_initialized;
+  }
   static KernelStackCtrl &GetCtrl() {
     kassert(_is_initialized);
     return _ctrl;
@@ -72,7 +75,6 @@ private:
   };
 
   KernelStackCtrl() {
-    _is_initialized = true;
   }
   static StackInfo* GetCurrentStackInfoPtr() {
     virt_addr rsp;

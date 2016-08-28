@@ -40,12 +40,16 @@ class PhysmemCtrl {
   void Alloc(PhysAddr &paddr, size_t size);
   void Free(PhysAddr &paddr, size_t size);
   // addrはページサイズにアラインされている事
-  void Reserve(phys_addr addr, size_t size);
+  void Reserve(phys_addr addr, size_t size) {
+    Locker locker(_lock);
+    ReserveSub(addr, size);
+  }
   // Alloc内部で再度Allocが呼ばれるような場合を回避するための処理
   // page structure table用なので、4Kメモリしか割り当てられない
   void AllocFromBuffer(PhysAddr &paddr);
   static const virt_addr kLinearMapOffset = 0xffff800000000000;
  private:
+  void ReserveSub(phys_addr addr, size_t size);
   struct AllocatedArea {
     phys_addr start_addr;
     phys_addr end_addr;
