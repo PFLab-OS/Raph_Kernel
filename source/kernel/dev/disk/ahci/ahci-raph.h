@@ -45,7 +45,7 @@ private:
   AhciChannel();
   virtual int DevMethodBusProbe() override final;
   virtual int DevMethodBusAttach() override final;
-  virtual int DevMethodBusSetupIntr(struct resource *r, int flags, driver_filter_t *filter, driver_intr_t *ithread, void *arg, void **cookiep) override final;
+  virtual int DevMethodBusSetupIntr(struct resource *r, int flags, driver_filter_t filter, driver_intr_t ithread, void *arg, void **cookiep) override final;
   virtual struct resource *DevMethodBusAllocResource(int type, int *rid, rman_res_t start, rman_res_t end, rman_res_t count, u_int flags) override final;
   virtual int DevMethodBusReleaseResource(int type, int rid, struct resource *r) override final;
   AhciCtrl *_ctrl;

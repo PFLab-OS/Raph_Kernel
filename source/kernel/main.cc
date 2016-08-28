@@ -266,14 +266,23 @@ extern "C" int main() {
 
   idt->SetupProc();
 
-  InitNetCtrl();
-
   pci_ctrl = new (&_acpica_pci_ctrl) AcpicaPciCtrl;
   
   acpi_ctrl->SetupAcpica();
 
-  InitDevices<PciCtrl, Device>();
+  // 各コアは最低限の初期化ののち、TaskCtrlに制御が移さなければならない
+  // 特定のコアで専用の処理をさせたい場合は、TaskCtrlに登録したジョブとして
+  // 実行する事
+
+  apic_ctrl->StartAPs();
+
   gtty->Init();
+
+  gtty->Printf("s", "[cpu] info: #", "d", cpu_ctrl->GetId(), "s", "(apic id:", "d", apic_ctrl->GetApicIdFromCpuId(cpu_ctrl->GetId()), "s", ") started.\n");
+
+  InitNetCtrl();
+
+  InitDevices<PciCtrl, Device>();
 
   keyboard->Setup(1);
 
@@ -282,7 +291,6 @@ extern "C" int main() {
   time = stime;
   rtime = 0;
 
-  gtty->Printf("s", "[cpu] info: #", "d", cpu_ctrl->GetId(), "s", "(apic id:", "d", apic_ctrl->GetApicIdFromCpuId(cpu_ctrl->GetId()), "s", ") started.\n");
   if (eth != nullptr) {
     static ArpSocket socket;
     if(socket.Open() < 0) {
@@ -306,12 +314,6 @@ extern "C" int main() {
       }, nullptr);
     socket.SetReceiveCallback(2, func);
   }
- 
-  // 各コアは最低限の初期化ののち、TaskCtrlに制御が移さなければならない
-  // 特定のコアで専用の処理をさせたい場合は、TaskCtrlに登録したジョブとして
-  // 実行する事
-
-  apic_ctrl->StartAPs();
 
   gtty->Printf("s", "\n\n[kernel] info: initialization completed\n");
 

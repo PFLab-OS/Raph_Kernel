@@ -324,7 +324,9 @@ public:
     }
   }
   void LegacyIntHandler() {
-    _handler(_intarg);
+    if (_handler != nullptr) {
+      _handler(_intarg);
+    }
   }
 private:
   DevPci();
@@ -332,7 +334,7 @@ private:
   const uint8_t _device;
   const uint8_t _function;
   void *_intarg;
-  ioint_callback _handler;
+  ioint_callback _handler = nullptr;
 };
 
 

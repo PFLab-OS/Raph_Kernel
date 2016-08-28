@@ -43,7 +43,7 @@ public:
   }
   virtual int DevMethodBusProbe() = 0;
   virtual int DevMethodBusAttach() = 0;
-  virtual int DevMethodBusSetupIntr(struct resource *r, int flags, driver_filter_t *filter, driver_intr_t *ithread, void *arg, void **cookiep) {
+  virtual int DevMethodBusSetupIntr(struct resource *r, int flags, driver_filter_t filter, driver_intr_t ithread, void *arg, void **cookiep) {
     kernel_panic("bus", "no method\n");
     return -1;
   }
@@ -80,17 +80,17 @@ public:
     }
     void Handle() {
       if (_filter != nullptr) {
-        (*_filter)(_farg);
+        _filter(_farg);
       }
       if (_ithread != nullptr) {
         _ctask.Inc();
       }
     }
-    void SetFilter(driver_filter_t *filter, void *arg) {
+    void SetFilter(driver_filter_t filter, void *arg) {
       _filter = filter;
       _farg = arg;
     }
-    void SetIthread(driver_intr_t *ithread, void *arg) {
+    void SetIthread(driver_intr_t ithread, void *arg) {
       _ithread = ithread;
       _iarg = arg;
     }
@@ -103,10 +103,10 @@ public:
     }
     CountableTask _ctask;
     
-    driver_filter_t *_filter = nullptr;
+    driver_filter_t _filter = nullptr;
     void *_farg;
     
-    driver_intr_t *_ithread = nullptr;
+    driver_intr_t _ithread = nullptr;
     void *_iarg;
   };
   BsdDevPci(uint8_t bus, uint8_t device, uint8_t function) : _pci(bus, device, function) {
@@ -161,7 +161,7 @@ public:
     return _pci;
   }
 private:
-  virtual int DevMethodBusSetupIntr(struct resource *r, int flags, driver_filter_t *filter, driver_intr_t *ithread, void *arg, void **cookiep) override {
+  virtual int DevMethodBusSetupIntr(struct resource *r, int flags, driver_filter_t filter, driver_intr_t ithread, void *arg, void **cookiep) override {
     IntContainer *icontainer = GetIntContainerStruct(r->r_bushandle);
     if (icontainer == NULL) {
       return -1;

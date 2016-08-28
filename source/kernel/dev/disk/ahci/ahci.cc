@@ -2777,8 +2777,8 @@ int AhciChannel::DevMethodBusAttach() {
   return ahci_ch_attach(this);
 }
 
-int AhciChannel::DevMethodBusSetupIntr(struct resource *r, int flags, driver_filter_t *filter, driver_intr_t *ithread, void *arg, void **cookiep) {
-  return ahci_setup_intr(this->GetParent(), this, r, flags, filter, ithread, arg, cookiep);
+int AhciChannel::DevMethodBusSetupIntr(struct resource *r, int flags, driver_filter_t filter, driver_intr_t ithread, void *arg, void **cookiep) {
+  return ahci_setup_intr(this->GetParent(), this, r, flags, &filter, &ithread, arg, cookiep);
 }
 
 struct resource *AhciChannel::DevMethodBusAllocResource(int type, int *rid, rman_res_t start, rman_res_t end, rman_res_t count, u_int flags) {

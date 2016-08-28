@@ -117,7 +117,7 @@ extern "C" {
   }
   
   int bus_setup_intr(device_t dev, struct resource *r, int flags, driver_filter_t filter, driver_intr_t ithread, void *arg, void **cookiep) {
-    return dev->GetBusClass()->DevMethodBusSetupIntr(r, flags, &filter, &ithread, arg, cookiep);
+    return dev->GetBusClass()->DevMethodBusSetupIntr(r, flags, filter, ithread, arg, cookiep);
   }
 
   int device_printf(device_t dev, const char *fmt, ...) {
