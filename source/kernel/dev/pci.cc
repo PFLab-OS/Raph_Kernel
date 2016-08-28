@@ -32,17 +32,17 @@
 void PciCtrl::_Init() {
   _mcfg = acpi_ctrl->GetMCFG();
   if (_mcfg == nullptr) {
-    gtty->Printf("s", "[Pci] error: could not find MCFG table.\n");
+    gtty->Cprintf("[Pci] error: could not find MCFG table.\n");
     return;
   }
 
   for (int i = 0; i * sizeof(MCFGSt) < _mcfg->header.Length - sizeof(ACPISDTHeader); i++) {
     if (i == 1) {
-      gtty->Printf("s", "[Pci] info: multiple MCFG tables.\n");
+      gtty->Cprintf("[Pci] info: multiple MCFG tables.\n");
       break;
     }
     if (_mcfg->list[i].ecam_base >= 0x100000000) {
-      gtty->Printf("s", "[Pci] error: ECAM base addr is not exist in low 4GB of memory\n");
+      gtty->Cprintf("[Pci] error: ECAM base addr is not exist in low 4GB of memory\n");
       continue;
     }
     _base_addr = p2v(_mcfg->list[i].ecam_base);

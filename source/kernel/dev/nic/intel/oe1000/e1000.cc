@@ -105,19 +105,16 @@ int32_t oE1000::Receive(uint8_t *buffer, uint32_t size) {
     memcpy(buffer, reinterpret_cast<uint8_t *>(p2v(rxdesc->bufAddr)), length);
     _mmioAddr[kRegRdt0] = (rdt + 1) % kRxdescNumber;
 
-    gtty->Printf("s", "e1000 rx dump; (",
-                 "d", rdh, "s", " ~ ", "d", rdt,
-                 "s", ") 0x",
-                 "x", reinterpret_cast<uint64_t>(rxdesc->bufAddr),
-                 "s", "\n");
+    gtty->Cprintf("e1000 rx dump; (%d ~ %d) 0x%x\n",
+		  rdh, rdt, reinterpret_cast<uint64_t>(rxdesc->bufAddr));
     for(uint32_t i = 0; i < length; i++) {
-	  if(buffer[i] < 0x10) gtty->Printf("d", 0);
-	  gtty->Printf("x", buffer[i]);
-	  if((i+1) % 16 == 0) gtty->Printf("s", "\n");
-	  else if((i+1) % 16 == 8) gtty->Printf("s", ":");
-	  else                gtty->Printf("s", " ");
+	  if(buffer[i] < 0x10) gtty->Cprintf("%d", 0);
+	  gtty->Cprintf("%x", buffer[i]);
+	  if((i+1) % 16 == 0) gtty->Cprintf("\n");
+	  else if((i+1) % 16 == 8) gtty->Cprintf(":");
+	  else                gtty->Cprintf(" ");
 	}
-	gtty->Printf("s", "\n");
+	gtty->Cprintf("\n");
 
     return length;
   } else {
