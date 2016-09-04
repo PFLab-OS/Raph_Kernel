@@ -48,10 +48,10 @@ int32_t ArpGeneratePacket(uint8_t *buffer, uint16_t op, uint8_t *smacaddr, uint3
   if(sipaddr) packet->proto_saddr = htonl(sipaddr);
   if(dipaddr) packet->proto_daddr = htonl(dipaddr);
   switch(op) {
-    case ArpSocket::kOpArpRequest:
+    case ArpSocket::kOpRequest:
       memset(packet->hw_daddr, 0, 6);
       break;
-	case ArpSocket::kOpArpReply:
+	case ArpSocket::kOpReply:
       if(dmacaddr) memcpy(packet->hw_daddr, dmacaddr, 6);
       break;
     default:
@@ -67,7 +67,7 @@ bool ArpFilterPacket(uint8_t *packet, uint16_t op, uint8_t *smacaddr, uint32_t s
   return (!op || ntohs(data->op) == op)
       && (!smacaddr || !memcmp(data->hw_saddr, smacaddr, 6))
       && (!sipaddr  || ntohl(data->proto_saddr) == sipaddr)
-      && (ntohs(data->op) == ArpSocket::kOpArpRequest || !dmacaddr || !memcmp(data->hw_daddr, dmacaddr, 6) || !memcmp(data->hw_daddr, kBcastMacAddr, 6))
+      && (ntohs(data->op) == ArpSocket::kOpRequest || !dmacaddr || !memcmp(data->hw_daddr, dmacaddr, 6) || !memcmp(data->hw_daddr, kBcastMacAddr, 6))
       && (!dipaddr  || ntohl(data->proto_daddr) == dipaddr);
 }
 

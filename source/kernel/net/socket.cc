@@ -628,10 +628,10 @@ int32_t ArpSocket::TransmitPacket(uint16_t type, uint32_t tpa, uint8_t *tha) {
   uint8_t eth_daddr[6];
 
   switch(type) {
-    case kOpArpRequest:
+    case kOpRequest:
       memset(eth_daddr, 0xff, 6); // broadcast
       break;
-    case kOpArpReply:
+    case kOpReply:
       memcpy(eth_daddr, tha, 6);
       break;
     default:
@@ -683,9 +683,9 @@ int32_t ArpSocket::ReceivePacket(uint16_t type, uint32_t *spa, uint8_t *sha) {
   uint32_t offset_arp = sizeof(EthHeader);
 
   switch(op) {
-    case kOpArpReply:
+    case kOpReply:
       RegisterIpAddress(packet->buf + sizeof(EthHeader));
-    case kOpArpRequest:
+    case kOpRequest:
       if(spa) *spa = ArpGetSourceIpAddress(packet->buf + offset_arp);
       if(sha) ArpGetSourceMacAddress(sha, packet->buf + offset_arp);
       break;

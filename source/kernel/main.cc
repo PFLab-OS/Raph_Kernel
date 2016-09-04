@@ -165,7 +165,7 @@ void bench(int argc, const char* argv[]) {
               break;
             }
             cnt = timer->ReadMainCnt();
-            if(socket.TransmitPacket(ArpSocket::kOpArpRequest, inet_atoi(ip2), nullptr) < 0) {
+            if(socket.TransmitPacket(ArpSocket::kOpRequest, inet_atoi(ip2), nullptr) < 0) {
               gtty->Cprintf("[arp] failed to transmit request\n");
             }
             time--;
@@ -308,13 +308,13 @@ extern "C" int main() {
         uint8_t macaddr[6];
         
         int32_t rval = socket.ReceivePacket(0, &ipaddr, macaddr);
-        if(rval == ArpSocket::kOpArpReply) {
+        if(rval == ArpSocket::kOpReply) {
           uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;
           cnt = 0;
           sum += l;
           rtime++;
-        } else if(rval == ArpSocket::kOpArpRequest) {
-          socket.TransmitPacket(ArpSocket::kOpArpReply, ipaddr, macaddr);
+        } else if(rval == ArpSocket::kOpRequest) {
+          socket.TransmitPacket(ArpSocket::kOpReply, ipaddr, macaddr);
         }
       }, nullptr);
     socket.SetReceiveCallback(2, func);

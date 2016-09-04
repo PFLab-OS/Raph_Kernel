@@ -229,8 +229,8 @@ private:
 // ARP Socket
 class ArpSocket : public NetSocket {
 public:
-  static const int16_t kOpArpRequest = 0x0001;
-  static const int16_t kOpArpReply = 0x0002;
+  static const int16_t kOpRequest = 0x0001;
+  static const int16_t kOpReply = 0x0002;
 
   ArpSocket();
 
