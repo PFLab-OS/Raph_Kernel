@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
- * Author: Yuchiki
+ * Author: Yuchiki, LEDiA
  * 
  */
 
@@ -25,28 +25,27 @@
 
 #include <global.h>
 #include <apic.h>
+#include <buf.h>
 
 class Keyboard {
  public:
-  void Setup(int cpuid);
-  void Write(uint8_t code);
-  uint8_t Read();
-  char GetCh();
-  bool Overflow();
-  bool Underflow();
-  int Count();
-  void Reset();
+  void Setup(int cpuid, const GenericFunction &func);
+  bool Read(uint8_t &data) {
+    return _buf.Pop(data);
+  }
+  static char Interpret(const uint8_t &code) {
+    return kScanCode[code];
+  }
+
  private:
+  void Write(uint8_t &code) {
+    _buf.Push(code);
+  }
   static void Handler (Regs *reg, void *arg);
-  static const int kbufSize = 100;
+  static const int kBufSize = 100;
   static const char kScanCode[256];
   static const int kDataPort = 0x60;
-  int _count = 0; 
-  uint8_t _buf[kbufSize];
-  bool _overflow = false;
-  bool _underflow = false;
-  int _next_w = 0;
-  int _next_r = 0;
+  IntFunctionalRingBuffer<uint8_t, kBufSize> _buf;
 };
 
 #endif // __RAPH_KERNEL_DEV_KEYBOARD_H__
