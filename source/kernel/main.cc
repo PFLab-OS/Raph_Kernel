@@ -295,7 +295,39 @@ extern "C" int main() {
   kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 6) + 1));
   kassert(!paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - 4096 * 7));
 
-  gtty->Cprintf("[cpu] info: #%d (apic id: %d) started.\n", cpu_ctrl->GetId(), apic_ctrl->GetApicIdFromCpuId(cpu_ctrl->GetId()));
+  gtty->Cprintf("[boot cpu] info: #%d (apic id: %d) started.\n", cpu_ctrl->GetId(), apic_ctrl->GetApicIdFromCpuId(cpu_ctrl->GetId()));
+
+
+  CpuCtrlInterface::CpuPurposes p;
+  p = CpuCtrlInterface::kLowPriority;  
+  gtty->Cprintf("req purpose: %d -> assigned id: %d\n", p, cpu_ctrl->RetainCpuIdForPurpose(p));
+  p = CpuCtrlInterface::kLowPriority;  
+  gtty->Cprintf("req purpose: %d -> assigned id: %d\n", p, cpu_ctrl->RetainCpuIdForPurpose(p));
+  p = CpuCtrlInterface::kLowPriority;  
+  gtty->Cprintf("req purpose: %d -> assigned id: %d\n", p, cpu_ctrl->RetainCpuIdForPurpose(p));
+  p = CpuCtrlInterface::kHighPerformance;  
+  gtty->Cprintf("req purpose: %d -> assigned id: %d\n", p, cpu_ctrl->RetainCpuIdForPurpose(p));
+  p = CpuCtrlInterface::kHighPerformance;  
+  gtty->Cprintf("req purpose: %d -> assigned id: %d\n", p, cpu_ctrl->RetainCpuIdForPurpose(p));
+  p = CpuCtrlInterface::kHighPerformance;  
+  gtty->Cprintf("req purpose: %d -> assigned id: %d\n", p, cpu_ctrl->RetainCpuIdForPurpose(p));
+  p = CpuCtrlInterface::kGeneralPurpose;  
+  gtty->Cprintf("req purpose: %d -> assigned id: %d\n", p, cpu_ctrl->RetainCpuIdForPurpose(p));
+  p = CpuCtrlInterface::kGeneralPurpose;  
+  gtty->Cprintf("req purpose: %d -> assigned id: %d\n", p, cpu_ctrl->RetainCpuIdForPurpose(p));
+  p = CpuCtrlInterface::kGeneralPurpose;  
+  gtty->Cprintf("req purpose: %d -> assigned id: %d\n", p, cpu_ctrl->RetainCpuIdForPurpose(p));
+  p = CpuCtrlInterface::kHighPerformance;  
+  gtty->Cprintf("req purpose: %d -> assigned id: %d\n", p, cpu_ctrl->RetainCpuIdForPurpose(p));
+  p = CpuCtrlInterface::kHighPerformance;  
+  gtty->Cprintf("req purpose: %d -> assigned id: %d\n", p, cpu_ctrl->RetainCpuIdForPurpose(p));
+  p = CpuCtrlInterface::kGeneralPurpose;  
+  gtty->Cprintf("req purpose: %d -> assigned id: %d\n", p, cpu_ctrl->RetainCpuIdForPurpose(p));
+  p = CpuCtrlInterface::kGeneralPurpose;  
+  gtty->Cprintf("req purpose: %d -> assigned id: %d\n", p, cpu_ctrl->RetainCpuIdForPurpose(p));
+
+
+
   if (eth != nullptr) {
     static ArpSocket socket;
     if(socket.Open() < 0) {
