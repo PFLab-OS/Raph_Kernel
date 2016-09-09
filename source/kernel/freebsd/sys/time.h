@@ -1,14 +1,6 @@
 /*-
- * Copyright (c) 1995 Terrence R. Lambert
- * All rights reserved.
- *
- * Copyright (c) 1990, 1993
+ * Copyright (c) 1982, 1986, 1993
  *	The Regents of the University of California.  All rights reserved.
- * (c) UNIX System Laboratories, Inc.
- * All or some portions of this file are derived from material licensed
- * to the University of California by American Telephone and Telegraph
- * Co. or Unix System Laboratories, Inc. and are reproduced herein with
- * the permission of UNIX System Laboratories, Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -18,10 +10,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -38,32 +26,20 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	@(#)kernel.h	8.3 (Berkeley) 1/21/94
+ *	@(#)time.h	8.5 (Berkeley) 5/4/95
  * $FreeBSD$
  */
 
-#ifndef _SYS_KERNEL_H_
-#define	_SYS_KERNEL_H_
+#ifndef _SYS_TIME_H_
+#define	_SYS_TIME_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif /* __cplusplus */
+#include <sys/types.h>
 
-#ifdef _KERNEL
+#define	SBT_1S	((sbintime_t)1 << 32)
+#define	SBT_1M	(SBT_1S * 60)
+#define	SBT_1MS	(SBT_1S / 1000)
+#define	SBT_1US	(SBT_1S / 1000000)
+#define	SBT_1NS	(SBT_1S / 1000000000)
+#define	SBT_MAX	0x7fffffffffffffffLL
 
-  /* for intrhook below */
-#include <sys/queue.h>
-
-#define hz 1000
-#define reciprocal_of_hz 1000  /* 1000000(1s / 1us) / hz */
-
-  // replacement of ticks
-  int get_ticks();
-
-#endif /* _KERNEL */
-  
-#ifdef __cplusplus
-}
-#endif /* __cplusplus */
-
-#endif /* !_SYS_KERNEL_H_*/
+#endif /* !_SYS_TIME_H_ */

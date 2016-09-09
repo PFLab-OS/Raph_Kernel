@@ -46,7 +46,7 @@
 #include <sys/cdefs.h>
 #include <sys/errno.h>
 #ifndef LOCORE
-// #include <sys/time.h>
+#include <sys/time.h>
 // #include <sys/priority.h>
 #endif
 

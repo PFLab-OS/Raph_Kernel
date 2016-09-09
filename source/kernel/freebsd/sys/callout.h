@@ -38,6 +38,7 @@
 #ifndef _SYS_CALLOUT_H_
 #define _SYS_CALLOUT_H_
 
+#include <sys/time.h>
 #include <sys/_callout.h>
 
 #ifdef _KERNEL
@@ -51,6 +52,7 @@ extern "C" {
   int callout_stop(struct callout *c);
   int callout_drain(struct callout *c);
   int callout_reset(struct callout *c, int ticks, void func(void *), void *arg);
+  int callout_reset_sbt(struct callout *c, sbintime_t sbt, sbintime_t precision, void ftn(void *), void *arg, int flags);
   int	callout_schedule(struct callout *, int);
 
   #define callout_init_mtx(c, mtx, flags)                                 \

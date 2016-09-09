@@ -43,13 +43,14 @@
 /* #include <machine/resource.h> */
 #include <machine/bus.h>
 #include <sys/rman.h>
+#include <endian.h>
 #include "ahci.h"
 #include "ahci-raph.h"
 
 #include <cam/cam.h>
 #include <cam/cam_ccb.h>
-/* #include <cam/cam_sim.h> */
-/* #include <cam/cam_xpt_sim.h> */
+#include <cam/cam_sim.h>
+// #include <cam/cam_xpt_sim.h>
 /* #include <cam/cam_debug.h> */
 
 
@@ -65,12 +66,12 @@ static void ahci_ch_pm(void *arg);
 static void ahci_ch_intr(void *arg);
 static void ahci_ch_intr_direct(void *arg);
 static void ahci_ch_intr_main(struct ahci_channel *ch, uint32_t istatus);
-static void ahci_begin_transaction(struct ahci_channel *ch, union ccb *ccb);
+static void ahci_begin_transaction(struct ahci_channel *ch, PacketAtaio *ataio);
 static void ahci_dmasetprd(void *arg, bus_dma_segment_t *segs, int nsegs, int error);
 static void ahci_execute_transaction(struct ahci_slot *slot);
 static void ahci_timeout(struct ahci_slot *slot);
 static void ahci_end_transaction(struct ahci_slot *slot, enum ahci_err_type et);
-static int ahci_setup_fis(struct ahci_channel *ch, struct ahci_cmd_tab *ctp, union ccb *ccb, int tag);
+static int ahci_setup_fis(struct ahci_channel *ch, struct ahci_cmd_tab *ctp, PacketAtaio *ataio, int tag);
 static void ahci_dmainit(device_t dev);
 static void ahci_dmasetupc_cb(void *xsc, bus_dma_segment_t *segs, int nsegs, int error);
 static void ahci_dmafini(device_t dev);
@@ -88,10 +89,10 @@ static int ahci_sata_phy_reset(struct ahci_channel *ch);
 static int ahci_wait_ready(struct ahci_channel *ch, int t, int t0);
 
 static void ahci_issue_recovery(struct ahci_channel *ch);
-static void ahci_process_read_log(struct ahci_channel *ch, union ccb *ccb);
-static void ahci_process_request_sense(struct ahci_channel *ch, union ccb *ccb);
+static void ahci_process_read_log(struct ahci_channel *ch, PacketAtaio *ataio);
+static void ahci_process_request_sense(struct ahci_channel *ch, PacketAtaio *ataio);
 
-static void ahciaction(struct cam_sim *sim, union ccb *ccb);
+static void ahciaction(struct ahci_channel *ch, PacketAtaio *ataio);
 static void ahcipoll(struct cam_sim *sim);
 
 // static MALLOC_DEFINE(M_AHCI, "AHCI driver", "AHCI driver data buffers");
@@ -335,8 +336,10 @@ ahci_attach(device_t dev)
       continue;
  		}
  		device_set_ivars(child, (void *)(intptr_t)unit);
- 		// if ((ctlr->ichannels & (1 << unit)) == 0)
- 		// 	device_disable(child);
+    if ((ctlr->ichannels & (1 << unit)) == 0) {
+      kassert(false);
+ 		 	// device_disable(child);
+    }
  	}
  	if (ctlr->caps & AHCI_CAP_EMS) {
     kassert(false);
@@ -372,7 +375,7 @@ ahci_detach(device_t dev)
 // 	/* Free memory. */
 // 	rman_fini(&ctlr->sc_iomem);
 // 	ahci_free_mem(dev);
- 	return (0);
+  return (0);
 }
 
 void
@@ -705,15 +708,15 @@ ahci_ch_attach(device_t dev)
 		ch->user[i].mode = 0;
 		ch->user[i].bytecount = 8192;
 		ch->user[i].tags = ch->numslots;
-		// ch->user[i].caps = 0;
+    ch->user[i].caps = 0;
 		ch->curr[i] = ch->user[i];
-		// if (ch->pm_level) {
-		// 	ch->user[i].caps = CTS_SATA_CAPS_H_PMREQ |
-		// 	    CTS_SATA_CAPS_H_APST |
-		// 	    CTS_SATA_CAPS_D_PMREQ | CTS_SATA_CAPS_D_APST;
-		// }
-		// ch->user[i].caps |= CTS_SATA_CAPS_H_DMAAA |
-		//     CTS_SATA_CAPS_H_AN;
+		if (ch->pm_level) {
+			ch->user[i].caps = CTS_SATA_CAPS_H_PMREQ |
+			    CTS_SATA_CAPS_H_APST |
+			    CTS_SATA_CAPS_D_PMREQ | CTS_SATA_CAPS_D_APST;
+		}
+		ch->user[i].caps |= CTS_SATA_CAPS_H_DMAAA |
+		    CTS_SATA_CAPS_H_AN;
 	}
 	rid = 0;
 	if (!(ch->r_mem = bus_alloc_resource_any(dev, SYS_RES_MEMORY,
@@ -1042,7 +1045,8 @@ ahci_slotsalloc(device_t dev)
 		slot->ch = ch;
 		slot->slot = i;
 		slot->state = AHCI_SLOT_EMPTY;
-    slot->ccb = NULL;
+    // slot->ccb = NULL;
+    slot->ataio = NULL;
 		callout_init_mtx(&slot->timeout, &ch->mtx, 0);
 
 		if (bus_dmamap_create(ch->dma.data_tag, 0, &slot->dma.data_map))
@@ -1075,7 +1079,7 @@ ahci_phy_check_events(struct ahci_channel *ch, u_int32_t serr)
 	if (((ch->pm_level == 0) && (serr & ATA_SE_PHY_CHANGED)) ||
 	    ((ch->pm_level != 0 || ch->listening) && (serr & ATA_SE_EXCHANGED))) {
 		u_int32_t status = ATA_INL(ch->r_mem, AHCI_P_SSTS);
-    union ccb *ccb;
+    // union ccb *ccb;
 
 		if (bootverbose) {
 			if ((status & ATA_SS_DET_MASK) != ATA_SS_DET_NO_DEVICE)
@@ -1093,8 +1097,7 @@ ahci_phy_check_events(struct ahci_channel *ch, u_int32_t serr)
 		// 	return (0);
 		// }
 		// xpt_rescan(ccb);
-		// return (1);
-    return (0);
+    return (1);
 	}
 	return (0);
 }
@@ -1141,29 +1144,32 @@ ahci_notify_events(struct ahci_channel *ch, u_int32_t status)
 		ATA_OUTL(ch->r_mem, AHCI_P_SNTF, status);
 	if (bootverbose)
 		device_printf(ch->dev, "SNTF 0x%04x\n", status);
-	// for (i = 0; i < 16; i++) {
-	// 	if ((status & (1 << i)) == 0)
-	// 		continue;
-	// 	if (xpt_create_path(&dpath, NULL,
-	// 	    xpt_path_path_id(ch->path), i, 0) == CAM_REQ_CMP) {
-	// 		xpt_async(AC_SCSI_AEN, dpath, NULL);
-	// 		xpt_free_path(dpath);
-	// 	}
-	// }
+	for (i = 0; i < 16; i++) {
+		if ((status & (1 << i)) == 0)
+			continue;
+    kassert(false);
+		// if (xpt_create_path(&dpath, NULL,
+		//     xpt_path_path_id(ch->path), i, 0) == CAM_REQ_CMP) {
+		// 	xpt_async(AC_SCSI_AEN, dpath, NULL);
+		// 	xpt_free_path(dpath);
+		// }
+	}
 }
 
 static void
-ahci_done(struct ahci_channel *ch, union ccb *ccb)
+ahci_done(struct ahci_channel *ch, PacketAtaio *ataio)
 {
 
 	mtx_assert(&ch->mtx, MA_OWNED);
-	// if ((ccb->ccb_h.func_code & XPT_FC_QUEUED) == 0 ||
-	//     ch->batch == 0) {
-	// 	   xpt_done(ccb);
-	// 	return;
-	// }
+	if ((ataio->func_code & XPT_FC_QUEUED) == 0 || 
+	    ch->batch == 0) {
+    // xpt_done(ccb);
+    ataio->XptDone();
+		return;
+	}
 
-	STAILQ_INSERT_TAIL(&ch->doneq, &ccb->ccb_h, sim_links.stqe);
+  //	STAILQ_INSERT_TAIL(&ch->doneq, &ccb->ccb_h, sim_links.stqe);
+  ch->dev->GetMasterClass<AhciChannel>()->tmp_doneq.Push(ataio);
 }
 
 static void
@@ -1188,7 +1194,8 @@ ahci_ch_intr_direct(void *arg)
 	struct ahci_channel *ch = (struct ahci_channel *)arg;
   struct ccb_hdr *ccb_h;
 	uint32_t istatus;
-  STAILQ_HEAD(, ccb_hdr) tmp_doneq = STAILQ_HEAD_INITIALIZER(tmp_doneq);
+  // STAILQ_HEAD(, ccb_hdr) tmp_doneq = STAILQ_HEAD_INITIALIZER(tmp_doneq);
+  Queue2<PacketAtaio> tmp_doneq;
 
 	/* Read interrupt statuses. */
 	istatus = ATA_INL(ch->r_mem, AHCI_P_IS);
@@ -1203,12 +1210,22 @@ ahci_ch_intr_direct(void *arg)
 	 * Prevent the possibility of issues caused by processing the queue
 	 * while unlocked below by moving the contents to a local queue.
 	 */
-  STAILQ_CONCAT(&tmp_doneq, &ch->doneq);
-	mtx_unlock(&ch->mtx);
-  while ((ccb_h = STAILQ_FIRST(&tmp_doneq)) != NULL) {
-	 	STAILQ_REMOVE_HEAD(&tmp_doneq, sim_links.stqe);
-	// 	xpt_done_direct((union ccb *)ccb_h);
+  // STAILQ_CONCAT(&tmp_doneq, &ch->doneq);
+  while (!ch->dev->GetMasterClass<AhciChannel>()->tmp_doneq.IsEmpty()) {
+    PacketAtaio *ataio;
+    kassert(ch->dev->GetMasterClass<AhciChannel>()->tmp_doneq.Pop(ataio));
+    tmp_doneq.Push(ataio);
   }
+	mtx_unlock(&ch->mtx);
+  while(!tmp_doneq.IsEmpty()) {
+    PacketAtaio *ataio;
+    kassert(tmp_doneq.Pop(ataio));
+    ataio->XptDone();
+  }
+  // while ((ccb_h = STAILQ_FIRST(&tmp_doneq)) != NULL) {
+	//  	STAILQ_REMOVE_HEAD(&tmp_doneq, sim_links.stqe);
+	//  	xpt_done_direct((union ccb *)ccb_h);
+  // }
 }
 
 static void
@@ -1318,27 +1335,37 @@ ahci_ch_intr_main(struct ahci_channel *ch, uint32_t istatus)
 	}
 	/* On error, complete the rest of commands with error statuses. */
 	if (err) {
-    if (ch->frozen) {
-		 	union ccb *fccb = ch->frozen;
-		 	ch->frozen = NULL;
-      //     fccb->ccb_h.status = CAM_REQUEUE_REQ | CAM_RELEASE_SIMQ;
-      // if (!(fccb->ccb_h.status & CAM_DEV_QFRZN)) {
-      // 	xpt_freeze_devq(fccb->ccb_h.path, 1);
-      // 	fccb->ccb_h.status |= CAM_DEV_QFRZN;
-      // }
-      ahci_done(ch, fccb);
+    // if (ch->frozen) {
+		//  	union ccb *fccb = ch->frozen;
+		//  	ch->frozen = NULL;
+    //   fccb->ccb_h.status = CAM_REQUEUE_REQ | CAM_RELEASE_SIMQ;
+    //   if (!(fccb->ccb_h.status & CAM_DEV_QFRZN)) {
+    //    	xpt_freeze_devq(fccb->ccb_h.path, 1);
+    //    	fccb->ccb_h.status |= CAM_DEV_QFRZN;
+    //   }
+    //   ahci_done(ch, fccb);
+    // }
+    if (ch->dev->GetMasterClass<AhciChannel>()->frozen) {
+      PacketAtaio *packet = ch->dev->GetMasterClass<AhciChannel>()->frozen;
+      ch->dev->GetMasterClass<AhciChannel>()->frozen = NULL;
+      packet->status = CAM_REQUEUE_REQ | CAM_RELEASE_SIMQ;
+      if (!(packet->status & CAM_DEV_QFRZN)) {
+        ch->dev->GetMasterClass<AhciChannel>()->devq.Freeze(1);
+       	packet->status |= CAM_DEV_QFRZN;
+      }
+      ahci_done(ch, packet);
     }
 		for (i = 0; i < ch->numslots; i++) {
 			/* XXX: reqests in loading state. */
 			if (((err >> i) & 1) == 0)
 				continue;
 			if (port >= 0 &&
-          ch->slot[i].ccb->ccb_h.target_id != port)
+          ch->slot[i].ataio->target_id != port)
 				continue;
 			if (istatus & AHCI_P_IX_TFE) {
 			    if (port != -2) {
 				/* Task File Error */
-				if (ch->numtslotspd[ch->slot[i].ccb->ccb_h.target_id] == 0) {
+				if (ch->numtslotspd[ch->slot[i].ataio->target_id] == 0) {
 					/* Untagged operation. */
 					if (i == ccs)
 						et = AHCI_ERR_TFE;
@@ -1373,105 +1400,108 @@ ahci_ch_intr_main(struct ahci_channel *ch, uint32_t istatus)
 		ahci_notify_events(ch, sntf);
 }
 
-// /* Must be called with channel locked. */
-// static int
-// ahci_check_collision(struct ahci_channel *ch, union ccb *ccb)
-// {
-// 	int t = ccb->ccb_h.target_id;
+/* Must be called with channel locked. */
+static int
+ahci_check_collision(struct ahci_channel *ch, PacketAtaio *ataio)
+{
+	int t = ataio->target_id;
 
-// 	if ((ccb->ccb_h.func_code == XPT_ATA_IO) &&
-// 	    (ccb->ataio.cmd.flags & CAM_ATAIO_FPDMA)) {
-// 		/* Tagged command while we have no supported tag free. */
-// 		if (((~ch->oslots) & (0xffffffff >> (32 -
-// 		    ch->curr[t].tags))) == 0)
-// 			return (1);
-// 		/* If we have FBS */
-// 		if (ch->fbs_enabled) {
-// 			/* Tagged command while untagged are active. */
-// 			if (ch->numrslotspd[t] != 0 && ch->numtslotspd[t] == 0)
-// 				return (1);
-// 		} else {
-// 			/* Tagged command while untagged are active. */
-// 			if (ch->numrslots != 0 && ch->numtslots == 0)
-// 				return (1);
-// 			/* Tagged command while tagged to other target is active. */
-// 			if (ch->numtslots != 0 &&
-// 			    ch->taggedtarget != ccb->ccb_h.target_id)
-// 				return (1);
-// 		}
-// 	} else {
-// 		/* If we have FBS */
-// 		if (ch->fbs_enabled) {
-// 			/* Untagged command while tagged are active. */
-// 			if (ch->numrslotspd[t] != 0 && ch->numtslotspd[t] != 0)
-// 				return (1);
-// 		} else {
-// 			/* Untagged command while tagged are active. */
-// 			if (ch->numrslots != 0 && ch->numtslots != 0)
-// 				return (1);
-// 		}
-// 	}
-// 	if ((ccb->ccb_h.func_code == XPT_ATA_IO) &&
-// 	    (ccb->ataio.cmd.flags & (CAM_ATAIO_CONTROL | CAM_ATAIO_NEEDRESULT))) {
-// 		/* Atomic command while anything active. */
-// 		if (ch->numrslots != 0)
-// 			return (1);
-// 	}
-//        /* We have some atomic command running. */
-//        if (ch->aslots != 0)
-//                return (1);
-// 	return (0);
-// }
+	if ((ataio->func_code == XPT_ATA_IO) &&
+	    (ataio->cmd.flags & CAM_ATAIO_FPDMA)) {
+		/* Tagged command while we have no supported tag free. */
+		if (((~ch->oslots) & (0xffffffff >> (32 -
+                                         ch->curr[t].tags))) == 0)
+			return (1);
+		/* If we have FBS */
+		if (ch->fbs_enabled) {
+			/* Tagged command while untagged are active. */
+			if (ch->numrslotspd[t] != 0 && ch->numtslotspd[t] == 0)
+				return (1);
+		} else {
+			/* Tagged command while untagged are active. */
+			if (ch->numrslots != 0 && ch->numtslots == 0)
+				return (1);
+			/* Tagged command while tagged to other target is active. */
+			if (ch->numtslots != 0 &&
+			    ch->taggedtarget != ataio->target_id)
+				return (1);
+		}
+	} else {
+		/* If we have FBS */
+		if (ch->fbs_enabled) {
+			/* Untagged command while tagged are active. */
+			if (ch->numrslotspd[t] != 0 && ch->numtslotspd[t] != 0)
+				return (1);
+		} else {
+			/* Untagged command while tagged are active. */
+			if (ch->numrslots != 0 && ch->numtslots != 0)
+				return (1);
+		}
+	}
+	if ((ataio->func_code == XPT_ATA_IO) &&
+	    (ataio->cmd.flags & (CAM_ATAIO_CONTROL | CAM_ATAIO_NEEDRESULT))) {
+		/* Atomic command while anything active. */
+		if (ch->numrslots != 0)
+			return (1);
+	}
+  /* We have some atomic command running. */
+  if (ch->aslots != 0)
+    return (1);
+	return (0);
+}
 
-// /* Must be called with channel locked. */
-// static void
-// ahci_begin_transaction(struct ahci_channel *ch, union ccb *ccb)
-// {
-// 	struct ahci_slot *slot;
-// 	int tag, tags;
+/* Must be called with channel locked. */
+static void
+ahci_begin_transaction(struct ahci_channel *ch, PacketAtaio *ataio)
+{
+	struct ahci_slot *slot;
+	int tag, tags;
 
-// 	/* Choose empty slot. */
-// 	tags = ch->numslots;
-// 	if ((ccb->ccb_h.func_code == XPT_ATA_IO) &&
-// 	    (ccb->ataio.cmd.flags & CAM_ATAIO_FPDMA))
-// 		tags = ch->curr[ccb->ccb_h.target_id].tags;
-// 	if (ch->lastslot + 1 < tags)
-// 		tag = ffs(~(ch->oslots >> (ch->lastslot + 1)));
-// 	else
-// 		tag = 0;
-// 	if (tag == 0 || tag + ch->lastslot >= tags)
-// 		tag = ffs(~ch->oslots) - 1;
-// 	else
-// 		tag += ch->lastslot;
-// 	ch->lastslot = tag;
-// 	/* Occupy chosen slot. */
-// 	slot = &ch->slot[tag];
-// 	slot->ccb = ccb;
-// 	/* Stop PM timer. */
-// 	if (ch->numrslots == 0 && ch->pm_level > 3)
-// 		callout_stop(&ch->pm_timer);
-// 	/* Update channel stats. */
-// 	ch->oslots |= (1 << tag);
-// 	ch->numrslots++;
-// 	ch->numrslotspd[ccb->ccb_h.target_id]++;
-// 	if ((ccb->ccb_h.func_code == XPT_ATA_IO) &&
-// 	    (ccb->ataio.cmd.flags & CAM_ATAIO_FPDMA)) {
-// 		ch->numtslots++;
-// 		ch->numtslotspd[ccb->ccb_h.target_id]++;
-// 		ch->taggedtarget = ccb->ccb_h.target_id;
-// 	}
-// 	if ((ccb->ccb_h.func_code == XPT_ATA_IO) &&
-// 	    (ccb->ataio.cmd.flags & (CAM_ATAIO_CONTROL | CAM_ATAIO_NEEDRESULT)))
-// 		ch->aslots |= (1 << tag);
-// 	if ((ccb->ccb_h.flags & CAM_DIR_MASK) != CAM_DIR_NONE) {
-// 		slot->state = AHCI_SLOT_LOADING;
-// 		bus_dmamap_load_ccb(ch->dma.data_tag, slot->dma.data_map, ccb,
-// 		    ahci_dmasetprd, slot, 0);
-// 	} else {
-// 		slot->dma.nsegs = 0;
-// 		ahci_execute_transaction(slot);
-// 	}
-// }
+	/* Choose empty slot. */
+	tags = ch->numslots;
+	if ((ataio->func_code == XPT_ATA_IO) &&
+	    (ataio->cmd.flags & CAM_ATAIO_FPDMA))
+		tags = ch->curr[ataio->target_id].tags;
+	if (ch->lastslot + 1 < tags)
+		tag = ffs(~(ch->oslots >> (ch->lastslot + 1)));
+	else
+		tag = 0;
+	if (tag == 0 || tag + ch->lastslot >= tags)
+		tag = ffs(~ch->oslots) - 1;
+	else
+		tag += ch->lastslot;
+	ch->lastslot = tag;
+	/* Occupy chosen slot. */
+	slot = &ch->slot[tag];
+	slot->ataio = ataio;
+	/* Stop PM timer. */
+	if (ch->numrslots == 0 && ch->pm_level > 3)
+		callout_stop(&ch->pm_timer);
+	/* Update channel stats. */
+	ch->oslots |= (1 << tag);
+	ch->numrslots++;
+	ch->numrslotspd[ataio->target_id]++;
+	if ((ataio->func_code == XPT_ATA_IO) &&
+	    (ataio->cmd.flags & CAM_ATAIO_FPDMA)) {
+		ch->numtslots++;
+		ch->numtslotspd[ataio->target_id]++;
+		ch->taggedtarget = ataio->target_id;
+	}
+	if ((ataio->func_code == XPT_ATA_IO) &&
+	    (ataio->cmd.flags & (CAM_ATAIO_CONTROL | CAM_ATAIO_NEEDRESULT)))
+		ch->aslots |= (1 << tag);
+	if ((ataio->flags & CAM_DIR_MASK) != CAM_DIR_NONE) {
+		slot->state = AHCI_SLOT_LOADING;
+		// bus_dmamap_load_ccb(ch->dma.data_tag, slot->dma.data_map, ccb,
+		//     ahci_dmasetprd, slot, 0);
+    bus_dma_tag_create(bus_get_dma_tag(ch->dev), 1, 0, BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR, nullptr, nullptr, ataio->dxfer_len, 1, ataio->dxfer_len, 0, nullptr, nullptr ,&ch->dma.data_tag);
+    bus_dmamem_alloc(ch->dma.data_tag, reinterpret_cast<void **>(&ataio->data_ptr), BUS_DMA_NOWAIT | BUS_DMA_COHERENT, &slot->dma.data_map);
+    bus_dmamap_load(ch->dma.data_tag, slot->dma.data_map, reinterpret_cast<void *>(ataio->data_ptr), ataio->dxfer_len, nullptr, nullptr, BUS_DMA_NOWAIT);
+	} else {
+		slot->dma.nsegs = 0;
+		ahci_execute_transaction(slot);
+	}
+}
 
 // /* Locked by busdma engine. */
 // static void
@@ -1506,275 +1536,288 @@ ahci_ch_intr_main(struct ahci_channel *ch, uint32_t istatus)
 // }
 
 /* Must be called with channel locked. */
-// static void
-// ahci_execute_transaction(struct ahci_slot *slot)
-// {
-// 	struct ahci_channel *ch = slot->ch;
-// 	struct ahci_cmd_tab *ctp;
-// 	struct ahci_cmd_list *clp;
-// 	union ccb *ccb = slot->ccb;
-// 	int port = ccb->ccb_h.target_id & 0x0f;
-// 	int fis_size, i, softreset;
-// 	uint8_t *fis = ch->dma.rfis + 0x40;
-// 	uint8_t val;
+static void
+ahci_execute_transaction(struct ahci_slot *slot)
+{
+	struct ahci_channel *ch = slot->ch;
+	struct ahci_cmd_tab *ctp;
+	struct ahci_cmd_list *clp;
+	// union ccb *ccb = slot->ccb;
+  PacketAtaio *ataio = slot->ataio;
+	int port = ataio->target_id & 0x0f;
+	int fis_size, i, softreset;
+	uint8_t *fis = ch->dma.rfis + 0x40;
+	uint8_t val;
 
-// 	/* Get a piece of the workspace for this request */
-// 	ctp = (struct ahci_cmd_tab *)
-// 		(ch->dma.work + AHCI_CT_OFFSET + (AHCI_CT_SIZE * slot->slot));
-// 	/* Setup the FIS for this request */
-// 	if (!(fis_size = ahci_setup_fis(ch, ctp, ccb, slot->slot))) {
-// 		device_printf(ch->dev, "Setting up SATA FIS failed\n");
-// 		ahci_end_transaction(slot, AHCI_ERR_INVALID);
-// 		return;
-// 	}
-// 	/* Setup the command list entry */
-// 	clp = (struct ahci_cmd_list *)
-// 	    (ch->dma.work + AHCI_CL_OFFSET + (AHCI_CL_SIZE * slot->slot));
-// 	clp->cmd_flags = htole16(
-// 		    (ccb->ccb_h.flags & CAM_DIR_OUT ? AHCI_CMD_WRITE : 0) |
-// 		    (ccb->ccb_h.func_code == XPT_SCSI_IO ?
-// 		     (AHCI_CMD_ATAPI | AHCI_CMD_PREFETCH) : 0) |
-// 		    (fis_size / sizeof(u_int32_t)) |
-// 		    (port << 12));
-// 	clp->prd_length = htole16(slot->dma.nsegs);
-// 	/* Special handling for Soft Reset command. */
-// 	if ((ccb->ccb_h.func_code == XPT_ATA_IO) &&
-// 	    (ccb->ataio.cmd.flags & CAM_ATAIO_CONTROL)) {
-// 		if (ccb->ataio.cmd.control & ATA_A_RESET) {
-// 			softreset = 1;
-// 			/* Kick controller into sane state */
-// 			ahci_stop(ch);
-// 			ahci_clo(ch);
-// 			ahci_start(ch, 0);
-// 			clp->cmd_flags |= AHCI_CMD_RESET | AHCI_CMD_CLR_BUSY;
-// 		} else {
-// 			softreset = 2;
-// 			/* Prepare FIS receive area for check. */
-// 			for (i = 0; i < 20; i++)
-// 				fis[i] = 0xff;
-// 		}
-// 	} else
-// 		softreset = 0;
-// 	clp->bytecount = 0;
-// 	clp->cmd_table_phys = htole64(ch->dma.work_bus + AHCI_CT_OFFSET +
-// 				  (AHCI_CT_SIZE * slot->slot));
-// 	bus_dmamap_sync(ch->dma.work_tag, ch->dma.work_map,
-// 	    BUS_DMASYNC_PREREAD | BUS_DMASYNC_PREWRITE);
-// 	bus_dmamap_sync(ch->dma.rfis_tag, ch->dma.rfis_map,
-// 	    BUS_DMASYNC_PREREAD);
-// 	/* Set ACTIVE bit for NCQ commands. */
-// 	if ((ccb->ccb_h.func_code == XPT_ATA_IO) &&
-// 	    (ccb->ataio.cmd.flags & CAM_ATAIO_FPDMA)) {
-// 		ATA_OUTL(ch->r_mem, AHCI_P_SACT, 1 << slot->slot);
-// 	}
-// 	/* If FBS is enabled, set PMP port. */
-// 	if (ch->fbs_enabled) {
-// 		ATA_OUTL(ch->r_mem, AHCI_P_FBS, AHCI_P_FBS_EN |
-// 		    (port << AHCI_P_FBS_DEV_SHIFT));
-// 	}
-// 	/* Issue command to the controller. */
-// 	slot->state = AHCI_SLOT_RUNNING;
-// 	ch->rslots |= (1 << slot->slot);
-// 	ATA_OUTL(ch->r_mem, AHCI_P_CI, (1 << slot->slot));
-// 	/* Device reset commands doesn't interrupt. Poll them. */
-// 	if (ccb->ccb_h.func_code == XPT_ATA_IO &&
-// 	    (ccb->ataio.cmd.command == ATA_DEVICE_RESET || softreset)) {
-// 		int count, timeout = ccb->ccb_h.timeout * 100;
-// 		enum ahci_err_type et = AHCI_ERR_NONE;
+	/* Get a piece of the workspace for this request */
+	ctp = (struct ahci_cmd_tab *)
+		(ch->dma.work + AHCI_CT_OFFSET + (AHCI_CT_SIZE * slot->slot));
+	/* Setup the FIS for this request */
+	if (!(fis_size = ahci_setup_fis(ch, ctp, ataio, slot->slot))) {
+		device_printf(ch->dev, "Setting up SATA FIS failed\n");
+		ahci_end_transaction(slot, AHCI_ERR_INVALID);
+		return;
+	}
+	/* Setup the command list entry */
+	clp = (struct ahci_cmd_list *)
+	    (ch->dma.work + AHCI_CL_OFFSET + (AHCI_CL_SIZE * slot->slot));
+	clp->cmd_flags = htole16(
+		    (ataio->flags & CAM_DIR_OUT ? AHCI_CMD_WRITE : 0) |
+		    (ataio->func_code == XPT_SCSI_IO ?
+		     (AHCI_CMD_ATAPI | AHCI_CMD_PREFETCH) : 0) |
+		    (fis_size / sizeof(u_int32_t)) |
+		    (port << 12));
+	clp->prd_length = htole16(slot->dma.nsegs);
+	/* Special handling for Soft Reset command. */
+	if ((ataio->func_code == XPT_ATA_IO) &&
+	    (ataio->cmd.flags & CAM_ATAIO_CONTROL)) {
+		if (ataio->cmd.control & ATA_A_RESET) {
+			softreset = 1;
+			/* Kick controller into sane state */
+			ahci_stop(ch);
+			ahci_clo(ch);
+			ahci_start(ch, 0);
+			clp->cmd_flags |= AHCI_CMD_RESET | AHCI_CMD_CLR_BUSY;
+		} else {
+			softreset = 2;
+			/* Prepare FIS receive area for check. */
+			for (i = 0; i < 20; i++)
+				fis[i] = 0xff;
+		}
+	} else
+		softreset = 0;
+	clp->bytecount = 0;
+	clp->cmd_table_phys = htole64(ch->dma.work_bus + AHCI_CT_OFFSET +
+				  (AHCI_CT_SIZE * slot->slot));
+	bus_dmamap_sync(ch->dma.work_tag, ch->dma.work_map,
+	    BUS_DMASYNC_PREREAD | BUS_DMASYNC_PREWRITE);
+	bus_dmamap_sync(ch->dma.rfis_tag, ch->dma.rfis_map,
+	    BUS_DMASYNC_PREREAD);
+	/* Set ACTIVE bit for NCQ commands. */
+	if ((ataio->func_code == XPT_ATA_IO) &&
+	    (ataio->cmd.flags & CAM_ATAIO_FPDMA)) {
+		ATA_OUTL(ch->r_mem, AHCI_P_SACT, 1 << slot->slot);
+	}
+	/* If FBS is enabled, set PMP port. */
+	if (ch->fbs_enabled) {
+		ATA_OUTL(ch->r_mem, AHCI_P_FBS, AHCI_P_FBS_EN |
+		    (port << AHCI_P_FBS_DEV_SHIFT));
+	}
+	/* Issue command to the controller. */
+	slot->state = AHCI_SLOT_RUNNING;
+	ch->rslots |= (1 << slot->slot);
+	ATA_OUTL(ch->r_mem, AHCI_P_CI, (1 << slot->slot));
+	/* Device reset commands doesn't interrupt. Poll them. */
+	if (ataio->func_code == XPT_ATA_IO &&
+	    (ataio->cmd.command == ATA_DEVICE_RESET || softreset)) {
+		int count, timeout = ataio->timeout * 100;
+		enum ahci_err_type et = AHCI_ERR_NONE;
 
-// 		for (count = 0; count < timeout; count++) {
-// 			DELAY(10);
-// 			if (!(ATA_INL(ch->r_mem, AHCI_P_CI) & (1 << slot->slot)))
-// 				break;
-// 			if ((ATA_INL(ch->r_mem, AHCI_P_TFD) & ATA_S_ERROR) &&
-// 			    softreset != 1) {
-// #if 0
-// 				device_printf(ch->dev,
-// 				    "Poll error on slot %d, TFD: %04x\n",
-// 				    slot->slot, ATA_INL(ch->r_mem, AHCI_P_TFD));
-// #endif
-// 				et = AHCI_ERR_TFE;
-// 				break;
-// 			}
-// 			/* Workaround for ATI SB600/SB700 chipsets. */
-// 			if (ccb->ccb_h.target_id == 15 &&
-// 			    (ch->quirks & AHCI_Q_ATI_PMP_BUG) &&
-// 			    (ATA_INL(ch->r_mem, AHCI_P_IS) & AHCI_P_IX_IPM)) {
-// 				et = AHCI_ERR_TIMEOUT;
-// 				break;
-// 			}
-// 		}
+		for (count = 0; count < timeout; count++) {
+			DELAY(10);
+			if (!(ATA_INL(ch->r_mem, AHCI_P_CI) & (1 << slot->slot)))
+				break;
+			if ((ATA_INL(ch->r_mem, AHCI_P_TFD) & ATA_S_ERROR) &&
+			    softreset != 1) {
+#if 0
+				device_printf(ch->dev,
+				    "Poll error on slot %d, TFD: %04x\n",
+				    slot->slot, ATA_INL(ch->r_mem, AHCI_P_TFD));
+#endif
+				et = AHCI_ERR_TFE;
+				break;
+			}
+			/* Workaround for ATI SB600/SB700 chipsets. */
+			if (ataio->target_id == 15 &&
+			    (ch->quirks & AHCI_Q_ATI_PMP_BUG) &&
+			    (ATA_INL(ch->r_mem, AHCI_P_IS) & AHCI_P_IX_IPM)) {
+				et = AHCI_ERR_TIMEOUT;
+				break;
+			}
+		}
 
-// 		/*
-// 		 * Marvell HBAs with non-RAID firmware do not wait for
-// 		 * readiness after soft reset, so we have to wait here.
-// 		 * Marvell RAIDs do not have this problem, but instead
-// 		 * sometimes forget to update FIS receive area, breaking
-// 		 * this wait.
-// 		 */
-// 		if ((ch->quirks & AHCI_Q_NOBSYRES) == 0 &&
-// 		    (ch->quirks & AHCI_Q_ATI_PMP_BUG) == 0 &&
-// 		    softreset == 2 && et == AHCI_ERR_NONE) {
-// 			for ( ; count < timeout; count++) {
-// 				bus_dmamap_sync(ch->dma.rfis_tag,
-// 				    ch->dma.rfis_map, BUS_DMASYNC_POSTREAD);
-// 				val = fis[2];
-// 				bus_dmamap_sync(ch->dma.rfis_tag,
-// 				    ch->dma.rfis_map, BUS_DMASYNC_PREREAD);
-// 				if ((val & ATA_S_BUSY) == 0)
-// 					break;
-// 				DELAY(10);
-// 			}
-// 		}
+		/*
+		 * Marvell HBAs with non-RAID firmware do not wait for
+		 * readiness after soft reset, so we have to wait here.
+		 * Marvell RAIDs do not have this problem, but instead
+		 * sometimes forget to update FIS receive area, breaking
+		 * this wait.
+		 */
+		if ((ch->quirks & AHCI_Q_NOBSYRES) == 0 &&
+		    (ch->quirks & AHCI_Q_ATI_PMP_BUG) == 0 &&
+		    softreset == 2 && et == AHCI_ERR_NONE) {
+			for ( ; count < timeout; count++) {
+				bus_dmamap_sync(ch->dma.rfis_tag,
+				    ch->dma.rfis_map, BUS_DMASYNC_POSTREAD);
+				val = fis[2];
+				bus_dmamap_sync(ch->dma.rfis_tag,
+				    ch->dma.rfis_map, BUS_DMASYNC_PREREAD);
+				if ((val & ATA_S_BUSY) == 0)
+					break;
+				DELAY(10);
+			}
+		}
 
-// 		if (timeout && (count >= timeout)) {
-// 			device_printf(ch->dev, "Poll timeout on slot %d port %d\n",
-// 			    slot->slot, port);
-// 			device_printf(ch->dev, "is %08x cs %08x ss %08x "
-// 			    "rs %08x tfd %02x serr %08x cmd %08x\n",
-// 			    ATA_INL(ch->r_mem, AHCI_P_IS),
-// 			    ATA_INL(ch->r_mem, AHCI_P_CI),
-// 			    ATA_INL(ch->r_mem, AHCI_P_SACT), ch->rslots,
-// 			    ATA_INL(ch->r_mem, AHCI_P_TFD),
-// 			    ATA_INL(ch->r_mem, AHCI_P_SERR),
-// 			    ATA_INL(ch->r_mem, AHCI_P_CMD));
-// 			et = AHCI_ERR_TIMEOUT;
-// 		}
+		if (timeout && (count >= timeout)) {
+			device_printf(ch->dev, "Poll timeout on slot %d port %d\n",
+			    slot->slot, port);
+			device_printf(ch->dev, "is %08x cs %08x ss %08x "
+			    "rs %08x tfd %02x serr %08x cmd %08x\n",
+			    ATA_INL(ch->r_mem, AHCI_P_IS),
+			    ATA_INL(ch->r_mem, AHCI_P_CI),
+			    ATA_INL(ch->r_mem, AHCI_P_SACT), ch->rslots,
+			    ATA_INL(ch->r_mem, AHCI_P_TFD),
+			    ATA_INL(ch->r_mem, AHCI_P_SERR),
+			    ATA_INL(ch->r_mem, AHCI_P_CMD));
+			et = AHCI_ERR_TIMEOUT;
+		}
 
-// 		/* Kick controller into sane state and enable FBS. */
-// 		if (softreset == 2)
-// 			ch->eslots |= (1 << slot->slot);
-// 		ahci_end_transaction(slot, et);
-// 		return;
-// 	}
-// 	/* Start command execution timeout */
-// 	callout_reset_sbt(&slot->timeout, SBT_1MS * ccb->ccb_h.timeout / 2,
-// 	    0, (timeout_t*)ahci_timeout, slot, 0);
-// 	return;
-// }
+		/* Kick controller into sane state and enable FBS. */
+		if (softreset == 2)
+			ch->eslots |= (1 << slot->slot);
+		ahci_end_transaction(slot, et);
+		return;
+	}
+	/* Start command execution timeout */
+	callout_reset_sbt(&slot->timeout, SBT_1MS * ataio->timeout / 2,
+	    0, (timeout_t*)ahci_timeout, slot, 0);
+	return;
+}
 
-// /* Must be called with channel locked. */
-// static void
-// ahci_process_timeout(struct ahci_channel *ch)
-// {
-// 	int i;
+/* Must be called with channel locked. */
+static void
+ahci_process_timeout(struct ahci_channel *ch)
+{
+	int i;
 
-// 	mtx_assert(&ch->mtx, MA_OWNED);
-// 	/* Handle the rest of commands. */
-// 	for (i = 0; i < ch->numslots; i++) {
-// 		/* Do we have a running request on slot? */
-// 		if (ch->slot[i].state < AHCI_SLOT_RUNNING)
-// 			continue;
-// 		ahci_end_transaction(&ch->slot[i], AHCI_ERR_TIMEOUT);
-// 	}
-// }
+	mtx_assert(&ch->mtx, MA_OWNED);
+	/* Handle the rest of commands. */
+	for (i = 0; i < ch->numslots; i++) {
+		/* Do we have a running request on slot? */
+		if (ch->slot[i].state < AHCI_SLOT_RUNNING)
+			continue;
+		ahci_end_transaction(&ch->slot[i], AHCI_ERR_TIMEOUT);
+	}
+}
 
-// /* Must be called with channel locked. */
-// static void
-// ahci_rearm_timeout(struct ahci_channel *ch)
-// {
-// 	int i;
+/* Must be called with channel locked. */
+static void
+ahci_rearm_timeout(struct ahci_channel *ch)
+{
+	int i;
 
-// 	mtx_assert(&ch->mtx, MA_OWNED);
-// 	for (i = 0; i < ch->numslots; i++) {
-// 		struct ahci_slot *slot = &ch->slot[i];
+	mtx_assert(&ch->mtx, MA_OWNED);
+	for (i = 0; i < ch->numslots; i++) {
+		struct ahci_slot *slot = &ch->slot[i];
 
-// 		/* Do we have a running request on slot? */
-// 		if (slot->state < AHCI_SLOT_RUNNING)
-// 			continue;
-// 		if ((ch->toslots & (1 << i)) == 0)
-// 			continue;
-// 		callout_reset_sbt(&slot->timeout,
-//     	    	    SBT_1MS * slot->ccb->ccb_h.timeout / 2, 0,
-// 		    (timeout_t*)ahci_timeout, slot, 0);
-// 	}
-// }
+		/* Do we have a running request on slot? */
+		if (slot->state < AHCI_SLOT_RUNNING)
+			continue;
+		if ((ch->toslots & (1 << i)) == 0)
+			continue;
+		callout_reset_sbt(&slot->timeout,
+    	    	    SBT_1MS * slot->ataio->timeout / 2, 0,
+		    (timeout_t*)ahci_timeout, slot, 0);
+	}
+}
 
-// /* Locked by callout mechanism. */
-// static void
-// ahci_timeout(struct ahci_slot *slot)
-// {
-// 	struct ahci_channel *ch = slot->ch;
-// 	device_t dev = ch->dev;
-// 	uint32_t sstatus;
-// 	int ccs;
-// 	int i;
+/* Locked by callout mechanism. */
+static void
+ahci_timeout(struct ahci_slot *slot)
+{
+	struct ahci_channel *ch = slot->ch;
+	device_t dev = ch->dev;
+	uint32_t sstatus;
+	int ccs;
+	int i;
 
-// 	/* Check for stale timeout. */
-// 	if (slot->state < AHCI_SLOT_RUNNING)
-// 		return;
+	/* Check for stale timeout. */
+	if (slot->state < AHCI_SLOT_RUNNING)
+		return;
 
-// 	/* Check if slot was not being executed last time we checked. */
-// 	if (slot->state < AHCI_SLOT_EXECUTING) {
-// 		/* Check if slot started executing. */
-// 		sstatus = ATA_INL(ch->r_mem, AHCI_P_SACT);
-// 		ccs = (ATA_INL(ch->r_mem, AHCI_P_CMD) & AHCI_P_CMD_CCS_MASK)
-// 		    >> AHCI_P_CMD_CCS_SHIFT;
-// 		if ((sstatus & (1 << slot->slot)) != 0 || ccs == slot->slot ||
-// 		    ch->fbs_enabled || ch->wrongccs)
-// 			slot->state = AHCI_SLOT_EXECUTING;
-// 		else if ((ch->rslots & (1 << ccs)) == 0) {
-// 			ch->wrongccs = 1;
-// 			slot->state = AHCI_SLOT_EXECUTING;
-// 		}
+	/* Check if slot was not being executed last time we checked. */
+	if (slot->state < AHCI_SLOT_EXECUTING) {
+		/* Check if slot started executing. */
+		sstatus = ATA_INL(ch->r_mem, AHCI_P_SACT);
+		ccs = (ATA_INL(ch->r_mem, AHCI_P_CMD) & AHCI_P_CMD_CCS_MASK)
+		    >> AHCI_P_CMD_CCS_SHIFT;
+		if ((sstatus & (1 << slot->slot)) != 0 || ccs == slot->slot ||
+		    ch->fbs_enabled || ch->wrongccs)
+			slot->state = AHCI_SLOT_EXECUTING;
+		else if ((ch->rslots & (1 << ccs)) == 0) {
+			ch->wrongccs = 1;
+			slot->state = AHCI_SLOT_EXECUTING;
+		}
 
-// 		callout_reset_sbt(&slot->timeout,
-// 	    	    SBT_1MS * slot->ccb->ccb_h.timeout / 2, 0,
-// 		    (timeout_t*)ahci_timeout, slot, 0);
-// 		return;
-// 	}
+		callout_reset_sbt(&slot->timeout,
+	    	    SBT_1MS * slot->ataio->timeout / 2, 0,
+		    (timeout_t*)ahci_timeout, slot, 0);
+		return;
+	}
 
-// 	device_printf(dev, "Timeout on slot %d port %d\n",
-// 	    slot->slot, slot->ccb->ccb_h.target_id & 0x0f);
-// 	device_printf(dev, "is %08x cs %08x ss %08x rs %08x tfd %02x "
-// 	    "serr %08x cmd %08x\n",
-// 	    ATA_INL(ch->r_mem, AHCI_P_IS), ATA_INL(ch->r_mem, AHCI_P_CI),
-// 	    ATA_INL(ch->r_mem, AHCI_P_SACT), ch->rslots,
-// 	    ATA_INL(ch->r_mem, AHCI_P_TFD), ATA_INL(ch->r_mem, AHCI_P_SERR),
-// 	    ATA_INL(ch->r_mem, AHCI_P_CMD));
+	device_printf(dev, "Timeout on slot %d port %d\n",
+	    slot->slot, slot->ataio->target_id & 0x0f);
+	device_printf(dev, "is %08x cs %08x ss %08x rs %08x tfd %02x "
+	    "serr %08x cmd %08x\n",
+	    ATA_INL(ch->r_mem, AHCI_P_IS), ATA_INL(ch->r_mem, AHCI_P_CI),
+	    ATA_INL(ch->r_mem, AHCI_P_SACT), ch->rslots,
+	    ATA_INL(ch->r_mem, AHCI_P_TFD), ATA_INL(ch->r_mem, AHCI_P_SERR),
+	    ATA_INL(ch->r_mem, AHCI_P_CMD));
 
-// 	/* Handle frozen command. */
-// 	if (ch->frozen) {
-// 		union ccb *fccb = ch->frozen;
-// 		ch->frozen = NULL;
-// 		fccb->ccb_h.status = CAM_REQUEUE_REQ | CAM_RELEASE_SIMQ;
-// 		if (!(fccb->ccb_h.status & CAM_DEV_QFRZN)) {
-// 			xpt_freeze_devq(fccb->ccb_h.path, 1);
-// 			fccb->ccb_h.status |= CAM_DEV_QFRZN;
-// 		}
-// 		ahci_done(ch, fccb);
-// 	}
-// 	if (!ch->fbs_enabled && !ch->wrongccs) {
-// 		/* Without FBS we know real timeout source. */
-// 		ch->fatalerr = 1;
-// 		/* Handle command with timeout. */
-// 		ahci_end_transaction(&ch->slot[slot->slot], AHCI_ERR_TIMEOUT);
-// 		/* Handle the rest of commands. */
-// 		for (i = 0; i < ch->numslots; i++) {
-// 			/* Do we have a running request on slot? */
-// 			if (ch->slot[i].state < AHCI_SLOT_RUNNING)
-// 				continue;
-// 			ahci_end_transaction(&ch->slot[i], AHCI_ERR_INNOCENT);
-// 		}
-// 	} else {
-// 		/* With FBS we wait for other commands timeout and pray. */
-// 		if (ch->toslots == 0)
-// 			xpt_freeze_simq(ch->sim, 1);
-// 		ch->toslots |= (1 << slot->slot);
-// 		if ((ch->rslots & ~ch->toslots) == 0)
-// 			ahci_process_timeout(ch);
-// 		else
-// 			device_printf(dev, " ... waiting for slots %08x\n",
-// 			    ch->rslots & ~ch->toslots);
-// 	}
-// }
+	/* Handle frozen command. */
+	// if (ch->frozen) {
+	// 	union ccb *fccb = ch->frozen;
+	// 	ch->frozen = NULL;
+	// 	fccb->ccb_h.status = CAM_REQUEUE_REQ | CAM_RELEASE_SIMQ;
+	// 	if (!(fccb->ccb_h.status & CAM_DEV_QFRZN)) {
+	// 		xpt_freeze_devq(fccb->ccb_h.path, 1);
+	// 		fccb->ccb_h.status |= CAM_DEV_QFRZN;
+	// 	}
+	// 	ahci_done(ch, fccb);
+	// }
+  if (ch->dev->GetMasterClass<AhciChannel>()->frozen) {
+    PacketAtaio *packet = ch->dev->GetMasterClass<AhciChannel>()->frozen;
+    ch->dev->GetMasterClass<AhciChannel>()->frozen = NULL;
+    packet->status = CAM_REQUEUE_REQ | CAM_RELEASE_SIMQ;
+    if (!(packet->status & CAM_DEV_QFRZN)) {
+      ch->dev->GetMasterClass<AhciChannel>()->devq.Freeze(1);
+      packet->status |= CAM_DEV_QFRZN;
+    }
+    ahci_done(ch, packet);
+  }
+	if (!ch->fbs_enabled && !ch->wrongccs) {
+		/* Without FBS we know real timeout source. */
+		ch->fatalerr = 1;
+		/* Handle command with timeout. */
+		ahci_end_transaction(&ch->slot[slot->slot], AHCI_ERR_TIMEOUT);
+		/* Handle the rest of commands. */
+		for (i = 0; i < ch->numslots; i++) {
+			/* Do we have a running request on slot? */
+			if (ch->slot[i].state < AHCI_SLOT_RUNNING)
+				continue;
+			ahci_end_transaction(&ch->slot[i], AHCI_ERR_INNOCENT);
+		}
+	} else {
+		/* With FBS we wait for other commands timeout and pray. */
+		if (ch->toslots == 0)
+      ch->dev->GetMasterClass<AhciChannel>()->devq.Freeze(1);
+			// xpt_freeze_simq(ch->sim, 1);
+		ch->toslots |= (1 << slot->slot);
+		if ((ch->rslots & ~ch->toslots) == 0)
+			ahci_process_timeout(ch);
+		else
+			device_printf(dev, " ... waiting for slots %08x\n",
+			    ch->rslots & ~ch->toslots);
+	}
+}
 
 /* Must be called with channel locked. */
 static void
 ahci_end_transaction(struct ahci_slot *slot, enum ahci_err_type et)
 {
 	struct ahci_channel *ch = slot->ch;
-	union ccb *ccb = slot->ccb;
+	// union ccb *ccb = slot->ccb;
+  PacketAtaio *ataio = slot->ataio;
 	struct ahci_cmd_list *clp;
 	int lastto;
 	uint32_t sig;
@@ -1787,357 +1830,385 @@ ahci_end_transaction(struct ahci_slot *slot, enum ahci_err_type et)
 	 * May be incorrect if several commands finished same time,
 	 * so read only when sure or have to.
 	 */
-	// if (ccb->ccb_h.func_code == XPT_ATA_IO) {
-	// 	struct ata_res *res = &ccb->ataio.res;
+	if (ataio->func_code == XPT_ATA_IO) {
+		struct ata_res *res = &ataio->res;
 
-	// 	if ((et == AHCI_ERR_TFE) ||
-	// 	    (ccb->ataio.cmd.flags & CAM_ATAIO_NEEDRESULT)) {
-	// 		u_int8_t *fis = ch->dma.rfis + 0x40;
+		if ((et == AHCI_ERR_TFE) ||
+		    (ataio->cmd.flags & CAM_ATAIO_NEEDRESULT)) {
+			u_int8_t *fis = ch->dma.rfis + 0x40;
 
-	// 		bus_dmamap_sync(ch->dma.rfis_tag, ch->dma.rfis_map,
-	// 		    BUS_DMASYNC_POSTREAD);
-	// 		if (ch->fbs_enabled) {
-	// 			fis += ccb->ccb_h.target_id * 256;
-	// 			res->status = fis[2];
-	// 			res->error = fis[3];
-	// 		} else {
-	// 			uint16_t tfd = ATA_INL(ch->r_mem, AHCI_P_TFD);
+			bus_dmamap_sync(ch->dma.rfis_tag, ch->dma.rfis_map,
+			    BUS_DMASYNC_POSTREAD);
+			if (ch->fbs_enabled) {
+				fis += ataio->target_id * 256;
+				res->status = fis[2];
+				res->error = fis[3];
+			} else {
+				uint16_t tfd = ATA_INL(ch->r_mem, AHCI_P_TFD);
 
-	// 			res->status = tfd;
-	// 			res->error = tfd >> 8;
-	// 		}
-	// 		res->lba_low = fis[4];
-	// 		res->lba_mid = fis[5];
-	// 		res->lba_high = fis[6];
-	// 		res->device = fis[7];
-	// 		res->lba_low_exp = fis[8];
-	// 		res->lba_mid_exp = fis[9];
-	// 		res->lba_high_exp = fis[10];
-	// 		res->sector_count = fis[12];
-	// 		res->sector_count_exp = fis[13];
+				res->status = tfd;
+				res->error = tfd >> 8;
+			}
+			res->lba_low = fis[4];
+			res->lba_mid = fis[5];
+			res->lba_high = fis[6];
+			res->device = fis[7];
+			res->lba_low_exp = fis[8];
+			res->lba_mid_exp = fis[9];
+			res->lba_high_exp = fis[10];
+			res->sector_count = fis[12];
+			res->sector_count_exp = fis[13];
 
-	// 		/*
-	// 		 * Some weird controllers do not return signature in
-	// 		 * FIS receive area. Read it from PxSIG register.
-	// 		 */
-	// 		if ((ch->quirks & AHCI_Q_ALTSIG) &&
-	// 		    (ccb->ataio.cmd.flags & CAM_ATAIO_CONTROL) &&
-	// 		    (ccb->ataio.cmd.control & ATA_A_RESET) == 0) {
-	// 			sig = ATA_INL(ch->r_mem,  AHCI_P_SIG);
-	// 			res->lba_high = sig >> 24;
-	// 			res->lba_mid = sig >> 16;
-	// 			res->lba_low = sig >> 8;
-	// 			res->sector_count = sig;
-	// 		}
-	// 	} else
-	// 		bzero(res, sizeof(*res));
-	// 	if ((ccb->ataio.cmd.flags & CAM_ATAIO_FPDMA) == 0 &&
-	// 	    (ccb->ccb_h.flags & CAM_DIR_MASK) != CAM_DIR_NONE &&
-	// 	    (ch->quirks & AHCI_Q_NOCOUNT) == 0) {
-	// 		ccb->ataio.resid =
-	// 		    ccb->ataio.dxfer_len - le32toh(clp->bytecount);
-	// 	}
-	// } else {
-	// 	if ((ccb->ccb_h.flags & CAM_DIR_MASK) != CAM_DIR_NONE &&
-	// 	    (ch->quirks & AHCI_Q_NOCOUNT) == 0) {
-	// 		ccb->csio.resid =
-	// 		    ccb->csio.dxfer_len - le32toh(clp->bytecount);
-	// 	}
-	// }
-	// if ((ccb->ccb_h.flags & CAM_DIR_MASK) != CAM_DIR_NONE) {
-	// 	bus_dmamap_sync(ch->dma.data_tag, slot->dma.data_map,
-	// 	    (ccb->ccb_h.flags & CAM_DIR_IN) ?
-	// 	    BUS_DMASYNC_POSTREAD : BUS_DMASYNC_POSTWRITE);
-	// 	bus_dmamap_unload(ch->dma.data_tag, slot->dma.data_map);
-	// }
-	// if (et != AHCI_ERR_NONE)
-	// 	ch->eslots |= (1 << slot->slot);
-	// /* In case of error, freeze device for proper recovery. */
-	// if ((et != AHCI_ERR_NONE) && (!ch->recoverycmd) &&
-	//     !(ccb->ccb_h.status & CAM_DEV_QFRZN)) {
-	// 	xpt_freeze_devq(ccb->path, 1);
-	// 	ccb->ccb_h.status |= CAM_DEV_QFRZN;
-	// }
-	// /* Set proper result status. */
-	// ccb->ccb_h.status &= ~CAM_STATUS_MASK;
-	// switch (et) {
-	// case AHCI_ERR_NONE:
-	// 	ccb->ccb_h.status |= CAM_REQ_CMP;
-	// 	if (ccb->func_code == XPT_SCSI_IO)
-	// 		ccb->csio.scsi_status = SCSI_STATUS_OK;
-	// 	break;
-	// case AHCI_ERR_INVALID:
-	// 	ch->fatalerr = 1;
-	// 	ccb->ccb_h.status |= CAM_REQ_INVALID;
-	// 	break;
-	// case AHCI_ERR_INNOCENT:
-	// 	ccb->ccb_h.status |= CAM_REQUEUE_REQ;
-	// 	break;
-	// case AHCI_ERR_TFE:
-	// case AHCI_ERR_NCQ:
-	// 	if (ccb->func_code == XPT_SCSI_IO) {
-	// 		ccb->ccb_h.status |= CAM_SCSI_STATUS_ERROR;
-	// 		ccb->csio.scsi_status = SCSI_STATUS_CHECK_COND;
-	// 	} else {
-	// 		ccb->ccb_h.status |= CAM_ATA_STATUS_ERROR;
-	// 	}
-	// 	break;
-	// case AHCI_ERR_SATA:
-	// 	ch->fatalerr = 1;
-	// 	if (!ch->recoverycmd) {
-	// 		xpt_freeze_simq(ch->sim, 1);
-	// 		ccb->ccb_h.status &= ~CAM_STATUS_MASK;
-	// 		ccb->ccb_h.status |= CAM_RELEASE_SIMQ;
-	// 	}
-	// 	ccb->ccb_h.status |= CAM_UNCOR_PARITY;
-	// 	break;
-	// case AHCI_ERR_TIMEOUT:
-	// 	if (!ch->recoverycmd) {
-	// 		xpt_freeze_simq(ch->sim, 1);
-	// 		ccb->ccb_h.status &= ~CAM_STATUS_MASK;
-	// 		ccb->ccb_h.status |= CAM_RELEASE_SIMQ;
-	// 	}
-	// 	ccb->ccb_h.status |= CAM_CMD_TIMEOUT;
-	// 	break;
-	// default:
-	// 	ch->fatalerr = 1;
-	// 	ccb->ccb_h.status |= CAM_REQ_CMP_ERR;
-	// }
-	// /* Free slot. */
-	// ch->oslots &= ~(1 << slot->slot);
-	// ch->rslots &= ~(1 << slot->slot);
-	// ch->aslots &= ~(1 << slot->slot);
-	// slot->state = AHCI_SLOT_EMPTY;
+			/*
+			 * Some weird controllers do not return signature in
+			 * FIS receive area. Read it from PxSIG register.
+			 */
+			if ((ch->quirks & AHCI_Q_ALTSIG) &&
+			    (ataio->cmd.flags & CAM_ATAIO_CONTROL) &&
+			    (ataio->cmd.control & ATA_A_RESET) == 0) {
+				sig = ATA_INL(ch->r_mem,  AHCI_P_SIG);
+				res->lba_high = sig >> 24;
+				res->lba_mid = sig >> 16;
+				res->lba_low = sig >> 8;
+				res->sector_count = sig;
+			}
+		} else
+			bzero(res, sizeof(*res));
+		if ((ataio->cmd.flags & CAM_ATAIO_FPDMA) == 0 &&
+		    (ataio->flags & CAM_DIR_MASK) != CAM_DIR_NONE &&
+		    (ch->quirks & AHCI_Q_NOCOUNT) == 0) {
+			ataio->resid =
+			    ataio->dxfer_len - le32toh(clp->bytecount);
+		}
+	} else {
+		if ((ataio->flags & CAM_DIR_MASK) != CAM_DIR_NONE &&
+		    (ch->quirks & AHCI_Q_NOCOUNT) == 0) {
+      kassert(false);
+			// ccb->csio.resid =
+			//     ccb->csio.dxfer_len - le32toh(clp->bytecount);
+		}
+	}
+  if ((ataio->flags & CAM_DIR_MASK) != CAM_DIR_NONE) {
+	 	bus_dmamap_sync(ch->dma.data_tag, slot->dma.data_map,
+		    (ataio->flags & CAM_DIR_IN) ?
+		    BUS_DMASYNC_POSTREAD : BUS_DMASYNC_POSTWRITE);
+		bus_dmamap_unload(ch->dma.data_tag, slot->dma.data_map);
+	}
+	if (et != AHCI_ERR_NONE)
+		ch->eslots |= (1 << slot->slot);
+	/* In case of error, freeze device for proper recovery. */
+	if ((et != AHCI_ERR_NONE) && (!ch->recoverycmd) &&
+	    !(ataio->status & CAM_DEV_QFRZN)) {
+		//xpt_freeze_devq(ccb->path, 1);
+    ch->dev->GetMasterClass<AhciChannel>()->devq.Freeze(1);
+		ataio->status |= CAM_DEV_QFRZN;
+	}
+	/* Set proper result status. */
+	ataio->status &= ~CAM_STATUS_MASK;
+	switch (et) {
+	case AHCI_ERR_NONE:
+		ataio->status |= CAM_REQ_CMP;
+		if (ataio->func_code == XPT_SCSI_IO) {
+      kassert(false);
+			// ccb->csio.scsi_status = SCSI_STATUS_OK;
+    }
+		break;
+	case AHCI_ERR_INVALID:
+		ch->fatalerr = 1;
+		ataio->status |= CAM_REQ_INVALID;
+		break;
+	case AHCI_ERR_INNOCENT:
+		ataio->status |= CAM_REQUEUE_REQ;
+		break;
+	case AHCI_ERR_TFE:
+	case AHCI_ERR_NCQ:
+		if (ataio->func_code == XPT_SCSI_IO) {
+      kassert(false);
+			// ccb->ccb_h.status |= CAM_SCSI_STATUS_ERROR;
+			// ccb->csio.scsi_status = SCSI_STATUS_CHECK_COND;
+		} else {
+			ataio->status |= CAM_ATA_STATUS_ERROR;
+		}
+		break;
+	case AHCI_ERR_SATA:
+		ch->fatalerr = 1;
+		if (!ch->recoverycmd) {
+			// xpt_freeze_simq(ch->sim, 1);
+      ch->dev->GetMasterClass<AhciChannel>()->devq.Freeze(1);
+			ataio->status &= ~CAM_STATUS_MASK;
+			ataio->status |= CAM_RELEASE_SIMQ;
+		}
+		ataio->status |= CAM_UNCOR_PARITY;
+		break;
+	case AHCI_ERR_TIMEOUT:
+		if (!ch->recoverycmd) {
+			// xpt_freeze_simq(ch->sim, 1);
+      ch->dev->GetMasterClass<AhciChannel>()->devq.Freeze(1);
+			ataio->status &= ~CAM_STATUS_MASK;
+			ataio->status |= CAM_RELEASE_SIMQ;
+		}
+		ataio->status |= CAM_CMD_TIMEOUT;
+		break;
+	default:
+		ch->fatalerr = 1;
+		ataio->status |= CAM_REQ_CMP_ERR;
+	}
+	/* Free slot. */
+	ch->oslots &= ~(1 << slot->slot);
+	ch->rslots &= ~(1 << slot->slot);
+	ch->aslots &= ~(1 << slot->slot);
+	slot->state = AHCI_SLOT_EMPTY;
 	// slot->ccb = NULL;
-	// /* Update channel stats. */
-	// ch->numrslots--;
-	// ch->numrslotspd[ccb->ccb_h.target_id]--;
-	// if ((ccb->func_code == XPT_ATA_IO) &&
-	//     (ccb->ataio.cmd.flags & CAM_ATAIO_FPDMA)) {
-	// 	ch->numtslots--;
-	// 	ch->numtslotspd[ccb->ccb_h.target_id]--;
-	// }
-	// /* Cancel timeout state if request completed normally. */
-	// if (et != AHCI_ERR_TIMEOUT) {
-	// 	lastto = (ch->toslots == (1 << slot->slot));
-	// 	ch->toslots &= ~(1 << slot->slot);
-	// 	if (lastto)
-	// 		xpt_release_simq(ch->sim, TRUE);
-	// }
-	// /* If it was first request of reset sequence and there is no error,
-	//  * proceed to second request. */
-	// if ((ccb->ccb_h.func_code == XPT_ATA_IO) &&
-	//     (ccb->ataio.cmd.flags & CAM_ATAIO_CONTROL) &&
-	//     (ccb->ataio.cmd.control & ATA_A_RESET) &&
-	//     et == AHCI_ERR_NONE) {
-	// 	ccb->ataio.cmd.control &= ~ATA_A_RESET;
-	// 	ahci_begin_transaction(ch, ccb);
-	// 	return;
-	// }
-	// /* If it was our READ LOG command - process it. */
-	// if (ccb->ccb_h.recovery_type == RECOVERY_READ_LOG) {
-	// 	ahci_process_read_log(ch, ccb);
-	// /* If it was our REQUEST SENSE command - process it. */
-	// } else if (ccb->ccb_h.recovery_type == RECOVERY_REQUEST_SENSE) {
-	// 	ahci_process_request_sense(ch, ccb);
-	// /* If it was NCQ or ATAPI command error, put result on hold. */
-	// } else if (et == AHCI_ERR_NCQ ||
-	//     ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_SCSI_STATUS_ERROR &&
-	//      (ccb->ccb_h.flags & CAM_DIS_AUTOSENSE) == 0)) {
-	// 	ch->hold[slot->slot] = ccb;
-	// 	ch->numhslots++;
-	// } else
-	// 	ahci_done(ch, ccb);
-	// /* If we have no other active commands, ... */
-	// if (ch->rslots == 0) {
-	// 	/* if there was fatal error - reset port. */
-	// 	if (ch->toslots != 0 || ch->fatalerr) {
-	// 		ahci_reset(ch);
-	// 	} else {
-	// 		/* if we have slots in error, we can reinit port. */
-	// 		if (ch->eslots != 0) {
-	// 			ahci_stop(ch);
-	// 			ahci_clo(ch);
-	// 			ahci_start(ch, 1);
-	// 		}
-	// 		/* if there commands on hold, we can do READ LOG. */
-	// 		if (!ch->recoverycmd && ch->numhslots)
-	// 			ahci_issue_recovery(ch);
-	// 	}
-	// /* If all the rest of commands are in timeout - give them chance. */
-	// } else if ((ch->rslots & ~ch->toslots) == 0 &&
-	//     et != AHCI_ERR_TIMEOUT)
-	// 	ahci_rearm_timeout(ch);
-	// /* Unfreeze frozen command. */
+  slot->ataio = NULL;
+	/* Update channel stats. */
+	ch->numrslots--;
+	ch->numrslotspd[ataio->target_id]--;
+	if ((ataio->func_code == XPT_ATA_IO) &&
+	    (ataio->cmd.flags & CAM_ATAIO_FPDMA)) {
+		ch->numtslots--;
+		ch->numtslotspd[ataio->target_id]--;
+	}
+	/* Cancel timeout state if request completed normally. */
+	if (et != AHCI_ERR_TIMEOUT) {
+		lastto = (ch->toslots == (1 << slot->slot));
+		ch->toslots &= ~(1 << slot->slot);
+		if (lastto)
+      ch->dev->GetMasterClass<AhciChannel>()->devq.Release(1);
+    // xpt_release_simq(ch->sim, TRUE);
+	}
+	/* If it was first request of reset sequence and there is no error,
+	 * proceed to second request. */
+	if ((ataio->func_code == XPT_ATA_IO) &&
+	    (ataio->cmd.flags & CAM_ATAIO_CONTROL) &&
+	    (ataio->cmd.control & ATA_A_RESET) &&
+	    et == AHCI_ERR_NONE) {
+		ataio->cmd.control &= ~ATA_A_RESET;
+		ahci_begin_transaction(ch, ataio);
+		return;
+	}
+	/* If it was our READ LOG command - process it. */
+	if (ataio->recovery_type == RECOVERY_READ_LOG) {
+		ahci_process_read_log(ch, ataio);
+	/* If it was our REQUEST SENSE command - process it. */
+	} else if (ataio->recovery_type == RECOVERY_REQUEST_SENSE) {
+		ahci_process_request_sense(ch, ataio);
+	/* If it was NCQ or ATAPI command error, put result on hold. */
+	} else if (et == AHCI_ERR_NCQ ||
+	    ((ataio->status & CAM_STATUS_MASK) == CAM_SCSI_STATUS_ERROR &&
+	     (ataio->flags & CAM_DIS_AUTOSENSE) == 0)) {
+		ch->hold[slot->slot] = ataio;
+		ch->numhslots++;
+	} else
+		ahci_done(ch, ataio);
+	/* If we have no other active commands, ... */
+	if (ch->rslots == 0) {
+		/* if there was fatal error - reset port. */
+		if (ch->toslots != 0 || ch->fatalerr) {
+			ahci_reset(ch);
+		} else {
+			/* if we have slots in error, we can reinit port. */
+			if (ch->eslots != 0) {
+				ahci_stop(ch);
+				ahci_clo(ch);
+				ahci_start(ch, 1);
+			}
+			/* if there commands on hold, we can do READ LOG. */
+			if (!ch->recoverycmd && ch->numhslots)
+				ahci_issue_recovery(ch);
+		}
+	/* If all the rest of commands are in timeout - give them chance. */
+	} else if ((ch->rslots & ~ch->toslots) == 0 &&
+	    et != AHCI_ERR_TIMEOUT)
+		ahci_rearm_timeout(ch);
+	/* Unfreeze frozen command. */
 	// if (ch->frozen && !ahci_check_collision(ch, ch->frozen)) {
 	// 	union ccb *fccb = ch->frozen;
 	// 	ch->frozen = NULL;
 	// 	ahci_begin_transaction(ch, fccb);
 	// 	xpt_release_simq(ch->sim, TRUE);
 	// }
-	// /* Start PM timer. */
-	// if (ch->numrslots == 0 && ch->pm_level > 3 &&
-	//     (ch->curr[ch->pm_present ? 15 : 0].caps & CTS_SATA_CAPS_D_PMREQ)) {
-	// 	callout_schedule(&ch->pm_timer,
-	// 	    (ch->pm_level == 4) ? hz / 1000 : hz / 8);
-	// }
+  if (ch->dev->GetMasterClass<AhciChannel>()->frozen &&
+      !ahci_check_collision(ch, ch->dev->GetMasterClass<AhciChannel>()->frozen)) {
+    PacketAtaio *packet = ch->dev->GetMasterClass<AhciChannel>()->frozen;
+    ch->dev->GetMasterClass<AhciChannel>()->frozen = NULL;
+    ahci_begin_transaction(ch, packet);
+    ch->dev->GetMasterClass<AhciChannel>()->devq.Release(1);
+  }
+	/* Start PM timer. */
+  if (ch->numrslots == 0 && ch->pm_level > 3 &&
+      (ch->curr[ch->pm_present ? 15 : 0].caps & CTS_SATA_CAPS_D_PMREQ)) {
+    	callout_schedule(&ch->pm_timer,
+    	    (ch->pm_level == 4) ? hz / 1000 : hz / 8);
+  }
 }
 
-// static void
-// ahci_issue_recovery(struct ahci_channel *ch)
-// {
-// 	union ccb *ccb;
-// 	struct ccb_ataio *ataio;
-// 	struct ccb_scsiio *csio;
-// 	int i;
+static void
+ahci_issue_recovery(struct ahci_channel *ch)
+{
+	// union ccb *ccb;
+	// struct ccb_ataio *ataio;
+	// struct ccb_scsiio *csio;
+  PacketAtaio *ataio;
+	int i;
 
-// 	/* Find some held command. */
-// 	for (i = 0; i < ch->numslots; i++) {
-// 		if (ch->hold[i])
-// 			break;
-// 	}
-// 	ccb = xpt_alloc_ccb_nowait();
-// 	if (ccb == NULL) {
-// 		device_printf(ch->dev, "Unable to allocate recovery command\n");
-// completeall:
-// 		/* We can't do anything -- complete held commands. */
-// 		for (i = 0; i < ch->numslots; i++) {
-// 			if (ch->hold[i] == NULL)
-// 				continue;
-// 			ch->hold[i]->ccb_h.status &= ~CAM_STATUS_MASK;
-// 			ch->hold[i]->ccb_h.status |= CAM_RESRC_UNAVAIL;
-// 			ahci_done(ch, ch->hold[i]);
-// 			ch->hold[i] = NULL;
-// 			ch->numhslots--;
-// 		}
-// 		ahci_reset(ch);
-// 		return;
-// 	}
-// 	ccb->ccb_h = ch->hold[i]->ccb_h;	/* Reuse old header. */
-// 	if (ccb->ccb_h.func_code == XPT_ATA_IO) {
-// 		/* READ LOG */
-// 		ccb->ccb_h.recovery_type = RECOVERY_READ_LOG;
-// 		ccb->ccb_h.func_code = XPT_ATA_IO;
-// 		ccb->ccb_h.flags = CAM_DIR_IN;
-// 		ccb->ccb_h.timeout = 1000;	/* 1s should be enough. */
-// 		ataio = &ccb->ataio;
-// 		ataio->data_ptr = malloc(512, M_AHCI, M_NOWAIT);
-// 		if (ataio->data_ptr == NULL) {
-// 			xpt_free_ccb(ccb);
-// 			device_printf(ch->dev,
-// 			    "Unable to allocate memory for READ LOG command\n");
-// 			goto completeall;
-// 		}
-// 		ataio->dxfer_len = 512;
-// 		bzero(&ataio->cmd, sizeof(ataio->cmd));
-// 		ataio->cmd.flags = CAM_ATAIO_48BIT;
-// 		ataio->cmd.command = 0x2F;	/* READ LOG EXT */
-// 		ataio->cmd.sector_count = 1;
-// 		ataio->cmd.sector_count_exp = 0;
-// 		ataio->cmd.lba_low = 0x10;
-// 		ataio->cmd.lba_mid = 0;
-// 		ataio->cmd.lba_mid_exp = 0;
-// 	} else {
-// 		/* REQUEST SENSE */
-// 		ccb->ccb_h.recovery_type = RECOVERY_REQUEST_SENSE;
-// 		ccb->ccb_h.recovery_slot = i;
-// 		ccb->ccb_h.func_code = XPT_SCSI_IO;
-// 		ccb->ccb_h.flags = CAM_DIR_IN;
-// 		ccb->ccb_h.status = 0;
-// 		ccb->ccb_h.timeout = 1000;	/* 1s should be enough. */
-// 		csio = &ccb->csio;
-// 		csio->data_ptr = (void *)&ch->hold[i]->csio.sense_data;
-// 		csio->dxfer_len = ch->hold[i]->csio.sense_len;
-// 		csio->cdb_len = 6;
-// 		bzero(&csio->cdb_io, sizeof(csio->cdb_io));
-// 		csio->cdb_io.cdb_bytes[0] = 0x03;
-// 		csio->cdb_io.cdb_bytes[4] = csio->dxfer_len;
-// 	}
-// 	/* Freeze SIM while doing recovery. */
-// 	ch->recoverycmd = 1;
-// 	xpt_freeze_simq(ch->sim, 1);
-// 	ahci_begin_transaction(ch, ccb);
-// }
+	/* Find some held command. */
+	for (i = 0; i < ch->numslots; i++) {
+		if (ch->hold[i])
+			break;
+	}
+	// ccb = xpt_alloc_ccb_nowait();
+  ataio = PacketAtaio::XptAlloc();
+	if (ataio == NULL) {
+		device_printf(ch->dev, "Unable to allocate recovery command\n");
+completeall:
+		/* We can't do anything -- complete held commands. */
+		for (i = 0; i < ch->numslots; i++) {
+			if (ch->hold[i] == NULL)
+				continue;
+			ch->hold[i]->status &= ~CAM_STATUS_MASK;
+			ch->hold[i]->status |= CAM_RESRC_UNAVAIL;
+			ahci_done(ch, ch->hold[i]);
+			ch->hold[i] = NULL;
+			ch->numhslots--;
+		}
+		ahci_reset(ch);
+		return;
+	}
+  ataio->XptCopyHeader(ch->hold[i]);
+	// ccb->ccb_h = ch->hold[i]->ccb_h;	/* Reuse old header. */
+	if (ataio->func_code == XPT_ATA_IO) {
+		/* READ LOG */
+		ataio->recovery_type = RECOVERY_READ_LOG;
+		ataio->func_code = XPT_ATA_IO;
+		ataio->flags = CAM_DIR_IN;
+		ataio->timeout = 1000;	/* 1s should be enough. */
+		// ataio = &ccb->ataio;
+		// ataio->data_ptr = malloc(512, M_AHCI, M_NOWAIT);
+		ataio->data_ptr = nullptr;  // allocate later
+		// if (ataio->data_ptr == NULL) {
+    //   ataio->XptFree();
+		// 	// xpt_free_ccb(ccb);
+		// 	device_printf(ch->dev,
+		// 	    "Unable to allocate memory for READ LOG command\n");
+		// 	goto completeall;
+		// }
+		ataio->dxfer_len = 512;
+		bzero(&ataio->cmd, sizeof(ataio->cmd));
+		ataio->cmd.flags = CAM_ATAIO_48BIT;
+		ataio->cmd.command = 0x2F;	/* READ LOG EXT */
+		ataio->cmd.sector_count = 1;
+		ataio->cmd.sector_count_exp = 0;
+		ataio->cmd.lba_low = 0x10;
+		ataio->cmd.lba_mid = 0;
+		ataio->cmd.lba_mid_exp = 0;
+	} else {
+    kassert(false);
+		/* REQUEST SENSE */
+		// ccb->ccb_h.recovery_type = RECOVERY_REQUEST_SENSE;
+		// ccb->ccb_h.recovery_slot = i;
+		// ccb->ccb_h.func_code = XPT_SCSI_IO;
+		// ccb->ccb_h.flags = CAM_DIR_IN;
+		// ccb->ccb_h.status = 0;
+		// ccb->ccb_h.timeout = 1000;	/* 1s should be enough. */
+		// csio = &ccb->csio;
+		// csio->data_ptr = (void *)&ch->hold[i]->csio.sense_data;
+		// csio->dxfer_len = ch->hold[i]->csio.sense_len;
+		// csio->cdb_len = 6;
+		// bzero(&csio->cdb_io, sizeof(csio->cdb_io));
+		// csio->cdb_io.cdb_bytes[0] = 0x03;
+		// csio->cdb_io.cdb_bytes[4] = csio->dxfer_len;
+	}
+	/* Freeze SIM while doing recovery. */
+	ch->recoverycmd = 1;
+	// xpt_freeze_simq(ch->sim, 1);
+  ch->dev->GetMasterClass<AhciChannel>()->devq.Freeze(1);
+	ahci_begin_transaction(ch, ataio);
+}
 
-// static void
-// ahci_process_read_log(struct ahci_channel *ch, union ccb *ccb)
-// {
-// 	uint8_t *data;
-// 	struct ata_res *res;
-// 	int i;
+static void
+ahci_process_read_log(struct ahci_channel *ch, PacketAtaio *ataio)
+{
+	uint8_t *data;
+	struct ata_res *res;
+	int i;
 
-// 	ch->recoverycmd = 0;
+	ch->recoverycmd = 0;
 
-// 	data = ccb->ataio.data_ptr;
-// 	if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_REQ_CMP &&
-// 	    (data[0] & 0x80) == 0) {
-// 		for (i = 0; i < ch->numslots; i++) {
-// 			if (!ch->hold[i])
-// 				continue;
-// 			if (ch->hold[i]->ccb_h.func_code != XPT_ATA_IO)
-// 				continue;
-// 			if ((data[0] & 0x1F) == i) {
-// 				res = &ch->hold[i]->ataio.res;
-// 				res->status = data[2];
-// 				res->error = data[3];
-// 				res->lba_low = data[4];
-// 				res->lba_mid = data[5];
-// 				res->lba_high = data[6];
-// 				res->device = data[7];
-// 				res->lba_low_exp = data[8];
-// 				res->lba_mid_exp = data[9];
-// 				res->lba_high_exp = data[10];
-// 				res->sector_count = data[12];
-// 				res->sector_count_exp = data[13];
-// 			} else {
-// 				ch->hold[i]->ccb_h.status &= ~CAM_STATUS_MASK;
-// 				ch->hold[i]->ccb_h.status |= CAM_REQUEUE_REQ;
-// 			}
-// 			ahci_done(ch, ch->hold[i]);
-// 			ch->hold[i] = NULL;
-// 			ch->numhslots--;
-// 		}
-// 	} else {
-// 		if ((ccb->ccb_h.status & CAM_STATUS_MASK) != CAM_REQ_CMP)
-// 			device_printf(ch->dev, "Error while READ LOG EXT\n");
-// 		else if ((data[0] & 0x80) == 0) {
-// 			device_printf(ch->dev, "Non-queued command error in READ LOG EXT\n");
-// 		}
-// 		for (i = 0; i < ch->numslots; i++) {
-// 			if (!ch->hold[i])
-// 				continue;
-// 			if (ch->hold[i]->ccb_h.func_code != XPT_ATA_IO)
-// 				continue;
-// 			ahci_done(ch, ch->hold[i]);
-// 			ch->hold[i] = NULL;
-// 			ch->numhslots--;
-// 		}
-// 	}
-// 	free(ccb->ataio.data_ptr, M_AHCI);
-// 	xpt_free_ccb(ccb);
-// 	xpt_release_simq(ch->sim, TRUE);
-// }
+	data = ataio->data_ptr;
+	if ((ataio->status & CAM_STATUS_MASK) == CAM_REQ_CMP &&
+	    (data[0] & 0x80) == 0) {
+		for (i = 0; i < ch->numslots; i++) {
+			if (!ch->hold[i])
+				continue;
+			if (ch->hold[i]->func_code != XPT_ATA_IO)
+				continue;
+			if ((data[0] & 0x1F) == i) {
+				res = &ch->hold[i]->res;
+				res->status = data[2];
+				res->error = data[3];
+				res->lba_low = data[4];
+				res->lba_mid = data[5];
+				res->lba_high = data[6];
+				res->device = data[7];
+				res->lba_low_exp = data[8];
+				res->lba_mid_exp = data[9];
+				res->lba_high_exp = data[10];
+				res->sector_count = data[12];
+				res->sector_count_exp = data[13];
+			} else {
+				ch->hold[i]->status &= ~CAM_STATUS_MASK;
+				ch->hold[i]->status |= CAM_REQUEUE_REQ;
+			}
+			ahci_done(ch, ch->hold[i]);
+			ch->hold[i] = NULL;
+			ch->numhslots--;
+		}
+	} else {
+		if ((ataio->status & CAM_STATUS_MASK) != CAM_REQ_CMP)
+			device_printf(ch->dev, "Error while READ LOG EXT\n");
+		else if ((data[0] & 0x80) == 0) {
+			device_printf(ch->dev, "Non-queued command error in READ LOG EXT\n");
+		}
+		for (i = 0; i < ch->numslots; i++) {
+			if (!ch->hold[i])
+				continue;
+			if (ch->hold[i]->func_code != XPT_ATA_IO)
+				continue;
+			ahci_done(ch, ch->hold[i]);
+			ch->hold[i] = NULL;
+			ch->numhslots--;
+		}
+	}
+	free(ataio->data_ptr);
+  ataio->XptFree();
+	// xpt_free_ccb(ccb);
+	// xpt_release_simq(ch->sim, TRUE);
+  ch->dev->GetMasterClass<AhciChannel>()->devq.Release(1);
+}
 
-// static void
-// ahci_process_request_sense(struct ahci_channel *ch, union ccb *ccb)
-// {
-// 	int i;
+static void
+ahci_process_request_sense(struct ahci_channel *ch, PacketAtaio *ataio)
+{
+  kassert(false);
+	int i;
 
-// 	ch->recoverycmd = 0;
+	ch->recoverycmd = 0;
 
-// 	i = ccb->ccb_h.recovery_slot;
-// 	if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_REQ_CMP) {
-// 		ch->hold[i]->ccb_h.status |= CAM_AUTOSNS_VALID;
-// 	} else {
-// 		ch->hold[i]->ccb_h.status &= ~CAM_STATUS_MASK;
-// 		ch->hold[i]->ccb_h.status |= CAM_AUTOSENSE_FAIL;
-// 	}
-// 	ahci_done(ch, ch->hold[i]);
-// 	ch->hold[i] = NULL;
-// 	ch->numhslots--;
-// 	xpt_free_ccb(ccb);
-// 	xpt_release_simq(ch->sim, TRUE);
-// }
+	i = ataio->recovery_slot;
+	if ((ataio->status & CAM_STATUS_MASK) == CAM_REQ_CMP) {
+		ch->hold[i]->status |= CAM_AUTOSNS_VALID;
+	} else {
+		ch->hold[i]->status &= ~CAM_STATUS_MASK;
+		ch->hold[i]->status |= CAM_AUTOSENSE_FAIL;
+	}
+	ahci_done(ch, ch->hold[i]);
+	ch->hold[i] = NULL;
+	ch->numhslots--;
+  ataio->XptFree();
+	// xpt_free_ccb(ccb);
+	// xpt_release_simq(ch->sim, TRUE);
+  ch->dev->GetMasterClass<AhciChannel>()->devq.Release(1);
+}
 
 static void
 ahci_start(struct ahci_channel *ch, int fbs)
@@ -2276,12 +2347,14 @@ ahci_reset_to(void *arg)
 	    (310 - ch->resetting) * 100) == 0) {
 		ch->resetting = 0;
 		ahci_start(ch, 1);
+    ch->dev->GetMasterClass<AhciChannel>()->devq.Release(1);
 		// xpt_release_simq(ch->sim, TRUE);
 		return;
 	}
 	if (ch->resetting == 0) {
 		ahci_clo(ch);
 		ahci_start(ch, 1);
+    ch->dev->GetMasterClass<AhciChannel>()->devq.Release(1);
 		// xpt_release_simq(ch->sim, TRUE);
 		return;
 	}
@@ -2294,7 +2367,8 @@ ahci_reset(struct ahci_channel *ch)
 	struct ahci_controller *ctlr = reinterpret_cast<struct ahci_controller *>(device_get_softc(device_get_parent(ch->dev)));
 	int i;
 
-	// xpt_freeze_simq(ch->sim, 1);
+  // xpt_freeze_simq(ch->sim, 1);
+  ch->dev->GetMasterClass<AhciChannel>()->devq.Freeze(1);
 	if (bootverbose)
 		device_printf(ch->dev, "AHCI reset...\n");
 	/* Forget about previous reset. */
@@ -2302,17 +2376,28 @@ ahci_reset(struct ahci_channel *ch)
 		ch->resetting = 0;
 		callout_stop(&ch->reset_timer);
 		// xpt_release_simq(ch->sim, TRUE);
+    ch->dev->GetMasterClass<AhciChannel>()->devq.Release(1);
 	}
 	/* Requeue freezed command. */
-  if (ch->frozen) {
-	 	union ccb *fccb = ch->frozen;
-	 	ch->frozen = NULL;
+  // if (ch->frozen) {
+	//  	union ccb *fccb = ch->frozen;
+	//  	ch->frozen = NULL;
 	// 	fccb->ccb_h.status = CAM_REQUEUE_REQ | CAM_RELEASE_SIMQ;
 	// 	if (!(fccb->ccb_h.status & CAM_DEV_QFRZN)) {
-			// xpt_freeze_devq(fccb->ccb_h.path, 1);
+  //     xpt_freeze_devq(fccb->ccb_h.path, 1);
 	// 		fccb->ccb_h.status |= CAM_DEV_QFRZN;
 	// 	}
-	 	ahci_done(ch, fccb);
+	//  	ahci_done(ch, fccb);
+  // }
+  if (ch->dev->GetMasterClass<AhciChannel>()->frozen) {
+    PacketAtaio *packet = ch->dev->GetMasterClass<AhciChannel>()->frozen;
+    ch->dev->GetMasterClass<AhciChannel>()->frozen = NULL;
+    packet->status = CAM_REQUEUE_REQ | CAM_RELEASE_SIMQ;
+    if (!(packet->status & CAM_DEV_QFRZN)) {
+      ch->dev->GetMasterClass<AhciChannel>()->devq.Freeze(1);
+      packet->status |= CAM_DEV_QFRZN;
+    }
+    ahci_done(ch, packet);
   }
 	/* Kill the engine and requeue all running commands. */
 	ahci_stop(ch);
@@ -2330,8 +2415,10 @@ ahci_reset(struct ahci_channel *ch)
     ch->hold[i] = NULL;
 		ch->numhslots--;
 	}
+  // TODO replace
 	// if (ch->toslots != 0)
 	// 	xpt_release_simq(ch->sim, TRUE);
+  ch->dev->GetMasterClass<AhciChannel>()->devq.Release(1);
 	ch->eslots = 0;
 	ch->toslots = 0;
 	ch->wrongccs = 0;
@@ -2351,6 +2438,7 @@ ahci_reset(struct ahci_channel *ch)
 		    (((ch->pm_level != 0) ? AHCI_P_IX_CPD | AHCI_P_IX_MP : 0) |
 		     AHCI_P_IX_PRC | AHCI_P_IX_PC));
 		// xpt_release_simq(ch->sim, TRUE);
+    ch->dev->GetMasterClass<AhciChannel>()->devq.Release(1);
 		return;
 	}
 	if (bootverbose)
@@ -2377,64 +2465,66 @@ ahci_reset(struct ahci_channel *ch)
 	else {
 		ahci_start(ch, 1);
 		// xpt_release_simq(ch->sim, TRUE);
+    ch->dev->GetMasterClass<AhciChannel>()->devq.Release(1);
 	}
 }
 
-// static int
-// ahci_setup_fis(struct ahci_channel *ch, struct ahci_cmd_tab *ctp, union ccb *ccb, int tag)
-// {
-// 	u_int8_t *fis = &ctp->cfis[0];
+static int
+ahci_setup_fis(struct ahci_channel *ch, struct ahci_cmd_tab *ctp, PacketAtaio *ataio, int tag)
+{
+	u_int8_t *fis = &ctp->cfis[0];
 
-// 	bzero(fis, 20);
-// 	fis[0] = 0x27;  		/* host to device */
-// 	fis[1] = (ccb->ccb_h.target_id & 0x0f);
-// 	if (ccb->ccb_h.func_code == XPT_SCSI_IO) {
-// 		fis[1] |= 0x80;
-// 		fis[2] = ATA_PACKET_CMD;
-// 		if ((ccb->ccb_h.flags & CAM_DIR_MASK) != CAM_DIR_NONE &&
-// 		    ch->curr[ccb->ccb_h.target_id].mode >= ATA_DMA)
-// 			fis[3] = ATA_F_DMA;
-// 		else {
-// 			fis[5] = ccb->csio.dxfer_len;
-// 		        fis[6] = ccb->csio.dxfer_len >> 8;
-// 		}
-// 		fis[7] = ATA_D_LBA;
-// 		fis[15] = ATA_A_4BIT;
-// 		bcopy((ccb->ccb_h.flags & CAM_CDB_POINTER) ?
-// 		    ccb->csio.cdb_io.cdb_ptr : ccb->csio.cdb_io.cdb_bytes,
-// 		    ctp->acmd, ccb->csio.cdb_len);
-// 		bzero(ctp->acmd + ccb->csio.cdb_len, 32 - ccb->csio.cdb_len);
-// 	} else if ((ccb->ataio.cmd.flags & CAM_ATAIO_CONTROL) == 0) {
-// 		fis[1] |= 0x80;
-// 		fis[2] = ccb->ataio.cmd.command;
-// 		fis[3] = ccb->ataio.cmd.features;
-// 		fis[4] = ccb->ataio.cmd.lba_low;
-// 		fis[5] = ccb->ataio.cmd.lba_mid;
-// 		fis[6] = ccb->ataio.cmd.lba_high;
-// 		fis[7] = ccb->ataio.cmd.device;
-// 		fis[8] = ccb->ataio.cmd.lba_low_exp;
-// 		fis[9] = ccb->ataio.cmd.lba_mid_exp;
-// 		fis[10] = ccb->ataio.cmd.lba_high_exp;
-// 		fis[11] = ccb->ataio.cmd.features_exp;
-// 		if (ccb->ataio.cmd.flags & CAM_ATAIO_FPDMA) {
-// 			fis[12] = tag << 3;
-// 			fis[13] = 0;
-// 		} else {
-// 			fis[12] = ccb->ataio.cmd.sector_count;
-// 			fis[13] = ccb->ataio.cmd.sector_count_exp;
-// 		}
-// 		fis[15] = ATA_A_4BIT;
-// 	} else {
-// 		fis[15] = ccb->ataio.cmd.control;
-// 	}
-// 	if (ccb->ataio.ata_flags & ATA_FLAG_AUX) {
-// 		fis[16] =  ccb->ataio.aux        & 0xff;
-// 		fis[17] = (ccb->ataio.aux >>  8) & 0xff;
-// 		fis[18] = (ccb->ataio.aux >> 16) & 0xff;
-// 		fis[19] = (ccb->ataio.aux >> 24) & 0xff;
-// 	}
-// 	return (20);
-// }
+	bzero(fis, 20);
+	fis[0] = 0x27;  		/* host to device */
+	fis[1] = (ataio->target_id & 0x0f);
+	if (ataio->func_code == XPT_SCSI_IO) {
+    kassert(false);
+		// fis[1] |= 0x80;
+		// fis[2] = ATA_PACKET_CMD;
+		// if ((ccb->ccb_h.flags & CAM_DIR_MASK) != CAM_DIR_NONE &&
+		//     ch->curr[ccb->ccb_h.target_id].mode >= ATA_DMA)
+		// 	fis[3] = ATA_F_DMA;
+		// else {
+		// 	fis[5] = ccb->csio.dxfer_len;
+		//         fis[6] = ccb->csio.dxfer_len >> 8;
+		// }
+		// fis[7] = ATA_D_LBA;
+		// fis[15] = ATA_A_4BIT;
+		// bcopy((ccb->ccb_h.flags & CAM_CDB_POINTER) ?
+		//     ccb->csio.cdb_io.cdb_ptr : ccb->csio.cdb_io.cdb_bytes,
+		//     ctp->acmd, ccb->csio.cdb_len);
+		// bzero(ctp->acmd + ccb->csio.cdb_len, 32 - ccb->csio.cdb_len);
+	} else if ((ataio->cmd.flags & CAM_ATAIO_CONTROL) == 0) {
+		fis[1] |= 0x80;
+		fis[2] = ataio->cmd.command;
+		fis[3] = ataio->cmd.features;
+		fis[4] = ataio->cmd.lba_low;
+		fis[5] = ataio->cmd.lba_mid;
+		fis[6] = ataio->cmd.lba_high;
+		fis[7] = ataio->cmd.device;
+		fis[8] = ataio->cmd.lba_low_exp;
+		fis[9] = ataio->cmd.lba_mid_exp;
+		fis[10] = ataio->cmd.lba_high_exp;
+		fis[11] = ataio->cmd.features_exp;
+		if (ataio->cmd.flags & CAM_ATAIO_FPDMA) {
+			fis[12] = tag << 3;
+			fis[13] = 0;
+		} else {
+			fis[12] = ataio->cmd.sector_count;
+			fis[13] = ataio->cmd.sector_count_exp;
+		}
+		fis[15] = ATA_A_4BIT;
+	} else {
+		fis[15] = ataio->cmd.control;
+	}
+	if (ataio->ata_flags & ATA_FLAG_AUX) {
+		fis[16] =  ataio->aux        & 0xff;
+		fis[17] = (ataio->aux >>  8) & 0xff;
+		fis[18] = (ataio->aux >> 16) & 0xff;
+		fis[19] = (ataio->aux >> 24) & 0xff;
+	}
+	return (20);
+}
 
 static int
 ahci_sata_connect(struct ahci_channel *ch)
@@ -2520,208 +2610,213 @@ ahci_sata_phy_reset(struct ahci_channel *ch)
 	return (1);
 }
 
-// static int
-// ahci_check_ids(struct ahci_channel *ch, union ccb *ccb)
-// {
+static int
+ahci_check_ids(struct ahci_channel *ch, PacketAtaio *ataio)
+{
 
-// 	if (ccb->ccb_h.target_id > ((ch->caps & AHCI_CAP_SPM) ? 15 : 0)) {
-// 		ccb->ccb_h.status = CAM_TID_INVALID;
-// 		ahci_done(ch, ccb);
-// 		return (-1);
-// 	}
-// 	if (ccb->ccb_h.target_lun != 0) {
-// 		ccb->ccb_h.status = CAM_LUN_INVALID;
-// 		ahci_done(ch, ccb);
-// 		return (-1);
-// 	}
-// 	return (0);
-// }
+	if (ataio->target_id > ((ch->caps & AHCI_CAP_SPM) ? 15 : 0)) {
+		ataio->status = CAM_TID_INVALID;
+		ahci_done(ch, ataio);
+		return (-1);
+	}
+	if (ataio->target_lun != 0) {
+		ataio->status = CAM_LUN_INVALID;
+		ahci_done(ch, ataio);
+		return (-1);
+	}
+	return (0);
+}
 
-// static void
-// ahciaction(struct cam_sim *sim, union ccb *ccb)
-// {
-// 	struct ahci_channel *ch;
+static void
+ahciaction(struct ahci_channel *ch, PacketAtaio *ataio)
+{
+	// struct ahci_channel *ch;
 
-// 	CAM_DEBUG(ccb->ccb_h.path, CAM_DEBUG_TRACE, ("ahciaction func_code=%x\n",
-// 	    ccb->ccb_h.func_code));
+	// CAM_DEBUG(ccb->ccb_h.path, CAM_DEBUG_TRACE, ("ahciaction func_code=%x\n",
+	//     ccb->ccb_h.func_code));
 
-// 	ch = (struct ahci_channel *)cam_sim_softc(sim);
-// 	switch (ccb->ccb_h.func_code) {
-// 	/* Common cases first */
-// 	case XPT_ATA_IO:	/* Execute the requested I/O operation */
-// 	case XPT_SCSI_IO:
-// 		if (ahci_check_ids(ch, ccb))
-// 			return;
-// 		if (ch->devices == 0 ||
-// 		    (ch->pm_present == 0 &&
-// 		     ccb->ccb_h.target_id > 0 && ccb->ccb_h.target_id < 15)) {
-// 			ccb->ccb_h.status = CAM_SEL_TIMEOUT;
-// 			break;
-// 		}
-// 		ccb->ccb_h.recovery_type = RECOVERY_NONE;
-// 		/* Check for command collision. */
-// 		if (ahci_check_collision(ch, ccb)) {
-// 			/* Freeze command. */
-// 			ch->frozen = ccb;
-// 			/* We have only one frozen slot, so freeze simq also. */
-// 			xpt_freeze_simq(ch->sim, 1);
-// 			return;
-// 		}
-// 		ahci_begin_transaction(ch, ccb);
-// 		return;
-// 	case XPT_EN_LUN:		/* Enable LUN as a target */
-// 	case XPT_TARGET_IO:		/* Execute target I/O request */
-// 	case XPT_ACCEPT_TARGET_IO:	/* Accept Host Target Mode CDB */
-// 	case XPT_CONT_TARGET_IO:	/* Continue Host Target I/O Connection*/
-// 	case XPT_ABORT:			/* Abort the specified CCB */
-// 		/* XXX Implement */
-// 		ccb->ccb_h.status = CAM_REQ_INVALID;
-// 		break;
-// 	case XPT_SET_TRAN_SETTINGS:
-// 	{
-// 		struct	ccb_trans_settings *cts = &ccb->cts;
-// 		struct	ahci_device *d; 
+	// ch = (struct ahci_channel *)cam_sim_softc(sim);
+	switch (ataio->func_code) {
+	/* Common cases first */
+	case XPT_ATA_IO:	/* Execute the requested I/O operation */
+	case XPT_SCSI_IO:
+		if (ahci_check_ids(ch, ataio))
+			return;
+		if (ch->devices == 0 ||
+		    (ch->pm_present == 0 &&
+		     ataio->target_id > 0 && ataio->target_id < 15)) {
+			ataio->status = CAM_SEL_TIMEOUT;
+			break;
+		}
+		ataio->recovery_type = RECOVERY_NONE;
+		/* Check for command collision. */
+		if (ahci_check_collision(ch, ataio)) {
+			/* Freeze command. */
+      ch->dev->GetMasterClass<AhciChannel>()->frozen = ataio;
+			// ch->frozen = ataio;
+			/* We have only one frozen slot, so freeze simq also. */
+      ch->dev->GetMasterClass<AhciChannel>()->devq.Freeze(1);
+			// xpt_freeze_simq(ch->sim, 1);
+			return;
+		}
+		ahci_begin_transaction(ch, ataio);
+		return;
+	case XPT_EN_LUN:		/* Enable LUN as a target */
+	case XPT_TARGET_IO:		/* Execute target I/O request */
+	case XPT_ACCEPT_TARGET_IO:	/* Accept Host Target Mode CDB */
+	case XPT_CONT_TARGET_IO:	/* Continue Host Target I/O Connection*/
+	case XPT_ABORT:			/* Abort the specified CCB */
+		/* XXX Implement */
+		ataio->status = CAM_REQ_INVALID;
+		break;
+	case XPT_SET_TRAN_SETTINGS:
+	{
+    kassert(false);
+		// struct	ccb_trans_settings *cts = &ccb->cts;
+		// struct	ahci_device *d; 
 
-// 		if (ahci_check_ids(ch, ccb))
-// 			return;
-// 		if (cts->type == CTS_TYPE_CURRENT_SETTINGS)
-// 			d = &ch->curr[ccb->ccb_h.target_id];
-// 		else
-// 			d = &ch->user[ccb->ccb_h.target_id];
-// 		if (cts->xport_specific.sata.valid & CTS_SATA_VALID_REVISION)
-// 			d->revision = cts->xport_specific.sata.revision;
-// 		if (cts->xport_specific.sata.valid & CTS_SATA_VALID_MODE)
-// 			d->mode = cts->xport_specific.sata.mode;
-// 		if (cts->xport_specific.sata.valid & CTS_SATA_VALID_BYTECOUNT)
-// 			d->bytecount = min(8192, cts->xport_specific.sata.bytecount);
-// 		if (cts->xport_specific.sata.valid & CTS_SATA_VALID_TAGS)
-// 			d->tags = min(ch->numslots, cts->xport_specific.sata.tags);
-// 		if (cts->xport_specific.sata.valid & CTS_SATA_VALID_PM)
-// 			ch->pm_present = cts->xport_specific.sata.pm_present;
-// 		if (cts->xport_specific.sata.valid & CTS_SATA_VALID_ATAPI)
-// 			d->atapi = cts->xport_specific.sata.atapi;
-// 		if (cts->xport_specific.sata.valid & CTS_SATA_VALID_CAPS)
-// 			d->caps = cts->xport_specific.sata.caps;
-// 		ccb->ccb_h.status = CAM_REQ_CMP;
-// 		break;
-// 	}
-// 	case XPT_GET_TRAN_SETTINGS:
-// 	/* Get default/user set transfer settings for the target */
-// 	{
-// 		struct	ccb_trans_settings *cts = &ccb->cts;
-// 		struct  ahci_device *d;
-// 		uint32_t status;
+		// if (ahci_check_ids(ch, ccb))
+		// 	return;
+		// if (cts->type == CTS_TYPE_CURRENT_SETTINGS)
+		// 	d = &ch->curr[ccb->ccb_h.target_id];
+		// else
+		// 	d = &ch->user[ccb->ccb_h.target_id];
+		// if (cts->xport_specific.sata.valid & CTS_SATA_VALID_REVISION)
+		// 	d->revision = cts->xport_specific.sata.revision;
+		// if (cts->xport_specific.sata.valid & CTS_SATA_VALID_MODE)
+		// 	d->mode = cts->xport_specific.sata.mode;
+		// if (cts->xport_specific.sata.valid & CTS_SATA_VALID_BYTECOUNT)
+		// 	d->bytecount = min(8192, cts->xport_specific.sata.bytecount);
+		// if (cts->xport_specific.sata.valid & CTS_SATA_VALID_TAGS)
+		// 	d->tags = min(ch->numslots, cts->xport_specific.sata.tags);
+		// if (cts->xport_specific.sata.valid & CTS_SATA_VALID_PM)
+		// 	ch->pm_present = cts->xport_specific.sata.pm_present;
+		// if (cts->xport_specific.sata.valid & CTS_SATA_VALID_ATAPI)
+		// 	d->atapi = cts->xport_specific.sata.atapi;
+		// if (cts->xport_specific.sata.valid & CTS_SATA_VALID_CAPS)
+		// 	d->caps = cts->xport_specific.sata.caps;
+		// ccb->ccb_h.status = CAM_REQ_CMP;
+		break;
+	}
+	case XPT_GET_TRAN_SETTINGS:
+	/* Get default/user set transfer settings for the target */
+	{
+    kassert(false);
+		// struct	ccb_trans_settings *cts = &ccb->cts;
+		// struct  ahci_device *d;
+		// uint32_t status;
 
-// 		if (ahci_check_ids(ch, ccb))
-// 			return;
-// 		if (cts->type == CTS_TYPE_CURRENT_SETTINGS)
-// 			d = &ch->curr[ccb->ccb_h.target_id];
-// 		else
-// 			d = &ch->user[ccb->ccb_h.target_id];
-// 		cts->protocol = PROTO_UNSPECIFIED;
-// 		cts->protocol_version = PROTO_VERSION_UNSPECIFIED;
-// 		cts->transport = XPORT_SATA;
-// 		cts->transport_version = XPORT_VERSION_UNSPECIFIED;
-// 		cts->proto_specific.valid = 0;
-// 		cts->xport_specific.sata.valid = 0;
-// 		if (cts->type == CTS_TYPE_CURRENT_SETTINGS &&
-// 		    (ccb->ccb_h.target_id == 15 ||
-// 		    (ccb->ccb_h.target_id == 0 && !ch->pm_present))) {
-// 			status = ATA_INL(ch->r_mem, AHCI_P_SSTS) & ATA_SS_SPD_MASK;
-// 			if (status & 0x0f0) {
-// 				cts->xport_specific.sata.revision =
-// 				    (status & 0x0f0) >> 4;
-// 				cts->xport_specific.sata.valid |=
-// 				    CTS_SATA_VALID_REVISION;
-// 			}
-// 			cts->xport_specific.sata.caps = d->caps & CTS_SATA_CAPS_D;
-// 			if (ch->pm_level) {
-// 				if (ch->caps & (AHCI_CAP_PSC | AHCI_CAP_SSC))
-// 					cts->xport_specific.sata.caps |= CTS_SATA_CAPS_H_PMREQ;
-// 				if (ch->caps2 & AHCI_CAP2_APST)
-// 					cts->xport_specific.sata.caps |= CTS_SATA_CAPS_H_APST;
-// 			}
-// 			if ((ch->caps & AHCI_CAP_SNCQ) &&
-// 			    (ch->quirks & AHCI_Q_NOAA) == 0)
-// 				cts->xport_specific.sata.caps |= CTS_SATA_CAPS_H_DMAAA;
-// 			cts->xport_specific.sata.caps |= CTS_SATA_CAPS_H_AN;
-// 			cts->xport_specific.sata.caps &=
-// 			    ch->user[ccb->ccb_h.target_id].caps;
-// 			cts->xport_specific.sata.valid |= CTS_SATA_VALID_CAPS;
-// 		} else {
-// 			cts->xport_specific.sata.revision = d->revision;
-// 			cts->xport_specific.sata.valid |= CTS_SATA_VALID_REVISION;
-// 			cts->xport_specific.sata.caps = d->caps;
-// 			cts->xport_specific.sata.valid |= CTS_SATA_VALID_CAPS;
-// 		}
-// 		cts->xport_specific.sata.mode = d->mode;
-// 		cts->xport_specific.sata.valid |= CTS_SATA_VALID_MODE;
-// 		cts->xport_specific.sata.bytecount = d->bytecount;
-// 		cts->xport_specific.sata.valid |= CTS_SATA_VALID_BYTECOUNT;
-// 		cts->xport_specific.sata.pm_present = ch->pm_present;
-// 		cts->xport_specific.sata.valid |= CTS_SATA_VALID_PM;
-// 		cts->xport_specific.sata.tags = d->tags;
-// 		cts->xport_specific.sata.valid |= CTS_SATA_VALID_TAGS;
-// 		cts->xport_specific.sata.atapi = d->atapi;
-// 		cts->xport_specific.sata.valid |= CTS_SATA_VALID_ATAPI;
-// 		ccb->ccb_h.status = CAM_REQ_CMP;
-// 		break;
-// 	}
-// 	case XPT_RESET_BUS:		/* Reset the specified SCSI bus */
-// 	case XPT_RESET_DEV:	/* Bus Device Reset the specified SCSI device */
-// 		ahci_reset(ch);
-// 		ccb->ccb_h.status = CAM_REQ_CMP;
-// 		break;
-// 	case XPT_TERM_IO:		/* Terminate the I/O process */
-// 		/* XXX Implement */
-// 		ccb->ccb_h.status = CAM_REQ_INVALID;
-// 		break;
-// 	case XPT_PATH_INQ:		/* Path routing inquiry */
-// 	{
-// 		struct ccb_pathinq *cpi = &ccb->cpi;
+		// if (ahci_check_ids(ch, ccb))
+		// 	return;
+		// if (cts->type == CTS_TYPE_CURRENT_SETTINGS)
+		// 	d = &ch->curr[ccb->ccb_h.target_id];
+		// else
+		// 	d = &ch->user[ccb->ccb_h.target_id];
+		// cts->protocol = PROTO_UNSPECIFIED;
+		// cts->protocol_version = PROTO_VERSION_UNSPECIFIED;
+		// cts->transport = XPORT_SATA;
+		// cts->transport_version = XPORT_VERSION_UNSPECIFIED;
+		// cts->proto_specific.valid = 0;
+		// cts->xport_specific.sata.valid = 0;
+		// if (cts->type == CTS_TYPE_CURRENT_SETTINGS &&
+		//     (ccb->ccb_h.target_id == 15 ||
+		//     (ccb->ccb_h.target_id == 0 && !ch->pm_present))) {
+		// 	status = ATA_INL(ch->r_mem, AHCI_P_SSTS) & ATA_SS_SPD_MASK;
+		// 	if (status & 0x0f0) {
+		// 		cts->xport_specific.sata.revision =
+		// 		    (status & 0x0f0) >> 4;
+		// 		cts->xport_specific.sata.valid |=
+		// 		    CTS_SATA_VALID_REVISION;
+		// 	}
+		// 	cts->xport_specific.sata.caps = d->caps & CTS_SATA_CAPS_D;
+		// 	if (ch->pm_level) {
+		// 		if (ch->caps & (AHCI_CAP_PSC | AHCI_CAP_SSC))
+		// 			cts->xport_specific.sata.caps |= CTS_SATA_CAPS_H_PMREQ;
+		// 		if (ch->caps2 & AHCI_CAP2_APST)
+		// 			cts->xport_specific.sata.caps |= CTS_SATA_CAPS_H_APST;
+		// 	}
+		// 	if ((ch->caps & AHCI_CAP_SNCQ) &&
+		// 	    (ch->quirks & AHCI_Q_NOAA) == 0)
+		// 		cts->xport_specific.sata.caps |= CTS_SATA_CAPS_H_DMAAA;
+		// 	cts->xport_specific.sata.caps |= CTS_SATA_CAPS_H_AN;
+		// 	cts->xport_specific.sata.caps &=
+		// 	    ch->user[ccb->ccb_h.target_id].caps;
+		// 	cts->xport_specific.sata.valid |= CTS_SATA_VALID_CAPS;
+		// } else {
+		// 	cts->xport_specific.sata.revision = d->revision;
+		// 	cts->xport_specific.sata.valid |= CTS_SATA_VALID_REVISION;
+		// 	cts->xport_specific.sata.caps = d->caps;
+		// 	cts->xport_specific.sata.valid |= CTS_SATA_VALID_CAPS;
+		// }
+		// cts->xport_specific.sata.mode = d->mode;
+		// cts->xport_specific.sata.valid |= CTS_SATA_VALID_MODE;
+		// cts->xport_specific.sata.bytecount = d->bytecount;
+		// cts->xport_specific.sata.valid |= CTS_SATA_VALID_BYTECOUNT;
+		// cts->xport_specific.sata.pm_present = ch->pm_present;
+		// cts->xport_specific.sata.valid |= CTS_SATA_VALID_PM;
+		// cts->xport_specific.sata.tags = d->tags;
+		// cts->xport_specific.sata.valid |= CTS_SATA_VALID_TAGS;
+		// cts->xport_specific.sata.atapi = d->atapi;
+		// cts->xport_specific.sata.valid |= CTS_SATA_VALID_ATAPI;
+		// ccb->ccb_h.status = CAM_REQ_CMP;
+		break;
+	}
+	case XPT_RESET_BUS:		/* Reset the specified SCSI bus */
+	case XPT_RESET_DEV:	/* Bus Device Reset the specified SCSI device */
+		ahci_reset(ch);
+		ataio->status = CAM_REQ_CMP;
+		break;
+	case XPT_TERM_IO:		/* Terminate the I/O process */
+		/* XXX Implement */
+		ataio->status = CAM_REQ_INVALID;
+		break;
+	case XPT_PATH_INQ:		/* Path routing inquiry */
+	{
+    kassert(false);
+		// struct ccb_pathinq *cpi = &ccb->cpi;
 
-// 		cpi->version_num = 1; /* XXX??? */
-// 		cpi->hba_inquiry = PI_SDTR_ABLE;
-// 		if (ch->caps & AHCI_CAP_SNCQ)
-// 			cpi->hba_inquiry |= PI_TAG_ABLE;
-// 		if (ch->caps & AHCI_CAP_SPM)
-// 			cpi->hba_inquiry |= PI_SATAPM;
-// 		cpi->target_sprt = 0;
-// 		cpi->hba_misc = PIM_SEQSCAN | PIM_UNMAPPED | PIM_ATA_EXT;
-// 		cpi->hba_eng_cnt = 0;
-// 		if (ch->caps & AHCI_CAP_SPM)
-// 			cpi->max_target = 15;
-// 		else
-// 			cpi->max_target = 0;
-// 		cpi->max_lun = 0;
-// 		cpi->initiator_id = 0;
-// 		cpi->bus_id = cam_sim_bus(sim);
-// 		cpi->base_transfer_speed = 150000;
-// 		strncpy(cpi->sim_vid, "FreeBSD", SIM_IDLEN);
-// 		strncpy(cpi->hba_vid, "AHCI", HBA_IDLEN);
-// 		strncpy(cpi->dev_name, cam_sim_name(sim), DEV_IDLEN);
-// 		cpi->unit_number = cam_sim_unit(sim);
-// 		cpi->transport = XPORT_SATA;
-// 		cpi->transport_version = XPORT_VERSION_UNSPECIFIED;
-// 		cpi->protocol = PROTO_ATA;
-// 		cpi->protocol_version = PROTO_VERSION_UNSPECIFIED;
-// 		cpi->maxio = MAXPHYS;
-// 		/* ATI SB600 can't handle 256 sectors with FPDMA (NCQ). */
-// 		if (ch->quirks & AHCI_Q_MAXIO_64K)
-// 			cpi->maxio = min(cpi->maxio, 128 * 512);
-// 		cpi->hba_vendor = ch->vendorid;
-// 		cpi->hba_device = ch->deviceid;
-// 		cpi->hba_subvendor = ch->subvendorid;
-// 		cpi->hba_subdevice = ch->subdeviceid;
-// 		cpi->ccb_h.status = CAM_REQ_CMP;
-// 		break;
-// 	}
-// 	default:
-// 		ccb->ccb_h.status = CAM_REQ_INVALID;
-// 		break;
-// 	}
-// 	ahci_done(ch, ccb);
-// }
+		// cpi->version_num = 1; /* XXX??? */
+		// cpi->hba_inquiry = PI_SDTR_ABLE;
+		// if (ch->caps & AHCI_CAP_SNCQ)
+		// 	cpi->hba_inquiry |= PI_TAG_ABLE;
+		// if (ch->caps & AHCI_CAP_SPM)
+		// 	cpi->hba_inquiry |= PI_SATAPM;
+		// cpi->target_sprt = 0;
+		// cpi->hba_misc = PIM_SEQSCAN | PIM_UNMAPPED | PIM_ATA_EXT;
+		// cpi->hba_eng_cnt = 0;
+		// if (ch->caps & AHCI_CAP_SPM)
+		// 	cpi->max_target = 15;
+		// else
+		// 	cpi->max_target = 0;
+		// cpi->max_lun = 0;
+		// cpi->initiator_id = 0;
+		// cpi->bus_id = cam_sim_bus(sim);
+		// cpi->base_transfer_speed = 150000;
+		// strncpy(cpi->sim_vid, "FreeBSD", SIM_IDLEN);
+		// strncpy(cpi->hba_vid, "AHCI", HBA_IDLEN);
+		// strncpy(cpi->dev_name, cam_sim_name(sim), DEV_IDLEN);
+		// cpi->unit_number = cam_sim_unit(sim);
+		// cpi->transport = XPORT_SATA;
+		// cpi->transport_version = XPORT_VERSION_UNSPECIFIED;
+		// cpi->protocol = PROTO_ATA;
+		// cpi->protocol_version = PROTO_VERSION_UNSPECIFIED;
+		// cpi->maxio = MAXPHYS;
+		// /* ATI SB600 can't handle 256 sectors with FPDMA (NCQ). */
+		// if (ch->quirks & AHCI_Q_MAXIO_64K)
+		// 	cpi->maxio = min(cpi->maxio, 128 * 512);
+		// cpi->hba_vendor = ch->vendorid;
+		// cpi->hba_device = ch->deviceid;
+		// cpi->hba_subvendor = ch->subvendorid;
+		// cpi->hba_subdevice = ch->subdeviceid;
+		// cpi->ccb_h.status = CAM_REQ_CMP;
+		break;
+	}
+	default:
+		ataio->status = CAM_REQ_INVALID;
+		break;
+	}
+	ahci_done(ch, ataio);
+}
 
 // static void
 // ahcipoll(struct cam_sim *sim)
@@ -2766,7 +2861,14 @@ ahci_sata_phy_reset(struct ahci_channel *ch)
 #include <stdlib.h>
 
 AhciChannel *AhciChannel::Init(AhciCtrl *ctrl) {
-  return new AhciChannel(ctrl);
+  AhciChannel *channel = new AhciChannel(ctrl);
+  channel->InitBsdDevice(channel, sizeof(struct ahci_channel));
+  ClassFunction2<AhciChannel, Task> func;
+  func.Init(channel, &AhciChannel::Handle, nullptr);
+  // TODO: cpuid
+  channel->devq.SetFunction(1, func);
+  channel->Read();
+  return channel;
 }
 
 int AhciChannel::DevMethodBusProbe() {
@@ -2787,4 +2889,39 @@ struct resource *AhciChannel::DevMethodBusAllocResource(int type, int *rid, rman
 
 int AhciChannel::DevMethodBusReleaseResource(int type, int rid, struct resource *r) {
   return ahci_release_resource(this->GetParent(), this, type, rid, r);
+}
+
+void AhciChannel::Handle(Task *, void *) {
+	struct ahci_channel *ch = reinterpret_cast<struct ahci_channel *>(softc);
+  PacketAtaio *packet;
+  assert(devq.Pop(packet));
+  ahciaction(ch, packet);
+}
+
+void AhciChannel::Read() {
+  uint32_t lba = 0;
+  uint8_t count = 1;
+  PacketAtaio *ataio = PacketAtaio::XptAlloc();
+  ataio->target_id = 0;
+  ataio->target_lun = 0;
+  ataio->func_code = XPT_ATA_IO;
+  ataio->flags = CAM_DIR_IN | CAM_DATA_VADDR;
+  ataio->timeout = 30 * 1000;
+  
+  ataio->aux = 0;
+  ataio->ata_flags = 0;
+  ataio->cmd.flags = CAM_ATAIO_DMA;
+  ataio->cmd.command = ATA_READ_DMA;
+  ataio->cmd.features = 0;
+  ataio->cmd.lba_low = lba;
+  ataio->cmd.lba_mid = lba >> 8;
+  ataio->cmd.lba_high = lba >> 16;
+  ataio->cmd.device = ATA_DEV_LBA | ((lba >> 24) & 0x0f);
+  ataio->cmd.sector_count = count;
+  ataio->dxfer_len = 512 * count;
+  ataio->data_ptr = nullptr;
+  devq.Push(ataio);
+}
+
+void AhciChannel::Write() {
 }

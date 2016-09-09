@@ -27,6 +27,12 @@
  * $FreeBSD$
  */
 
+#ifndef _AHCI_H_DEFINED_
+#define _AHCI_H_DEFINED_
+
+#include "ahci-raph.h"
+#include <queue.h>
+
 /* ATA register defines */
 #define ATA_DATA                        0       /* (RW) data */
 
@@ -379,7 +385,8 @@ struct ahci_slot {
     struct ahci_channel		*ch;		/* Channel */
     u_int8_t			slot;           /* Number of this slot */
     enum ahci_slot_states	state;          /* Slot state */
-  union ccb			*ccb;		/* CCB occupying slot */
+  // union ccb			*ccb;		/* CCB occupying slot */
+  PacketAtaio *ataio;
     struct ata_dmaslot          dma;            /* DMA data of this slot */
     struct callout              timeout;        /* Execution timeout */
 };
@@ -390,7 +397,7 @@ struct ahci_device {
 	u_int			bytecount;
 	u_int			atapi;
 	u_int			tags;
-	// u_int			caps;
+  u_int			caps;
 };
 
 struct ahci_led {
@@ -401,6 +408,8 @@ struct ahci_led {
 };
 
 #define	AHCI_NUM_LEDS		3
+
+class AhciChannel;
 
 /* structure describing an ATA channel */
 struct ahci_channel {
@@ -429,7 +438,7 @@ struct ahci_channel {
 
 	void			(*start)(struct ahci_channel *);
 
-  union ccb		*hold[AHCI_MAX_SLOTS];
+  PacketAtaio		*hold[AHCI_MAX_SLOTS];
 	struct ahci_slot	slot[AHCI_MAX_SLOTS];
 	uint32_t		oslots;		/* Occupied slots */
 	uint32_t		rslots;		/* Running slots */
@@ -449,7 +458,7 @@ struct ahci_channel {
 	int			resetpolldiv;	/* Hard-reset poll divider. */
 	int			listening;	/* SUD bit is cleared. */
 	int			wrongccs;	/* CCS field in CMD was wrong */
-  union ccb		*frozen;	/* Frozen command */
+  // union ccb		*frozen;	/* Frozen command */
   
 	struct callout		pm_timer;	/* Power management events */
 	struct callout		reset_timer;	/* Hard-reset timeout */
@@ -458,7 +467,6 @@ struct ahci_channel {
 	struct ahci_device	curr[16];	/* Current settings */
 
 	struct mtx_padalign	mtx;		/* state lock */
-  STAILQ_HEAD(, ccb_hdr)	doneq;		/* queue of completed CCBs */
 	int			batch;		/* doneq is in use */
 };
 
@@ -645,3 +653,5 @@ bus_dma_tag_t ahci_get_dma_tag(device_t dev, device_t child);
 int ahci_ctlr_reset(device_t dev);
 int ahci_ctlr_setup(device_t dev);
 void ahci_free_mem(device_t dev);
+
+#endif // _AHCI_H_DEFINED_

@@ -29,7 +29,7 @@
 #ifndef	CAM_ATA_ALL_H
 #define CAM_ATA_ALL_H 1
 
-//#include <sys/ata.h>
+#include <sys/ata.h>
 
 struct ccb_ataio;
 struct cam_periph;

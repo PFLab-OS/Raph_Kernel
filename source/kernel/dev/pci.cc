@@ -64,7 +64,7 @@ void PciCtrl::_Init() {
 }
 
 DevPci *PciCtrl::InitPciDevices(uint8_t bus, uint8_t device, uint8_t func) {
-  return _InitPciDevices<E1000, lE1000/*, AhciCtrl*/, DevPci>(bus, device, func);
+  return _InitPciDevices<E1000, lE1000, AhciCtrl, DevPci>(bus, device, func);
 }
 
 uint16_t PciCtrl::FindCapability(uint8_t bus, uint8_t device, uint8_t func, CapabilityId id) {

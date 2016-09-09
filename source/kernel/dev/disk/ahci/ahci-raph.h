@@ -23,12 +23,79 @@
 #ifndef __RAPH_KERNEL_DEV_DISK_AHCI_AHCI_RAPH_H__
 #define __RAPH_KERNEL_DEV_DISK_AHCI_AHCI_RAPH_H__
 
+#include <raph.h>
+#include <queue.h>
 #include <sys/types-raph.h>
 #include <sys/bus-raph.h>
+#include <cam/cam.h>
+#include <cam/cam_ccb.h>
+
+class AhciChannel;
+
+class PacketAtaio {
+public:
+  target_id_t	target_id;
+  lun_id_t target_lun;
+  xpt_opcode func_code;
+  uint32_t flags;
+  uint32_t status;
+  ccb_spriv_area	sim_priv;
+	uint32_t	timeout;
+
+  uint32_t aux;
+	uint8_t ata_flags;
+  struct ata_res	res;
+  struct ata_cmd  cmd;
+	uint32_t  resid;
+  uint32_t dxfer_len;
+  uint8_t *data_ptr;
+
+  enum class Status {
+    kErr,
+    kSuccess,
+  };
+  Status proc_result;
+
+  AhciChannel *channel;
+  static PacketAtaio *XptAlloc() {
+    new PacketAtaio();
+  }
+  void XptCopyHeader(PacketAtaio *ataio) {
+    target_id = ataio->target_id;
+    func_code = ataio->func_code;
+    flags = ataio->flags;
+    status = ataio->flags;
+    sim_priv = ataio->sim_priv;
+    timeout = ataio->timeout;
+  }
+  void XptDone();
+  void XptFree() {
+    delete this;
+  }
+private:
+};
+
+class PacketAtaioCtrl {
+public:
+  static void Init() {
+    if (!_is_initailized) {
+      new (&_ctrl) PacketAtaioCtrl();
+    }
+  }
+  static PacketAtaioCtrl &GetCtrl() {
+    return _ctrl;
+  }
+private:
+  PacketAtaioCtrl() {
+  }
+  static PacketAtaioCtrl _ctrl;
+  static bool _is_initailized;
+};
 
 class AhciCtrl : public BsdDevPci {
 public:
   AhciCtrl(uint8_t bus, uint8_t device, uint8_t function) : BsdDevPci(bus, device, function) {
+    PacketAtaioCtrl::Init();
   }
   static DevPci *InitPci(uint8_t bus, uint8_t device, uint8_t function);
 private:
@@ -38,9 +105,52 @@ private:
 
 class AhciChannel : public BsdDevBus {
 public:
+  class DevQueue final : public Functional {
+  public:
+    DevQueue() {
+    }
+    ~DevQueue() {
+    }
+    void Push(PacketAtaio *data) {
+      _queue.Push(data);
+      WakeupFunction();
+    }
+    bool Pop(PacketAtaio *&data) {
+      return _queue.Pop(data);
+    }
+    bool IsEmpty() {
+      return _queue.IsEmpty();
+    }
+    void Freeze(int n) {
+      Locker locker(lock);
+      freeze += n;
+    }
+    void Release(int n) {
+      Locker locker(lock);
+      freeze -= n;
+      if (freeze == 0) {
+        WakeupFunction();
+      }
+    }
+  private:
+    virtual bool ShouldFunc() override {
+      Locker locker(lock);
+      return (freeze == 0) && !_queue.IsEmpty();
+    }
+    Queue2<PacketAtaio> _queue;
+    int freeze = 0;
+    SpinLock lock;
+  };
   AhciChannel(AhciCtrl *ctrl) : BsdDevBus(ctrl, "ahcich", -1), _ctrl(ctrl) {
   }
+  void Read();
+  void Write();
+  void Handle(Task *, void *);
   static AhciChannel *Init(AhciCtrl *ctrl);
+  DevQueue	devq;
+  PacketAtaio	*frozen;
+  Queue2<PacketAtaio>	doneq;
+  Queue2<PacketAtaio>	tmp_doneq;
 private:
   AhciChannel();
   virtual int DevMethodBusProbe() override final;

@@ -1,4 +1,4 @@
-OBJS = ahci_pci.o ahci.o
+OBJS = ahci_pci.o ahci.o packet.o
 
 DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))
 

@@ -66,6 +66,22 @@ extern "C" {
     return pending ? 1 : 0;
   }
 
+  int callout_reset_sbt(struct callout *c, sbintime_t sbt, sbintime_t precision, void ftn(void *), void *arg, int flags) {
+    bool pending = c->callout->IsPending();
+    
+    c->callout->Cancel();
+    if (sbt < 0) {
+      sbt = 1;
+    }
+    Function f;
+    f.Init(ftn, arg);
+    c->callout->Init(f);
+    //TODO cpuid
+    c->callout->SetHandler(1, sbt * static_cast<sbintime_t>(1000000) / SBT_1S);
+
+    return pending ? 1 : 0;
+  }
+
   int	callout_schedule(struct callout *c, int ticks) {
     bool pending = c->callout->IsPending();
     

@@ -73,7 +73,9 @@ extern "C" {
     bus_dma_segment_t segs[1];
     segs[0].ds_addr = reinterpret_cast<bus_addr_t>(dmat->paddr.GetAddr());
     segs[0].ds_len = dmat->size;
-    callback(callback_arg, segs, 1, 0);
+    if (callback != nullptr) {
+      callback(callback_arg, segs, 1, 0);
+    }
     return 0;
   }
 
