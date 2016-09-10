@@ -277,7 +277,17 @@ extern "C" int main() {
 
   gtty->Init();
 
-  keyboard->Setup(1);
+  Function func;
+  func.Init([](void *){
+      uint8_t data;
+      if(!keyboard->Read(data)){
+	return;
+      }
+      char c = Keyboard::Interpret(data);
+      gtty->Cprintf("%c", c);
+      shell->ReadCh(c);
+    }, nullptr);
+  keyboard->Setup(1, func);
 
   cnt = 0;
   sum = 0;
@@ -304,22 +314,21 @@ extern "C" int main() {
     socket.SetIpAddr(inet_atoi(ip1));
     Function func;
     func.Init([](void *){
-        uint32_t ipaddr;
-        uint8_t macaddr[6];
-        
-        int32_t rval = socket.ReceivePacket(0, &ipaddr, macaddr);
-        if(rval == ArpSocket::kOpArpReply) {
-          uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;
-          cnt = 0;
-          sum += l;
-          rtime++;
-        } else if(rval == ArpSocket::kOpArpRequest) {
-          socket.TransmitPacket(ArpSocket::kOpArpReply, ipaddr, macaddr);
-        }
+	uint32_t ipaddr;
+	uint8_t macaddr[6];
+	
+	int32_t rval = socket.ReceivePacket(0, &ipaddr, macaddr);
+	if(rval == ArpSocket::kOpArpReply) {
+	  uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;
+	  cnt = 0;
+	  sum += l;
+	  rtime++;
+	} else if(rval == ArpSocket::kOpArpRequest) {
+	  socket.TransmitPacket(ArpSocket::kOpArpReply, ipaddr, macaddr);
+	}
       }, nullptr);
     socket.SetReceiveCallback(2, func);
   }
- 
   // 各コアは最低限の初期化ののち、TaskCtrlに制御が移さなければならない
   // 特定のコアで専用の処理をさせたい場合は、TaskCtrlに登録したジョブとして
   // 実行する事
@@ -332,23 +341,7 @@ extern "C" int main() {
   shell->Register("halt", halt);
   shell->Register("reset", reset);
   shell->Register("bench", bench);
-  
-  // print keyboard_input
-  // TODO: Functional FIFOにすべき
-  PollingFunc _keyboard_polling;
-  Function func;
-  func.Init([](void *) {
-      // print keyboard_input
-      while(keyboard->Count() > 0) {
-        char ch[2] = {'\0','\0'};
-        ch[0] = keyboard->GetCh();
-        gtty->Cprintf(ch);
-        shell->ReadCh(ch[0]);
-      }
-    }, nullptr);
-  _keyboard_polling.Init(func);
-  _keyboard_polling.Register(1);
-  
+
   task_ctrl->Run();
 
   DismissNetCtrl();
