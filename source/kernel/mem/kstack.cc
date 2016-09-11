@@ -21,6 +21,7 @@
  */
 
 #include "kstack.h"
+#include <string.h>
 #include <mem/paging.h>
 #include <mem/physmem.h>
 #include <global.h>
@@ -73,7 +74,7 @@ virt_addr KernelStackCtrl::AllocThreadStack(int cpuid) {
   PhysAddr paddr;
   physmem_ctrl->Alloc(paddr, kStackSize);
   kassert(paging_ctrl->MapPhysAddrToVirtAddr(_stack_area_top + PagingCtrl::kPageSize, paddr, kStackSize, PDE_WRITE_BIT, PTE_WRITE_BIT | PTE_GLOBAL_BIT));
-
+  bzero(reinterpret_cast<void *>(_stack_area_top + PagingCtrl::kPageSize), PagingCtrl::kPageSize);
 
   StackInfo *sinfo = GetCurrentStackInfoPtr(_stack_area_top + PagingCtrl::kPageSize);
   sinfo->magic = StackInfo::kMagic;

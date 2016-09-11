@@ -126,6 +126,7 @@ extern "C" {
     va_start(args, fmt);
     gtty->Cvprintf(fmt, args);
     va_end(args);
+    gtty->Cprintf("\n");
     return 0;  // TODO fix this
   }
 

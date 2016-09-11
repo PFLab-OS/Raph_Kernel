@@ -52,6 +52,10 @@
 #include <cam/cam_sim.h>
 // #include <cam/cam_xpt_sim.h>
 /* #include <cam/cam_debug.h> */
+#include <tty.h>
+#include <global.h>
+
+extern AhciChannel *g_channel;
 
 
 /* local prototypes */
@@ -1353,6 +1357,7 @@ ahci_ch_intr_main(struct ahci_channel *ch, uint32_t istatus)
         ch->dev->GetMasterClass<AhciChannel>()->devq.Freeze(1);
        	packet->status |= CAM_DEV_QFRZN;
       }
+      gtty->Cprintf("<%d>", __LINE__);
       ahci_done(ch, packet);
     }
 		for (i = 0; i < ch->numslots; i++) {
@@ -1490,55 +1495,58 @@ ahci_begin_transaction(struct ahci_channel *ch, PacketAtaio *ataio)
 	if ((ataio->func_code == XPT_ATA_IO) &&
 	    (ataio->cmd.flags & (CAM_ATAIO_CONTROL | CAM_ATAIO_NEEDRESULT)))
 		ch->aslots |= (1 << tag);
+  gtty->Cprintf("<begin>");
 	if ((ataio->flags & CAM_DIR_MASK) != CAM_DIR_NONE) {
 		slot->state = AHCI_SLOT_LOADING;
 		// bus_dmamap_load_ccb(ch->dma.data_tag, slot->dma.data_map, ccb,
 		//     ahci_dmasetprd, slot, 0);
     bus_dma_tag_create(bus_get_dma_tag(ch->dev), 1, 0, BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR, nullptr, nullptr, ataio->dxfer_len, 1, ataio->dxfer_len, 0, nullptr, nullptr ,&ch->dma.data_tag);
     bus_dmamem_alloc(ch->dma.data_tag, reinterpret_cast<void **>(&ataio->data_ptr), BUS_DMA_NOWAIT | BUS_DMA_COHERENT, &slot->dma.data_map);
-    bus_dmamap_load(ch->dma.data_tag, slot->dma.data_map, reinterpret_cast<void *>(ataio->data_ptr), ataio->dxfer_len, nullptr, nullptr, BUS_DMA_NOWAIT);
+    bus_dmamap_load(ch->dma.data_tag, slot->dma.data_map, reinterpret_cast<void *>(ataio->data_ptr), ataio->dxfer_len, ahci_dmasetprd, slot, BUS_DMA_NOWAIT);
 	} else {
 		slot->dma.nsegs = 0;
 		ahci_execute_transaction(slot);
 	}
 }
 
-// /* Locked by busdma engine. */
-// static void
-// ahci_dmasetprd(void *arg, bus_dma_segment_t *segs, int nsegs, int error)
-// {    
-// 	struct ahci_slot *slot = arg;
-// 	struct ahci_channel *ch = slot->ch;
-// 	struct ahci_cmd_tab *ctp;
-// 	struct ahci_dma_prd *prd;
-// 	int i;
+/* Locked by busdma engine. */
+static void
+ahci_dmasetprd(void *arg, bus_dma_segment_t *segs, int nsegs, int error)
+{    
+	struct ahci_slot *slot = reinterpret_cast<struct ahci_slot *>(arg);
+	struct ahci_channel *ch = slot->ch;
+	struct ahci_cmd_tab *ctp;
+	struct ahci_dma_prd *prd;
+	int i;
 
-// 	if (error) {
-// 		device_printf(ch->dev, "DMA load error\n");
-// 		ahci_end_transaction(slot, AHCI_ERR_INVALID);
-// 		return;
-// 	}
-// 	KASSERT(nsegs <= AHCI_SG_ENTRIES, ("too many DMA segment entries\n"));
-// 	/* Get a piece of the workspace for this request */
-// 	ctp = (struct ahci_cmd_tab *)
-// 		(ch->dma.work + AHCI_CT_OFFSET + (AHCI_CT_SIZE * slot->slot));
-// 	/* Fill S/G table */
-// 	prd = &ctp->prd_tab[0];
-// 	for (i = 0; i < nsegs; i++) {
-// 		prd[i].dba = htole64(segs[i].ds_addr);
-// 		prd[i].dbc = htole32((segs[i].ds_len - 1) & AHCI_PRD_MASK);
-// 	}
-// 	slot->dma.nsegs = nsegs;
-// 	bus_dmamap_sync(ch->dma.data_tag, slot->dma.data_map,
-// 	    ((slot->ccb->ccb_h.flags & CAM_DIR_IN) ?
-// 	    BUS_DMASYNC_PREREAD : BUS_DMASYNC_PREWRITE));
-// 	ahci_execute_transaction(slot);
-// }
+	if (error) {
+		device_printf(ch->dev, "DMA load error\n");
+		ahci_end_transaction(slot, AHCI_ERR_INVALID);
+		return;
+	}
+	// KASSERT(nsegs <= AHCI_SG_ENTRIES, ("too many DMA segment entries\n"));
+  kassert(nsegs <= AHCI_SG_ENTRIES);
+	/* Get a piece of the workspace for this request */
+	ctp = (struct ahci_cmd_tab *)
+		(ch->dma.work + AHCI_CT_OFFSET + (AHCI_CT_SIZE * slot->slot));
+	/* Fill S/G table */
+	prd = &ctp->prd_tab[0];
+	for (i = 0; i < nsegs; i++) {
+		prd[i].dba = htole64(segs[i].ds_addr);
+		prd[i].dbc = htole32((segs[i].ds_len - 1) & AHCI_PRD_MASK);
+	}
+	slot->dma.nsegs = nsegs;
+	bus_dmamap_sync(ch->dma.data_tag, slot->dma.data_map,
+	    ((slot->ataio->flags & CAM_DIR_IN) ?
+	    BUS_DMASYNC_PREREAD : BUS_DMASYNC_PREWRITE));
+	ahci_execute_transaction(slot);
+}
 
 /* Must be called with channel locked. */
 static void
 ahci_execute_transaction(struct ahci_slot *slot)
 {
+  gtty->Cprintf("<exec>");
 	struct ahci_channel *ch = slot->ch;
 	struct ahci_cmd_tab *ctp;
 	struct ahci_cmd_list *clp;
@@ -1783,6 +1791,7 @@ ahci_timeout(struct ahci_slot *slot)
       ch->dev->GetMasterClass<AhciChannel>()->devq.Freeze(1);
       packet->status |= CAM_DEV_QFRZN;
     }
+      gtty->Cprintf("<%d>", __LINE__);
     ahci_done(ch, packet);
   }
 	if (!ch->fbs_enabled && !ch->wrongccs) {
@@ -1998,8 +2007,10 @@ ahci_end_transaction(struct ahci_slot *slot, enum ahci_err_type et)
 	     (ataio->flags & CAM_DIS_AUTOSENSE) == 0)) {
 		ch->hold[slot->slot] = ataio;
 		ch->numhslots++;
-	} else
+	} else {
+      gtty->Cprintf("<%d>", __LINE__);
 		ahci_done(ch, ataio);
+  }
 	/* If we have no other active commands, ... */
 	if (ch->rslots == 0) {
 		/* if there was fatal error - reset port. */
@@ -2067,6 +2078,7 @@ completeall:
 				continue;
 			ch->hold[i]->status &= ~CAM_STATUS_MASK;
 			ch->hold[i]->status |= CAM_RESRC_UNAVAIL;
+      gtty->Cprintf("<%d>", __LINE__);
 			ahci_done(ch, ch->hold[i]);
 			ch->hold[i] = NULL;
 			ch->numhslots--;
@@ -2415,10 +2427,9 @@ ahci_reset(struct ahci_channel *ch)
     ch->hold[i] = NULL;
 		ch->numhslots--;
 	}
-  // TODO replace
-	// if (ch->toslots != 0)
+  if (ch->toslots != 0)
+    ch->dev->GetMasterClass<AhciChannel>()->devq.Release(1);
 	// 	xpt_release_simq(ch->sim, TRUE);
-  ch->dev->GetMasterClass<AhciChannel>()->devq.Release(1);
 	ch->eslots = 0;
 	ch->toslots = 0;
 	ch->wrongccs = 0;
@@ -2452,6 +2463,8 @@ ahci_reset(struct ahci_channel *ch)
 			ch->resetting = 310;
 	}
 	ch->devices = 1;
+  kassert(g_channel == nullptr);
+  g_channel = ch->dev->GetMasterClass<AhciChannel>();
 	/* Enable wanted port interrupts */
 	ATA_OUTL(ch->r_mem, AHCI_P_IE,
 	     (((ch->pm_level != 0) ? AHCI_P_IX_CPD | AHCI_P_IX_MP : 0) |
@@ -2627,6 +2640,7 @@ ahci_check_ids(struct ahci_channel *ch, PacketAtaio *ataio)
 	return (0);
 }
 
+extern int piyo;
 static void
 ahciaction(struct ahci_channel *ch, PacketAtaio *ataio)
 {
@@ -2649,8 +2663,8 @@ ahciaction(struct ahci_channel *ch, PacketAtaio *ataio)
 			break;
 		}
 		ataio->recovery_type = RECOVERY_NONE;
-		/* Check for command collision. */
-		if (ahci_check_collision(ch, ataio)) {
+		/* Check for command collision. */	
+    if (ahci_check_collision(ch, ataio)) {
 			/* Freeze command. */
       ch->dev->GetMasterClass<AhciChannel>()->frozen = ataio;
 			// ch->frozen = ataio;
@@ -2867,7 +2881,6 @@ AhciChannel *AhciChannel::Init(AhciCtrl *ctrl) {
   func.Init(channel, &AhciChannel::Handle, nullptr);
   // TODO: cpuid
   channel->devq.SetFunction(1, func);
-  channel->Read();
   return channel;
 }
 
@@ -2876,7 +2889,11 @@ int AhciChannel::DevMethodBusProbe() {
 }
 
 int AhciChannel::DevMethodBusAttach() {
-  return ahci_ch_attach(this);
+  int i = ahci_ch_attach(this);
+  if (i == 0) {
+    ahci_reset(reinterpret_cast<struct ahci_channel *>(softc));
+  }
+  return i;
 }
 
 int AhciChannel::DevMethodBusSetupIntr(struct resource *r, int flags, driver_filter_t filter, driver_intr_t ithread, void *arg, void **cookiep) {

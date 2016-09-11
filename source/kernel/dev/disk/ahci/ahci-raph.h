@@ -58,7 +58,7 @@ public:
 
   AhciChannel *channel;
   static PacketAtaio *XptAlloc() {
-    new PacketAtaio();
+    return new PacketAtaio();
   }
   void XptCopyHeader(PacketAtaio *ataio) {
     target_id = ataio->target_id;
@@ -128,6 +128,7 @@ public:
     void Release(int n) {
       Locker locker(lock);
       freeze -= n;
+      kassert(freeze >= 0);
       if (freeze == 0) {
         WakeupFunction();
       }
@@ -148,7 +149,7 @@ public:
   void Handle(Task *, void *);
   static AhciChannel *Init(AhciCtrl *ctrl);
   DevQueue	devq;
-  PacketAtaio	*frozen;
+  PacketAtaio	*frozen = nullptr;
   Queue2<PacketAtaio>	doneq;
   Queue2<PacketAtaio>	tmp_doneq;
 private:

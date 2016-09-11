@@ -82,9 +82,13 @@ int64_t sum;
 static const int stime = 3000;
 int time, rtime;
 
+#include <dev/disk/ahci/ahci-raph.h>
+AhciChannel *g_channel = nullptr;
+
 Callout tt1;
 Callout tt2;
 Callout tt3;
+Callout tt4;
 
 uint8_t ip1[] = {0, 0, 0, 0};
 uint8_t ip2[] = {0, 0, 0, 0};
@@ -270,6 +274,10 @@ extern "C" int main() {
   
   acpi_ctrl->SetupAcpica();
 
+  InitNetCtrl();
+
+  InitDevices<PciCtrl, Device>();
+
   // 各コアは最低限の初期化ののち、TaskCtrlに制御が移さなければならない
   // 特定のコアで専用の処理をさせたい場合は、TaskCtrlに登録したジョブとして
   // 実行する事
@@ -279,10 +287,6 @@ extern "C" int main() {
   gtty->Init();
 
   gtty->Printf("s", "[cpu] info: #", "d", cpu_ctrl->GetId(), "s", "(apic id:", "d", apic_ctrl->GetApicIdFromCpuId(cpu_ctrl->GetId()), "s", ") started.\n");
-
-  InitNetCtrl();
-
-  InitDevices<PciCtrl, Device>();
 
   keyboard->Setup(1);
 
@@ -381,6 +385,17 @@ extern "C" int main_of_others() {
       }, nullptr);
     tt1.Init(func);
     tt1.SetHandler(10);
+  }
+
+  if (cpu_ctrl->GetId() == 5) {
+    new(&tt4) Callout;
+    Function func;
+    func.Init([](void *){
+        kassert(g_channel != nullptr);
+        g_channel->Read();
+      }, nullptr);
+    tt4.Init(func);
+    tt4.SetHandler(10);
   }
 
   task_ctrl->Run();

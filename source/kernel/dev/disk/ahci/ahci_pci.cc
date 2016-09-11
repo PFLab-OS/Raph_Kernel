@@ -340,7 +340,6 @@ ahci_probe(device_t dev)
 			if (pci_get_vendor(dev) == 0x197b &&
 			    (pci_read_config(dev, 0xdf, 1) & 0x40) == 0)
 				return (ENXIO);
-      device_printf(dev, "%s", ahci_ids[i].name);
 			// snprintf(buf, sizeof(buf), "%s AHCI SATA controller",
 			//     ahci_ids[i].name);
 			device_set_desc_copy(dev, buf);

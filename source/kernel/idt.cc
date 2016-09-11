@@ -38,8 +38,15 @@ extern "C" void handle_int(Regs *rs) {
   if (idt->_callback[cpuid][rs->n].callback == nullptr) {
     if (gtty != nullptr) {
       gtty->CprintfRaw("[kernel] error: unimplemented interrupt %d at cpuid: %d\nrip: %llx rbp: %llx\n", rs->n, cpuid, rs->rip, rs->rbp);
+      size_t *rbp = reinterpret_cast<size_t *>(rs->rbp);
+      for (int i = 0; i < 3; i++) {
+        gtty->CprintfRaw("backtrace(%d): rip:%llx,\n", i, rbp[1]);
+        rbp = reinterpret_cast<size_t *>(rbp[0]);
+      }
     }
-    asm volatile("cli; hlt; nop; nop; hlt; nop; hlt;"::"a"(rs->rip));
+    while(true) {
+      asm volatile("cli; hlt;");
+    }
   } else {
     idt->_callback[cpuid][rs->n].callback(rs, idt->_callback[cpuid][rs->n].arg);
   }
