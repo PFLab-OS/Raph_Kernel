@@ -22,7 +22,7 @@
 
 #include <mem/virtmem.h>
 #include <dev/netdev.h>
-#include <net/ptcl.h>
+#include <net/pstack.h>
 #include <global.h>
 
 const char *NetDevCtrl::kDefaultNetworkInterfaceName = "eth0";

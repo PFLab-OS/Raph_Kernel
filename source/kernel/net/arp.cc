@@ -16,129 +16,83 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
- * Author: Levelfour
+ * Author: levelfour
  * 
  */
 
-#include <string.h>
-#include <raph.h>
-#include <mem/physmem.h>
-#include <mem/virtmem.h>
-#include <net/socket.h>
+
 #include <net/arp.h>
-#include <arpa/inet.h>
+#include <dev/eth.h>
 
-// hardware type
-const uint16_t kHWEthernet = 0x0001;
 
-// protocol
-const uint16_t kProtocolIpv4 = 0x0800;
+int ArpSocket::Open() {
+  NetDevCtrl::NetDevInfo *devinfo = netdev_ctrl->GetDeviceInfo();
+  DevEthernet *device = static_cast<DevEthernet *>(devinfo->device);
+  ProtocolStack *pstack = devinfo->ptcl_stack;
 
-// broadcast MAC address (ff:ff:ff:ff:ff:ff)
-const uint8_t kBcastMacAddr[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+  uint8_t eth_addr[6];
+  device->GetEthAddr(eth_addr);
 
-int32_t ArpGeneratePacket(uint8_t *buffer, uint16_t op, uint8_t *smacaddr, uint32_t sipaddr, uint8_t *dmacaddr, uint32_t dipaddr) {
-  ArpPacket * volatile packet = reinterpret_cast<ArpPacket*>(buffer);
-  packet->hwtype = htons(kHWEthernet);
-  packet->protocol = htons(kProtocolIpv4);
-  packet->hlen = 6;
-  packet->plen = 4;
-  if(op) packet->op = htons(op);
-  if(smacaddr) memcpy(packet->hw_saddr, smacaddr, 6);
-  if(sipaddr) packet->proto_saddr = htonl(sipaddr);
-  if(dipaddr) packet->proto_daddr = htonl(dipaddr);
-  switch(op) {
-    case ArpSocket::kOpRequest:
-      memset(packet->hw_daddr, 0, 6);
-      break;
-	case ArpSocket::kOpReply:
-      if(dmacaddr) memcpy(packet->hw_daddr, dmacaddr, 6);
-      break;
-    default:
-      // unknown ARP operation
-      return -1;
+  // stack construction (BaseLayer > ArpLayer > ArpSocket)
+  ProtocolStackBaseLayer *base_layer = reinterpret_cast<ProtocolStackBaseLayer *>(virtmem_ctrl->Alloc(sizeof(ProtocolStackBaseLayer)));
+  base_layer->Setup(nullptr);
+  pstack->SetBaseLayer(base_layer);
+
+  ArpLayer *arp_layer = reinterpret_cast<ArpLayer *>(virtmem_ctrl->Alloc(sizeof(ProtocolStackBaseLayer)));
+  arp_layer->Setup(base_layer);
+  arp_layer->SetAddress(eth_addr, _ipv4_addr);
+
+  return this->Setup(arp_layer) ? 0 : -1;
+}
+
+
+bool ArpLayer::FilterPacket(NetDev::Packet *packet) {
+  ArpLayer::Header *header = reinterpret_cast<ArpLayer::Header *>(packet->buf);
+
+  if (memcmp(_eth_addr, header->hdaddr, 6) != 0) {
+    if (memcmp(_eth_addr, kBroadcastMacAddress, 6) != 0) {
+      return false;
+    }
   }
 
-  return sizeof(ArpPacket);
-}
-
-bool ArpFilterPacket(uint8_t *packet, uint16_t op, uint8_t *smacaddr, uint32_t sipaddr, uint8_t *dmacaddr, uint32_t dipaddr) {
-  ArpPacket * volatile data = reinterpret_cast<ArpPacket*>(packet);
-  return (!op || ntohs(data->op) == op)
-      && (!smacaddr || !memcmp(data->hw_saddr, smacaddr, 6))
-      && (!sipaddr  || ntohl(data->proto_saddr) == sipaddr)
-      && (ntohs(data->op) == ArpSocket::kOpRequest || !dmacaddr || !memcmp(data->hw_daddr, dmacaddr, 6) || !memcmp(data->hw_daddr, kBcastMacAddr, 6))
-      && (!dipaddr  || ntohl(data->proto_daddr) == dipaddr);
-}
-
-bool RegisterIpAddress(uint8_t *packet) {
-  ArpPacket * volatile arp = reinterpret_cast<ArpPacket*>(packet);
-  return arp_table->Add(arp->proto_saddr, arp->hw_saddr);
-}
-
-void ArpGetSourceMacAddress(uint8_t *buffer, uint8_t *packet) {
-  ArpPacket * volatile arp = reinterpret_cast<ArpPacket*>(packet);
-  memcpy(buffer, arp->hw_saddr, 6);
-}
-
-void ArpGetDestMacAddress(uint8_t *buffer, uint8_t *packet) {
-  ArpPacket * volatile arp = reinterpret_cast<ArpPacket*>(packet);
-  memcpy(buffer, arp->hw_daddr, 6);
-}
-
-uint32_t ArpGetSourceIpAddress(uint8_t *packet) {
-  ArpPacket * volatile arp = reinterpret_cast<ArpPacket*>(packet);
-  return ntohl(arp->proto_saddr);
-}
-
-uint32_t ArpGetDestIpAddress(uint8_t *packet) {
-  ArpPacket * volatile arp = reinterpret_cast<ArpPacket*>(packet);
-  return ntohl(arp->proto_daddr);
-}
-
-uint16_t ArpGetOperation(uint8_t *packet) {
-  ArpPacket * volatile arp = reinterpret_cast<ArpPacket*>(packet);
-  return ntohs(arp->op);
-}
-
-/*
- * ArpTable
- */
-
-ArpTable::ArpTable() {
-  for(uint32_t i = 0; i < kMaxNumberRecords; i++) {
-    _table[i].ipaddr = 0;
+  if (_ipv4_addr != ntohl(header->pdaddr)) {
+    return false;
   }
-}
 
-bool ArpTable::Add(uint32_t ipaddr, uint8_t *macaddr) {
-  Locker locker(_lock);
+  // ARP destination address and operation specified by ArpSocket
+  ArpSocket::Chunk *chunk = reinterpret_cast<ArpSocket::Chunk *>(packet->buf + GetProtocolHeaderLength());
+  chunk->operation = ntohs(header->op);
+  chunk->ipv4_addr = ntohl(header->psaddr);
 
-  uint32_t index = Hash(ipaddr);
-  while(_table[index].ipaddr != 0) {
-    // record already exists
-    index = Probe(index);
-  }
-  // new record
-  memcpy(_table[index].macaddr, macaddr, 6);
   return true;
 }
 
-bool ArpTable::Find(uint32_t ipaddr, uint8_t *macaddr) {
-  Locker locker(_lock);
 
-  uint32_t index = Hash(ipaddr);
+bool ArpLayer::PreparePacket(NetDev::Packet *packet) {
+  ArpLayer::Header *header = reinterpret_cast<ArpLayer::Header *>(packet->buf);
+  header->htype  = htons(0x0001);  // Ethernet
+  header->ptcl   = htons(0x0800);  // IPv4
+  header->hlen   = 6;
+  header->plen   = 4;
+  memcpy(header->hsaddr, _eth_addr, 6);
+  header->psaddr = htonl(_ipv4_addr);
 
-  // TODO: must set the upper bound of probing
-  while(_table[index].ipaddr != ipaddr) {
-    if(_table[index].ipaddr == 0) {
-      // does not exist
-      return false;
-	} else {
-      // conflict
-      index = Probe(index);
-    }
+  // ARP destination address and operation specified by ArpSocket
+  ArpSocket::Chunk *chunk = reinterpret_cast<ArpSocket::Chunk *>(packet->buf + GetProtocolHeaderLength());
+  header->op     = htons(chunk->operation);
+  header->pdaddr = htonl(chunk->ipv4_addr);
+
+  switch(header->op) {
+    case ArpSocket::kOpRequest:
+      // ARP request is sent by broadcast mode
+      memcpy(header->hdaddr, kBroadcastMacAddress, 6);
+      break;
+
+    case ArpSocket::kOpReply:
+      // TODO: use ARP table
+      memcpy(header->hdaddr, kBroadcastMacAddress, 6);
+      break;
   }
-  memcpy(macaddr, _table[index].macaddr, 6);
+
   return true;
 }

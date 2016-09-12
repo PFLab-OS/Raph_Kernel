@@ -16,82 +16,180 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
- * Author: Levelfour
+ * Author: levelfour
  * 
  */
 
 #ifndef __RAPH_KERNEL_NET_ARP_H__
 #define __RAPH_KERNEL_NET_ARP_H__
 
-#include <stdint.h>
 
-struct ArpPacket {
-  // hardware type
-  uint16_t hwtype;
-  // protocol type
-  uint16_t protocol;
-  // hardware length
-  uint8_t hlen;
-  // protocol length
-  uint8_t plen;
-  // operation
-  uint16_t op;
-  // source hardware address
-  uint8_t hw_saddr[6];
-  // source protocol address
-  uint32_t proto_saddr;
-  // destination hardware address
-  uint8_t hw_daddr[6];
-  // destination protocol address
-  uint32_t proto_daddr;
-} __attribute__((packed));
+#include <net/arp.h>
+#include <net/socket.h>
 
-int32_t ArpGeneratePacket(uint8_t *buffer, uint16_t op, uint8_t *smacaddr, uint32_t sipaddr, uint8_t *dmacaddr, uint32_t dipaddr);
-bool ArpFilterPacket(uint8_t *packet, uint16_t op, uint8_t *smacaddr, uint32_t sipaddr, uint8_t *dmacaddr, uint32_t dipaddr);
 
-// register the mapping from IP address to MAC address to ARP table
-bool RegisterIpAddress(uint8_t *packet);
-
-// extract sender MAC address from packet
-void ArpGetSourceMacAddress(uint8_t *buffer, uint8_t *packet);
-
-// extract dest MAC address from packet
-void ArpGetDestMacAddress(uint8_t *buffer, uint8_t *packet);
-
-// extract sender MAC address from packet
-uint32_t ArpGetSourceIpAddress(uint8_t *packet);
-
-// extract dest MAC address from packet
-uint32_t ArpGetDestIpAddress(uint8_t *packet);
-
-// extract operation from packet
-uint16_t ArpGetOperation(uint8_t *packet);
-
-class ArpTable {
+class ArpSocket : public Socket {
 public:
-  ArpTable();
-  bool Add(uint32_t ipaddr, uint8_t *macaddr);
-  bool Find(uint32_t ipaddr, uint8_t *macaddr);
+  ArpSocket() {}
 
-private:
-  struct ArpTableRecord {
-    uint32_t ipaddr;
-    uint8_t macaddr[6];
+  /**
+   * Struct serves as an interface between ArpSocket and ArpLayer.
+   * ArpSocket receives / transmits Chunk from / to ArpLayer
+   * because ARP packets do not have body part.
+   * We shuold use this interface to encode / decode.
+   */
+  struct Chunk {
+    uint16_t operation;
+    uint32_t ipv4_addr;
   };
 
-  SpinLock _lock;
+  /** constant value for ARP request operation */
+  static const uint16_t kOpRequest = 0x0001;
 
-  static const uint32_t kMaxNumberRecords = 256;
+  /** constant value for ARP reply operation */
+  static const uint16_t kOpReply   = 0x0002;
 
-  // this table is implemented by open adressing hash table
-  ArpTableRecord _table[kMaxNumberRecords];
+  /**
+   * Manually assign IPv4 address.
+   *
+   * @param ipv4_address
+   */
+  void AssignIpv4Address(uint32_t ipv4_addr) {
+    _ipv4_addr = ipv4_addr;
+  }
 
-  // hash function
-  uint32_t Hash(uint32_t s) { return s & 0xff; }
+  /**
+   * Reserve the connection on protocol stack and construct the stack.
+   *
+   * @return 0 if succeeeds.
+   */
+  virtual int Open();
 
-  // probing function
-  // (search for next possible index in the case of conflict)
-  uint32_t Probe(uint32_t s) { return (s + 1) & 0xff; }
+  /**
+   * Send an ARP request.
+   *
+   * @param dest_addr destination IPv4 address.
+   * @return 0 if succeeeds.
+   */
+  int Request(uint32_t dest_addr) {
+    NetDev::Packet *packet = nullptr;
+    this->FetchTxBuffer(packet);
+
+    ArpSocket::Chunk *chunk = reinterpret_cast<ArpSocket::Chunk *>(packet->buf);
+    chunk->operation = kOpRequest;
+    chunk->ipv4_addr = dest_addr;
+
+    packet->len = sizeof(ArpSocket::Chunk);
+
+    return this->TransmitPacket(packet) ? 0 : -1;
+  }
+
+  /**
+   * Send an ARP reply.
+   *
+   * @param dest_addr destination IPv4 address.
+   * @return 0 if succeeeds.
+   */
+  int Reply(uint32_t dest_addr) {
+    NetDev::Packet *packet = nullptr;
+    this->FetchTxBuffer(packet);
+
+    ArpSocket::Chunk *chunk = reinterpret_cast<ArpSocket::Chunk *>(packet->buf);
+    chunk->operation = kOpReply;
+    chunk->ipv4_addr = dest_addr;
+
+    packet->len = 0;
+
+    return this->TransmitPacket(packet) ? 0 : -1;
+  }
+
+  /**
+   * Try to receive ARP packet.
+   *
+   * @param op set ARP operation of the received packet.
+   * @param addr set source IPv4 address of the received packet.
+   * @return 0 if a packet arrived, otherwise -1.
+   */
+  int Read(uint16_t &op, uint32_t &addr) {
+    NetDev::Packet *packet = nullptr;
+    if (this->ReceivePacket(packet)) {
+      ArpSocket::Chunk *chunk = reinterpret_cast<ArpSocket::Chunk *>(packet->buf);
+      op = chunk->operation;
+      addr = chunk->ipv4_addr;
+
+      return 0;
+    } else {
+      return -1;
+    }
+  }
+
+private:
+  /** IPv4 address */
+  uint32_t _ipv4_addr = 0;
 };
+
+
+class ArpLayer : public ProtocolStackLayer {
+public:
+  ArpLayer() {}
+
+  /**
+   * ARP header
+   */
+  struct Header {
+    uint16_t  htype;      /** hardware type (fixed to Ethernet) */
+    uint16_t  ptcl;       /** protocol type (fixed to IPv4) */
+    uint8_t   hlen;       /** hardware address length (fixed to 6) */
+    uint8_t   plen;       /** protocol address length (fixed to 4) */
+    uint16_t  op;         /** ARP operation */
+    uint8_t   hsaddr[6];  /** hardware source address */
+    uint32_t  psaddr;     /** protocol source address */
+    uint8_t   hdaddr[6];  /** hardware destination address */
+    uint32_t  pdaddr;     /** protocol destination address */
+  } __attribute__((packed));
+
+  /**
+   * Set Ethernet / IPv4 address.
+   */
+  void SetAddress(uint8_t eth_addr[6], uint32_t ipv4_addr) {
+    memcpy(_eth_addr, eth_addr, 6);
+    _ipv4_addr = ipv4_addr;
+  }
+
+protected:
+  /**
+   * Return ARP header size.
+   * 
+   * @return protocol header length.
+   */
+  virtual int GetProtocolHeaderLength() {
+    return sizeof(ArpLayer::Header);
+  }
+
+  /**
+   * Filter the received packet by its header content.
+   * In addition, copy ARP information to body part of the packet.
+   *
+   * @param packet
+   * @return if the packet is to be received or not.
+   */
+  virtual bool FilterPacket(NetDev::Packet *packet);
+
+  /**
+   * Make contents of the header before transmitting the packet.
+   *
+   * @param packet
+   * @return if succeeds.
+   */
+  virtual bool PreparePacket(NetDev::Packet *packet);
+
+private:
+  /** Ethernet address of the network device under this layer */
+  uint8_t _eth_addr[6];
+
+  /** IPv4 address assigned to the network device under this layer */
+  uint32_t _ipv4_addr;
+};
+
 
 #endif // __RAPH_KERNEL_NET_ARP_H__

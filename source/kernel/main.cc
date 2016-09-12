@@ -40,8 +40,8 @@
 #include <dev/pci.h>
 #include <dev/vga.h>
 
-#include <net/netctrl.h>
-#include <net/socket.h>
+#include <dev/eth.h>
+#include <net/arp.h>
 #include <arpa/inet.h>
 
 AcpiCtrl *acpi_ctrl = nullptr;
@@ -55,6 +55,7 @@ Idt *idt = nullptr;
 Keyboard *keyboard = nullptr;
 Shell *shell = nullptr;
 PciCtrl *pci_ctrl = nullptr;
+NetDevCtrl *netdev_ctrl = nullptr;
 
 MultibootCtrl _multiboot_ctrl;
 AcpiCtrl _acpi_ctrl;
@@ -71,6 +72,7 @@ Vga _vga;
 Keyboard _keyboard;
 Shell _shell;
 AcpicaPciCtrl _acpica_pci_ctrl;
+NetDevCtrl _netdev_ctrl;
 
 static uint32_t rnd_next = 1;
 
@@ -140,7 +142,7 @@ void bench(int argc, const char* argv[]) {
     if(socket.Open() < 0) {
       gtty->Cprintf("[error] failed to open socket\n");
     } else {
-      socket.SetIpAddr(inet_atoi(ip1));
+      socket.AssignIpv4Address(inet_atoi(ip1));
     }
     cnt = 0;
     new(&tt2) Callout;
@@ -165,7 +167,7 @@ void bench(int argc, const char* argv[]) {
               break;
             }
             cnt = timer->ReadMainCnt();
-            if(socket.TransmitPacket(ArpSocket::kOpRequest, inet_atoi(ip2), nullptr) < 0) {
+            if(socket.Request(inet_atoi(ip2)) < 0) {
               gtty->Cprintf("[arp] failed to transmit request\n");
             }
             time--;
@@ -233,6 +235,8 @@ extern "C" int main() {
 
   shell = new (&_shell) Shell;
 
+  netdev_ctrl = new (&_netdev_ctrl) NetDevCtrl();
+
   multiboot_ctrl->Setup();
 
   paging_ctrl->MapAllPhysMemory();
@@ -267,8 +271,6 @@ extern "C" int main() {
 
   idt->SetupProc();
 
-  InitNetCtrl();
-
   pci_ctrl = new (&_acpica_pci_ctrl) AcpicaPciCtrl;
   
   acpi_ctrl->SetupAcpica();
@@ -301,20 +303,20 @@ extern "C" int main() {
     if(socket.Open() < 0) {
       gtty->Cprintf("[error] failed to open socket\n");
     }
-    socket.SetIpAddr(inet_atoi(ip1));
+    socket.AssignIpv4Address(inet_atoi(ip1));
     Function func;
     func.Init([](void *){
         uint32_t ipaddr;
-        uint8_t macaddr[6];
+        uint16_t op;
         
-        int32_t rval = socket.ReceivePacket(0, &ipaddr, macaddr);
-        if(rval == ArpSocket::kOpReply) {
+        socket.Read(op, ipaddr);
+        if(op == ArpSocket::kOpReply) {
           uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;
           cnt = 0;
           sum += l;
           rtime++;
-        } else if(rval == ArpSocket::kOpRequest) {
-          socket.TransmitPacket(ArpSocket::kOpReply, ipaddr, macaddr);
+        } else if(op == ArpSocket::kOpRequest) {
+          socket.Reply(ipaddr);
         }
       }, nullptr);
     socket.SetReceiveCallback(2, func);
@@ -350,8 +352,6 @@ extern "C" int main() {
   _keyboard_polling.Register(1);
   
   task_ctrl->Run();
-
-  DismissNetCtrl();
 
   return 0;
 }

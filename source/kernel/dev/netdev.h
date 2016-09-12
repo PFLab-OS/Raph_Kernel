@@ -92,7 +92,7 @@ public:
   // 戻り値がfalseの時はバッファが枯渇しているので、要リトライ
   bool GetTxPacket(Packet *&packet) {
     if (_tx_reserved.Pop(packet)) {
-      packet->len = 0;
+      packet->len = MCLBYTES;
       return true;
     } else {
       return false;

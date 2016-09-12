@@ -21,11 +21,7 @@
  */
 #include <global.h>
 #include <dev/eth.h>
-#include <net/ptcl.h>
-#include <net/eth.h>
-#include <net/ip.h>
-#include <net/arp.h>
-#include <net/socket.h>
+#include <net/pstack.h>
 
 void DevEthernet::FilterRxPacket(void *p) {
   NetDev::Packet *packet;
@@ -35,7 +31,10 @@ void DevEthernet::FilterRxPacket(void *p) {
   uint8_t eth_addr[6];
   GetEthAddr(eth_addr);
 
-  if (EthFilterPacket(packet->buf, nullptr, eth_addr, 0)) {
+  EthernetHeader *header = reinterpret_cast<EthernetHeader *>(packet->buf);
+
+  if (!memcmp(eth_addr, header->daddr, 6) ||
+      !memcmp(eth_addr, kBroadcastMacAddress, 6)) {
     _rx_filtered.Push(packet);
   } else {
     ReuseRxBuffer(packet);
@@ -43,29 +42,10 @@ void DevEthernet::FilterRxPacket(void *p) {
 }
 
 void DevEthernet::PrepareTxPacket(NetDev::Packet *packet) {
-  uint16_t ptcl = GetL3PtclType(packet->buf);
+  uint8_t eth_daddr[6] = {0xff};  // TODO: fetch from ARP table
 
-  uint8_t eth_saddr[6];
-  uint8_t eth_daddr[6];
-
-  GetEthAddr(eth_saddr);
-
-  // embed MAC address to packet
-  if (ptcl == kProtocolIpv4) {
-    uint32_t ipaddr = IpGetDestIpAddress(packet->buf + sizeof(EthHeader));
-    arp_table->Find(ipaddr, eth_daddr);
-    EthGenerateHeader(packet->buf, eth_saddr, eth_daddr, kProtocolIpv4);
-  } else if (ptcl == kProtocolArp) {
-    uint16_t op = ArpGetOperation(packet->buf + sizeof(EthHeader));
-
-    if (op == ArpSocket::kOpRequest) {
-      memset(eth_daddr, 0xff, 6);
-      ArpGeneratePacket(packet->buf + sizeof(EthHeader), 0, eth_saddr, 0, nullptr, 0);     
-      EthGenerateHeader(packet->buf, eth_saddr, eth_daddr, kProtocolArp);
-    } else if (op == ArpSocket::kOpReply) {
-      ArpGetDestMacAddress(eth_daddr, packet->buf + sizeof(EthHeader));
-      ArpGeneratePacket(packet->buf + sizeof(EthHeader), 0, eth_saddr, 0, eth_daddr, 0);     
-      EthGenerateHeader(packet->buf, eth_saddr, eth_daddr, kProtocolArp);
-    }
-  }
+  EthernetHeader *header = reinterpret_cast<EthernetHeader *>(packet->buf);
+  GetEthAddr(header->saddr);
+  memcpy(header->daddr, eth_daddr, 6);
+  header->type = htons(0x0806);  // TODO: do not hard-code
 }

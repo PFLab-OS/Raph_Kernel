@@ -27,8 +27,20 @@
 #include <dev/pci.h>
 #include <mem/virtmem.h>
 
+/** broadcast MAC address */
+static constexpr uint8_t kBroadcastMacAddress[6] = {0xff};
+
 class DevEthernet : public NetDev {
 public:
+  /**
+   * Ethernet header
+   */
+  struct EthernetHeader {
+    uint8_t  daddr[6];  /** destination MAC address */
+    uint8_t  saddr[6];  /** source MAC address */
+    uint16_t type;      /** protocol type */
+  } __attribute__((packed));
+
   DevEthernet(uint8_t bus, uint8_t device, bool mf) {
     //TODO is this needed?
     _pci = virtmem_ctrl->New<DevPci>(bus, device, mf);
@@ -51,10 +63,6 @@ protected:
 
   virtual void PrepareTxPacket(NetDev::Packet *packet) override;
   DevPci *_pci;
-};
-
-class DevEthernetCtrl : public NetDevCtrl {
-  DevEthernet *_devTable[kMaxDevNumber] = {nullptr};
 };
 
 #endif /* __RAPH_KERNEL_DEV_ETH_H__ */
