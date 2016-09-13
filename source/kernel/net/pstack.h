@@ -86,10 +86,6 @@ public:
     }
 
     // init callback functions
-    ClassFunction<ProtocolStack> netdev_rx_callback;
-    netdev_rx_callback.Init(this, &ProtocolStack::DeviceBufferHandler, nullptr);
-    _device->SetReceiveCallback(2, netdev_rx_callback);
-
     ClassFunction<ProtocolStack> escalation_callback;
     escalation_callback.Init(this, &ProtocolStack::EscalationHandler, nullptr);
     _buffered_queue.SetFunction(0, escalation_callback);
@@ -103,8 +99,13 @@ public:
    * @param device
    */
   void SetDevice(NetDev *device) {
-    kassert(_device == nullptr);
+    assert(_device == nullptr);
     _device = device;
+
+    // set callback function to network device
+    ClassFunction<ProtocolStack> netdev_rx_callback;
+    netdev_rx_callback.Init(this, &ProtocolStack::DeviceBufferHandler, nullptr);
+    _device->SetReceiveCallback(2, netdev_rx_callback);
   }
 
   /**
@@ -186,30 +187,22 @@ class ProtocolStackLayer {
 public:
   ProtocolStackLayer() {}
 
-  virtual ~ProtocolStackLayer() {}
-
   /**
    * @param parent reference to its parent layer.
    * @return if succeeds.
    */
   bool Setup(ProtocolStackLayer *parent) {
-    if (parent->hasNext()) {
+    if (parent && parent->hasNext()) {
       return false;
     } else {
       _prev_layer = parent;
-
+      _next_layer = nullptr;
+      parent->AddLayer(this);
       return this->SetupSubclass();
     }
   }
 
-  /**
-   * Setup sequence of subclasses.
-   *
-   * @return if succeeds.
-   */
-  virtual bool SetupSubclass() {
-    return true;
-  }
+  virtual void Destroy() {}
 
   /**
    * Return if it has child layer or not.
@@ -315,6 +308,15 @@ public:
 
 protected:
   /**
+   * Setup sequence of subclasses.
+   *
+   * @return if succeeds.
+   */
+  virtual bool SetupSubclass() {
+    return true;
+  }
+
+  /**
    * Return the length of protocol header, e.g., ArpLayer is expected to
    * return 28 (when Ethernet and IPv4 is used).
    * Some layers may have variable length of headers such as TcpLayer.
@@ -388,12 +390,22 @@ class ProtocolStackBaseLayer final : public ProtocolStackLayer {
 public:
   ProtocolStackBaseLayer() {}
 
-  virtual ~ProtocolStackBaseLayer() {
+  void Destroy() override {
     while (!_reserved_queue.IsEmpty()) {
       NetDev::Packet *packet = nullptr;
       _reserved_queue.Pop(packet);
       virtmem_ctrl->Free(reinterpret_cast<virt_addr>(packet));
     }
+  }
+
+  /**
+   * Set protocol stack to the base layer. This is used from
+   * ProtocolStack::SetBaseLayer.
+   *
+   * @param pstack
+   */
+  void SetProtocolStack(ProtocolStack *pstack) {
+    _pstack = pstack;
   }
 
   /**
@@ -408,23 +420,13 @@ public:
     return _buffered_queue.Push(packet);
   }
 
-  virtual bool SetupSubclass() override {
-    // init reserved queue
-    while (!_reserved_queue.IsFull()) {
-      NetDev::Packet *packet = reinterpret_cast<NetDev::Packet *>(virtmem_ctrl->Alloc(sizeof(NetDev::Packet)));
-      _reserved_queue.Push(packet);
-    }
-
-    return true;
-  }
-
   /**
    * Set callback function used when receiving packets.
    *
    * @param cpuid specifies the serving core.
    * @param func callback.
    */
-  virtual void SetReceiveCallback(int cpuid, const Function &func) override {
+  void SetReceiveCallback(int cpuid, const Function &func) override {
     _buffered_queue.SetFunction(cpuid, func);
   }
 
@@ -435,7 +437,7 @@ public:
    * @param packet MUST be freed by ReuseRxBuffer once it's no longer necessary.
    * @return if succeeds.
    */
-  virtual bool ReceivePacket(NetDev::Packet *&packet) override {
+  bool ReceivePacket(NetDev::Packet *&packet) override {
     return _buffered_queue.Pop(packet);
   }
 
@@ -445,7 +447,7 @@ public:
    * @param packet MUST be fetched by ReceivedPacket.
    * @return if succeeds.
    */
-  virtual bool ReuseRxBuffer(NetDev::Packet *packet) override {
+  bool ReuseRxBuffer(NetDev::Packet *packet) override {
     return _reserved_queue.Push(packet);
   }
 
@@ -455,7 +457,7 @@ public:
    * @param packet MUST be fetched by FetchTxBuffer in advance.
    * @return if succeeds.
    */
-  virtual bool TransmitPacket(NetDev::Packet *packet) override {
+  bool TransmitPacket(NetDev::Packet *packet) override {
     return _pstack->TransmitPacket(packet);
   }
 
@@ -465,7 +467,7 @@ public:
    * @param packet MUST be passed to TransmitPacket.
    * @return if succeeds.
    */
-  virtual bool FetchTxBuffer(NetDev::Packet *&packet) override {
+  bool FetchTxBuffer(NetDev::Packet *&packet) override {
     return _pstack->FetchTxBuffer(packet);
   }
 
@@ -475,7 +477,7 @@ public:
    * @param packet MUST be `Delegate`ed.
    * @return if succeeds.
    */
-  virtual bool FetchRxBuffer(NetDev::Packet *&packet) {
+  bool FetchRxBuffer(NetDev::Packet *&packet) {
     return _reserved_queue.Pop(packet);
   }
 
@@ -484,6 +486,17 @@ public:
    */
   bool IsFull() {
     return _buffered_queue.IsFull();
+  }
+
+protected:
+  bool SetupSubclass() override {
+    // init reserved queue
+    while (!_reserved_queue.IsFull()) {
+      NetDev::Packet *packet = reinterpret_cast<NetDev::Packet *>(virtmem_ctrl->Alloc(sizeof(NetDev::Packet)));
+      _reserved_queue.Push(packet);
+    }
+
+    return true;
   }
 
 private:

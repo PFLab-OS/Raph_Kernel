@@ -24,7 +24,6 @@
 #include <net/arp.h>
 #include <dev/eth.h>
 
-
 int ArpSocket::Open() {
   NetDevCtrl::NetDevInfo *devinfo = netdev_ctrl->GetDeviceInfo();
   DevEthernet *device = static_cast<DevEthernet *>(devinfo->device);
@@ -34,11 +33,13 @@ int ArpSocket::Open() {
   device->GetEthAddr(eth_addr);
 
   // stack construction (BaseLayer > ArpLayer > ArpSocket)
-  ProtocolStackBaseLayer *base_layer = reinterpret_cast<ProtocolStackBaseLayer *>(virtmem_ctrl->Alloc(sizeof(ProtocolStackBaseLayer)));
+  ProtocolStackBaseLayer *base_layer_addr = reinterpret_cast<ProtocolStackBaseLayer *>(virtmem_ctrl->Alloc(sizeof(ProtocolStackBaseLayer)));
+  ProtocolStackBaseLayer *base_layer = new(base_layer_addr) ProtocolStackBaseLayer();
   base_layer->Setup(nullptr);
   pstack->SetBaseLayer(base_layer);
 
-  ArpLayer *arp_layer = reinterpret_cast<ArpLayer *>(virtmem_ctrl->Alloc(sizeof(ProtocolStackBaseLayer)));
+  ArpLayer *arp_layer_addr = reinterpret_cast<ArpLayer *>(virtmem_ctrl->Alloc(sizeof(ArpLayer)));
+  ArpLayer *arp_layer = new(arp_layer_addr) ArpLayer();
   arp_layer->Setup(base_layer);
   arp_layer->SetAddress(eth_addr, _ipv4_addr);
 

@@ -28,6 +28,9 @@ bool ProtocolStack::SetBaseLayer(ProtocolStackBaseLayer *layer) {
   for (int i = 0; i < kMaxConnectionNumber; i++) {
     if (!_base_layers[i]) {
       _base_layers[i] = layer;
+      layer->SetProtocolStack(this);
+
+      return true;
     }
   }
 
@@ -44,7 +47,7 @@ void ProtocolStack::DeviceBufferHandler(void *_) {
   while (_device->ReceivePacket(packet)) {
     // duplicates the packet and inserts into main queue
     NetDev::Packet *dup_packet = nullptr;
-    kassert(_reserved_queue.Pop(dup_packet));
+    assert(_reserved_queue.Pop(dup_packet));
 
     dup_packet->len = packet->len;
     memcpy(dup_packet->buf, packet->buf, packet->len);
@@ -61,7 +64,7 @@ void ProtocolStack::DeviceBufferHandler(void *_) {
  */
 void ProtocolStack::EscalationHandler(void *_) {
   NetDev::Packet *new_packet = nullptr;
-  kassert(_buffered_queue.Pop(new_packet));
+  assert(_buffered_queue.Pop(new_packet));
 
   for (int i = 0; i < kMaxConnectionNumber; i++) {
     ProtocolStackBaseLayer *blayer = _base_layers[i];
@@ -69,7 +72,7 @@ void ProtocolStack::EscalationHandler(void *_) {
     if (blayer && !blayer->IsFull()) {
       // duplicates the packet and inserts into each base layer
       NetDev::Packet *dup_packet = nullptr;
-      kassert(blayer->FetchRxBuffer(dup_packet));
+      assert(blayer->FetchRxBuffer(dup_packet));
 
       dup_packet->len = new_packet->len;
       memcpy(dup_packet->buf, new_packet->buf, new_packet->len);

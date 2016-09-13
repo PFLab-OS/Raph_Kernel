@@ -139,6 +139,7 @@ void bench(int argc, const char* argv[]) {
 
   {
     static ArpSocket socket;
+
     if(socket.Open() < 0) {
       gtty->Cprintf("[error] failed to open socket\n");
     } else {
@@ -206,7 +207,7 @@ void bench(int argc, const char* argv[]) {
 }
 
 extern "C" int main() {
-  
+
   multiboot_ctrl = new (&_multiboot_ctrl) MultibootCtrl;
 
   acpi_ctrl = new (&_acpi_ctrl) AcpiCtrl;
@@ -246,7 +247,6 @@ extern "C" int main() {
   extern int kKernelEndAddr;
   kassert(paging_ctrl->MapPhysAddrToVirtAddr(reinterpret_cast<virt_addr>(&kKernelEndAddr) - PagingCtrl::kPageSize * 5, paddr, PagingCtrl::kPageSize * 3, PDE_WRITE_BIT, PTE_WRITE_BIT | PTE_GLOBAL_BIT));
 
-  
   acpi_ctrl->Setup();
 
   if (timer->Setup()) {
@@ -300,9 +300,11 @@ extern "C" int main() {
   gtty->Cprintf("[cpu] info: #%d (apic id: %d) started.\n", cpu_ctrl->GetId(), apic_ctrl->GetApicIdFromCpuId(cpu_ctrl->GetId()));
   if (eth != nullptr) {
     static ArpSocket socket;
+
     if(socket.Open() < 0) {
       gtty->Cprintf("[error] failed to open socket\n");
     }
+
     socket.AssignIpv4Address(inet_atoi(ip1));
     Function func;
     func.Init([](void *){

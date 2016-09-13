@@ -28,7 +28,7 @@
 const char *NetDevCtrl::kDefaultNetworkInterfaceName = "eth0";
 
 void NetDev::SetupNetInterface() {
-  netdev_ctrl->RegisterDevice(this, "eth0");
+  kassert(netdev_ctrl->RegisterDevice(this, "eth0"));
 }
 
 bool NetDevCtrl::RegisterDevice(NetDev *dev, const char *name) {
