@@ -52,8 +52,6 @@
 #include <cam/cam_sim.h>
 // #include <cam/cam_xpt_sim.h>
 /* #include <cam/cam_debug.h> */
-#include <tty.h>
-#include <global.h>
 
 extern AhciChannel *g_channel;
 
@@ -1357,7 +1355,6 @@ ahci_ch_intr_main(struct ahci_channel *ch, uint32_t istatus)
         ch->dev->GetMasterClass<AhciChannel>()->devq.Freeze(1);
        	packet->status |= CAM_DEV_QFRZN;
       }
-      gtty->Cprintf("<%d>", __LINE__);
       ahci_done(ch, packet);
     }
 		for (i = 0; i < ch->numslots; i++) {
@@ -1495,7 +1492,6 @@ ahci_begin_transaction(struct ahci_channel *ch, PacketAtaio *ataio)
 	if ((ataio->func_code == XPT_ATA_IO) &&
 	    (ataio->cmd.flags & (CAM_ATAIO_CONTROL | CAM_ATAIO_NEEDRESULT)))
 		ch->aslots |= (1 << tag);
-  gtty->Cprintf("<begin>");
 	if ((ataio->flags & CAM_DIR_MASK) != CAM_DIR_NONE) {
 		slot->state = AHCI_SLOT_LOADING;
 		// bus_dmamap_load_ccb(ch->dma.data_tag, slot->dma.data_map, ccb,
@@ -1539,6 +1535,7 @@ ahci_dmasetprd(void *arg, bus_dma_segment_t *segs, int nsegs, int error)
 	bus_dmamap_sync(ch->dma.data_tag, slot->dma.data_map,
 	    ((slot->ataio->flags & CAM_DIR_IN) ?
 	    BUS_DMASYNC_PREREAD : BUS_DMASYNC_PREWRITE));
+  memcpy(slot->ataio->data_ptr, slot->ataio->ptr, 512);
 	ahci_execute_transaction(slot);
 }
 
@@ -1546,7 +1543,6 @@ ahci_dmasetprd(void *arg, bus_dma_segment_t *segs, int nsegs, int error)
 static void
 ahci_execute_transaction(struct ahci_slot *slot)
 {
-  gtty->Cprintf("<exec>");
 	struct ahci_channel *ch = slot->ch;
 	struct ahci_cmd_tab *ctp;
 	struct ahci_cmd_list *clp;
@@ -1791,7 +1787,6 @@ ahci_timeout(struct ahci_slot *slot)
       ch->dev->GetMasterClass<AhciChannel>()->devq.Freeze(1);
       packet->status |= CAM_DEV_QFRZN;
     }
-      gtty->Cprintf("<%d>", __LINE__);
     ahci_done(ch, packet);
   }
 	if (!ch->fbs_enabled && !ch->wrongccs) {
@@ -2008,7 +2003,6 @@ ahci_end_transaction(struct ahci_slot *slot, enum ahci_err_type et)
 		ch->hold[slot->slot] = ataio;
 		ch->numhslots++;
 	} else {
-      gtty->Cprintf("<%d>", __LINE__);
 		ahci_done(ch, ataio);
   }
 	/* If we have no other active commands, ... */
@@ -2068,7 +2062,7 @@ ahci_issue_recovery(struct ahci_channel *ch)
 			break;
 	}
 	// ccb = xpt_alloc_ccb_nowait();
-  ataio = PacketAtaio::XptAlloc();
+  ataio = PacketAtaio::XptAlloc(ch->dev->GetMasterClass<AhciChannel>());
 	if (ataio == NULL) {
 		device_printf(ch->dev, "Unable to allocate recovery command\n");
 completeall:
@@ -2078,7 +2072,6 @@ completeall:
 				continue;
 			ch->hold[i]->status &= ~CAM_STATUS_MASK;
 			ch->hold[i]->status |= CAM_RESRC_UNAVAIL;
-      gtty->Cprintf("<%d>", __LINE__);
 			ahci_done(ch, ch->hold[i]);
 			ch->hold[i] = NULL;
 			ch->numhslots--;
@@ -2918,7 +2911,7 @@ void AhciChannel::Handle(Task *, void *) {
 void AhciChannel::Read() {
   uint32_t lba = 0;
   uint8_t count = 1;
-  PacketAtaio *ataio = PacketAtaio::XptAlloc();
+  PacketAtaio *ataio = PacketAtaio::XptAlloc(this);
   ataio->target_id = 0;
   ataio->target_lun = 0;
   ataio->func_code = XPT_ATA_IO;
@@ -2941,4 +2934,33 @@ void AhciChannel::Read() {
 }
 
 void AhciChannel::Write() {
+  uint32_t lba = 0;
+  uint8_t count = 1;
+  PacketAtaio *ataio = PacketAtaio::XptAlloc(this);
+  ataio->target_id = 0;
+  ataio->target_lun = 0;
+  ataio->func_code = XPT_ATA_IO;
+  ataio->flags = CAM_DIR_OUT | CAM_DATA_VADDR;
+  ataio->timeout = 30 * 1000;
+  
+  ataio->aux = 0;
+  ataio->ata_flags = 0;
+  ataio->cmd.flags = CAM_ATAIO_DMA;
+  ataio->cmd.command = ATA_WRITE_DMA;
+  ataio->cmd.features = 0;
+  ataio->cmd.lba_low = lba;
+  ataio->cmd.lba_mid = lba >> 8;
+  ataio->cmd.lba_high = lba >> 16;
+  ataio->cmd.device = ATA_DEV_LBA | ((lba >> 24) & 0x0f);
+  ataio->cmd.sector_count = count;
+  ataio->dxfer_len = 512 * count;
+  ataio->data_ptr = nullptr;
+  ataio->ptr = reinterpret_cast<uint8_t *>(malloc(512));
+  uint8_t c = 0;
+  for(int i = 0; i < 512; i++) {
+    ataio->ptr[i] = c;
+    c++;
+  }
+  
+  devq.Push(ataio);
 }

@@ -50,15 +50,16 @@ public:
   uint32_t dxfer_len;
   uint8_t *data_ptr;
 
+  uint8_t *ptr;
+
   enum class Status {
     kErr,
     kSuccess,
   };
   Status proc_result;
 
-  AhciChannel *channel;
-  static PacketAtaio *XptAlloc() {
-    return new PacketAtaio();
+  static PacketAtaio *XptAlloc(AhciChannel *channel) {
+    return new PacketAtaio(channel);
   }
   void XptCopyHeader(PacketAtaio *ataio) {
     target_id = ataio->target_id;
@@ -73,6 +74,11 @@ public:
     delete this;
   }
 private:
+  PacketAtaio();
+  PacketAtaio(AhciChannel *channel) {
+    _channel = channel;
+  }
+  AhciChannel *_channel;
 };
 
 class PacketAtaioCtrl {

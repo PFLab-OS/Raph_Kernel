@@ -28,13 +28,12 @@ PacketAtaioCtrl PacketAtaioCtrl::_ctrl;
 bool PacketAtaioCtrl::_is_initailized = false;
 
 void PacketAtaio::XptDone() {
-  gtty->Cprintf("<done: %x>", func_code);
   if ((func_code & XPT_FC_QUEUED) == 0) {
     return;
   }
   for(int i = 0; i < 512; i++) {
-    gtty->CprintfRaw("%x ", data_ptr[i]);
+    //gtty->CprintfRaw("%x ", data_ptr[i]);
   }
-  channel->doneq.Push(this);
+  _channel->doneq.Push(this);
 }
 
