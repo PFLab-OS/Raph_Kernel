@@ -43,7 +43,7 @@ void PciCtrl::_Init() {
       break;
     }
     if (_mcfg->list[i].ecam_base >= 0x100000000) {
-      gtty->Printf("s", "[Pci] error: ECAM base addr is not exist in low 4GB of memory\n");
+      gtty->Printf("s", "[Pci] error: ECAM base addr does not exist in low 4GB of memory\n");
       continue;
     }
     _base_addr = p2v(_mcfg->list[i].ecam_base);
