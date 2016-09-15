@@ -62,6 +62,11 @@ protected:
   virtual void FilterRxPacket(void *p) override;
 
   virtual void PrepareTxPacket(NetDev::Packet *packet) override;
+
+  virtual int GetProtocolHeaderLength() override {
+    return sizeof(EthernetHeader);
+  }
+
   DevPci *_pci;
 };
 

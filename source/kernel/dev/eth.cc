@@ -42,7 +42,8 @@ void DevEthernet::FilterRxPacket(void *p) {
 }
 
 void DevEthernet::PrepareTxPacket(NetDev::Packet *packet) {
-  uint8_t eth_daddr[6] = {0xff};  // TODO: fetch from ARP table
+  // TODO: fetch from ARP table
+  uint8_t eth_daddr[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 
   EthernetHeader *header = reinterpret_cast<EthernetHeader *>(packet->buf);
   GetEthAddr(header->saddr);

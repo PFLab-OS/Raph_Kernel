@@ -356,8 +356,7 @@ protected:
    * @param packet
    */
   void AttachProtocolHeader(NetDev::Packet *packet) {
-    uint8_t *ptr = reinterpret_cast<uint8_t *>(packet->buf);
-    ptr -= this->GetProtocolHeaderLength();
+    packet->buf -= this->GetProtocolHeaderLength();
     packet->len += this->GetProtocolHeaderLength();
   }
 
@@ -368,8 +367,7 @@ protected:
    * @param packet
    */
   void DetachProtocolHeader(NetDev::Packet *packet) {
-    uint8_t *ptr = reinterpret_cast<uint8_t *>(packet->buf);
-    ptr += this->GetProtocolHeaderLength();
+    packet->buf += this->GetProtocolHeaderLength();
     packet->len -= this->GetProtocolHeaderLength();
   }
 

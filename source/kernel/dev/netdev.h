@@ -38,7 +38,10 @@ class NetDev {
 public:
   struct Packet {
     size_t len;
-    uint8_t buf[MCLBYTES];
+    uint8_t *buf;
+    uint8_t data[MCLBYTES];
+
+    Packet() : buf(data) {}
   };
   enum class LinkStatus {
     kUp,
@@ -84,26 +87,35 @@ public:
   NetDevFunctionalRingBuffer _tx_buffered;
 
   void ReuseRxBuffer(Packet *packet) {
+    this->AttachProtocolHeader(packet);
     kassert(_rx_reserved.Push(packet));
   }
   void ReuseTxBuffer(Packet *packet) {
+    this->AttachProtocolHeader(packet);
     kassert(_tx_reserved.Push(packet));
   }
   // 戻り値がfalseの時はバッファが枯渇しているので、要リトライ
   bool GetTxPacket(Packet *&packet) {
     if (_tx_reserved.Pop(packet)) {
       packet->len = MCLBYTES;
+      this->DetachProtocolHeader(packet);
       return true;
     } else {
       return false;
     }
   }
   bool TransmitPacket(Packet *packet) {
-    PrepareTxPacket(packet);
+    this->AttachProtocolHeader(packet);
+    this->PrepareTxPacket(packet);
     return _tx_buffered.Push(packet);
   }
   bool ReceivePacket(Packet *&packet) {
-    return _rx_filtered.Pop(packet);
+    if (_rx_filtered.Pop(packet)) {
+      this->DetachProtocolHeader(packet);
+      return true;
+    } else {
+      return false;
+    }
   }
   void SetReceiveCallback(int cpuid, const GenericFunction &func) {
     _rx_filtered.SetFunction(cpuid, func);
@@ -111,13 +123,15 @@ public:
 
   void InitTxPacketBuffer() {
     while(!_tx_reserved.IsFull()) {
-      Packet *packet = reinterpret_cast<Packet *>(virtmem_ctrl->Alloc(sizeof(Packet)));
+      Packet *packet_addr = reinterpret_cast<Packet *>(virtmem_ctrl->Alloc(sizeof(Packet)));
+      Packet *packet = new(packet_addr) Packet();
       kassert(_tx_reserved.Push(packet));
     }
   }
   void InitRxPacketBuffer() {
     while(!_rx_reserved.IsFull()) {
-      Packet *packet = reinterpret_cast<Packet *>(virtmem_ctrl->Alloc(sizeof(Packet)));
+      Packet *packet_addr = reinterpret_cast<Packet *>(virtmem_ctrl->Alloc(sizeof(Packet)));
+      Packet *packet = new(packet_addr) Packet();
       kassert(_rx_reserved.Push(packet));
     }
   }
@@ -180,6 +194,19 @@ protected:
 
   // preprocess on packet before transmit
   virtual void PrepareTxPacket(NetDev::Packet *packet) = 0;
+
+  // return the length of protocol header
+  virtual int GetProtocolHeaderLength() = 0;
+
+  void AttachProtocolHeader(NetDev::Packet *packet) {
+    packet->buf -= this->GetProtocolHeaderLength();
+    packet->len += this->GetProtocolHeaderLength();
+  }
+
+  void DetachProtocolHeader(NetDev::Packet *packet) {
+    packet->buf += this->GetProtocolHeaderLength();
+    packet->len -= this->GetProtocolHeaderLength();
+  }
 
 private:
   static const uint32_t kNetworkInterfaceNameLen = 8;
