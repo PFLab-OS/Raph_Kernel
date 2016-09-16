@@ -117,6 +117,8 @@ public:
       op = chunk->operation;
       addr = chunk->ipv4_addr;
 
+      this->ReuseRxBuffer(packet);
+
       return 0;
     } else {
       return -1;

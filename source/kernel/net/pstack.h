@@ -490,7 +490,8 @@ protected:
   bool SetupSubclass() override {
     // init reserved queue
     while (!_reserved_queue.IsFull()) {
-      NetDev::Packet *packet = reinterpret_cast<NetDev::Packet *>(virtmem_ctrl->Alloc(sizeof(NetDev::Packet)));
+      NetDev::Packet *packet_addr = reinterpret_cast<NetDev::Packet *>(virtmem_ctrl->Alloc(sizeof(NetDev::Packet)));
+      NetDev::Packet *packet = new(packet_addr) NetDev::Packet();
       _reserved_queue.Push(packet);
     }
 

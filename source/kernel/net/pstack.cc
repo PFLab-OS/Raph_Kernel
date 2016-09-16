@@ -80,4 +80,6 @@ void ProtocolStack::EscalationHandler(void *_) {
       blayer->Delegate(dup_packet);
     }
   }
+
+  _reserved_queue.Push(new_packet);
 }

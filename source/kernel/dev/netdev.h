@@ -37,11 +37,13 @@ class DevEthernet;
 class NetDev {
 public:
   struct Packet {
+  public:
+    Packet() : buf(data) {}
     size_t len;
     uint8_t *buf;
-    uint8_t data[MCLBYTES];
 
-    Packet() : buf(data) {}
+  private:
+    uint8_t data[MCLBYTES];  // only accessed via buf
   };
   enum class LinkStatus {
     kUp,
