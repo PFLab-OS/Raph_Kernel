@@ -295,35 +295,35 @@ extern "C" int main() {
   kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 6) + 1));
   kassert(!paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - 4096 * 7));
 
-  gtty->Cprintf("[boot cpu] info: #%d (apic id: %d) started.\n", cpu_ctrl->GetId(), apic_ctrl->GetApicIdFromCpuId(cpu_ctrl->GetId()));
+  gtty->Cprintf("[boot cpu] info: #%d (apic id: %d) started.\n", cpu_ctrl->GetCpuId(), apic_ctrl->GetApicIdFromCpuId(cpu_ctrl->GetCpuId()));
 
 
-  CpuCtrlInterface::CpuPurposes p;
-  p = CpuCtrlInterface::kLowPriority;  
+  CpuPurpose p;
+  p = CpuPurpose::kLowPriority;  
   gtty->Cprintf("req purpose: %d -> assigned id: %d\n", p, cpu_ctrl->RetainCpuIdForPurpose(p));
-  p = CpuCtrlInterface::kLowPriority;  
+  p = CpuPurpose::kLowPriority;  
   gtty->Cprintf("req purpose: %d -> assigned id: %d\n", p, cpu_ctrl->RetainCpuIdForPurpose(p));
-  p = CpuCtrlInterface::kLowPriority;  
+  p = CpuPurpose::kLowPriority;  
   gtty->Cprintf("req purpose: %d -> assigned id: %d\n", p, cpu_ctrl->RetainCpuIdForPurpose(p));
-  p = CpuCtrlInterface::kHighPerformance;  
+  p = CpuPurpose::kHighPerformance;  
   gtty->Cprintf("req purpose: %d -> assigned id: %d\n", p, cpu_ctrl->RetainCpuIdForPurpose(p));
-  p = CpuCtrlInterface::kHighPerformance;  
+  p = CpuPurpose::kHighPerformance;  
   gtty->Cprintf("req purpose: %d -> assigned id: %d\n", p, cpu_ctrl->RetainCpuIdForPurpose(p));
-  p = CpuCtrlInterface::kHighPerformance;  
+  p = CpuPurpose::kHighPerformance;  
   gtty->Cprintf("req purpose: %d -> assigned id: %d\n", p, cpu_ctrl->RetainCpuIdForPurpose(p));
-  p = CpuCtrlInterface::kGeneralPurpose;  
+  p = CpuPurpose::kGeneralPurpose;  
   gtty->Cprintf("req purpose: %d -> assigned id: %d\n", p, cpu_ctrl->RetainCpuIdForPurpose(p));
-  p = CpuCtrlInterface::kGeneralPurpose;  
+  p = CpuPurpose::kGeneralPurpose;  
   gtty->Cprintf("req purpose: %d -> assigned id: %d\n", p, cpu_ctrl->RetainCpuIdForPurpose(p));
-  p = CpuCtrlInterface::kGeneralPurpose;  
+  p = CpuPurpose::kGeneralPurpose;  
   gtty->Cprintf("req purpose: %d -> assigned id: %d\n", p, cpu_ctrl->RetainCpuIdForPurpose(p));
-  p = CpuCtrlInterface::kHighPerformance;  
+  p = CpuPurpose::kHighPerformance;  
   gtty->Cprintf("req purpose: %d -> assigned id: %d\n", p, cpu_ctrl->RetainCpuIdForPurpose(p));
-  p = CpuCtrlInterface::kHighPerformance;  
+  p = CpuPurpose::kHighPerformance;  
   gtty->Cprintf("req purpose: %d -> assigned id: %d\n", p, cpu_ctrl->RetainCpuIdForPurpose(p));
-  p = CpuCtrlInterface::kGeneralPurpose;  
+  p = CpuPurpose::kGeneralPurpose;  
   gtty->Cprintf("req purpose: %d -> assigned id: %d\n", p, cpu_ctrl->RetainCpuIdForPurpose(p));
-  p = CpuCtrlInterface::kGeneralPurpose;  
+  p = CpuPurpose::kGeneralPurpose;  
   gtty->Cprintf("req purpose: %d -> assigned id: %d\n", p, cpu_ctrl->RetainCpuIdForPurpose(p));
 
 
@@ -395,11 +395,11 @@ extern "C" int main_of_others() {
   gdt->SetupProc();
   idt->SetupProc();
 
-  gtty->Cprintf("[cpu] info: #%d (apic id: %d) started.\n", cpu_ctrl->GetId(), apic_ctrl->GetApicIdFromCpuId(cpu_ctrl->GetId()));
+  gtty->Cprintf("[cpu] info: #%d (apic id: %d) started.\n", cpu_ctrl->GetCpuId(), apic_ctrl->GetApicIdFromCpuId(cpu_ctrl->GetCpuId()));
  
   // ループ性能測定用 
   // PollingFunc p;
-  // if (cpu_ctrl->GetId() == 4) {
+  // if (cpu_ctrl->GetCpuId() == 4) {
   //   static int hoge = 0;
   //   p.Init([](void *){
   //       int hoge2 = timer->GetUsecFromCnt(timer->ReadMainCnt()) - hoge;
@@ -410,7 +410,7 @@ extern "C" int main_of_others() {
   // }
   
   // ワンショット性能測定用
-  if (cpu_ctrl->GetId() == 5) {
+  if (cpu_ctrl->GetCpuId() == 5) {
     new(&tt1) Callout;
     Function func;
     func.Init([](void *){
@@ -437,7 +437,7 @@ extern "C" void kernel_panic(const char *class_name, const char *err_str) {
 }
 
 extern "C" void checkpoint(int id, const char *str) {
-  if (id < 0 || cpu_ctrl->GetId() == id) {
+  if (id < 0 || cpu_ctrl->GetCpuId() == id) {
     gtty->CprintfRaw(str);
   }
 }
@@ -457,7 +457,7 @@ extern "C" void abort() {
 
 extern "C" void _kassert(const char *file, int line, const char *func) {
   if (gtty != nullptr) {
-    gtty->Cprintf("assertion failed at %s l.%d (%s) cpuid: %d\n", file, line, func, cpu_ctrl->GetId());
+    gtty->Cprintf("assertion failed at %s l.%d (%s) cpuid: %d\n", file, line, func, cpu_ctrl->GetCpuId());
   }
   while(true){
     asm volatile("cli;hlt");
