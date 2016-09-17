@@ -307,37 +307,6 @@ extern "C" int main() {
 
   gtty->Cprintf("[boot cpu] info: #%d (apic id: %d) started.\n", cpu_ctrl->GetCpuId(), apic_ctrl->GetApicIdFromCpuId(cpu_ctrl->GetCpuId()));
 
-
-  CpuPurpose p;
-  p = CpuPurpose::kLowPriority;  
-  gtty->Cprintf("req purpose: %d -> assigned id: %d\n", p, cpu_ctrl->RetainCpuIdForPurpose(p));
-  p = CpuPurpose::kLowPriority;  
-  gtty->Cprintf("req purpose: %d -> assigned id: %d\n", p, cpu_ctrl->RetainCpuIdForPurpose(p));
-  p = CpuPurpose::kLowPriority;  
-  gtty->Cprintf("req purpose: %d -> assigned id: %d\n", p, cpu_ctrl->RetainCpuIdForPurpose(p));
-  p = CpuPurpose::kHighPerformance;  
-  gtty->Cprintf("req purpose: %d -> assigned id: %d\n", p, cpu_ctrl->RetainCpuIdForPurpose(p));
-  p = CpuPurpose::kHighPerformance;  
-  gtty->Cprintf("req purpose: %d -> assigned id: %d\n", p, cpu_ctrl->RetainCpuIdForPurpose(p));
-  p = CpuPurpose::kHighPerformance;  
-  gtty->Cprintf("req purpose: %d -> assigned id: %d\n", p, cpu_ctrl->RetainCpuIdForPurpose(p));
-  p = CpuPurpose::kGeneralPurpose;  
-  gtty->Cprintf("req purpose: %d -> assigned id: %d\n", p, cpu_ctrl->RetainCpuIdForPurpose(p));
-  p = CpuPurpose::kGeneralPurpose;  
-  gtty->Cprintf("req purpose: %d -> assigned id: %d\n", p, cpu_ctrl->RetainCpuIdForPurpose(p));
-  p = CpuPurpose::kGeneralPurpose;  
-  gtty->Cprintf("req purpose: %d -> assigned id: %d\n", p, cpu_ctrl->RetainCpuIdForPurpose(p));
-  p = CpuPurpose::kHighPerformance;  
-  gtty->Cprintf("req purpose: %d -> assigned id: %d\n", p, cpu_ctrl->RetainCpuIdForPurpose(p));
-  p = CpuPurpose::kHighPerformance;  
-  gtty->Cprintf("req purpose: %d -> assigned id: %d\n", p, cpu_ctrl->RetainCpuIdForPurpose(p));
-  p = CpuPurpose::kGeneralPurpose;  
-  gtty->Cprintf("req purpose: %d -> assigned id: %d\n", p, cpu_ctrl->RetainCpuIdForPurpose(p));
-  p = CpuPurpose::kGeneralPurpose;  
-  gtty->Cprintf("req purpose: %d -> assigned id: %d\n", p, cpu_ctrl->RetainCpuIdForPurpose(p));
-
-
-
   if (eth != nullptr) {
     static ArpSocket socket;
     if(socket.Open() < 0) {
