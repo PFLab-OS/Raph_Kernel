@@ -27,8 +27,10 @@
 #include <queue.h>
 #include <sys/types-raph.h>
 #include <sys/bus-raph.h>
+#include <sys/ata.h>
 #include <cam/cam.h>
 #include <cam/cam_ccb.h>
+#include <ptr.h>
 
 class AhciChannel;
 
@@ -50,7 +52,7 @@ public:
   uint32_t dxfer_len;
   uint8_t *data_ptr;
 
-  uint8_t *ptr;
+  auptr<uint8_t> ptr;
 
   enum class Status {
     kErr,
@@ -58,8 +60,12 @@ public:
   };
   Status proc_result;
 
-  static PacketAtaio *XptAlloc(AhciChannel *channel) {
-    return new PacketAtaio(channel);
+  static PacketAtaio *XptAlloc() {
+    return new PacketAtaio();
+  }
+  static void Release(PacketAtaio *ataio) {
+    // TODO free data_ptr
+    delete ataio;
   }
   void XptCopyHeader(PacketAtaio *ataio) {
     target_id = ataio->target_id;
@@ -69,16 +75,10 @@ public:
     sim_priv = ataio->sim_priv;
     timeout = ataio->timeout;
   }
-  void XptDone();
   void XptFree() {
     delete this;
   }
 private:
-  PacketAtaio();
-  PacketAtaio(AhciChannel *channel) {
-    _channel = channel;
-  }
-  AhciChannel *_channel;
 };
 
 class PacketAtaioCtrl {
@@ -149,23 +149,55 @@ public:
     SpinLock lock;
   };
   AhciChannel(AhciCtrl *ctrl) : BsdDevBus(ctrl, "ahcich", -1), _ctrl(ctrl) {
+    bzero(&ident_data, sizeof(struct ata_params));
   }
-  void Read();
-  void Write();
+  void Identify();
+  void Read(int lba, int count);
+  void Write(int lba, auptr<uint8_t> ptr);
+  void DonePacket(PacketAtaio *ataio);
   void Handle(Task *, void *);
   static AhciChannel *Init(AhciCtrl *ctrl);
   DevQueue	devq;
   PacketAtaio	*frozen = nullptr;
   Queue2<PacketAtaio>	doneq;
   Queue2<PacketAtaio>	tmp_doneq;
+  bool IsChannelReady() {
+    return (ident_data.capabilities1 & (ATA_SUPPORT_DMA | ATA_SUPPORT_LBA)) != 0;
+  }
+  int GetLogicalSectorSize() {
+    kassert(IsChannelReady());
+    if ((ident_data.pss & ATA_PSS_VALID_MASK) == ATA_PSS_VALID_VALUE &&
+        (ident_data.pss & ATA_PSS_LSSABOVE512) != 0) {
+      return (static_cast<uint32_t>(ident_data.lss_1) | (static_cast<u_int32_t>(ident_data.lss_2) << 16)) * 2;
+    } else {
+      return 512;
+    }
+  }
+  uint32_t GetLogicalSectorNum() {
+    if (SupportAddress48()) {
+      return static_cast<uint64_t>(ident_data.lba_size48_1) |
+        static_cast<uint64_t>(ident_data.lba_size48_2 << 16) |
+        static_cast<uint64_t>(ident_data.lba_size48_3 << 32) |
+        static_cast<uint64_t>(ident_data.lba_size48_4 << 48);
+    } else {
+      return static_cast<uint32_t>(ident_data.lba_size_1) |
+        static_cast<uint32_t>(ident_data.lba_size_2 << 16);
+    }
+  }
 private:
   AhciChannel();
+  PacketAtaio *MakePacket(uint32_t lba, uint8_t count, auptr<uint8_t> ptr, uint32_t flags, uint8_t cmd_flags, uint8_t command);
   virtual int DevMethodBusProbe() override final;
   virtual int DevMethodBusAttach() override final;
   virtual int DevMethodBusSetupIntr(struct resource *r, int flags, driver_filter_t filter, driver_intr_t ithread, void *arg, void **cookiep) override final;
   virtual struct resource *DevMethodBusAllocResource(int type, int *rid, rman_res_t start, rman_res_t end, rman_res_t count, u_int flags) override final;
   virtual int DevMethodBusReleaseResource(int type, int rid, struct resource *r) override final;
   AhciCtrl *_ctrl;
+  bool SupportAddress48() {
+    kassert(IsChannelReady());
+    return (ident_data.support.command2 & ATA_SUPPORT_ADDRESS48) != 0;
+  }
+  struct ata_params ident_data;
 };
 
 #endif // __RAPH_KERNEL_DEV_DISK_AHCI_AHCI_RAPH_H__

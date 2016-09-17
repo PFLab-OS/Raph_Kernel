@@ -1166,7 +1166,7 @@ ahci_done(struct ahci_channel *ch, PacketAtaio *ataio)
 	if ((ataio->func_code & XPT_FC_QUEUED) == 0 || 
 	    ch->batch == 0) {
     // xpt_done(ccb);
-    ataio->XptDone();
+    ch->dev->GetMasterClass<AhciChannel>()->DonePacket(ataio);
 		return;
 	}
 
@@ -1222,7 +1222,7 @@ ahci_ch_intr_direct(void *arg)
   while(!tmp_doneq.IsEmpty()) {
     PacketAtaio *ataio;
     kassert(tmp_doneq.Pop(ataio));
-    ataio->XptDone();
+    ch->dev->GetMasterClass<AhciChannel>()->DonePacket(ataio);
   }
   // while ((ccb_h = STAILQ_FIRST(&tmp_doneq)) != NULL) {
 	//  	STAILQ_REMOVE_HEAD(&tmp_doneq, sim_links.stqe);
@@ -1535,7 +1535,9 @@ ahci_dmasetprd(void *arg, bus_dma_segment_t *segs, int nsegs, int error)
 	bus_dmamap_sync(ch->dma.data_tag, slot->dma.data_map,
 	    ((slot->ataio->flags & CAM_DIR_IN) ?
 	    BUS_DMASYNC_PREREAD : BUS_DMASYNC_PREWRITE));
-  memcpy(slot->ataio->data_ptr, slot->ataio->ptr, 512);
+  if ((slot->ataio->flags | CAM_DIR_IN) != 0) {
+    memcpy(slot->ataio->data_ptr, slot->ataio->ptr.GetRawPtr(), slot->ataio->dxfer_len);
+  }
 	ahci_execute_transaction(slot);
 }
 
@@ -2062,7 +2064,7 @@ ahci_issue_recovery(struct ahci_channel *ch)
 			break;
 	}
 	// ccb = xpt_alloc_ccb_nowait();
-  ataio = PacketAtaio::XptAlloc(ch->dev->GetMasterClass<AhciChannel>());
+  ataio = PacketAtaio::XptAlloc();
 	if (ataio == NULL) {
 		device_printf(ch->dev, "Unable to allocate recovery command\n");
 completeall:
@@ -2880,11 +2882,14 @@ AhciChannel *AhciChannel::Init(AhciCtrl *ctrl) {
 int AhciChannel::DevMethodBusProbe() {
   return ahci_ch_probe(this);
 }
+#include <tty.h>
+#include <global.h>
 
 int AhciChannel::DevMethodBusAttach() {
   int i = ahci_ch_attach(this);
   if (i == 0) {
     ahci_reset(reinterpret_cast<struct ahci_channel *>(softc));
+    Identify();
   }
   return i;
 }
@@ -2908,59 +2913,67 @@ void AhciChannel::Handle(Task *, void *) {
   ahciaction(ch, packet);
 }
 
-void AhciChannel::Read() {
-  uint32_t lba = 0;
-  uint8_t count = 1;
-  PacketAtaio *ataio = PacketAtaio::XptAlloc(this);
+PacketAtaio *AhciChannel::MakePacket(uint32_t lba, uint8_t count, auptr<uint8_t> ptr, uint32_t flags, uint8_t cmd_flags, uint8_t command) {
+  PacketAtaio *ataio = PacketAtaio::XptAlloc();
   ataio->target_id = 0;
   ataio->target_lun = 0;
   ataio->func_code = XPT_ATA_IO;
-  ataio->flags = CAM_DIR_IN | CAM_DATA_VADDR;
+  ataio->flags = flags | CAM_DATA_VADDR;
   ataio->timeout = 30 * 1000;
   
   ataio->aux = 0;
   ataio->ata_flags = 0;
-  ataio->cmd.flags = CAM_ATAIO_DMA;
-  ataio->cmd.command = ATA_READ_DMA;
+  ataio->cmd.flags = cmd_flags;
+  ataio->cmd.command = command;
   ataio->cmd.features = 0;
   ataio->cmd.lba_low = lba;
   ataio->cmd.lba_mid = lba >> 8;
   ataio->cmd.lba_high = lba >> 16;
   ataio->cmd.device = ATA_DEV_LBA | ((lba >> 24) & 0x0f);
   ataio->cmd.sector_count = count;
-  ataio->dxfer_len = 512 * count;
+  ataio->dxfer_len = ptr.GetLen();
   ataio->data_ptr = nullptr;
+  ataio->ptr = ptr;
+  return ataio;
+}
+
+void AhciChannel::Identify() {
+  auptr<uint8_t> ptr;
+  ptr.Init(sizeof(struct ata_params));
+  PacketAtaio *ataio = MakePacket(0, 0, ptr, CAM_DIR_IN, 0, ATA_ATA_IDENTIFY);
   devq.Push(ataio);
 }
 
-void AhciChannel::Write() {
-  uint32_t lba = 0;
-  uint8_t count = 1;
-  PacketAtaio *ataio = PacketAtaio::XptAlloc(this);
-  ataio->target_id = 0;
-  ataio->target_lun = 0;
-  ataio->func_code = XPT_ATA_IO;
-  ataio->flags = CAM_DIR_OUT | CAM_DATA_VADDR;
-  ataio->timeout = 30 * 1000;
-  
-  ataio->aux = 0;
-  ataio->ata_flags = 0;
-  ataio->cmd.flags = CAM_ATAIO_DMA;
-  ataio->cmd.command = ATA_WRITE_DMA;
-  ataio->cmd.features = 0;
-  ataio->cmd.lba_low = lba;
-  ataio->cmd.lba_mid = lba >> 8;
-  ataio->cmd.lba_high = lba >> 16;
-  ataio->cmd.device = ATA_DEV_LBA | ((lba >> 24) & 0x0f);
-  ataio->cmd.sector_count = count;
-  ataio->dxfer_len = 512 * count;
-  ataio->data_ptr = nullptr;
-  ataio->ptr = reinterpret_cast<uint8_t *>(malloc(512));
+void AhciChannel::Read(int lba, int count) {
+  auptr<uint8_t> ptr;
+  ptr.Init(GetLogicalSectorSize() * count);
+  PacketAtaio *ataio = MakePacket(lba, count, ptr, CAM_DIR_IN, CAM_ATAIO_DMA, ATA_READ_DMA);
+  devq.Push(ataio);
+}
+
+void AhciChannel::Write(int lba, auptr<uint8_t> ptr) {
+  kassert(ptr.GetLen() % GetLogicalSectorSize() == 0);
+  int count = ptr.GetLen() / GetLogicalSectorSize();
   uint8_t c = 0;
-  for(int i = 0; i < 512; i++) {
-    ataio->ptr[i] = c;
+  for(int i = 0; i < GetLogicalSectorSize(); i++) {
+    ptr[i] = c;
     c++;
   }
-  
+  PacketAtaio *ataio = MakePacket(lba, count, ptr, CAM_DIR_OUT, CAM_ATAIO_DMA, ATA_WRITE_DMA);
   devq.Push(ataio);
+}
+
+void AhciChannel::DonePacket(PacketAtaio *ataio) {
+  if ((ataio->func_code & XPT_FC_QUEUED) == 0) {
+    return;
+  }
+  if (ataio->cmd.command == ATA_ATA_IDENTIFY) {
+    memcpy(&ident_data, ataio->data_ptr, ataio->dxfer_len);
+    PacketAtaio::Release(ataio);
+  } else {
+    if (ataio->cmd.command == ATA_READ_DMA) {
+      memcpy(ataio->ptr.GetRawPtr(), ataio->data_ptr, ataio->dxfer_len);
+    }
+    doneq.Push(ataio);
+  }
 }

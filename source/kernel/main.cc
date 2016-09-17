@@ -392,7 +392,7 @@ extern "C" int main_of_others() {
     Function func;
     func.Init([](void *){
         kassert(g_channel != nullptr);
-        g_channel->Read();
+        //        g_channel->Read(0, 1);
       }, nullptr);
     tt4.Init(func);
     tt4.SetHandler(10);
@@ -423,7 +423,7 @@ extern "C" void _checkpoint(const char *func, const int line) {
 
 extern "C" void abort() {
   if (gtty != nullptr) {
-    gtty->Cprintf("system stopped by unexpected error.\n");
+    gtty->CprintfRaw("system stopped by unexpected error.\n");
   }
   while(true){
     asm volatile("cli;hlt");
@@ -432,7 +432,7 @@ extern "C" void abort() {
 
 extern "C" void _kassert(const char *file, int line, const char *func) {
   if (gtty != nullptr) {
-    gtty->Cprintf("assertion failed at %s l.%d (%s) cpuid: %d\n", file, line, func, cpu_ctrl->GetId());
+    gtty->CprintfRaw("assertion failed at %s l.%d (%s) cpuid: %d\n", file, line, func, cpu_ctrl->GetId());
   }
   while(true){
     asm volatile("cli;hlt");

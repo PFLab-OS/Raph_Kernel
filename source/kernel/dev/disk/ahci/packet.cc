@@ -27,13 +27,4 @@
 PacketAtaioCtrl PacketAtaioCtrl::_ctrl;
 bool PacketAtaioCtrl::_is_initailized = false;
 
-void PacketAtaio::XptDone() {
-  if ((func_code & XPT_FC_QUEUED) == 0) {
-    return;
-  }
-  for(int i = 0; i < 512; i++) {
-    //gtty->CprintfRaw("%x ", data_ptr[i]);
-  }
-  _channel->doneq.Push(this);
-}
 
