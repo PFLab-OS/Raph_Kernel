@@ -23,10 +23,13 @@ qemuend:
 #$(CORE_FILE): $(subst $(MOUNT_DIR)/core,$(BUILD),$@)
 #	cp $< $@
 
-image:
-	make mount
+bin:
 	-mkdir $(BUILD_DIR)
 	make -C source
+
+image:
+	make mount
+	make bin
 	sudo cp grub.cfg $(MOUNT_DIR)/boot/grub/grub.cfg 
 	-sudo rm -rf $(MOUNT_DIR)/core
 	sudo cp -r $(BUILD_DIR) $(MOUNT_DIR)/core
