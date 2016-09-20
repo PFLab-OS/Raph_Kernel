@@ -143,7 +143,7 @@ void bench(int argc, const char* argv[]) {
   {
     static ArpSocket socket;
     if(socket.Open() < 0) {
-      gtty->Printf("s", "[error] failed to open socket\n");
+      gtty->Cprintf("[error] failed to open socket\n");
     } else {
       socket.SetIpAddr(inet_atoi(ip1));
     }
@@ -169,19 +169,17 @@ void bench(int argc, const char* argv[]) {
             if (time == 0) {
               break;
             }
-
             cnt = timer->ReadMainCnt();
             if(socket.TransmitPacket(ArpSocket::kOpArpRequest, inet_atoi(ip2), nullptr) < 0) {
-              gtty->Printf("s", "[arp] failed to transmit request\n");
+              gtty->Cprintf("[arp] failed to transmit request\n");
             }
-          
             time--;
           }
           if (time != 0) {
             tt2.SetHandler(1000);
           }
         } else {
-          gtty->Printf("s", "[debug] info: Link is Up\n");
+          gtty->Cprintf("[debug] info: Link is Up\n");
         }
       }, nullptr);
     tt2.Init(func);
@@ -193,12 +191,12 @@ void bench(int argc, const char* argv[]) {
     Function func;
     func.Init([](void *){
         if (rtime > 0) {
-          gtty->Printf("s","ARP Reply average latency:","d",sum / rtime,"s","us [","d",rtime,"s","/","d",stime,"s","]\n");
+          gtty->Cprintf("ARP Reply average latency: %d us [%d / %d]\n", sum / rtime, rtime, stime);
         } else {
           if (eth->GetStatus() == BsdEthernet::LinkStatus::kUp) {
-            gtty->Printf("s","Link is Up, but no ARP Reply\n");
+            gtty->Cprintf("Link is Up, but no ARP Reply\n");
           } else {
-            gtty->Printf("s","Link is Down, please wait...\n");
+            gtty->Cprintf("Link is Down, please wait...\n");
           }
         }
         if (rtime != stime) {
@@ -249,7 +247,7 @@ extern "C" int main() {
   acpi_ctrl->Setup();
 
   if (timer->Setup()) {
-    gtty->Printf("s","[timer] info: HPET supported.\n");
+    gtty->Cprintf("[timer] info: HPET supported.\n");
   } else {
     kernel_panic("timer", "HPET not supported.\n");
   }
@@ -286,26 +284,36 @@ extern "C" int main() {
 
   gtty->Init();
 
-  gtty->Printf("s", "[cpu] info: #", "d", cpu_ctrl->GetId(), "s", "(apic id:", "d", apic_ctrl->GetApicIdFromCpuId(cpu_ctrl->GetId()), "s", ") started.\n");
-
-  keyboard->Setup(1);
+  Function2<Task> func;
+  func.Init([](Task *, void *){
+      uint8_t data;
+      if(!keyboard->Read(data)){
+        return;
+      }
+      char c = Keyboard::Interpret(data);
+      gtty->Cprintf("%c", c);
+      shell->ReadCh(c);
+    }, nullptr);
+  keyboard->Setup(1, func);
 
   cnt = 0;
   sum = 0;
   time = stime;
   rtime = 0;
 
+  gtty->Cprintf("[cpu] info: #%d (apic id: %d) started.\n", cpu_ctrl->GetId(), apic_ctrl->GetApicIdFromCpuId(cpu_ctrl->GetId()));
+  
   if (eth != nullptr) {
     static ArpSocket socket;
     if(socket.Open() < 0) {
-      gtty->Printf("s", "[error] failed to open socket\n");
+      gtty->Cprintf("[error] failed to open socket\n");
     }
     socket.SetIpAddr(inet_atoi(ip1));
     Function2<Task> func;
     func.Init([](Task *, void *){
         uint32_t ipaddr;
         uint8_t macaddr[6];
-        
+	
         int32_t rval = socket.ReceivePacket(0, &ipaddr, macaddr);
         if(rval == ArpSocket::kOpArpReply) {
           uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;
@@ -319,29 +327,13 @@ extern "C" int main() {
     socket.SetReceiveCallback(2, func);
   }
 
-  gtty->Printf("s", "\n\n[kernel] info: initialization completed\n");
+  gtty->Cprintf("\n\n[kernel] info: initialization completed\n");
 
   shell->Setup();
   shell->Register("halt", halt);
   shell->Register("reset", reset);
   shell->Register("bench", bench);
-  
-  // print keyboard_input
-  // TODO: Functional FIFOにすべき
-  PollingFunc _keyboard_polling;
-  Function func;
-  func.Init([](void *) {
-      // print keyboard_input
-      while(keyboard->Count() > 0) {
-        char ch[2] = {'\0','\0'};
-        ch[0] = keyboard->GetCh();
-        gtty->Printf("s", ch);
-        shell->ReadCh(ch[0]);
-      }
-    }, nullptr);
-  _keyboard_polling.Init(func);
-  _keyboard_polling.Register(1);
-  
+
   task_ctrl->Run();
 
   DismissNetCtrl();
@@ -359,7 +351,7 @@ extern "C" int main_of_others() {
   gdt->SetupProc();
   idt->SetupProc();
 
-  gtty->Printf("s", "[cpu] info: #", "d", cpu_ctrl->GetId(), "s", "(apic id:", "d", apic_ctrl->GetApicIdFromCpuId(cpu_ctrl->GetId()), "s", ") started.\n");
+  gtty->Cprintf("[cpu] info: #%d (apic id: %d) started.\n", cpu_ctrl->GetId(), apic_ctrl->GetApicIdFromCpuId(cpu_ctrl->GetId()));
  
   // ループ性能測定用 
   // PollingFunc p;
@@ -404,7 +396,7 @@ extern "C" int main_of_others() {
 
 extern "C" void kernel_panic(const char *class_name, const char *err_str) {
   if (gtty != nullptr) {
-    gtty->PrintfRaw("s", "\n[","s",class_name,"s","] error: ","s",err_str);
+    gtty->CprintfRaw("\n[%s] error: %s",class_name, err_str);
   }
   while(true) {
     asm volatile("cli;hlt;");
@@ -413,7 +405,7 @@ extern "C" void kernel_panic(const char *class_name, const char *err_str) {
 
 extern "C" void checkpoint(int id, const char *str) {
   if (id < 0 || cpu_ctrl->GetId() == id) {
-    gtty->PrintfRaw("s",str);
+    gtty->CprintfRaw(str);
   }
 }
 

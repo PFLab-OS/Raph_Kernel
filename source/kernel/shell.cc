@@ -21,11 +21,11 @@
  */
 
 
-/*this shell-like program is substituted later*/
-#include<global.h>
-#include<tty.h>
-#include<string.h>
-#include<shell.h>
+/*this shell-like program will be substituted later*/
+#include <global.h>
+#include <tty.h>
+#include <string.h>
+#include <shell.h>
 
 void Shell::Setup() {
   _liner.Setup(this);
@@ -52,7 +52,7 @@ void Shell::Exec(const char *name,int argc, const char* argv[]) {
     }
   }
 
-  gtty->Printf("s","unknown command:", "s", name, "s", "\n");
+  gtty->Cprintf("unknown command: %s\n", name);
 }
 
 void Shell::ReadCh(char c) {
@@ -102,5 +102,5 @@ void Shell::Liner::Reset() {
     _arguments[0] = nullptr;
     _next_command = 0;
     _argc = 0;
-    gtty->Printf("s", ">");
+    gtty->Cprintf(">");
 }
