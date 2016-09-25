@@ -41,9 +41,7 @@ public:
     Packet() : buf(data) {}
     size_t len;
     uint8_t *buf;
-
-  private:
-    uint8_t data[MCLBYTES];  // only accessed via buf
+    uint8_t data[MCLBYTES];
   };
   enum class LinkStatus {
     kUp,
@@ -100,6 +98,7 @@ public:
   bool GetTxPacket(Packet *&packet) {
     if (_tx_reserved.Pop(packet)) {
       packet->len = MCLBYTES;
+      packet->buf = packet->data;
       this->DetachProtocolHeader(packet);
       return true;
     } else {

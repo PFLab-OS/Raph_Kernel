@@ -25,7 +25,8 @@
 
 void DevEthernet::FilterRxPacket(void *p) {
   NetDev::Packet *packet;
-  kassert(_rx_buffered.Pop(packet));
+  assert(_rx_buffered.Pop(packet));
+  packet->buf = packet->data;
 
   // filter by my MAC addresss
   uint8_t eth_addr[6];
