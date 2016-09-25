@@ -38,10 +38,12 @@ class NetDev {
 public:
   struct Packet {
   public:
-    Packet() : buf(data) {}
+    Packet() {}
     size_t len;
     uint8_t *buf;
-    uint8_t data[MCLBYTES];
+  private:
+    friend NetDev;
+    uint8_t data[MCLBYTES];  // only accessed via buf
   };
   enum class LinkStatus {
     kUp,
@@ -88,6 +90,7 @@ public:
 
   void ReuseRxBuffer(Packet *packet) {
     this->AttachProtocolHeader(packet);
+    packet->buf = packet->data;
     kassert(_rx_reserved.Push(packet));
   }
   void ReuseTxBuffer(Packet *packet) {
@@ -126,6 +129,7 @@ public:
     while(!_tx_reserved.IsFull()) {
       Packet *packet_addr = reinterpret_cast<Packet *>(virtmem_ctrl->Alloc(sizeof(Packet)));
       Packet *packet = new(packet_addr) Packet();
+      packet->buf = packet->data;
       kassert(_tx_reserved.Push(packet));
     }
   }
@@ -133,6 +137,7 @@ public:
     while(!_rx_reserved.IsFull()) {
       Packet *packet_addr = reinterpret_cast<Packet *>(virtmem_ctrl->Alloc(sizeof(Packet)));
       Packet *packet = new(packet_addr) Packet();
+      packet->buf = packet->data;
       kassert(_rx_reserved.Push(packet));
     }
   }
