@@ -158,6 +158,16 @@ public:
     _ipv4_addr = ipv4_addr;
   }
 
+  /**
+   * Get hardware destination address from the packet.
+   *
+   * @param packet
+   */
+  static void GetHardwareDestinationAddress(NetDev::Packet *packet, uint8_t *addr) {
+    ArpLayer::Header *header = reinterpret_cast<ArpLayer::Header *>(packet->buf);
+    memcpy(addr, header->hdaddr, 6);
+  }
+
 protected:
   /**
    * Return ARP header size.
@@ -191,6 +201,74 @@ private:
 
   /** IPv4 address assigned to the network device under this layer */
   uint32_t _ipv4_addr;
+};
+
+
+/**
+ * ARP table, which holds the pairs of MAC addresses and IPv4 addresses.
+ */
+class ArpTable {
+public:
+  ArpTable() {}
+
+  void Setup();
+
+  /**
+   * Add the pair of IPv4 address and MAC address.
+   *
+   * @param ipaddr
+   * @param macaddr
+   */
+  bool Add(uint32_t ipaddr, uint8_t *macaddr);
+
+  /**
+   * Find MAC address given an IPv4 address.
+   *
+   * @param ipaddr
+   * @param macaddr
+   */
+  bool Find(uint32_t ipaddr, uint8_t *macaddr);
+
+  /**
+   * Check if the given IPv4 address is registered.
+   *
+   * @param ipaddr
+   * @return if exists.
+   */
+  bool Exists(uint32_t ipaddr);
+
+private:
+  struct ArpTableRecord {
+    uint32_t ipaddr;
+    uint8_t macaddr[6];
+  };
+
+  SpinLock _lock;
+
+  static const int kMaxNumberRecords = 256;
+
+  /** maximum number of probing */
+  static const int kMaxProbingNumber = 8;
+
+  /** this table is implemented by open adressing hash table */
+  ArpTableRecord _table[kMaxNumberRecords];
+
+  /**
+   * Hash function.
+   *
+   * @param s input key value.
+   * @return hash value.
+   */
+  uint32_t Hash(uint32_t s) { return s & 0xff; }
+
+  /**
+   * Probing function.
+   * (search for next possible index in the case of conflict)
+   *
+   * @param s input key value.
+   * @return index available.
+   */
+  uint32_t Probe(uint32_t s) { return (s + 1) & 0xff; }
 };
 
 

@@ -71,7 +71,7 @@ class NetDevCtrl;
 extern NetDevCtrl *netdev_ctrl;
 
 // ARP Table
-//class ArpTable;
-//extern ArpTable *arp_table;
+class ArpTable;
+extern ArpTable *arp_table;
 
 #endif // __RAPH_KERNEL_GLOBAL_H__

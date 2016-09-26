@@ -56,6 +56,7 @@ Keyboard *keyboard = nullptr;
 Shell *shell = nullptr;
 PciCtrl *pci_ctrl = nullptr;
 NetDevCtrl *netdev_ctrl = nullptr;
+ArpTable *arp_table = nullptr;
 
 MultibootCtrl _multiboot_ctrl;
 AcpiCtrl _acpi_ctrl;
@@ -73,6 +74,7 @@ Keyboard _keyboard;
 Shell _shell;
 AcpicaPciCtrl _acpica_pci_ctrl;
 NetDevCtrl _netdev_ctrl;
+ArpTable _arp_table;
 
 static uint32_t rnd_next = 1;
 
@@ -238,6 +240,8 @@ extern "C" int main() {
 
   netdev_ctrl = new (&_netdev_ctrl) NetDevCtrl();
 
+  arp_table = new (&_arp_table) ArpTable();
+
   multiboot_ctrl->Setup();
 
   paging_ctrl->MapAllPhysMemory();
@@ -278,6 +282,8 @@ extern "C" int main() {
   InitDevices<PciCtrl, Device>();
 
   gtty->Init();
+
+  arp_table->Setup();
 
   keyboard->Setup(1);
 

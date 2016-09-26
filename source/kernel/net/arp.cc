@@ -70,6 +70,9 @@ bool ArpLayer::FilterPacket(NetDev::Packet *packet) {
   chunk->operation = ntohs(header->op);
   chunk->ipv4_addr = ntohl(header->psaddr);
 
+  // register to ARP table
+  arp_table->Add(header->psaddr, header->hsaddr);
+
   return true;
 }
 
@@ -88,17 +91,97 @@ bool ArpLayer::PreparePacket(NetDev::Packet *packet) {
   header->op     = htons(chunk->operation);
   header->pdaddr = htonl(chunk->ipv4_addr);
 
-  switch(header->op) {
+  switch(chunk->operation) {
     case ArpSocket::kOpRequest:
       // ARP request is sent by broadcast mode
       EthernetLayer::SetBroadcastAddress(header->hdaddr);
       break;
 
     case ArpSocket::kOpReply:
-      // TODO: use ARP table
-      EthernetLayer::SetBroadcastAddress(header->hdaddr);
+      if (!arp_table->Find(chunk->ipv4_addr, header->hdaddr)) {
+        return false;
+      }
+
       break;
   }
 
   return true;
+}
+
+/*
+ * ArpTable
+ */
+
+void ArpTable::Setup() {
+  for(uint32_t i = 0; i < kMaxNumberRecords; i++) {
+    _table[i].ipaddr = 0;
+  }
+}
+
+
+bool ArpTable::Add(uint32_t ipaddr, uint8_t *macaddr) {
+  Locker locker(_lock);
+
+  uint32_t index = Hash(ipaddr);
+
+  for (int i = 0; i < kMaxProbingNumber; i++) {
+    if (_table[index].ipaddr == 0) {
+      // new record
+      memcpy(_table[index].macaddr, macaddr, 6);
+      return true;
+    } else if (_table[index].ipaddr == ipaddr) {
+      // already added
+      return true;
+    } else {
+      // conflict
+      index = Probe(index);
+    }
+  }
+
+  return false;
+}
+
+
+bool ArpTable::Find(uint32_t ipaddr, uint8_t *macaddr) {
+  Locker locker(_lock);
+
+  uint32_t index = Hash(ipaddr);
+
+  for (int i = 0; i < kMaxProbingNumber; i++) {
+    if (_table[index].ipaddr == 0) {
+      // does not exist
+      return false;
+    } else if (_table[index].ipaddr == ipaddr) {
+      // record found
+      memcpy(macaddr, _table[index].macaddr, 6);
+      return true;
+  	} else {
+      // conflict
+      index = Probe(index);
+    }
+  }
+
+  return false;
+}
+
+
+bool ArpTable::Exists(uint32_t ipaddr) {
+  Locker locker(_lock);
+
+  uint32_t index = Hash(ipaddr);
+
+  for (int i = 0; i < kMaxProbingNumber; i++) {
+    if (_table[index].ipaddr == 0) {
+      // does not exists
+      return false;
+    } else if (_table[index].ipaddr == ipaddr) {
+      // record found
+      return true;
+    } else {
+      // conflict
+      index = Probe(index);
+    }
+  }
+
+  return false;
 }

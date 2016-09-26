@@ -21,6 +21,7 @@
  */
 
 #include <net/eth.h>
+#include <net/arp.h>
 
 
 const uint8_t EthernetLayer::kBroadcastMacAddress[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
@@ -44,7 +45,20 @@ bool EthernetLayer::FilterPacket(NetDev::Packet *packet) {
 bool EthernetLayer::PreparePacket(NetDev::Packet *packet) {
   EthernetLayer::Header *header = reinterpret_cast<EthernetLayer::Header *>(packet->buf);
 
-  memcpy(header->daddr, kBroadcastMacAddress, 6);  // TODO: fix
+  uint32_t pdaddr;
+
+  switch (_protocol) {
+    case kProtocolArp:
+      DetachProtocolHeader(packet);
+      ArpLayer::GetHardwareDestinationAddress(packet, header->daddr);
+      AttachProtocolHeader(packet);
+      break;
+
+    case kProtocolIpv4:
+    default:
+      return false;
+  }
+
   memcpy(header->saddr, _mac_address, 6);
   header->type = htons(_protocol);
 

@@ -251,6 +251,7 @@ public:
       this->DetachProtocolHeader(packet);
       return true;
     } else {
+      _prev_layer->ReuseRxBuffer(packet);
       return false;
     }
   }
@@ -281,9 +282,8 @@ public:
   virtual bool TransmitPacket(NetDev::Packet *packet) {
     // attach protocol header of this layer
     this->AttachProtocolHeader(packet);
-    this->PreparePacket(packet);
 
-    if (_prev_layer->TransmitPacket(packet)) {
+    if (PreparePacket(packet) && _prev_layer->TransmitPacket(packet)) {
       return true;
     } else {
       this->DetachProtocolHeader(packet);
