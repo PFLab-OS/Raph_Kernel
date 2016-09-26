@@ -141,11 +141,10 @@ void bench(int argc, const char* argv[]) {
 
   {
     static ArpSocket socket;
+    socket.AssignIpv4Address(inet_atoi(ip1));
 
     if(socket.Open() < 0) {
       gtty->Cprintf("[error] failed to open socket\n");
-    } else {
-      socket.AssignIpv4Address(inet_atoi(ip1));
     }
     cnt = 0;
     new(&tt2) Callout;
@@ -205,6 +204,32 @@ void bench(int argc, const char* argv[]) {
       }, nullptr);
     tt3.Init(func);
     tt3.SetHandler(6, 1000*1000*3);
+  }
+
+  if (eth != nullptr) {
+    static ArpSocket socket;
+    socket.AssignIpv4Address(inet_atoi(ip1));
+
+    if(socket.Open() < 0) {
+      gtty->Cprintf("[error] failed to open socket\n");
+    }
+
+    Function func;
+    func.Init([](void *){
+        uint32_t ipaddr;
+        uint16_t op;
+        
+        socket.Read(op, ipaddr);
+        if(op == ArpSocket::kOpReply) {
+          uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;
+          cnt = 0;
+          sum += l;
+          rtime++;
+        } else if(op == ArpSocket::kOpRequest) {
+          socket.Reply(ipaddr);
+        }
+      }, nullptr);
+    socket.SetReceiveCallback(2, func);
   }
 }
 
@@ -304,31 +329,6 @@ extern "C" int main() {
   kassert(!paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - 4096 * 7));
 
   gtty->Cprintf("[cpu] info: #%d (apic id: %d) started.\n", cpu_ctrl->GetId(), apic_ctrl->GetApicIdFromCpuId(cpu_ctrl->GetId()));
-  if (eth != nullptr) {
-    static ArpSocket socket;
-
-    if(socket.Open() < 0) {
-      gtty->Cprintf("[error] failed to open socket\n");
-    }
-
-    socket.AssignIpv4Address(inet_atoi(ip1));
-    Function func;
-    func.Init([](void *){
-        uint32_t ipaddr;
-        uint16_t op;
-        
-        socket.Read(op, ipaddr);
-        if(op == ArpSocket::kOpReply) {
-          uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;
-          cnt = 0;
-          sum += l;
-          rtime++;
-        } else if(op == ArpSocket::kOpRequest) {
-          socket.Reply(ipaddr);
-        }
-      }, nullptr);
-    socket.SetReceiveCallback(2, func);
-  }
  
   // 各コアは最低限の初期化ののち、TaskCtrlに制御が移さなければならない
   // 特定のコアで専用の処理をさせたい場合は、TaskCtrlに登録したジョブとして

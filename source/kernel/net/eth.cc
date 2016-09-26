@@ -24,6 +24,7 @@
 #include <net/arp.h>
 
 
+const uint8_t EthernetLayer::kArpRequestMacAddress[6] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 const uint8_t EthernetLayer::kBroadcastMacAddress[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 
 
@@ -44,8 +45,6 @@ bool EthernetLayer::FilterPacket(NetDev::Packet *packet) {
 
 bool EthernetLayer::PreparePacket(NetDev::Packet *packet) {
   EthernetLayer::Header *header = reinterpret_cast<EthernetLayer::Header *>(packet->buf);
-
-  uint32_t pdaddr;
 
   switch (_protocol) {
     case kProtocolArp:

@@ -76,7 +76,8 @@ public:
    */
   static bool CompareAddress(uint8_t *addr0, uint8_t *addr1) {
     if (memcmp(addr0, addr1, 6) != 0) {
-      if (memcmp(addr0, EthernetLayer::kBroadcastMacAddress, 6) != 0) {
+      if (memcmp(addr0, EthernetLayer::kBroadcastMacAddress, 6) != 0 &&
+          memcmp(addr0, EthernetLayer::kArpRequestMacAddress, 6) != 0) {
         return false;
       }
     }
@@ -105,6 +106,8 @@ protected:
 private:
   /** broadcast MAC address */
   static const uint8_t kBroadcastMacAddress[6];
+
+  static const uint8_t kArpRequestMacAddress[6];
 
   /** physical address */
   uint8_t _mac_address[6];

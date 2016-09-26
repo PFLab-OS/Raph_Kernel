@@ -71,7 +71,7 @@ bool ArpLayer::FilterPacket(NetDev::Packet *packet) {
   chunk->ipv4_addr = ntohl(header->psaddr);
 
   // register to ARP table
-  arp_table->Add(header->psaddr, header->hsaddr);
+  arp_table->Add(ntohl(header->psaddr), header->hsaddr);
 
   return true;
 }
@@ -128,6 +128,7 @@ bool ArpTable::Add(uint32_t ipaddr, uint8_t *macaddr) {
     if (_table[index].ipaddr == 0) {
       // new record
       memcpy(_table[index].macaddr, macaddr, 6);
+      _table[index].ipaddr = ipaddr;
       return true;
     } else if (_table[index].ipaddr == ipaddr) {
       // already added

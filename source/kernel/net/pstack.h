@@ -247,11 +247,15 @@ public:
    * @return if succeeds.
    */
   virtual bool ReceivePacket(NetDev::Packet *&packet) {
-    if (_prev_layer->ReceivePacket(packet) && this->FilterPacket(packet)) {
-      this->DetachProtocolHeader(packet);
-      return true;
+    if (_prev_layer->ReceivePacket(packet)) {
+      if (this->FilterPacket(packet)) {
+        this->DetachProtocolHeader(packet);
+        return true;
+      } else {
+        _prev_layer->ReuseRxBuffer(packet);
+        return false;
+      }
     } else {
-      _prev_layer->ReuseRxBuffer(packet);
       return false;
     }
   }
