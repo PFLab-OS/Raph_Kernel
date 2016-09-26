@@ -16,38 +16,37 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
- * Author: Liva
+ * Author: levelfour
  * 
  */
 
-#ifndef __RAPH_KERNEL_DEV_ETH_H__
-#define __RAPH_KERNEL_DEV_ETH_H__
+#include <net/eth.h>
 
-#include <dev/netdev.h>
-#include <dev/pci.h>
-#include <mem/virtmem.h>
 
-class DevEthernet : public NetDev {
-public:
-  DevEthernet(uint8_t bus, uint8_t device, bool mf) {
-    //TODO is this needed?
-    _pci = virtmem_ctrl->New<DevPci>(bus, device, mf);
-  } 
-  virtual ~DevEthernet() {
-    virtmem_ctrl->Delete<DevPci>(_pci);
-  }
-  DevPci *GetDevPci() {
-    return _pci;
-  }
-  // allocate 6 byte before call
-  virtual void GetEthAddr(uint8_t *buffer) = 0;
+const uint8_t EthernetLayer::kBroadcastMacAddress[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 
-protected:
-  DevEthernet(DevPci *pci) {
-    _pci = pci;
+
+bool EthernetLayer::FilterPacket(NetDev::Packet *packet) {
+  EthernetLayer::Header *header = reinterpret_cast<EthernetLayer::Header *>(packet->buf);
+
+  if (!EthernetLayer::CompareAddress(header->daddr, _mac_address)) {
+    return false;
   }
 
-  DevPci *_pci;
-};
+  if (ntohs(header->type) != _protocol) {
+    return false;
+  }
 
-#endif /* __RAPH_KERNEL_DEV_ETH_H__ */
+  return true;
+}
+
+
+bool EthernetLayer::PreparePacket(NetDev::Packet *packet) {
+  EthernetLayer::Header *header = reinterpret_cast<EthernetLayer::Header *>(packet->buf);
+
+  memcpy(header->daddr, kBroadcastMacAddress, 6);  // TODO: fix
+  memcpy(header->saddr, _mac_address, 6);
+  header->type = htons(_protocol);
+
+  return true;
+}

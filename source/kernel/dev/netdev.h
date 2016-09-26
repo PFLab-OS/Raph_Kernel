@@ -71,7 +71,6 @@ public:
   // そのうちrx_reservedが枯渇して、一切のパケットの受信ができなくなるるよ♪
   NetDevRingBuffer _rx_reserved;
   NetDevFunctionalRingBuffer _rx_buffered;
-  NetDevFunctionalRingBuffer _rx_filtered;
 
   // txパケットの処理の流れ
   // 0. tx_reservedを初期化、バッファを満タンにしておく
@@ -89,12 +88,10 @@ public:
   NetDevFunctionalRingBuffer _tx_buffered;
 
   void ReuseRxBuffer(Packet *packet) {
-    this->AttachProtocolHeader(packet);
     packet->buf = packet->data;
     kassert(_rx_reserved.Push(packet));
   }
   void ReuseTxBuffer(Packet *packet) {
-    this->AttachProtocolHeader(packet);
     kassert(_tx_reserved.Push(packet));
   }
   // 戻り値がfalseの時はバッファが枯渇しているので、要リトライ
@@ -102,27 +99,23 @@ public:
     if (_tx_reserved.Pop(packet)) {
       packet->len = MCLBYTES;
       packet->buf = packet->data;
-      this->DetachProtocolHeader(packet);
       return true;
     } else {
       return false;
     }
   }
   bool TransmitPacket(Packet *packet) {
-    this->AttachProtocolHeader(packet);
-    this->PrepareTxPacket(packet);
     return _tx_buffered.Push(packet);
   }
   bool ReceivePacket(Packet *&packet) {
-    if (_rx_filtered.Pop(packet)) {
-      this->DetachProtocolHeader(packet);
+    if (_rx_buffered.Pop(packet)) {
       return true;
     } else {
       return false;
     }
   }
   void SetReceiveCallback(int cpuid, const GenericFunction &func) {
-    _rx_filtered.SetFunction(cpuid, func);
+    _rx_buffered.SetFunction(cpuid, func);
   }
 
   void InitTxPacketBuffer() {
@@ -177,11 +170,6 @@ public:
   void SetProtocolStack(ProtocolStack *stack) { _ptcl_stack = stack; }
 protected:
   NetDev() {
-    ClassFunction<NetDev> packet_filter;
-    packet_filter.Init(this, &NetDev::FilterRxPacket, nullptr);
-    // TODO cpuid
-    _rx_buffered.SetFunction(2, packet_filter);
-
     // TODO cpuid
     ClassFunction<NetDev> func;
     func.Init(this, &NetDev::Transmit, nullptr);
@@ -195,26 +183,7 @@ protected:
   volatile LinkStatus _status = LinkStatus::kDown;
   HandleMethod _method = HandleMethod::kInt;
 
-  // filter received packet
-  virtual void FilterRxPacket(void *p) = 0;
-
-  // preprocess on packet before transmit
-  virtual void PrepareTxPacket(NetDev::Packet *packet) = 0;
-
-  // return the length of protocol header
-  virtual int GetProtocolHeaderLength() = 0;
-
-  void AttachProtocolHeader(NetDev::Packet *packet) {
-    packet->buf -= this->GetProtocolHeaderLength();
-    packet->len += this->GetProtocolHeaderLength();
-  }
-
-  void DetachProtocolHeader(NetDev::Packet *packet) {
-    packet->buf += this->GetProtocolHeaderLength();
-    packet->len -= this->GetProtocolHeaderLength();
-  }
-
-private:
+  private:
   static const uint32_t kNetworkInterfaceNameLen = 8;
   // network interface name
   char _name[kNetworkInterfaceNameLen];

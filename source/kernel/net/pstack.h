@@ -508,4 +508,28 @@ private:
 };
 
 
+/**
+ * Physical layer in protocol stacks, which respond to Ethernet,
+ * Infiniband and so on.
+ * This class is interface class, so you must override virtual pure functions.
+ */
+class ProtocolStackPhysicalLayer : public ProtocolStackLayer {
+public:
+  /**
+   * Set physical address connected to network devices, e.g.,
+   * MAC address in case of Ethernet.
+   *
+   * @param addr physical address.
+   */
+  virtual void SetAddress(uint8_t *addr) = 0;
+
+protected:
+  virtual int GetProtocolHeaderLength() = 0;
+
+  virtual bool FilterPacket(NetDev::Packet *packet) = 0;
+
+  virtual bool PreparePacket(NetDev::Packet *packet) = 0;
+};
+
+
 #endif // __RAPH_KERNEL_NET_PSTACK_H__

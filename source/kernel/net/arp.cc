@@ -22,6 +22,7 @@
 
 
 #include <net/arp.h>
+#include <net/eth.h>
 #include <dev/eth.h>
 
 int ArpSocket::Open() {
@@ -32,15 +33,21 @@ int ArpSocket::Open() {
   uint8_t eth_addr[6];
   device->GetEthAddr(eth_addr);
 
-  // stack construction (BaseLayer > ArpLayer > ArpSocket)
+  // stack construction (BaseLayer > EthernetLayer > ArpLayer > ArpSocket)
   ProtocolStackBaseLayer *base_layer_addr = reinterpret_cast<ProtocolStackBaseLayer *>(virtmem_ctrl->Alloc(sizeof(ProtocolStackBaseLayer)));
   ProtocolStackBaseLayer *base_layer = new(base_layer_addr) ProtocolStackBaseLayer();
   base_layer->Setup(nullptr);
   pstack->SetBaseLayer(base_layer);
 
+  EthernetLayer *eth_layer_addr = reinterpret_cast<EthernetLayer *>(virtmem_ctrl->Alloc(sizeof(EthernetLayer)));
+  EthernetLayer *eth_layer = new(eth_layer_addr) EthernetLayer();
+  eth_layer->Setup(base_layer);
+  eth_layer->SetAddress(eth_addr);
+  eth_layer->SetUpperProtocolType(EthernetLayer::kProtocolArp);
+
   ArpLayer *arp_layer_addr = reinterpret_cast<ArpLayer *>(virtmem_ctrl->Alloc(sizeof(ArpLayer)));
   ArpLayer *arp_layer = new(arp_layer_addr) ArpLayer();
-  arp_layer->Setup(base_layer);
+  arp_layer->Setup(eth_layer);
   arp_layer->SetAddress(eth_addr, _ipv4_addr);
 
   return this->Setup(arp_layer) ? 0 : -1;
@@ -50,10 +57,8 @@ int ArpSocket::Open() {
 bool ArpLayer::FilterPacket(NetDev::Packet *packet) {
   ArpLayer::Header *header = reinterpret_cast<ArpLayer::Header *>(packet->buf);
 
-  if (memcmp(_eth_addr, header->hdaddr, 6) != 0) {
-    if (memcmp(_eth_addr, kBroadcastMacAddress, 6) != 0) {
-      return false;
-    }
+  if (!EthernetLayer::CompareAddress(header->hdaddr, _eth_addr)) {
+    return false;
   }
 
   if (_ipv4_addr != ntohl(header->pdaddr)) {
@@ -86,12 +91,12 @@ bool ArpLayer::PreparePacket(NetDev::Packet *packet) {
   switch(header->op) {
     case ArpSocket::kOpRequest:
       // ARP request is sent by broadcast mode
-      memcpy(header->hdaddr, kBroadcastMacAddress, 6);
+      EthernetLayer::SetBroadcastAddress(header->hdaddr);
       break;
 
     case ArpSocket::kOpReply:
       // TODO: use ARP table
-      memcpy(header->hdaddr, kBroadcastMacAddress, 6);
+      EthernetLayer::SetBroadcastAddress(header->hdaddr);
       break;
   }
 
