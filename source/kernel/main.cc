@@ -84,6 +84,8 @@ int time, rtime;
 
 #include <dev/disk/ahci/ahci-raph.h>
 AhciChannel *g_channel = nullptr;
+#include <dev/fs/fat/fat.h>
+FatFs *fatfs;
 
 Callout tt1;
 Callout tt2;
@@ -384,6 +386,8 @@ extern "C" int main_of_others() {
     Function func;
     func.Init([](void *){
         kassert(g_channel != nullptr);
+        FatFs *fatfs = new FatFs();
+        kassert(fatfs->Mount());
         //        g_channel->Read(0, 1);
       }, nullptr);
     tt4.Init(func);

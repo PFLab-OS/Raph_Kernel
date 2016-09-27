@@ -144,7 +144,7 @@ public:
       Locker locker(lock);
       return (freeze == 0) && !_queue.IsEmpty();
     }
-    Queue2<PacketAtaio> _queue;
+    Queue2<PacketAtaio *> _queue;
     int freeze = 0;
     SpinLock lock;
   };
@@ -159,8 +159,8 @@ public:
   static AhciChannel *Init(AhciCtrl *ctrl);
   DevQueue	devq;
   PacketAtaio	*frozen = nullptr;
-  Queue2<PacketAtaio>	doneq;
-  Queue2<PacketAtaio>	tmp_doneq;
+  Queue2<PacketAtaio *>	doneq;
+  Queue2<PacketAtaio *>	tmp_doneq;
   bool IsChannelReady() {
     return (ident_data.capabilities1 & (ATA_SUPPORT_DMA | ATA_SUPPORT_LBA)) != 0;
   }

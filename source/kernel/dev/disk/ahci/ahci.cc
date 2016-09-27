@@ -1197,7 +1197,7 @@ ahci_ch_intr_direct(void *arg)
   struct ccb_hdr *ccb_h;
 	uint32_t istatus;
   // STAILQ_HEAD(, ccb_hdr) tmp_doneq = STAILQ_HEAD_INITIALIZER(tmp_doneq);
-  Queue2<PacketAtaio> tmp_doneq;
+  Queue2<PacketAtaio *> tmp_doneq;
 
 	/* Read interrupt statuses. */
 	istatus = ATA_INL(ch->r_mem, AHCI_P_IS);

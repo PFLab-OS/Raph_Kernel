@@ -67,22 +67,30 @@ void KernelStackCtrl::InitFirstStack() {
 }
 
 virt_addr KernelStackCtrl::AllocThreadStack(int cpuid) {
-  Locker locker(_lock);
+  virt_addr addr;
+  if (!_freed.Pop(addr)) {
+    Locker locker(_lock);
 
-  _stack_area_top -= kStackSize + PagingCtrl::kPageSize * 2;
+    _stack_area_top -= kStackSize + PagingCtrl::kPageSize * 2;
+    addr = _stack_area_top + kStackSize + PagingCtrl::kPageSize - sizeof(StackInfo);
   
-  PhysAddr paddr;
-  physmem_ctrl->Alloc(paddr, kStackSize);
-  kassert(paging_ctrl->MapPhysAddrToVirtAddr(_stack_area_top + PagingCtrl::kPageSize, paddr, kStackSize, PDE_WRITE_BIT, PTE_WRITE_BIT | PTE_GLOBAL_BIT));
-  bzero(reinterpret_cast<void *>(_stack_area_top + PagingCtrl::kPageSize), PagingCtrl::kPageSize);
+    PhysAddr paddr;
+    physmem_ctrl->Alloc(paddr, kStackSize);
+    kassert(paging_ctrl->MapPhysAddrToVirtAddr(_stack_area_top + PagingCtrl::kPageSize, paddr, kStackSize, PDE_WRITE_BIT, PTE_WRITE_BIT | PTE_GLOBAL_BIT));
+    bzero(reinterpret_cast<void *>(_stack_area_top + PagingCtrl::kPageSize), PagingCtrl::kPageSize);
+  }
 
-  StackInfo *sinfo = GetCurrentStackInfoPtr(_stack_area_top + PagingCtrl::kPageSize);
+  StackInfo *sinfo = GetCurrentStackInfoPtr(addr);
   sinfo->magic = StackInfo::kMagic;
   sinfo->tid = _next_tid;
   sinfo->cpuid = cpuid;
   _next_tid++;
 
-  return _stack_area_top + kStackSize + PagingCtrl::kPageSize - sizeof(StackInfo);
+  return addr;
+}
+
+void KernelStackCtrl::FreeThreadStack(virt_addr addr) {
+  _freed.Push(addr);
 }
 
 virt_addr KernelStackCtrl::AllocIntStack(int cpuid) {

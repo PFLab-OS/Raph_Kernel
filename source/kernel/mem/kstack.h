@@ -31,6 +31,7 @@
 #include <spinlock.h>
 #include <mem/virtmem.h>
 #include <mem/paging.h>
+#include <queue.h>
 
 class KernelStackCtrl;
 class ThreadId {
@@ -61,6 +62,7 @@ public:
   }
   virt_addr AllocIntStack(int cpuid);
   virt_addr AllocThreadStack(int cpuid);
+  void FreeThreadStack(virt_addr addr);
   static const int kStackSize = PagingCtrl::kPageSize * 4;
 private:
   struct StackInfo {
@@ -97,6 +99,8 @@ private:
   virt_addr _stack_area_top;
 
   SpinLock _lock;
+
+  Queue2<virt_addr> _freed;
 };
 
 #endif // ! ASM_FILE

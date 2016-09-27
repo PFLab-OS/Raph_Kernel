@@ -14,7 +14,7 @@ RAPHCXXFLAGS = $(RAPHFLAGS) -std=c++1y -fno-exceptions -fno-rtti -fno-use-cxa-at
 CFLAGS += $(RAPHCFLAGS)
 CXXFLAGS += $(RAPHCXXFLAGS)
 
-ASFLAGS += $(INCLUDE_PATH)
+ASFLAGS += $(RAPHFLAGS)
 
 .PHONY: clean dev.o freebsd.o acpica.o ../Raph_Library/lib.o
 
@@ -38,7 +38,7 @@ acpica.o:
 	make -C acpica CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)"
 
 ../Raph_Library/lib.o:
-	make -C ../Raph_Library CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)"
+	make -C ../Raph_Library CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
 
 clean:
 	make -C dev clean
