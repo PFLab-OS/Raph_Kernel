@@ -20,6 +20,7 @@
  * 
  */
 
+#include <tty.h>
 #include <assert.h>
 #include <mem/virtmem.h>
 #include <raph_acpi.h>
@@ -42,19 +43,10 @@ void ApicCtrl::Setup() {
     case MADTStType::kLocalAPIC:
       {
         MADTStLAPIC *madtStLAPIC = reinterpret_cast<MADTStLAPIC *>(ptr);
-        _lapic.SetCtrlAddr(reinterpret_cast<uint32_t *>(p2v(_madt->lapicCtrlAddr)));
         if ((madtStLAPIC->flags & kMadtFlagLapicEnable) == 0) {
           break;
         }
-        _lapic._apicIds[ncpu] = madtStLAPIC->apicId;
         ncpu++;
-      }
-      break;
-    case MADTStType::kIOAPIC:
-      {
-        // TODO : multi IOAPIC support
-        MADTStIOAPIC *madtStIOAPIC = reinterpret_cast<MADTStIOAPIC *>(ptr);
-        _ioapic.SetReg(reinterpret_cast<uint32_t *>(p2v(madtStIOAPIC->ioapicAddr)));
       }
       break;
     default:
@@ -62,8 +54,43 @@ void ApicCtrl::Setup() {
     }
     offset += madtSt->length;
   }
-  _ioapic.Setup();
   _lapic._ncpu = ncpu;
+
+  _lapic._apic_info = new Lapic::ApicInfo[ncpu];
+
+
+  ncpu = 0;
+  for(uint32_t offset = 0; offset < _madt->header.Length - sizeof(MADT);) {
+    virt_addr ptr = ptr2virtaddr(_madt->table) + offset;
+    MADTSt *madtSt = reinterpret_cast<MADTSt *>(ptr);
+    switch (madtSt->type) {
+    case MADTStType::kLocalAPIC:
+      {
+        MADTStLAPIC *madtStLAPIC = reinterpret_cast<MADTStLAPIC *>(ptr);
+        if ((madtStLAPIC->flags & kMadtFlagLapicEnable) == 0) {
+          break;
+        }
+  gtty->Cprintf("<%d>", madtStLAPIC->apicId);
+        _lapic._apic_info[ncpu].id = madtStLAPIC->apicId;
+        _lapic._apic_info[ncpu].ctrl_addr = reinterpret_cast<uint32_t *>(p2v(_madt->lapicCtrlAddr));
+        ncpu++;
+      }
+      break;
+    case MADTStType::kIOAPIC:
+      {
+        // TODO : multi IOAPIC support
+        MADTStIOAPIC *madtStIOAPIC = reinterpret_cast<MADTStIOAPIC *>(ptr);
+        //        _ioapic.SetReg(reinterpret_cast<uint32_t *>(p2v(madtStIOAPIC->ioapicAddr)));
+      }
+      break;
+    default:
+      break;
+    }
+    offset += madtSt->length;
+  }
+  gtty->Cprintf("ncpu:%d\n", ncpu);
+kassert(false);
+  _ioapic.Setup();
 }
 
 extern uint64_t boot16_start;
@@ -79,22 +106,18 @@ void ApicCtrl::StartAPs() {
   }
   for(int i = 0; i < _lapic._ncpu; i++) {
     // skip BSP
-    if(_lapic._apicIds[i] == _lapic.GetApicId()) {
+    if(_lapic._apic_info[i].id == _lapic.GetApicId()) {
       continue;
     }
     _started = false;
     *stack_of_others = KernelStackCtrl::GetCtrl().AllocThreadStack(i);
-    _lapic.Start(_lapic._apicIds[i], reinterpret_cast<uint64_t>(entryothers));
-    while(!_started) {}
+    _lapic.Start(_lapic._apic_info[i].id, reinterpret_cast<uint64_t>(entryothers));
+    while(!__atomic_load_n(&_started, __ATOMIC_ACQUIRE)) {}
   }
   _all_bootup = true;
 }
 
 void ApicCtrl::Lapic::Setup() {
-  if (_ctrlAddr == nullptr) {
-    return;
-  }
-  
   uint32_t msr;
   // check if local apic enabled
   // see intel64 manual vol3 10.4.3 (Enabling or Disabling the Local APIC)
@@ -103,17 +126,18 @@ void ApicCtrl::Lapic::Setup() {
     return;
   }
 
-  _ctrlAddr[kRegSvr] = kRegSvrApicEnableFlag | Idt::ReservedIntVector::kError;
+  ApicInfo *info = &_apic_info[cpu_ctrl->GetId()];
+  info->ctrl_addr[kRegSvr] = kRegSvrApicEnableFlag | Idt::ReservedIntVector::kError;
 
   // disable all local interrupt sources
-  _ctrlAddr[kRegLvtTimer] = kRegLvtMask | kRegTimerPeriodic;
+  info->ctrl_addr[kRegLvtTimer] = kRegLvtMask | kRegTimerPeriodic;
   // TODO : check APIC version before mask tsensor & pcnt
-  _ctrlAddr[kRegLvtCmci] = kRegLvtMask;
-  _ctrlAddr[kRegLvtThermalSensor] = kRegLvtMask;
-  _ctrlAddr[kRegLvtPerformanceCnt] = kRegLvtMask;
-  _ctrlAddr[kRegLvtLint0] = kRegLvtMask;
-  _ctrlAddr[kRegLvtLint1] = kRegLvtMask;
-  _ctrlAddr[kRegLvtErr] = kRegLvtMask | Idt::ReservedIntVector::kError;
+  info->ctrl_addr[kRegLvtCmci] = kRegLvtMask;
+  info->ctrl_addr[kRegLvtThermalSensor] = kRegLvtMask;
+  info->ctrl_addr[kRegLvtPerformanceCnt] = kRegLvtMask;
+  info->ctrl_addr[kRegLvtLint0] = kRegLvtMask;
+  info->ctrl_addr[kRegLvtLint1] = kRegLvtMask;
+  info->ctrl_addr[kRegLvtErr] = kRegLvtMask | Idt::ReservedIntVector::kError;
 
   kassert(idt != nullptr);
   idt->SetExceptionCallback(GetApicId(), Idt::ReservedIntVector::kIpi, IpiCallback, nullptr);
@@ -145,21 +169,23 @@ void ApicCtrl::Lapic::Start(uint8_t apicId, uint64_t entryPoint) {
 }
 
 void ApicCtrl::Lapic::WriteIcr(uint32_t hi, uint32_t lo) {
-  _ctrlAddr[kRegIcrHi] = hi;
+  ApicInfo *info = &_apic_info[cpu_ctrl->GetId()];
+  info->ctrl_addr[kRegIcrHi] = hi;
   // wait for write to finish, by reading
   GetApicId();
-  _ctrlAddr[kRegIcrLo] = lo;
+  info->ctrl_addr[kRegIcrLo] = lo;
   // refer to ia32-sdm vol-3 10-20
-  _ctrlAddr[kRegIcrLo] |= (lo & kDeliverModeInit) ? 0 : kRegIcrLevelAssert;
+  info->ctrl_addr[kRegIcrLo] |= (lo & kDeliverModeInit) ? 0 : kRegIcrLevelAssert;
   GetApicId();
 }
 
 void ApicCtrl::Lapic::SetupTimer(int interval) {
-  _ctrlAddr[kRegDivConfig] = kDivVal16;
-  _ctrlAddr[kRegTimerInitCnt] = 0xFFFFFFFF;
+  ApicInfo *info = &_apic_info[cpu_ctrl->GetId()];
+  info->ctrl_addr[kRegDivConfig] = kDivVal16;
+  info->ctrl_addr[kRegTimerInitCnt] = 0xFFFFFFFF;
   uint64_t timer1 = timer->ReadMainCnt();
   while(true) {
-    volatile uint32_t cur = _ctrlAddr[kRegTimerCurCnt];
+    volatile uint32_t cur = info->ctrl_addr[kRegTimerCurCnt];
     if (cur < 0xFFF00000) {
       break;
     }
@@ -171,9 +197,9 @@ void ApicCtrl::Lapic::SetupTimer(int interval) {
 
   kassert(idt != nullptr);
   int irq = idt->SetIntCallback(GetApicId(), TmrCallback, nullptr);
-  _ctrlAddr[kRegTimerInitCnt] = base_cnt;
+  info->ctrl_addr[kRegTimerInitCnt] = base_cnt;
       
-  _ctrlAddr[kRegLvtTimer] = kRegLvtMask | kRegTimerPeriodic | irq;
+  info->ctrl_addr[kRegLvtTimer] = kRegLvtMask | kRegTimerPeriodic | irq;
 }
 
 void ApicCtrl::Lapic::SendIpi(uint8_t destid) {

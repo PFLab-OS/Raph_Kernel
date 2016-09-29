@@ -24,7 +24,7 @@
 #define __RAPH_KERNEL_IDT_H__
 
 #include <stdint.h>
-#include <apic.h>
+#include <cpu.h>
 #include <spinlock.h>
 
 struct Regs {
@@ -61,7 +61,7 @@ class Idt {
     if (!_is_gen_initialized) {
       return false;
     }
-    return _handling_cnt[apic_ctrl->GetCpuId()];
+    return _handling_cnt[cpu_ctrl->GetId()];
   }
   struct ReservedIntVector {
     static const int kIpi      = 33;

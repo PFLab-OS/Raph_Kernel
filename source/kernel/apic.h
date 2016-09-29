@@ -26,6 +26,7 @@
 #include <stdint.h>
 #include <raph.h>
 #include <raph_acpi.h>
+#include <cpu.h>
 
 #ifndef __UNIT_TEST__
 struct MADT {
@@ -68,28 +69,19 @@ class Regs;
 #ifndef __UNIT_TEST__
 class ApicCtrl {
 public:
-  static constexpr int lapicMaxNumber = 128;
-
   class Lapic {
   public:
     // setup local APIC respond to specified index
     void Setup();
-    void SetCtrlAddr(uint32_t *ctrlAddr) {
-      if (_ctrlAddr == nullptr) {
-        _ctrlAddr = ctrlAddr;
-      } else {
-        kassert(_ctrlAddr == ctrlAddr);
-      }
-    }
-    int GetCpuId() {
-      if(_ctrlAddr == nullptr) {
-        return 0;
-      }
-      GetCpuIdFromApicId(GetApicId());
-    }   
+    // int GetCpuId() {
+    //   if(_ctrlAddr == nullptr) {
+    //     return 0;
+    //   }
+    //   GetCpuIdFromApicId(GetApicId());
+    // }   
     int GetCpuIdFromApicId(uint32_t apic_id) {
       for(int n = 0; n < _ncpu; n++) {
-        if(apic_id == _apicIds[n]) {
+        if(apic_id == _apic_info[n].id) {
           return n;
         }
       }
@@ -97,43 +89,47 @@ public:
     }
     uint8_t GetApicIdFromCpuId(int cpuid) {
       kassert(cpuid >= 0 && cpuid < _ncpu);
-      return _apicIds[cpuid];
+      return _apic_info[cpuid].id;
     }
     // start local APIC respond to specified index with apicId
     void Start(uint8_t apicId, uint64_t entryPoint);
     int _ncpu;
-    uint8_t _apicIds[lapicMaxNumber];
+    
+    struct ApicInfo {
+      uint8_t id;
+      volatile uint32_t *ctrl_addr;
+    } *_apic_info;
 
     volatile uint8_t GetApicId() {
-      return _ctrlAddr[kRegId] >> 24;
+      return _apic_info[cpu_ctrl->GetId()].ctrl_addr[kRegId] >> 24;
     }
     void SendEoi() {
-      _ctrlAddr[kRegEoi] = 0;
+      _apic_info[cpu_ctrl->GetId()].ctrl_addr[kRegEoi] = 0;
     }
     void EnableInt() {
-      _ctrlAddr[kRegSvr] |= kRegSvrApicEnableFlag;
+      _apic_info[cpu_ctrl->GetId()].ctrl_addr[kRegSvr] |= kRegSvrApicEnableFlag;
     }
     bool DisableInt() {
       //TODO 割り込みが無効化されている事を確認
-      if ((_ctrlAddr[kRegSvr] & kRegSvrApicEnableFlag) == 0) {
+      if ((_apic_info[cpu_ctrl->GetId()].ctrl_addr[kRegSvr] & kRegSvrApicEnableFlag) == 0) {
         return false;
       } else {
-        _ctrlAddr[kRegSvr] &= ~kRegSvrApicEnableFlag;
+        _apic_info[cpu_ctrl->GetId()].ctrl_addr[kRegSvr] &= ~kRegSvrApicEnableFlag;
         return true;
       }
     }
     bool IsIntEnable() {
-      return (_ctrlAddr[kRegSvr] | kRegSvrApicEnableFlag) != 0;
+      return (_apic_info[cpu_ctrl->GetId()].ctrl_addr[kRegSvr] | kRegSvrApicEnableFlag) != 0;
     }
     void SendIpi(uint8_t destid);
     void SetupTimer(int interval);
     void StartTimer() {
-      volatile uint32_t tmp = _ctrlAddr[kRegTimerInitCnt];
-      _ctrlAddr[kRegTimerInitCnt] = tmp;
-      _ctrlAddr[kRegLvtTimer] &= ~kRegLvtMask;
+      volatile uint32_t tmp = _apic_info[cpu_ctrl->GetId()].ctrl_addr[kRegTimerInitCnt];
+      _apic_info[cpu_ctrl->GetId()].ctrl_addr[kRegTimerInitCnt] = tmp;
+      _apic_info[cpu_ctrl->GetId()].ctrl_addr[kRegLvtTimer] &= ~kRegLvtMask;
     }
     void StopTimer() {
-      _ctrlAddr[kRegLvtTimer] |= kRegLvtMask;
+      _apic_info[cpu_ctrl->GetId()].ctrl_addr[kRegLvtTimer] |= kRegLvtMask;
     }
     static uint64_t GetMsiAddr(uint8_t dest_lapicid) {
       return kMsiAddrRegReserved | (static_cast<uint64_t>(dest_lapicid) << kMsiAddrRegDestOffset);
@@ -142,7 +138,6 @@ public:
       return kRegIcrTriggerModeEdge | kDeliverModeLowest | vector;
     }
   private:
-    volatile uint32_t *_ctrlAddr = nullptr;
     static const int kIa32ApicBaseMsr = 0x1B;
     static const uint32_t kApicGlobalEnableFlag = 1 << 11;
     // see intel64 manual vol3 Table 10-1 (Local APIC Register Address Map)
@@ -271,15 +266,11 @@ public:
   }
 
   void BootAP() {
-    _started = true;
+    __atomic_store_n(&_started, true, __ATOMIC_RELEASE);
     _lapic.Setup();
   }
   volatile uint8_t GetApicIdFromCpuId(int cpuid) {
     return _lapic.GetApicIdFromCpuId(cpuid);
-  }
-  // cpu_ctrlを通して呼びだす事
-  volatile int GetCpuId() {
-    return _lapic.GetCpuId();
   }
   volatile bool IsBootupAll() {
     return _all_bootup;

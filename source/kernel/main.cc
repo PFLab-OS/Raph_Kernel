@@ -344,8 +344,6 @@ extern "C" int main() {
 extern "C" int main_of_others() {
   // according to mp spec B.3, system should switch over to Symmetric I/O mode
   
-  kassert(cpu_ctrl->GetId() == apic_ctrl->GetCpuId());
-  
   apic_ctrl->BootAP();
 
   gdt->SetupProc();

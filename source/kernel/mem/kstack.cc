@@ -26,7 +26,7 @@
 #include <mem/physmem.h>
 #include <global.h>
 #include <tty.h>
-#include <apic.h>
+#include <cpu.h>
 
 bool KernelStackCtrl::_is_initialized = false;
 KernelStackCtrl KernelStackCtrl::_ctrl;
@@ -60,7 +60,7 @@ void KernelStackCtrl::InitFirstStack() {
   StackInfo *sinfo = GetCurrentStackInfoPtr();
   sinfo->magic = StackInfo::kMagic;
   sinfo->tid = _next_tid;
-  sinfo->cpuid = apic_ctrl->GetCpuId();
+  sinfo->cpuid = cpu_ctrl->GetId();
   _next_tid++;
 
   _stack_area_top = reinterpret_cast<virt_addr>(&kKernelEndAddr) + 1 - (kStackSize + PagingCtrl::kPageSize * 2);
