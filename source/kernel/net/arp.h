@@ -23,7 +23,6 @@
 #ifndef __RAPH_KERNEL_NET_ARP_H__
 #define __RAPH_KERNEL_NET_ARP_H__
 
-#include <net/arp.h>
 #include <net/socket.h>
 
 
