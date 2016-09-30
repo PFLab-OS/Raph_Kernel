@@ -254,6 +254,9 @@ public:
 
   ApicCtrl() {}
   void Setup();
+  bool DidSetup() {
+    return _setup;
+  }
 
   void SetMADT(MADT *table) {
     _madt = table;
@@ -331,6 +334,7 @@ private:
   MADT *_madt = nullptr;
 
   static const uint32_t kMadtFlagLapicEnable = 1;
+  bool _setup = false;
 };
 #else
 #include <thread.h>

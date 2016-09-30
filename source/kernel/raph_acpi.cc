@@ -40,12 +40,9 @@ extern "C" {
 #include <task.h>
 #include <global.h>
 
-#define ACPI_MAX_INIT_TABLES    128
-static ACPI_TABLE_DESC      TableArray[ACPI_MAX_INIT_TABLES];
-
 void AcpiCtrl::Setup() {
-  bzero(TableArray, sizeof(ACPI_TABLE_DESC) * ACPI_MAX_INIT_TABLES);
-  AcpiInitializeTables (TableArray, ACPI_MAX_INIT_TABLES, TRUE);
+  kassert(!ACPI_FAILURE(AcpiInitializeSubsystem()));
+  kassert(!ACPI_FAILURE(AcpiInitializeTables(NULL, 16, FALSE)));
 
   ACPI_TABLE_HEADER *table;
   kassert(!ACPI_FAILURE(AcpiGetTable("APIC", 1, &table)));
@@ -78,8 +75,6 @@ void AcpiGlobalEventHandler(UINT32 type, ACPI_HANDLE device, UINT32 num, void *c
 }
 
 void AcpiCtrl::SetupAcpica() {
-  kassert(!ACPI_FAILURE(AcpiInitializeSubsystem()));
-  kassert(!ACPI_FAILURE(AcpiReallocateRootTable()));
   kassert(!ACPI_FAILURE(AcpiEnableSubsystem(ACPI_FULL_INITIALIZATION)));
   kassert(!ACPI_FAILURE(AcpiLoadTables()));
   kassert(!ACPI_FAILURE(AcpiInitializeObjects(ACPI_FULL_INITIALIZATION)));

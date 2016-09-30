@@ -252,12 +252,10 @@ extern "C" int main() {
     kernel_panic("timer", "HPET not supported.\n");
   }
 
-  // timer->Sertup()より後
   apic_ctrl->Setup();
 
   rnd_next = timer->ReadMainCnt();
 
-  // apic_ctrl->Setup()より後
   task_ctrl->Setup();
 
   idt->SetupGeneric();

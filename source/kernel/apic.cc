@@ -34,6 +34,7 @@ extern "C" void entryothers();
 extern "C" void entry();
 
 void ApicCtrl::Setup() {
+  kassert(timer->DidSetup());
   kassert(_madt != nullptr);
   int ncpu = 0;
   for(uint32_t offset = 0; offset < _madt->header.Length - sizeof(MADT);) {
@@ -80,7 +81,7 @@ void ApicCtrl::Setup() {
       {
         // TODO : multi IOAPIC support
         MADTStIOAPIC *madtStIOAPIC = reinterpret_cast<MADTStIOAPIC *>(ptr);
-        //        _ioapic.SetReg(reinterpret_cast<uint32_t *>(p2v(madtStIOAPIC->ioapicAddr)));
+        //_ioapic.SetReg(reinterpret_cast<uint32_t *>(p2v(madtStIOAPIC->ioapicAddr)));
       }
       break;
     default:
@@ -89,8 +90,10 @@ void ApicCtrl::Setup() {
     offset += madtSt->length;
   }
   gtty->Cprintf("ncpu:%d\n", ncpu);
-kassert(false);
+  kassert(false);
   _ioapic.Setup();
+
+  _setup = true;
 }
 
 extern uint64_t boot16_start;

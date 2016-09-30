@@ -48,7 +48,7 @@ struct HPETDT {
 
 class Hpet : public Timer {
  public:
-  virtual bool Setup() override {
+  virtual bool SetupSub() override {
     _dt = acpi_ctrl->GetHPETDT();
     if (_dt == nullptr) {
       return false;
