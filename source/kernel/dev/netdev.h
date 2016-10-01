@@ -38,7 +38,7 @@ class NetDev {
 public:
   struct Packet {
   public:
-    Packet() {}
+    Packet() : buf(data) {}
     size_t len;
     uint8_t *buf;
   private:

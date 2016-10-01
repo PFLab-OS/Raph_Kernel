@@ -81,7 +81,8 @@ public:
   bool Setup() {
     // init reserved queue
     while (!_reserved_queue.IsFull()) {
-      NetDev::Packet *packet = reinterpret_cast<NetDev::Packet *>(virtmem_ctrl->Alloc(sizeof(NetDev::Packet)));
+      NetDev::Packet *addr = reinterpret_cast<NetDev::Packet *>(virtmem_ctrl->Alloc(sizeof(NetDev::Packet)));
+      NetDev::Packet *packet = new(addr) NetDev::Packet();
       _reserved_queue.Push(packet);
     }
 
@@ -161,7 +162,7 @@ private:
   PacketQueue           _reserved_queue;
 
   /** the base layer, which is enqueued from the main queue at first */
-  ProtocolStackBaseLayer *_base_layers[kMaxConnectionNumber];
+  ProtocolStackBaseLayer *_base_layers[kMaxConnectionNumber] = {nullptr};
 };
 
 
@@ -494,8 +495,8 @@ protected:
   bool SetupSubclass() override {
     // init reserved queue
     while (!_reserved_queue.IsFull()) {
-      NetDev::Packet *packet_addr = reinterpret_cast<NetDev::Packet *>(virtmem_ctrl->Alloc(sizeof(NetDev::Packet)));
-      NetDev::Packet *packet = new(packet_addr) NetDev::Packet();
+      NetDev::Packet *addr = reinterpret_cast<NetDev::Packet *>(virtmem_ctrl->Alloc(sizeof(NetDev::Packet)));
+      NetDev::Packet *packet = new(addr) NetDev::Packet();
       _reserved_queue.Push(packet);
     }
 
