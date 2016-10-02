@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
- * Author: Liva
+ * Author: Liva, hikalium
  * 
  */
 
@@ -117,19 +117,20 @@ void Idt::SetGate(idt_callback gate, int vector, uint8_t dpl, bool trap, uint8_t
   idt_def[vector].entry[3] = 0;
 }
 
-int Idt::SetIntCallback(int cpuid, int_callback callback, void *arg) {
+int Idt::SetIntCallback(CpuId cpuid, int_callback callback, void *arg) {
   Locker locker(_lock);
+  int raw_cpu_id = cpuid.GetRawId();
   for(int vector = 64; vector < 256; vector++) {
-    if (_callback[cpuid][vector].callback == nullptr) {
-      _callback[cpuid][vector].callback = callback;
-      _callback[cpuid][vector].arg = arg;
+    if (_callback[raw_cpu_id][vector].callback == nullptr) {
+      _callback[raw_cpu_id][vector].callback = callback;
+      _callback[raw_cpu_id][vector].arg = arg;
       return vector;
     }
   }
   return ReservedIntVector::kError;
 }
 
-int Idt::SetIntCallback(int cpuid, int_callback *callback, void **arg, int range) {
+int Idt::SetIntCallback(CpuId cpuid, int_callback *callback, void **arg, int range) {
   int _range = 1;
   while(_range < range) {
     _range *= 2;
@@ -139,10 +140,11 @@ int Idt::SetIntCallback(int cpuid, int_callback *callback, void **arg, int range
   }
   Locker locker(_lock);
   int vector = range > 64 ? range : 64;
+  int raw_cpu_id = cpuid.GetRawId();
   for(; vector < 256; vector += range) {
     int i;
     for (i = 0; i < range; i++) {
-      if (_callback[cpuid][vector + i].callback != nullptr) {
+      if (_callback[raw_cpu_id][vector + i].callback != nullptr) {
         break;
       }
     }
@@ -150,19 +152,20 @@ int Idt::SetIntCallback(int cpuid, int_callback *callback, void **arg, int range
       continue;
     }
     for (i = 0; i < range; i++) {
-      _callback[cpuid][vector + i].callback = callback[i];
-      _callback[cpuid][vector + i].arg = arg[i];
+      _callback[raw_cpu_id][vector + i].callback = callback[i];
+      _callback[raw_cpu_id][vector + i].arg = arg[i];
     }
     return vector;
   }
   return ReservedIntVector::kError;
 }
 
-void Idt::SetExceptionCallback(int cpuid, int vector, int_callback callback, void *arg) {
+void Idt::SetExceptionCallback(CpuId cpuid, int vector, int_callback callback, void *arg) {
   kassert(vector < 64 && vector >= 1);
   Locker locker(_lock);
-  _callback[cpuid][vector].callback = callback;
-  _callback[cpuid][vector].arg = arg;
+  int raw_cpu_id = cpuid.GetRawId();
+  _callback[raw_cpu_id][vector].callback = callback;
+  _callback[raw_cpu_id][vector].arg = arg;
 }
 
 void Idt::HandlePageFault(Regs *rs, void *arg) {

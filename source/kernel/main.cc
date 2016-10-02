@@ -287,7 +287,7 @@ extern "C" int main() {
       gtty->Cprintf("%c", c);
       shell->ReadCh(c);
     }, nullptr);
-  keyboard->Setup(1, func);
+  keyboard->Setup(func);
 
   cnt = 0;
   sum = 0;
@@ -404,7 +404,7 @@ extern "C" void kernel_panic(const char *class_name, const char *err_str) {
 }
 
 extern "C" void checkpoint(int id, const char *str) {
-  if (id < 0 || cpu_ctrl->GetCpuId().getId() == id) {
+  if (id < 0 || cpu_ctrl->GetCpuId().GetRawId() == id) {
     gtty->CprintfRaw(str);
   }
 }
@@ -424,7 +424,8 @@ extern "C" void abort() {
 
 extern "C" void _kassert(const char *file, int line, const char *func) {
   if (gtty != nullptr) {
-    gtty->Cprintf("assertion failed at %s l.%d (%s) cpuid: %d\n", file, line, func, cpu_ctrl->GetCpuId().getId());
+    gtty->Cprintf("assertion failed at %s l.%d (%s) cpuid: %d\n",
+      file, line, func, cpu_ctrl->GetCpuId().GetRawId());
   }
   while(true){
     asm volatile("cli;hlt");

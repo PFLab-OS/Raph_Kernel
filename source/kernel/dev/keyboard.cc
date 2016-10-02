@@ -16,9 +16,12 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
- * Author: Yuchiki
+ * Author: Yuchiki, hikalium
  * 
  */
+
+#include <stdint.h>
+#include <cpu.h>
 
 #include <global.h>
 #include <apic.h>
@@ -26,11 +29,12 @@
 #include <buf.h>
 #include <dev/keyboard.h>
 
-void Keyboard::Setup(int cpuid, const GenericFunction &func) {
+void Keyboard::Setup(const GenericFunction &func) {
   kassert(apic_ctrl != nullptr);
   kassert(idt != nullptr);
+  CpuId cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kGeneralPurpose);
   int vector = idt->SetIntCallback(cpuid, Keyboard::Handler, nullptr);
-  apic_ctrl->SetupIoInt(ApicCtrl::Ioapic::kIrqKeyboard, apic_ctrl->GetApicIdFromCpuId(cpuid), vector);
+  apic_ctrl->SetupIoInt(ApicCtrl::Ioapic::kIrqKeyboard, cpuid.GetApicId(), vector);
   _buf.SetFunction(cpuid, func);
 }
 
