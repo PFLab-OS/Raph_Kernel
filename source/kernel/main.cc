@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
- * Author: Liva
+ * Author: Liva, hikalium
  * 
  */
 
@@ -305,7 +305,9 @@ extern "C" int main() {
   kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 6) + 1));
   kassert(!paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - 4096 * 7));
 
-  gtty->Cprintf("[boot cpu] info: #%d (apic id: %d) started.\n", cpu_ctrl->GetCpuId(), apic_ctrl->GetApicIdFromCpuId(cpu_ctrl->GetCpuId()));
+  gtty->Cprintf("[boot cpu] info: #%d (apic id: %d) started.\n",
+    cpu_ctrl->GetCpuId(),
+    cpu_ctrl->GetCpuId().GetApicId());
 
   if (eth != nullptr) {
     static ArpSocket socket;
@@ -330,7 +332,7 @@ extern "C" int main() {
       }, nullptr);
     socket.SetReceiveCallback(2, func);
   }
-  // 各コアは最低限の初期化ののち、TaskCtrlに制御が移さなければならない
+  // 各コアは最低限の初期化ののち、TaskCtrlに制御を移さなければならない
   // 特定のコアで専用の処理をさせたい場合は、TaskCtrlに登録したジョブとして
   // 実行する事
 
@@ -357,7 +359,9 @@ extern "C" int main_of_others() {
   gdt->SetupProc();
   idt->SetupProc();
 
-  gtty->Cprintf("[cpu] info: #%d (apic id: %d) started.\n", cpu_ctrl->GetCpuId(), apic_ctrl->GetApicIdFromCpuId(cpu_ctrl->GetCpuId()));
+  gtty->Cprintf("[cpu] info: #%d (apic id: %d) started.\n",
+    cpu_ctrl->GetCpuId(),
+    cpu_ctrl->GetCpuId().GetApicId());
  
   // ループ性能測定用 
   // PollingFunc p;
@@ -372,6 +376,7 @@ extern "C" int main_of_others() {
   // }
   
   // ワンショット性能測定用
+/*
   if (cpu_ctrl->GetCpuId() == 5) {
     new(&tt1) Callout;
     Function func;
@@ -384,7 +389,7 @@ extern "C" int main_of_others() {
     tt1.Init(func);
     tt1.SetHandler(10);
   }
-
+*/
   task_ctrl->Run();
   return 0;
 }
@@ -399,7 +404,7 @@ extern "C" void kernel_panic(const char *class_name, const char *err_str) {
 }
 
 extern "C" void checkpoint(int id, const char *str) {
-  if (id < 0 || cpu_ctrl->GetCpuId() == id) {
+  if (id < 0 || cpu_ctrl->GetCpuId().getId() == id) {
     gtty->CprintfRaw(str);
   }
 }
@@ -419,7 +424,7 @@ extern "C" void abort() {
 
 extern "C" void _kassert(const char *file, int line, const char *func) {
   if (gtty != nullptr) {
-    gtty->Cprintf("assertion failed at %s l.%d (%s) cpuid: %d\n", file, line, func, cpu_ctrl->GetCpuId());
+    gtty->Cprintf("assertion failed at %s l.%d (%s) cpuid: %d\n", file, line, func, cpu_ctrl->GetCpuId().getId());
   }
   while(true){
     asm volatile("cli;hlt");
