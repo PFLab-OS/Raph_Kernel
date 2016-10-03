@@ -297,7 +297,7 @@ public:
   // 先にGetMsiCountでMsiが使えるか調べる事
   void SetMsi(int cpuid, int vector) {
     kassert(pci_ctrl != nullptr);
-    pci_ctrl->SetMsi(_bus, _device, _function, ApicCtrl::Lapic::GetMsiAddr(apic_ctrl->GetApicIdFromCpuId(cpuid)), ApicCtrl::Lapic::GetMsiData(vector));
+    pci_ctrl->SetMsi(_bus, _device, _function, ApicCtrl::GetMsiAddr(apic_ctrl->GetApicIdFromCpuId(cpuid)), ApicCtrl::GetMsiData(vector));
   }
   const uint8_t GetBus() {
     return _bus;

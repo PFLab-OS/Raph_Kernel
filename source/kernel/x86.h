@@ -35,4 +35,6 @@ static inline void lgdt(uint32_t *gdt_desc, int entry_num) {
   asm volatile("lgdt (%0)"::"r"(reinterpret_cast<virt_addr>(gdtr) + 2));
 };
 
+#define get_cpuid(eax, ecx, reg, rval) asm volatile("cpuid;" : "="#reg(rval) : "a"(eax), "c"(ecx))
+
 #endif // __RAPH_KERNEL_X86_H__

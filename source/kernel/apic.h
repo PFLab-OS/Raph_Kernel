@@ -39,6 +39,7 @@ struct MADT {
 enum class MADTStType : uint8_t {
   kLocalAPIC = 0,
   kIOAPIC = 1,
+  kLocalX2Apic = 9,
 };
 
 struct MADTSt {
@@ -52,6 +53,14 @@ struct MADTStLAPIC {
   uint8_t pid;
   uint8_t apicId;
   uint32_t flags;
+} __attribute__ ((packed));
+
+struct MadtStructX2Lapic {
+  MADTSt st;
+  uint16_t reserved;
+  uint32_t apic_id;
+  uint32_t flags;
+  uint32_t pid;
 } __attribute__ ((packed));
 
 // see acpi spec
@@ -69,16 +78,96 @@ class Regs;
 #ifndef __UNIT_TEST__
 class ApicCtrl {
 public:
+  ApicCtrl() {}
+  void Init();
+  void Setup();
+  bool DidSetup() {
+    return _setup;
+  }
+
+  void SetMADT(MADT *table) {
+    _madt = table;
+  }
+
+  void StartAPs();
+
+  void BootBSP() {
+    _lapic.Setup();
+  }
+
+  void BootAP() {
+    __atomic_store_n(&_started, true, __ATOMIC_RELEASE);
+    _lapic.Setup();
+  }
+  volatile uint8_t GetCpuId() {
+    return _lapic.GetCpuId();
+  }
+  volatile uint8_t GetApicIdFromCpuId(int cpuid) {
+    return _lapic.GetApicIdFromCpuId(cpuid);
+  }
+  volatile bool IsBootupAll() {
+    return _all_bootup;
+  }
+  // cpu_ctrlを通して呼びだす事
+  int GetHowManyCpus() {
+    return _lapic._ncpu;
+  }
+  bool SetupIoInt(uint32_t irq, uint8_t lapicid, uint8_t vector) {
+    kassert(vector >= 32);
+    return _ioapic.SetupInt(irq, lapicid, vector);
+  }
+  void EnableInt() {
+    _lapic.EnableInt();
+  }
+  // 割り込みを無効化した上で呼び出す事
+  // 戻り値：
+  // true 割り込みが有効化されているのを無効化した
+  // false 元々無効化されていた
+  bool DisableInt() {
+    return _lapic.DisableInt();
+  }
+  void IsIntEnable() {
+    _lapic.IsIntEnable();
+  }
+  void SendEoi() {
+    _lapic.SendEoi();
+  }
+
+  void SendIpi(uint8_t destid) {
+    _lapic.SendIpi(destid);
+  }
+
+  void SetupTimer(int interval) {
+    _lapic.SetupTimer(interval);
+  }
+
+  void StartTimer() {
+    _lapic.StartTimer();
+  }
+
+  void StopTimer() {
+    _lapic.StopTimer();
+  }
+
+  static uint64_t GetMsiAddr(uint8_t dest_lapicid);
+  static uint16_t GetMsiData(uint8_t vector);
+
+  static const int kIrqKeyboard = 1;
+protected:
+  volatile bool _started = false;
+  volatile bool _all_bootup = false;
+
+private:
   class Lapic {
   public:
     // setup local APIC respond to specified index
     void Setup();
-    // int GetCpuId() {
-    //   if(_ctrlAddr == nullptr) {
-    //     return 0;
-    //   }
-    //   GetCpuIdFromApicId(GetApicId());
-    // }   
+    int GetCpuId() {
+      if(_ctrl_addr == nullptr) {
+        return 0;
+      }
+      GetCpuIdFromApicId(GetApicId());
+    }   
     int GetCpuIdFromApicId(uint32_t apic_id) {
       for(int n = 0; n < _ncpu; n++) {
         if(apic_id == _apic_info[n].id) {
@@ -97,39 +186,38 @@ public:
     
     struct ApicInfo {
       uint8_t id;
-      volatile uint32_t *ctrl_addr;
     } *_apic_info;
 
     volatile uint8_t GetApicId() {
-      return _apic_info[cpu_ctrl->GetId()].ctrl_addr[kRegId] >> 24;
+      return _ctrl_addr[kRegId] >> 24;
     }
     void SendEoi() {
-      _apic_info[cpu_ctrl->GetId()].ctrl_addr[kRegEoi] = 0;
+      _ctrl_addr[kRegEoi] = 0;
     }
     void EnableInt() {
-      _apic_info[cpu_ctrl->GetId()].ctrl_addr[kRegSvr] |= kRegSvrApicEnableFlag;
+      _ctrl_addr[kRegSvr] |= kRegSvrApicEnableFlag;
     }
     bool DisableInt() {
       //TODO 割り込みが無効化されている事を確認
-      if ((_apic_info[cpu_ctrl->GetId()].ctrl_addr[kRegSvr] & kRegSvrApicEnableFlag) == 0) {
+      if ((_ctrl_addr[kRegSvr] & kRegSvrApicEnableFlag) == 0) {
         return false;
       } else {
-        _apic_info[cpu_ctrl->GetId()].ctrl_addr[kRegSvr] &= ~kRegSvrApicEnableFlag;
+        _ctrl_addr[kRegSvr] &= ~kRegSvrApicEnableFlag;
         return true;
       }
     }
     bool IsIntEnable() {
-      return (_apic_info[cpu_ctrl->GetId()].ctrl_addr[kRegSvr] | kRegSvrApicEnableFlag) != 0;
+      return (_ctrl_addr[kRegSvr] | kRegSvrApicEnableFlag) != 0;
     }
     void SendIpi(uint8_t destid);
     void SetupTimer(int interval);
     void StartTimer() {
-      volatile uint32_t tmp = _apic_info[cpu_ctrl->GetId()].ctrl_addr[kRegTimerInitCnt];
-      _apic_info[cpu_ctrl->GetId()].ctrl_addr[kRegTimerInitCnt] = tmp;
-      _apic_info[cpu_ctrl->GetId()].ctrl_addr[kRegLvtTimer] &= ~kRegLvtMask;
+      volatile uint32_t tmp = _ctrl_addr[kRegTimerInitCnt];
+      _ctrl_addr[kRegTimerInitCnt] = tmp;
+      _ctrl_addr[kRegLvtTimer] &= ~kRegLvtMask;
     }
     void StopTimer() {
-      _apic_info[cpu_ctrl->GetId()].ctrl_addr[kRegLvtTimer] |= kRegLvtMask;
+      _ctrl_addr[kRegLvtTimer] |= kRegLvtMask;
     }
     static uint64_t GetMsiAddr(uint8_t dest_lapicid) {
       return kMsiAddrRegReserved | (static_cast<uint64_t>(dest_lapicid) << kMsiAddrRegDestOffset);
@@ -137,9 +225,11 @@ public:
     static uint16_t GetMsiData(uint8_t vector) {
       return kRegIcrTriggerModeEdge | kDeliverModeLowest | vector;
     }
-  private:
     static const int kIa32ApicBaseMsr = 0x1B;
+    static const uint32_t kApicX2ApicEnableFlag = 1 << 10;
     static const uint32_t kApicGlobalEnableFlag = 1 << 11;
+    uint32_t *_ctrl_addr = nullptr;
+  private:
     // see intel64 manual vol3 Table 10-1 (Local APIC Register Address Map)
     static const int kRegId = 0x20 / sizeof(uint32_t);
     static const int kRegEoi = 0xB0 / sizeof(uint32_t);
@@ -191,7 +281,7 @@ public:
 
     // see intel MPspec Appendix B.5
     static const uint32_t kIoRtc = 0x70;
-
+    
     // write to 64-bit value to local APIC ICR (Interrupt Command Register)
     void WriteIcr(uint32_t hi, uint32_t lo);
     void Outb(int pin, uint8_t data) {
@@ -226,7 +316,6 @@ public:
             vector);
       return true;
     }
-    static const int kIrqKeyboard = 1;
   private:
     uint32_t GetMaxIntr() {
       // see IOAPIC manual 3.2.2 (IOAPIC Version Register)
@@ -251,79 +340,6 @@ public:
     static const uint32_t kRegRedTblFlagMask = 1 << 16;
     static const int kRegRedTblOffsetDest = 24;
   };
-
-  ApicCtrl() {}
-  void Setup();
-  bool DidSetup() {
-    return _setup;
-  }
-
-  void SetMADT(MADT *table) {
-    _madt = table;
-  }
-
-  void StartAPs();
-
-  void BootBSP() {
-    _lapic.Setup();
-  }
-
-  void BootAP() {
-    __atomic_store_n(&_started, true, __ATOMIC_RELEASE);
-    _lapic.Setup();
-  }
-  volatile uint8_t GetApicIdFromCpuId(int cpuid) {
-    return _lapic.GetApicIdFromCpuId(cpuid);
-  }
-  volatile bool IsBootupAll() {
-    return _all_bootup;
-  }
-  // cpu_ctrlを通して呼びだす事
-  int GetHowManyCpus() {
-    return _lapic._ncpu;
-  }
-  bool SetupIoInt(uint32_t irq, uint8_t lapicid, uint8_t vector) {
-    kassert(vector >= 32);
-    return _ioapic.SetupInt(irq, lapicid, vector);
-  }
-  void EnableInt() {
-    _lapic.EnableInt();
-  }
-  // 割り込みを無効化した上で呼び出す事
-  // 戻り値：
-  // true 割り込みが有効化されているのを無効化した
-  // false 元々無効化されていた
-  bool DisableInt() {
-    return _lapic.DisableInt();
-  }
-  void IsIntEnable() {
-    _lapic.IsIntEnable();
-  }
-  void SendEoi() {
-    _lapic.SendEoi();
-  }
-
-  void SendIpi(uint8_t destid) {
-    _lapic.SendIpi(destid);
-  }
-
-  void SetupTimer(int interval) {
-    _lapic.SetupTimer(interval);
-  }
-
-  void StartTimer() {
-    _lapic.StartTimer();
-  }
-
-  void StopTimer() {
-    _lapic.StopTimer();
-  }
-
-protected:
-  volatile bool _started = false;
-  volatile bool _all_bootup = false;
-
-private:
   static void TmrCallback(Regs *rs, void *arg) {
   }
   static void IpiCallback(Regs *rs, void *arg) {
@@ -336,6 +352,15 @@ private:
   static const uint32_t kMadtFlagLapicEnable = 1;
   bool _setup = false;
 };
+
+inline uint64_t ApicCtrl::GetMsiAddr(uint8_t dest_lapicid) {
+  return Lapic::GetMsiAddr(dest_lapicid);
+}
+
+inline uint16_t ApicCtrl::GetMsiData(uint8_t vector) {
+  return Lapic::GetMsiData(vector);
+}
+
 #else
 #include <thread.h>
 #endif // !__UNIT_TEST__

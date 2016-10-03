@@ -243,7 +243,9 @@ extern "C" int main() {
   paging_ctrl->MapAllPhysMemory();
 
   KernelStackCtrl::Init();
-  
+
+  apic_ctrl->Init();
+
   acpi_ctrl->Setup();
 
   if (timer->Setup()) {
@@ -341,6 +343,7 @@ extern "C" int main() {
 
 extern "C" int main_of_others() {
   // according to mp spec B.3, system should switch over to Symmetric I/O mode
+  kassert(apic_ctrl->GetCpuId() == cpu_ctrl->GetId());
   
   apic_ctrl->BootAP();
 

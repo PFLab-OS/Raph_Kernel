@@ -30,7 +30,7 @@ void Keyboard::Setup(int cpuid, const GenericFunction2<Task> &func) {
   kassert(apic_ctrl != nullptr);
   kassert(idt != nullptr);
   int vector = idt->SetIntCallback(cpuid, Keyboard::Handler, nullptr);
-  apic_ctrl->SetupIoInt(ApicCtrl::Ioapic::kIrqKeyboard, apic_ctrl->GetApicIdFromCpuId(cpuid), vector);
+  apic_ctrl->SetupIoInt(ApicCtrl::kIrqKeyboard, apic_ctrl->GetApicIdFromCpuId(cpuid), vector);
   _buf.SetFunction(cpuid, func);
 }
 
