@@ -103,6 +103,33 @@ void reset(int argc, const char* argv[]) {
   acpi_ctrl->Reset();
 }
 
+void lspci(int argc, const char* argv[]){
+  MCFG *mcfg = acpi_ctrl->GetMCFG();
+  if (mcfg == nullptr) {
+    gtty->Cprintf("[Pci] error: could not find MCFG table.\n");
+    return;
+  }
+
+  for (int i = 0; i * sizeof(MCFGSt) < mcfg->header.Length - sizeof(ACPISDTHeader); i++) {
+    if (i == 1) {
+      gtty->Cprintf("[Pci] info: multiple MCFG tables.\n");
+      break;
+    }
+    for (int j = mcfg->list[i].pci_bus_start; j <= mcfg->list[i].pci_bus_end; j++) {
+      for (int k = 0; k < 32; k++) {
+        uint16_t vid = pci_ctrl->ReadReg<uint16_t>(j, k, 0, PciCtrl::kVendorIDReg);
+        if (vid == 0xffff) {
+          continue;
+        }
+	uint16_t did = pci_ctrl->ReadReg<uint16_t>(j, k, 0, PciCtrl::kDeviceIDReg);
+	uint16_t svid = pci_ctrl->ReadReg<uint16_t>(j, k, 0, PciCtrl::kSubVendorIdReg);
+	uint16_t ssid = pci_ctrl->ReadReg<uint16_t>(j, k, 0, PciCtrl::kSubSystemIdReg);
+	gtty->Cprintf("VendorID:%u, DeviceID:%u, SubVendorID:%u, SubSystemID:%u\n", vid, did, svid, ssid);
+      }
+    }
+  }
+}
+
 void bench(int argc, const char* argv[]) {
   if (argc != 2) {
     gtty->Cprintf("invalid argument.\n");
@@ -341,6 +368,7 @@ extern "C" int main() {
   shell->Register("halt", halt);
   shell->Register("reset", reset);
   shell->Register("bench", bench);
+  shell->Register("lspci", lspci);
 
   task_ctrl->Run();
 
