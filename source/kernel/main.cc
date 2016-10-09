@@ -219,14 +219,15 @@ void bench(int argc, const char* argv[]) {
         uint32_t ipaddr;
         uint16_t op;
         
-        socket.Read(op, ipaddr);
-        if(op == ArpSocket::kOpReply) {
-          uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;
-          cnt = 0;
-          sum += l;
-          rtime++;
-        } else if(op == ArpSocket::kOpRequest) {
-          socket.Reply(ipaddr);
+        if (socket.Read(op, ipaddr) >= 0) {
+          if(op == ArpSocket::kOpReply) {
+            uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;
+            cnt = 0;
+            sum += l;
+            rtime++;
+          } else if(op == ArpSocket::kOpRequest) {
+            socket.Reply(ipaddr);
+          }
         }
       }, nullptr);
     socket.SetReceiveCallback(2, func);
