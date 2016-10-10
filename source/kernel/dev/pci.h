@@ -140,7 +140,7 @@ public:
   static const uint16_t kHeaderTypeReg = 0x0E;
   static const uint16_t kBaseAddressReg0 = 0x10;
   static const uint16_t kBaseAddressReg1 = 0x14;
-  static const uint16_t kSubVendorIdReg = 0x2c;
+  static const uint16_t kSubsystemVendorIdReg = 0x2c;
   static const uint16_t kSubsystemIdReg = 0x2e;
   static const uint16_t kCapPtrReg = 0x34;
   static const uint16_t kIntPinReg = 0x3D;

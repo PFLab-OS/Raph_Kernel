@@ -107,6 +107,33 @@ void reset(int argc, const char* argv[]) {
   acpi_ctrl->Reset();
 }
 
+void lspci(int argc, const char* argv[]){
+  MCFG *mcfg = acpi_ctrl->GetMCFG();
+  if (mcfg == nullptr) {
+    gtty->Cprintf("[Pci] error: could not find MCFG table.\n");
+    return;
+  }
+
+  for (int i = 0; i * sizeof(MCFGSt) < mcfg->header.Length - sizeof(ACPISDTHeader); i++) {
+    if (i == 1) {
+      gtty->Cprintf("[Pci] info: multiple MCFG tables.\n");
+      break;
+    }
+    for (int j = mcfg->list[i].pci_bus_start; j <= mcfg->list[i].pci_bus_end; j++) {
+      for (int k = 0; k < 32; k++) {
+        uint16_t vid = pci_ctrl->ReadReg<uint16_t>(j, k, 0, PciCtrl::kVendorIDReg);
+        if (vid == 0xffff) {
+          continue;
+        }
+	uint16_t did = pci_ctrl->ReadReg<uint16_t>(j, k, 0, PciCtrl::kDeviceIDReg);
+	uint16_t svid = pci_ctrl->ReadReg<uint16_t>(j, k, 0, PciCtrl::kSubsystemVendorIdReg);
+	uint16_t ssid = pci_ctrl->ReadReg<uint16_t>(j, k, 0, PciCtrl::kSubsystemIdReg);
+	gtty->Cprintf("VendorID:%u, DeviceID:%u, SubVendorID:%u, SubSystemID:%u\n", vid, did, svid, ssid);
+      }
+    }
+  }
+}
+
 void bench(int argc, const char* argv[]) {
   if (argc != 2) {
     gtty->Cprintf("invalid argument.\n");
@@ -311,7 +338,17 @@ extern "C" int main() {
 
   arp_table->Setup();
 
-  keyboard->Setup(1);
+  Function func;
+  func.Init([](void *){
+      uint8_t data;
+      if(!keyboard->Read(data)){
+        return;
+      }
+      char c = Keyboard::Interpret(data);
+      gtty->Cprintf("%c", c);
+      shell->ReadCh(c);
+    }, nullptr);
+  keyboard->Setup(1, func);
 
   cnt = 0;
   sum = 0;
@@ -330,7 +367,7 @@ extern "C" int main() {
   kassert(!paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - 4096 * 7));
 
   gtty->Cprintf("[cpu] info: #%d (apic id: %d) started.\n", cpu_ctrl->GetId(), apic_ctrl->GetApicIdFromCpuId(cpu_ctrl->GetId()));
- 
+
   // 各コアは最低限の初期化ののち、TaskCtrlに制御が移さなければならない
   // 特定のコアで専用の処理をさせたい場合は、TaskCtrlに登録したジョブとして
   // 実行する事
@@ -343,23 +380,8 @@ extern "C" int main() {
   shell->Register("halt", halt);
   shell->Register("reset", reset);
   shell->Register("bench", bench);
-  
-  // print keyboard_input
-  // TODO: Functional FIFOにすべき
-  PollingFunc _keyboard_polling;
-  Function func;
-  func.Init([](void *) {
-      // print keyboard_input
-      while(keyboard->Count() > 0) {
-        char ch[2] = {'\0','\0'};
-        ch[0] = keyboard->GetCh();
-        gtty->Cprintf(ch);
-        shell->ReadCh(ch[0]);
-      }
-    }, nullptr);
-  _keyboard_polling.Init(func);
-  _keyboard_polling.Register(1);
-  
+  shell->Register("lspci", lspci);
+
   task_ctrl->Run();
 
   return 0;
