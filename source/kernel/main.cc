@@ -166,10 +166,11 @@ void bench(int argc, const char* argv[]) {
     return;
   }
 
+  netdev_ctrl->AssignIpv4Address("en0", inet_atoi(ip1));
+
   {
     static ArpSocket socket;
     socket.AssignNetworkDevice("en0");
-    socket.AssignIpv4Address(inet_atoi(ip1));
 
     if(socket.Open() < 0) {
       gtty->Cprintf("[error] failed to open socket\n");
@@ -235,7 +236,6 @@ void bench(int argc, const char* argv[]) {
 
   static ArpSocket socket;
   socket.AssignNetworkDevice("en0");
-  socket.AssignIpv4Address(inet_atoi(ip1));
 
   if(socket.Open() < 0) {
     gtty->Cprintf("[error] failed to open socket\n");

@@ -25,8 +25,6 @@
 #include <net/pstack.h>
 #include <global.h>
 
-const char *NetDevCtrl::kDefaultNetworkInterfaceName = "en0";
-
 bool NetDevCtrl::RegisterDevice(NetDev *dev, const char *prefix) {
   if(_current_device_number < kMaxDevNumber) {
     // TODO: use sprintf
@@ -58,8 +56,6 @@ bool NetDevCtrl::RegisterDevice(NetDev *dev, const char *prefix) {
 }
 
 NetDevCtrl::NetDevInfo *NetDevCtrl::GetDeviceInfo(const char *name) {
-  if(!name) name = kDefaultNetworkInterfaceName;
-
   for(uint32_t i = _current_device_number; i > 0; i--) {
     NetDev *dev = _dev_table[i - 1].device;
 
