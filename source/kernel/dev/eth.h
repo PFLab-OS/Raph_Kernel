@@ -42,6 +42,10 @@ public:
   // allocate 6 byte before call
   virtual void GetEthAddr(uint8_t *buffer) = 0;
 
+  virtual void SetupNetInterface() override {
+    kassert(netdev_ctrl->RegisterDevice(this, "en"));
+  }
+
 protected:
   DevEthernet(DevPci *pci) {
     _pci = pci;

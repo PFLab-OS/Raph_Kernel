@@ -25,14 +25,15 @@
 #include <net/pstack.h>
 #include <global.h>
 
-const char *NetDevCtrl::kDefaultNetworkInterfaceName = "eth0";
+const char *NetDevCtrl::kDefaultNetworkInterfaceName = "en0";
 
-void NetDev::SetupNetInterface() {
-  kassert(netdev_ctrl->RegisterDevice(this, "eth0"));
-}
-
-bool NetDevCtrl::RegisterDevice(NetDev *dev, const char *name) {
+bool NetDevCtrl::RegisterDevice(NetDev *dev, const char *prefix) {
   if(_current_device_number < kMaxDevNumber) {
+    // TODO: use sprintf
+    char name[kNetworkInterfaceNameLen];
+    strncpy(name, prefix, strlen(prefix));
+    name[strlen(prefix)] = _current_device_number + '0';
+
     // succeed to register
     dev->SetName(name);
 
@@ -68,4 +69,14 @@ NetDevCtrl::NetDevInfo *NetDevCtrl::GetDeviceInfo(const char *name) {
     }
   }
   return nullptr;
+}
+
+bool NetDevCtrl::IsLinkUp(const char *name) {
+  NetDevCtrl::NetDevInfo *info = this->GetDeviceInfo(name);
+
+  if (!info) {
+    return false;
+  } else {
+    return info->device->IsLinkUp();
+  }
 }

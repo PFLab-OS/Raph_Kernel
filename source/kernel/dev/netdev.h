@@ -142,6 +142,7 @@ public:
   volatile LinkStatus GetStatus() {
     return _status;
   }
+  virtual bool IsLinkUp() = 0;
 
   void SetName(const char *name) {
     strncpy(_name, name, kNetworkInterfaceNameLen);
@@ -166,7 +167,7 @@ public:
   HandleMethod GetHandleMethod() {
     return _method;
   }
-  void SetupNetInterface();
+  virtual void SetupNetInterface() = 0;
   void SetProtocolStack(ProtocolStack *stack) { _ptcl_stack = stack; }
 protected:
   NetDev() {
@@ -192,6 +193,13 @@ protected:
   ProtocolStack *_ptcl_stack;
 };
 
+/**
+ * A class which manages network devices (NetDev instances).
+ * This class is controller, which must be singleton.
+ *
+ * After NetDev is instantiated, it has to be registered to this controller.
+ * Network devices can be fetched, using methods provided by this controller.
+ */
 class NetDevCtrl {
 public:
   struct NetDevInfo {
@@ -201,16 +209,61 @@ public:
 
   NetDevCtrl() {}
 
-  bool RegisterDevice(NetDev *dev, const char *name = kDefaultNetworkInterfaceName);
-  NetDevInfo *GetDeviceInfo(const char *name = kDefaultNetworkInterfaceName);
+  /**
+   * Register network device to this controller.
+   * Network device must be instantiated beforehand.
+   *
+   * @param dev instantiated network device (subclass of NetDev).
+   * @param prefix prefix of the interface name, e.g., "en", "wl", etc.
+   * @return if registered successfully.
+   */
+  bool RegisterDevice(NetDev *dev, const char *prefix);
+
+  /**
+   * Fetch the network device information specified by its interface name.
+   *
+   * @param name interface name.
+   * @return netdev_info the pair of network device and corresponding protocol stack.
+   */
+  NetDevInfo *GetDeviceInfo(const char *name);
+
+  /**
+   * Check if the specified network device exists or not.
+   *
+   * @param name interface name.
+   * @return if the interface exists.
+   */
+  bool Exists(const char *name) {
+    return GetDeviceInfo(name) != nullptr;
+  }
+
+  /**
+   * Check if link of the network device is up or not.
+   *
+   * NOTE: even if this method returns false, it does not directly mean
+   * link is down, because the interface possibly does not exist.
+   * You must use NetDevCtrl::Exists to check if exists.
+   *
+   * @param name interface name.
+   * @return if link is up.
+   */
+  bool IsLinkUp(const char *name);
+
+  /** maximum length of interface names */
+  static const uint32_t kNetworkInterfaceNameLen = 8;
 
 protected:
+  /** maximum number of network devices */
   static const uint32_t kMaxDevNumber = 32;
 
 private:
-  static const uint32_t kNetworkInterfaceNameLen = 8;
+  /** default interface name */
   static const char *kDefaultNetworkInterfaceName;
+
+  /** current device number */
   uint32_t _current_device_number = 0;
+
+  /** table of network devices */
   NetDevInfo _dev_table[kMaxDevNumber];
 };
 

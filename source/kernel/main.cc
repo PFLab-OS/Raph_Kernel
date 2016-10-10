@@ -139,7 +139,7 @@ void bench(int argc, const char* argv[]) {
     gtty->Cprintf("invalid argument.\n");
     return;
   }
-  if (eth == nullptr) {
+  if (!netdev_ctrl->Exists("en0")) {
     gtty->Cprintf("no ethernet interface.\n");
     return;
   }
@@ -168,6 +168,7 @@ void bench(int argc, const char* argv[]) {
 
   {
     static ArpSocket socket;
+    socket.AssignNetworkDevice("en0");
     socket.AssignIpv4Address(inet_atoi(ip1));
 
     if(socket.Open() < 0) {
@@ -181,8 +182,7 @@ void bench(int argc, const char* argv[]) {
           tt2.SetHandler(1000);
           return;
         }
-        eth->UpdateLinkStatus();
-        if (eth->GetStatus() != BsdDevEthernet::LinkStatus::kUp) {
+        if (!netdev_ctrl->IsLinkUp("en0")) {
           tt2.SetHandler(1000);
           return;
         }
@@ -219,7 +219,7 @@ void bench(int argc, const char* argv[]) {
         if (rtime > 0) {
           gtty->Cprintf("ARP Reply average latency: %d us [%d / %d]\n", sum / rtime, rtime, stime);
         } else {
-          if (eth->GetStatus() == BsdDevEthernet::LinkStatus::kUp) {
+          if (netdev_ctrl->IsLinkUp("en0")) {
             gtty->Cprintf("Link is Up, but no ARP Reply\n");
           } else {
             gtty->Cprintf("Link is Down, please wait...\n");
@@ -233,14 +233,13 @@ void bench(int argc, const char* argv[]) {
     tt3.SetHandler(6, 1000*1000*3);
   }
 
-  if (eth != nullptr) {
-    static ArpSocket socket;
-    socket.AssignIpv4Address(inet_atoi(ip1));
+  static ArpSocket socket;
+  socket.AssignNetworkDevice("en0");
+  socket.AssignIpv4Address(inet_atoi(ip1));
 
-    if(socket.Open() < 0) {
-      gtty->Cprintf("[error] failed to open socket\n");
-    }
-
+  if(socket.Open() < 0) {
+    gtty->Cprintf("[error] failed to open socket\n");
+  } else {
     Function func;
     func.Init([](void *){
         uint32_t ipaddr;
