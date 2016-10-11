@@ -29,7 +29,7 @@
 
 extern "C" {
   DSTATUS disk_initialize (BYTE pdrv) {
-    FatFs::InitializeDisk();
+    //    FatFs::InitializeDisk();
     return 0;
   }
   DSTATUS disk_status (BYTE pdrv) {

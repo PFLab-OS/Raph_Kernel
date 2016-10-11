@@ -37,8 +37,6 @@ public:
       
       //    return (f_mount(&_fs, "C:/", 1) == FR_OK);
   }
-  static void InitializeDisk() {
-  }
 private:
   FATFS _fs;
 };

@@ -286,8 +286,8 @@ extern "C" int main() {
 
   gtty->Init();
 
-  Function2<Task> func;
-  func.Init([](Task *, void *){
+  Function func;
+  func.Init([](void *){
       uint8_t data;
       if(!keyboard->Read(data)){
         return;
@@ -311,8 +311,8 @@ extern "C" int main() {
       gtty->Cprintf("[error] failed to open socket\n");
     }
     socket.SetIpAddr(inet_atoi(ip1));
-    Function2<Task> func;
-    func.Init([](Task *, void *){
+    Function func;
+    func.Init([](void *){
         uint32_t ipaddr;
         uint8_t macaddr[6];
 	

@@ -58,10 +58,10 @@ public:
 
 private:
   // fetch packet from network device buffer
-  friend void DeviceBufferHandler(Task *, void *self);
+  friend void DeviceBufferHandler(void *self);
 
   // duplicate packets in main queue then insert into dup queues
-  friend void MainQueueHandler(Task *, void *self);
+  friend void MainQueueHandler(void *self);
 
   friend NetSocket;
 

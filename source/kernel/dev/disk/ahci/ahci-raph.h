@@ -155,7 +155,7 @@ public:
   void Read(int lba, int count);
   void Write(int lba, auptr<uint8_t> ptr);
   void DonePacket(PacketAtaio *ataio);
-  void Handle(Task *, void *);
+  void Handle(void *);
   static AhciChannel *Init(AhciCtrl *ctrl);
   DevQueue	devq;
   PacketAtaio	*frozen = nullptr;

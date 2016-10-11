@@ -25,7 +25,7 @@
 #include <net/eth.h>
 #include <net/ptcl.h>
 
-void DeviceBufferHandler(Task *, void *self) {
+void DeviceBufferHandler(void *self) {
   ProtocolStack *ptcl_stack = reinterpret_cast<ProtocolStack*>(self);
 
   NetDev::Packet *packet = nullptr;
@@ -45,7 +45,7 @@ void DeviceBufferHandler(Task *, void *self) {
   }
 }
 
-void MainQueueHandler(Task *, void *self) {
+void MainQueueHandler(void *self) {
   ProtocolStack *ptcl_stack = reinterpret_cast<ProtocolStack*>(self);
 
   NetDev::Packet *new_packet;
@@ -77,7 +77,7 @@ void ProtocolStack::Setup() {
   }
 
   // set callback functions
-  Function2<Task> main_queue_callback;
+  Function main_queue_callback;
   main_queue_callback.Init(MainQueueHandler, this);
   _main_queue.SetFunction(2, main_queue_callback);
 }
@@ -139,7 +139,7 @@ void ProtocolStack::SetDevice(NetDev *dev) {
   _device = dev;
 
   // set callback function
-  Function2<Task> network_device_callback;
+  Function network_device_callback;
   network_device_callback.Init(DeviceBufferHandler, this);
   _device->SetReceiveCallback(2, network_device_callback);
 }

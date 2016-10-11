@@ -42,7 +42,7 @@ int32_t NetSocket::Open() {
   }
 }
 
-void NetSocket::SetReceiveCallback(int apicid, const Function2<Task> &func) {
+void NetSocket::SetReceiveCallback(int apicid, const Function &func) {
   _device_info->ptcl_stack->_socket_table[_ptcl_stack_id].dup_queue.SetFunction(apicid, func);
 }
 

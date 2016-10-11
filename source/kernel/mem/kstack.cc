@@ -80,13 +80,23 @@ virt_addr KernelStackCtrl::AllocThreadStack(int cpuid) {
     bzero(reinterpret_cast<void *>(_stack_area_top + PagingCtrl::kPageSize), PagingCtrl::kPageSize);
   }
 
-  StackInfo *sinfo = GetCurrentStackInfoPtr(addr);
+  StackInfo *sinfo = GetStackInfoPtr(addr);
   sinfo->magic = StackInfo::kMagic;
   sinfo->tid = _next_tid;
   sinfo->cpuid = cpuid;
   _next_tid++;
 
   return addr;
+}
+
+void KernelStackCtrl::CopyThreadStackFromCurrent(virt_addr addr) {
+  StackInfo *info = GetStackInfoPtr(addr);
+  kassert(info->IsValidMagic());
+  StackInfo *current_info = GetCurrentStackInfoPtr();
+  kassert(current_info->IsValidMagic());
+  info->tid = current_info->tid;
+  info->flag = current_info->flag;
+  info->cpuid = current_info->cpuid;
 }
 
 void KernelStackCtrl::FreeThreadStack(virt_addr addr) {
@@ -103,7 +113,7 @@ virt_addr KernelStackCtrl::AllocIntStack(int cpuid) {
   kassert(paging_ctrl->MapPhysAddrToVirtAddr(_stack_area_top + PagingCtrl::kPageSize, paddr, kStackSize, PDE_WRITE_BIT, PTE_WRITE_BIT | PTE_GLOBAL_BIT));
 
 
-  StackInfo *sinfo = GetCurrentStackInfoPtr(_stack_area_top + PagingCtrl::kPageSize);
+  StackInfo *sinfo = GetStackInfoPtr(_stack_area_top + PagingCtrl::kPageSize);
   sinfo->magic = StackInfo::kMagic;
   sinfo->tid = _next_tid;
   sinfo->cpuid = cpuid;

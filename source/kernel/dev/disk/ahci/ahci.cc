@@ -2872,7 +2872,7 @@ ahciaction(struct ahci_channel *ch, PacketAtaio *ataio)
 AhciChannel *AhciChannel::Init(AhciCtrl *ctrl) {
   AhciChannel *channel = new AhciChannel(ctrl);
   channel->InitBsdDevice(channel, sizeof(struct ahci_channel));
-  ClassFunction2<AhciChannel, Task> func;
+  ClassFunction<AhciChannel> func;
   func.Init(channel, &AhciChannel::Handle, nullptr);
   // TODO: cpuid
   channel->devq.SetFunction(1, func);
@@ -2906,7 +2906,7 @@ int AhciChannel::DevMethodBusReleaseResource(int type, int rid, struct resource 
   return ahci_release_resource(this->GetParent(), this, type, rid, r);
 }
 
-void AhciChannel::Handle(Task *, void *) {
+void AhciChannel::Handle(void *) {
 	struct ahci_channel *ch = reinterpret_cast<struct ahci_channel *>(softc);
   PacketAtaio *packet;
   assert(devq.Pop(packet));

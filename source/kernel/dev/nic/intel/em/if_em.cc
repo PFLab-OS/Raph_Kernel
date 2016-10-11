@@ -6368,6 +6368,6 @@ void E1000::E1000BsdEthernet::ChangeHandleMethodToInt() {
   EM_CORE_UNLOCK(adapter);
 }
 
-void E1000::E1000BsdEthernet::Transmit(Task *, void *) {
+void E1000::E1000BsdEthernet::Transmit(void *) {
   em_start(&_ifp);
 }

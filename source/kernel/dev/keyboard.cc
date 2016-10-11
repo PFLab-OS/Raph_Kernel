@@ -26,7 +26,7 @@
 #include <buf.h>
 #include <dev/keyboard.h>
 
-void Keyboard::Setup(int cpuid, const GenericFunction2<Task> &func) {
+void Keyboard::Setup(int cpuid, const GenericFunction &func) {
   kassert(apic_ctrl != nullptr);
   kassert(idt != nullptr);
   int vector = idt->SetIntCallback(cpuid, Keyboard::Handler, nullptr);

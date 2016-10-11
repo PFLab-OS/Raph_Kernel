@@ -105,7 +105,7 @@ public:
   bool ReceivePacket(Packet *&packet) {
     return _rx_filtered.Pop(packet);
   }
-  void SetReceiveCallback(int cpuid, const GenericFunction2<Task> &func) {
+  void SetReceiveCallback(int cpuid, const GenericFunction &func) {
     _rx_filtered.SetFunction(cpuid, func);
   }
 
@@ -157,26 +157,26 @@ public:
   void SetProtocolStack(ProtocolStack *stack) { _ptcl_stack = stack; }
 protected:
   NetDev() {
-    ClassFunction2<NetDev, Task> packet_filter;
+    ClassFunction<NetDev> packet_filter;
     packet_filter.Init(this, &NetDev::FilterRxPacket, nullptr);
     // TODO cpuid
     _rx_buffered.SetFunction(2, packet_filter);
 
     // TODO cpuid
-    ClassFunction2<NetDev, Task> func;
+    ClassFunction<NetDev> func;
     func.Init(this, &NetDev::Transmit, nullptr);
     _tx_buffered.SetFunction(0, func);
   }
   virtual void ChangeHandleMethodToPolling() = 0;
   virtual void ChangeHandleMethodToInt() = 0;
-  virtual void Transmit(Task *, void *) = 0;
+  virtual void Transmit(void *) = 0;
   SpinLock _lock;
   PollingFunc _polling;
   volatile LinkStatus _status = LinkStatus::kDown;
   HandleMethod _method = HandleMethod::kInt;
 
   // filter received packet
-  virtual void FilterRxPacket(Task *, void *p) = 0;
+  virtual void FilterRxPacket(void *p) = 0;
 
   // preprocess on packet before transmit
   virtual void PrepareTxPacket(NetDev::Packet *packet) = 0;

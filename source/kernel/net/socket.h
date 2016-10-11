@@ -64,7 +64,7 @@ public:
   void SetProtocolStackId(uint32_t id) { _ptcl_stack_id = id; }
   uint32_t GetProtocolStackId() { return _ptcl_stack_id; }
 
-  void SetReceiveCallback(int apicid, const Function2<Task> &func);
+  void SetReceiveCallback(int apicid, const Function &func);
 
 protected:
   // reference to network device info

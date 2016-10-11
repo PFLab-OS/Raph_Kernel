@@ -63,6 +63,7 @@ public:
   virt_addr AllocIntStack(int cpuid);
   virt_addr AllocThreadStack(int cpuid);
   void FreeThreadStack(virt_addr addr);
+  void CopyThreadStackFromCurrent(virt_addr addr);
   static const int kStackSize = PagingCtrl::kPageSize * 4;
 private:
   struct StackInfo {
@@ -81,9 +82,9 @@ private:
   static StackInfo* GetCurrentStackInfoPtr() {
     virt_addr rsp;
     asm volatile("movq %%rsp, %0": "=r"(rsp));
-    return GetCurrentStackInfoPtr(rsp);
+    return GetStackInfoPtr(rsp);
   }
-  static StackInfo* GetCurrentStackInfoPtr(virt_addr rsp) {
+  static StackInfo* GetStackInfoPtr(virt_addr rsp) {
     int stack_block_size = kStackSize + PagingCtrl::kPageSize * 2;
     extern int kKernelEndAddr;
     virt_addr stack_top = reinterpret_cast<virt_addr>(&kKernelEndAddr) + 1 - (((reinterpret_cast<virt_addr>(&kKernelEndAddr) + 1 - rsp) / stack_block_size) * stack_block_size + PagingCtrl::kPageSize);

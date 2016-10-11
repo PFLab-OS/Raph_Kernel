@@ -84,7 +84,7 @@ void AcpiCtrl::SetupAcpica() {
   kassert(!ACPI_FAILURE(AcpiLoadTables()));
   kassert(!ACPI_FAILURE(AcpiInitializeObjects(ACPI_FULL_INITIALIZATION)));
 
-  ClassFunction2<AcpiCtrl, Task> func;
+  ClassFunction<AcpiCtrl> func;
   func.Init(this, &AcpiCtrl::GlobalEventHandler, nullptr);
   _global_event_task.SetFunc(func);
    AcpiInstallGlobalEventHandler(AcpiGlobalEventHandler, reinterpret_cast<void *>(&_global_event_task));
@@ -97,7 +97,7 @@ void AcpiCtrl::Shutdown() {
   kernel_panic("acpi", "could not halt system");
 }
 
-void AcpiCtrl::GlobalEventHandler(Task *, void *) {
+void AcpiCtrl::GlobalEventHandler(void *) {
   gtty->Cprintf("shutting down the system...\n");
   Shutdown();
 }
