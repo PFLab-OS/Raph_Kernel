@@ -138,6 +138,11 @@ public:
   }
   virtual ~BsdDevEthernet() {}
   struct ifnet _ifp;
+
+  virtual bool IsLinkUp() override {
+    return this->GetStatus() == BsdDevEthernet::LinkStatus::kUp;
+  }
+
 protected:
   BsdDevice _bsd;
 private:
