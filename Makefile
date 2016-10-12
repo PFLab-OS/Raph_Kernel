@@ -22,6 +22,10 @@ qemuend:
 #$(CORE_FILE): $(subst $(MOUNT_DIR)/core,$(BUILD),$@)
 #	cp $< $@
 
+bin:
+	-mkdir $(BUILD_DIR)
+	make -C source
+
 image:
 	make mount
 	-mkdir $(BUILD_DIR)
