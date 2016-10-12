@@ -1,0 +1,4 @@
+test:
+  override:
+    - git submodule init; git submodule update; make bin
+    
