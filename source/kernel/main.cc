@@ -39,6 +39,7 @@
 #include <dev/keyboard.h>
 #include <dev/pci.h>
 #include <dev/vga.h>
+//#include <dev/pciid.h>
 
 #include <dev/eth.h>
 #include <net/arp.h>
@@ -114,6 +115,9 @@ void lspci(int argc, const char* argv[]){
     return;
   }
 
+  //  PciTable table;
+  //  table.Init();
+
   for (int i = 0; i * sizeof(MCFGSt) < mcfg->header.Length - sizeof(ACPISDTHeader); i++) {
     if (i == 1) {
       gtty->Cprintf("[Pci] info: multiple MCFG tables.\n");
@@ -128,7 +132,7 @@ void lspci(int argc, const char* argv[]){
 	uint16_t did = pci_ctrl->ReadReg<uint16_t>(j, k, 0, PciCtrl::kDeviceIDReg);
 	uint16_t svid = pci_ctrl->ReadReg<uint16_t>(j, k, 0, PciCtrl::kSubsystemVendorIdReg);
 	uint16_t ssid = pci_ctrl->ReadReg<uint16_t>(j, k, 0, PciCtrl::kSubsystemIdReg);
-	gtty->Cprintf("VendorID:%u, DeviceID:%u, SubVendorID:%u, SubSystemID:%u\n", vid, did, svid, ssid);
+	table.SearchDevice(vid, did, svid, ssid);
       }
     }
   }

@@ -57,6 +57,9 @@ hoge.c
 # Makefile
 *.d
 
+source/kernel/dev/pciid.cc
+source/kernel/dev/pci.ids.formatted
+
 GPATH
 GRTAGS
 GSYMS
