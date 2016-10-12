@@ -34,7 +34,7 @@
 
 #define PCIR_COMMAND PciCtrl::kCommandReg
 #define PCIR_REVID PciCtrl::kRegRevisionId
-#define PCIR_SUBVEND_0 PciCtrl::kSubVendorIdReg
+#define PCIR_SUBVEND_0 PciCtrl::kSubsystemVendorIdReg
 #define PCIR_SUBDEV_0 PciCtrl::kSubsystemIdReg
 
 #define	PCIY_PMG	0x01	/* PCI Power Management */
