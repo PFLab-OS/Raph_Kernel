@@ -23,6 +23,7 @@
 #ifndef __RAPH_KERNEL_APIC_H__
 #define __RAPH_KERNEL_APIC_H__
 
+#include <x86.h>
 #include <stdint.h>
 #include <raph.h>
 #include <raph_acpi.h>
@@ -92,61 +93,66 @@ public:
   void StartAPs();
 
   void BootBSP() {
-    _lapic.Setup();
+    _lapic->Setup();
   }
 
   void BootAP() {
     __atomic_store_n(&_started, true, __ATOMIC_RELEASE);
-    _lapic.Setup();
+    _lapic->Setup();
   }
   volatile uint8_t GetCpuId() {
-    return _lapic.GetCpuId();
+    if (_lapic == nullptr) {
+      return 0;
+    }
+    return _lapic->GetCpuId();
   }
   volatile uint8_t GetApicIdFromCpuId(int cpuid) {
-    return _lapic.GetApicIdFromCpuId(cpuid);
+    kassert(_lapic != nullptr);
+    return _lapic->GetApicIdFromCpuId(cpuid);
   }
   volatile bool IsBootupAll() {
     return _all_bootup;
   }
   // cpu_ctrlを通して呼びだす事
   int GetHowManyCpus() {
-    return _lapic._ncpu;
+    kassert(_lapic != nullptr);
+    return _lapic->_ncpu;
   }
   bool SetupIoInt(uint32_t irq, uint8_t lapicid, uint8_t vector) {
     kassert(vector >= 32);
     return _ioapic.SetupInt(irq, lapicid, vector);
   }
   void EnableInt() {
-    _lapic.EnableInt();
+    _lapic->EnableInt();
   }
   // 割り込みを無効化した上で呼び出す事
   // 戻り値：
   // true 割り込みが有効化されているのを無効化した
   // false 元々無効化されていた
   bool DisableInt() {
-    return _lapic.DisableInt();
+    return _lapic->DisableInt();
   }
   void IsIntEnable() {
-    _lapic.IsIntEnable();
+    _lapic->IsIntEnable();
   }
   void SendEoi() {
-    _lapic.SendEoi();
+    _lapic->SendEoi();
   }
 
   void SendIpi(uint8_t destid) {
-    _lapic.SendIpi(destid);
+    _lapic->SendIpi(destid);
   }
 
   void SetupTimer(int interval) {
-    _lapic.SetupTimer(interval);
+    _lapic->SetupTimer(interval);
   }
 
   void StartTimer() {
-    _lapic.StartTimer();
+    _lapic->StartTimer();
   }
 
   void StopTimer() {
-    _lapic.StopTimer();
+    _lapic->StopTimer();
   }
 
   static uint64_t GetMsiAddr(uint8_t dest_lapicid);
@@ -160,10 +166,30 @@ protected:
 private:
   class Lapic {
   public:
+    // see intel64 manual vol3 Table 10-1 (Local APIC Register Address Map)
+    enum class RegisterOffset : int {
+      kId = 0x2,
+      kEoi = 0xB,
+      kSvr = 0xF,
+      kLvtCmci = 0x2F,
+      kIcrLow = 0x30,
+      kIcrHigh = 0x31,
+      kLvtTimer = 0x32,
+      kLvtThermalSensor = 0x33,
+      kLvtPerformanceCnt = 0x34,
+      kLvtLint0 = 0x35,
+      kLvtLint1 = 0x36,
+      kLvtErr = 0x37,
+      kTimerInitCnt = 0x38,
+      kTimerCurCnt = 0x39,
+      kDivConfig = 0x3E,
+    };
+    virtual ~Lapic() {
+    }
     // setup local APIC respond to specified index
     void Setup();
     int GetCpuId() {
-      if(_ctrl_addr == nullptr) {
+      if (_apic_info == nullptr) {
         return 0;
       }
       GetCpuIdFromApicId(GetApicId());
@@ -186,38 +212,34 @@ private:
     
     struct ApicInfo {
       uint8_t id;
-    } *_apic_info;
+    } *_apic_info = nullptr;
 
-    volatile uint8_t GetApicId() {
-      return _ctrl_addr[kRegId] >> 24;
-    }
     void SendEoi() {
-      _ctrl_addr[kRegEoi] = 0;
+      WriteReg(RegisterOffset::kEoi, 0);
     }
     void EnableInt() {
-      _ctrl_addr[kRegSvr] |= kRegSvrApicEnableFlag;
+      WriteReg(RegisterOffset::kSvr, ReadReg(RegisterOffset::kSvr) | kRegSvrApicEnableFlag);
     }
     bool DisableInt() {
       //TODO 割り込みが無効化されている事を確認
-      if ((_ctrl_addr[kRegSvr] & kRegSvrApicEnableFlag) == 0) {
+      if ((ReadReg(RegisterOffset::kSvr) & kRegSvrApicEnableFlag) == 0) {
         return false;
       } else {
-        _ctrl_addr[kRegSvr] &= ~kRegSvrApicEnableFlag;
+        WriteReg(RegisterOffset::kSvr, ReadReg(RegisterOffset::kSvr) & ~kRegSvrApicEnableFlag);
         return true;
       }
     }
     bool IsIntEnable() {
-      return (_ctrl_addr[kRegSvr] | kRegSvrApicEnableFlag) != 0;
+      return (ReadReg(RegisterOffset::kSvr) | kRegSvrApicEnableFlag) != 0;
     }
     void SendIpi(uint8_t destid);
     void SetupTimer(int interval);
     void StartTimer() {
-      volatile uint32_t tmp = _ctrl_addr[kRegTimerInitCnt];
-      _ctrl_addr[kRegTimerInitCnt] = tmp;
-      _ctrl_addr[kRegLvtTimer] &= ~kRegLvtMask;
+      WriteReg(RegisterOffset::kTimerInitCnt, ReadReg(RegisterOffset::kTimerInitCnt));
+      WriteReg(RegisterOffset::kLvtTimer, ReadReg(RegisterOffset::kLvtTimer) & ~kRegLvtMask);
     }
     void StopTimer() {
-      _ctrl_addr[kRegLvtTimer] |= kRegLvtMask;
+      WriteReg(RegisterOffset::kLvtTimer, ReadReg(RegisterOffset::kLvtTimer) | kRegLvtMask);
     }
     static uint64_t GetMsiAddr(uint8_t dest_lapicid) {
       return kMsiAddrRegReserved | (static_cast<uint64_t>(dest_lapicid) << kMsiAddrRegDestOffset);
@@ -228,24 +250,12 @@ private:
     static const int kIa32ApicBaseMsr = 0x1B;
     static const uint32_t kApicX2ApicEnableFlag = 1 << 10;
     static const uint32_t kApicGlobalEnableFlag = 1 << 11;
-    uint32_t *_ctrl_addr = nullptr;
-  private:
-    // see intel64 manual vol3 Table 10-1 (Local APIC Register Address Map)
-    static const int kRegId = 0x20 / sizeof(uint32_t);
-    static const int kRegEoi = 0xB0 / sizeof(uint32_t);
-    static const int kRegSvr = 0xF0 / sizeof(uint32_t);
-    static const int kRegIcrLo = 0x300 / sizeof(uint32_t);
-    static const int kRegIcrHi = 0x310 / sizeof(uint32_t);
-    static const int kRegLvtCmci = 0x2F0 / sizeof(uint32_t);
-    static const int kRegLvtTimer = 0x320 / sizeof(uint32_t);
-    static const int kRegLvtThermalSensor = 0x330 / sizeof(uint32_t);
-    static const int kRegLvtPerformanceCnt = 0x340 / sizeof(uint32_t);
-    static const int kRegLvtLint0 = 0x350 / sizeof(uint32_t);
-    static const int kRegLvtLint1 = 0x360 / sizeof(uint32_t);
-    static const int kRegLvtErr = 0x370 / sizeof(uint32_t);
-    static const int kRegTimerInitCnt = 0x380 / sizeof(uint32_t);
-    static const int kRegTimerCurCnt = 0x390 / sizeof(uint32_t);
-    static const int kRegDivConfig = 0x3E0 / sizeof(uint32_t);
+    virtual void WriteReg(RegisterOffset offset, uint32_t data) = 0;
+    virtual uint32_t ReadReg(RegisterOffset offset) = 0;
+    // write to 64-bit value to local APIC ICR (Interrupt Command Register)
+    virtual void WriteIcr(uint32_t dest, uint32_t flags) = 0;
+    virtual volatile uint8_t GetApicId() = 0;
+  protected:
 
     // see intel64 manual vol3 Figure 10-10 (Divide Configuration Register)
     static const uint32_t kDivVal1 = 0xB;
@@ -282,11 +292,60 @@ private:
     // see intel MPspec Appendix B.5
     static const uint32_t kIoRtc = 0x70;
     
-    // write to 64-bit value to local APIC ICR (Interrupt Command Register)
-    void WriteIcr(uint32_t hi, uint32_t lo);
     void Outb(int pin, uint8_t data) {
       asm volatile("outb %%al, %%dx"::"d"(pin), "a"(data));
     }
+  };
+  class LapicX : public Lapic {
+  public:
+    LapicX() {
+      _ctrl_addr = reinterpret_cast<uint32_t *>(p2v(kMmioBaseAddr));
+    }
+    virtual ~LapicX() {
+    }
+    virtual void WriteReg(RegisterOffset offset, uint32_t data) override {
+      _ctrl_addr[(static_cast<int>(offset) * 0x10) / sizeof(uint32_t)] = data;
+    }
+    virtual uint32_t ReadReg(RegisterOffset offset) override {
+      return _ctrl_addr[(static_cast<int>(offset) * 0x10) / sizeof(uint32_t)];
+    }
+    virtual void WriteIcr(uint32_t dest, uint32_t flags) {
+      WriteReg(RegisterOffset::kIcrHigh, dest << 24);
+      // wait for write to finish, by reading
+      GetApicId();
+      WriteReg(RegisterOffset::kIcrLow, flags);
+      // refer to ia32-sdm vol-3 10-20
+      WriteReg(RegisterOffset::kIcrLow, ReadReg(RegisterOffset::kIcrLow) | (flags & kDeliverModeInit) ? 0 : kRegIcrLevelAssert);
+      GetApicId();
+    }
+    virtual volatile uint8_t GetApicId() override {
+      return ReadReg(RegisterOffset::kId) >> 24;
+    }
+    static const size_t kMmioBaseAddr = 0xFEE00000;
+  private:
+    uint32_t *_ctrl_addr;
+  };
+  class LapicX2 : public Lapic {
+  public:
+    LapicX2() {
+    }
+    virtual ~LapicX2() {
+    }
+    virtual void WriteReg(RegisterOffset offset, uint32_t data) override {
+      wrmsr(kMsrAddr + static_cast<int>(offset), data);
+    }
+    virtual uint32_t ReadReg(RegisterOffset offset) override {
+      return rdmsr(kMsrAddr + static_cast<int>(offset));
+    }
+    virtual void WriteIcr(uint32_t dest, uint32_t flags) {
+      flags |= (flags & kDeliverModeInit) ? 0 : kRegIcrLevelAssert;
+      wrmsr(kMsrAddr + static_cast<int>(RegisterOffset::kIcrLow), (static_cast<uint64_t>(dest) << 32) | flags);
+    }
+    virtual volatile uint8_t GetApicId() override {
+      return ReadReg(RegisterOffset::kId);
+    }
+  private:
+    static const uint32_t kMsrAddr = 0x800;
   };
   class Ioapic {
   public:
@@ -345,7 +404,7 @@ private:
   static void IpiCallback(Regs *rs, void *arg) {
   }
 
-  Lapic _lapic;
+  Lapic *_lapic = nullptr;
   Ioapic _ioapic;
   MADT *_madt = nullptr;
 
