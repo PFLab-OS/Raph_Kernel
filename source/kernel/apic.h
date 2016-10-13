@@ -285,7 +285,7 @@ private:
     static const uint32_t kRegIcrDestShorthandAllIncludeSelf = 2 << 18;
     static const uint32_t kRegIcrDestShorthandAllExcludeSelf = 3 << 18;
 
-    // see intel64 manual vol3 Figure 10-14 (Layout of the MSI Message Address Register)
+    // see intel64 manual vol3 Figure 10-24 (Layout of the MSI Message Address Register)
     static const uint64_t kMsiAddrRegReserved = 0xFEE00000;
     static const int kMsiAddrRegDestOffset = 12;
 
