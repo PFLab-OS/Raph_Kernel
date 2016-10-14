@@ -364,11 +364,11 @@ extern "C" int main_of_others() {
   cpu_ctrl->GetCpuId().GetApicId());
  
 // ループ性能測定用
-#define LOOP_BENCHMARK
+//#define LOOP_BENCHMARK
 #ifdef LOOP_BENCHMARK
   #define LOOP_BENCHMARK_CPU  4
+  PollingFunc p;
   if (cpu_ctrl->GetCpuId().GetRawId() == LOOP_BENCHMARK_CPU) {
-    PollingFunc p;
     Function f;
     static int hoge = 0;
     f.Init([](void *){
