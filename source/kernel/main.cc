@@ -376,8 +376,7 @@ extern "C" int main_of_others() {
   // }
   
   // ワンショット性能測定用
-/*
-  if (cpu_ctrl->GetCpuId() == 5) {
+  if (cpu_ctrl->GetCpuId().GetRawId() == 5) {
     new(&tt1) Callout;
     Function func;
     func.Init([](void *){
@@ -389,7 +388,6 @@ extern "C" int main_of_others() {
     tt1.Init(func);
     tt1.SetHandler(10);
   }
-*/
   task_ctrl->Run();
   return 0;
 }
