@@ -277,8 +277,8 @@ extern "C" int main() {
 
   gtty->Init();
 
-  Function func;
-  func.Init([](void *){
+  Function kbd_func;
+  kbd_func.Init([](void *){
       uint8_t data;
       if(!keyboard->Read(data)){
 	return;
@@ -287,7 +287,7 @@ extern "C" int main() {
       gtty->Cprintf("%c", c);
       shell->ReadCh(c);
     }, nullptr);
-  keyboard->Setup(func);
+  keyboard->Setup(kbd_func);
 
   cnt = 0;
   sum = 0;
@@ -360,34 +360,45 @@ extern "C" int main_of_others() {
   idt->SetupProc();
 
   gtty->Cprintf("[cpu] info: #%d (apic id: %d) started.\n",
-    cpu_ctrl->GetCpuId(),
-    cpu_ctrl->GetCpuId().GetApicId());
+  cpu_ctrl->GetCpuId(),
+  cpu_ctrl->GetCpuId().GetApicId());
  
-  // ループ性能測定用 
-  // PollingFunc p;
-  // if (cpu_ctrl->GetCpuId() == 4) {
-  //   static int hoge = 0;
-  //   p.Init([](void *){
-  //       int hoge2 = timer->GetUsecFromCnt(timer->ReadMainCnt()) - hoge;
-  //       gtty->Printf("d",hoge2,"s"," ");
-  //       hoge = timer->GetUsecFromCnt(timer->ReadMainCnt());
-  //     }, nullptr);
-  //   p.Register();
-  // }
+// ループ性能測定用
+#define LOOP_BENCHMARK
+#ifdef LOOP_BENCHMARK
+  #define LOOP_BENCHMARK_CPU  4
+  if (cpu_ctrl->GetCpuId().GetRawId() == LOOP_BENCHMARK_CPU) {
+    PollingFunc p;
+    Function f;
+    static int hoge = 0;
+    f.Init([](void *){
+      int hoge2 = timer->GetUsecFromCnt(timer->ReadMainCnt()) - hoge;
+      gtty->Printf("d",hoge2,"s"," ");
+      hoge = timer->GetUsecFromCnt(timer->ReadMainCnt());
+    }, nullptr);
+    p.Init(f);
+    p.Register();
+  }
+#endif
   
-  // ワンショット性能測定用
-  if (cpu_ctrl->GetCpuId().GetRawId() == 5) {
+// ワンショット性能測定用
+#define ONE_SHOT_BENCHMARK
+#ifdef ONE_SHOT_BENCHMARK
+  #define ONE_SHOT_BENCHMARK_CPU  5
+  if (cpu_ctrl->GetCpuId().GetRawId() == ONE_SHOT_BENCHMARK_CPU) {
     new(&tt1) Callout;
-    Function func;
-    func.Init([](void *){
+    Function oneshot_bench_func;
+    oneshot_bench_func.Init([](void *){
         if (!apic_ctrl->IsBootupAll()) {
           tt1.SetHandler(1000);
           return;
         }
       }, nullptr);
-    tt1.Init(func);
+    tt1.Init(oneshot_bench_func);
     tt1.SetHandler(10);
   }
+#endif
+
   task_ctrl->Run();
   return 0;
 }
