@@ -22,17 +22,16 @@
 
 #include <mem/virtmem.h>
 #include <dev/netdev.h>
-#include <net/ptcl.h>
+#include <net/pstack.h>
 #include <global.h>
 
-const char *NetDevCtrl::kDefaultNetworkInterfaceName = "eth0";
-
-void NetDev::SetupNetInterface() {
-  netdev_ctrl->RegisterDevice(this, "eth0");
-}
-
-bool NetDevCtrl::RegisterDevice(NetDev *dev, const char *name) {
+bool NetDevCtrl::RegisterDevice(NetDev *dev, const char *prefix) {
   if(_current_device_number < kMaxDevNumber) {
+    // TODO: use sprintf
+    char name[kNetworkInterfaceNameLen];
+    strncpy(name, prefix, strlen(prefix));
+    name[strlen(prefix)] = _current_device_number + '0';
+
     // succeed to register
     dev->SetName(name);
 
@@ -57,8 +56,6 @@ bool NetDevCtrl::RegisterDevice(NetDev *dev, const char *name) {
 }
 
 NetDevCtrl::NetDevInfo *NetDevCtrl::GetDeviceInfo(const char *name) {
-  if(!name) name = kDefaultNetworkInterfaceName;
-
   for(uint32_t i = _current_device_number; i > 0; i--) {
     NetDev *dev = _dev_table[i - 1].device;
 
@@ -68,4 +65,14 @@ NetDevCtrl::NetDevInfo *NetDevCtrl::GetDeviceInfo(const char *name) {
     }
   }
   return nullptr;
+}
+
+bool NetDevCtrl::IsLinkUp(const char *name) {
+  NetDevCtrl::NetDevInfo *info = this->GetDeviceInfo(name);
+
+  if (!info) {
+    return false;
+  } else {
+    return info->device->IsLinkUp();
+  }
 }

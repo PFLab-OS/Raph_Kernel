@@ -40,8 +40,8 @@
 #include <dev/pci.h>
 #include <dev/vga.h>
 
-#include <net/netctrl.h>
-#include <net/socket.h>
+#include <dev/eth.h>
+#include <net/arp.h>
 #include <arpa/inet.h>
 
 AcpiCtrl *acpi_ctrl = nullptr;
@@ -55,6 +55,8 @@ Idt *idt = nullptr;
 Keyboard *keyboard = nullptr;
 Shell *shell = nullptr;
 PciCtrl *pci_ctrl = nullptr;
+NetDevCtrl *netdev_ctrl = nullptr;
+ArpTable *arp_table = nullptr;
 
 MultibootCtrl _multiboot_ctrl;
 AcpiCtrl _acpi_ctrl;
@@ -71,6 +73,8 @@ Vga _vga;
 Keyboard _keyboard;
 Shell _shell;
 AcpicaPciCtrl _acpica_pci_ctrl;
+NetDevCtrl _netdev_ctrl;
+ArpTable _arp_table;
 
 static uint32_t rnd_next = 1;
 
@@ -103,12 +107,39 @@ void reset(int argc, const char* argv[]) {
   acpi_ctrl->Reset();
 }
 
+void lspci(int argc, const char* argv[]){
+  MCFG *mcfg = acpi_ctrl->GetMCFG();
+  if (mcfg == nullptr) {
+    gtty->Cprintf("[Pci] error: could not find MCFG table.\n");
+    return;
+  }
+
+  for (int i = 0; i * sizeof(MCFGSt) < mcfg->header.Length - sizeof(ACPISDTHeader); i++) {
+    if (i == 1) {
+      gtty->Cprintf("[Pci] info: multiple MCFG tables.\n");
+      break;
+    }
+    for (int j = mcfg->list[i].pci_bus_start; j <= mcfg->list[i].pci_bus_end; j++) {
+      for (int k = 0; k < 32; k++) {
+        uint16_t vid = pci_ctrl->ReadReg<uint16_t>(j, k, 0, PciCtrl::kVendorIDReg);
+        if (vid == 0xffff) {
+          continue;
+        }
+	uint16_t did = pci_ctrl->ReadReg<uint16_t>(j, k, 0, PciCtrl::kDeviceIDReg);
+	uint16_t svid = pci_ctrl->ReadReg<uint16_t>(j, k, 0, PciCtrl::kSubsystemVendorIdReg);
+	uint16_t ssid = pci_ctrl->ReadReg<uint16_t>(j, k, 0, PciCtrl::kSubsystemIdReg);
+	gtty->Cprintf("VendorID:%u, DeviceID:%u, SubVendorID:%u, SubSystemID:%u\n", vid, did, svid, ssid);
+      }
+    }
+  }
+}
+
 void bench(int argc, const char* argv[]) {
   if (argc != 2) {
     gtty->Cprintf("invalid argument.\n");
     return;
   }
-  if (eth == nullptr) {
+  if (!netdev_ctrl->Exists("en0")) {
     gtty->Cprintf("no ethernet interface.\n");
     return;
   }
@@ -135,12 +166,14 @@ void bench(int argc, const char* argv[]) {
     return;
   }
 
+  netdev_ctrl->AssignIpv4Address("en0", inet_atoi(ip1));
+
   {
     static ArpSocket socket;
+    socket.AssignNetworkDevice("en0");
+
     if(socket.Open() < 0) {
       gtty->Cprintf("[error] failed to open socket\n");
-    } else {
-      socket.SetIpAddr(inet_atoi(ip1));
     }
     cnt = 0;
     new(&tt2) Callout;
@@ -150,8 +183,7 @@ void bench(int argc, const char* argv[]) {
           tt2.SetHandler(1000);
           return;
         }
-        eth->UpdateLinkStatus();
-        if (eth->GetStatus() != BsdDevEthernet::LinkStatus::kUp) {
+        if (!netdev_ctrl->IsLinkUp("en0")) {
           tt2.SetHandler(1000);
           return;
         }
@@ -165,7 +197,7 @@ void bench(int argc, const char* argv[]) {
               break;
             }
             cnt = timer->ReadMainCnt();
-            if(socket.TransmitPacket(ArpSocket::kOpArpRequest, inet_atoi(ip2), nullptr) < 0) {
+            if(socket.Request(inet_atoi(ip2)) < 0) {
               gtty->Cprintf("[arp] failed to transmit request\n");
             }
             time--;
@@ -188,7 +220,7 @@ void bench(int argc, const char* argv[]) {
         if (rtime > 0) {
           gtty->Cprintf("ARP Reply average latency: %d us [%d / %d]\n", sum / rtime, rtime, stime);
         } else {
-          if (eth->GetStatus() == BsdDevEthernet::LinkStatus::kUp) {
+          if (netdev_ctrl->IsLinkUp("en0")) {
             gtty->Cprintf("Link is Up, but no ARP Reply\n");
           } else {
             gtty->Cprintf("Link is Down, please wait...\n");
@@ -201,10 +233,35 @@ void bench(int argc, const char* argv[]) {
     tt3.Init(func);
     tt3.SetHandler(6, 1000*1000*3);
   }
+
+  static ArpSocket socket;
+  socket.AssignNetworkDevice("en0");
+
+  if(socket.Open() < 0) {
+    gtty->Cprintf("[error] failed to open socket\n");
+  } else {
+    Function func;
+    func.Init([](void *){
+        uint32_t ipaddr;
+        uint16_t op;
+        
+        if (socket.Read(op, ipaddr) >= 0) {
+          if(op == ArpSocket::kOpReply) {
+            uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;
+            cnt = 0;
+            sum += l;
+            rtime++;
+          } else if(op == ArpSocket::kOpRequest) {
+            socket.Reply(ipaddr);
+          }
+        }
+      }, nullptr);
+    socket.SetReceiveCallback(2, func);
+  }
 }
 
 extern "C" int main() {
-  
+
   multiboot_ctrl = new (&_multiboot_ctrl) MultibootCtrl;
 
   acpi_ctrl = new (&_acpi_ctrl) AcpiCtrl;
@@ -233,6 +290,10 @@ extern "C" int main() {
 
   shell = new (&_shell) Shell;
 
+  netdev_ctrl = new (&_netdev_ctrl) NetDevCtrl();
+
+  arp_table = new (&_arp_table) ArpTable();
+
   multiboot_ctrl->Setup();
 
   paging_ctrl->MapAllPhysMemory();
@@ -242,7 +303,6 @@ extern "C" int main() {
   extern int kKernelEndAddr;
   kassert(paging_ctrl->MapPhysAddrToVirtAddr(reinterpret_cast<virt_addr>(&kKernelEndAddr) - PagingCtrl::kPageSize * 5, paddr, PagingCtrl::kPageSize * 3, PDE_WRITE_BIT, PTE_WRITE_BIT | PTE_GLOBAL_BIT));
 
-  
   acpi_ctrl->Setup();
 
   if (timer->Setup()) {
@@ -267,8 +327,6 @@ extern "C" int main() {
 
   idt->SetupProc();
 
-  InitNetCtrl();
-
   pci_ctrl = new (&_acpica_pci_ctrl) AcpicaPciCtrl;
   
   acpi_ctrl->SetupAcpica();
@@ -276,12 +334,14 @@ extern "C" int main() {
   InitDevices<PciCtrl, Device>();
 
   gtty->Init();
+  
+  arp_table->Setup();
 
   Function kbd_func;
   kbd_func.Init([](void *){
       uint8_t data;
       if(!keyboard->Read(data)){
-	return;
+        return;
       }
       char c = Keyboard::Interpret(data);
       gtty->Cprintf("%c", c);
@@ -305,34 +365,10 @@ extern "C" int main() {
   kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 6) + 1));
   kassert(!paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - 4096 * 7));
 
+  // 各コアは最低限の初期化ののち、TaskCtrlに制御を移さなければならない
   gtty->Cprintf("[boot cpu] info: #%d (apic id: %d) started.\n",
     cpu_ctrl->GetCpuId(),
     cpu_ctrl->GetCpuId().GetApicId());
-
-  if (eth != nullptr) {
-    static ArpSocket socket;
-    if(socket.Open() < 0) {
-      gtty->Cprintf("[error] failed to open socket\n");
-    }
-    socket.SetIpAddr(inet_atoi(ip1));
-    Function func;
-    func.Init([](void *){
-	uint32_t ipaddr;
-	uint8_t macaddr[6];
-	
-	int32_t rval = socket.ReceivePacket(0, &ipaddr, macaddr);
-	if(rval == ArpSocket::kOpArpReply) {
-	  uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;
-	  cnt = 0;
-	  sum += l;
-	  rtime++;
-	} else if(rval == ArpSocket::kOpArpRequest) {
-	  socket.TransmitPacket(ArpSocket::kOpArpReply, ipaddr, macaddr);
-	}
-      }, nullptr);
-    socket.SetReceiveCallback(2, func);
-  }
-  // 各コアは最低限の初期化ののち、TaskCtrlに制御を移さなければならない
   // 特定のコアで専用の処理をさせたい場合は、TaskCtrlに登録したジョブとして
   // 実行する事
 
@@ -344,10 +380,9 @@ extern "C" int main() {
   shell->Register("halt", halt);
   shell->Register("reset", reset);
   shell->Register("bench", bench);
+  shell->Register("lspci", lspci);
 
   task_ctrl->Run();
-
-  DismissNetCtrl();
 
   return 0;
 }
