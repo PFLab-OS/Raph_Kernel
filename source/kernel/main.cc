@@ -334,11 +334,11 @@ extern "C" int main() {
   InitDevices<PciCtrl, Device>();
 
   gtty->Init();
-
+  
   arp_table->Setup();
 
-  Function func;
-  func.Init([](void *){
+  Function kbd_func;
+  kbd_func.Init([](void *){
       uint8_t data;
       if(!keyboard->Read(data)){
         return;
@@ -347,7 +347,7 @@ extern "C" int main() {
       gtty->Cprintf("%c", c);
       shell->ReadCh(c);
     }, nullptr);
-  keyboard->Setup(1, func);
+  keyboard->Setup(kbd_func);
 
   cnt = 0;
   sum = 0;
@@ -365,9 +365,10 @@ extern "C" int main() {
   kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 6) + 1));
   kassert(!paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - 4096 * 7));
 
-  gtty->Cprintf("[cpu] info: #%d (apic id: %d) started.\n", cpu_ctrl->GetId(), apic_ctrl->GetApicIdFromCpuId(cpu_ctrl->GetId()));
-
-  // 各コアは最低限の初期化ののち、TaskCtrlに制御が移さなければならない
+  // 各コアは最低限の初期化ののち、TaskCtrlに制御を移さなければならない
+  gtty->Cprintf("[boot cpu] info: #%d (apic id: %d) started.\n",
+    cpu_ctrl->GetCpuId(),
+    cpu_ctrl->GetCpuId().GetApicId());
   // 特定のコアで専用の処理をさせたい場合は、TaskCtrlに登録したジョブとして
   // 実行する事
 
@@ -393,33 +394,45 @@ extern "C" int main_of_others() {
   gdt->SetupProc();
   idt->SetupProc();
 
-  gtty->Cprintf("[cpu] info: #%d (apic id: %d) started.\n", cpu_ctrl->GetId(), apic_ctrl->GetApicIdFromCpuId(cpu_ctrl->GetId()));
+  gtty->Cprintf("[cpu] info: #%d (apic id: %d) started.\n",
+  cpu_ctrl->GetCpuId(),
+  cpu_ctrl->GetCpuId().GetApicId());
  
-  // ループ性能測定用 
-  // PollingFunc p;
-  // if (cpu_ctrl->GetId() == 4) {
-  //   static int hoge = 0;
-  //   p.Init([](void *){
-  //       int hoge2 = timer->GetUsecFromCnt(timer->ReadMainCnt()) - hoge;
-  //       gtty->Printf("d",hoge2,"s"," ");
-  //       hoge = timer->GetUsecFromCnt(timer->ReadMainCnt());
-  //     }, nullptr);
-  //   p.Register();
-  // }
+// ループ性能測定用
+//#define LOOP_BENCHMARK
+#ifdef LOOP_BENCHMARK
+  #define LOOP_BENCHMARK_CPU  4
+  PollingFunc p;
+  if (cpu_ctrl->GetCpuId().GetRawId() == LOOP_BENCHMARK_CPU) {
+    Function f;
+    static int hoge = 0;
+    f.Init([](void *){
+      int hoge2 = timer->GetUsecFromCnt(timer->ReadMainCnt()) - hoge;
+      gtty->Printf("d",hoge2,"s"," ");
+      hoge = timer->GetUsecFromCnt(timer->ReadMainCnt());
+    }, nullptr);
+    p.Init(f);
+    p.Register();
+  }
+#endif
   
-  // ワンショット性能測定用
-  if (cpu_ctrl->GetId() == 5) {
+// ワンショット性能測定用
+#define ONE_SHOT_BENCHMARK
+#ifdef ONE_SHOT_BENCHMARK
+  #define ONE_SHOT_BENCHMARK_CPU  5
+  if (cpu_ctrl->GetCpuId().GetRawId() == ONE_SHOT_BENCHMARK_CPU) {
     new(&tt1) Callout;
-    Function func;
-    func.Init([](void *){
+    Function oneshot_bench_func;
+    oneshot_bench_func.Init([](void *){
         if (!apic_ctrl->IsBootupAll()) {
           tt1.SetHandler(1000);
           return;
         }
       }, nullptr);
-    tt1.Init(func);
+    tt1.Init(oneshot_bench_func);
     tt1.SetHandler(10);
   }
+#endif
 
   task_ctrl->Run();
   return 0;
@@ -435,7 +448,7 @@ extern "C" void kernel_panic(const char *class_name, const char *err_str) {
 }
 
 extern "C" void checkpoint(int id, const char *str) {
-  if (id < 0 || cpu_ctrl->GetId() == id) {
+  if (id < 0 || cpu_ctrl->GetCpuId().GetRawId() == id) {
     gtty->CprintfRaw(str);
   }
 }
@@ -455,7 +468,8 @@ extern "C" void abort() {
 
 extern "C" void _kassert(const char *file, int line, const char *func) {
   if (gtty != nullptr) {
-    gtty->Cprintf("assertion failed at %s l.%d (%s) cpuid: %d\n", file, line, func, cpu_ctrl->GetId());
+    gtty->Cprintf("assertion failed at %s l.%d (%s) cpuid: %d\n",
+      file, line, func, cpu_ctrl->GetCpuId().GetRawId());
   }
   while(true){
     asm volatile("cli;hlt");
