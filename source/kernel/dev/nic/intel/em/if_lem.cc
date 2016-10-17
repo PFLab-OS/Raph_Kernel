@@ -5005,7 +5005,6 @@ void	lem_init(struct adapter *);
 int lem_poll(if_t ifp);
 void lem_update_link_status(struct adapter *adapter);
 
-extern BsdDevEthernet *eth;
 DevPci *lE1000::InitPci(uint8_t bus, uint8_t device, uint8_t function) {
   lE1000 *addr = reinterpret_cast<lE1000 *>(virtmem_ctrl->Alloc(sizeof(lE1000)));
   addr = new(addr) lE1000(bus, device, function);
@@ -5017,7 +5016,6 @@ DevPci *lE1000::InitPci(uint8_t bus, uint8_t device, uint8_t function) {
     addr->SetupNetInterface();
     // addr->SetHandleMethod(HandleMethod::kPolling);
 
-    eth = addr;
     return addr->_bsd.GetPciClass();
   } else {
     virtmem_ctrl->Free(ptr2virtaddr(addr->_bsd.adapter));

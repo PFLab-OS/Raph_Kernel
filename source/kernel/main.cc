@@ -78,8 +78,6 @@ ArpTable _arp_table;
 
 static uint32_t rnd_next = 1;
 
-#include <freebsd/net/if_var.h>
-BsdDevEthernet *eth;
 uint64_t cnt;
 int64_t sum;
 static const int stime = 3000;
