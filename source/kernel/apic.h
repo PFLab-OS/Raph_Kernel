@@ -332,6 +332,7 @@ private:
   }
   static void IpiCallback(Regs *rs, void *arg) {
   }
+  static void PicSpuriousCallback(Regs *rs, void *arg);
 
   Lapic _lapic;
   Ioapic _ioapic;

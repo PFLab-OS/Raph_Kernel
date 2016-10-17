@@ -96,11 +96,11 @@ void Idt::SetupGeneric() {
       _callback[i][j].callback = nullptr;
     }
   }
+  _is_gen_initialized = true;
   // x86 specific
   for (int i = 0; i < apic_ctrl->GetHowManyCpus(); i++) {
     SetExceptionCallback(i, 14, HandlePageFault, nullptr);
   }
-  _is_gen_initialized = true;
 }
 
 void Idt::SetupProc() {
@@ -118,6 +118,7 @@ void Idt::SetGate(idt_callback gate, int vector, uint8_t dpl, bool trap, uint8_t
 }
 
 int Idt::SetIntCallback(int cpuid, int_callback callback, void *arg) {
+  kassert(_is_gen_initialized);
   Locker locker(_lock);
   for(int vector = 64; vector < 256; vector++) {
     if (_callback[cpuid][vector].callback == nullptr) {
@@ -130,6 +131,7 @@ int Idt::SetIntCallback(int cpuid, int_callback callback, void *arg) {
 }
 
 int Idt::SetIntCallback(int cpuid, int_callback *callback, void **arg, int range) {
+  kassert(_is_gen_initialized);
   int _range = 1;
   while(_range < range) {
     _range *= 2;
@@ -159,6 +161,7 @@ int Idt::SetIntCallback(int cpuid, int_callback *callback, void **arg, int range
 }
 
 void Idt::SetExceptionCallback(int cpuid, int vector, int_callback callback, void *arg) {
+  kassert(_is_gen_initialized);
   kassert(vector < 64 && vector >= 1);
   Locker locker(_lock);
   _callback[cpuid][vector].callback = callback;

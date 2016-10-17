@@ -65,6 +65,7 @@ class Idt {
   }
   struct ReservedIntVector {
     static const int kIpi      = 33;
+    static const int k8259Spurious = 55;
     static const int kError    = 63;
   };
  private:
