@@ -62,10 +62,11 @@ class Idt {
     if (!_is_gen_initialized) {
       return false;
     }
-    return _handling_cnt[apic_ctrl->GetCpuId()];
+    return _handling_cnt[cpu_ctrl->GetCpuId().GetRawId()];
   }
   struct ReservedIntVector {
     static const int kIpi      = 33;
+    static const int k8259Spurious = 55;
     static const int kError    = 63;
   };
  private:

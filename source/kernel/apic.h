@@ -273,7 +273,7 @@ public:
   }
 
   void BootAP() {
-    _started = true;
+    __atomic_store_n(&_started, true, __ATOMIC_RELEASE);
     _lapic.Setup();
   }
   int GetCpuIdFromApicId(uint32_t apic_id) {
@@ -282,9 +282,11 @@ public:
   volatile uint8_t GetApicIdFromCpuId(CpuId cpuid) {
     return _lapic.GetApicIdFromCpuId(cpuid);
   }
-  // cpu_ctrlを通して呼びだす事
   volatile int GetCpuId() {
     return _lapic.GetCpuId();
+  }
+  volatile uint8_t GetApicId() {
+    return _lapic.GetApicId();
   }
   volatile bool IsBootupAll() {
     return _all_bootup;
@@ -339,6 +341,7 @@ private:
   }
   static void IpiCallback(Regs *rs, void *arg) {
   }
+  static void PicSpuriousCallback(Regs *rs, void *arg);
 
   Lapic _lapic;
   Ioapic _ioapic;

@@ -393,8 +393,8 @@ extern "C" int main() {
 
 extern "C" int main_of_others() {
   // according to mp spec B.3, system should switch over to Symmetric I/O mode
-  
   kassert(cpu_ctrl->GetCpuId().GetRawId() == apic_ctrl->GetCpuId());
+  kassert(cpu_ctrl->GetCpuId().GetApicId() == apic_ctrl->GetApicId());
   
   apic_ctrl->BootAP();
 
@@ -435,7 +435,7 @@ extern "C" int main_of_others() {
           tt1.SetHandler(1000);
           return;
         }
-        kassert(g_channel != nullptr);
+        // kassert(g_channel != nullptr);
         // FatFs *fatfs = new FatFs();
         // kassert(fatfs->Mount());
         //        g_channel->Read(0, 1);

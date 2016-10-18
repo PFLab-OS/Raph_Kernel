@@ -29,6 +29,7 @@
 #include <idt.h>
 #include <cpu.h>
 #include <mem/kstack.h>
+#include <tty.h>
 
 extern "C" void entryothers();
 extern "C" void entry();
@@ -84,13 +85,18 @@ void ApicCtrl::StartAPs() {
       continue;
     }
     _started = false;
-    CpuId cpuid(_lapic.GetCpuIdFromApicId(i));
+    CpuId cpuid(i);
     *stack_of_others = KernelStackCtrl::GetCtrl().AllocThreadStack(cpuid);
     _lapic.Start(_lapic._apicIds[i], reinterpret_cast<uint64_t>(entryothers));
-    while(!_started) {}
+    while(!__atomic_load_n(&_started, __ATOMIC_ACQUIRE)) {}
   }
   _all_bootup = true;
 }
+
+void ApicCtrl::PicSpuriousCallback(Regs *rs, void *arg) {
+  gtty->CprintfRaw("[APIC] info: spurious 8259A interrupt (IRQ7)");
+}
+
 
 void ApicCtrl::Lapic::Setup() {
   if (_ctrlAddr == nullptr) {
@@ -119,6 +125,7 @@ void ApicCtrl::Lapic::Setup() {
 
   kassert(idt != nullptr);
   idt->SetExceptionCallback(cpu_ctrl->GetCpuId(), Idt::ReservedIntVector::kIpi, IpiCallback, nullptr);
+  idt->SetExceptionCallback(cpu_ctrl->GetCpuId(), Idt::ReservedIntVector::k8259Spurious, PicSpuriousCallback, nullptr);
 }
 
 void ApicCtrl::Lapic::Start(uint8_t apicId, uint64_t entryPoint) {
@@ -184,11 +191,28 @@ void ApicCtrl::Lapic::SendIpi(uint8_t destid) {
 
 void ApicCtrl::Ioapic::Setup() {
   if (_reg == nullptr) {
-    return;
+    kernel_panic("ApicCtrl", "No I/O APIC register");
   }
 
-  // disable 8259 PIC
+  // setup 8259 PIC
   asm volatile("mov $0xff, %al; out %al, $0xa1; out %al, $0x21;");
+  asm volatile("mov $0x11, %al; out %al, $0xa0;");
+  asm volatile("out %%al, $0xa1;"::"a"(Idt::ReservedIntVector::k8259Spurious - 7));
+  asm volatile("mov $0x4, %al; out %al, $0xa1;");
+  asm volatile("mov $0x3, %al; out %al, $0xa1;");
+  asm volatile("mov $0x11, %al; out %al, $0x20;");
+  asm volatile("out %%al, $0x21;"::"a"(Idt::ReservedIntVector::k8259Spurious - 7));
+  asm volatile("mov $0x2, %al; out %al, $0x21;");
+  asm volatile("mov $0x3, %al; out %al, $0x21;");
+  asm volatile("mov $0x68, %al; out %al, $0xa0");
+  asm volatile("mov $0x0a, %al; out %al, $0xa0");
+  asm volatile("mov $0x68, %al; out %al, $0x20");
+  asm volatile("mov $0x0a, %al; out %al, $0x20");
+    
+  // move to symmetric I/O mode
+  // see MP spec 3.6.2.3 Symmetric I/O mode
+  asm volatile("mov $0x70, %al; out %al, $0x22");
+  asm volatile("mov $0x1, %al; out %al, $0x23");
 
   uint32_t intr = this->GetMaxIntr();
   // disable all external I/O interrupts

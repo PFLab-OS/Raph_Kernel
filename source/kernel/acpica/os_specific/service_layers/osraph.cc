@@ -170,10 +170,7 @@ extern "C" {
   }
 
   ACPI_STATUS AcpiOsCreateSemaphore(UINT32 MaxUnits, UINT32 InitialUnits, ACPI_SEMAPHORE *OutHandle) {
-    Semaphore *semaphore = virtmem_ctrl->New<Semaphore>(MaxUnits);
-    for (; MaxUnits > InitialUnits; MaxUnits--) {
-      semaphore->Acquire();
-    }
+    Semaphore *semaphore = new Semaphore(MaxUnits, InitialUnits);
     *OutHandle = reinterpret_cast<ACPI_SEMAPHORE>(semaphore);
     return (AE_OK);
   }
