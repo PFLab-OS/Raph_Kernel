@@ -32,20 +32,22 @@ void Shell::Setup() {
 }
 
 void Shell::Register(const char *name, void (*func)(int argc, const char *argv[])) {
-  if (_next_buf == kNameSize){
-    //error
+  if (_next_buf == kBufSize){
+    kernel_panic("Shell", "command buffer is full");
   }else{
     int slen = strlen(name);
     if (slen < kNameSize){
       strncpy(_name_func_mapping[_next_buf].name, name, slen);
       _name_func_mapping[_next_buf].func = func;
       _next_buf++;
+    } else {
+      kernel_panic("Shell", "command name is too long");
     }
   }
 }
 
 void Shell::Exec(const char *name,int argc, const char* argv[]) {
-  for (int i = 0; i < kBufSize; i++) {
+  for (int i = 0; i < _next_buf; i++) {
     if (strncmp(name, _name_func_mapping[i].name, strlen(_name_func_mapping[i].name)) == 0) {
       _name_func_mapping[i].func(argc, argv);
       return;

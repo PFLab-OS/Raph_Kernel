@@ -125,7 +125,8 @@ void ApicCtrl::Lapic::Setup() {
 
   kassert(idt != nullptr);
   idt->SetExceptionCallback(cpu_ctrl->GetCpuId(), Idt::ReservedIntVector::kIpi, IpiCallback, nullptr);
-  idt->SetExceptionCallback(cpu_ctrl->GetCpuId(), Idt::ReservedIntVector::k8259Spurious, PicSpuriousCallback, nullptr);
+  idt->SetExceptionCallback(cpu_ctrl->GetCpuId(), Idt::ReservedIntVector::k8259Spurious1, PicSpuriousCallback, nullptr);
+  idt->SetExceptionCallback(cpu_ctrl->GetCpuId(), Idt::ReservedIntVector::k8259Spurious2, PicSpuriousCallback, nullptr);
 }
 
 void ApicCtrl::Lapic::Start(uint8_t apicId, uint64_t entryPoint) {
@@ -197,11 +198,11 @@ void ApicCtrl::Ioapic::Setup() {
   // setup 8259 PIC
   asm volatile("mov $0xff, %al; out %al, $0xa1; out %al, $0x21;");
   asm volatile("mov $0x11, %al; out %al, $0xa0;");
-  asm volatile("out %%al, $0xa1;"::"a"(Idt::ReservedIntVector::k8259Spurious - 7));
+  asm volatile("out %%al, $0xa1;"::"a"(Idt::ReservedIntVector::k8259Spurious1 - 7));
   asm volatile("mov $0x4, %al; out %al, $0xa1;");
   asm volatile("mov $0x3, %al; out %al, $0xa1;");
   asm volatile("mov $0x11, %al; out %al, $0x20;");
-  asm volatile("out %%al, $0x21;"::"a"(Idt::ReservedIntVector::k8259Spurious - 7));
+  asm volatile("out %%al, $0x21;"::"a"(Idt::ReservedIntVector::k8259Spurious2 - 7));
   asm volatile("mov $0x2, %al; out %al, $0x21;");
   asm volatile("mov $0x3, %al; out %al, $0x21;");
   asm volatile("mov $0x68, %al; out %al, $0xa0");
