@@ -455,7 +455,7 @@ extern "C" int main_of_others() {
   return 0;
 }
 
-extern "C" void kernel_panic(const char *class_name, const char *err_str) {
+extern "C" void _kernel_panic(const char *class_name, const char *err_str) {
   if (gtty != nullptr) {
     gtty->CprintfRaw("\n[%s] error: %s",class_name, err_str);
   }
