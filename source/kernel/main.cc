@@ -378,12 +378,6 @@ extern "C" int main() {
                 cpu_ctrl->GetCpuId(),
                 cpu_ctrl->GetCpuId().GetApicId());
 
-  // 各コアは最低限の初期化ののち、TaskCtrlに制御を移さなければならない
-  // 特定のコアで専用の処理をさせたい場合は、TaskCtrlに登録したジョブとして
-  // 実行する事
-
-  apic_ctrl->StartAPs();
-
   gtty->Cprintf("\n\n[kernel] info: initialization completed\n");
 
   shell->Setup();
@@ -457,7 +451,13 @@ extern "C" int main_of_others() {
 
 extern "C" void _kernel_panic(const char *class_name, const char *err_str) {
   if (gtty != nullptr) {
-    gtty->CprintfRaw("\n[%s] error: %s",class_name, err_str);
+    gtty->CprintfRaw("\n[%s] error: %s\n",class_name, err_str);
+    size_t *rbp;
+    asm volatile("movq %%rbp, %0":"=r"(rbp));
+    for (int i = 0; i < 7; i++) {
+      gtty->CprintfRaw("backtrace(%d): rip:%llx,\n", i, rbp[1]);
+      rbp = reinterpret_cast<size_t *>(rbp[0]);
+    }
   }
   while(true) {
     asm volatile("cli;hlt;");
@@ -487,6 +487,12 @@ extern "C" void _kassert(const char *file, int line, const char *func) {
   if (gtty != nullptr) {
     gtty->CprintfRaw("assertion failed at %s l.%d (%s) cpuid: %d\n",
       file, line, func, cpu_ctrl->GetCpuId().GetRawId());
+    size_t *rbp;
+    asm volatile("movq %%rbp, %0":"=r"(rbp));
+    for (int i = 0; i < 3; i++) {
+      gtty->CprintfRaw("backtrace(%d): rip:%llx,\n", i, rbp[1]);
+      rbp = reinterpret_cast<size_t *>(rbp[0]);
+    }
   }
   while(true){
     asm volatile("cli;hlt");
