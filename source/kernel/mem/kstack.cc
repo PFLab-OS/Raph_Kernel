@@ -27,7 +27,7 @@
 #include <global.h>
 #include <cpu.h>
 #include <tty.h>
-#include <apic.h>
+#include <cpu.h>
 
 bool KernelStackCtrl::_is_initialized = false;
 KernelStackCtrl KernelStackCtrl::_ctrl;

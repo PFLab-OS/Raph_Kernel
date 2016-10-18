@@ -94,6 +94,6 @@ void Gdt::SetupProc() {
 
   tss->iomap = sizeof(Tss);  // no I/O permission map
 
-  lgdt(gdt_desc, 6);
+  x86::lgdt(gdt_desc, 6);
   asm volatile("ltr %0;"::"r"((uint16_t)TSS));
 }

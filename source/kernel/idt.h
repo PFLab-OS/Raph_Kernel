@@ -24,7 +24,7 @@
 #define __RAPH_KERNEL_IDT_H__
 
 #include <stdint.h>
-#include <apic.h>
+#include <cpu.h>
 #include <spinlock.h>
 #include <cpu.h>
 

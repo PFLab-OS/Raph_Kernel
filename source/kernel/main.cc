@@ -310,6 +310,8 @@ extern "C" int main() {
 
   KernelStackCtrl::Init();
 
+  apic_ctrl->Init();
+
   acpi_ctrl->Setup();
 
   if (timer->Setup()) {
@@ -318,7 +320,6 @@ extern "C" int main() {
     kernel_panic("timer", "HPET not supported.\n");
   }
 
-  // timer->Sertup()より後
   apic_ctrl->Setup();
 
   cpu_ctrl->Init();
@@ -330,7 +331,6 @@ extern "C" int main() {
 
   rnd_next = timer->ReadMainCnt();
 
-  // apic_ctrl->Setup()より後
   task_ctrl->Setup();
 
   idt->SetupGeneric();
