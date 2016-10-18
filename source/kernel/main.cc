@@ -454,7 +454,7 @@ extern "C" void _kernel_panic(const char *class_name, const char *err_str) {
     gtty->CprintfRaw("\n[%s] error: %s\n",class_name, err_str);
     size_t *rbp;
     asm volatile("movq %%rbp, %0":"=r"(rbp));
-    for (int i = 0; i < 7; i++) {
+    for (int i = 0; i < 3; i++) {
       gtty->CprintfRaw("backtrace(%d): rip:%llx,\n", i, rbp[1]);
       rbp = reinterpret_cast<size_t *>(rbp[0]);
     }
