@@ -22,6 +22,7 @@
 
 #include <raph.h>
 #include <task.h>
+#include <cpu.h>
 #include "taskqueue.h"
 
 extern "C" {
@@ -46,8 +47,7 @@ extern "C" {
   }
 
   int taskqueue_enqueue(struct taskqueue *queue, struct task *task) {
-    // TODO cpuidの管理をどうするか
-    task_ctrl->Register(0, task->ta_task);
+    task_ctrl->Register(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), task->ta_task);
     return 0;
   }
 

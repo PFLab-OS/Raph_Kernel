@@ -25,6 +25,7 @@
 #include <mem/paging.h>
 #include <mem/physmem.h>
 #include <global.h>
+#include <cpu.h>
 #include <tty.h>
 #include <apic.h>
 
@@ -60,13 +61,13 @@ void KernelStackCtrl::InitFirstStack() {
   StackInfo *sinfo = GetCurrentStackInfoPtr();
   sinfo->magic = StackInfo::kMagic;
   sinfo->tid = _next_tid;
-  sinfo->cpuid = apic_ctrl->GetCpuId();
+  sinfo->cpuid = cpu_ctrl->GetCpuId();
   _next_tid++;
 
   _stack_area_top = reinterpret_cast<virt_addr>(&kKernelEndAddr) + 1 - (kStackSize + PagingCtrl::kPageSize * 2);
 }
 
-virt_addr KernelStackCtrl::AllocThreadStack(int cpuid) {
+virt_addr KernelStackCtrl::AllocThreadStack(CpuId cpuid) {
   virt_addr addr;
   if (!_freed.Pop(addr)) {
     Locker locker(_lock);
@@ -103,7 +104,7 @@ void KernelStackCtrl::FreeThreadStack(virt_addr addr) {
   _freed.Push(addr);
 }
 
-virt_addr KernelStackCtrl::AllocIntStack(int cpuid) {
+virt_addr KernelStackCtrl::AllocIntStack(CpuId cpuid) {
   Locker locker(_lock);
 
   _stack_area_top -= kStackSize + PagingCtrl::kPageSize * 2;

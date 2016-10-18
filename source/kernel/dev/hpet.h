@@ -78,7 +78,7 @@ class Hpet : public Timer {
   virtual volatile uint64_t ReadMainCnt() override {
     return _reg[kRegMainCnt];
   }
-  void SetInt(uint8_t cpuid, uint64_t cnt) {
+  void SetInt(CpuId cpuid, uint64_t cnt) {
     int id = 0;
     int table;
     uint32_t routecap = (_reg[GetRegTmrOfN(id, kBaseRegTmrConfigCap)] & kRegTmrConfigCapBaseMaskIntRouteCap) >> 32;

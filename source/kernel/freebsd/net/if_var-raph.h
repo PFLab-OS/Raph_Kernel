@@ -35,6 +35,10 @@ public:
   }
   virtual ~BsdEthernet() {}
   struct ifnet _ifp;
+
+  virtual bool IsLinkUp() override {
+    return this->GetStatus() == NetDev::LinkStatus::kUp;
+  }
 };
 
 

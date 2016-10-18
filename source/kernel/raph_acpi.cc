@@ -71,9 +71,8 @@ FADT *AcpiCtrl::GetFADT() {
 }
 
 void AcpiGlobalEventHandler(UINT32 type, ACPI_HANDLE device, UINT32 num, void *context) {
-  //TODO cpuid
   if (num == ACPI_EVENT_POWER_BUTTON) {
-    task_ctrl->Register(1, reinterpret_cast<Task *>(context));
+    task_ctrl->Register(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), reinterpret_cast<Task *>(context));
   }
 }
 

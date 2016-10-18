@@ -87,7 +87,7 @@ extern "C" {
   uint16_t pci_get_subvendor(device_t dev) {
     switch(dev->GetPciClass()->GetDevPci().ReadReg<uint8_t>(PciCtrl::kHeaderTypeReg) & PciCtrl::kHeaderTypeRegMaskDeviceType) {
     case PciCtrl::kHeaderTypeRegValueDeviceTypeNormal:
-      return dev->GetPciClass()->GetDevPci().ReadReg<uint16_t>(PciCtrl::kSubVendorIdReg);
+      return dev->GetPciClass()->GetDevPci().ReadReg<uint16_t>(PciCtrl::kSubsystemVendorIdReg);
     case PciCtrl::kHeaderTypeRegValueDeviceTypeBridge:
       return 0xffff;
     case PciCtrl::kHeaderTypeRegValueDeviceTypeCardbus:

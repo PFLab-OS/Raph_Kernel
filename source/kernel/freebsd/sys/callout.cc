@@ -25,6 +25,7 @@
 #include <sys/mutex.h>
 #include <sys/kernel.h>
 #include <task.h>
+#include <cpu.h>
 
 extern "C" {
 
@@ -60,8 +61,7 @@ extern "C" {
     Function f;
     f.Init(func, arg);
     c->callout->Init(f);
-    //TODO cpuid
-    c->callout->SetHandler(1, static_cast<uint32_t>(ticks) * reciprocal_of_hz);
+    c->callout->SetHandler(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), static_cast<uint32_t>(ticks) * reciprocal_of_hz);
 
     return pending ? 1 : 0;
   }
@@ -76,8 +76,7 @@ extern "C" {
     Function f;
     f.Init(ftn, arg);
     c->callout->Init(f);
-    //TODO cpuid
-    c->callout->SetHandler(1, sbt * static_cast<sbintime_t>(1000000) / SBT_1S);
+    c->callout->SetHandler(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), sbt * static_cast<sbintime_t>(1000000) / SBT_1S);
 
     return pending ? 1 : 0;
   }
@@ -89,8 +88,7 @@ extern "C" {
     if (ticks < 0) {
       ticks = 1;
     }
-    //TODO cpuid
-    c->callout->SetHandler(1, static_cast<uint32_t>(ticks) * reciprocal_of_hz);
+    c->callout->SetHandler(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), static_cast<uint32_t>(ticks) * reciprocal_of_hz);
 
     return pending ? 1 : 0;
   }

@@ -25,7 +25,8 @@
 
 #include <stdint.h>
 #include <raph.h>
-#include <raph_acpi.h>
+#include <_raph_acpi.h>
+#include <_cpu.h>
 
 #ifndef __UNIT_TEST__
 struct MADT {
@@ -95,13 +96,14 @@ public:
       }
       return 0;
     }
-    uint8_t GetApicIdFromCpuId(int cpuid) {
-      kassert(cpuid >= 0 && cpuid < _ncpu);
-      return _apicIds[cpuid];
+    uint8_t GetApicIdFromCpuId(CpuId cpuid) {
+      int raw_cpuid = cpuid.GetRawId();
+      kassert(raw_cpuid >= 0 && raw_cpuid < _ncpu);
+      return _apicIds[raw_cpuid];
     }
     // start local APIC respond to specified index with apicId
     void Start(uint8_t apicId, uint64_t entryPoint);
-    int _ncpu;
+    int _ncpu = 0;
     uint8_t _apicIds[lapicMaxNumber];
 
     volatile uint8_t GetApicId() {
@@ -274,7 +276,10 @@ public:
     _started = true;
     _lapic.Setup();
   }
-  volatile uint8_t GetApicIdFromCpuId(int cpuid) {
+  int GetCpuIdFromApicId(uint32_t apic_id) {
+    return _lapic.GetCpuIdFromApicId(apic_id);
+  }
+  volatile uint8_t GetApicIdFromCpuId(CpuId cpuid) {
     return _lapic.GetApicIdFromCpuId(cpuid);
   }
   // cpu_ctrlを通して呼びだす事

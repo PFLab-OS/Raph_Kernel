@@ -27,6 +27,9 @@
 #include <dev/pci.h>
 #include <mem/virtmem.h>
 
+/**
+ * A class representing Ethernet device, which has MAC address and IP address.
+ */
 class DevEthernet : public NetDev {
 public:
   DevEthernet() {
@@ -36,15 +39,44 @@ public:
   // allocate 6 byte before call
   virtual void GetEthAddr(uint8_t *buffer) = 0;
 
+  /**
+   * Set up the network interface. Usually you must register this interface
+   * to network device controller (NetDevCtrl).
+   * Other initialization can be done in this method.
+   */
+  virtual void SetupNetInterface() override {
+    kassert(netdev_ctrl->RegisterDevice(this, "en"));
+  }
+
+  /**
+   * Assign IPv4 address to the device.
+   *
+   * @param addr IPv4 address.
+   * @return if the device supports IPv4 address or not.
+   */
+  virtual bool AssignIpv4Address(uint32_t addr) {
+    _ipv4_addr = addr;
+    return true;
+  }
+
+  /**
+   * Get IPv4 address.
+   *
+   * @param addr buffer to return.
+   * @return if the device supports IPv4 address or not.
+   */
+  virtual bool GetIpv4Address(uint32_t &addr) {
+    addr = _ipv4_addr;
+    return true;
+  }
+
 protected:
 
-  virtual void FilterRxPacket(void *p) override;
+  DevPci *_pci;
 
-  virtual void PrepareTxPacket(NetDev::Packet *packet) override;
-};
-
-class DevEthernetCtrl : public NetDevCtrl {
-  DevEthernet *_devTable[kMaxDevNumber] = {nullptr};
+private:
+  /** IPv4 address */
+  uint32_t _ipv4_addr = 0;
 };
 
 #endif /* __RAPH_KERNEL_DEV_ETH_H__ */

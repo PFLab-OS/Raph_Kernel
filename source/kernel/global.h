@@ -67,8 +67,8 @@ extern PciCtrl *pci_ctrl;
  */
 
 // Network Devices
-class DevEthernetCtrl;
-extern DevEthernetCtrl *netdev_ctrl;
+class NetDevCtrl;
+extern NetDevCtrl *netdev_ctrl;
 
 // ARP Table
 class ArpTable;

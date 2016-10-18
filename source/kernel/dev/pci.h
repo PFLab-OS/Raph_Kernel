@@ -31,7 +31,7 @@
 #include <idt.h>
 #include <apic.h>
 #include <dev/device.h>
-#include <task.h>
+#include <_cpu.h>
 
 struct MCFGSt {
   uint8_t reserved1[8];
@@ -107,30 +107,7 @@ public:
   }
   // 0より小さい場合はLegacyInterruptが存在しない
   virtual int GetLegacyIntNum(DevPci *device) = 0;
-  void RegisterLegacyIntHandler(int irq, DevPci *device) {
-    {
-      Locker lock(_irq_container_lock);
-      IrqContainer *ic = _irq_container;
-      while(ic->next != nullptr) {
-        IrqContainer *nic = ic->next;
-        if (nic->irq == irq) {
-          IntHandler *ih = nic->inthandler;
-          while(ih->next != nullptr) {
-            ih = ih->next;
-          }
-          ih->Add(device);
-          return;
-        } 
-        ic = nic;
-      }
-      // TODO cpuid
-      int cpuid = 1;
-      int vector = idt->SetIntCallback(cpuid, LegacyIntHandler, reinterpret_cast<void *>(this));
-      apic_ctrl->SetupIoInt(irq, apic_ctrl->GetApicIdFromCpuId(cpuid), vector);
-      ic->Add(irq, vector);
-      ic->next->inthandler->Add(device);
-    }
-  }
+  void RegisterLegacyIntHandler(int irq, DevPci *device);
   static const uint16_t kDevIdentifyReg = 0x2;
   static const uint16_t kVendorIDReg = 0x00;
   static const uint16_t kDeviceIDReg = 0x02;
@@ -143,7 +120,7 @@ public:
   static const uint16_t kHeaderTypeReg = 0x0E;
   static const uint16_t kBaseAddressReg0 = 0x10;
   static const uint16_t kBaseAddressReg1 = 0x14;
-  static const uint16_t kSubVendorIdReg = 0x2c;
+  static const uint16_t kSubsystemVendorIdReg = 0x2c;
   static const uint16_t kSubsystemIdReg = 0x2e;
   static const uint16_t kCapPtrReg = 0x34;
   static const uint16_t kIntPinReg = 0x3D;
@@ -189,6 +166,10 @@ public:
   static const uint32_t kRegBaseAddrMaskMemAddr = 0xFFFFFFF0;
   static const uint32_t kRegBaseAddrMaskIoAddr = 0xFFFFFFFC;
 private:
+  MCFG *_mcfg = nullptr;
+  virt_addr _base_addr = 0;
+  CpuId _cpuid;
+  
   void _Init();
   template<class T>
   static inline DevPci *_InitPciDevices(uint8_t bus, uint8_t device, uint8_t function) {
@@ -204,8 +185,6 @@ private:
       return dev;
     }
   }
-  MCFG *_mcfg = nullptr;
-  virt_addr _base_addr = 0;
 
   class IntHandler {
   public:
@@ -295,7 +274,7 @@ public:
     return pci_ctrl->GetMsiCount(_bus, _device, _function);
   }
   // 先にGetMsiCountでMsiが使えるか調べる事
-  void SetMsi(int cpuid, int vector) {
+  void SetMsi(CpuId cpuid, int vector) {
     kassert(pci_ctrl != nullptr);
     pci_ctrl->SetMsi(_bus, _device, _function, ApicCtrl::Lapic::GetMsiAddr(apic_ctrl->GetApicIdFromCpuId(cpuid)), ApicCtrl::Lapic::GetMsiData(vector));
   }

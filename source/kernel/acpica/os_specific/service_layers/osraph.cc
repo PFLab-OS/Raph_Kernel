@@ -27,6 +27,7 @@
 #include <timer.h>
 #include <idt.h>
 #include <mem/physmem.h>
+#include <cpu.h>
 #include <dev/pci.h>
 
 extern "C" {
@@ -243,8 +244,7 @@ extern "C" {
   ACPI_STATUS AcpiOsInstallInterruptHandler(UINT32 InterruptLevel, ACPI_OSD_HANDLER Handler, void *Context) {
     kassert(apic_ctrl != nullptr);
     kassert(idt != nullptr);
-    // TODO fix cpuid
-    int cpuid = 1;
+    CpuId cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority);
     int vector = idt->SetIntCallback(cpuid, AcpiHandlerSub, Context);
     for(int i = 0; i < 10; i++) {
       if (handler[i].func == nullptr) {

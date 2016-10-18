@@ -58,7 +58,7 @@ void Gdt::SetupProc() {
   gdt_desc[10] = tss_vaddr >> 32;
 
   Tss *tss = reinterpret_cast<Tss *>(tss_vaddr);
-  int cpuid = cpu_ctrl->GetId();
+  CpuId cpuid = cpu_ctrl->GetCpuId();
   
   virt_addr rsp0 = KernelStackCtrl::GetCtrl().AllocIntStack(cpuid);
   tss->rsp0l = rsp0;

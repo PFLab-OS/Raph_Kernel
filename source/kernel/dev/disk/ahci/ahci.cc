@@ -2874,8 +2874,7 @@ AhciChannel *AhciChannel::Init(AhciCtrl *ctrl) {
   channel->InitBsdDevice(channel, sizeof(struct ahci_channel));
   ClassFunction<AhciChannel> func;
   func.Init(channel, &AhciChannel::Handle, nullptr);
-  // TODO: cpuid
-  channel->devq.SetFunction(1, func);
+  channel->devq.SetFunction(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), func);
   return channel;
 }
 

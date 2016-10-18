@@ -1,4 +1,4 @@
-OBJS = pci.o nic.o disk.o fs.o netdev.o eth.o keyboard.o
+OBJS = pci.o nic.o netdev.o disk.o fs.o keyboard.o
 
 DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))
 

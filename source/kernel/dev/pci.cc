@@ -24,6 +24,7 @@
 #include <mem/physmem.h>
 #include <global.h>
 #include <tty.h>
+#include <cpu.h>
 #include "pci.h"
 
 #include <dev/nic/intel/em/em.h>
@@ -31,6 +32,7 @@
 #include <dev/disk/ahci/ahci-raph.h>
 
 void PciCtrl::_Init() {
+  _cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority);
   _mcfg = acpi_ctrl->GetMCFG();
   if (_mcfg == nullptr) {
     gtty->Cprintf("[Pci] error: could not find MCFG table.\n");
@@ -116,6 +118,27 @@ void PciCtrl::SetMsi(uint8_t bus, uint8_t device, uint8_t func, uint64_t addr, u
     WriteReg<uint16_t>(bus, device, func, offset + kMsiCapReg32MsgData, static_cast<uint16_t>(data));
   }
   WriteReg<uint16_t>(bus, device, func, offset + kMsiCapRegControl, control | kMsiCapRegControlMsiEnableFlag);
+}
+
+void PciCtrl::RegisterLegacyIntHandler(int irq, DevPci *device) {
+  Locker lock(_irq_container_lock);
+  IrqContainer *ic = _irq_container;
+  while(ic->next != nullptr) {
+    IrqContainer *nic = ic->next;
+    if (nic->irq == irq) {
+      IntHandler *ih = nic->inthandler;
+      while(ih->next != nullptr) {
+        ih = ih->next;
+      }
+      ih->Add(device);
+      return;
+    } 
+    ic = nic;
+  }
+  int vector = idt->SetIntCallback(_cpuid, LegacyIntHandler, reinterpret_cast<void *>(this));
+  apic_ctrl->SetupIoInt(irq, apic_ctrl->GetApicIdFromCpuId(_cpuid), vector);
+  ic->Add(irq, vector);
+  ic->next->inthandler->Add(device);
 }
 
 void PciCtrl::IrqContainer::Handle() {

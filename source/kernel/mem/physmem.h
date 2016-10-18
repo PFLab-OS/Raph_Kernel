@@ -27,7 +27,7 @@
 #include <assert.h>
 #include <spinlock.h>
 #include <allocator.h>
-#include "kvirtmem.h"
+#include <mem/virtmem.h>
 
 typedef uint64_t phys_addr;
 

@@ -121,5 +121,4 @@ static inline int if_setdev(if_t ifp, void *dev) {
   return 0;
 }
 
-
 #endif /* _FREEBSD_NET_IF_VAR_H_ */

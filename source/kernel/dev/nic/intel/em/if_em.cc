@@ -6293,8 +6293,6 @@ void em_init(struct adapter *);
 int em_poll(if_t ifp);
 void em_update_link_status(struct adapter *adapter);
 
-extern BsdEthernet *eth;
-
 int E1000::DevMethodBusProbe() {
   return em_probe(this);
 }
@@ -6304,7 +6302,6 @@ int E1000::DevMethodBusAttach() {
   em_init(reinterpret_cast<struct adapter *>(softc));
   _bsd_eth.SetupNetInterface();
   _bsd_eth.SetHandleMethod(E1000BsdEthernet::HandleMethod::kPolling);
-  eth = &_bsd_eth;
   return rval;
 }
 
@@ -6347,7 +6344,8 @@ void E1000::E1000BsdEthernet::ChangeHandleMethodToPolling() {
   Function func;
   func.Init(PollingHandler, reinterpret_cast<void *>(&GetMasterClass()));
   _polling.Init(func);
-  _polling.Register(0);
+  extern CpuId network_cpu;
+  _polling.Register(network_cpu);
   
   struct adapter *adapter = reinterpret_cast<struct adapter *>(GetMasterClass().softc);
   if_t ifp = adapter->ifp;

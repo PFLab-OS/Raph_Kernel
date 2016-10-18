@@ -75,8 +75,7 @@ public:
     IntContainer() {
       Function func;
       func.Init(HandleSub, reinterpret_cast<void *>(this));
-      // TODO cpuid
-      _ctask.SetFunc(1, func);
+      _ctask.SetFunc(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), func);
     }
     void Handle() {
       if (_filter != nullptr) {
@@ -146,8 +145,7 @@ public:
       args[i] = reinterpret_cast<void *>(_icontainer_list + i);
     }
     _is_legacy_interrupt_enable = false;
-    // TODO cpuid
-    int cpuid = 1;
+    CpuId cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority);
     int vector = idt->SetIntCallback(cpuid, callbacks, args, count);
     _pci.SetMsi(cpuid, vector);
   }

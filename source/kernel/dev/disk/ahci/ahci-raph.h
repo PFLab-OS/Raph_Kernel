@@ -176,12 +176,12 @@ public:
   uint32_t GetLogicalSectorNum() {
     if (SupportAddress48()) {
       return static_cast<uint64_t>(ident_data.lba_size48_1) |
-        static_cast<uint64_t>(ident_data.lba_size48_2 << 16) |
-        static_cast<uint64_t>(ident_data.lba_size48_3 << 32) |
-        static_cast<uint64_t>(ident_data.lba_size48_4 << 48);
+        (static_cast<uint64_t>(ident_data.lba_size48_2) << 16) |
+        (static_cast<uint64_t>(ident_data.lba_size48_3) << 32) |
+        (static_cast<uint64_t>(ident_data.lba_size48_4) << 48);
     } else {
       return static_cast<uint32_t>(ident_data.lba_size_1) |
-        static_cast<uint32_t>(ident_data.lba_size_2 << 16);
+        (static_cast<uint32_t>(ident_data.lba_size_2) << 16);
     }
   }
 private:

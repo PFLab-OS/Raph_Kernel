@@ -32,6 +32,7 @@
 #include <mem/virtmem.h>
 #include <mem/paging.h>
 #include <queue.h>
+#include <_cpu.h>
 
 class KernelStackCtrl;
 class ThreadId {
@@ -55,13 +56,13 @@ public:
     kassert(sinfo->IsValidMagic());
     tid._tid = sinfo->tid;
   }
-  static int GetCpuId() {
+  static CpuId GetCpuId() {
     StackInfo *sinfo = GetCurrentStackInfoPtr();
     kassert(sinfo->IsValidMagic());
     return sinfo->cpuid;
   }
-  virt_addr AllocIntStack(int cpuid);
-  virt_addr AllocThreadStack(int cpuid);
+  virt_addr AllocIntStack(CpuId cpuid);
+  virt_addr AllocThreadStack(CpuId cpuid);
   void FreeThreadStack(virt_addr addr);
   void CopyThreadStackFromCurrent(virt_addr addr);
   static const int kStackSize = PagingCtrl::kPageSize * 4;
@@ -70,7 +71,7 @@ private:
     uint64_t magic;
     uint64_t flag;
     uint64_t tid;
-    uint64_t cpuid;
+    CpuId cpuid;
     bool IsValidMagic() {
       return magic == kMagic;
     }

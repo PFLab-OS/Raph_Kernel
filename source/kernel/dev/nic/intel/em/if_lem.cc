@@ -4990,8 +4990,6 @@ lem_get_counter(if_t ifp, ift_counter cnt)
 
 #include <stdlib.h>
 
-extern BsdEthernet *eth;
-
 int lE1000::DevMethodBusProbe() {
   return lem_probe(this);
 }
@@ -5001,7 +4999,6 @@ int lE1000::DevMethodBusAttach() {
   lem_init(reinterpret_cast<struct adapter *>(softc));
   _bsd_eth.SetupNetInterface();
   // _bsd_eth.SetHandleMethod(lE1000BsdEthernet::HandleMethod::kPolling);
-  eth = &_bsd_eth;
   return rval;
 }
 
@@ -5044,7 +5041,8 @@ void lE1000::lE1000BsdEthernet::ChangeHandleMethodToPolling() {
   Function func;
   func.Init(PollingHandler, reinterpret_cast<void *>(&GetMasterClass()));
   _polling.Init(func);
-  _polling.Register(0);
+  extern CpuId network_cpu;
+  _polling.Register(network_cpu);
   
   struct adapter *adapter = reinterpret_cast<struct adapter *>(GetMasterClass().softc);
   if_t ifp = adapter->ifp;

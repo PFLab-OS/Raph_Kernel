@@ -27,6 +27,7 @@
 #include <timer.h>
 #include <global.h>
 #include <idt.h>
+#include <cpu.h>
 #include <mem/kstack.h>
 
 extern "C" void entryothers();
@@ -83,7 +84,8 @@ void ApicCtrl::StartAPs() {
       continue;
     }
     _started = false;
-    *stack_of_others = KernelStackCtrl::GetCtrl().AllocThreadStack(i);
+    CpuId cpuid(_lapic.GetCpuIdFromApicId(i));
+    *stack_of_others = KernelStackCtrl::GetCtrl().AllocThreadStack(cpuid);
     _lapic.Start(_lapic._apicIds[i], reinterpret_cast<uint64_t>(entryothers));
     while(!_started) {}
   }
@@ -116,7 +118,7 @@ void ApicCtrl::Lapic::Setup() {
   _ctrlAddr[kRegLvtErr] = kRegLvtMask | Idt::ReservedIntVector::kError;
 
   kassert(idt != nullptr);
-  idt->SetExceptionCallback(GetApicId(), Idt::ReservedIntVector::kIpi, IpiCallback, nullptr);
+  idt->SetExceptionCallback(cpu_ctrl->GetCpuId(), Idt::ReservedIntVector::kIpi, IpiCallback, nullptr);
 }
 
 void ApicCtrl::Lapic::Start(uint8_t apicId, uint64_t entryPoint) {
@@ -170,7 +172,7 @@ void ApicCtrl::Lapic::SetupTimer(int interval) {
   kassert(base_cnt > 0);
 
   kassert(idt != nullptr);
-  int irq = idt->SetIntCallback(GetApicId(), TmrCallback, nullptr);
+  int irq = idt->SetIntCallback(cpu_ctrl->GetCpuId(), TmrCallback, nullptr);
   _ctrlAddr[kRegTimerInitCnt] = base_cnt;
       
   _ctrlAddr[kRegLvtTimer] = kRegLvtMask | kRegTimerPeriodic | irq;
