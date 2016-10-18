@@ -94,7 +94,7 @@ void ApicCtrl::StartAPs() {
 }
 
 void ApicCtrl::PicSpuriousCallback(Regs *rs, void *arg) {
-  gtty->CprintfRaw("[APIC] info: spurious 8259A interrupt (IRQ7)");
+  gtty->CprintfRaw("[APIC] info: spurious 8259A interrupt (IRQ7)\n");
 }
 
 

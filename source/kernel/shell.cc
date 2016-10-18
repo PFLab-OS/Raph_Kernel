@@ -46,7 +46,7 @@ void Shell::Register(const char *name, void (*func)(int argc, const char *argv[]
 
 void Shell::Exec(const char *name,int argc, const char* argv[]) {
   for (int i = 0; i < kBufSize; i++) {
-    if (strncmp(name, _name_func_mapping[i].name, strlen(name)) == 0) {
+    if (strncmp(name, _name_func_mapping[i].name, strlen(_name_func_mapping[i].name)) == 0) {
       _name_func_mapping[i].func(argc, argv);
       return;
     }
@@ -79,19 +79,19 @@ void Shell::Liner::Tokenize() {
     if (_command[i] == '\0') return;
     if (inToken) {
       if (_command[i] == ' ') {
-	_command[i] = '\0';
-	inToken = false;
+        _command[i] = '\0';
+        inToken = false;
       }
     } else {
       if (_command[i] == ' ') {
-	_command[i] = '\0';
+        _command[i] = '\0';
       } else {
-	if (_argc < kArgumentMax) {
-	  _arguments[_argc] = _command + i;
-	  _argc++;
-	  _arguments[_argc] = nullptr;
-	}
-	inToken = true;
+        if (_argc < kArgumentMax) {
+          _arguments[_argc] = _command + i;
+          _argc++;
+          _arguments[_argc] = nullptr;
+        }
+        inToken = true;
       }
     }
   }
