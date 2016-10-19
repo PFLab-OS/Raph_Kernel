@@ -165,6 +165,9 @@ void ApicCtrl::PicSpuriousCallback(Regs *rs, void *arg) {
 
 
 void ApicCtrl::Lapic::Setup() {
+  kassert(cpu_ctrl->GetCpuId().GetRawId() == GetCpuId());
+  kassert(cpu_ctrl->GetCpuId().GetApicId() == GetApicId());
+  
   uint32_t msr_high, msr_low;
   // check if local apic enabled
   // see intel64 manual vol3 10.4.3 (Enabling or Disabling the Local APIC)
@@ -240,6 +243,23 @@ void ApicCtrl::Lapic::SetupTimer(int interval) {
 
 void ApicCtrl::Lapic::SendIpi(uint8_t destid) {
   WriteIcr(destid, kDeliverModeFixed | kRegIcrTriggerModeLevel | kRegIcrDestShorthandNoShortHand | Idt::ReservedIntVector::kIpi);
+}
+
+void ApicCtrl::LapicX2::SetupAp() {
+  // see intel64 manual vol3 10.12.1 (Detecting and Enabling x2APIC Mode)
+  uint32_t feature;
+  get_cpuid(1, 0, "c", feature);
+  if ((feature & (1 << 21)) != 0) {
+    // enable x2APIC
+    uint64_t msr = x86::rdmsr(Lapic::kIa32ApicBaseMsr);
+    if (!(msr & Lapic::kApicGlobalEnableFlag)) {
+      kernel_panic("ApicCtrl", "unable to initialize local APIC");
+    }
+    msr |= Lapic::kApicX2ApicEnableFlag;
+    x86::wrmsr(Lapic::kIa32ApicBaseMsr, msr);
+  } else {
+    kernel_panic("ApicCtrl", "unable to initialize local APIC");
+  }
 }
 
 void ApicCtrl::Ioapic::Setup() {

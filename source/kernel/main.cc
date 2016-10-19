@@ -393,8 +393,6 @@ extern "C" int main() {
 
 extern "C" int main_of_others() {
   // according to mp spec B.3, system should switch over to Symmetric I/O mode
-  kassert(cpu_ctrl->GetCpuId().GetRawId() == apic_ctrl->GetCpuId());
-  kassert(cpu_ctrl->GetCpuId().GetApicId() == apic_ctrl->GetApicId());
   
   apic_ctrl->BootAP();
 

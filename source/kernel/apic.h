@@ -99,6 +99,7 @@ public:
 
   void BootAP() {
     __atomic_store_n(&_started, true, __ATOMIC_RELEASE);
+    _lapic->SetupAp();
     _lapic->Setup();
   }
   int GetCpuIdFromApicId(uint32_t apic_id) {
@@ -194,6 +195,7 @@ private:
     }
     // setup local APIC respond to specified index
     void Setup();
+    virtual void SetupAp() = 0;
     int GetCpuId() {
       if (_apic_info == nullptr) {
         return 0;
@@ -311,6 +313,8 @@ private:
     }
     virtual ~LapicX() {
     }
+    virtual void SetupAp() override {
+    }
     virtual void WriteReg(RegisterOffset offset, uint32_t data) override {
       _ctrl_addr[(static_cast<int>(offset) * 0x10) / sizeof(uint32_t)] = data;
     }
@@ -339,6 +343,7 @@ private:
     }
     virtual ~LapicX2() {
     }
+    virtual void SetupAp() override;
     virtual void WriteReg(RegisterOffset offset, uint32_t data) override {
       x86::wrmsr(kMsrAddr + static_cast<int>(offset), data);
     }
