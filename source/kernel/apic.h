@@ -105,7 +105,7 @@ public:
   int GetCpuIdFromApicId(uint32_t apic_id) {
     return _lapic->GetCpuIdFromApicId(apic_id);
   }
-  volatile uint8_t GetApicIdFromCpuId(CpuId cpuid) {
+  volatile uint32_t GetApicIdFromCpuId(CpuId cpuid) {
     return _lapic->GetApicIdFromCpuId(cpuid);
   }
   volatile int GetCpuId() {
@@ -114,7 +114,7 @@ public:
     }
     return _lapic->GetCpuId();
   }
-  volatile uint8_t GetApicId() {
+  volatile uint32_t GetApicId() {
     return _lapic->GetApicId();
   }
   volatile bool IsBootupAll() {
@@ -146,7 +146,7 @@ public:
     _lapic->SendEoi();
   }
 
-  void SendIpi(uint8_t destid) {
+  void SendIpi(uint32_t destid) {
     _lapic->SendIpi(destid);
   }
 
@@ -210,18 +210,18 @@ private:
       }
       return 0;
     }
-    uint8_t GetApicIdFromCpuId(CpuId cpuid) {
+    uint32_t GetApicIdFromCpuId(CpuId cpuid) {
       int raw_cpuid = cpuid.GetRawId();
       kassert(raw_cpuid >= 0 && raw_cpuid < _ncpu);
       return _apic_info[raw_cpuid].id;
     }
     // start local APIC respond to specified index with apicId
-    void Start(uint8_t apicId, uint64_t entryPoint);
+    void Start(uint32_t apicId, uint64_t entryPoint);
     
     int _ncpu = 0;
     
     struct ApicInfo {
-      uint8_t id;
+      uint32_t id;
     } *_apic_info = nullptr;    
 
     void SendEoi() {
@@ -242,7 +242,7 @@ private:
     bool IsIntEnable() {
       return (ReadReg(RegisterOffset::kSvr) | kRegSvrApicEnableFlag) != 0;
     }
-    void SendIpi(uint8_t destid);
+    void SendIpi(uint32_t destid);
     void SetupTimer(int interval);
     void StartTimer() {
       WriteReg(RegisterOffset::kTimerInitCnt, ReadReg(RegisterOffset::kTimerInitCnt));
@@ -264,7 +264,7 @@ private:
     virtual uint32_t ReadReg(RegisterOffset offset) = 0;
     // write to 64-bit value to local APIC ICR (Interrupt Command Register)
     virtual void WriteIcr(uint32_t dest, uint32_t flags) = 0;
-    virtual volatile uint8_t GetApicId() = 0;
+    virtual volatile uint32_t GetApicId() = 0;
   protected:
 
     // see intel64 manual vol3 Figure 10-10 (Divide Configuration Register)
@@ -330,7 +330,7 @@ private:
       WriteReg(RegisterOffset::kIcrLow, ReadReg(RegisterOffset::kIcrLow) | (flags & kDeliverModeInit) ? 0 : kRegIcrLevelAssert);
       GetApicId();
     }
-    virtual volatile uint8_t GetApicId() override {
+    virtual volatile uint32_t GetApicId() override {
       return ReadReg(RegisterOffset::kId) >> 24;
     }
     static const size_t kMmioBaseAddr = 0xFEE00000;
@@ -354,7 +354,7 @@ private:
       flags |= (flags & kDeliverModeInit) ? 0 : kRegIcrLevelAssert;
       x86::wrmsr(kMsrAddr + static_cast<int>(RegisterOffset::kIcrLow), (static_cast<uint64_t>(dest) << 32) | flags);
     }
-    virtual volatile uint8_t GetApicId() override {
+    virtual volatile uint32_t GetApicId() override {
       return ReadReg(RegisterOffset::kId);
     }
   private:
@@ -372,22 +372,12 @@ private:
       _reg[kData] = data;
     }
     void SetReg(uint32_t *reg) {
-      kassert(_reg == nullptr);
-      _reg = reg;
-    }
-    bool SetupInt(uint32_t irq, uint8_t lapicid, uint8_t vector) {
-      kassert(irq <= this->GetMaxIntr());
-      if ((Read(kRegRedTbl + 2 * irq) | kRegRedTblFlagMask) == 0) {
-        return false;
+      // kassert(_reg == nullptr);
+      if (_reg == nullptr) {
+        _reg = reg;
       }
-      Write(kRegRedTbl + 2 * irq + 1, lapicid << kRegRedTblOffsetDest);
-      Write(kRegRedTbl + 2 * irq,
-            kRegRedTblFlagValueDeliveryLow |
-            kRegRedTblFlagDestModePhys |
-            kRegRedTblFlagTriggerModeEdge |
-            vector);
-      return true;
     }
+    bool SetupInt(uint32_t irq, uint8_t lapicid, uint8_t vector);
   private:
     uint32_t GetMaxIntr() {
       // see IOAPIC manual 3.2.2 (IOAPIC Version Register)

@@ -194,7 +194,7 @@ void ApicCtrl::Lapic::Setup() {
   idt->SetExceptionCallback(cpu_ctrl->GetCpuId(), Idt::ReservedIntVector::k8259Spurious2, PicSpuriousCallback, nullptr);
 }
 
-void ApicCtrl::Lapic::Start(uint8_t apicId, uint64_t entryPoint) {
+void ApicCtrl::Lapic::Start(uint32_t apicId, uint64_t entryPoint) {
   // set AP shutdown handling
   // see mp spec Appendix B.5
   uint16_t *warmResetVector;
@@ -241,7 +241,7 @@ void ApicCtrl::Lapic::SetupTimer(int interval) {
   WriteReg(RegisterOffset::kLvtTimer, kRegLvtMask | kRegTimerPeriodic | irq);
 }
 
-void ApicCtrl::Lapic::SendIpi(uint8_t destid) {
+void ApicCtrl::Lapic::SendIpi(uint32_t destid) {
   WriteIcr(destid, kDeliverModeFixed | kRegIcrTriggerModeLevel | kRegIcrDestShorthandNoShortHand | Idt::ReservedIntVector::kIpi);
 }
 
@@ -293,4 +293,18 @@ void ApicCtrl::Ioapic::Setup() {
     this->Write(kRegRedTbl + 2 * i, kRegRedTblFlagMask);
     this->Write(kRegRedTbl + 2 * i + 1, 0);
   }
+}
+
+bool ApicCtrl::Ioapic::SetupInt(uint32_t irq, uint8_t lapicid, uint8_t vector) {
+  kassert(irq <= this->GetMaxIntr());
+  if ((Read(kRegRedTbl + 2 * irq) | kRegRedTblFlagMask) == 0) {
+    return false;
+  }
+  Write(kRegRedTbl + 2 * irq + 1, lapicid << kRegRedTblOffsetDest);
+  Write(kRegRedTbl + 2 * irq,
+        kRegRedTblFlagValueDeliveryLow |
+        kRegRedTblFlagDestModePhys |
+        kRegRedTblFlagTriggerModeEdge |
+        vector);
+  return true;
 }
