@@ -73,6 +73,29 @@ struct MADTStIOAPIC {
   uint32_t ioapicAddr;
   uint32_t glblIntBase;
 } __attribute__ ((packed));
+struct Srat {
+  ACPISDTHeader header;
+  uint32_t reserved1;
+  uint64_t reserved2;
+  uint8_t table[0];
+} __attribute__ ((packed));
+
+enum class SratStructType : uint8_t {
+  kLocalApicAffinity = 0,
+  kMemoryAffinity = 1,
+  kLocalX2ApicAffinity = 2,
+};
+
+struct SratStruct {
+  SratStructType type;
+  uint8_t length;
+} __attribute__ ((packed));
+
+struct SratStructLapic {
+  SratStruct st;
+  
+} __attribute__ ((packed));
+
 #endif // __UNIT_TEST__
 
 class Regs;
