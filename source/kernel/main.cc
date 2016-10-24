@@ -449,7 +449,11 @@ extern "C" int main_of_others() {
 
 extern "C" void _kernel_panic(const char *class_name, const char *err_str) {
   if (gtty != nullptr) {
-    gtty->CprintfRaw("\n[%s] error: %s\n",class_name, err_str);
+    gtty->CprintfRaw("\n!!!! Kernel Panic !!!!\n");
+    gtty->CprintfRaw("[%s] error: %s\n",class_name, err_str);
+    gtty->CprintfRaw("\n"); 
+    gtty->CprintfRaw(">> debugging information >>\n");
+    gtty->CprintfRaw("cpuid: %d\n", cpu_ctrl->GetCpuId().GetRawId());
     size_t *rbp;
     asm volatile("movq %%rbp, %0":"=r"(rbp));
     for (int i = 0; i < 3; i++) {
