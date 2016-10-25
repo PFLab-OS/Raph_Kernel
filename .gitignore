@@ -57,7 +57,7 @@ hoge.c
 # Makefile
 *.d
 
-source/kernel/dev/pciid.cc
+source/kernel/dev/pciid_table.cc
 source/kernel/dev/pci.ids.formatted
 
 GPATH

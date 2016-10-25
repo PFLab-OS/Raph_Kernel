@@ -39,7 +39,7 @@
 #include <dev/keyboard.h>
 #include <dev/pci.h>
 #include <dev/vga.h>
-//#include <dev/pciid.h>
+#include <dev/pciid.h>
 
 #include <dev/eth.h>
 #include <net/arp.h>
@@ -115,8 +115,8 @@ void lspci(int argc, const char* argv[]){
     return;
   }
 
-  //  PciTable table;
-  //  table.Init();
+  PciData::Table table;
+  table.Init();
 
   for (int i = 0; i * sizeof(MCFGSt) < mcfg->header.Length - sizeof(ACPISDTHeader); i++) {
     if (i == 1) {
@@ -132,7 +132,7 @@ void lspci(int argc, const char* argv[]){
 	uint16_t did = pci_ctrl->ReadReg<uint16_t>(j, k, 0, PciCtrl::kDeviceIDReg);
 	uint16_t svid = pci_ctrl->ReadReg<uint16_t>(j, k, 0, PciCtrl::kSubsystemVendorIdReg);
 	uint16_t ssid = pci_ctrl->ReadReg<uint16_t>(j, k, 0, PciCtrl::kSubsystemIdReg);
-	table.SearchDevice(vid, did, svid, ssid);
+	table.Search(vid, did, svid, ssid);
       }
     }
   }
@@ -275,17 +275,17 @@ extern "C" int main() {
   cpu_ctrl = new (&_cpu_ctrl) CpuCtrl;
 
   gdt = new (&_gdt) Gdt;
-  
+
   idt = new (&_idt) Idt;
 
   virtmem_ctrl = new (&_virtmem_ctrl) KVirtmemCtrl;
 
   physmem_ctrl = new (&_physmem_ctrl) PhysmemCtrl;
-  
+
   paging_ctrl = new (&_paging_ctrl) PagingCtrl;
 
   task_ctrl = new (&_task_ctrl) TaskCtrl;
-  
+
   timer = new (&_htimer) Hpet;
 
   gtty = new (&_vga) Vga;
@@ -324,7 +324,7 @@ extern "C" int main() {
   task_ctrl->Setup();
 
   idt->SetupGeneric();
-  
+
   apic_ctrl->BootBSP();
 
   gdt->SetupProc();
@@ -332,7 +332,7 @@ extern "C" int main() {
   idt->SetupProc();
 
   pci_ctrl = new (&_acpica_pci_ctrl) AcpicaPciCtrl;
-  
+
   acpi_ctrl->SetupAcpica();
 
   InitDevices<PciCtrl, Device>();

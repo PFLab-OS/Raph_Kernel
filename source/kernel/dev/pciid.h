@@ -1,61 +1,63 @@
-class PciBase {
- public:
- PciBase(const int a, const char *s)
-   :id(a),
-    name(s){
-  }
-  ~PciBase() = default;
-  const int id;
-  const char *name;
-};
+namespace PciData {
+  class Base {
+  public:
+  Base(const int a, const char *s)
+    : id(a),
+      name(s){
+      }
+    ~Base() = default;
+    const int id;
+    const char *name;
+  };
+  
+  template<class T>
+    class List : public Base {
+  public:
+  List(const int a, const char *s)
+    : Base(a, s),
+      next(nullptr) {
+      }
+    ~List() = default;
+    T *next;
+  };
 
-template<class T>
-class PciList:public PciBase {
- public:
-  PciList(const int a, const char *s)
-    :PciBase(a, s),
-    next(nullptr) {
-  }
-  ~PciList() = default;
-  T *next;
-};
+  class Subsystem : public List<Subsystem> {
+  public:
+  Subsystem(const int a,const int b, const char *s)
+    : List(a, s),
+      id2(b) {
+      }
+    ~Subsystem() = default;
+    const int id2; //id:subvendorID, id2:subdeviceID
+  };
 
-class PciSubsystem:public PciList<PciSubsystem> {
- public:
-  PciSubsystem(const int a,const  int b, const char *s)
-    :PciList(a, s),
-    id2(b) {
-  }
-  ~PciSubsystem() = default;
-  const int id2; //id:subvendorID, id2:subdeviceID
-};
+  class Device : public List<Device> {
+  public:
+  Device(const int a, const char *s)
+    : List(a, s),
+      subsystem(nullptr){
+      }
+    ~Device() = default;
+    Subsystem *subsystem;
+  };
 
-class PciDevice : public PciList<PciDevice> {
- public:
-  PciDevice(const int a, const char *s)
-    :PciList(a, s),
-    subsystem(nullptr){
-  }
-  ~PciDevice() = default;
-  PciSubsystem *subsystem;
-};
+  class Vendor : public List<Vendor> {
+  public:
+  Vendor(const int a, const char *s)
+    : List(a, s),
+      device(nullptr){
+      }
+    ~Vendor() = default;
+    Device *device;
+  };
 
-class PciVendor:public PciList<PciVendor> {
- public:
-  PciVendor(const int a, const char *s)
-    :PciList(a, s),
-    device(nullptr){
-  }
-  ~PciVendor() = default;
-  PciDevice *device;
-};
-
-class PciTable {
- public:
-  PciTable() = default;
-  ~PciTable();
-  void SearchDevice(int, int, int, int);
-  void Init();
- private:
-  PciVendor *vendor;
-};
+  class Table {
+  public:
+    Table() = default;
+    ~Table();
+    void Search(int, int, int, int);
+    void Init();
+  private:
+    Vendor *vendor;
+  };
+}
