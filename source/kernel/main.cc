@@ -323,12 +323,14 @@ extern "C" int main() {
   apic_ctrl->Setup();
 
   cpu_ctrl->Init();
-
+  
   CpuId network_cpu = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kHighPerformance);
-;
+  ;
   CpuId pstack_cpu = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kHighPerformance);
-;
-
+  ;
+  
+  physmem_ctrl->Init();
+  
   rnd_next = timer->ReadMainCnt();
 
   task_ctrl->Setup();
@@ -456,7 +458,7 @@ extern "C" void _kernel_panic(const char *class_name, const char *err_str) {
     gtty->CprintfRaw("cpuid: %d\n", cpu_ctrl->GetCpuId().GetRawId());
     size_t *rbp;
     asm volatile("movq %%rbp, %0":"=r"(rbp));
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 10; i++) {
       gtty->CprintfRaw("backtrace(%d): rip:%llx,\n", i, rbp[1]);
       rbp = reinterpret_cast<size_t *>(rbp[0]);
     }

@@ -22,6 +22,7 @@
 
 #include "physmem.h"
 #include "paging.h"
+#include <tty.h>
 
 extern int *phys_memory_end;
 
@@ -51,6 +52,43 @@ PhysmemCtrl::PhysmemCtrl() {
 }
 
 #endif // __UNIT_TEST__
+
+void PhysmemCtrl::Init() {
+  if (_srat != nullptr) {
+    for(uint32_t offset = 0; offset < _srat->header.Length - sizeof(Srat);) {
+      virt_addr ptr = ptr2virtaddr(_srat->table) + offset;
+      SratStruct *srat_st = reinterpret_cast<SratStruct *>(ptr);
+      switch (srat_st->type) {
+      case SratStructType::kLocalApicAffinity:
+        {
+          SratStructLapic *srat_st_lapic = reinterpret_cast<SratStructLapic *>(ptr);
+          // gtty->CprintfRaw("(APIC(%d), domain:%d)", srat_st_lapic->lapic_id, (srat_st_lapic->proximity_domain_high << 24) | (srat_st_lapic->proximity_domain_middle << 16) | srat_st_lapic->proximity_domain_low);
+        }
+        break;
+      case SratStructType::kLocalX2ApicAffinity:
+        {
+          SratStructLx2apic *srat_st_lapic = reinterpret_cast<SratStructLx2apic *>(ptr);
+          // gtty->CprintfRaw("(APIC(%d), domain:%d)", srat_st_lapic->lapic_id, srat_st_lapic->proximity_domain);
+        }
+        break;
+      case SratStructType::kMemoryAffinity:
+        {
+          SratStructMemAffinity *srat_st_mem = reinterpret_cast<SratStructMemAffinity *>(ptr);
+          if ((srat_st_mem->flags & SratStructMemAffinity::kFlagEnabled) != 0) {
+            gtty->CprintfRaw("(Mem domain:%d, base:%llx, length:%llx)", srat_st_mem->proximity_domain, srat_st_mem->base_addr, srat_st_mem->length);
+          }
+        }
+        break;
+      default:
+        break;
+      }
+      offset += srat_st->length;
+    }
+  }
+  while(true) {
+    asm volatile("cli;hlt;");
+  }
+}
 
 void PhysmemCtrl::Alloc(PhysAddr &paddr, size_t size) {
   kassert(size > 0);
