@@ -211,7 +211,7 @@ private:
   }
   virtual int DevMethodBusReleaseResource(int type, int rid, struct resource *r) override {
     // TODO
-    rman_release_resource(r);
+    return rman_release_resource(r);
   }
   void SetupLegacyIntContainers() {
     _icontainer_list = new IntContainer[1];

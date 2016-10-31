@@ -2881,8 +2881,6 @@ AhciChannel *AhciChannel::Init(AhciCtrl *ctrl) {
 int AhciChannel::DevMethodBusProbe() {
   return ahci_ch_probe(this);
 }
-#include <tty.h>
-#include <global.h>
 
 int AhciChannel::DevMethodBusAttach() {
   int i = ahci_ch_attach(this);

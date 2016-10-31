@@ -20,7 +20,6 @@
  * 
  */
 
-#include <tty.h>
 #include <assert.h>
 #include <mem/virtmem.h>
 #include <raph_acpi.h>
