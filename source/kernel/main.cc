@@ -270,6 +270,23 @@ void bench(int argc, const char* argv[]) {
   }
 }
 
+static void show(int argc, const char *argv[]) {
+  if (argc >= 2) {
+    gtty->Cprintf("invalid argument.\n");
+    return;
+  }
+  if (strcmp(argv[1], "module") == 0) {
+    if (argc != 2) {
+      gtty->Cprintf("invalid argument.\n");
+      return;
+    }
+    multiboot_ctrl->ShowModuleInfo();
+  } else {
+    gtty->Cprintf("invalid argument.\n");
+    return;
+  }
+}
+
 extern "C" int main() {
 
   multiboot_ctrl = new (&_multiboot_ctrl) MultibootCtrl;
@@ -385,6 +402,7 @@ extern "C" int main() {
   shell->Register("reset", reset);
   shell->Register("bench", bench);
   shell->Register("lspci", lspci);
+  shell->Register("show", show);
 
   task_ctrl->Run();
 
