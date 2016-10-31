@@ -129,19 +129,6 @@ public:
     kassert(vector >= 32);
     return _ioapic.SetupInt(irq, lapicid, vector);
   }
-  void EnableInt() {
-    _lapic->EnableInt();
-  }
-  // 割り込みを無効化した上で呼び出す事
-  // 戻り値：
-  // true 割り込みが有効化されているのを無効化した
-  // false 元々無効化されていた
-  bool DisableInt() {
-    return _lapic->DisableInt();
-  }
-  void IsIntEnable() {
-    _lapic->IsIntEnable();
-  }
   void SendEoi() {
     _lapic->SendEoi();
   }
@@ -226,21 +213,6 @@ private:
 
     void SendEoi() {
       WriteReg(RegisterOffset::kEoi, 0);
-    }
-    void EnableInt() {
-      WriteReg(RegisterOffset::kSvr, ReadReg(RegisterOffset::kSvr) | kRegSvrApicEnableFlag);
-    }
-    bool DisableInt() {
-      //TODO 割り込みが無効化されている事を確認
-      if ((ReadReg(RegisterOffset::kSvr) & kRegSvrApicEnableFlag) == 0) {
-        return false;
-      } else {
-        WriteReg(RegisterOffset::kSvr, ReadReg(RegisterOffset::kSvr) & ~kRegSvrApicEnableFlag);
-        return true;
-      }
-    }
-    bool IsIntEnable() {
-      return (ReadReg(RegisterOffset::kSvr) | kRegSvrApicEnableFlag) != 0;
     }
     void SendIpi(uint32_t destid);
     void SetupTimer(int interval);
