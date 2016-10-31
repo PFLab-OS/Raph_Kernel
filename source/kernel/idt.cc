@@ -32,7 +32,7 @@
 namespace C {
 extern "C" void handle_int(Regs *rs) {
   //TODO 例外処理中のフラグを立て、IntSpinLock内では弾く
-  asm volatile("cli");
+  bool iflag = disable_interrupt();
   int cpuid = cpu_ctrl->GetCpuId().GetRawId();
   idt->_handling_cnt[cpuid]++;
   if (idt->_callback[cpuid][rs->n].callback == nullptr) {
@@ -51,7 +51,7 @@ extern "C" void handle_int(Regs *rs) {
     idt->_callback[cpuid][rs->n].callback(rs, idt->_callback[cpuid][rs->n].arg);
   }
   idt->_handling_cnt[cpuid]--;
-  asm volatile("sti");
+  enable_interrupt(iflag);
   //TODO 普通の割り込みの場合にまずい
   apic_ctrl->SendEoi();
 }
