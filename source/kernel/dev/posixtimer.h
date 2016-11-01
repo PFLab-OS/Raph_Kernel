@@ -20,41 +20,30 @@
  * 
  */
 
-#ifndef __RAPH_LIB_THREAD_H__
-#define __RAPH_LIB_THREAD_H__
+#ifndef __RAPH_LIB_POSIXTIMER_H__
+#define __RAPH_LIB_POSIXTIMER_H__
+
+#include <timer.h>
 
 #ifndef __KERNEL__
 
-#include <vector>
-#include <memory>
-#include <thread>
 #include <stdint.h>
-#include <cpu.h>
+#include <time.h>
 
-class PthreadCtrl : public CpuCtrlInterface {
+class PosixTimer : public Timer {
 public:
-  PthreadCtrl() : _thread_pool(0) {}
-  PthreadCtrl(int num_threads) : _cpu_nums(num_threads), _thread_pool(num_threads-1) {}
-  ~PthreadCtrl();
-  void Setup();
-  virtual volatile int GetId() override;
-  virtual int GetHowManyCpus() override {
-    return _cpu_nums;
+  virtual bool Setup() {
+    _cnt_clk_period = 1;
+    return true;
   }
-
-private:
-  static const uint8_t kMaxThreadsNumber = 128;
-
-  int _cpu_nums = 1;
-
-  typedef std::vector<std::unique_ptr<std::thread>> thread_pool_t;
-  thread_pool_t _thread_pool;
-
-  int _thread_ids[kMaxThreadsNumber];
-
-  int GetThreadId();
+  virtual volatile uint64_t ReadMainCnt() {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    uint64_t t = ts.tv_sec * 1000000000 + ts.tv_nsec;
+    return t;
+  }
 };
 
 #endif // !__KERNEL__
 
-#endif /* __RAPH_LIB_THREAD_H__ */
+#endif /* __RAPH_LIB_POSIXTIMER_H__ */

@@ -20,41 +20,23 @@
  * 
  */
 
-#ifndef __RAPH_LIB_THREAD_H__
-#define __RAPH_LIB_THREAD_H__
+#ifndef __RAPH_LIB_MEM_UVIRTMEM_H__
+#define __RAPH_LIB_MEM_UVIRTMEM_H__
 
 #ifndef __KERNEL__
 
-#include <vector>
-#include <memory>
-#include <thread>
+#include <stdlib.h>
 #include <stdint.h>
-#include <cpu.h>
+#include <mem/virtmem.h>
 
-class PthreadCtrl : public CpuCtrlInterface {
+class UVirtmemCtrl : public VirtmemCtrl {
 public:
-  PthreadCtrl() : _thread_pool(0) {}
-  PthreadCtrl(int num_threads) : _cpu_nums(num_threads), _thread_pool(num_threads-1) {}
-  ~PthreadCtrl();
-  void Setup();
-  virtual volatile int GetId() override;
-  virtual int GetHowManyCpus() override {
-    return _cpu_nums;
+  virtual virt_addr Alloc(size_t size) override;
+  virtual void Free(virt_addr addr) override;
+  virtual virt_addr Sbrk(int64_t increment) override {
+    abort();
   }
-
-private:
-  static const uint8_t kMaxThreadsNumber = 128;
-
-  int _cpu_nums = 1;
-
-  typedef std::vector<std::unique_ptr<std::thread>> thread_pool_t;
-  thread_pool_t _thread_pool;
-
-  int _thread_ids[kMaxThreadsNumber];
-
-  int GetThreadId();
 };
 
 #endif // !__KERNEL__
-
-#endif /* __RAPH_LIB_THREAD_H__ */
+#endif // __RAPH_LIB_MEM_UVIRTMEM_H__

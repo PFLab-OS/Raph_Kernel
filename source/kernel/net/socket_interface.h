@@ -20,41 +20,17 @@
  * 
  */
 
-#ifndef __RAPH_LIB_THREAD_H__
-#define __RAPH_LIB_THREAD_H__
+#ifndef __RAPH_LIB_NET_SOCKET_INTERFACE_H__
+#define __RAPH_LIB_NET_SOCKET_INTERFACE_H__
 
-#ifndef __KERNEL__
-
-#include <vector>
-#include <memory>
-#include <thread>
 #include <stdint.h>
-#include <cpu.h>
+#include <function.h>
 
-class PthreadCtrl : public CpuCtrlInterface {
+class SocketInterface {
 public:
-  PthreadCtrl() : _thread_pool(0) {}
-  PthreadCtrl(int num_threads) : _cpu_nums(num_threads), _thread_pool(num_threads-1) {}
-  ~PthreadCtrl();
-  void Setup();
-  virtual volatile int GetId() override;
-  virtual int GetHowManyCpus() override {
-    return _cpu_nums;
-  }
-
-private:
-  static const uint8_t kMaxThreadsNumber = 128;
-
-  int _cpu_nums = 1;
-
-  typedef std::vector<std::unique_ptr<std::thread>> thread_pool_t;
-  thread_pool_t _thread_pool;
-
-  int _thread_ids[kMaxThreadsNumber];
-
-  int GetThreadId();
+  virtual int32_t Open() = 0;
+  virtual int32_t Close() = 0;
+  virtual void SetReceiveCallback(int cpu_id, const Function &func) = 0;
 };
 
-#endif // !__KERNEL__
-
-#endif /* __RAPH_LIB_THREAD_H__ */
+#endif // __RAPH_LIB_NET_SOCKET_INTERFACE_H__
