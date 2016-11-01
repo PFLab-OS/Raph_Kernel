@@ -28,8 +28,8 @@
  * SUCH DAMAGE.
  */
 
-#ifndef _FREEBSD_MACHINE_RESOURCE_H_
-#define	_FREEBSD_MACHINE_RESOURCE_H_	1
+#ifndef _MACHINE_RESOURCE_H_
+#define	_MACHINE_RESOURCE_H_	1
 
 /*
  * Definitions of resource types for Intel Architecture machines
@@ -40,6 +40,8 @@
 #define	SYS_RES_DRQ	2	/* isa dma lines */
 #define	SYS_RES_MEMORY	3	/* i/o memory */
 #define	SYS_RES_IOPORT	4	/* i/o ports */
+#ifdef NEW_PCIB
 #define	PCI_RES_BUS	5	/* PCI bus numbers */
+#endif
 
-#endif /* !_FREEBSD_MACHINE_RESOURCE_H_ */
+#endif /* !_MACHINE_RESOURCE_H_ */

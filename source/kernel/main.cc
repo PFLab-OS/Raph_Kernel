@@ -34,6 +34,7 @@
 #include <timer.h>
 #include <tty.h>
 #include <shell.h>
+#include <mem/kstack.h>
 
 #include <dev/hpet.h>
 #include <dev/keyboard.h>
@@ -76,14 +77,20 @@ AcpicaPciCtrl _acpica_pci_ctrl;
 NetDevCtrl _netdev_ctrl;
 ArpTable _arp_table;
 
+CpuId network_cpu;
+CpuId pstack_cpu;
+
 static uint32_t rnd_next = 1;
 
-#include <freebsd/net/if_var.h>
-BsdDevEthernet *eth;
 uint64_t cnt;
 int64_t sum;
 static const int stime = 3000;
 int time, rtime;
+
+#include <dev/disk/ahci/ahci-raph.h>
+AhciChannel *g_channel = nullptr;
+#include <dev/fs/fat/fat.h>
+FatFs *fatfs;
 
 Callout tt1;
 Callout tt2;
@@ -210,7 +217,8 @@ void bench(int argc, const char* argv[]) {
         }
       }, nullptr);
     tt2.Init(func);
-    tt2.SetHandler(3, 10);
+    CpuId cpuid(3);
+    tt2.SetHandler(cpuid, 10);
   }
 
   if (bstate != BenchState::kRcv) {
@@ -231,7 +239,8 @@ void bench(int argc, const char* argv[]) {
         }
       }, nullptr);
     tt3.Init(func);
-    tt3.SetHandler(6, 1000*1000*3);
+    CpuId cpuid(6);
+    tt3.SetHandler(cpuid, 1000*1000*3);
   }
 
   static ArpSocket socket;
@@ -256,7 +265,8 @@ void bench(int argc, const char* argv[]) {
           }
         }
       }, nullptr);
-    socket.SetReceiveCallback(2, func);
+    CpuId cpuid(2);
+    socket.SetReceiveCallback(cpuid, func);
   }
 }
 
@@ -298,10 +308,9 @@ extern "C" int main() {
 
   paging_ctrl->MapAllPhysMemory();
 
-  PhysAddr paddr;
-  physmem_ctrl->Alloc(paddr, PagingCtrl::kPageSize * 3);
-  extern int kKernelEndAddr;
-  kassert(paging_ctrl->MapPhysAddrToVirtAddr(reinterpret_cast<virt_addr>(&kKernelEndAddr) - PagingCtrl::kPageSize * 5, paddr, PagingCtrl::kPageSize * 3, PDE_WRITE_BIT, PTE_WRITE_BIT | PTE_GLOBAL_BIT));
+  KernelStackCtrl::Init();
+
+  apic_ctrl->Init();
 
   acpi_ctrl->Setup();
 
@@ -311,12 +320,17 @@ extern "C" int main() {
     kernel_panic("timer", "HPET not supported.\n");
   }
 
-  // timer->Sertup()より後
   apic_ctrl->Setup();
+
+  cpu_ctrl->Init();
+
+  CpuId network_cpu = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kHighPerformance);
+;
+  CpuId pstack_cpu = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kHighPerformance);
+;
 
   rnd_next = timer->ReadMainCnt();
 
-  // apic_ctrl->Setup()より後
   task_ctrl->Setup();
 
   idt->SetupGeneric();
@@ -332,6 +346,12 @@ extern "C" int main() {
   acpi_ctrl->SetupAcpica();
 
   InitDevices<PciCtrl, Device>();
+
+  // 各コアは最低限の初期化ののち、TaskCtrlに制御が移さなければならない
+  // 特定のコアで専用の処理をさせたい場合は、TaskCtrlに登録したジョブとして
+  // 実行する事
+
+  apic_ctrl->StartAPs();
 
   gtty->Init();
   
@@ -354,25 +374,9 @@ extern "C" int main() {
   time = stime;
   rtime = 0;
 
-  extern int kKernelEndAddr;
-  // stackは16K
-  kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr)));
-  kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 1) + 1));
-  kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 2) + 1));
-  kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 3) + 1));
-  kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 4) + 1));
-  kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 5) + 1));
-  kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 6) + 1));
-  kassert(!paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - 4096 * 7));
-
-  // 各コアは最低限の初期化ののち、TaskCtrlに制御を移さなければならない
-  gtty->Cprintf("[boot cpu] info: #%d (apic id: %d) started.\n",
-    cpu_ctrl->GetCpuId(),
-    cpu_ctrl->GetCpuId().GetApicId());
-  // 特定のコアで専用の処理をさせたい場合は、TaskCtrlに登録したジョブとして
-  // 実行する事
-
-  apic_ctrl->StartAPs();
+  gtty->Cprintf("[cpu] info: #%d (apic id: %d) started.\n",
+                cpu_ctrl->GetCpuId(),
+                cpu_ctrl->GetCpuId().GetApicId());
 
   gtty->Cprintf("\n\n[kernel] info: initialization completed\n");
 
@@ -388,7 +392,8 @@ extern "C" int main() {
 }
 
 extern "C" int main_of_others() {
-// according to mp spec B.3, system should switch over to Symmetric I/O mode
+  // according to mp spec B.3, system should switch over to Symmetric I/O mode
+  
   apic_ctrl->BootAP();
 
   gdt->SetupProc();
@@ -408,7 +413,7 @@ extern "C" int main_of_others() {
     static int hoge = 0;
     f.Init([](void *){
       int hoge2 = timer->GetUsecFromCnt(timer->ReadMainCnt()) - hoge;
-      gtty->Printf("d",hoge2,"s"," ");
+      gtty->Cprintf("%d ", hoge2);
       hoge = timer->GetUsecFromCnt(timer->ReadMainCnt());
     }, nullptr);
     p.Init(f);
@@ -428,6 +433,10 @@ extern "C" int main_of_others() {
           tt1.SetHandler(1000);
           return;
         }
+        // kassert(g_channel != nullptr);
+        // FatFs *fatfs = new FatFs();
+        // kassert(fatfs->Mount());
+        //        g_channel->Read(0, 1);
       }, nullptr);
     tt1.Init(oneshot_bench_func);
     tt1.SetHandler(10);
@@ -438,9 +447,19 @@ extern "C" int main_of_others() {
   return 0;
 }
 
-extern "C" void kernel_panic(const char *class_name, const char *err_str) {
+extern "C" void _kernel_panic(const char *class_name, const char *err_str) {
   if (gtty != nullptr) {
-    gtty->CprintfRaw("\n[%s] error: %s",class_name, err_str);
+    gtty->CprintfRaw("\n!!!! Kernel Panic !!!!\n");
+    gtty->CprintfRaw("[%s] error: %s\n",class_name, err_str);
+    gtty->CprintfRaw("\n"); 
+    gtty->CprintfRaw(">> debugging information >>\n");
+    gtty->CprintfRaw("cpuid: %d\n", cpu_ctrl->GetCpuId().GetRawId());
+    size_t *rbp;
+    asm volatile("movq %%rbp, %0":"=r"(rbp));
+    for (int i = 0; i < 3; i++) {
+      gtty->CprintfRaw("backtrace(%d): rip:%llx,\n", i, rbp[1]);
+      rbp = reinterpret_cast<size_t *>(rbp[0]);
+    }
   }
   while(true) {
     asm volatile("cli;hlt;");
@@ -459,7 +478,7 @@ extern "C" void _checkpoint(const char *func, const int line) {
 
 extern "C" void abort() {
   if (gtty != nullptr) {
-    gtty->Cprintf("system stopped by unexpected error.\n");
+    gtty->CprintfRaw("system stopped by unexpected error.\n");
   }
   while(true){
     asm volatile("cli;hlt");
@@ -468,8 +487,14 @@ extern "C" void abort() {
 
 extern "C" void _kassert(const char *file, int line, const char *func) {
   if (gtty != nullptr) {
-    gtty->Cprintf("assertion failed at %s l.%d (%s) cpuid: %d\n",
+    gtty->CprintfRaw("assertion failed at %s l.%d (%s) cpuid: %d\n",
       file, line, func, cpu_ctrl->GetCpuId().GetRawId());
+    size_t *rbp;
+    asm volatile("movq %%rbp, %0":"=r"(rbp));
+    for (int i = 0; i < 3; i++) {
+      gtty->CprintfRaw("backtrace(%d): rip:%llx,\n", i, rbp[1]);
+      rbp = reinterpret_cast<size_t *>(rbp[0]);
+    }
   }
   while(true){
     asm volatile("cli;hlt");

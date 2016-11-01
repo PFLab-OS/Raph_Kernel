@@ -24,12 +24,15 @@
 #include <mem/physmem.h>
 #include <global.h>
 #include <tty.h>
+#include <cpu.h>
 #include "pci.h"
 
-#include "nic/intel/em/em.h"
-#include "nic/intel/em/lem.h"
+#include <dev/nic/intel/em/em.h>
+#include <dev/nic/intel/em/lem.h>
+#include <dev/disk/ahci/ahci-raph.h>
 
 void PciCtrl::_Init() {
+  _cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority);
   _mcfg = acpi_ctrl->GetMCFG();
   if (_mcfg == nullptr) {
     gtty->Cprintf("[Pci] error: could not find MCFG table.\n");
@@ -42,7 +45,7 @@ void PciCtrl::_Init() {
       break;
     }
     if (_mcfg->list[i].ecam_base >= 0x100000000) {
-      gtty->Cprintf("[Pci] error: ECAM base addr is not exist in low 4GB of memory\n");
+      gtty->Cprintf("[Pci] error: ECAM base addr does not exist in low 4GB of memory\n");
       continue;
     }
     _base_addr = p2v(_mcfg->list[i].ecam_base);
@@ -63,7 +66,7 @@ void PciCtrl::_Init() {
 }
 
 DevPci *PciCtrl::InitPciDevices(uint8_t bus, uint8_t device, uint8_t func) {
-  return _InitPciDevices<E1000, lE1000, DevPci>(bus, device, func);
+  return _InitPciDevices<E1000, lE1000, /*AhciCtrl,*/ DevPci>(bus, device, func);
 }
 
 uint16_t PciCtrl::FindCapability(uint8_t bus, uint8_t device, uint8_t func, CapabilityId id) {
@@ -115,6 +118,27 @@ void PciCtrl::SetMsi(uint8_t bus, uint8_t device, uint8_t func, uint64_t addr, u
     WriteReg<uint16_t>(bus, device, func, offset + kMsiCapReg32MsgData, static_cast<uint16_t>(data));
   }
   WriteReg<uint16_t>(bus, device, func, offset + kMsiCapRegControl, control | kMsiCapRegControlMsiEnableFlag);
+}
+
+void PciCtrl::RegisterLegacyIntHandler(int irq, DevPci *device) {
+  Locker lock(_irq_container_lock);
+  IrqContainer *ic = _irq_container;
+  while(ic->next != nullptr) {
+    IrqContainer *nic = ic->next;
+    if (nic->irq == irq) {
+      IntHandler *ih = nic->inthandler;
+      while(ih->next != nullptr) {
+        ih = ih->next;
+      }
+      ih->Add(device);
+      return;
+    } 
+    ic = nic;
+  }
+  int vector = idt->SetIntCallback(_cpuid, LegacyIntHandler, reinterpret_cast<void *>(this));
+  apic_ctrl->SetupIoInt(irq, apic_ctrl->GetApicIdFromCpuId(_cpuid), vector);
+  ic->Add(irq, vector);
+  ic->next->inthandler->Add(device);
 }
 
 void PciCtrl::IrqContainer::Handle() {

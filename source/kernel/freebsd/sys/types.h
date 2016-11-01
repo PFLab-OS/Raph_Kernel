@@ -38,40 +38,55 @@
 #ifndef _FREEBSD_SYS_TYPES_H_
 #define _FREEBSD_SYS_TYPES_H_
 
-#include <stdint.h>
-#include <raph.h>
+#include <sys/cdefs.h>
+#include <sys/_types.h>
 
+#if __BSD_VISIBLE
 typedef	unsigned char	u_char;
 typedef	unsigned short	u_short;
 typedef	unsigned int	u_int;
 typedef	unsigned long	u_long;
+#ifndef _KERNEL
+typedef	unsigned short	ushort;		/* Sys V compatibility */
+typedef	unsigned int	uint;		/* Sys V compatibility */
+#endif
+#endif
 
-class BsdDevPci;
+/*
+ * XXX POSIX sized integrals that should appear only in <sys/stdint.h>.
+ */
+#include <sys/_stdint.h>
 
-class BsdDevice {
- public:
-  template<class T>
-    void SetMasterClass(T *master) {
-    _master = reinterpret_cast<void *>(master);
-  }
-  template<class T>
-    T *GetMasterClass() {
-    return reinterpret_cast<T *>(_master);
-  }
-  void SetClass(BsdDevPci *pci) {
-    _pci = pci;
-  }
-  BsdDevPci *GetPciClass() {
-    kassert(_pci != nullptr);
-    return _pci;
-  }
-  struct adapter *adapter;
- private:
-  BsdDevPci *_pci = nullptr;
-  void *_master;
-};
+typedef __uint8_t       u_int8_t;       /* unsigned integrals (deprecated) */
+typedef __uint16_t      u_int16_t;
+typedef __uint32_t      u_int32_t;
+typedef __uint64_t      u_int64_t;
 
+typedef	__uint64_t	u_quad_t;	/* quads (deprecated) */
+typedef	__int64_t	quad_t;
+typedef	quad_t *	qaddr_t;
+
+typedef	char *		caddr_t;	/* core address */
+typedef	const char *	c_caddr_t;	/* core address, pointer to const */
+
+typedef	__register_t	register_t;
+
+typedef	__int64_t	sbintime_t;
+
+#ifndef _SIZE_T_DECLARED
+typedef	__size_t	size_t;
+#define	_SIZE_T_DECLARED
+#endif
+
+typedef	__vm_offset_t	vm_offset_t;
+// typedef	__vm_ooffset_t	vm_ooffset_t;
+typedef	__vm_paddr_t	vm_paddr_t;
+// typedef	__vm_pindex_t	vm_pindex_t;
+typedef	__vm_size_t	vm_size_t;
+
+typedef __rman_res_t    rman_res_t;
+
+struct BsdDevice;
 typedef struct BsdDevice *device_t;
-
 
 #endif /* _FREEBSD_SYS_TYPES_H_ */

@@ -27,11 +27,6 @@
 #include "physmem.h"
 #include "paging.h"
 
-//TODO no need anymore
-extern int virt_memory_start;
-extern int virt_memory_end;
-
-extern int virt_allocatedmemory_end;
 extern int phys_memory_end;
 extern int kLinearAddrOffset;
 extern int kHeapEndAddr;

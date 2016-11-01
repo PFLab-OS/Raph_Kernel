@@ -24,7 +24,7 @@
 #define __RAPH_KERNEL_IDT_H__
 
 #include <stdint.h>
-#include <apic.h>
+#include <cpu.h>
 #include <spinlock.h>
 #include <cpu.h>
 
@@ -62,10 +62,12 @@ class Idt {
     if (!_is_gen_initialized) {
       return false;
     }
-    return _handling_cnt[apic_ctrl->GetCpuId()];
+    return _handling_cnt[cpu_ctrl->GetCpuId().GetRawId()];
   }
   struct ReservedIntVector {
     static const int kIpi      = 33;
+    static const int k8259Spurious1 = 47;
+    static const int k8259Spurious2 = 55;
     static const int kError    = 63;
   };
  private:

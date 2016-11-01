@@ -32,22 +32,42 @@
 #include <dev/eth.h>
 #include <freebsd/sys/param.h>
 #include <freebsd/sys/types.h>
-#include <freebsd/net/if_var.h>
+#include <freebsd/net/if_var-raph.h>
 
-class lE1000 : public BsdDevEthernet {
+class lE1000 : public BsdDevPci {
 public:
- lE1000(uint8_t bus, uint8_t device, bool mf) : BsdDevEthernet(bus, device, mf) {}
+ lE1000(uint8_t bus, uint8_t device, uint8_t function) : BsdDevPci(bus, device, function) , _bsd_eth(*this) {}
   static DevPci *InitPci(uint8_t bus, uint8_t device, uint8_t function);
 
-  virtual void UpdateLinkStatus() override;
-
-  // allocate 6 byte before call
-  virtual void GetEthAddr(uint8_t *buffer) override;
+  class lE1000BsdEthernet : public BsdEthernet {
+  public:
+    lE1000BsdEthernet(lE1000 &master) : _master(master) {
+    }
+    
+    static void PollingHandler(void *arg);
+    
+    virtual void UpdateLinkStatus() override;
+    
+    // allocate 6 byte before call
+    virtual void GetEthAddr(uint8_t *buffer) override;
+    virtual void ChangeHandleMethodToPolling() override;
+    virtual void ChangeHandleMethodToInt() override;
+    virtual void Transmit(void *) override;
+    lE1000 &GetMasterClass() {
+      return _master;
+    }
+  private:
+    lE1000BsdEthernet();
+    lE1000 &_master;
+  };
+  
+  lE1000BsdEthernet &GetNetInterface() {
+    return _bsd_eth;
+  };
  private:
-  static void PollingHandler(void *arg);
-  virtual void ChangeHandleMethodToPolling() override;
-  virtual void ChangeHandleMethodToInt() override;
-  virtual void Transmit(void *) override;
+  virtual int DevMethodBusProbe() override final;
+  virtual int DevMethodBusAttach() override final;
+  lE1000BsdEthernet _bsd_eth;
 };
 
 #endif /* __RAPH_KERNEL_E1000_LEM_H__ */

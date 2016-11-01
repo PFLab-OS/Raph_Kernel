@@ -28,8 +28,11 @@
 
 class Semaphore {
 public:
-  Semaphore(int max) : _max(max) {
+  Semaphore(uint32_t max) : _max(max) {
     _cur = _max;
+  }
+  Semaphore(uint32_t max, uint32_t cur) : _max(max), _cur(cur) {
+    kassert(_max >= _cur);
   }
   void Acquire() {
     while(true) {
@@ -59,8 +62,8 @@ public:
 private:
   Semaphore();
   SpinLock _lock;
-  const int _max;
-  int _cur;
+  const uint32_t _max;
+  uint32_t _cur;
 };
 
 #endif /* __RAPH_KERNEL_SEMAPHORE_H__ */

@@ -31,7 +31,6 @@ class AcpiCtrl;
 class MultibootCtrl;
 class PagingCtrl;
 class PhysmemCtrl;
-class VirtmemCtrl;
 class Gdt;
 class Idt;
 
@@ -40,6 +39,8 @@ class Keyboard;
 class PciCtrl;
 
 class NetDevCtrl;
+
+class BsdDevPciCtrl;
 
 extern AcpiCtrl *acpi_ctrl;
 
@@ -54,7 +55,6 @@ extern PthreadCtrl *apic_ctrl;
 extern MultibootCtrl *multiboot_ctrl;
 extern PagingCtrl *paging_ctrl;
 extern PhysmemCtrl *physmem_ctrl;
-extern VirtmemCtrl *virtmem_ctrl;
 extern Gdt *gdt;
 extern Idt *idt;
 

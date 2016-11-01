@@ -33,11 +33,8 @@
 #ifndef _FREEBSD_NET_IF_VAR_H_
 #define _FREEBSD_NET_IF_VAR_H_
 
-#include <mem/virtmem.h>
-#include <global.h>
-#include <dev/netdev.h>
-#include <freebsd/net/if.h>
-#include <freebsd/net/ethernet.h>
+#include <net/if.h>
+#include <net/ethernet.h>
 
 struct ifnet {
   int	if_drv_flags;
@@ -46,8 +43,6 @@ struct ifnet {
   int if_capabilities;
 };
 typedef ifnet *if_t;
-
-struct BsdDevice;
 
 // Raphineでは未定義
 // static inline if_t if_gethandle(uint8_t type);
@@ -125,28 +120,5 @@ static inline int if_setcapenable(if_t ifp, int capenable) {
 static inline int if_setdev(if_t ifp, void *dev) {
   return 0;
 }
-
-#include <dev/eth.h>
-#include <freebsd/sys/types.h>
-#include <freebsd/sys/bus.h>
-
-// should be defined at ethernet.h
-class BsdDevEthernet : public DevEthernet {
-public:
-  BsdDevEthernet(uint8_t bus, uint8_t device, bool mf) : DevEthernet(&_bsd_pci), _bsd_pci(bus, device, mf) {
-    _bsd.SetClass(&_bsd_pci);
-  }
-  virtual ~BsdDevEthernet() {}
-  struct ifnet _ifp;
-
-  virtual bool IsLinkUp() override {
-    return this->GetStatus() == BsdDevEthernet::LinkStatus::kUp;
-  }
-
-protected:
-  BsdDevice _bsd;
-private:
-  BsdDevPci _bsd_pci;
-};
 
 #endif /* _FREEBSD_NET_IF_VAR_H_ */

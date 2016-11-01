@@ -30,6 +30,7 @@
 #include <spinlock.h>
 #include <polling.h>
 #include <freebsd/sys/param.h>
+#include <_cpu.h>
 
 class ProtocolStack;
 class DevEthernet;
@@ -183,7 +184,7 @@ public:
    * @param cpuid specify a core executing the callback.
    * @param func callback function.
    */
-  void SetReceiveCallback(int cpuid, const GenericFunction &func) {
+  void SetReceiveCallback(CpuId cpuid, const GenericFunction &func) {
     _rx_buffered.SetFunction(cpuid, func);
   }
 
@@ -314,12 +315,7 @@ public:
   }
 
 protected:
-  NetDev() {
-    // TODO cpuid
-    ClassFunction<NetDev> func;
-    func.Init(this, &NetDev::Transmit, nullptr);
-    _tx_buffered.SetFunction(0, func);
-  }
+  NetDev();
   virtual void ChangeHandleMethodToPolling() = 0;
   virtual void ChangeHandleMethodToInt() = 0;
   virtual void Transmit(void *) = 0;

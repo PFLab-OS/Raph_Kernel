@@ -32,9 +32,9 @@
 void Keyboard::Setup(const GenericFunction &func) {
   kassert(apic_ctrl != nullptr);
   kassert(idt != nullptr);
-  CpuId cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kGeneralPurpose);
+  CpuId cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority);
   int vector = idt->SetIntCallback(cpuid, Keyboard::Handler, nullptr);
-  apic_ctrl->SetupIoInt(ApicCtrl::Ioapic::kIrqKeyboard, cpuid.GetApicId(), vector);
+  apic_ctrl->SetupIoInt(ApicCtrl::kIrqKeyboard, cpuid.GetApicId(), vector);
   _buf.SetFunction(cpuid, func);
 }
 

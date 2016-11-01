@@ -54,9 +54,7 @@ SECTIONS{
     lock_data_end = .;
     *(.gnu.linkonce.b*)
 
-    virt_memory_end = .;
     . = ALIGN(0x1000);
-    virt_allocatedmemory_end = .;
 
     initial_PML4T = . - kLinearAddrOffset;
     /* kLinearAddrOffset is subtracted because 32bit code refers to initial_PML4T */
@@ -76,8 +74,6 @@ SECTIONS{
    * 0x7000 - 0x8000 : PD5 (mapped onto PDPT2[510]) 
    * 0x8000 - 0x9000 : PD6 (mapped onto PDPT2[511]) 
    * 0x9000 - 0xA000 : PT1 (mapped onto PD6[511]) 
-   * 0xA000 - 0xB000 : P1 (mapped onto PT1[509]) 
-   * 0xB000 - 0xC000 : P2 (mapped onto PT1[510]) 
    * 
    */
 

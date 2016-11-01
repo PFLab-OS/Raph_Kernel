@@ -20,10 +20,11 @@
  * 
  */
 
-#define ASM_FILE
-#include "multiboot2.h"
-#include <mem/paging.h>
-#include <gdt.h>
+  #define ASM_FILE
+  #include "multiboot2.h"
+  #include <mem/paging.h>
+  #include <mem/kstack.h>
+  #include <gdt.h>
 
 #define MULTIBOOTHEADER_SIZE (multibootheader_end - multibootheader_start)
 
@@ -188,15 +189,7 @@ setup_paging:
   mov %eax, (%edi)
 
   // setup pt1
-  lea (0x9000 + 509 * 8)(%ebx), %edi
-  lea 0xA000(%ebx), %eax
-  or  $(PTE_PRESENT_BIT | PTE_WRITE_BIT | PTE_GLOBAL_BIT), %eax
-  mov %eax, (%edi)
   lea (0x9000 + 510 * 8)(%ebx), %edi
-  lea 0xB000(%ebx), %eax
-  or  $(PTE_PRESENT_BIT | PTE_WRITE_BIT | PTE_GLOBAL_BIT), %eax
-  mov %eax, (%edi)
-  lea (0x9000 + 511 * 8)(%ebx), %edi
   movl $initial_stack_buffer, %eax
   or  $(PTE_PRESENT_BIT | PTE_WRITE_BIT | PTE_GLOBAL_BIT), %eax
   mov %eax, (%edi)
@@ -249,7 +242,12 @@ trampoline:
   mov %ax, %fs
   mov %ax, %gs
   mov %ax, %ss
-  mov $kKernelEndAddr - 7, %rsp
+  mov $kKernelEndAddr - 4096 + 1, %rsp
+  pushq $0
+  pushq $0
+  pushq $0
+  movq $INITIAL_STACK_MAGIC, %rax
+  pushq %rax
   pushq $0   // return addr
   pushq $KERNEL_CS
   mov $main, %rax

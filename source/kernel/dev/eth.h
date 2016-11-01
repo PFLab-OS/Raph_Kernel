@@ -32,15 +32,9 @@
  */
 class DevEthernet : public NetDev {
 public:
-  DevEthernet(uint8_t bus, uint8_t device, bool mf) {
-    //TODO is this needed?
-    _pci = virtmem_ctrl->New<DevPci>(bus, device, mf);
+  DevEthernet() {
   } 
   virtual ~DevEthernet() {
-    virtmem_ctrl->Delete<DevPci>(_pci);
-  }
-  DevPci *GetDevPci() {
-    return _pci;
   }
   // allocate 6 byte before call
   virtual void GetEthAddr(uint8_t *buffer) = 0;
@@ -77,9 +71,6 @@ public:
   }
 
 protected:
-  DevEthernet(DevPci *pci) {
-    _pci = pci;
-  }
 
   DevPci *_pci;
 
