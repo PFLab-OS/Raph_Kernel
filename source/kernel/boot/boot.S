@@ -181,6 +181,14 @@ setup_paging:
   mov $0, %eax
   or  $(PDE_PRESENT_BIT | PDE_WRITE_BIT | PDE_2MPAGE_BIT | PDE_GLOBAL_BIT), %eax
   mov %eax, (%edi)
+  lea (0x7000 + 1 * 8)(%ebx), %edi
+  mov $0x200000, %eax
+  or  $(PDE_PRESENT_BIT | PDE_WRITE_BIT | PDE_2MPAGE_BIT | PDE_GLOBAL_BIT), %eax
+  mov %eax, (%edi)
+  lea (0x7000 + 2 * 8)(%ebx), %edi
+  mov $0x400000, %eax
+  or  $(PDE_PRESENT_BIT | PDE_WRITE_BIT | PDE_2MPAGE_BIT | PDE_GLOBAL_BIT), %eax
+  mov %eax, (%edi)
 
   // setup pd6
   lea (0x8000 + 511 * 8)(%ebx), %edi
