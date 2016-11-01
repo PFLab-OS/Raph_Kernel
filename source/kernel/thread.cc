@@ -20,41 +20,47 @@
  * 
  */
 
-#ifndef __RAPH_LIB_THREAD_H__
-#define __RAPH_LIB_THREAD_H__
-
 #ifndef __KERNEL__
 
-#include <vector>
-#include <memory>
-#include <thread>
-#include <stdint.h>
-#include <cpu.h>
+#include <thread.h>
+#include <task.h>
+#include <global.h>
+#include <unistd.h>
+#include <sys/syscall.h>
+#include <sys/types.h>
 
-class PthreadCtrl : public CpuCtrlInterface {
-public:
-  PthreadCtrl() : _thread_pool(0) {}
-  PthreadCtrl(int num_threads) : _cpu_nums(num_threads), _thread_pool(num_threads-1) {}
-  ~PthreadCtrl();
-  void Setup();
-  virtual volatile int GetId() override;
-  virtual int GetHowManyCpus() override {
-    return _cpu_nums;
+PthreadCtrl::~PthreadCtrl() {
+  for(thread_pool_t::size_type i = 0; i < _thread_pool.size(); i++) {
+    _thread_pool[i]->detach();
   }
+}
 
-private:
-  static const uint8_t kMaxThreadsNumber = 128;
+void PthreadCtrl::Setup() {
+  // main thread id
+  _thread_ids[0] = GetThreadId();
 
-  int _cpu_nums = 1;
+  for(thread_pool_t::size_type i = 0; i < _thread_pool.size(); i++) {
+    std::unique_ptr<std::thread> th(new std::thread ([this, i]{
+        // sub thread id
+        _thread_ids[i+1] = GetThreadId();
 
-  typedef std::vector<std::unique_ptr<std::thread>> thread_pool_t;
-  thread_pool_t _thread_pool;
+        task_ctrl->Run();
+    }));
+    _thread_pool[i] = std::move(th);
+  }
+}
 
-  int _thread_ids[kMaxThreadsNumber];
+volatile int PthreadCtrl::GetId() {
+  for(int i = 0; i < _cpu_nums; i++) {
+    if(_thread_ids[i] == GetThreadId()) {
+      return i;
+    }
+  }
+  return 0;
+}
 
-  int GetThreadId();
-};
+int PthreadCtrl::GetThreadId() {
+  return syscall(SYS_gettid);
+}
 
 #endif // !__KERNEL__
-
-#endif /* __RAPH_LIB_THREAD_H__ */

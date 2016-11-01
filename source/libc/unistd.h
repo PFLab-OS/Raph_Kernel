@@ -16,45 +16,23 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
- * Author: Levelfour
+ * Author: Liva
  * 
  */
 
-#ifndef __RAPH_LIB_THREAD_H__
-#define __RAPH_LIB_THREAD_H__
+#ifndef __RAPH_LIB_UNISTD_H__
+#define __RAPH_LIB_UNISTD_H__
 
-#ifndef __KERNEL__
-
-#include <vector>
-#include <memory>
-#include <thread>
 #include <stdint.h>
-#include <cpu.h>
 
-class PthreadCtrl : public CpuCtrlInterface {
-public:
-  PthreadCtrl() : _thread_pool(0) {}
-  PthreadCtrl(int num_threads) : _cpu_nums(num_threads), _thread_pool(num_threads-1) {}
-  ~PthreadCtrl();
-  void Setup();
-  virtual volatile int GetId() override;
-  virtual int GetHowManyCpus() override {
-    return _cpu_nums;
-  }
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
 
-private:
-  static const uint8_t kMaxThreadsNumber = 128;
+  void *sbrk(intptr_t increment);
 
-  int _cpu_nums = 1;
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
 
-  typedef std::vector<std::unique_ptr<std::thread>> thread_pool_t;
-  thread_pool_t _thread_pool;
-
-  int _thread_ids[kMaxThreadsNumber];
-
-  int GetThreadId();
-};
-
-#endif // !__KERNEL__
-
-#endif /* __RAPH_LIB_THREAD_H__ */
+#endif // __RAPH_LIB_UNISTD_H__

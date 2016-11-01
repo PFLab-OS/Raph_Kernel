@@ -16,45 +16,39 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
- * Author: Levelfour
+ * Author: Liva, hikalium
  * 
  */
 
-#ifndef __RAPH_LIB_THREAD_H__
-#define __RAPH_LIB_THREAD_H__
+#ifndef __RAPH_LIB__CPU_H__
+#define __RAPH_LIB__CPU_H__
 
-#ifndef __KERNEL__
+#include <global.h>
 
-#include <vector>
-#include <memory>
-#include <thread>
-#include <stdint.h>
-#include <cpu.h>
-
-class PthreadCtrl : public CpuCtrlInterface {
+class CpuId {
 public:
-  PthreadCtrl() : _thread_pool(0) {}
-  PthreadCtrl(int num_threads) : _cpu_nums(num_threads), _thread_pool(num_threads-1) {}
-  ~PthreadCtrl();
-  void Setup();
-  virtual volatile int GetId() override;
-  virtual int GetHowManyCpus() override {
-    return _cpu_nums;
+  static const int kCpuIdNotFound = -1;
+  static const int kCpuIdBootProcessor = 0;
+  CpuId() {
+    Init(kCpuIdNotFound);
   }
-
+  explicit CpuId(int newid) {
+    Init(newid);
+    CheckIfValid();
+  }
+  int GetRawId() {
+    CheckIfValid();
+    return _rawid;
+  }
+  uint8_t GetApicId();
+  bool IsValid();
 private:
-  static const uint8_t kMaxThreadsNumber = 128;
-
-  int _cpu_nums = 1;
-
-  typedef std::vector<std::unique_ptr<std::thread>> thread_pool_t;
-  thread_pool_t _thread_pool;
-
-  int _thread_ids[kMaxThreadsNumber];
-
-  int GetThreadId();
+  void CheckIfValid();
+  int _rawid;
+  void Init(int newid) {
+    _rawid = newid;
+  }
 };
 
-#endif // !__KERNEL__
 
-#endif /* __RAPH_LIB_THREAD_H__ */
+#endif // __RAPH_LIB__CPU_H__
