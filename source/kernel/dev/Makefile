@@ -1,4 +1,4 @@
-OBJS = pci.o nic.o netdev.o disk.o fs.o keyboard.o
+OBJS = pci.o nic.o netdev.o disk.o fs.o keyboard.o pciid.o pciid_table.o
 
 DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))
 
@@ -10,6 +10,15 @@ default: ../dev.o
 
 ../dev.o: $(OBJS)
 	ld -r $^ -o $@
+
+pciid_table.o: pciid_table.cc
+	g++ $(CXXFLAGS) -c $^
+
+pciid_table.cc: pci.ids.formatted pciid.py
+	python pciid.py > pciid_table.cc
+
+pci.ids.formatted : pci.ids
+	sed 's/\("\|\?\|\\\)/\\\1/g' pci.ids > pci.ids.formatted
 
 nic.o:
 	make -C nic CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
@@ -25,3 +34,4 @@ clean:
 	make -C disk clean
 	make -C fs clean
 	-rm -f $(OBJS) $(TEST_OBJS) $(DEPS) *.s *.ii
+	rm pciid_table.cc pci.ids.formatted
