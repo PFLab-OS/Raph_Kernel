@@ -24,8 +24,6 @@
 #include "diskio.h"
 #include "fat.h"
 #include <raph.h>
-#include <tty.h>
-#include <global.h>
 
 extern "C" {
   DSTATUS disk_initialize (BYTE pdrv) {

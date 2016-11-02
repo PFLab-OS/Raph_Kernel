@@ -1,21 +1,4 @@
 test:
   override:
-    - git submodule init
-    - git submodule update --recursive
-    - if [ $CIRCLE_BRANCH = 'develop' ]; then
-          HEAD1=`cat .git/modules/source/Raph_Library/HEAD`;
-          pushd source/Raph_Library;
-          git checkout kernel;
-          git pull origin kernel;
-          popd;
-          HEAD2=`cat .git/modules/source/Raph_Library/refs/heads/kernel`;
-          if [ $HEAD1 != $HEAD2 ]; then
-              echo "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@";
-              echo "  Raph_Kernel:develop isn't referring  ";
-              echo "     to HEAD of Raph_Library:kernel    ";
-              echo "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@";
-              exit 1;
-          fi
-      fi
     - make bin
     

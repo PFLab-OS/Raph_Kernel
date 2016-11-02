@@ -21,8 +21,6 @@
  */
 
 #include "ahci-raph.h"
-#include <tty.h>
-#include <global.h>
 
 PacketAtaioCtrl PacketAtaioCtrl::_ctrl;
 bool PacketAtaioCtrl::_is_initailized = false;

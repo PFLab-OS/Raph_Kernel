@@ -328,7 +328,7 @@ private:
       GetApicId();
       WriteReg(RegisterOffset::kIcrLow, flags);
       // refer to ia32-sdm vol-3 10-20
-      WriteReg(RegisterOffset::kIcrLow, ReadReg(RegisterOffset::kIcrLow) | (flags & kDeliverModeInit) ? 0 : kRegIcrLevelAssert);
+      WriteReg(RegisterOffset::kIcrLow, ReadReg(RegisterOffset::kIcrLow) | ((flags & kDeliverModeInit) ? 0 : kRegIcrLevelAssert));
       GetApicId();
     }
     virtual volatile uint32_t GetApicId() override {

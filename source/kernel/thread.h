@@ -18,42 +18,43 @@
  *
  * Author: Levelfour
  * 
- * ApicCtrl class for test_main.cc
- *
- *  16/04/15 created
- *
  */
 
-#ifndef __RAPH_KERNEL_THREAD_H__
-#define __RAPH_KERNEL_THREAD_H__
+#ifndef __RAPH_LIB_THREAD_H__
+#define __RAPH_LIB_THREAD_H__
 
-#ifdef __UNIT_TEST__
+#ifndef __KERNEL__
 
+#include <vector>
+#include <memory>
+#include <thread>
 #include <stdint.h>
-#include <apic.h>
+#include <cpu.h>
 
-class PthreadCtrl : public ApicCtrlInterface {
+class PthreadCtrl : public CpuCtrlInterface {
 public:
-  PthreadCtrl() {}
-  virtual void Setup() override {
-  }
-  virtual volatile uint8_t GetApicId() override {
-    return 0;
-  }
+  PthreadCtrl() : _thread_pool(0) {}
+  PthreadCtrl(int num_threads) : _cpu_nums(num_threads), _thread_pool(num_threads-1) {}
+  ~PthreadCtrl();
+  void Setup();
+  virtual volatile int GetId() override;
   virtual int GetHowManyCpus() override {
     return _cpu_nums;
   }
-  virtual void SetupTimer(uint32_t irq) override {
-  }
-  virtual void StartTimer() override {
-  }
-  virtual void StopTimer() override {
-  }
 
 private:
-  int _cpu_nums = 2;
+  static const uint8_t kMaxThreadsNumber = 128;
+
+  int _cpu_nums = 1;
+
+  typedef std::vector<std::unique_ptr<std::thread>> thread_pool_t;
+  thread_pool_t _thread_pool;
+
+  int _thread_ids[kMaxThreadsNumber];
+
+  int GetThreadId();
 };
 
-#endif // __UNIT_TEST__
+#endif // !__KERNEL__
 
-#endif /* __RAPH_KERNEL_THREAD_H__ */
+#endif /* __RAPH_LIB_THREAD_H__ */
