@@ -40,7 +40,7 @@ public:
     CheckIfValid();
     return _rawid;
   }
-  uint8_t GetApicId();
+  uint32_t GetApicId();
   bool IsValid();
 private:
   void CheckIfValid();

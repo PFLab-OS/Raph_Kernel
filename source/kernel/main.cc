@@ -34,6 +34,7 @@
 #include <timer.h>
 #include <tty.h>
 #include <shell.h>
+#include <measure.h>
 #include <mem/kstack.h>
 
 #include <dev/hpet.h>
@@ -397,6 +398,43 @@ extern "C" int main() {
   return 0;
 }
 
+static void membench() {
+  int entry = 20 * 1024 * 1024 / sizeof(int);
+  int *tmp = new int[entry - 1];
+  for(int i = 0; i < entry - 1; i++) {
+    tmp[i] = i + 1;
+  }
+  // http://mementoo.info/archives/746
+  for(int i=0;i<entry - 1;i++)
+    {
+      int j = rand()%(entry - 1);
+      int t = tmp[i];
+      tmp[i] = tmp[j];
+      tmp[j] = t;
+    }
+
+        
+  //int *buf = new int[entry];
+  int *buf = reinterpret_cast<int *>(p2v(0x1840000000));
+  // init
+  {
+    int j = 0;
+    for (int i = 0; i < entry - 1; i++) {
+      j = (buf[j] = tmp[i]);
+    }
+    buf[j] = -1;
+  }
+  // bench
+  measure {
+    int j = 0;
+    do {
+      j = buf[j];
+    } while(buf[j] != -1);
+  }
+  // delete buf;
+  delete tmp;
+}
+
 extern "C" int main_of_others() {
   // according to mp spec B.3, system should switch over to Symmetric I/O mode
   
@@ -439,6 +477,17 @@ extern "C" int main_of_others() {
           tt1.SetHandler(1000);
           return;
         }
+        uint32_t ebx, edx, ecx;
+        asm volatile("cpuid;":"=b"(ebx), "=d"(edx), "=c"(ecx):"a"(0));
+        char buf[12];
+        *(reinterpret_cast<uint32_t *>(buf + 0)) = ebx;
+        *(reinterpret_cast<uint32_t *>(buf + 4)) = edx;
+        *(reinterpret_cast<uint32_t *>(buf + 8)) = ecx;
+        if (strncmp(buf, "AuthenticAMD", 12) == 0) {
+          // QEMU
+          return;
+        }
+        membench();
         // kassert(g_channel != nullptr);
         // FatFs *fatfs = new FatFs();
         // kassert(fatfs->Mount());
@@ -453,8 +502,12 @@ extern "C" int main_of_others() {
   return 0;
 }
 
+static int error_output_flag = 0;
+
 extern "C" void _kernel_panic(const char *class_name, const char *err_str) {
   if (gtty != nullptr) {
+    while(!__sync_bool_compare_and_swap(&error_output_flag, 0, 1)) {
+    }
     gtty->CprintfRaw("\n!!!! Kernel Panic !!!!\n");
     gtty->CprintfRaw("[%s] error: %s\n",class_name, err_str);
     gtty->CprintfRaw("\n"); 
@@ -462,10 +515,11 @@ extern "C" void _kernel_panic(const char *class_name, const char *err_str) {
     gtty->CprintfRaw("cpuid: %d\n", cpu_ctrl->GetCpuId().GetRawId());
     size_t *rbp;
     asm volatile("movq %%rbp, %0":"=r"(rbp));
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 3; i++) {
       gtty->CprintfRaw("backtrace(%d): rip:%llx,\n", i, rbp[1]);
       rbp = reinterpret_cast<size_t *>(rbp[0]);
     }
+    __sync_bool_compare_and_swap(&error_output_flag, 1, 0);
   }
   while(true) {
     asm volatile("cli;hlt;");
@@ -493,6 +547,8 @@ extern "C" void abort() {
 
 extern "C" void _kassert(const char *file, int line, const char *func) {
   if (gtty != nullptr) {
+    while(!__sync_bool_compare_and_swap(&error_output_flag, 0, 1)) {
+    }
     gtty->CprintfRaw("assertion failed at %s l.%d (%s) cpuid: %d\n",
       file, line, func, cpu_ctrl->GetCpuId().GetRawId());
     size_t *rbp;
@@ -501,6 +557,7 @@ extern "C" void _kassert(const char *file, int line, const char *func) {
       gtty->CprintfRaw("backtrace(%d): rip:%llx,\n", i, rbp[1]);
       rbp = reinterpret_cast<size_t *>(rbp[0]);
     }
+    __sync_bool_compare_and_swap(&error_output_flag, 1, 0);
   }
   while(true){
     asm volatile("cli;hlt");

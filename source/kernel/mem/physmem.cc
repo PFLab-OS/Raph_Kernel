@@ -85,9 +85,6 @@ void PhysmemCtrl::Init() {
       offset += srat_st->length;
     }
   }
-  while(true) {
-    asm volatile("cli;hlt;");
-  }
 }
 
 void PhysmemCtrl::Alloc(PhysAddr &paddr, size_t size) {
