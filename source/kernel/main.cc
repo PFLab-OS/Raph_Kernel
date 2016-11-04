@@ -275,7 +275,7 @@ void bench(int argc, const char* argv[]) {
 }
 
 static void show(int argc, const char *argv[]) {
-  if (argc >= 2) {
+  if (argc == 1) {
     gtty->Cprintf("invalid argument.\n");
     return;
   }
@@ -399,6 +399,8 @@ extern "C" int main() {
                 cpu_ctrl->GetCpuId(),
                 cpu_ctrl->GetCpuId().GetApicId());
 
+  while (!apic_ctrl->IsBootupAll()) {
+  }
   gtty->Cprintf("\n\n[kernel] info: initialization completed\n");
 
   shell->Setup();
