@@ -32,7 +32,7 @@
 
 void IntSpinLock::Lock() {
   if ((_flag % 2) == 1) {
-    kassert(_cpuid.GetRawId() != cpu_ctrl->GetCpuId().GetRawId());
+    kassert(!_cpuid.IsValid() || _cpuid.GetRawId() != cpu_ctrl->GetCpuId().GetRawId());
   }
   volatile unsigned int flag = GetFlag();
   while(true) {
