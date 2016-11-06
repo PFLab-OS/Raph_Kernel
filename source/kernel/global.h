@@ -44,13 +44,8 @@ class BsdDevPciCtrl;
 
 extern AcpiCtrl *acpi_ctrl;
 
-#ifndef __UNIT_TEST__
 class ApicCtrl;
 extern ApicCtrl *apic_ctrl;
-#else
-class PthreadCtrl;
-extern PthreadCtrl *apic_ctrl;
-#endif // __UNIT_TEST__
 
 extern MultibootCtrl *multiboot_ctrl;
 extern PagingCtrl *paging_ctrl;

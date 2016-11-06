@@ -25,7 +25,7 @@
 #include <global.h>
 #include <raph.h>
 #include <multiboot.h>
-#include "kvirtmem.h"
+#include "virtmem.h"
 #include "physmem.h"
 
 PagingCtrl::PagingCtrl() {
@@ -177,5 +177,7 @@ bool PagingCtrl::Map2MPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr
   } else {
     return false;
   }
+
+  return true;
 }
 

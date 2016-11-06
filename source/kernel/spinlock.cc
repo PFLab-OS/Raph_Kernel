@@ -24,15 +24,12 @@
 #include <raph.h>
 #include <cpu.h>
 #include <libglobal.h>
-
-#ifdef __KERNEL__
 #include <idt.h>
 #include <apic.h>
-#endif // __KERNEL__
 
 void IntSpinLock::Lock() {
   if ((_flag % 2) == 1) {
-    kassert(_cpuid.GetRawId() != cpu_ctrl->GetCpuId().GetRawId());
+    kassert(!_cpuid.IsValid() || _cpuid.GetRawId() != cpu_ctrl->GetCpuId().GetRawId());
   }
   volatile unsigned int flag = GetFlag();
   while(true) {

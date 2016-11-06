@@ -275,38 +275,4 @@ class Tty {
   CpuId _cpuid;
 };
 
-#ifndef __KERNEL__
-
-#include <unistd.h>
-#include <stdio.h>
-
-class StdOut : public Tty {
- public:
-  StdOut() {
-  }
- private:
-  virtual void Write(uint8_t c) override {
-    uint8_t tmp[1] = {c};
-    write(1, reinterpret_cast<void *>(tmp), 1);
-  }
-  void Scroll() {
-  }
-};
-
-class StdErr : public Tty {
- public:
-  StdErr() {
-  }
- private:
-  virtual void Write(uint8_t c) override {
-    uint8_t tmp[1] = {c};
-    write(2, reinterpret_cast<void *>(tmp), 1);
-  }
-  void Scroll() {
-  }
-};
-
-#endif // __KERNEL__
-
-
 #endif // __RAPH_KERNEL_TTY_H__

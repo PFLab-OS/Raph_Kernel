@@ -24,17 +24,7 @@
 #define __RAPH_LIB_ASSERT_H__
 
 #undef assert
-#ifdef __KERNEL__
 #include <raph.h>
 #define assert(flag) kassert(flag)
-#else
-#define assert(flag)  #define assert(x)   do {          \
-    if (!(x)) {                                         \
-      printf("Assertion failed: %s, file %s, line %d\n" \
-             , #x, __FILE__, __LINE__);                 \
-      exit(1);                                          \
-    }                                                   \
-  } while (0) 
-#endif /* __KERNEL__ */
 
 #endif // __RAPH_LIB_ASSERT_H__

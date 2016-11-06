@@ -72,6 +72,23 @@ public:
       }
     }
   }
+  void ShowModuleInfo() {
+    kassert(align(multiboot_info, 8) == multiboot_info);
+    virt_addr addr = p2v(static_cast<phys_addr>(multiboot_info));
+    addr += 8;
+    multiboot_tag *tag;
+    for (tag = reinterpret_cast<multiboot_tag *>(addr); tag->type != MULTIBOOT_TAG_TYPE_END; addr = alignUp(addr + tag->size, 8), tag = reinterpret_cast<multiboot_tag *>(addr)) {
+      switch(tag->type) {
+      case MULTIBOOT_TAG_TYPE_MODULE: {
+        multiboot_tag_module* info;
+        gtty->CprintfRaw("module %d %d\n", info->mod_start, info->mod_end);
+        break;
+      }
+      default:
+        break;
+      }
+    }
+  }
   phys_addr GetPhysMemoryEnd() {
     return _phys_memory_end;
   }

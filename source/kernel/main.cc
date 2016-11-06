@@ -67,7 +67,7 @@ ApicCtrl _apic_ctrl;
 CpuCtrl _cpu_ctrl;
 Gdt _gdt;
 Idt _idt;
-KVirtmemCtrl _virtmem_ctrl;
+VirtmemCtrl _virtmem_ctrl;
 PhysmemCtrl _physmem_ctrl;
 PagingCtrl _paging_ctrl;
 TaskCtrl _task_ctrl;
@@ -275,6 +275,23 @@ void bench(int argc, const char* argv[]) {
   }
 }
 
+static void show(int argc, const char *argv[]) {
+  if (argc == 1) {
+    gtty->Cprintf("invalid argument.\n");
+    return;
+  }
+  if (strcmp(argv[1], "module") == 0) {
+    if (argc != 2) {
+      gtty->Cprintf("invalid argument.\n");
+      return;
+    }
+    multiboot_ctrl->ShowModuleInfo();
+  } else {
+    gtty->Cprintf("invalid argument.\n");
+    return;
+  }
+}
+
 extern "C" int main() {
 
   multiboot_ctrl = new (&_multiboot_ctrl) MultibootCtrl;
@@ -289,7 +306,7 @@ extern "C" int main() {
 
   idt = new (&_idt) Idt;
 
-  virtmem_ctrl = new (&_virtmem_ctrl) KVirtmemCtrl;
+  virtmem_ctrl = new (&_virtmem_ctrl) VirtmemCtrl;
 
   physmem_ctrl = new (&_physmem_ctrl) PhysmemCtrl;
 
@@ -385,6 +402,8 @@ extern "C" int main() {
                 cpu_ctrl->GetCpuId(),
                 cpu_ctrl->GetCpuId().GetApicId());
 
+  while (!apic_ctrl->IsBootupAll()) {
+  }
   gtty->Cprintf("\n\n[kernel] info: initialization completed\n");
 
   shell->Setup();
@@ -392,6 +411,7 @@ extern "C" int main() {
   shell->Register("reset", reset);
   shell->Register("bench", bench);
   shell->Register("lspci", lspci);
+  shell->Register("show", show);
 
   task_ctrl->Run();
 

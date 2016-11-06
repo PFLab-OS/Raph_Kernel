@@ -30,7 +30,6 @@
 #include <_cpu.h>
 #include <mem/physmem.h>
 
-#ifndef __UNIT_TEST__
 struct MADT {
   ACPISDTHeader header;
   uint32_t lapicCtrlAddr;
@@ -74,11 +73,8 @@ struct MADTStIOAPIC {
   uint32_t glblIntBase;
 } __attribute__ ((packed));
 
-#endif // __UNIT_TEST__
-
 class Regs;
 
-#ifndef __UNIT_TEST__
 class ApicCtrl {
 public:
   ApicCtrl() {}
@@ -129,19 +125,6 @@ public:
   bool SetupIoInt(uint32_t irq, uint8_t lapicid, uint8_t vector) {
     kassert(vector >= 32);
     return _ioapic.SetupInt(irq, lapicid, vector);
-  }
-  void EnableInt() {
-    _lapic->EnableInt();
-  }
-  // 割り込みを無効化した上で呼び出す事
-  // 戻り値：
-  // true 割り込みが有効化されているのを無効化した
-  // false 元々無効化されていた
-  bool DisableInt() {
-    return _lapic->DisableInt();
-  }
-  void IsIntEnable() {
-    _lapic->IsIntEnable();
   }
   void SendEoi() {
     _lapic->SendEoi();
@@ -201,7 +184,7 @@ private:
       if (_apic_info == nullptr) {
         return 0;
       }
-      GetCpuIdFromApicId(GetApicId());
+      return GetCpuIdFromApicId(GetApicId());
     }   
     int GetCpuIdFromApicId(uint32_t apic_id) {
       for(int n = 0; n < _ncpu; n++) {
@@ -227,21 +210,6 @@ private:
 
     void SendEoi() {
       WriteReg(RegisterOffset::kEoi, 0);
-    }
-    void EnableInt() {
-      WriteReg(RegisterOffset::kSvr, ReadReg(RegisterOffset::kSvr) | kRegSvrApicEnableFlag);
-    }
-    bool DisableInt() {
-      //TODO 割り込みが無効化されている事を確認
-      if ((ReadReg(RegisterOffset::kSvr) & kRegSvrApicEnableFlag) == 0) {
-        return false;
-      } else {
-        WriteReg(RegisterOffset::kSvr, ReadReg(RegisterOffset::kSvr) & ~kRegSvrApicEnableFlag);
-        return true;
-      }
-    }
-    bool IsIntEnable() {
-      return (ReadReg(RegisterOffset::kSvr) | kRegSvrApicEnableFlag) != 0;
     }
     void SendIpi(uint32_t destid);
     void SetupTimer(int interval);
@@ -427,9 +395,5 @@ inline uint64_t ApicCtrl::GetMsiAddr(uint8_t dest_lapicid) {
 inline uint16_t ApicCtrl::GetMsiData(uint8_t vector) {
   return Lapic::GetMsiData(vector);
 }
-
-#else
-#include <thread.h>
-#endif // !__UNIT_TEST__
 
 #endif /* __RAPH_KERNEL_APIC_H__ */

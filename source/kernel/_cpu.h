@@ -23,8 +23,6 @@
 #ifndef __RAPH_LIB__CPU_H__
 #define __RAPH_LIB__CPU_H__
 
-#include <global.h>
-
 class CpuId {
 public:
   static const int kCpuIdNotFound = -1;

@@ -53,7 +53,6 @@ public:
   virtual void AssignCpusNotAssignedToGeneralPurpose() = 0;
 };
 
-#ifdef __KERNEL__
 #include <mem/kstack.h>
 
 class CpuCtrl : public CpuCtrlInterface {
@@ -137,9 +136,5 @@ inline void CpuId::CheckIfValid() {
 inline uint32_t CpuId::GetApicId() {
   return apic_ctrl->GetApicIdFromCpuId(*this);
 }
-
-#else
-#include <thread.h>
-#endif /* __KERNEL__ */
 
 #endif /* __RAPH_LIB_CPU_H__ */
