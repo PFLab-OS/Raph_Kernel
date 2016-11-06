@@ -24,18 +24,11 @@
 #include <cpu.h>
 #include <setjmp.h>
 
-#ifdef __KERNEL__
 #include <apic.h>
 #include <mem/kstack.h>
-#else
-#include <raph.h>
-#include <unistd.h>
-#endif // __KERNEL__
 
 void TaskCtrl::Setup() {
-#ifdef __KERNEL__
   kassert(apic_ctrl->DidSetup());
-#endif // __KERNEL__
   int cpus = cpu_ctrl->GetHowManyCpus();
   _task_struct = new TaskStruct[cpus];
   for (int i = 0; i < cpus; i++) {
@@ -49,19 +42,15 @@ void TaskCtrl::Run() {
   TaskStruct *ts = &_task_struct[raw_cpu_id];
 
   ts->state = TaskQueueState::kNotRunning;
-#ifdef __KERNEL__
   apic_ctrl->SetupTimer(kTaskExecutionInterval);
-#endif // __KERNEL__
   while(true) {
     TaskQueueState oldstate;
     {
       Locker locker(ts->lock);
       oldstate = ts->state;
-#ifdef __KERNEL__
       if (oldstate == TaskQueueState::kNotRunning) {
         apic_ctrl->StopTimer();
       }
-#endif // __KERNEL__
       kassert(oldstate == TaskQueueState::kNotRunning
               || oldstate == TaskQueueState::kSlept);
       ts->state = TaskQueueState::kRunning;
@@ -154,12 +143,8 @@ void TaskCtrl::Run() {
         ts->state = TaskQueueState::kNotRunning;
       }
     }
-#ifdef __KERNEL__
     apic_ctrl->StartTimer();
     asm volatile("hlt");
-#else
-    usleep(10);
-#endif // __KERNEL__
   }
 }
 
@@ -335,14 +320,12 @@ void TaskCtrl::CancelCallout(Callout *task) {
 }
 
 void TaskCtrl::ForceWakeup(CpuId cpuid) {
-#ifdef __KERNEL__
   int raw_cpuid = cpuid.GetRawId();
   if (_task_struct[raw_cpuid].state == TaskQueueState::kSlept) {
     if (cpu_ctrl->GetCpuId().GetRawId() != raw_cpuid) {
       apic_ctrl->SendIpi(raw_cpuid);
     }
   }
-#endif // __KERNEL__
 }
 
 void CountableTask::Inc() {

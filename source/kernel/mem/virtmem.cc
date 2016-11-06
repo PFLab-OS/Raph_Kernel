@@ -20,7 +20,7 @@
  * 
  */
 
-#include "kvirtmem.h"
+#include "virtmem.h"
 #include <assert.h>
 #include <errno.h>
 #include <raph.h>
@@ -36,7 +36,7 @@ extern "C" {
   void  dlfree(void*);
 }
 
-KVirtmemCtrl::KVirtmemCtrl() {  
+VirtmemCtrl::VirtmemCtrl() {  
   _heap_limit = ptr2virtaddr(&kHeapEndAddr);
   
   // 6MB allocated by boot.S
@@ -45,17 +45,17 @@ KVirtmemCtrl::KVirtmemCtrl() {
   kassert(_brk_end < _heap_allocated_end);
 }
 
-virt_addr KVirtmemCtrl::Alloc(size_t size) {
+virt_addr VirtmemCtrl::Alloc(size_t size) {
   Locker locker(_lock);
   return reinterpret_cast<virt_addr>(dlmalloc(size));
 }
 
-void KVirtmemCtrl::Free(virt_addr addr) {
+void VirtmemCtrl::Free(virt_addr addr) {
   Locker locker(_lock);
   dlfree(reinterpret_cast<void *>(addr));
 }
 
-virt_addr KVirtmemCtrl::Sbrk(int64_t increment) {
+virt_addr VirtmemCtrl::Sbrk(int64_t increment) {
   virt_addr _old_brk_end = _brk_end;
   _brk_end += increment;
   if (_brk_end > _heap_allocated_end) {

@@ -22,19 +22,8 @@
 
 #include <net/socket.h>
 
-#ifdef __KERNEL__
-
 #include <global.h>
 
 bool Socket::GetIpv4Address(uint32_t &addr) {
   return netdev_ctrl->GetIpv4Address(_ifname, addr);
 }
-
-#else
-
-bool Socket::GetIpv4Address(uint32_t &addr) {
-  // TODO: not implemented
-  return false;
-}
-
-#endif // __KERNEL__

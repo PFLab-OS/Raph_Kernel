@@ -65,7 +65,7 @@
 #include <assert.h>
 #include <global.h>
 #include "physmem.h"
-#include "kvirtmem.h"
+#include "virtmem.h"
 #include <spinlock.h>
 
 typedef uint64_t entry_type;
