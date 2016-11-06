@@ -36,6 +36,7 @@ public:
     gtty->Cprintf(">>>%d\n", f_mount(&_fs, "0:/", 1));
       
       //    return (f_mount(&_fs, "C:/", 1) == FR_OK);
+    return false;
   }
 private:
   FATFS _fs;

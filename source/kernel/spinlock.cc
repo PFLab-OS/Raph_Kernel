@@ -24,11 +24,8 @@
 #include <raph.h>
 #include <cpu.h>
 #include <libglobal.h>
-
-#ifdef __KERNEL__
 #include <idt.h>
 #include <apic.h>
-#endif // __KERNEL__
 
 void IntSpinLock::Lock() {
   if ((_flag % 2) == 1) {

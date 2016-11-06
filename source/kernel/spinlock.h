@@ -39,7 +39,6 @@ public:
 };
 
 
-#ifdef __KERNEL__
 // 割り込みハンドラ内でも使えるSpinLock
 class IntSpinLock : public SpinLockInterface {
 public:
@@ -81,7 +80,5 @@ class Locker {
  private:
   SpinLockInterface &_lock;
 };
-
-#endif // __KERNEL__
 
 #endif // __RAPH_KERNEL_SPINLOCK_H__

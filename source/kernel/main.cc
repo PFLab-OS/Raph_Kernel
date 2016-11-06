@@ -66,7 +66,7 @@ ApicCtrl _apic_ctrl;
 CpuCtrl _cpu_ctrl;
 Gdt _gdt;
 Idt _idt;
-KVirtmemCtrl _virtmem_ctrl;
+VirtmemCtrl _virtmem_ctrl;
 PhysmemCtrl _physmem_ctrl;
 PagingCtrl _paging_ctrl;
 TaskCtrl _task_ctrl;
@@ -288,7 +288,7 @@ extern "C" int main() {
 
   idt = new (&_idt) Idt;
 
-  virtmem_ctrl = new (&_virtmem_ctrl) KVirtmemCtrl;
+  virtmem_ctrl = new (&_virtmem_ctrl) VirtmemCtrl;
 
   physmem_ctrl = new (&_physmem_ctrl) PhysmemCtrl;
 

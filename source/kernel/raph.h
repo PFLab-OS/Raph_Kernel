@@ -38,11 +38,7 @@ static inline T alignUp(T val, int base) {
   return align(val + base - 1, base);
 }
 
-#ifdef __KERNEL__
-
 #define __NO_LIBC__
-
-#endif // __KERNEL__
 
 #ifdef __NO_LIBC__
 inline void *operator new  (size_t, void *p)   throw() { return p; }
@@ -57,18 +53,12 @@ inline void  operator delete[](void *, void *) throw() { };
 extern "C" {
 #endif
 
-#ifndef __KERNEL__
-#define kassert(flag) if (!(flag)) {throw #flag;}
-
-#else
 #undef kassert
   
   void _kassert(const char *file, int line, const char *func)  __attribute__((noreturn));
 #define kassert(flag) if (!(flag)) { while(gtty == nullptr) { asm volatile("cli; nop; hlt;"); } _kassert(__FILE__, __LINE__, __func__); }
 
-#endif /* __KERNEL__ */
 
-  
 #define MASK(val, ebit, sbit) ((val) & (((1 << ((ebit) - (sbit) + 1)) - 1) << (sbit)))
   
   void _kernel_panic(const char *class_name, const char *err_str);
@@ -108,7 +98,6 @@ extern "C" {
     return data;
   }
 
-#ifdef __KERNEL__
   static inline bool disable_interrupt() {
     uint64_t if_flag;
     asm volatile("pushfq; popq %0; andq $0x200, %0;":"=r"(if_flag));
@@ -121,14 +110,6 @@ extern "C" {
       asm volatile("sti");
     }
   }
-#else
-  static inline bool disable_interrupt() {
-    return false;
-  }
-  static inline void enable_interrupt(bool flag) {
-  }
-#endif // __KERNEL__
-
 #ifdef __cplusplus
 }
 #endif
