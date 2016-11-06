@@ -26,6 +26,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <raph.h>
+#include <spinlock.h>
 
 typedef uint64_t virt_addr;
 template <typename ptr> inline virt_addr ptr2virtaddr(ptr *addr) {
@@ -34,12 +35,16 @@ template <typename ptr> inline virt_addr ptr2virtaddr(ptr *addr) {
 
 class VirtmemCtrl {
 public:
-  VirtmemCtrl() {
-  }
+  VirtmemCtrl();
   virtual ~VirtmemCtrl() {
   }
-  virtual virt_addr Alloc(size_t size) = 0;
-  virtual void Free(virt_addr addr) = 0;
+
+  // 新規に仮想メモリ領域を確保する。
+  // 物理メモリが割り当てられていない領域の場合は物理メモリを割り当てる
+  virt_addr Alloc(size_t size);
+  // 仮想メモリ領域を解放するが、物理メモリは解放しない
+  void Free(virt_addr addr);
+
   // ０初期化版
   virt_addr AllocZ(size_t size) {
     virt_addr addr = Alloc(size);
@@ -57,8 +62,13 @@ public:
     c->~T();
     Free(reinterpret_cast<virt_addr>(c));
   }
-  virtual virt_addr Sbrk(int64_t increment) = 0;
+
+  virt_addr Sbrk(int64_t increment);
 private:
+  virt_addr _heap_allocated_end;
+  virt_addr _brk_end;
+  virt_addr _heap_limit;
+  SpinLock _lock;
 };
 
 #endif // __RAPH_LIB_MEM_VIRTMEM_H__

@@ -25,7 +25,7 @@
 #include <global.h>
 #include <raph.h>
 #include <multiboot.h>
-#include "kvirtmem.h"
+#include "virtmem.h"
 #include "physmem.h"
 
 PagingCtrl::PagingCtrl() {
