@@ -197,7 +197,7 @@ private:
       if (_apic_info == nullptr) {
         return 0;
       }
-      GetCpuIdFromApicId(GetApicId());
+      return GetCpuIdFromApicId(GetApicId());
     }   
     int GetCpuIdFromApicId(uint32_t apic_id) {
       for(int n = 0; n < _ncpu; n++) {

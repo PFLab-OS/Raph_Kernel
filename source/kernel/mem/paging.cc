@@ -177,5 +177,7 @@ bool PagingCtrl::Map2MPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr
   } else {
     return false;
   }
+
+  return true;
 }
 
