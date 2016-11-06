@@ -33,10 +33,10 @@ template <typename ptr> inline virt_addr ptr2virtaddr(ptr *addr) {
   return reinterpret_cast<virt_addr>(addr);
 }
 
-class VirtmemCtrl {
+class VirtmemCtrl final {
 public:
   VirtmemCtrl();
-  virtual ~VirtmemCtrl() {
+  ~VirtmemCtrl() {
   }
 
   // 新規に仮想メモリ領域を確保する。
