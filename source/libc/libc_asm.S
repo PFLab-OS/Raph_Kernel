@@ -53,14 +53,11 @@ longjmp:
 
   movq     8 (%rdi), %rbp
 
-  #ifdef __KERNEL__
   // clear interrupt
   pushfq
   popq    %rcx
   cli
 
-  #endif /* __KERNEL__ */
-  
   movq    48 (%rdi), %rsp
   pushq   56 (%rdi)
   movq     0 (%rdi), %rbx
@@ -69,15 +66,12 @@ longjmp:
   movq    32 (%rdi), %r14
   movq    40 (%rdi), %r15
 
-  #ifdef __KERNEL__
   // enable interrupt
   andq    $0x200, %rcx
   cmpq    $0, %rcx
   jz      1f
   sti
 1:
-  #endif /* __KERNEL__ */
-
   ret
 
  /* end of ported code */

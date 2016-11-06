@@ -30,7 +30,6 @@
 #include <_cpu.h>
 #include <mem/physmem.h>
 
-#ifndef __UNIT_TEST__
 struct MADT {
   ACPISDTHeader header;
   uint32_t lapicCtrlAddr;
@@ -73,11 +72,9 @@ struct MADTStIOAPIC {
   uint32_t ioapicAddr;
   uint32_t glblIntBase;
 } __attribute__ ((packed));
-#endif // __UNIT_TEST__
 
 class Regs;
 
-#ifndef __UNIT_TEST__
 class ApicCtrl {
 public:
   ApicCtrl() {}
@@ -423,9 +420,5 @@ inline uint64_t ApicCtrl::GetMsiAddr(uint8_t dest_lapicid) {
 inline uint16_t ApicCtrl::GetMsiData(uint8_t vector) {
   return Lapic::GetMsiData(vector);
 }
-
-#else
-#include <thread.h>
-#endif // !__UNIT_TEST__
 
 #endif /* __RAPH_KERNEL_APIC_H__ */

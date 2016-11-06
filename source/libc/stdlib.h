@@ -34,11 +34,9 @@ extern "C" {
   void abort();
 
 
-#ifdef __KERNEL__
   void *malloc (size_t size) __attribute__((malloc));
   void *calloc (size_t n, size_t size) __attribute__((malloc));
   void free(void *ptr);
-#endif /* __KERNEL__ */
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

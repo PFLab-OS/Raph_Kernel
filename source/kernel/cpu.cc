@@ -20,7 +20,6 @@
  * 
  */
 
-#ifdef __KERNEL__
 #include <apic.h>
 #include <global.h>
 #include <cpu.h>
@@ -61,8 +60,3 @@ CpuId CpuCtrl::RetainCpuIdForPurpose(CpuPurpose p) {
   }
   return CpuId(CpuId::kCpuIdBootProcessor);
 }
-
-#else
-#include <thread.h>
-#endif /* __KERNEL__ */
-
