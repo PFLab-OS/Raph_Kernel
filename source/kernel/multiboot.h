@@ -80,8 +80,8 @@ public:
     for (tag = reinterpret_cast<multiboot_tag *>(addr); tag->type != MULTIBOOT_TAG_TYPE_END; addr = alignUp(addr + tag->size, 8), tag = reinterpret_cast<multiboot_tag *>(addr)) {
       switch(tag->type) {
       case MULTIBOOT_TAG_TYPE_MODULE: {
-        multiboot_tag_module* info;
-        gtty->CprintfRaw("module %d %d\n", info->mod_start, info->mod_end);
+        multiboot_tag_module* info = (struct multiboot_tag_module *) tag;
+        gtty->CprintfRaw("module %x %x\n", info->mod_start, info->mod_end);
         break;
       }
       default:
