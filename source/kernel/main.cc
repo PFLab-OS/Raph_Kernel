@@ -146,6 +146,267 @@ void lspci(int argc, const char* argv[]){
   }
 }
 
+static void membench() {
+  uint32_t ebx, edx, ecx;
+  asm volatile("cpuid;":"=b"(ebx), "=d"(edx), "=c"(ecx):"a"(0));
+  char buf[12];
+  *(reinterpret_cast<uint32_t *>(buf + 0)) = ebx;
+  *(reinterpret_cast<uint32_t *>(buf + 4)) = edx;
+  *(reinterpret_cast<uint32_t *>(buf + 8)) = ecx;
+  if (strncmp(buf, "AuthenticAMD", 12) == 0) {
+    // QEMU
+    return;
+  }
+
+  gtty->CprintfRaw("-%d-", cpu_ctrl->GetCpuId().GetRawId());
+  
+  int entry = 20 * 1024 * 1024 / sizeof(int);
+  int *tmp = new int[entry];
+  for(int i = 0; i < entry - 1; i++) {
+    tmp[i] = i + 1;
+  }
+  // http://mementoo.info/archives/746
+  for(int i=0;i<entry - 1;i++)
+    {
+      int j = rand()%(entry - 1);
+      int t = tmp[i];
+      tmp[i] = tmp[j];
+      tmp[j] = t;
+    }
+
+  {      
+    int *buf = new int[entry];
+    // init
+    {
+      int j = 0;
+      for (int i = 0; i < entry - 1; i++) {
+        j = (buf[j] = tmp[i]);
+      }
+      buf[j] = -1;
+    }
+    // bench
+    measure {
+      int j = 0;
+      do {
+        j = buf[j];
+      } while(buf[j] != -1);
+    }
+    delete buf;
+  }
+  {      
+    PhysAddr paddr;
+    physmem_ctrl->Alloc(paddr, PagingCtrl::ConvertNumToPageSize(entry * sizeof(int)));
+    int *buf = reinterpret_cast<int *>(paddr.GetVirtAddr());
+    // init
+    int sum_bkup = 0;
+    {
+      for (int i = 0; i < entry - 1; i++) {
+        buf[i] = i;
+        sum_bkup += buf[i];
+      }
+    }
+    int sum = 0;
+    // bench
+    measure {
+      for (int i = 0; i < entry - 1; i++) {
+        sum += buf[i];
+      }
+    }
+    assert(sum == sum_bkup);
+    delete buf;
+  }
+  {      
+    //int *buf = new int[entry];
+    int *buf = reinterpret_cast<int *>(p2v(0x1840000000));
+    // init
+    {
+      int j = 0;
+      for (int i = 0; i < entry - 1; i++) {
+        j = (buf[j] = tmp[i]);
+      }
+      buf[j] = -1;
+    }
+    // bench
+    measure {
+      int j = 0;
+      do {
+        j = buf[j];
+      } while(buf[j] != -1);
+    }
+    // delete buf;
+  }
+  {      
+    // int *buf = new int[entry];
+    int *buf = reinterpret_cast<int *>(p2v(0x1840000000));
+    // init
+    int sum_bkup = 0;
+    {
+      for (int i = 0; i < entry - 1; i++) {
+        buf[i] = i;
+        sum_bkup += buf[i];
+      }
+    }
+    int sum = 0;
+    // bench
+    measure {
+      for (int i = 0; i < entry - 1; i++) {
+        sum += buf[i];
+      }
+    }
+    assert(sum == sum_bkup);
+    // delete buf;
+  }
+  delete tmp;
+}
+
+static void membench2() {
+  uint32_t ebx, edx, ecx;
+  asm volatile("cpuid;":"=b"(ebx), "=d"(edx), "=c"(ecx):"a"(0));
+  char buf[12];
+  *(reinterpret_cast<uint32_t *>(buf + 0)) = ebx;
+  *(reinterpret_cast<uint32_t *>(buf + 4)) = edx;
+  *(reinterpret_cast<uint32_t *>(buf + 8)) = ecx;
+  if (strncmp(buf, "AuthenticAMD", 12) == 0) {
+    // QEMU
+    return;
+  }
+
+  
+  int entry = 20 * 1024 * 1024 / sizeof(int);
+  int cpuid = cpu_ctrl->GetCpuId().GetRawId();
+
+
+  {
+    PhysAddr paddr;
+    physmem_ctrl->Alloc(paddr, PagingCtrl::ConvertNumToPageSize(entry * sizeof(int)));
+    int *buf = reinterpret_cast<int *>(paddr.GetVirtAddr());
+    int sum_bkup = 0;
+    // init
+    {
+      for (int i = 0; i < entry - 1; i++) {
+        buf[i] = i;
+        sum_bkup += i;
+      }
+    }
+
+    {
+      static volatile int cnt1 = 0;
+      while(true) {
+        int tmp = cnt1;
+        if (__sync_bool_compare_and_swap(&cnt1, tmp, tmp + 1)) {
+          break;
+        }
+      }
+      do {
+      } while(!__sync_bool_compare_and_swap(&cnt1, 256, 256));
+    }
+  
+    uint64_t t1 = timer->ReadMainCnt();
+    for (int j = 0; j < 100; j++) {
+      int sum = 0;
+      // bench
+      for (int i = 0; i < entry - 1; i++) {
+        sum += buf[i];
+      }
+      assert(sum == sum_bkup);
+    }
+  
+    static volatile int cnt2 = 0;
+    while(true) {
+      int tmp = cnt2;
+      if (__sync_bool_compare_and_swap(&cnt2, tmp, tmp + 1)) {
+        break;
+      }
+    }
+    do {
+    } while(!__sync_bool_compare_and_swap(&cnt2, 256, 256));
+    if (cpuid == 0) {
+      gtty->CprintfRaw("<%d ns>", (timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod());
+    }
+    //delete buf;
+  }
+
+
+
+
+  {
+    int *buf = reinterpret_cast<int *>(p2v(0x1840000000 + entry * sizeof(int) * cpuid));
+    int sum_bkup = 0;
+    // init
+    {
+      for (int i = 0; i < entry - 1; i++) {
+        buf[i] = i;
+        sum_bkup += i;
+      }
+    }
+
+    static volatile int cnt1 = 0;
+    while(true) {
+      int tmp = cnt1;
+      if (__sync_bool_compare_and_swap(&cnt1, tmp, tmp + 1)) {
+        break;
+      }
+    }
+    do {
+    } while(!__sync_bool_compare_and_swap(&cnt1, 256, 256));
+
+    uint64_t t1 = timer->ReadMainCnt();
+    for (int j = 0; j < 100; j++) {
+      int sum = 0;
+      // bench
+      for (int i = 0; i < entry - 1; i++) {
+        sum += buf[i];
+      }
+      assert(sum == sum_bkup);
+    }
+  
+    static volatile int cnt2 = 0;
+    while(true) {
+      int tmp = cnt2;
+      if (__sync_bool_compare_and_swap(&cnt2, tmp, tmp + 1)) {
+        break;
+      }
+    }
+    do {
+    } while(!__sync_bool_compare_and_swap(&cnt2, 256, 256));
+    if (cpuid == 0) {
+      gtty->CprintfRaw("<%d ns>", (timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod());
+    }
+  }
+
+}
+
+Callout callout[256];
+static void register_membench_callout() {
+  static int id = 0;
+  int cpuid = cpu_ctrl->GetCpuId().GetRawId();
+  new(&callout[cpuid]) Callout;
+  Function oneshot_bench_func;
+  oneshot_bench_func.Init([](void *){
+    int cpuid = cpu_ctrl->GetCpuId().GetRawId();
+    if (id != cpuid) {
+      callout[cpuid].SetHandler(1000);
+      return;
+    }
+    membench();
+    id++;
+  }, nullptr);
+  callout[cpuid].Init(oneshot_bench_func);
+  callout[cpuid].SetHandler(10);
+}
+
+static void register_membench2_callout() {
+  static int id = 0;
+  int cpuid = cpu_ctrl->GetCpuId().GetRawId();
+  new(&callout[cpuid]) Callout;
+  Function oneshot_bench_func;
+  oneshot_bench_func.Init([](void *){
+    membench2();
+  }, nullptr);
+  callout[cpuid].Init(oneshot_bench_func);
+  callout[cpuid].SetHandler(10);
+}
+
 void bench(int argc, const char* argv[]) {
   if (argc != 2) {
     gtty->Cprintf("invalid argument.\n");
@@ -326,6 +587,8 @@ extern "C" int main() {
 
   arp_table = new (&_arp_table) ArpTable();
 
+  physmem_ctrl->Init();
+
   multiboot_ctrl->Setup();
 
   paging_ctrl->MapAllPhysMemory();
@@ -350,9 +613,7 @@ extern "C" int main() {
   ;
   CpuId pstack_cpu = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kHighPerformance);
   ;
-  
-  physmem_ctrl->Init();
-  
+    
   rnd_next = timer->ReadMainCnt();
 
   task_ctrl->Setup();
@@ -398,9 +659,9 @@ extern "C" int main() {
   time = stime;
   rtime = 0;
 
-  gtty->Cprintf("[cpu] info: #%d (apic id: %d) started.\n",
-                cpu_ctrl->GetCpuId(),
-                cpu_ctrl->GetCpuId().GetApicId());
+  // gtty->Cprintf("[cpu] info: #%d (apic id: %d) started.\n",
+  //               cpu_ctrl->GetCpuId(),
+  //               cpu_ctrl->GetCpuId().GetApicId());
 
   while (!apic_ctrl->IsBootupAll()) {
   }
@@ -413,46 +674,11 @@ extern "C" int main() {
   shell->Register("lspci", lspci);
   shell->Register("show", show);
 
+  register_membench2_callout();
+
   task_ctrl->Run();
 
   return 0;
-}
-
-static void membench() {
-  int entry = 20 * 1024 * 1024 / sizeof(int);
-  int *tmp = new int[entry - 1];
-  for(int i = 0; i < entry - 1; i++) {
-    tmp[i] = i + 1;
-  }
-  // http://mementoo.info/archives/746
-  for(int i=0;i<entry - 1;i++)
-    {
-      int j = rand()%(entry - 1);
-      int t = tmp[i];
-      tmp[i] = tmp[j];
-      tmp[j] = t;
-    }
-
-        
-  //int *buf = new int[entry];
-  int *buf = reinterpret_cast<int *>(p2v(0x1840000000));
-  // init
-  {
-    int j = 0;
-    for (int i = 0; i < entry - 1; i++) {
-      j = (buf[j] = tmp[i]);
-    }
-    buf[j] = -1;
-  }
-  // bench
-  measure {
-    int j = 0;
-    do {
-      j = buf[j];
-    } while(buf[j] != -1);
-  }
-  // delete buf;
-  delete tmp;
 }
 
 extern "C" int main_of_others() {
@@ -463,9 +689,9 @@ extern "C" int main_of_others() {
   gdt->SetupProc();
   idt->SetupProc();
 
-  gtty->Cprintf("[cpu] info: #%d (apic id: %d) started.\n",
-  cpu_ctrl->GetCpuId(),
-  cpu_ctrl->GetCpuId().GetApicId());
+  // gtty->Cprintf("[cpu] info: #%d (apic id: %d) started.\n",
+  //               cpu_ctrl->GetCpuId(),
+  //               cpu_ctrl->GetCpuId().GetApicId());
  
 // ループ性能測定用
 //#define LOOP_BENCHMARK
@@ -486,7 +712,7 @@ extern "C" int main_of_others() {
 #endif
   
 // ワンショット性能測定用
-#define ONE_SHOT_BENCHMARK
+// #define ONE_SHOT_BENCHMARK
 #ifdef ONE_SHOT_BENCHMARK
   #define ONE_SHOT_BENCHMARK_CPU  5
   if (cpu_ctrl->GetCpuId().GetRawId() == ONE_SHOT_BENCHMARK_CPU) {
@@ -497,17 +723,6 @@ extern "C" int main_of_others() {
           tt1.SetHandler(1000);
           return;
         }
-        uint32_t ebx, edx, ecx;
-        asm volatile("cpuid;":"=b"(ebx), "=d"(edx), "=c"(ecx):"a"(0));
-        char buf[12];
-        *(reinterpret_cast<uint32_t *>(buf + 0)) = ebx;
-        *(reinterpret_cast<uint32_t *>(buf + 4)) = edx;
-        *(reinterpret_cast<uint32_t *>(buf + 8)) = ecx;
-        if (strncmp(buf, "AuthenticAMD", 12) == 0) {
-          // QEMU
-          return;
-        }
-        membench();
         // kassert(g_channel != nullptr);
         // FatFs *fatfs = new FatFs();
         // kassert(fatfs->Mount());
@@ -517,12 +732,20 @@ extern "C" int main_of_others() {
     tt1.SetHandler(10);
   }
 #endif
+  register_membench2_callout();
 
   task_ctrl->Run();
   return 0;
 }
 
 static int error_output_flag = 0;
+
+void show_backtrace(size_t *rbp) {
+    for (int i = 0; i < 3; i++) {
+      gtty->CprintfRaw("backtrace(%d): rip:%llx,\n", i, rbp[1]);
+      rbp = reinterpret_cast<size_t *>(rbp[0]);
+    }
+}
 
 extern "C" void _kernel_panic(const char *class_name, const char *err_str) {
   if (gtty != nullptr) {
@@ -535,10 +758,7 @@ extern "C" void _kernel_panic(const char *class_name, const char *err_str) {
     gtty->CprintfRaw("cpuid: %d\n", cpu_ctrl->GetCpuId().GetRawId());
     size_t *rbp;
     asm volatile("movq %%rbp, %0":"=r"(rbp));
-    for (int i = 0; i < 3; i++) {
-      gtty->CprintfRaw("backtrace(%d): rip:%llx,\n", i, rbp[1]);
-      rbp = reinterpret_cast<size_t *>(rbp[0]);
-    }
+    show_backtrace(rbp);
     __sync_bool_compare_and_swap(&error_output_flag, 1, 0);
   }
   while(true) {
@@ -573,10 +793,7 @@ extern "C" void _kassert(const char *file, int line, const char *func) {
       file, line, func, cpu_ctrl->GetCpuId().GetRawId());
     size_t *rbp;
     asm volatile("movq %%rbp, %0":"=r"(rbp));
-    for (int i = 0; i < 3; i++) {
-      gtty->CprintfRaw("backtrace(%d): rip:%llx,\n", i, rbp[1]);
-      rbp = reinterpret_cast<size_t *>(rbp[0]);
-    }
+    show_backtrace(rbp);
     __sync_bool_compare_and_swap(&error_output_flag, 1, 0);
   }
   while(true){

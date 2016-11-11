@@ -34,6 +34,13 @@ public:
     Init(newid);
     CheckIfValid();
   }
+  bool operator==(const CpuId& id) const {
+    return _rawid == id._rawid;
+  }
+  bool operator!=(const CpuId& id) const
+	{
+		return !(*this == id);
+	}
   int GetRawId() {
     CheckIfValid();
     return _rawid;

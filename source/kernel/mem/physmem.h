@@ -113,16 +113,19 @@ class PhysmemCtrl {
     _srat = srat;
   }
   static const virt_addr kLinearMapOffset = 0xffff800000000000;
+  void Show(); // for debug
  private:
-  void ReserveSub(phys_addr addr, size_t size);
   struct AllocatedArea {
     phys_addr start_addr;
     phys_addr end_addr;
     AllocatedArea *next;
   } *_allocated_area;
+  void ReserveSub(phys_addr addr, size_t size);
+  void ReserveSub2(AllocatedArea *allocated_area, phys_addr addr, size_t size);
   Allocator<AllocatedArea> _allocated_area_buffer;
   SpinLock _lock;
   bool _alloc_lock = false;
+  bool _is_initialized = false;
   Srat *_srat = nullptr;
 };
 
