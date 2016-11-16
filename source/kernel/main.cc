@@ -39,6 +39,7 @@
 #include <dev/hpet.h>
 #include <dev/keyboard.h>
 #include <dev/pci.h>
+#include <dev/usb/usb.h>
 #include <dev/vga.h>
 #include <dev/pciid.h>
 
@@ -136,10 +137,10 @@ void lspci(int argc, const char* argv[]){
         if (vid == 0xffff) {
           continue;
         }
-	uint16_t did = pci_ctrl->ReadReg<uint16_t>(j, k, 0, PciCtrl::kDeviceIDReg);
-	uint16_t svid = pci_ctrl->ReadReg<uint16_t>(j, k, 0, PciCtrl::kSubsystemVendorIdReg);
-	uint16_t ssid = pci_ctrl->ReadReg<uint16_t>(j, k, 0, PciCtrl::kSubsystemIdReg);
-	table.Search(vid, did, svid, ssid);
+        uint16_t did = pci_ctrl->ReadReg<uint16_t>(j, k, 0, PciCtrl::kDeviceIDReg);
+        uint16_t svid = pci_ctrl->ReadReg<uint16_t>(j, k, 0, PciCtrl::kSubsystemVendorIdReg);
+        uint16_t ssid = pci_ctrl->ReadReg<uint16_t>(j, k, 0, PciCtrl::kSubsystemIdReg);
+        table.Search(vid, did, svid, ssid);
       }
     }
   }
@@ -190,36 +191,36 @@ void bench(int argc, const char* argv[]) {
     new(&tt2) Callout;
     Function func;
     func.Init([](void *){
-        if (!apic_ctrl->IsBootupAll()) {
+      if (!apic_ctrl->IsBootupAll()) {
+        tt2.SetHandler(1000);
+        return;
+      }
+      if (!netdev_ctrl->IsLinkUp("en0")) {
+        tt2.SetHandler(1000);
+        return;
+      }
+      if (bstate != BenchState::kRcv) {
+        if (cnt != 0) {
           tt2.SetHandler(1000);
           return;
         }
-        if (!netdev_ctrl->IsLinkUp("en0")) {
+        for(int k = 0; k < 1; k++) {
+          if (time == 0) {
+            break;
+          }
+          cnt = timer->ReadMainCnt();
+          if(socket.Request(inet_atoi(ip2)) < 0) {
+            gtty->Cprintf("[arp] failed to transmit request\n");
+          }
+          time--;
+        }
+        if (time != 0) {
           tt2.SetHandler(1000);
-          return;
         }
-        if (bstate != BenchState::kRcv) {
-          if (cnt != 0) {
-            tt2.SetHandler(1000);
-            return;
-          }
-          for(int k = 0; k < 1; k++) {
-            if (time == 0) {
-              break;
-            }
-            cnt = timer->ReadMainCnt();
-            if(socket.Request(inet_atoi(ip2)) < 0) {
-              gtty->Cprintf("[arp] failed to transmit request\n");
-            }
-            time--;
-          }
-          if (time != 0) {
-            tt2.SetHandler(1000);
-          }
-        } else {
-          gtty->Cprintf("[debug] info: Link is Up\n");
-        }
-      }, nullptr);
+      } else {
+        gtty->Cprintf("[debug] info: Link is Up\n");
+      }
+    }, nullptr);
     tt2.Init(func);
     CpuId cpuid(3);
     tt2.SetHandler(cpuid, 10);
@@ -229,19 +230,19 @@ void bench(int argc, const char* argv[]) {
     new(&tt3) Callout;
     Function func;
     func.Init([](void *){
-        if (rtime > 0) {
-          gtty->Cprintf("ARP Reply average latency: %d us [%d / %d]\n", sum / rtime, rtime, stime);
+      if (rtime > 0) {
+        gtty->Cprintf("ARP Reply average latency: %d us [%d / %d]\n", sum / rtime, rtime, stime);
+      } else {
+        if (netdev_ctrl->IsLinkUp("en0")) {
+          gtty->Cprintf("Link is Up, but no ARP Reply\n");
         } else {
-          if (netdev_ctrl->IsLinkUp("en0")) {
-            gtty->Cprintf("Link is Up, but no ARP Reply\n");
-          } else {
-            gtty->Cprintf("Link is Down, please wait...\n");
-          }
+          gtty->Cprintf("Link is Down, please wait...\n");
         }
-        if (rtime != stime) {
-          tt3.SetHandler(1000*1000*3);
-        }
-      }, nullptr);
+      }
+      if (rtime != stime) {
+        tt3.SetHandler(1000*1000*3);
+      }
+    }, nullptr);
     tt3.Init(func);
     CpuId cpuid(6);
     tt3.SetHandler(cpuid, 1000*1000*3);
@@ -255,20 +256,20 @@ void bench(int argc, const char* argv[]) {
   } else {
     Function func;
     func.Init([](void *){
-        uint32_t ipaddr;
-        uint16_t op;
+      uint32_t ipaddr;
+      uint16_t op;
         
-        if (socket.Read(op, ipaddr) >= 0) {
-          if(op == ArpSocket::kOpReply) {
-            uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;
-            cnt = 0;
-            sum += l;
-            rtime++;
-          } else if(op == ArpSocket::kOpRequest) {
-            socket.Reply(ipaddr);
-          }
+      if (socket.Read(op, ipaddr) >= 0) {
+        if(op == ArpSocket::kOpReply) {
+          uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;
+          cnt = 0;
+          sum += l;
+          rtime++;
+        } else if(op == ArpSocket::kOpRequest) {
+          socket.Reply(ipaddr);
         }
-      }, nullptr);
+      }
+    }, nullptr);
     CpuId cpuid(2);
     socket.SetReceiveCallback(cpuid, func);
   }
@@ -329,9 +330,9 @@ extern "C" int main() {
   cpu_ctrl->Init();
 
   CpuId network_cpu = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kHighPerformance);
-;
+  ;
   CpuId pstack_cpu = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kHighPerformance);
-;
+  ;
 
   rnd_next = timer->ReadMainCnt();
 
@@ -344,10 +345,12 @@ extern "C" int main() {
   gdt->SetupProc();
 
   idt->SetupProc();
-
+  
   pci_ctrl = new (&_acpica_pci_ctrl) AcpicaPciCtrl;
 
   acpi_ctrl->SetupAcpica();
+
+  UsbCtrl::Init();
 
   InitDevices<PciCtrl, Device>();
 
@@ -363,14 +366,14 @@ extern "C" int main() {
 
   Function kbd_func;
   kbd_func.Init([](void *){
-      uint8_t data;
-      if(!keyboard->Read(data)){
-        return;
-      }
-      char c = Keyboard::Interpret(data);
-      gtty->Cprintf("%c", c);
-      shell->ReadCh(c);
-    }, nullptr);
+    uint8_t data;
+    if(!keyboard->Read(data)){
+      return;
+    }
+    char c = Keyboard::Interpret(data);
+    gtty->Cprintf("%c", c);
+    shell->ReadCh(c);
+  }, nullptr);
   keyboard->Setup(kbd_func);
 
   cnt = 0;
@@ -404,13 +407,13 @@ extern "C" int main_of_others() {
   idt->SetupProc();
 
   gtty->Cprintf("[cpu] info: #%d (apic id: %d) started.\n",
-  cpu_ctrl->GetCpuId(),
-  cpu_ctrl->GetCpuId().GetApicId());
+                cpu_ctrl->GetCpuId(),
+                cpu_ctrl->GetCpuId().GetApicId());
  
-// ループ性能測定用
-//#define LOOP_BENCHMARK
+  // ループ性能測定用
+  //#define LOOP_BENCHMARK
 #ifdef LOOP_BENCHMARK
-  #define LOOP_BENCHMARK_CPU  4
+#define LOOP_BENCHMARK_CPU  4
   PollingFunc p;
   if (cpu_ctrl->GetCpuId().GetRawId() == LOOP_BENCHMARK_CPU) {
     Function f;
@@ -425,23 +428,23 @@ extern "C" int main_of_others() {
   }
 #endif
   
-// ワンショット性能測定用
+  // ワンショット性能測定用
 #define ONE_SHOT_BENCHMARK
 #ifdef ONE_SHOT_BENCHMARK
-  #define ONE_SHOT_BENCHMARK_CPU  5
+#define ONE_SHOT_BENCHMARK_CPU  5
   if (cpu_ctrl->GetCpuId().GetRawId() == ONE_SHOT_BENCHMARK_CPU) {
     new(&tt1) Callout;
     Function oneshot_bench_func;
     oneshot_bench_func.Init([](void *){
-        if (!apic_ctrl->IsBootupAll()) {
-          tt1.SetHandler(1000);
-          return;
-        }
-        // kassert(g_channel != nullptr);
-        // FatFs *fatfs = new FatFs();
-        // kassert(fatfs->Mount());
-        //        g_channel->Read(0, 1);
-      }, nullptr);
+      if (!apic_ctrl->IsBootupAll()) {
+        tt1.SetHandler(1000);
+        return;
+      }
+      // kassert(g_channel != nullptr);
+      // FatFs *fatfs = new FatFs();
+      // kassert(fatfs->Mount());
+      //        g_channel->Read(0, 1);
+    }, nullptr);
     tt1.Init(oneshot_bench_func);
     tt1.SetHandler(10);
   }
@@ -492,7 +495,7 @@ extern "C" void abort() {
 extern "C" void _kassert(const char *file, int line, const char *func) {
   if (gtty != nullptr) {
     gtty->CprintfRaw("assertion failed at %s l.%d (%s) cpuid: %d\n",
-      file, line, func, cpu_ctrl->GetCpuId().GetRawId());
+                     file, line, func, cpu_ctrl->GetCpuId().GetRawId());
     size_t *rbp;
     asm volatile("movq %%rbp, %0":"=r"(rbp));
     for (int i = 0; i < 3; i++) {

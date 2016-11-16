@@ -33,6 +33,10 @@ template <typename ptr> inline virt_addr ptr2virtaddr(ptr *addr) {
   return reinterpret_cast<virt_addr>(addr);
 }
 
+template <typename ptr> inline ptr *addr2ptr(virt_addr addr) {
+  return reinterpret_cast<ptr *>(addr);
+}
+
 class VirtmemCtrl final {
 public:
   VirtmemCtrl();
