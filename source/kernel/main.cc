@@ -464,7 +464,6 @@ extern "C" int main_of_others() {
     beep_off.Init([](void *){
 	uint8_t off = inb(0x61);
 	outb(0x61, off & 0xd);
-	tt4.SetHandler(100000);
       }, nullptr);
     tt4.Init(beep_off);
     tt4.SetHandler(1000000);
