@@ -96,6 +96,7 @@ FatFs *fatfs;
 Callout tt1;
 Callout tt2;
 Callout tt3;
+Callout tt4;
 
 uint8_t ip1[] = {0, 0, 0, 0};
 uint8_t ip2[] = {0, 0, 0, 0};
@@ -466,6 +467,28 @@ extern "C" int main_of_others() {
     tt1.SetHandler(10);
   }
 #endif
+
+  if (cpu_ctrl->GetCpuId().GetRawId() == cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kGeneralPurpose).GetRawId()) {
+    uint16_t sound = 2712;
+    uint8_t a = 0xb6;
+    outb(0x43, a);
+    uint8_t l = sound & 0x00FF;
+    outb(0x42, l);
+    uint8_t h = (sound >> 8) & 0x00FF;
+    outb(0x42, h);
+    uint8_t on = inb(0x61);
+    outb(0x61, (on | 0x03) & 0x0f);
+
+    new(&tt4) Callout;
+    Function beep_off;
+    beep_off.Init([](void *){
+	uint8_t off = inb(0x61);
+	outb(0x61, off & 0xd);
+	tt4.SetHandler(100000);
+      }, nullptr);
+    tt4.Init(beep_off);
+    tt4.SetHandler(1000000);
+  }
 
   task_ctrl->Run();
   return 0;
