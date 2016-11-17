@@ -260,6 +260,33 @@ static void membench() {
   delete tmp;
 }
 
+int *init, *answer;
+int *ddr, *mcdram;
+static inline int min(int a, int b) {
+  return a > b ? b : a;
+}
+
+static inline void sync(volatile int &l1, volatile int &l2) {
+  l2 = 0;
+  while(true) {
+    int tmp = l1;
+    if (__sync_bool_compare_and_swap(&l1, tmp, tmp + 1)) {
+      break;
+    }
+  }
+  do {
+  } while(!__sync_bool_compare_and_swap(&l1, 256, 256));
+  while(true) {
+    int tmp = l2;
+    if (__sync_bool_compare_and_swap(&l2, tmp, tmp + 1)) {
+      break;
+    }
+  }
+  do {
+  } while(!__sync_bool_compare_and_swap(&l2, 256, 256));
+  l1 = 0;
+}
+
 static void membench2() {
   uint32_t ebx, edx, ecx;
   asm volatile("cpuid;":"=b"(ebx), "=d"(edx), "=c"(ecx):"a"(0));
@@ -272,109 +299,134 @@ static void membench2() {
     return;
   }
 
-  
-  int entry = 20 * 1024 * 1024 / sizeof(int);
+
   int cpuid = cpu_ctrl->GetCpuId().GetRawId();
 
-
-  {
-    PhysAddr paddr;
-    physmem_ctrl->Alloc(paddr, PagingCtrl::ConvertNumToPageSize(entry * sizeof(int)));
-    int *buf = reinterpret_cast<int *>(paddr.GetVirtAddr());
-    int sum_bkup = 0;
-    // init
-    {
-      for (int i = 0; i < entry - 1; i++) {
-        buf[i] = i;
-        sum_bkup += i;
-      }
-    }
-
-    {
-      static volatile int cnt1 = 0;
-      while(true) {
-        int tmp = cnt1;
-        if (__sync_bool_compare_and_swap(&cnt1, tmp, tmp + 1)) {
-          break;
+  for (int num = 40000; num < 60000; num *= 2) {
+    if (cpuid == 0) {
+      gtty->CprintfRaw("\nnum: %d\n", num);
+      
+      PhysAddr paddr1;
+      physmem_ctrl->Alloc(paddr1, PagingCtrl::ConvertNumToPageSize(num * num * sizeof(int)));
+      init = reinterpret_cast<int *>(paddr1.GetVirtAddr());
+      // PhysAddr paddr2;
+      // physmem_ctrl->Alloc(paddr2, PagingCtrl::ConvertNumToPageSize(num * num * sizeof(int)));
+      // answer = reinterpret_cast<int *>(paddr2.GetVirtAddr());
+      // init
+      {
+        for (int i = 0; i < num; i++) {
+          for (int j = 0; j < i; j++) {
+            int r = rand() % 999;
+            init[i * num + j] = r;
+            //answer[i * num + j] = r;
+            init[j * num + i] = r;
+            //answer[j * num + i] = r;
+          }
+          init[i * num + i] = 0;
+          //answer[i * num + i] = 0;
         }
       }
-      do {
-      } while(!__sync_bool_compare_and_swap(&cnt1, 256, 256));
+
+      uint64_t t1 = timer->ReadMainCnt();
+
+      //for (int k = 0; k < num; k++) {
+      //  for (int i = 0; i < num; i++) {
+      //    for (int j = 0; j < num; j++) {
+            //            answer[i * num + j] = min(answer[i * num + j], answer[i * num + k] + answer[k * num + j]);
+      //    }
+      //  }
+      //}
+
+      gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
     }
-  
-    uint64_t t1 = timer->ReadMainCnt();
-    for (int j = 0; j < 100; j++) {
-      int sum = 0;
-      // bench
-      for (int i = 0; i < entry - 1; i++) {
-        sum += buf[i];
-      }
-      assert(sum == sum_bkup);
-    }
-  
-    static volatile int cnt2 = 0;
-    while(true) {
-      int tmp = cnt2;
-      if (__sync_bool_compare_and_swap(&cnt2, tmp, tmp + 1)) {
-        break;
-      }
-    }
-    do {
-    } while(!__sync_bool_compare_and_swap(&cnt2, 256, 256));
+
     if (cpuid == 0) {
-      gtty->CprintfRaw("<%d ns>", (timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod());
+      PhysAddr paddr;
+      physmem_ctrl->Alloc(paddr, PagingCtrl::ConvertNumToPageSize(num * num * sizeof(int)));
+      ddr = reinterpret_cast<int *>(paddr.GetVirtAddr());
+      memcpy(ddr, init, num * num * sizeof(int));
+      gtty->CprintfRaw("init ddr ");
     }
-    //delete buf;
-  }
-
-
-
-
-  {
-    int *buf = reinterpret_cast<int *>(p2v(0x1840000000 + entry * sizeof(int) * cpuid));
-    int sum_bkup = 0;
-    // init
+  
     {
-      for (int i = 0; i < entry - 1; i++) {
-        buf[i] = i;
-        sum_bkup += i;
+      {
+        static volatile int l1 = 0, l2 = 0;
+        sync(l1, l2);
       }
-    }
-
-    static volatile int cnt1 = 0;
-    while(true) {
-      int tmp = cnt1;
-      if (__sync_bool_compare_and_swap(&cnt1, tmp, tmp + 1)) {
-        break;
-      }
-    }
-    do {
-    } while(!__sync_bool_compare_and_swap(&cnt1, 256, 256));
-
-    uint64_t t1 = timer->ReadMainCnt();
-    for (int j = 0; j < 100; j++) {
-      int sum = 0;
-      // bench
-      for (int i = 0; i < entry - 1; i++) {
-        sum += buf[i];
-      }
-      assert(sum == sum_bkup);
-    }
   
-    static volatile int cnt2 = 0;
-    while(true) {
-      int tmp = cnt2;
-      if (__sync_bool_compare_and_swap(&cnt2, tmp, tmp + 1)) {
-        break;
+      uint64_t t1 = timer->ReadMainCnt();
+
+    
+      static volatile int cnt = 0;
+      while(true) {
+        int k = cnt;
+        if (k == num) {
+          break;
+        }
+        if (__sync_bool_compare_and_swap(&cnt, k, k + 1)) {
+          continue;
+        }
+        for (int i = 0; i < num; i++) {
+          for (int j = 0; j < num; j++) {
+            ddr[i * num + j] = min(ddr[i * num + j], ddr[i * num + k] + ddr[k * num + j]);
+          }
+        }
+      }
+
+      {
+        static volatile int l1 = 0, l2 = 0;
+        sync(l1, l2);
+      }
+      
+      if (cpuid == 0) {
+        gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+        cnt = 0;
       }
     }
-    do {
-    } while(!__sync_bool_compare_and_swap(&cnt2, 256, 256));
+
+
     if (cpuid == 0) {
-      gtty->CprintfRaw("<%d ns>", (timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod());
+      mcdram = reinterpret_cast<int *>(p2v(0x1840000000));
+      memcpy(mcdram, init, num * num * sizeof(int));
+      gtty->CprintfRaw("init mcdram ");
+    }
+
+
+    {
+      {
+        static volatile int l1 = 0, l2 = 0;
+        sync(l1, l2);
+      }
+  
+      uint64_t t1 = timer->ReadMainCnt();
+
+    
+      static volatile int cnt = 0;
+      while(true) {
+        int k = cnt;
+        if (k == num) {
+          break;
+        }
+        if (__sync_bool_compare_and_swap(&cnt, k, k + 1)) {
+          continue;
+        }
+        for (int i = 0; i < num; i++) {
+          for (int j = 0; j < num; j++) {
+            mcdram[i * num + j] = min(mcdram[i * num + j], mcdram[i * num + k] + mcdram[k * num + j]);
+          }
+        }
+      } 
+
+      {
+        static volatile int l1 = 0, l2 = 0;
+        sync(l1, l2);
+      }
+      if (cpuid == 0) {
+        gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+        cnt = 0;
+      }
     }
   }
-
 }
 
 Callout callout[256];
