@@ -266,7 +266,8 @@ static inline int min(int a, int b) {
   return a > b ? b : a;
 }
 
-static inline void sync(volatile int &l1, volatile int &l2) {
+static inline void sync(volatile int &l1, volatile int &l2, volatile int &l3) {
+  int cpunum = cpu_ctrl->GetHowManyCpus();
   l2 = 0;
   while(true) {
     int tmp = l1;
@@ -275,7 +276,8 @@ static inline void sync(volatile int &l1, volatile int &l2) {
     }
   }
   do {
-  } while(!__sync_bool_compare_and_swap(&l1, 256, 256));
+  } while(!__sync_bool_compare_and_swap(&l1, cpunum, cpunum));
+  l3 = 0;
   while(true) {
     int tmp = l2;
     if (__sync_bool_compare_and_swap(&l2, tmp, tmp + 1)) {
@@ -283,8 +285,16 @@ static inline void sync(volatile int &l1, volatile int &l2) {
     }
   }
   do {
-  } while(!__sync_bool_compare_and_swap(&l2, 256, 256));
+  } while(!__sync_bool_compare_and_swap(&l2, cpunum, cpunum));
   l1 = 0;
+  while(true) {
+    int tmp = l3;
+    if (__sync_bool_compare_and_swap(&l3, tmp, tmp + 1)) {
+      break;
+    }
+  }
+  do {
+  } while(!__sync_bool_compare_and_swap(&l3, cpunum, cpunum));
 }
 
 static void membench2() {
@@ -302,7 +312,7 @@ static void membench2() {
 
   int cpuid = cpu_ctrl->GetCpuId().GetRawId();
 
-  for (int num = 40000; num < 60000; num *= 2) {
+  for (int num = 1000; num < 60000; num += 1000) {
     if (cpuid == 0) {
       gtty->CprintfRaw("\nnum: %d\n", num);
       
@@ -340,49 +350,49 @@ static void membench2() {
       gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
     }
 
-    if (cpuid == 0) {
-      PhysAddr paddr;
-      physmem_ctrl->Alloc(paddr, PagingCtrl::ConvertNumToPageSize(num * num * sizeof(int)));
-      ddr = reinterpret_cast<int *>(paddr.GetVirtAddr());
-      memcpy(ddr, init, num * num * sizeof(int));
-      gtty->CprintfRaw("init ddr ");
-    }
+    // if (cpuid == 0) {
+    //   PhysAddr paddr;
+    //   physmem_ctrl->Alloc(paddr, PagingCtrl::ConvertNumToPageSize(num * num * sizeof(int)));
+    //   ddr = reinterpret_cast<int *>(paddr.GetVirtAddr());
+    //   memcpy(ddr, init, num * num * sizeof(int));
+    //   gtty->CprintfRaw("init ddr ");
+    // }
   
-    {
-      {
-        static volatile int l1 = 0, l2 = 0;
-        sync(l1, l2);
-      }
+    // {
+    //   {
+    //     static volatile int l1 = 0, l2 = 0;
+    //     sync(l1, l2);
+    //   }
   
-      uint64_t t1 = timer->ReadMainCnt();
+    //   uint64_t t1 = timer->ReadMainCnt();
 
     
-      static volatile int cnt = 0;
-      while(true) {
-        int k = cnt;
-        if (k == num) {
-          break;
-        }
-        if (__sync_bool_compare_and_swap(&cnt, k, k + 1)) {
-          continue;
-        }
-        for (int i = 0; i < num; i++) {
-          for (int j = 0; j < num; j++) {
-            ddr[i * num + j] = min(ddr[i * num + j], ddr[i * num + k] + ddr[k * num + j]);
-          }
-        }
-      }
+    //   static volatile int cnt = 0;
+    //   while(true) {
+    //     int k = cnt;
+    //     if (k == num) {
+    //       break;
+    //     }
+    //     if (!__sync_bool_compare_and_swap(&cnt, k, k + 1)) {
+    //       continue;
+    //     }
+    //     for (int i = 0; i < num; i++) {
+    //       for (int j = 0; j < num; j++) {
+    //         ddr[i * num + j] = min(ddr[i * num + j], ddr[i * num + k] + ddr[k * num + j]);
+    //       }
+    //     }
+    //   }
 
-      {
-        static volatile int l1 = 0, l2 = 0;
-        sync(l1, l2);
-      }
+    //   {
+    //     static volatile int l1 = 0, l2 = 0;
+    //     sync(l1, l2);
+    //   }
       
-      if (cpuid == 0) {
-        gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
-        cnt = 0;
-      }
-    }
+    //   if (cpuid == 0) {
+    //     gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+    //     cnt = 0;
+    //   }
+    // }
 
 
     if (cpuid == 0) {
@@ -394,8 +404,8 @@ static void membench2() {
 
     {
       {
-        static volatile int l1 = 0, l2 = 0;
-        sync(l1, l2);
+        static volatile int l1 = 0, l2 = 0, l3 = 0;
+        sync(l1, l2, l3);
       }
   
       uint64_t t1 = timer->ReadMainCnt();
@@ -418,12 +428,132 @@ static void membench2() {
       } 
 
       {
-        static volatile int l1 = 0, l2 = 0;
-        sync(l1, l2);
+        static volatile int l1 = 0, l2 = 0, l3 = 0;
+        sync(l1, l2, l3);
       }
       if (cpuid == 0) {
         gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
         cnt = 0;
+      }
+    }
+  }
+}
+
+static void membench3() {
+  uint32_t ebx, edx, ecx;
+  asm volatile("cpuid;":"=b"(ebx), "=d"(edx), "=c"(ecx):"a"(0));
+  char buf[12];
+  *(reinterpret_cast<uint32_t *>(buf + 0)) = ebx;
+  *(reinterpret_cast<uint32_t *>(buf + 4)) = edx;
+  *(reinterpret_cast<uint32_t *>(buf + 8)) = ecx;
+  if (strncmp(buf, "AuthenticAMD", 12) == 0) {
+    // QEMU
+    return;
+  }
+
+
+  int cpuid = cpu_ctrl->GetCpuId().GetRawId();
+
+  {
+    static volatile int l1 = 0, l2 = 0, l3 = 0;
+    sync(l1, l2, l3);
+  }
+  if (cpuid == 0) {
+    gtty->CprintfRaw("bench start\n");
+  }
+  for (int i = 1; i < 256; i++) {
+    static volatile int cnt = 0;
+    if (cpuid == 0) {
+      cnt = 0;
+    }
+    {
+      static volatile int l1 = 0, l2 = 0, l3 = 0;
+      sync(l1, l2, l3);
+    }
+    if (cpuid == 0) {
+      uint64_t t1 = timer->ReadMainCnt();
+      for (int j = 0; j < 0xFFF; j+=2) {
+        do {
+        } while(!__sync_bool_compare_and_swap(&cnt, j, j + 1));
+      }
+      {
+        CpuId cpuid(i);
+        gtty->CprintfRaw("%d:%d:%d ", i, cpuid.GetApicId(), (((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod())) / 1000);
+      }
+      for (int j = 1; j < cpu_ctrl->GetHowManyCpus(); j++) {
+        if (i != j) {
+          CpuId cpuid(j);
+          apic_ctrl->SendIpi(cpuid.GetApicId());
+        }
+      }
+    } else {
+      if (cpuid == i) {
+        for (int j = 1; j < 0xFFF; j+=2) {
+          do {
+          } while(!__sync_bool_compare_and_swap(&cnt, j, j + 1));
+        }
+      } else {
+        asm volatile("hlt;");
+      }
+    }
+  }
+}
+
+static void membench4() {
+  uint32_t ebx, edx, ecx;
+  asm volatile("cpuid;":"=b"(ebx), "=d"(edx), "=c"(ecx):"a"(0));
+  char buf[12];
+  *(reinterpret_cast<uint32_t *>(buf + 0)) = ebx;
+  *(reinterpret_cast<uint32_t *>(buf + 4)) = edx;
+  *(reinterpret_cast<uint32_t *>(buf + 8)) = ecx;
+  if (strncmp(buf, "AuthenticAMD", 12) == 0) {
+    // QEMU
+    return;
+  }
+
+
+  int cpuid = cpu_ctrl->GetCpuId().GetRawId();
+
+  {
+    static volatile int l1 = 0, l2 = 0, l3 = 0;
+    sync(l1, l2, l3);
+  }
+  if (cpuid == 0) {
+    gtty->CprintfRaw("bench start\n");
+  }
+  for (int i = 1; i < 256; i++) {
+    static volatile int cnt = 0;
+    if (cpuid == 0) {
+      cnt = 0;
+    }
+    {
+      static volatile int l1 = 0, l2 = 0, l3 = 0;
+      sync(l1, l2, l3);
+    }
+    if (cpuid == 0) {
+      uint64_t t1 = timer->ReadMainCnt();
+      for (int j = 0; j < 0xFFF; j+=(i+1)) {
+        do {
+        } while(!__sync_bool_compare_and_swap(&cnt, j, j + 1));
+      }
+      {
+        CpuId cpuid(i);
+        gtty->CprintfRaw("%d:%d:%d ", i, cpuid.GetApicId(), (((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod())) / 1000);
+      }
+      for (int j = 1; j < 256; j++) {
+        if (i < j) {
+          CpuId cpuid(j);
+          apic_ctrl->SendIpi(cpuid.GetApicId());
+        }
+      }
+    } else {
+      if (cpuid <= i) {
+        for (int j = cpuid; j < 0xFFF; j+=(i+1)) {
+          do {
+          } while(!__sync_bool_compare_and_swap(&cnt, j, j + 1));
+        }
+      } else {
+        asm volatile("hlt;");
       }
     }
   }
@@ -455,6 +585,18 @@ static void register_membench2_callout() {
   Function oneshot_bench_func;
   oneshot_bench_func.Init([](void *){
     membench2();
+  }, nullptr);
+  callout[cpuid].Init(oneshot_bench_func);
+  callout[cpuid].SetHandler(10);
+}
+
+static void register_membench3_callout() {
+  static int id = 0;
+  int cpuid = cpu_ctrl->GetCpuId().GetRawId();
+  new(&callout[cpuid]) Callout;
+  Function oneshot_bench_func;
+  oneshot_bench_func.Init([](void *){
+    membench3();
   }, nullptr);
   callout[cpuid].Init(oneshot_bench_func);
   callout[cpuid].SetHandler(10);
@@ -727,7 +869,7 @@ extern "C" int main() {
   shell->Register("lspci", lspci);
   shell->Register("show", show);
 
-  register_membench2_callout();
+  register_membench3_callout();
 
   task_ctrl->Run();
 
@@ -785,29 +927,29 @@ extern "C" int main_of_others() {
     tt1.SetHandler(10);
   }
 #endif
-  register_membench2_callout();
+  register_membench3_callout();
 
-  if (cpu_ctrl->GetCpuId().GetRawId() == cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kGeneralPurpose).GetRawId()) {
-    uint16_t sound = 2712;
-    uint8_t a = 0xb6;
-    outb(0x43, a);
-    uint8_t l = sound & 0x00FF;
-    outb(0x42, l);
-    uint8_t h = (sound >> 8) & 0x00FF;
-    outb(0x42, h);
-    uint8_t on = inb(0x61);
-    outb(0x61, (on | 0x03) & 0x0f);
+  // if (cpu_ctrl->GetCpuId().GetRawId() == cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kGeneralPurpose).GetRawId()) {
+  //   uint16_t sound = 2712;
+  //   uint8_t a = 0xb6;
+  //   outb(0x43, a);
+  //   uint8_t l = sound & 0x00FF;
+  //   outb(0x42, l);
+  //   uint8_t h = (sound >> 8) & 0x00FF;
+  //   outb(0x42, h);
+  //   uint8_t on = inb(0x61);
+  //   outb(0x61, (on | 0x03) & 0x0f);
 
-    new(&tt4) Callout;
-    Function beep_off;
-    beep_off.Init([](void *){
-	uint8_t off = inb(0x61);
-	outb(0x61, off & 0xd);
-	tt4.SetHandler(100000);
-      }, nullptr);
-    tt4.Init(beep_off);
-    tt4.SetHandler(1000000);
-  }
+  //   new(&tt4) Callout;
+  //   Function beep_off;
+  //   beep_off.Init([](void *){
+	// uint8_t off = inb(0x61);
+	// outb(0x61, off & 0xd);
+	// tt4.SetHandler(100000);
+  //     }, nullptr);
+  //   tt4.Init(beep_off);
+  //   tt4.SetHandler(1000000);
+  // }
 
   task_ctrl->Run();
   return 0;
