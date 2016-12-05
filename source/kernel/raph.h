@@ -68,6 +68,8 @@ extern "C" {
   void _checkpoint(const char *func, const int line);
 #define CHECKPOINT _checkpoint(__func__, __LINE__)
 
+  void show_backtrace(size_t *rbp);
+
   static inline void outb(uint16_t pin, uint8_t data) {
     __asm__ volatile("outb %%al, %%dx;"::"d"(pin),"a"(data));
   }

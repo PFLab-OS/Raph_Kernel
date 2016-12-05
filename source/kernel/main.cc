@@ -34,6 +34,7 @@
 #include <timer.h>
 #include <tty.h>
 #include <shell.h>
+#include <measure.h>
 #include <mem/kstack.h>
 
 #include <dev/hpet.h>
@@ -144,6 +145,461 @@ void lspci(int argc, const char* argv[]){
       }
     }
   }
+}
+
+static void membench() {
+  uint32_t ebx, edx, ecx;
+  asm volatile("cpuid;":"=b"(ebx), "=d"(edx), "=c"(ecx):"a"(0));
+  char buf[12];
+  *(reinterpret_cast<uint32_t *>(buf + 0)) = ebx;
+  *(reinterpret_cast<uint32_t *>(buf + 4)) = edx;
+  *(reinterpret_cast<uint32_t *>(buf + 8)) = ecx;
+  if (strncmp(buf, "AuthenticAMD", 12) == 0) {
+    // QEMU
+    return;
+  }
+
+  gtty->CprintfRaw("-%d-", cpu_ctrl->GetCpuId().GetRawId());
+  
+  int entry = 20 * 1024 * 1024 / sizeof(int);
+  int *tmp = new int[entry];
+  for(int i = 0; i < entry - 1; i++) {
+    tmp[i] = i + 1;
+  }
+  // http://mementoo.info/archives/746
+  for(int i=0;i<entry - 1;i++)
+    {
+      int j = rand()%(entry - 1);
+      int t = tmp[i];
+      tmp[i] = tmp[j];
+      tmp[j] = t;
+    }
+
+  {      
+    int *buf = new int[entry];
+    // init
+    {
+      int j = 0;
+      for (int i = 0; i < entry - 1; i++) {
+        j = (buf[j] = tmp[i]);
+      }
+      buf[j] = -1;
+    }
+    // bench
+    measure {
+      int j = 0;
+      do {
+        j = buf[j];
+      } while(buf[j] != -1);
+    }
+    delete buf;
+  }
+  {      
+    PhysAddr paddr;
+    physmem_ctrl->Alloc(paddr, PagingCtrl::ConvertNumToPageSize(entry * sizeof(int)));
+    int *buf = reinterpret_cast<int *>(paddr.GetVirtAddr());
+    // init
+    int sum_bkup = 0;
+    {
+      for (int i = 0; i < entry - 1; i++) {
+        buf[i] = i;
+        sum_bkup += buf[i];
+      }
+    }
+    int sum = 0;
+    // bench
+    measure {
+      for (int i = 0; i < entry - 1; i++) {
+        sum += buf[i];
+      }
+    }
+    assert(sum == sum_bkup);
+    delete buf;
+  }
+  {      
+    //int *buf = new int[entry];
+    int *buf = reinterpret_cast<int *>(p2v(0x1840000000));
+    // init
+    {
+      int j = 0;
+      for (int i = 0; i < entry - 1; i++) {
+        j = (buf[j] = tmp[i]);
+      }
+      buf[j] = -1;
+    }
+    // bench
+    measure {
+      int j = 0;
+      do {
+        j = buf[j];
+      } while(buf[j] != -1);
+    }
+    // delete buf;
+  }
+  {      
+    // int *buf = new int[entry];
+    int *buf = reinterpret_cast<int *>(p2v(0x1840000000));
+    // init
+    int sum_bkup = 0;
+    {
+      for (int i = 0; i < entry - 1; i++) {
+        buf[i] = i;
+        sum_bkup += buf[i];
+      }
+    }
+    int sum = 0;
+    // bench
+    measure {
+      for (int i = 0; i < entry - 1; i++) {
+        sum += buf[i];
+      }
+    }
+    assert(sum == sum_bkup);
+    // delete buf;
+  }
+  delete tmp;
+}
+
+int *init, *answer;
+int *ddr, *mcdram;
+static inline int min(int a, int b) {
+  return a > b ? b : a;
+}
+
+static inline void sync(volatile int &l1, volatile int &l2, volatile int &l3) {
+  int cpunum = cpu_ctrl->GetHowManyCpus();
+  l2 = 0;
+  while(true) {
+    int tmp = l1;
+    if (__sync_bool_compare_and_swap(&l1, tmp, tmp + 1)) {
+      break;
+    }
+  }
+  do {
+  } while(!__sync_bool_compare_and_swap(&l1, cpunum, cpunum));
+  l3 = 0;
+  while(true) {
+    int tmp = l2;
+    if (__sync_bool_compare_and_swap(&l2, tmp, tmp + 1)) {
+      break;
+    }
+  }
+  do {
+  } while(!__sync_bool_compare_and_swap(&l2, cpunum, cpunum));
+  l1 = 0;
+  while(true) {
+    int tmp = l3;
+    if (__sync_bool_compare_and_swap(&l3, tmp, tmp + 1)) {
+      break;
+    }
+  }
+  do {
+  } while(!__sync_bool_compare_and_swap(&l3, cpunum, cpunum));
+}
+
+static void membench2() {
+  uint32_t ebx, edx, ecx;
+  asm volatile("cpuid;":"=b"(ebx), "=d"(edx), "=c"(ecx):"a"(0));
+  char buf[12];
+  *(reinterpret_cast<uint32_t *>(buf + 0)) = ebx;
+  *(reinterpret_cast<uint32_t *>(buf + 4)) = edx;
+  *(reinterpret_cast<uint32_t *>(buf + 8)) = ecx;
+  if (strncmp(buf, "AuthenticAMD", 12) == 0) {
+    // QEMU
+    return;
+  }
+
+
+  int cpuid = cpu_ctrl->GetCpuId().GetRawId();
+
+  for (int num = 1000; num < 60000; num += 1000) {
+    if (cpuid == 0) {
+      gtty->CprintfRaw("\nnum: %d\n", num);
+      
+      PhysAddr paddr1;
+      physmem_ctrl->Alloc(paddr1, PagingCtrl::ConvertNumToPageSize(num * num * sizeof(int)));
+      init = reinterpret_cast<int *>(paddr1.GetVirtAddr());
+      // PhysAddr paddr2;
+      // physmem_ctrl->Alloc(paddr2, PagingCtrl::ConvertNumToPageSize(num * num * sizeof(int)));
+      // answer = reinterpret_cast<int *>(paddr2.GetVirtAddr());
+      // init
+      {
+        for (int i = 0; i < num; i++) {
+          for (int j = 0; j < i; j++) {
+            int r = rand() % 999;
+            init[i * num + j] = r;
+            //answer[i * num + j] = r;
+            init[j * num + i] = r;
+            //answer[j * num + i] = r;
+          }
+          init[i * num + i] = 0;
+          //answer[i * num + i] = 0;
+        }
+      }
+
+      uint64_t t1 = timer->ReadMainCnt();
+
+      //for (int k = 0; k < num; k++) {
+      //  for (int i = 0; i < num; i++) {
+      //    for (int j = 0; j < num; j++) {
+            //            answer[i * num + j] = min(answer[i * num + j], answer[i * num + k] + answer[k * num + j]);
+      //    }
+      //  }
+      //}
+
+      gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+    }
+
+    // if (cpuid == 0) {
+    //   PhysAddr paddr;
+    //   physmem_ctrl->Alloc(paddr, PagingCtrl::ConvertNumToPageSize(num * num * sizeof(int)));
+    //   ddr = reinterpret_cast<int *>(paddr.GetVirtAddr());
+    //   memcpy(ddr, init, num * num * sizeof(int));
+    //   gtty->CprintfRaw("init ddr ");
+    // }
+  
+    // {
+    //   {
+    //     static volatile int l1 = 0, l2 = 0;
+    //     sync(l1, l2);
+    //   }
+  
+    //   uint64_t t1 = timer->ReadMainCnt();
+
+    
+    //   static volatile int cnt = 0;
+    //   while(true) {
+    //     int k = cnt;
+    //     if (k == num) {
+    //       break;
+    //     }
+    //     if (!__sync_bool_compare_and_swap(&cnt, k, k + 1)) {
+    //       continue;
+    //     }
+    //     for (int i = 0; i < num; i++) {
+    //       for (int j = 0; j < num; j++) {
+    //         ddr[i * num + j] = min(ddr[i * num + j], ddr[i * num + k] + ddr[k * num + j]);
+    //       }
+    //     }
+    //   }
+
+    //   {
+    //     static volatile int l1 = 0, l2 = 0;
+    //     sync(l1, l2);
+    //   }
+      
+    //   if (cpuid == 0) {
+    //     gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+    //     cnt = 0;
+    //   }
+    // }
+
+
+    if (cpuid == 0) {
+      mcdram = reinterpret_cast<int *>(p2v(0x1840000000));
+      memcpy(mcdram, init, num * num * sizeof(int));
+      gtty->CprintfRaw("init mcdram ");
+    }
+
+
+    {
+      {
+        static volatile int l1 = 0, l2 = 0, l3 = 0;
+        sync(l1, l2, l3);
+      }
+  
+      uint64_t t1 = timer->ReadMainCnt();
+
+    
+      static volatile int cnt = 0;
+      while(true) {
+        int k = cnt;
+        if (k == num) {
+          break;
+        }
+        if (__sync_bool_compare_and_swap(&cnt, k, k + 1)) {
+          continue;
+        }
+        for (int i = 0; i < num; i++) {
+          for (int j = 0; j < num; j++) {
+            mcdram[i * num + j] = min(mcdram[i * num + j], mcdram[i * num + k] + mcdram[k * num + j]);
+          }
+        }
+      } 
+
+      {
+        static volatile int l1 = 0, l2 = 0, l3 = 0;
+        sync(l1, l2, l3);
+      }
+      if (cpuid == 0) {
+        gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+        cnt = 0;
+      }
+    }
+  }
+}
+
+static void membench3() {
+  uint32_t ebx, edx, ecx;
+  asm volatile("cpuid;":"=b"(ebx), "=d"(edx), "=c"(ecx):"a"(0));
+  char buf[12];
+  *(reinterpret_cast<uint32_t *>(buf + 0)) = ebx;
+  *(reinterpret_cast<uint32_t *>(buf + 4)) = edx;
+  *(reinterpret_cast<uint32_t *>(buf + 8)) = ecx;
+  if (strncmp(buf, "AuthenticAMD", 12) == 0) {
+    // QEMU
+    return;
+  }
+
+
+  int cpuid = cpu_ctrl->GetCpuId().GetRawId();
+
+  {
+    static volatile int l1 = 0, l2 = 0, l3 = 0;
+    sync(l1, l2, l3);
+  }
+  if (cpuid == 0) {
+    gtty->CprintfRaw("bench start\n");
+  }
+  for (int i = 1; i < 256; i++) {
+    static volatile int cnt = 0;
+    if (cpuid == 0) {
+      cnt = 0;
+    }
+    {
+      static volatile int l1 = 0, l2 = 0, l3 = 0;
+      sync(l1, l2, l3);
+    }
+    if (cpuid == 0) {
+      uint64_t t1 = timer->ReadMainCnt();
+      for (int j = 0; j < 0xFFF; j+=2) {
+        do {
+        } while(!__sync_bool_compare_and_swap(&cnt, j, j + 1));
+      }
+      {
+        CpuId cpuid(i);
+        gtty->CprintfRaw("%d:%d:%d ", i, cpuid.GetApicId(), (((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod())) / 1000);
+      }
+      for (int j = 1; j < cpu_ctrl->GetHowManyCpus(); j++) {
+        if (i != j) {
+          CpuId cpuid(j);
+          apic_ctrl->SendIpi(cpuid.GetApicId());
+        }
+      }
+    } else {
+      if (cpuid == i) {
+        for (int j = 1; j < 0xFFF; j+=2) {
+          do {
+          } while(!__sync_bool_compare_and_swap(&cnt, j, j + 1));
+        }
+      } else {
+        asm volatile("hlt;");
+      }
+    }
+  }
+}
+
+static void membench4() {
+  uint32_t ebx, edx, ecx;
+  asm volatile("cpuid;":"=b"(ebx), "=d"(edx), "=c"(ecx):"a"(0));
+  char buf[12];
+  *(reinterpret_cast<uint32_t *>(buf + 0)) = ebx;
+  *(reinterpret_cast<uint32_t *>(buf + 4)) = edx;
+  *(reinterpret_cast<uint32_t *>(buf + 8)) = ecx;
+  if (strncmp(buf, "AuthenticAMD", 12) == 0) {
+    // QEMU
+    return;
+  }
+
+
+  int cpuid = cpu_ctrl->GetCpuId().GetRawId();
+
+  {
+    static volatile int l1 = 0, l2 = 0, l3 = 0;
+    sync(l1, l2, l3);
+  }
+  if (cpuid == 0) {
+    gtty->CprintfRaw("bench start\n");
+  }
+  for (int i = 1; i < 256; i++) {
+    static volatile int cnt = 0;
+    if (cpuid == 0) {
+      cnt = 0;
+    }
+    {
+      static volatile int l1 = 0, l2 = 0, l3 = 0;
+      sync(l1, l2, l3);
+    }
+    if (cpuid == 0) {
+      uint64_t t1 = timer->ReadMainCnt();
+      for (int j = 0; j < 0xFFF; j+=(i+1)) {
+        do {
+        } while(!__sync_bool_compare_and_swap(&cnt, j, j + 1));
+      }
+      {
+        CpuId cpuid(i);
+        gtty->CprintfRaw("%d:%d:%d ", i, cpuid.GetApicId(), (((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod())) / 1000);
+      }
+      for (int j = 1; j < 256; j++) {
+        if (i < j) {
+          CpuId cpuid(j);
+          apic_ctrl->SendIpi(cpuid.GetApicId());
+        }
+      }
+    } else {
+      if (cpuid <= i) {
+        for (int j = cpuid; j < 0xFFF; j+=(i+1)) {
+          do {
+          } while(!__sync_bool_compare_and_swap(&cnt, j, j + 1));
+        }
+      } else {
+        asm volatile("hlt;");
+      }
+    }
+  }
+}
+
+Callout callout[256];
+static void register_membench_callout() {
+  static int id = 0;
+  int cpuid = cpu_ctrl->GetCpuId().GetRawId();
+  new(&callout[cpuid]) Callout;
+  Function oneshot_bench_func;
+  oneshot_bench_func.Init([](void *){
+    int cpuid = cpu_ctrl->GetCpuId().GetRawId();
+    if (id != cpuid) {
+      callout[cpuid].SetHandler(1000);
+      return;
+    }
+    membench();
+    id++;
+  }, nullptr);
+  callout[cpuid].Init(oneshot_bench_func);
+  callout[cpuid].SetHandler(10);
+}
+
+static void register_membench2_callout() {
+  static int id = 0;
+  int cpuid = cpu_ctrl->GetCpuId().GetRawId();
+  new(&callout[cpuid]) Callout;
+  Function oneshot_bench_func;
+  oneshot_bench_func.Init([](void *){
+    membench2();
+  }, nullptr);
+  callout[cpuid].Init(oneshot_bench_func);
+  callout[cpuid].SetHandler(10);
+}
+
+static void register_membench3_callout() {
+  static int id = 0;
+  int cpuid = cpu_ctrl->GetCpuId().GetRawId();
+  new(&callout[cpuid]) Callout;
+  Function oneshot_bench_func;
+  oneshot_bench_func.Init([](void *){
+    membench3();
+  }, nullptr);
+  callout[cpuid].Init(oneshot_bench_func);
+  callout[cpuid].SetHandler(10);
 }
 
 void bench(int argc, const char* argv[]) {
@@ -275,6 +731,23 @@ void bench(int argc, const char* argv[]) {
   }
 }
 
+static void show(int argc, const char *argv[]) {
+  if (argc == 1) {
+    gtty->Cprintf("invalid argument.\n");
+    return;
+  }
+  if (strcmp(argv[1], "module") == 0) {
+    if (argc != 2) {
+      gtty->Cprintf("invalid argument.\n");
+      return;
+    }
+    multiboot_ctrl->ShowModuleInfo();
+  } else {
+    gtty->Cprintf("invalid argument.\n");
+    return;
+  }
+}
+
 extern "C" int main() {
 
   multiboot_ctrl = new (&_multiboot_ctrl) MultibootCtrl;
@@ -309,6 +782,8 @@ extern "C" int main() {
 
   arp_table = new (&_arp_table) ArpTable();
 
+  physmem_ctrl->Init();
+
   multiboot_ctrl->Setup();
 
   paging_ctrl->MapAllPhysMemory();
@@ -328,12 +803,12 @@ extern "C" int main() {
   apic_ctrl->Setup();
 
   cpu_ctrl->Init();
-
+  
   CpuId network_cpu = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kHighPerformance);
-;
+  ;
   CpuId pstack_cpu = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kHighPerformance);
-;
-
+  ;
+    
   rnd_next = timer->ReadMainCnt();
 
   task_ctrl->Setup();
@@ -379,10 +854,12 @@ extern "C" int main() {
   time = stime;
   rtime = 0;
 
-  gtty->Cprintf("[cpu] info: #%d (apic id: %d) started.\n",
-                cpu_ctrl->GetCpuId(),
-                cpu_ctrl->GetCpuId().GetApicId());
+  // gtty->Cprintf("[cpu] info: #%d (apic id: %d) started.\n",
+  //               cpu_ctrl->GetCpuId(),
+  //               cpu_ctrl->GetCpuId().GetApicId());
 
+  while (!apic_ctrl->IsBootupAll()) {
+  }
   gtty->Cprintf("\n\n[kernel] info: initialization completed\n");
 
   shell->Setup();
@@ -390,6 +867,9 @@ extern "C" int main() {
   shell->Register("reset", reset);
   shell->Register("bench", bench);
   shell->Register("lspci", lspci);
+  shell->Register("show", show);
+
+  register_membench3_callout();
 
   CpuId beep_cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority);
   new(&tt4) Callout;
@@ -429,9 +909,9 @@ extern "C" int main_of_others() {
   gdt->SetupProc();
   idt->SetupProc();
 
-  gtty->Cprintf("[cpu] info: #%d (apic id: %d) started.\n",
-  cpu_ctrl->GetCpuId(),
-  cpu_ctrl->GetCpuId().GetApicId());
+  // gtty->Cprintf("[cpu] info: #%d (apic id: %d) started.\n",
+  //               cpu_ctrl->GetCpuId(),
+  //               cpu_ctrl->GetCpuId().GetApicId());
  
 // ループ性能測定用
 //#define LOOP_BENCHMARK
@@ -452,7 +932,7 @@ extern "C" int main_of_others() {
 #endif
   
 // ワンショット性能測定用
-#define ONE_SHOT_BENCHMARK
+// #define ONE_SHOT_BENCHMARK
 #ifdef ONE_SHOT_BENCHMARK
   #define ONE_SHOT_BENCHMARK_CPU  5
   if (cpu_ctrl->GetCpuId().GetRawId() == ONE_SHOT_BENCHMARK_CPU) {
@@ -473,12 +953,25 @@ extern "C" int main_of_others() {
   }
 #endif
 
+  register_membench3_callout();
+
   task_ctrl->Run();
   return 0;
 }
 
+static int error_output_flag = 0;
+
+void show_backtrace(size_t *rbp) {
+    for (int i = 0; i < 3; i++) {
+      gtty->CprintfRaw("backtrace(%d): rip:%llx,\n", i, rbp[1]);
+      rbp = reinterpret_cast<size_t *>(rbp[0]);
+    }
+}
+
 extern "C" void _kernel_panic(const char *class_name, const char *err_str) {
   if (gtty != nullptr) {
+    while(!__sync_bool_compare_and_swap(&error_output_flag, 0, 1)) {
+    }
     gtty->CprintfRaw("\n!!!! Kernel Panic !!!!\n");
     gtty->CprintfRaw("[%s] error: %s\n",class_name, err_str);
     gtty->CprintfRaw("\n"); 
@@ -486,10 +979,8 @@ extern "C" void _kernel_panic(const char *class_name, const char *err_str) {
     gtty->CprintfRaw("cpuid: %d\n", cpu_ctrl->GetCpuId().GetRawId());
     size_t *rbp;
     asm volatile("movq %%rbp, %0":"=r"(rbp));
-    for (int i = 0; i < 3; i++) {
-      gtty->CprintfRaw("backtrace(%d): rip:%llx,\n", i, rbp[1]);
-      rbp = reinterpret_cast<size_t *>(rbp[0]);
-    }
+    show_backtrace(rbp);
+    __sync_bool_compare_and_swap(&error_output_flag, 1, 0);
   }
   while(true) {
     asm volatile("cli;hlt;");
@@ -517,14 +1008,14 @@ extern "C" void abort() {
 
 extern "C" void _kassert(const char *file, int line, const char *func) {
   if (gtty != nullptr) {
+    while(!__sync_bool_compare_and_swap(&error_output_flag, 0, 1)) {
+    }
     gtty->CprintfRaw("assertion failed at %s l.%d (%s) cpuid: %d\n",
       file, line, func, cpu_ctrl->GetCpuId().GetRawId());
     size_t *rbp;
     asm volatile("movq %%rbp, %0":"=r"(rbp));
-    for (int i = 0; i < 3; i++) {
-      gtty->CprintfRaw("backtrace(%d): rip:%llx,\n", i, rbp[1]);
-      rbp = reinterpret_cast<size_t *>(rbp[0]);
-    }
+    show_backtrace(rbp);
+    __sync_bool_compare_and_swap(&error_output_flag, 1, 0);
   }
   while(true){
     asm volatile("cli;hlt");

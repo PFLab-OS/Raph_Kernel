@@ -320,7 +320,7 @@ void TaskCtrl::CancelCallout(Callout *task) {
 }
 
 void TaskCtrl::ForceWakeup(CpuId cpuid) {
-  int raw_cpuid = cpuid.GetRawId();
+  int raw_cpuid = cpuid.GetApicId();
   if (_task_struct[raw_cpuid].state == TaskQueueState::kSlept) {
     if (cpu_ctrl->GetCpuId().GetRawId() != raw_cpuid) {
       apic_ctrl->SendIpi(raw_cpuid);

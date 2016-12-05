@@ -32,17 +32,13 @@
 namespace C {
 extern "C" void handle_int(Regs *rs) {
   //TODO 例外処理中のフラグを立て、IntSpinLock内では弾く
-  apic_ctrl->DisableInt();
+  bool iflag = disable_interrupt();
   int cpuid = cpu_ctrl->GetCpuId().GetRawId();
   idt->_handling_cnt[cpuid]++;
   if (idt->_callback[cpuid][rs->n].callback == nullptr) {
     if (gtty != nullptr) {
       gtty->CprintfRaw("[kernel] error: unimplemented interrupt %d at cpuid: %d\nrip: %llx rbp: %llx\n", rs->n, cpuid, rs->rip, rs->rbp);
-      size_t *rbp = reinterpret_cast<size_t *>(rs->rbp);
-      for (int i = 0; i < 3; i++) {
-        gtty->CprintfRaw("backtrace(%d): rip:%llx,\n", i, rbp[1]);
-        rbp = reinterpret_cast<size_t *>(rbp[0]);
-      }
+      show_backtrace(reinterpret_cast<size_t *>(rs->rbp));
     }
     while(true) {
       asm volatile("cli; hlt;");
@@ -51,7 +47,7 @@ extern "C" void handle_int(Regs *rs) {
     idt->_callback[cpuid][rs->n].callback(rs, idt->_callback[cpuid][rs->n].arg);
   }
   idt->_handling_cnt[cpuid]--;
-  apic_ctrl->EnableInt();
+  enable_interrupt(iflag);
   //TODO 普通の割り込みの場合にまずい
   apic_ctrl->SendEoi();
 }
