@@ -114,17 +114,17 @@ public:
     return _ctrl;
   }
   static void Init();
-  bool GetDeviceRequest(DeviceRequest *&request) {
+  bool AllocDeviceRequest(DeviceRequest *&request) {
     return _dr_buf.Pop(request);
   }
-  void ReuseDeviceRequest(DeviceRequest *request) {
-    _dr_buf.Push(request);
+  bool ReuseDeviceRequest(DeviceRequest *request) {
+    return _dr_buf.Push(request);
   }
-  bool GetDeviceDescriptor(DeviceDescriptor *&descriptor) {
+  bool AllocDeviceDescriptor(DeviceDescriptor *&descriptor) {
     return _dd_buf.Pop(descriptor);
   }
-  void ReuseDeviceDescriptor(DeviceDescriptor *descriptor) {
-    _dd_buf.Push(descriptor);
+  bool ReuseDeviceDescriptor(DeviceDescriptor *descriptor) {
+    return _dd_buf.Push(descriptor);
   }
 private:
   static UsbCtrl _ctrl;

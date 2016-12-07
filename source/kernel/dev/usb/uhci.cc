@@ -106,14 +106,17 @@ bool DevUhci::GetDeviceDescriptor(UsbCtrl::DeviceDescriptor *desc, int device_ad
   bool success = true;
 
   UsbCtrl::DeviceRequest *request;
-  if (!UsbCtrl::GetCtrl().GetDeviceRequest(request)) {
+  if (!UsbCtrl::GetCtrl().AllocDeviceRequest(request)) {
     success = false;
     goto release;
   }
 
   request->MakePacketOfGetDeviceRequest();
 
+  // debug
+  memset(reinterpret_cast<uint8_t *>(desc), 0xFF, sizeof(UsbCtrl::DeviceDescriptor));
 
+  // debug
   TransferDescriptor *td0;
   if (!_td_buf.Pop(td0)) {
     success = false;
@@ -173,7 +176,8 @@ bool DevUhci::GetDeviceDescriptor(UsbCtrl::DeviceDescriptor *desc, int device_ad
   td1->SetStatus(false, false, true, false);
   td1->SetToken(TransferDescriptor::PacketIdentification::kSetup, device_addr, 0, false, 8);
   td1->SetBuffer(request, 0);
-  
+
+  // debug
   // td1->_next = v2p(ptr2virtaddr(td2)) | (1<<2);
   // td1->_status = 0x1C800000;		// Low-Speed, Active
   // td1->_token = 0x00E0002D | (device_addr<<8);	// SETUP, MaxLen=8
@@ -204,27 +208,33 @@ bool DevUhci::GetDeviceDescriptor(UsbCtrl::DeviceDescriptor *desc, int device_ad
 
   _frlist->entries[GetCurrentFameListIndex()].Set(qh1);
 
-  gtty->CprintfRaw("<%d %d>", device_addr, GetCurrentFameListIndex());
+  //gtty->CprintfRaw("<%d %d>", device_addr, GetCurrentFameListIndex());
 
-  timer->BusyUwait(1000*1000);
-
+  while(td5->IsActiveOfStatus()) {
+    if (td1->IsStalledOfStatus() || td1->IsCrcErrorOfStatus()) {
+      break;
+    }
+  }
+  if (td5->IsActiveOfStatus()) {
+    success = false;
+    goto release;
+  }
   gtty->CprintfRaw(" %x ", td1->GetStatus());
   gtty->CprintfRaw(" %x ", td2->GetStatus());
   gtty->CprintfRaw(" %x ", td3->GetStatus());
   gtty->CprintfRaw(" %x ", td4->GetStatus());
   gtty->CprintfRaw(" %x ", td5->GetStatus());
-
-  while(td5->IsActiveOfStatus()) {
-    if (td1->IsStalledOfStatus()) {
-      break;
-    }
-  }
-  gtty->CprintfRaw("2");
-  if (td1->IsStalledOfStatus()) {
-    success = false;
-    goto release;
-  }
  release:
+  assert(_td_buf.Push(td0));
+  assert(_td_buf.Push(td1));
+  assert(_td_buf.Push(td2));
+  assert(_td_buf.Push(td3));
+  assert(_td_buf.Push(td4));
+  assert(_td_buf.Push(td5));
+  assert(_qh_buf.Push(qh0));
+  assert(_qh_buf.Push(qh1));
+  assert(UsbCtrl::GetCtrl().ReuseDeviceRequest(request));
+  
   return success;
 }
 
@@ -233,13 +243,13 @@ DevUsb *DevUsbKeyboard::InitUsb(DevUsbController *controller, int addr) {
 
   while(true) {
     UsbCtrl::DeviceDescriptor *desc;
-    if (!UsbCtrl::GetCtrl().GetDeviceDescriptor(desc)) {
+    if (!UsbCtrl::GetCtrl().AllocDeviceDescriptor(desc)) {
       continue;
     }
 
     if (!controller->GetDeviceDescriptor(desc, addr)) {
+      assert(UsbCtrl::GetCtrl().ReuseDeviceDescriptor(desc));
       return nullptr;
-      continue;
     }
 
     gtty->CprintfRaw("vid: %x, did: %x\n", desc->vendor_id, desc->product_id);
