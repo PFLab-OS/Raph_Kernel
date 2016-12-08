@@ -348,7 +348,7 @@ void CountableTask::HandleSub(void *) {
   }
 }
 
-void Callout::SetHandler(uint32_t us) {
+void Callout::SetHandler(int us) {
   SetHandler(cpu_ctrl->GetCpuId(), us);
 }
 
