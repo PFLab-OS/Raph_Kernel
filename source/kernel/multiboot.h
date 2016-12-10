@@ -29,6 +29,7 @@
 #include <boot/multiboot2.h>
 #include <mem/physmem.h>
 #include <mem/paging.h>
+#include <elf.h>
 
 extern uint32_t multiboot_info;
 
@@ -82,6 +83,7 @@ public:
       case MULTIBOOT_TAG_TYPE_MODULE: {
         multiboot_tag_module* info = (struct multiboot_tag_module *) tag;
         gtty->CprintfRaw("module %x %x\n", info->mod_start, info->mod_end);
+	readElfTest(info);
         break;
       }
       default:
