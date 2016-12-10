@@ -36,7 +36,7 @@ PhysmemCtrl::PhysmemCtrl() {
   _allocated_area->next = nullptr;
 }
 
-void PhysmemCtrl::Alloc(PhysAddr &paddr, size_t size) {
+void PhysmemCtrl::AllocSub(PhysAddr &paddr, size_t size, PhysmemCtrl::AllocOption &option) {
   kassert(size > 0);
   kassert(size % PagingCtrl::kPageSize == 0);
   _alloc_lock = false;

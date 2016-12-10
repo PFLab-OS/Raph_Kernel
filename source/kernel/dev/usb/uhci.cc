@@ -24,7 +24,7 @@
 #include <mem/paging.h>
 #include <mem/virtmem.h>
 #include <mem/physmem.h>
-#include <dev/usb/usb.h>
+#include <dev/usb/usb11.h>
 
 // for debug
 #include <tty.h>
@@ -44,6 +44,26 @@ DevPci *DevUhci::InitPci(uint8_t bus, uint8_t device, uint8_t function) {
 }
 
 void DevUhci::Init() {
+
+  constexpr int td_buf_size = _td_buf.GetBufSize();
+  PhysAddr td_buf_paddr;
+  static_assert(td_buf_size * sizeof(TransferDescriptor) <= PagingCtrl::kPageSize, "");
+  physmem_ctrl->Alloc(td_buf_paddr, PagingCtrl::kPageSize);
+  TransferDescriptor *td_array = addr2ptr<TransferDescriptor>(td_buf_paddr.GetVirtAddr());
+  for (int i = 0; i < td_buf_size; i++) {
+    kassert(_td_buf.Push(&td_array[i]));
+  }
+
+  constexpr int qh_buf_size = _qh_buf.GetBufSize();
+  PhysAddr qh_buf_paddr;
+  static_assert(qh_buf_size * sizeof(QueueHead) <= PagingCtrl::kPageSize, "");
+  physmem_ctrl->Alloc(qh_buf_paddr, PagingCtrl::kPageSize);
+  QueueHead *qh_array = addr2ptr<QueueHead>(qh_buf_paddr.GetVirtAddr());
+  for (int i = 0; i < qh_buf_size; i++) {
+    kassert(_qh_buf.Push(&qh_array[i]));
+  }
+
+  
   _base_addr = ReadReg<uint32_t>(kBaseAddressReg);
   if ((_base_addr & 1) == 0) {
     kernel_panic("Uhci", "cannot get valid base address.");
@@ -66,8 +86,24 @@ void DevUhci::Init() {
     kernel_panic("DevUhci", "cannot allocate 32bit phys memory");
   }
 
+
+  // debug
+  TransferDescriptor *td0;
+  assert(_td_buf.Pop(td0));
+  QueueHead *qh0;
+  assert(_qh_buf.Pop(qh0));
+
+  td0->SetNext(false);
+  td0->SetStatus(false, false, false, false);
+  td0->SetToken(TransferDescriptor::PacketIdentification::kIn, 127, 0, false, 0);
+  td0->SetBuffer();
+
+  qh0->SetHorizontalNext();
+  qh0->SetVerticalNext(td0);
+
+
   for (int i = 0; i < 1024; i++) {
-    _frlist->entries[i].Set();
+    _frlist->entries[i].Set(qh0);
   }
   
   uint32_t frame_base_phys_addr = frame_base_addr.GetAddr();
@@ -79,34 +115,16 @@ void DevUhci::Init() {
   while((ReadControllerReg<uint16_t>(kCtrlRegStatus) & kCtrlRegStatusFlagHalted) != 0) {
   }
 
-  constexpr int td_buf_size = _td_buf.GetBufSize();
-  PhysAddr td_buf_paddr;
-  static_assert(td_buf_size * sizeof(TransferDescriptor) <= PagingCtrl::kPageSize, "");
-  physmem_ctrl->Alloc(td_buf_paddr, PagingCtrl::kPageSize);
-  TransferDescriptor *td_array = addr2ptr<TransferDescriptor>(td_buf_paddr.GetVirtAddr());
-  for (int i = 0; i < td_buf_size; i++) {
-    kassert(_td_buf.Push(&td_array[i]));
-  }
-
-  constexpr int qh_buf_size = _qh_buf.GetBufSize();
-  PhysAddr qh_buf_paddr;
-  static_assert(qh_buf_size * sizeof(QueueHead) <= PagingCtrl::kPageSize, "");
-  physmem_ctrl->Alloc(qh_buf_paddr, PagingCtrl::kPageSize);
-  QueueHead *qh_array = addr2ptr<QueueHead>(qh_buf_paddr.GetVirtAddr());
-  for (int i = 0; i < qh_buf_size; i++) {
-    kassert(_qh_buf.Push(&qh_array[i]));
-  }
-
   for (int dev = 0; dev < 128; dev++) {
     DevUsbKeyboard::InitUsb(&_controller_dev, dev);
   }
 }
 
-bool DevUhci::GetDeviceDescriptor(UsbCtrl::DeviceDescriptor *desc, int device_addr) {
+bool DevUhci::GetDeviceDescriptor(Usb11Ctrl::DeviceDescriptor *desc, int device_addr) {
   bool success = true;
 
-  UsbCtrl::DeviceRequest *request;
-  if (!UsbCtrl::GetCtrl().AllocDeviceRequest(request)) {
+  Usb11Ctrl::DeviceRequest *request;
+  if (!Usb11Ctrl::GetCtrl().AllocDeviceRequest(request)) {
     success = false;
     goto release;
   }
@@ -114,7 +132,7 @@ bool DevUhci::GetDeviceDescriptor(UsbCtrl::DeviceDescriptor *desc, int device_ad
   request->MakePacketOfGetDeviceRequest();
 
   // debug
-  memset(reinterpret_cast<uint8_t *>(desc), 0xFF, sizeof(UsbCtrl::DeviceDescriptor));
+  memset(reinterpret_cast<uint8_t *>(desc), 0xFF, sizeof(Usb11Ctrl::DeviceDescriptor));
 
   // debug
   TransferDescriptor *td0;
@@ -233,7 +251,7 @@ bool DevUhci::GetDeviceDescriptor(UsbCtrl::DeviceDescriptor *desc, int device_ad
   assert(_td_buf.Push(td5));
   assert(_qh_buf.Push(qh0));
   assert(_qh_buf.Push(qh1));
-  assert(UsbCtrl::GetCtrl().ReuseDeviceRequest(request));
+  assert(Usb11Ctrl::GetCtrl().ReuseDeviceRequest(request));
   
   return success;
 }
@@ -242,13 +260,13 @@ DevUsb *DevUsbKeyboard::InitUsb(DevUsbController *controller, int addr) {
   DevUsbKeyboard *that = new DevUsbKeyboard(controller, addr);
 
   while(true) {
-    UsbCtrl::DeviceDescriptor *desc;
-    if (!UsbCtrl::GetCtrl().AllocDeviceDescriptor(desc)) {
+    Usb11Ctrl::DeviceDescriptor *desc;
+    if (!Usb11Ctrl::GetCtrl().AllocDeviceDescriptor(desc)) {
       continue;
     }
 
     if (!controller->GetDeviceDescriptor(desc, addr)) {
-      assert(UsbCtrl::GetCtrl().ReuseDeviceDescriptor(desc));
+      assert(Usb11Ctrl::GetCtrl().ReuseDeviceDescriptor(desc));
       return nullptr;
     }
 

@@ -39,7 +39,7 @@
 #include <dev/hpet.h>
 #include <dev/keyboard.h>
 #include <dev/pci.h>
-#include <dev/usb/usb.h>
+#include <dev/usb/usb11.h>
 #include <dev/vga.h>
 #include <dev/pciid.h>
 
@@ -351,7 +351,7 @@ extern "C" int main() {
 
   acpi_ctrl->SetupAcpica();
 
-  UsbCtrl::Init();
+  Usb11Ctrl::Init();
 
   InitDevices<PciCtrl, Device>();
 
