@@ -120,16 +120,9 @@ void DevUhci::Init() {
   }
 }
 
-bool DevUhci::GetDeviceDescriptor(Usb11Ctrl::DeviceDescriptor *desc, int device_addr) {
+bool DevUhci::SendControlTransfer(Usb11Ctrl::DeviceRequest *request, Usb11Ctrl::DeviceDescriptor *desc, int device_addr) {
+  kernel_panic("Uhci", "Bug contained");
   bool success = true;
-
-  Usb11Ctrl::DeviceRequest *request;
-  if (!Usb11Ctrl::GetCtrl().AllocDeviceRequest(request)) {
-    success = false;
-    goto release;
-  }
-
-  request->MakePacketOfGetDeviceRequest();
 
   // debug
   memset(reinterpret_cast<uint8_t *>(desc), 0xFF, sizeof(Usb11Ctrl::DeviceDescriptor));
@@ -195,12 +188,6 @@ bool DevUhci::GetDeviceDescriptor(Usb11Ctrl::DeviceDescriptor *desc, int device_
   td1->SetToken(TransferDescriptor::PacketIdentification::kSetup, device_addr, 0, false, 8);
   td1->SetBuffer(request, 0);
 
-  // debug
-  // td1->_next = v2p(ptr2virtaddr(td2)) | (1<<2);
-  // td1->_status = 0x1C800000;		// Low-Speed, Active
-  // td1->_token = 0x00E0002D | (device_addr<<8);	// SETUP, MaxLen=8
-  // td1->_buf = v2p(ptr2virtaddr(request));
-
   td2->SetNext(td3, true);
   td2->SetStatus(false, false, true, false);
   td2->SetToken(TransferDescriptor::PacketIdentification::kIn, device_addr, 0, true, 8);
@@ -251,7 +238,6 @@ bool DevUhci::GetDeviceDescriptor(Usb11Ctrl::DeviceDescriptor *desc, int device_
   assert(_td_buf.Push(td5));
   assert(_qh_buf.Push(qh0));
   assert(_qh_buf.Push(qh1));
-  assert(Usb11Ctrl::GetCtrl().ReuseDeviceRequest(request));
   
   return success;
 }
@@ -260,19 +246,33 @@ DevUsb *DevUsbKeyboard::InitUsb(DevUsbController *controller, int addr) {
   DevUsbKeyboard *that = new DevUsbKeyboard(controller, addr);
 
   while(true) {
-    Usb11Ctrl::DeviceDescriptor *desc;
+    Usb11Ctrl::DeviceDescriptor *desc = nullptr;
+    Usb11Ctrl::DeviceRequest *request = nullptr;
     if (!Usb11Ctrl::GetCtrl().AllocDeviceDescriptor(desc)) {
       continue;
     }
 
-    if (!controller->GetDeviceDescriptor(desc, addr)) {
-      assert(Usb11Ctrl::GetCtrl().ReuseDeviceDescriptor(desc));
-      return nullptr;
+    if (!Usb11Ctrl::GetCtrl().AllocDeviceRequest(request)) {
+      goto release;
     }
 
-    gtty->CprintfRaw("vid: %x, did: %x\n", desc->vendor_id, desc->product_id);
+    request->MakePacketOfGetDeviceRequest();
+
+    if (!controller->SendControlTransfer(request, desc, addr)) {
+      goto release;
+    }
+
+    gtty->CprintfRaw("vid: %x, did: %x ", desc->vendor_id, desc->product_id);
 
     break;
+
+  release:
+    if (desc != nullptr) {
+      assert(Usb11Ctrl::GetCtrl().ReuseDeviceDescriptor(desc));
+    }
+    if (request != nullptr) {
+      assert(Usb11Ctrl::GetCtrl().ReuseDeviceRequest(request));
+    }
   }
   return nullptr;
 }

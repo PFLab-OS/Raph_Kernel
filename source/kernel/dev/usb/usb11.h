@@ -144,7 +144,7 @@ private:
 
 class DevUsbController {
 public:
-  virtual bool GetDeviceDescriptor(Usb11Ctrl::DeviceDescriptor *desc, int device_addr) = 0;
+  virtual bool SendControlTransfer(Usb11Ctrl::DeviceRequest *request, Usb11Ctrl::DeviceDescriptor *desc, int device_addr) = 0;
 };
 
 // !!! important !!!

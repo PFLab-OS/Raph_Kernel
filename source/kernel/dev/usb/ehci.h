@@ -29,6 +29,10 @@
 #include <buf.h>
 #include <dev/usb/usb11.h>
 
+// for debug
+#include <tty.h>
+#include <global.h>
+
 class DevEhci final : public DevPci {
 public:
   DevEhci(uint8_t bus, uint8_t device, uint8_t function) : DevPci(bus, device, function), _controller_dev(this) {
@@ -42,8 +46,8 @@ private:
     }
     virtual ~DevEhciUsbController() {
     }
-    virtual bool GetDeviceDescriptor(Usb11Ctrl::DeviceDescriptor *desc, int device_addr) override {
-      return _dev_ehci->GetDeviceDescriptor(desc, device_addr);
+    virtual bool SendControlTransfer(Usb11Ctrl::DeviceRequest *request, Usb11Ctrl::DeviceDescriptor *desc, int device_addr) override {
+      return _dev_ehci->SendControlTransfer(request, desc, device_addr);
     }
   private:
     DevEhci *const _dev_ehci;
@@ -52,12 +56,17 @@ private:
   class DevEhciSub {
   public:
     virtual void Init() = 0;
+    virtual phys_addr GetRepresentativeQueueHead() = 0;
+    virtual bool SendControlTransfer(Usb11Ctrl::DeviceRequest *request, Usb11Ctrl::DeviceDescriptor *desc, int device_addr) = 0;
   } *_sub;
   
   class DevEhciSub32 : public DevEhciSub {
   public:
     virtual void Init() override;
-
+    virtual phys_addr GetRepresentativeQueueHead() override {
+      return v2p(ptr2virtaddr(_qh0));
+    }
+    virtual bool SendControlTransfer(Usb11Ctrl::DeviceRequest *request, Usb11Ctrl::DeviceDescriptor *desc, int device_addr) override;
   private:
     class QueueHead;
   
@@ -78,36 +87,48 @@ private:
         SetNextSub(0, true);
       }
       bool IsActiveOfStatus() {
-        return __sync_fetch_and_or(&_status, 0) & (1 << 23);
+        return __sync_fetch_and_or(&_token, 0) & (1 << 7);
       }
-      bool IsStalledOfStatus() {
-        return __sync_fetch_and_or(&_status, 0) & (1 << 22);
-      } 
-      bool IsCrcErrorOfStatus() {
-        return __sync_fetch_and_or(&_status, 0) & (1 << 18);
-      }
-      // for debug
-      uint32_t GetStatus() {
-        return __sync_fetch_and_or(&_status, 0);
+      bool IsDataBufferErrorOfStatus() {
+        return __sync_fetch_and_or(&_token, 0) & (1 << 5);
       }
       void SetTokenAndBuffer(bool interrupt_on_complete, bool data_toggle, PacketIdentification pid, int total_bytes, virt_addr buf) {
+        SetTokenAndBufferSub(interrupt_on_complete, data_toggle, pid, total_bytes);
+        phys_addr buf_p = v2p(buf);
+        phys_addr buf_p_end = buf_p + total_bytes;
+        _buffer_pointer[0] = buf_p;
+        buf_p = ((buf_p + 4096) / 4096) * 4096;
+        for (int i = 1; i < 5; i++) {
+          if (buf_p <= buf_p_end) {
+            _buffer_pointer[i] = buf_p;
+            buf_p += 4096;
+          } else {
+            _buffer_pointer[i] = 0;
+          }
+        }
+      }
+      void SetTokenAndBuffer(bool interrupt_on_complete, bool data_toggle, PacketIdentification pid, int total_bytes) {
+        SetTokenAndBufferSub(interrupt_on_complete, data_toggle, pid, total_bytes);
+        for (int i = 0; i < 5; i++) {
+          _buffer_pointer[i] = 0;
+        }
+      }
+    private:
+      void SetTokenAndBufferSub(bool interrupt_on_complete, bool data_toggle, PacketIdentification pid, int total_bytes) {
         _token = 0;
         _token |= data_toggle ? (1 << 31) : 0;
         assert(total_bytes <= 0x5000);
-        _token |= total_bytes << 
+        _token |= total_bytes << 16;
         _token |= interrupt_on_complete ? (1 << 15) : 0;
+        _token |= static_cast<uint8_t>(pid) << 8;
         _token |= 1 << 7; // active
       }
-    private:
       uint32_t _next_td;
       uint32_t _alt_next_td;
       uint32_t _token;
       uint32_t _buffer_pointer[5];
       void SetNextSub(phys_addr next, bool terminate) {
-        _next = next | (terminate ? (1 << 0) : 0);
-      }
-      void SetBufferSub(phys_addr pointer) {
-        _buf = pointer;
+        _next_td = next | (terminate ? (1 << 0) : 0);
       }
     } __attribute__((__packed__));
     static_assert(sizeof(TransferDescriptor) == 32, "");
@@ -125,23 +146,22 @@ private:
         _horizontal_next = v2p(ptr2virtaddr(this)) | (1 << 1);
         _characteristics = 0;
         _characteristics |= 1 << 15;
-        _characteristics |= static_assert<uint8_t>(_speed) << 12;
+        _characteristics |= static_cast<uint8_t>(_speed) << 12;
         _capabilities = 0;
         _current_td = 0;
         _next_td = 1;
         _alt_next_td = 1;
         _token = 0;
         for (int i = 0; i < 5; i++) {
-          buffer_pointer[i] = 0;
+          _buffer_pointer[i] = 0;
         }
       }
       void Init(EndpointSpeed speed) {
-        current_td = 0;
-        alt_net_td = 1;
-        assert(false);
+        _current_td = 0;
+        _alt_next_td = 1;
         _token = 0;
         for (int i = 0; i < 5; i++) {
-          buffer_pointer[i] = 0;
+          _buffer_pointer[i] = 0;
         }
         _speed = speed;
       }
@@ -152,18 +172,17 @@ private:
         SetHorizontalNextSub(0, 0, true);
       }
       void SetNextTd(TransferDescriptor *next) {
-        phys_addr next = v2p(ptr2virtaddr(next));
-        _next_td = next;
+        _next_td = v2p(ptr2virtaddr(next));
       }
       void SetNextTd(/* nullptr */) {
         _next_td = 1;
       }
-      void SetCharacteristics(int maxpacket_size, Usb11Ctrl::TransactionType ttype, bool head, bool data_toggle_control, uint8_t endpoint_num, bool inactivate, uint8_t device_address) {
+      void SetCharacteristics(int max_packetsize, Usb11Ctrl::TransactionType ttype, bool head, bool data_toggle_control, uint8_t endpoint_num, bool inactivate, uint8_t device_address) {
         _characteristics = 0;
-        if (_speed == kHigh) {
+        if (_speed == EndpointSpeed::kHigh) {
           assert(!inactivate);
         } else {
-          if (ttype == kControl) {
+          if (ttype == Usb11Ctrl::TransactionType::kControl) {
             _characteristics |= (1 << 27); // control endpoint flag
           }
         }
@@ -171,18 +190,19 @@ private:
         _characteristics |= max_packetsize << 16;
         _characteristics |= head ? (1 << 15) : 0;
         _characteristics |= data_toggle_control ? (1 << 14) : 0;
-        _characteristics |= static_assert<uint8_t>(_speed) << 12;
+        _characteristics |= static_cast<uint8_t>(_speed) << 12;
         assert(endpoint_num < 0x10);
         _characteristics |= endpoint_num << 8;
         _characteristics |= inactivate ? (1 << 7) : 0;
         assert(device_address < 0x80);
         _characteristics |= device_address;
+        _characteristics |= 0x40000000;
       }
       void SetCapabilities(uint8_t mult, uint8_t port_number, uint8_t hub_addr, uint8_t split_completion_mask, uint8_t interrupt_schedule_mask) {
         _capabilities = 0;
         assert(mult > 0 && mult <= 3);
         _capabilities |= mult << 30;
-        if (speed == kHigh) {
+        if (_speed == EndpointSpeed::kHigh) {
           assert(port_number < 0x80);
           _capabilities |= port_number << 23;
           assert(hub_addr < 0x80);
@@ -190,8 +210,6 @@ private:
           _capabilities |= split_completion_mask << 8;
         }
         _capabilities |= interrupt_schedule_mask;
-      }
-      void SetToken() {
       }
     private:
       void SetHorizontalNextSub(phys_addr next, int type, bool terminate) {
@@ -216,36 +234,19 @@ private:
     static_assert(sizeof(QueueHead) == 64, "");
     QueueHead *_qh0; // empty
     RingBuffer<QueueHead *, 63> _qh_buf;
-
-    class FramePointer {
-    public:
-      uint32_t framelist_pointer;
-      void Set() {
-        // nullptr
-        framelist_pointer = 0x1;
-      }
-      void Set(QueueHead *next) {
-        SetSub(v2p(ptr2virtaddr(next)), true);
-      }
-      void Set(TransferDescriptor *next) {
-        SetSub(v2p(ptr2virtaddr(next)), false);
-      }
-    private:
-      void SetSub(phys_addr next, bool q) {
-        assert((next & 0xF) == 0);
-        framelist_pointer = (next & 0xFFFFFFF0) | (q ? (1 << 1) : 0);
-      }
-    } __attribute__((__packed__));
-
-    struct FrameList {
-      FramePointer entries[1024];
-    } __attribute__((__packed__));
-    FrameList *_frlist;
   };
 
   class DevEhciSub64 : public DevEhciSub {
   public:
     virtual void Init() override;
+    virtual phys_addr GetRepresentativeQueueHead() override {
+      assert(false);
+      return 0;
+    }
+    virtual bool SendControlTransfer(Usb11Ctrl::DeviceRequest *request, Usb11Ctrl::DeviceDescriptor *desc, int device_addr) override {
+      assert(false);
+      return true;
+    }
   };
     
   // see 2.1.3 USBBASE - Register Space Base Address Register
@@ -281,7 +282,19 @@ private:
   int kOperationalRegOffsetConfigFlag = 0x10;
   int kOperationalRegOffsetPortScBase = 0x11;
 
-  bool GetDeviceDescriptor(Usb11Ctrl::DeviceDescriptor *desc, int device_addr);
+  // see Table2-9. USBCMD USB Command Register Bit Definitions
+  uint32_t kOperationalRegUsbCmdFlagRunStop = 1 << 0;
+  uint32_t kOperationalRegUsbCmdFlagHcReset = 1 << 1;
+  uint32_t kOperationalRegUsbCmdFlagAsynchronousScheduleEnable = 1 << 5;
+
+  // see Table2-10. USBSTS USB Status Register Bit Definitions
+  uint32_t kOperationalRegUsbStsFlagHcHalted = 1 << 12;
+  uint32_t kOperationalRegUsbStsFlagAsynchronousSchedule = 1 << 15;
+
+  bool _is_64bit_addressing;
+  bool SendControlTransfer(Usb11Ctrl::DeviceRequest *request, Usb11Ctrl::DeviceDescriptor *desc, int device_addr) {
+    return _sub->SendControlTransfer(request, desc, device_addr);
+  }
 };
 
 #endif /* __RAPH_KERNEL_DEV_USB_EHCI_H__ */

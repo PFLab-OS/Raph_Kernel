@@ -44,7 +44,21 @@ DevPci *DevEhci::InitPci(uint8_t bus, uint8_t device, uint8_t function) {
 }
 
 void DevEhci::Init() {
+  if ((_operational_reg_base_addr[kOperationalRegOffsetUsbSts] & kOperationalRegUsbStsFlagHcHalted) == 0) {
+    // halt controller
+    _operational_reg_base_addr[kOperationalRegOffsetUsbCmd] |= kOperationalRegUsbCmdFlagRunStop; 
+  }
 
+  while((__sync_fetch_and_or(&_operational_reg_base_addr[kOperationalRegOffsetUsbSts], 0) & kOperationalRegUsbStsFlagHcHalted) == 0) {
+  }
+
+  // reset controller
+  _operational_reg_base_addr[kOperationalRegOffsetUsbCmd] |= kOperationalRegUsbCmdFlagHcReset;
+
+  while((__sync_fetch_and_or(&_operational_reg_base_addr[kOperationalRegOffsetUsbCmd], 0) & kOperationalRegUsbCmdFlagHcReset) == 0) {
+  }
+
+  
   phys_addr addr = ReadReg<uint32_t>(kBaseAddressReg);
   if ((addr & 0x4) != 0) {
     // may be mapped into 64bit addressing space
@@ -56,32 +70,49 @@ void DevEhci::Init() {
 
   int n_ports = ReadCapabilityRegHcsParams() & 0xF;
 
-  // for (int i = 0; i < n_ports; i++) {
-  //   if (_operational_reg_base_addr[kOperationalRegOffsetPortScBase + i] & 1) {
-  //     gtty->CprintfRaw("usb>%x", _operational_reg_base_addr[kOperationalRegOffsetPortScBase + i]);
-  //   }
-  // }
+  for (int i = 0; i < n_ports; i++) {
+    if (_operational_reg_base_addr[kOperationalRegOffsetPortScBase + i] & 1) {
+      // // port reset
+      // _operational_reg_base_addr[kOperationalRegOffsetPortScBase + i] &= ~(1 << 2);
+      // _operational_reg_base_addr[kOperationalRegOffsetPortScBase + i] |= 1 << 8;
+      // // set reset bit for 50ms
+      // timer->BusyUwait(50*1000);
+      // // then unset reset bit
+      // _operational_reg_base_addr[kOperationalRegOffsetPortScBase + i] &= ~(1 << 8);
+      // // wait until end of reset sequence
+      // while ((__sync_fetch_and_or(&_operational_reg_base_addr[kOperationalRegOffsetPortScBase + i], 0) & (1 << 2)) == 0) {
+      // }
+    }
+  }
 
   WriteReg<uint16_t>(PciCtrl::kCommandReg, ReadReg<uint16_t>(PciCtrl::kCommandReg) | PciCtrl::kCommandRegBusMasterEnableFlag);
 
   if ((ReadCapabilityRegHccParams() & 1) == 0) {
+    _is_64bit_addressing = false;
     _sub = new DevEhciSub32();
   } else {
+    _is_64bit_addressing = true;
     _sub = new DevEhciSub64();
   }
   
   _sub->Init();
-  
-  kassert(false);
 
+  _operational_reg_base_addr[kOperationalRegOffsetUsbCmd] &= ~kOperationalRegUsbCmdFlagAsynchronousScheduleEnable;
 
+  while((__sync_fetch_and_or(&_operational_reg_base_addr[kOperationalRegOffsetUsbSts], 0) & kOperationalRegUsbStsFlagAsynchronousSchedule) != 0) {
+  }
   
-  // // halt controller
-  // WriteControllerReg<uint16_t>(kCtrlRegCmd, ReadControllerReg<uint16_t>(kCtrlRegCmd) & ~1);
-  
-  // while((ReadControllerReg<uint16_t>(kCtrlRegStatus) & kCtrlRegStatusFlagHalted) == 0) {
-  // }
+  if (_is_64bit_addressing) {
+    kassert(false);
+  } else {
+    _operational_reg_base_addr[kOperationalRegOffsetAsyncListAddr] = _sub->GetRepresentativeQueueHead();
+  }
 
+  _operational_reg_base_addr[kOperationalRegOffsetUsbCmd] |= kOperationalRegUsbCmdFlagAsynchronousScheduleEnable;
+
+  while((__sync_fetch_and_or(&_operational_reg_base_addr[kOperationalRegOffsetUsbSts], 0) & kOperationalRegUsbStsFlagAsynchronousSchedule) == 0) {
+  }
+  
   for (int dev = 0; dev < 128; dev++) {
     DevUsbKeyboard::InitUsb(&_controller_dev, dev);
   }
@@ -108,38 +139,72 @@ void DevEhci::DevEhciSub32::Init() {
     kassert(_qh_buf.Push(&qh_array[i]));
   }
   _qh0 = qh_array + qh_buf_size;
-  _qh0.InitEmpty();
-
-  // allocate frame list
-  assert(sizeof(FrameList) == PagingCtrl::kPageSize);
-  PhysAddr frame_base_addr;
-  physmem_ctrl->Alloc(frame_base_addr, PagingCtrl::kPageSize);
-  _frlist = addr2ptr<FrameList>(frame_base_addr.GetVirtAddr());
-  if (frame_base_addr.GetAddr() > 0xFFFFFFFF) {
-    kernel_panic("DevEhci", "cannot allocate 32bit phys memory");
-  }
-
-  // framelist initialization
-  kassert(false);
+  _qh0->InitEmpty();
 }
 
 void DevEhci::DevEhciSub64::Init() {
   kernel_panic("Ehci", "needs implementation of 64-bit addressing");
 }
 
-bool DevEhci::GetDeviceDescriptor(Usb11Ctrl::DeviceDescriptor *desc, int device_addr) {
+bool DevEhci::DevEhciSub32::SendControlTransfer(Usb11Ctrl::DeviceRequest *request, Usb11Ctrl::DeviceDescriptor *desc, int device_addr) {
   bool success = true;
 
-  Usb11Ctrl::DeviceRequest *request;
-  if (!Usb11Ctrl::GetCtrl().AllocDeviceRequest(request)) {
+  QueueHead *qh1 = nullptr;
+  TransferDescriptor *td1 = nullptr;
+  TransferDescriptor *td2 = nullptr;
+  TransferDescriptor *td3 = nullptr;
+
+  if (!_qh_buf.Pop(qh1)) {
+    success = false;
+    goto release;
+  }
+  if (!_td_buf.Pop(td1)) {
+    success = false;
+    goto release;
+  }
+  if (!_td_buf.Pop(td2)) {
+    success = false;
+    goto release;
+  }
+  if (!_td_buf.Pop(td3)) {
     success = false;
     goto release;
   }
 
-  request->MakePacketOfGetDeviceRequest();
+  qh1->Init(QueueHead::EndpointSpeed::kHigh);
+  qh1->SetHorizontalNext(_qh0);
+  qh1->SetNextTd(td1);
+  qh1->SetCharacteristics(64, Usb11Ctrl::TransactionType::kControl, false, true, 0, false, 0);
 
- release:
-  assert(Usb11Ctrl::GetCtrl().ReuseDeviceRequest(request));
+  td1->Init();
+  td1->SetNext(td2);
+  td1->SetTokenAndBuffer(false, false, TransferDescriptor::PacketIdentification::kSetup, 8, ptr2virtaddr(request));
+
+  td2->Init();
+  td2->SetNext(td3);
+  td2->SetTokenAndBuffer(false, true, TransferDescriptor::PacketIdentification::kIn, 0x12, ptr2virtaddr(desc));
+
+  td3->Init();
+  td3->SetNext();
+  td3->SetTokenAndBuffer(false, true, TransferDescriptor::PacketIdentification::kOut, 0);
+
+  _qh0->SetHorizontalNext(qh1);
+
+  timer->BusyUwait(1000*1000);
   
+ release:
+  if (qh1 != nullptr) {
+    assert(_qh_buf.Push(qh1));
+  }
+  if (td1 != nullptr) {
+    assert(_td_buf.Push(td1));
+  }
+  if (td2 != nullptr) {
+    assert(_td_buf.Push(td2));
+  }
+  if (td3 != nullptr) {
+    assert(_td_buf.Push(td3));
+  }
+
   return success;
 }
