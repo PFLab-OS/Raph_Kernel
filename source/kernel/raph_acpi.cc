@@ -104,6 +104,9 @@ void AcpiCtrl::GlobalEventHandler(void *) {
 
 void AcpiCtrl::Reset() {
   AcpiReset();
+
+  // send CPU reset to 8042 keyboad controller
+  outb(0x64, 0xfe);
 }
 
 static ACPI_STATUS GetIntNum(ACPI_RESOURCE *resource, void *context) {
