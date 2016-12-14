@@ -56,6 +56,7 @@ void ApicCtrl::Setup() {
   kassert(timer->DidSetup());
   kassert(_madt != nullptr);
   int ncpu = 0;
+  int ioapic_num = 0;
   for(uint32_t offset = 0; offset < _madt->header.Length - sizeof(MADT);) {
     virt_addr ptr = ptr2virtaddr(_madt->table) + offset;
     MADTSt *madtSt = reinterpret_cast<MADTSt *>(ptr);
@@ -77,17 +78,28 @@ void ApicCtrl::Setup() {
         }
         ncpu++;
       }
+      break;
+    case MADTStType::kIOAPIC:
+      {
+        ioapic_num++;
+      }
     default:
       break;
     }
     offset += madtSt->length;
   }
-  _lapic->_ncpu = ncpu;
 
+  _lapic->_ncpu = ncpu;
   _lapic->_apic_info = new Lapic::ApicInfo[ncpu];
 
+  if (ioapic_num == 0) {
+    kernel_panic("ApicCtrl", "No I/O APIC controller");
+  }
+  _ioapic._controller_num = ioapic_num;
+  _ioapic._controller = new Ioapic::Controller[ioapic_num];
 
   ncpu = 0;
+  ioapic_num = 0;
   for(uint32_t offset = 0; offset < _madt->header.Length - sizeof(MADT);) {
     virt_addr ptr = ptr2virtaddr(_madt->table) + offset;
     MADTSt *madtSt = reinterpret_cast<MADTSt *>(ptr);
@@ -114,11 +126,11 @@ void ApicCtrl::Setup() {
         _lapic->_apic_info[ncpu].id = madt->apic_id;
         ncpu++;
       }
+      break;
     case MADTStType::kIOAPIC:
       {
-        // TODO : multi IOAPIC support
-        MADTStIOAPIC *madtStIOAPIC = reinterpret_cast<MADTStIOAPIC *>(ptr);
-        _ioapic.SetReg(reinterpret_cast<uint32_t *>(p2v(madtStIOAPIC->ioapicAddr)));
+        _ioapic._controller[ioapic_num].Setup(reinterpret_cast<MADTStIOAPIC *>(ptr));
+        ioapic_num++;
       }
       break;
     default:
@@ -126,10 +138,7 @@ void ApicCtrl::Setup() {
     }
     offset += madtSt->length;
   }
-  // gtty->Cprintf("ncpu:%d\n", ncpu);
-  // kassert(false);
   _ioapic.Setup();
-
   _setup = true;
 }
 
@@ -167,7 +176,6 @@ void ApicCtrl::Lapic::Setup() {
   kassert(cpu_ctrl->GetCpuId().GetRawId() == GetCpuId());
   kassert(cpu_ctrl->GetCpuId().GetApicId() == GetApicId());
   
-  uint32_t msr_high, msr_low;
   // check if local apic enabled
   // see intel64 manual vol3 10.4.3 (Enabling or Disabling the Local APIC)
   uint64_t msr = x86::rdmsr(Lapic::kIa32ApicBaseMsr);
@@ -262,10 +270,6 @@ void ApicCtrl::LapicX2::SetupAp() {
 }
 
 void ApicCtrl::Ioapic::Setup() {
-  if (_reg == nullptr) {
-    kernel_panic("ApicCtrl", "No I/O APIC register");
-  }
-
   // setup 8259 PIC
   asm volatile("mov $0xff, %al; out %al, $0xa1; out %al, $0x21;");
   asm volatile("mov $0x11, %al; out %al, $0xa0;");
@@ -286,16 +290,35 @@ void ApicCtrl::Ioapic::Setup() {
   asm volatile("mov $0x70, %al; out %al, $0x22");
   asm volatile("mov $0x1, %al; out %al, $0x23");
 
-  uint32_t intr = this->GetMaxIntr();
   // disable all external I/O interrupts
-  for (uint32_t i = 0; i <= intr; i++) {
-    this->Write(kRegRedTbl + 2 * i, kRegRedTblFlagMask);
-    this->Write(kRegRedTbl + 2 * i + 1, 0);
+  for (int i = 0; i < _controller_num; i++) {
+    _controller[i].DisableInt();
   }
 }
 
 bool ApicCtrl::Ioapic::SetupInt(uint32_t irq, uint8_t lapicid, uint8_t vector) {
-  kassert(irq <= this->GetMaxIntr());
+  int controller_index = -1;
+  for (int j = 0; j < _controller_num; j++) {
+    if (_controller[j].int_base <= irq && irq <= _controller[j].int_base + _controller[j].int_max) {
+      controller_index = j;
+      break;
+    }
+  }
+  if (controller_index == -1) {
+    kernel_panic("APIC", "IRQ out of range");
+  }
+  return _controller[controller_index].SetupInt(irq - _controller[controller_index].int_base, lapicid, vector);
+}
+
+void ApicCtrl::Ioapic::Controller::Setup(MADTStIOAPIC *madt_struct_ioapic) {
+  reg = reinterpret_cast<uint32_t *>(p2v(madt_struct_ioapic->ioapicAddr));
+  int_base = madt_struct_ioapic->glblIntBase;
+  // get maximum redirection entry
+  // see IOAPIC manual 3.2.2 (IOAPIC Version Register)
+  int_max = (Read(kRegVer) >> 16) & 0xff;
+}
+
+bool ApicCtrl::Ioapic::Controller::SetupInt(uint32_t irq, uint8_t lapicid, uint8_t vector) {
   if ((Read(kRegRedTbl + 2 * irq) | kRegRedTblFlagMask) == 0) {
     return false;
   }
