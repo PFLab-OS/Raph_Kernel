@@ -47,6 +47,8 @@
 #include <net/arp.h>
 #include <arpa/inet.h>
 
+#include <x86.h>
+
 AcpiCtrl *acpi_ctrl = nullptr;
 ApicCtrl *apic_ctrl = nullptr;
 MultibootCtrl *multiboot_ctrl = nullptr;
@@ -147,15 +149,12 @@ void lspci(int argc, const char* argv[]){
   }
 }
 
+static bool is_knl() {
+  return x86::get_display_family_model() == 0x0657;
+}
+
 static void membench() {
-  uint32_t ebx, edx, ecx;
-  asm volatile("cpuid;":"=b"(ebx), "=d"(edx), "=c"(ecx):"a"(0));
-  char buf[12];
-  *(reinterpret_cast<uint32_t *>(buf + 0)) = ebx;
-  *(reinterpret_cast<uint32_t *>(buf + 4)) = edx;
-  *(reinterpret_cast<uint32_t *>(buf + 8)) = ecx;
-  if (strncmp(buf, "AuthenticAMD", 12) == 0) {
-    // QEMU
+  if (!is_knl()) {
     return;
   }
 
@@ -607,17 +606,9 @@ struct Sync3 {
 
 // ワーシャル-フロイド
 static void membench2() {
-  uint32_t ebx, edx, ecx;
-  asm volatile("cpuid;":"=b"(ebx), "=d"(edx), "=c"(ecx):"a"(0));
-  char buf[12];
-  *(reinterpret_cast<uint32_t *>(buf + 0)) = ebx;
-  *(reinterpret_cast<uint32_t *>(buf + 4)) = edx;
-  *(reinterpret_cast<uint32_t *>(buf + 8)) = ecx;
-  if (strncmp(buf, "AuthenticAMD", 12) == 0) {
-    // QEMU
+  if (!is_knl()) {
     return;
   }
-
 
   int cpuid = cpu_ctrl->GetCpuId().GetRawId();
 
@@ -758,17 +749,9 @@ static void membench2() {
 
 // ２コアで同期を取るベンチマーク
 static void membench3() {
-  uint32_t ebx, edx, ecx;
-  asm volatile("cpuid;":"=b"(ebx), "=d"(edx), "=c"(ecx):"a"(0));
-  char buf[12];
-  *(reinterpret_cast<uint32_t *>(buf + 0)) = ebx;
-  *(reinterpret_cast<uint32_t *>(buf + 4)) = edx;
-  *(reinterpret_cast<uint32_t *>(buf + 8)) = ecx;
-  if (strncmp(buf, "AuthenticAMD", 12) == 0) {
-    // QEMU
+  if (!is_knl()) {
     return;
   }
-
 
   int cpuid = cpu_ctrl->GetCpuId().GetRawId();
 
@@ -818,17 +801,9 @@ static void membench3() {
 }
 
 static void membench4() {
-  uint32_t ebx, edx, ecx;
-  asm volatile("cpuid;":"=b"(ebx), "=d"(edx), "=c"(ecx):"a"(0));
-  char buf[12];
-  *(reinterpret_cast<uint32_t *>(buf + 0)) = ebx;
-  *(reinterpret_cast<uint32_t *>(buf + 4)) = edx;
-  *(reinterpret_cast<uint32_t *>(buf + 8)) = ecx;
-  if (strncmp(buf, "AuthenticAMD", 12) == 0) {
-    // QEMU
+  if (!is_knl()) {
     return;
   }
-
 
   int cpuid = cpu_ctrl->GetCpuId().GetRawId();
 
@@ -879,14 +854,7 @@ static void membench4() {
 
 // syncのテスト
 static void membench5() {
-  uint32_t ebx, edx, ecx;
-  asm volatile("cpuid;":"=b"(ebx), "=d"(edx), "=c"(ecx):"a"(0));
-  char buf[12];
-  *(reinterpret_cast<uint32_t *>(buf + 0)) = ebx;
-  *(reinterpret_cast<uint32_t *>(buf + 4)) = edx;
-  *(reinterpret_cast<uint32_t *>(buf + 8)) = ecx;
-  if (strncmp(buf, "AuthenticAMD", 12) == 0) {
-    // QEMU
+  if (!is_knl()) {
     return;
   }
 
@@ -935,14 +903,7 @@ static void membench5() {
 
 // コアの個数を変えた同期
 static void membench6() {
-  uint32_t ebx, edx, ecx;
-  asm volatile("cpuid;":"=b"(ebx), "=d"(edx), "=c"(ecx):"a"(0));
-  char buf[12];
-  *(reinterpret_cast<uint32_t *>(buf + 0)) = ebx;
-  *(reinterpret_cast<uint32_t *>(buf + 4)) = edx;
-  *(reinterpret_cast<uint32_t *>(buf + 8)) = ecx;
-  if (strncmp(buf, "AuthenticAMD", 12) == 0) {
-    // QEMU
+  if (!is_knl()) {
     return;
   }
 
