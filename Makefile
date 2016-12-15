@@ -30,7 +30,6 @@ bin:
 image:
 	make mount
 	make bin
-	sudo cp memtest86+.bin $(MOUNT_DIR)/boot/memtest86+.bin
 	sudo cp grub.cfg $(MOUNT_DIR)/boot/grub/grub.cfg 
 	-sudo rm -rf $(MOUNT_DIR)/core
 	sudo cp -r $(BUILD_DIR) $(MOUNT_DIR)/core
@@ -41,6 +40,9 @@ $(IMAGE):
 	dd if=/dev/zero of=$(IMAGE) bs=1M count=20
 	parted -s $(IMAGE) mklabel msdos -- mkpart primary 2048s -1
 	sh disk.sh grub-install
+	make mount
+	sudo cp memtest86+.bin $(MOUNT_DIR)/boot/memtest86+.bin
+	make umount
 
 cpimg: image
 	cp $(IMAGE) /vagrant
