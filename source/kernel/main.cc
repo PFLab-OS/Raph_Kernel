@@ -800,6 +800,7 @@ static void membench3() {
   }
 }
 
+// うまく動かない
 static void membench4() {
   if (!is_knl()) {
     return;
@@ -1064,36 +1065,137 @@ private:
   volatile unsigned int _second_flag[kSubStructNum] = {0};
 };
 
-// 2階層ロック
 class McSpinLock2 {
 public:
   McSpinLock2() {
   }
   void Lock() {
+    while (true) {
+      while(_flag == 1) {
+	asm volatile("nop");
+      }
+      if (__sync_bool_compare_and_swap(&_flag, 0, 1)) {
+	break;
+      }
+    }
+  }
+  void Unlock() {
+    _flag = 0;
+  }
+private:
+  volatile unsigned int _flag = 0;
+};
+
+class McSpinLock3 {
+public:
+  McSpinLock3() {
+  }
+  void Lock() {
     uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
-    // while(!__sync_bool_compare_and_swap(&_third_flag[apicid / 4], 0, 1)) {
-    // }
-    while(!__sync_bool_compare_and_swap(&_second_flag2[apicid / 8], 0, 1)) {
+    while(true) {
+      while(_second_flag[apicid / 8] == 1) {
+	asm volatile("nop");
+      }
+      if(__sync_bool_compare_and_swap(&_second_flag[apicid / 8], 0, 1)) {
+	break;
+      }
     }
-    while(!__sync_bool_compare_and_swap(&_second_flag[apicid / 8], 0, 1)) {
-    }
-    while(!__sync_bool_compare_and_swap(&_top_flag, 0, 1)) {
+    while (true) {
+      while(_top_flag == 1) {
+	asm volatile("nop");
+      }
+      if (__sync_bool_compare_and_swap(&_top_flag, 0, 1)) {
+	break;
+      }
     }
   }
   void Unlock() {
     uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
-    assert(__sync_bool_compare_and_swap(&_top_flag, 1, 0));
-    assert(__sync_bool_compare_and_swap(&_second_flag[apicid / 8], 1, 0));
-    assert(__sync_bool_compare_and_swap(&_second_flag2[apicid / 8], 1, 0));
-    //    assert(__sync_bool_compare_and_swap(&_third_flag[apicid / 4], 1, 0));
+    _top_flag = 0;
+    _second_flag[apicid / 8] = 0;
   }
 private:
   static const int kSubStructNum = 37;
+  static const int kPhysAvailableCoreNum = 32;
   volatile unsigned int _top_flag = 0;
   volatile unsigned int _second_flag[kSubStructNum] = {0};
-  volatile unsigned int _second_flag2[kSubStructNum] = {0};
+};
+
+class McSpinLock4 {
+public:
+  McSpinLock4() {
+  }
+  void Lock() {
+    uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
+    while(true) {
+      while(_third_flag[apicid / 4] == 1) {
+	asm volatile("nop");
+      }
+      if(__sync_bool_compare_and_swap(&_third_flag[apicid / 4], 0, 1)) {
+	break;
+      }
+    }
+    while(true) {
+      while(_second_flag[apicid / 8] == 1) {
+	asm volatile("nop");
+      }
+      if(__sync_bool_compare_and_swap(&_second_flag[apicid / 8], 0, 1)) {
+	break;
+      }
+    }
+    while (true) {
+      while(_top_flag == 1) {
+	asm volatile("nop");
+      }
+      if (__sync_bool_compare_and_swap(&_top_flag, 0, 1)) {
+	break;
+      }
+    }
+  }
+  void Unlock() {
+    uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
+    _top_flag = 0;
+    _second_flag[apicid / 8] = 0;
+    _third_flag[apicid / 4] = 0;
+  }
+private:
+  static const int kSubStructNum = 37;
+  static const int kPhysAvailableCoreNum = 32;
+  volatile unsigned int _top_flag = 0;
+  volatile unsigned int _second_flag[kSubStructNum] = {0};
   volatile unsigned int _third_flag[kSubStructNum*2] = {0};
 };
+
+// 2階層ロック
+// class McSpinLock2 {
+// public:
+//   McSpinLock2() {
+//   }
+//   void Lock() {
+//     uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
+//     // while(!__sync_bool_compare_and_swap(&_third_flag[apicid / 4], 0, 1)) {
+//     // }
+//     while(!__sync_bool_compare_and_swap(&_second_flag[apicid / 8], 0, 1)) {
+//     }
+//     while(!__sync_bool_compare_and_swap(&_second_flag2[apicid / 8], 0, 1)) {
+//     }
+//     while(!__sync_bool_compare_and_swap(&_top_flag, 0, 1)) {
+//     }
+//   }
+//   void Unlock() {
+//     uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
+//     assert(__sync_bool_compare_and_swap(&_top_flag, 1, 0));
+//     assert(__sync_bool_compare_and_swap(&_second_flag2[apicid / 8], 1, 0));
+//     assert(__sync_bool_compare_and_swap(&_second_flag[apicid / 8], 1, 0));
+//     //    assert(__sync_bool_compare_and_swap(&_third_flag[apicid / 4], 1, 0));
+//   }
+// private:
+//   static const int kSubStructNum = 37;
+//   volatile unsigned int _top_flag = 0;
+//   volatile unsigned int _second_flag[kSubStructNum] = {0};
+//   volatile unsigned int _second_flag2[kSubStructNum] = {0};
+//   volatile unsigned int _third_flag[kSubStructNum*2] = {0};
+// };
 
 template <class L>
 class LinkedList {
@@ -1153,6 +1255,8 @@ static void membench7() {
   static LinkedList<SimpleSpinLock> list;
   static LinkedList<McSpinLock1> list2;
   static LinkedList<McSpinLock2> list3;
+  static LinkedList<McSpinLock3> list4;
+  static LinkedList<McSpinLock4> list5;
 
   if (cpuid == 0) {
     gtty->CprintfRaw("Initializing...");
@@ -1162,10 +1266,14 @@ static void membench7() {
     new (&list) LinkedList<SimpleSpinLock>;
     new (&list2) LinkedList<McSpinLock1>;
     new (&list3) LinkedList<McSpinLock2>;
-    for (int i = 1; i < 256 * 1000; i++) {
+    new (&list4) LinkedList<McSpinLock3>;
+    new (&list5) LinkedList<McSpinLock4>;
+    for (int i = 1; i < 256 * 2000; i++) {
       list.Push(i);
       list2.Push(i);
       list3.Push(i);
+      list4.Push(i);
+      list5.Push(i);
     }
   }
 
@@ -1229,7 +1337,136 @@ static void membench7() {
       gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
     }
   }
+
+  {
+    {
+      static Sync2 sync={0};
+      sync.Do();
+    }
+
+    uint64_t t1;
+    if (cpuid == 0) {
+      t1 = timer->ReadMainCnt();
+    }
+  
+    while(list4.Get() != 0) {
+    }
+
+    if (cpuid == 0) {
+      gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+    }
+  }
+
+  {
+    {
+      static Sync2 sync={0};
+      sync.Do();
+    }
+
+    uint64_t t1;
+    if (cpuid == 0) {
+      t1 = timer->ReadMainCnt();
+    }
+  
+    while(list5.Get() != 0) {
+    }
+
+    if (cpuid == 0) {
+      gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+    }
+  }
 }
+
+static void membench8() {
+  if (!is_knl()) {
+    return;
+  }
+
+  int cpuid = cpu_ctrl->GetCpuId().GetRawId();
+  uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
+
+  {
+    static volatile int l1 = 0, l2 = 0, l3 = 0;
+    sync(l1, l2, l3);
+  }
+  if (apicid == 0) {
+    gtty->CprintfRaw("bench start\n");
+  }
+  static int buf[1024];
+  {
+    static volatile int tmp = 0;
+    if (apicid == 0 || apicid == 8) {
+      {
+	static volatile int l1 = 0, l2 = 0, l3 = 0;
+	sync2(2, l1, l2, l3);
+      }
+      uint64_t t1;
+      if (apicid == 0) {
+	t1 = timer->ReadMainCnt();
+      }
+      for (int i = 0; i < 100; i++) {
+	static volatile int l1 = 0, l2 = 0, l3 = 0;
+	sync2(2, l1, l2, l3);
+      }
+      if (apicid == 0) {
+        gtty->CprintfRaw("<%d> ", (((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod())) / 1000);
+	tmp = 1;
+      }
+    } else if (apicid == 24) {
+      int i = 0;
+      while(__sync_fetch_and_or(&tmp, 0) == 0) {
+	// for (int j = 0; j < 1024; j++) {
+	//   for (int k = 0; k < 1024; k++) {
+	//     buf[k] = i * j;
+	//   }
+	// }
+      }
+      for (int j = 0; j < 256; j++) {
+	CpuId cpuid(j);
+	apic_ctrl->SendIpi(cpuid.GetApicId());
+      }
+    } else {
+      asm volatile("hlt;");
+    }
+  }
+  {
+    static volatile int tmp = 0;
+    if (apicid == 0 || apicid == 8) {
+      {
+	static volatile int l1 = 0, l2 = 0, l3 = 0;
+	sync2(2, l1, l2, l3);
+      }
+      uint64_t t1;
+      if (apicid == 0) {
+	t1 = timer->ReadMainCnt();
+      }
+      for (int i = 0; i < 100; i++) {
+	static volatile int l1 = 0, l2 = 0, l3 = 0;
+	sync2(2, l1, l2, l3);
+      }
+      if (apicid == 0) {
+        gtty->CprintfRaw("<%d> ", (((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod())) / 1000);
+	tmp = 1;
+      }
+    } else if (apicid == 295) {
+      int i = 0;
+      while(__sync_fetch_and_or(&tmp, 0) == 0) {
+	// for (int j = 0; j < 1024; j++) {
+	//   for (int k = 0; k < 1024; k++) {
+	//     buf[k] = i * j;
+	//   }
+	// }
+      }
+      for (int j = 0; j < 256; j++) {
+	CpuId cpuid(j);
+	apic_ctrl->SendIpi(cpuid.GetApicId());
+      }
+    } else {
+      asm volatile("hlt;");
+    }
+  }
+}
+
 
 
 Callout callout[256];
