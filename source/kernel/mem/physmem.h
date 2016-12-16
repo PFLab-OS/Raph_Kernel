@@ -134,7 +134,6 @@ class PhysmemCtrl {
     } *region;
   };
   void AllocSub(PhysAddr &paddr, size_t size, AllocOption &option);
-  void ReserveSub(phys_addr addr, size_t size);
   struct AllocatedArea {
     phys_addr start_addr;
     phys_addr end_addr;
