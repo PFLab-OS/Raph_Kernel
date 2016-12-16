@@ -42,6 +42,18 @@ namespace x86 {
     uint32_t msr_low = data & 0xffffffff;
     asm volatile("wrmsr":: "d"(msr_high), "a"(msr_low), "c"(addr));
   }
+
+  static inline uint16_t get_display_family_model() {
+    uint32_t eax;
+    asm volatile("cpuid;":"=a"(eax):"a"(1));
+    uint8_t family_id = (eax >> 8) & 0b1111;
+    uint8_t ex_family_id = (eax >> 20) & 0b11111111;
+    uint8_t model_id = (eax >> 4) & 0b1111;
+    uint8_t ex_model_id = (eax >> 16) & 0b1111;
+    uint8_t display_family = (family_id != 0x0f) ? family_id : (ex_family_id + family_id);
+    uint8_t display_model = (family_id == 0x06 || family_id == 0x0f) ? ((ex_model_id << 4) + model_id) : model_id;
+    return (static_cast<uint16_t>(display_family << 8)) + display_model;
+  }
 }
 
 #endif // __RAPH_KERNEL_X86_H__
