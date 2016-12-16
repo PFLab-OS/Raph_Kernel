@@ -39,14 +39,20 @@ extern "C" {
 #include <tty.h>
 #include <task.h>
 #include <global.h>
+#include <mem/physmem.h>
 
 void AcpiCtrl::Setup() {
   kassert(!ACPI_FAILURE(AcpiInitializeSubsystem()));
   kassert(!ACPI_FAILURE(AcpiInitializeTables(NULL, 16, FALSE)));
 
-  ACPI_TABLE_HEADER *table;
-  kassert(!ACPI_FAILURE(AcpiGetTable("APIC", 1, &table)));
-  apic_ctrl->SetMADT(reinterpret_cast<MADT *>(table));
+  ACPI_TABLE_HEADER *madt;
+  kassert(!ACPI_FAILURE(AcpiGetTable("APIC", 1, &madt)));
+  apic_ctrl->SetMADT(reinterpret_cast<MADT *>(madt));
+
+  ACPI_TABLE_HEADER *srat;
+  if (!ACPI_FAILURE(AcpiGetTable("SRAT", 1, &srat))) {
+    physmem_ctrl->SetSrat(reinterpret_cast<Srat *>(srat));
+  }
 }
 
 MCFG *AcpiCtrl::GetMCFG() {

@@ -30,6 +30,7 @@ bin:
 image:
 	make mount
 	make bin
+	sudo cp memtest86+.bin $(MOUNT_DIR)/boot/memtest86+.bin
 	sudo cp grub.cfg $(MOUNT_DIR)/boot/grub/grub.cfg 
 	-sudo rm -rf $(MOUNT_DIR)/core
 	sudo cp -r $(BUILD_DIR) $(MOUNT_DIR)/core
@@ -44,7 +45,8 @@ $(IMAGE):
 cpimg: image
 	cp $(IMAGE) /vagrant
 
-hd: image /dev/sdb
+hd: image
+	@if [ ! -e /dev/sdb ]; then echo "error: insert usb memory!"; exit -1; fi
 	sudo dd if=$(IMAGE) of=/dev/sdb
 
 disk:

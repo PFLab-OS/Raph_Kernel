@@ -36,7 +36,8 @@ extern "C" {
   void  dlfree(void*);
 }
 
-VirtmemCtrl::VirtmemCtrl() {  
+VirtmemCtrl::VirtmemCtrl() {
+  // カーネル仮想メモリは最大256MB
   _heap_limit = ptr2virtaddr(&kHeapEndAddr);
   
   // 6MB allocated by boot.S

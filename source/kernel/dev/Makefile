@@ -38,4 +38,4 @@ clean:
 	make -C disk clean
 	make -C fs clean
 	-rm -f $(OBJS) $(TEST_OBJS) $(DEPS) *.s *.ii
-	rm pciid_table.cc pci.ids.formatted
+	-rm -f pciid_table.cc pci.ids.formatted
