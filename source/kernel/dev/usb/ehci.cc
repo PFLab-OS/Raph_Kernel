@@ -72,16 +72,16 @@ void DevEhci::Init() {
 
   for (int i = 0; i < n_ports; i++) {
     if (_operational_reg_base_addr[kOperationalRegOffsetPortScBase + i] & 1) {
-      // // port reset
-      // _operational_reg_base_addr[kOperationalRegOffsetPortScBase + i] &= ~(1 << 2);
-      // _operational_reg_base_addr[kOperationalRegOffsetPortScBase + i] |= 1 << 8;
-      // // set reset bit for 50ms
-      // timer->BusyUwait(50*1000);
-      // // then unset reset bit
-      // _operational_reg_base_addr[kOperationalRegOffsetPortScBase + i] &= ~(1 << 8);
-      // // wait until end of reset sequence
-      // while ((__sync_fetch_and_or(&_operational_reg_base_addr[kOperationalRegOffsetPortScBase + i], 0) & (1 << 2)) == 0) {
-      // }
+      // port reset
+      _operational_reg_base_addr[kOperationalRegOffsetPortScBase + i] &= ~(1 << 2);
+      _operational_reg_base_addr[kOperationalRegOffsetPortScBase + i] |= 1 << 8;
+      // set reset bit for 50ms
+      timer->BusyUwait(50*1000);
+      // then unset reset bit
+      _operational_reg_base_addr[kOperationalRegOffsetPortScBase + i] &= ~(1 << 8);
+      // wait until end of reset sequence
+      while ((__sync_fetch_and_or(&_operational_reg_base_addr[kOperationalRegOffsetPortScBase + i], 0) & (1 << 2)) == 0) {
+      }
     }
   }
 
@@ -113,7 +113,7 @@ void DevEhci::Init() {
   while((__sync_fetch_and_or(&_operational_reg_base_addr[kOperationalRegOffsetUsbSts], 0) & kOperationalRegUsbStsFlagAsynchronousSchedule) == 0) {
   }
   
-  for (int dev = 0; dev < 128; dev++) {
+  for (int dev = 0; dev < 1; dev++) {
     DevUsbKeyboard::InitUsb(&_controller_dev, dev);
   }
 }
