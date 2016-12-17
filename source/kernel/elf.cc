@@ -59,26 +59,39 @@ void readElf(const void *p)
   
   gtty->CprintfRaw("%c\n", head[0x1080]);
 
-  using FType = int (*)(int, char*[]);
-  FType f;
-
-  
+  Elf64_Xword total_memsize = 0;
 
   gtty->CprintfRaw("Sections:\n");
   for(int i = 0; i < ehdr->e_shnum; i++){
     const Elf64_Shdr *shdr = (const Elf64_Shdr *)(head + ehdr->e_shoff + ehdr->e_shentsize * i);
     const char *sname = (const char *)(head + shstr->sh_offset + shdr->sh_name); 
-    gtty->CprintfRaw(" [%2d] %s\n", i, sname);
-    if(strcmp(sname, ".text") == 0){
-      f = reinterpret_cast<FType>(malloc(shdr->sh_size));
-      memcpy(reinterpret_cast<void *>(f), &head[shdr->sh_offset], shdr->sh_size);
-      gtty->CprintfRaw("\n");
+    gtty->CprintfRaw(" [%2d] %s size: %x offset: %x\n", i, sname, shdr->sh_size, shdr->sh_offset);
+    if (total_memsize < shdr->sh_addr + shdr->sh_offset) {
+      total_memsize = shdr->sh_addr + shdr->sh_offset;
     }
   }
 
+  uint8_t *membuffer = reinterpret_cast<uint8_t *>(malloc(total_memsize));
+  for(int i = 0; i < ehdr->e_shnum; i++){
+    const Elf64_Shdr *shdr = (const Elf64_Shdr *)(head + ehdr->e_shoff + ehdr->e_shentsize * i);
+    const char *sname = (const char *)(head + shstr->sh_offset + shdr->sh_name); 
+    if (shdr->sh_type == SHT_NOBITS) {
+      if ((shdr->sh_flags & SHF_ALLOC) != 0) {
+	memset(membuffer + shdr->sh_addr, 0, shdr->sh_size);
+      }
+    } else {
+      memcpy(membuffer + shdr->sh_addr, &head[shdr->sh_offset], shdr->sh_size);
+    }
+  }
+
+
+  using FType = int (*)(int, char*[]);
+  FType f = reinterpret_cast<FType>(membuffer + ehdr->e_entry);
+
   char *argv[1] = {"123"};
   gtty->CprintfRaw("%s\n", argv[0]);
-  f(1, argv); 
+  gtty->CprintfRaw("return value: %d\n", f(1, argv)); 
   gtty->CprintfRaw("%s Returned.\n", argv[0]);
 
+  free(membuffer);
 }
