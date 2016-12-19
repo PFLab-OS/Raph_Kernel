@@ -42,8 +42,8 @@ private:
     }
     virtual ~DevUhciUsbController() {
     }
-    virtual bool SendControlTransfer(Usb11Ctrl::DeviceRequest *request, Usb11Ctrl::DeviceDescriptor *desc, int device_addr) override {
-      return _dev_uhci->SendControlTransfer(request, desc, device_addr);
+    virtual bool SendControlTransfer(Usb11Ctrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) override {
+      return _dev_uhci->SendControlTransfer(request, data, data_size, device_addr);
     }
   private:
     DevUhci *const _dev_uhci;
@@ -207,7 +207,7 @@ private:
 
   uint16_t GetCurrentFameListIndex();
 
-  bool SendControlTransfer(Usb11Ctrl::DeviceRequest *request, Usb11Ctrl::DeviceDescriptor *desc, int device_addr);
+  bool SendControlTransfer(Usb11Ctrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr);
 };
 
 template <> inline volatile uint16_t DevUhci::ReadControllerReg<uint16_t>(uint16_t reg) {

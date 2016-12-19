@@ -49,13 +49,13 @@ void DevEhci::Init() {
     _operational_reg_base_addr[kOperationalRegOffsetUsbCmd] |= kOperationalRegUsbCmdFlagRunStop; 
   }
 
-  while((__sync_fetch_and_or(&_operational_reg_base_addr[kOperationalRegOffsetUsbSts], 0) & kOperationalRegUsbStsFlagHcHalted) == 0) {
+  while((READ_MEM_VOLATILE(&_operational_reg_base_addr[kOperationalRegOffsetUsbSts]) & kOperationalRegUsbStsFlagHcHalted) == 0) {
   }
 
   // reset controller
   _operational_reg_base_addr[kOperationalRegOffsetUsbCmd] |= kOperationalRegUsbCmdFlagHcReset;
 
-  while((__sync_fetch_and_or(&_operational_reg_base_addr[kOperationalRegOffsetUsbCmd], 0) & kOperationalRegUsbCmdFlagHcReset) == 0) {
+  while((READ_MEM_VOLATILE(&_operational_reg_base_addr[kOperationalRegOffsetUsbCmd]) & kOperationalRegUsbCmdFlagHcReset) == 0) {
   }
 
   
@@ -71,17 +71,8 @@ void DevEhci::Init() {
   int n_ports = ReadCapabilityRegHcsParams() & 0xF;
 
   for (int i = 0; i < n_ports; i++) {
-    if (_operational_reg_base_addr[kOperationalRegOffsetPortScBase + i] & 1) {
-      // port reset
-      _operational_reg_base_addr[kOperationalRegOffsetPortScBase + i] &= ~(1 << 2);
-      _operational_reg_base_addr[kOperationalRegOffsetPortScBase + i] |= 1 << 8;
-      // set reset bit for 50ms
-      timer->BusyUwait(50*1000);
-      // then unset reset bit
-      _operational_reg_base_addr[kOperationalRegOffsetPortScBase + i] &= ~(1 << 8);
-      // wait until end of reset sequence
-      while ((__sync_fetch_and_or(&_operational_reg_base_addr[kOperationalRegOffsetPortScBase + i], 0) & (1 << 2)) == 0) {
-      }
+    if (_operational_reg_base_addr[kOperationalRegOffsetPortScBase + i] & kOperationalRegPortScFlagCurrentConnectStatus) {
+      DisablePort(i);
     }
   }
 
@@ -98,8 +89,9 @@ void DevEhci::Init() {
   _sub->Init();
 
   _operational_reg_base_addr[kOperationalRegOffsetUsbCmd] &= ~kOperationalRegUsbCmdFlagAsynchronousScheduleEnable;
+  _operational_reg_base_addr[kOperationalRegOffsetUsbCmd] &= ~kOperationalRegUsbCmdFlagsPeriodicScheduleEnable;
 
-  while((__sync_fetch_and_or(&_operational_reg_base_addr[kOperationalRegOffsetUsbSts], 0) & kOperationalRegUsbStsFlagAsynchronousSchedule) != 0) {
+  while((READ_MEM_VOLATILE(&_operational_reg_base_addr[kOperationalRegOffsetUsbSts]) & kOperationalRegUsbStsFlagAsynchronousSchedule) != 0) {
   }
   
   if (_is_64bit_addressing) {
@@ -110,11 +102,37 @@ void DevEhci::Init() {
 
   _operational_reg_base_addr[kOperationalRegOffsetUsbCmd] |= kOperationalRegUsbCmdFlagAsynchronousScheduleEnable;
 
-  while((__sync_fetch_and_or(&_operational_reg_base_addr[kOperationalRegOffsetUsbSts], 0) & kOperationalRegUsbStsFlagAsynchronousSchedule) == 0) {
+  while((READ_MEM_VOLATILE(&_operational_reg_base_addr[kOperationalRegOffsetUsbSts]) & kOperationalRegUsbStsFlagAsynchronousSchedule) == 0) {
   }
   
-  for (int dev = 0; dev < 1; dev++) {
-    DevUsbKeyboard::InitUsb(&_controller_dev, dev);
+  for (int i = 0; i < n_ports; i++) {
+    if (_operational_reg_base_addr[kOperationalRegOffsetPortScBase + i] & kOperationalRegPortScFlagCurrentConnectStatus) {
+      ResetPort(i);
+      while(true) {
+      	Usb11Ctrl::DeviceRequest *request = nullptr;
+
+      	if (!Usb11Ctrl::GetCtrl().AllocDeviceRequest(request)) {
+      	  goto release;
+      	}
+
+      	// TODO
+      	// horrible device address. fix it
+      	request->MakePacketOfSetAddress(i + 1);
+
+      	if (!SendControlTransfer(request, 0, 0, 0)) {
+      	  goto release;
+      	}
+
+      	break;
+
+      release:
+      	if (request != nullptr) {
+      	  assert(Usb11Ctrl::GetCtrl().ReuseDeviceRequest(request));
+      	}
+      }
+      int dev = i + 1;
+      DevUsbKeyboard::InitUsb(&_controller_dev, dev);
+    }
   }
 }
 
@@ -146,7 +164,7 @@ void DevEhci::DevEhciSub64::Init() {
   kernel_panic("Ehci", "needs implementation of 64-bit addressing");
 }
 
-bool DevEhci::DevEhciSub32::SendControlTransfer(Usb11Ctrl::DeviceRequest *request, Usb11Ctrl::DeviceDescriptor *desc, int device_addr) {
+bool DevEhci::DevEhciSub32::SendControlTransfer(Usb11Ctrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) {
   bool success = true;
 
   QueueHead *qh1 = nullptr;
@@ -174,24 +192,32 @@ bool DevEhci::DevEhciSub32::SendControlTransfer(Usb11Ctrl::DeviceRequest *reques
   qh1->Init(QueueHead::EndpointSpeed::kHigh);
   qh1->SetHorizontalNext(_qh0);
   qh1->SetNextTd(td1);
-  qh1->SetCharacteristics(64, Usb11Ctrl::TransactionType::kControl, false, true, 0, false, 0);
+  qh1->SetCharacteristics(64, Usb11Ctrl::TransactionType::kControl, false, true, 0, false, device_addr);
 
+  // see Figure 8-12. Control Read and Write Sequence
   td1->Init();
   td1->SetNext(td2);
   td1->SetTokenAndBuffer(false, false, TransferDescriptor::PacketIdentification::kSetup, 8, ptr2virtaddr(request));
 
-  td2->Init();
-  td2->SetNext(td3);
-  td2->SetTokenAndBuffer(false, true, TransferDescriptor::PacketIdentification::kIn, 0x12, ptr2virtaddr(desc));
-
-  td3->Init();
-  td3->SetNext();
-  td3->SetTokenAndBuffer(false, true, TransferDescriptor::PacketIdentification::kOut, 0);
+  if (data != 0) {
+    bool direction = request->IsDirectionDeviceToHost();
+    td2->Init();
+    td2->SetNext(td3);
+    td2->SetTokenAndBuffer(false, true, direction ? TransferDescriptor::PacketIdentification::kIn : TransferDescriptor::PacketIdentification::kOut, data_size, data);
+    
+    td3->Init();
+    td3->SetNext();
+    td3->SetTokenAndBuffer(false, true, direction ? TransferDescriptor::PacketIdentification::kOut : TransferDescriptor::PacketIdentification::kIn, 0);
+  } else {
+    td2->Init();
+    td2->SetNext();
+    td2->SetTokenAndBuffer(false, true, TransferDescriptor::PacketIdentification::kIn, 0);
+  }
 
   _qh0->SetHorizontalNext(qh1);
 
   timer->BusyUwait(1000*1000);
-  
+
  release:
   if (qh1 != nullptr) {
     assert(_qh_buf.Push(qh1));

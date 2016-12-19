@@ -50,6 +50,15 @@ void Usb11Ctrl::Init() {
   for (int i = 0; i < dd_buf_size; i++) {
     kassert(_ctrl._dd_buf.Push(&desc_array[i]));
   }
+
+  constexpr int id_buf_size = _ctrl._id_buf.GetBufSize();
+  PhysAddr id_buf_paddr;
+  static_assert(id_buf_size * sizeof(InterfaceDescriptor) <= PagingCtrl::kPageSize, "");
+  physmem_ctrl->Alloc(id_buf_paddr, PagingCtrl::kPageSize);
+  InterfaceDescriptor *idesc_array = addr2ptr<InterfaceDescriptor>(id_buf_paddr.GetVirtAddr());
+  for (int i = 0; i < id_buf_size; i++) {
+    kassert(_ctrl._id_buf.Push(&idesc_array[i]));
+  }
   
   _ctrl._is_initialized = true;
 }

@@ -73,15 +73,12 @@ public:
   // see Table 9-7 Standard Device Descriptor
   class DeviceDescriptor {
   public:
-    phys_addr GetPhysAddr() {
-      return v2p(ptr2virtaddr(this));
-    }
     uint8_t length;
     uint8_t type;
     uint16_t usb_release_number;
     uint8_t class_code;
     uint8_t subclass_code;
-    uint8_t protocol;
+    uint8_t protocol_code;
     uint8_t max_packet_size;
     uint16_t vendor_id;
     uint16_t product_id;
@@ -91,7 +88,22 @@ public:
     uint8_t serialnum_index;
     uint8_t config_index;
   } __attribute__((__packed__));
-  static_assert(sizeof(DeviceDescriptor) == 0x12, "");
+  static_assert(sizeof(DeviceDescriptor) == 18, "");
+
+  // see Table 9-9 Standard Interface Descriptor
+  class InterfaceDescriptor {
+  public:
+    uint8_t length;
+    uint8_t type;
+    uint8_t interface_number;
+    uint8_t alternate_setting;
+    uint8_t num_endpoints;
+    uint8_t class_code;
+    uint8_t subclass_code;
+    uint8_t protocol_code;
+    uint8_t index;
+  } __attribute__((__packed__));
+  static_assert(sizeof(InterfaceDescriptor) == 9, "");
 
   // see Table 9-2
   class DeviceRequest {
@@ -99,13 +111,24 @@ public:
     phys_addr GetPhysAddr() {
       return v2p(ptr2virtaddr(this));
     }
-    void MakePacketOfGetDeviceRequest() {
-      // see 9.4.2
-      request_type = 0x80;
+    void MakePacketOfGetDescriptorRequest(DescriptorType desc_type) {
+      // see 9.4.3
+      request_type = 0b10000000;
       request = static_cast<uint8_t>(RequestCode::kGetDescriptor);
-      value = static_cast<uint16_t>(DescriptorType::kDevice);
+      value = static_cast<uint16_t>(desc_type);
       index = 0;
       length = sizeof(DeviceDescriptor);
+    }
+    void MakePacketOfSetAddress(uint16_t device_address) {
+      // see 9.4.6
+      request_type = 0b00000000;
+      request = static_cast<uint8_t>(RequestCode::kSetAddress);
+      value = device_address;
+      index = 0;
+      length = 0;
+    }
+    bool IsDirectionDeviceToHost() {
+      return (request_type & 0b10000000) != 0;
     }
   private:
     uint8_t request_type;
@@ -127,11 +150,17 @@ public:
   bool ReuseDeviceRequest(DeviceRequest *request) {
     return _dr_buf.Push(request);
   }
-  bool AllocDeviceDescriptor(DeviceDescriptor *&descriptor) {
+  bool AllocDescriptor(DeviceDescriptor *&descriptor) {
     return _dd_buf.Pop(descriptor);
   }
-  bool ReuseDeviceDescriptor(DeviceDescriptor *descriptor) {
+  bool ReuseDescriptor(DeviceDescriptor *descriptor) {
     return _dd_buf.Push(descriptor);
+  }
+  bool AllocDescriptor(InterfaceDescriptor *&descriptor) {
+    return _id_buf.Pop(descriptor);
+  }
+  bool ReuseDescriptor(InterfaceDescriptor *descriptor) {
+    return _id_buf.Push(descriptor);
   }
 private:
   static Usb11Ctrl _ctrl;
@@ -139,12 +168,12 @@ private:
 
   RingBuffer<DeviceRequest *, 512> _dr_buf;
   RingBuffer<DeviceDescriptor *, 227> _dd_buf;
-
+  RingBuffer<InterfaceDescriptor *, 455> _id_buf;
 };
 
 class DevUsbController {
 public:
-  virtual bool SendControlTransfer(Usb11Ctrl::DeviceRequest *request, Usb11Ctrl::DeviceDescriptor *desc, int device_addr) = 0;
+  virtual bool SendControlTransfer(Usb11Ctrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) = 0;
 };
 
 // !!! important !!!
