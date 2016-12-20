@@ -132,19 +132,26 @@ void TaskCtrl::Run() {
       ts->bottom = ts->bottom_sub;
       ts->bottom_sub = tmp;
 
-      //TODO : FIX THIS : callout isn't executed while this loop is running.
-    }
-    
-    kassert(ts->state == TaskQueueState::kSlept);
-
-    {
-      Locker locker(ts->dlock);
-      if (ts->dtop->_next != nullptr) {
-        ts->state = TaskQueueState::kNotRunning;
+      Callout *dtt = ts->dtop->_next;
+      volatile uint64_t time = timer->GetCntAfterPeriod(timer->ReadMainCnt(), kTaskExecutionInterval);
+      if (dtt != nullptr && timer->IsGreater(time, dtt->_time)) {
+	ts->state = TaskQueueState::kNotRunning;
+	break;
       }
     }
-    apic_ctrl->StartTimer();
-    asm volatile("hlt");
+    
+    kassert(ts->state == TaskQueueState::kSlept || ts->state == TaskQueueState::kNotRunning);
+
+    if (ts->state == TaskQueueState::kSlept) {
+      {
+	Locker locker(ts->dlock);
+	if (ts->dtop->_next != nullptr) {
+	  ts->state = TaskQueueState::kNotRunning;
+	}
+      }
+      apic_ctrl->StartTimer();
+      asm volatile("hlt");
+    }
   }
 }
 
