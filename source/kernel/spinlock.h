@@ -63,6 +63,7 @@ protected:
   volatile unsigned int _flag = 0;
   CpuId _cpuid;
   bool _did_stop_interrupt = false;
+  static const bool kTimeout = true;
 };
 
 using SpinLock = IntSpinLock;

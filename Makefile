@@ -12,7 +12,8 @@ run:
 	make qemuend
 
 qemurun: image
-	sudo qemu-system-x86_64 -cpu qemu64,+x2apic -smp 8 -machine q35 -monitor telnet:127.0.0.1:1234,server,nowait -vnc 0.0.0.0:0,password -net nic -net bridge,br=br0 -drive id=disk,file=$(IMAGE),if=none -device ahci,id=ahci -device ide-drive,drive=disk,bus=ahci.0 &
+	sudo qemu-system-x86_64 -cpu qemu64,+x2apic -smp 8 -machine q35 -monitor telnet:127.0.0.1:1234,server,nowait -vnc 0.0.0.0:0,password -net nic -net bridge,br=br0 -drive id=disk,file=$(IMAGE),if=virtio &
+#	sudo qemu-system-x86_64 -cpu qemu64,+x2apic -smp 8 -machine q35 -monitor telnet:127.0.0.1:1234,server,nowait -vnc 0.0.0.0:0,password -net nic -net bridge,br=br0 -drive id=disk,file=$(IMAGE),if=none -device ahci,id=ahci -device ide-drive,drive=disk,bus=ahci.0 &
 #	sudo qemu-system-x86_64 -smp 8 -machine q35 -monitor telnet:127.0.0.1:1234,server,nowait -vnc 0.0.0.0:0,password -net nic -net bridge,br=br0 -drive file=$(IMAGE),if=virtio &
 	sleep 0.2s
 	echo "set_password vnc a" | netcat 127.0.0.1 1234
@@ -30,6 +31,7 @@ bin:
 image:
 	make mount
 	make bin
+	sudo cp memtest86+.bin $(MOUNT_DIR)/boot/memtest86+.bin
 	sudo cp grub.cfg $(MOUNT_DIR)/boot/grub/grub.cfg 
 	-sudo rm -rf $(MOUNT_DIR)/core
 	sudo cp -r $(BUILD_DIR) $(MOUNT_DIR)/core
@@ -44,7 +46,8 @@ $(IMAGE):
 cpimg: image
 	cp $(IMAGE) /vagrant
 
-hd: image /dev/sdb
+hd: image
+	@if [ ! -e /dev/sdb ]; then echo "error: insert usb memory!"; exit -1; fi
 	sudo dd if=$(IMAGE) of=/dev/sdb
 
 disk:
