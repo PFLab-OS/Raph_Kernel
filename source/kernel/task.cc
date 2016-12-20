@@ -269,9 +269,9 @@ void TaskCtrl::RegisterCallout(Callout *task) {
     Callout *dt = ts->dtop;
     while(true) {
       Callout *dtt = dt->_next;
-      if (dt->_next != nullptr) {
+      if (dtt == nullptr) {
         task->_state = Callout::CalloutState::kCalloutQueue;
-      	task->_next = dtt;
+      	task->_next = nullptr;
       	dt->_next = task;
       	break;
       }
@@ -371,7 +371,9 @@ void Callout::HandleSub(void *) {
     _pending = false;
     _state = CalloutState::kHandling;
     _func.Execute();
-    _state = CalloutState::kStopped;
+    if (_state == CalloutState::kHandling) {
+      _state = CalloutState::kStopped;
+    }
   } else {
     task_ctrl->Register(cpu_ctrl->GetCpuId(), &_task);
   }
