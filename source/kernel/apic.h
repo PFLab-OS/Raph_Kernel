@@ -206,7 +206,7 @@ private:
     
     struct ApicInfo {
       uint32_t id;
-    } *_apic_info = nullptr;    
+    } *_apic_info = nullptr;
 
     void SendEoi() {
       WriteReg(RegisterOffset::kEoi, 0);
@@ -332,44 +332,47 @@ private:
   class Ioapic {
   public:
     void Setup();
-    uint32_t Read(uint32_t index) {
-      _reg[kIndex] = index;
-      return _reg[kData];
-    }
-    void Write(uint32_t index, uint32_t data) {
-      _reg[kIndex] = index;
-      _reg[kData] = data;
-    }
-    void SetReg(uint32_t *reg) {
-      // kassert(_reg == nullptr);
-      if (_reg == nullptr) {
-        _reg = reg;
-      }
-    }
     bool SetupInt(uint32_t irq, uint8_t lapicid, uint8_t vector);
+    struct Controller {
+      // see IOAPIC manual 3.1 (Memory Mapped Registers for Accessing IOAPIC Registers)
+      static const int kIndex = 0x0;
+      static const int kData = 0x10 / sizeof(uint32_t);
+
+      // see IOAPIC manual 3.2 (IOAPIC Registers)
+      static const uint32_t kRegVer = 0x1;
+      static const uint32_t kRegRedTbl = 0x10;
+
+      // see IOAPIC manual 3.2.4 (I/O Redirection Table Registers)
+      static const uint32_t kRegRedTblFlagValueDeliveryLow = 1 << 8;
+      static const uint32_t kRegRedTblFlagDestModePhys = 0 << 11;
+      static const uint32_t kRegRedTblFlagDestModeLogical = 1 << 11;
+      static const uint32_t kRegRedTblFlagTriggerModeEdge = 0 << 15;
+      static const uint32_t kRegRedTblFlagTriggerModeLevel = 1 << 15;
+      static const uint32_t kRegRedTblFlagMask = 1 << 16;
+      static const int kRegRedTblOffsetDest = 24;
+      
+      uint32_t *reg;
+      uint32_t int_base;
+      uint32_t int_max;
+      void Setup(MADTStIOAPIC *madt_struct_ioapic);
+      uint32_t Read(uint32_t index) {
+        reg[kIndex] = index;
+        return reg[kData];
+      }
+      void Write(uint32_t index, uint32_t data) {
+        reg[kIndex] = index;
+        reg[kData] = data;
+      }
+      void DisableInt() {
+        for (uint32_t i = 0; i <= int_max; i++) {
+          Write(kRegRedTbl + 2 * i, kRegRedTblFlagMask);
+          Write(kRegRedTbl + 2 * i + 1, 0);
+        }
+      }
+      bool SetupInt(uint32_t irq, uint8_t lapicid, uint8_t vector);
+    } *_controller = nullptr;
+    int _controller_num = 0;
   private:
-    uint32_t GetMaxIntr() {
-      // see IOAPIC manual 3.2.2 (IOAPIC Version Register)
-      return (Read(kRegVer) >> 16) & 0xff;
-    }
-    uint32_t *_reg = nullptr;
-    
-    // see IOAPIC manual 3.1 (Memory Mapped Registers for Accessing IOAPIC Registers)
-    static const int kIndex = 0x0;
-    static const int kData = 0x10 / sizeof(uint32_t);
-
-    // see IOAPIC manual 3.2 (IOAPIC Registers)
-    static const uint32_t kRegVer = 0x1;
-    static const uint32_t kRegRedTbl = 0x10;
-
-    // see IOAPIC manual 3.2.4 (I/O Redirection Table Registers)
-    static const uint32_t kRegRedTblFlagValueDeliveryLow = 1 << 8;
-    static const uint32_t kRegRedTblFlagDestModePhys = 0 << 11;
-    static const uint32_t kRegRedTblFlagDestModeLogical = 1 << 11;
-    static const uint32_t kRegRedTblFlagTriggerModeEdge = 0 << 15;
-    static const uint32_t kRegRedTblFlagTriggerModeLevel = 1 << 15;
-    static const uint32_t kRegRedTblFlagMask = 1 << 16;
-    static const int kRegRedTblOffsetDest = 24;
   };
   static void TmrCallback(Regs *rs, void *arg) {
   }

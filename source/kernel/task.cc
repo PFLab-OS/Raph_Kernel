@@ -132,19 +132,26 @@ void TaskCtrl::Run() {
       ts->bottom = ts->bottom_sub;
       ts->bottom_sub = tmp;
 
-      //TODO : FIX THIS : callout isn't executed while this loop is running.
-    }
-    
-    kassert(ts->state == TaskQueueState::kSlept);
-
-    {
-      Locker locker(ts->dlock);
-      if (ts->dtop->_next != nullptr) {
-        ts->state = TaskQueueState::kNotRunning;
+      Callout *dtt = ts->dtop->_next;
+      volatile uint64_t time = timer->GetCntAfterPeriod(timer->ReadMainCnt(), kTaskExecutionInterval);
+      if (dtt != nullptr && timer->IsGreater(time, dtt->_time)) {
+	ts->state = TaskQueueState::kNotRunning;
+	break;
       }
     }
-    apic_ctrl->StartTimer();
-    asm volatile("hlt");
+    
+    kassert(ts->state == TaskQueueState::kSlept || ts->state == TaskQueueState::kNotRunning);
+
+    if (ts->state == TaskQueueState::kSlept) {
+      {
+	Locker locker(ts->dlock);
+	if (ts->dtop->_next != nullptr) {
+	  ts->state = TaskQueueState::kNotRunning;
+	}
+      }
+      apic_ctrl->StartTimer();
+      asm volatile("hlt");
+    }
   }
 }
 
@@ -269,9 +276,9 @@ void TaskCtrl::RegisterCallout(Callout *task) {
     Callout *dt = ts->dtop;
     while(true) {
       Callout *dtt = dt->_next;
-      if (dt->_next != nullptr) {
+      if (dtt == nullptr) {
         task->_state = Callout::CalloutState::kCalloutQueue;
-      	task->_next = dtt;
+      	task->_next = nullptr;
       	dt->_next = task;
       	break;
       }
@@ -320,7 +327,7 @@ void TaskCtrl::CancelCallout(Callout *task) {
 }
 
 void TaskCtrl::ForceWakeup(CpuId cpuid) {
-  int raw_cpuid = cpuid.GetRawId();
+  int raw_cpuid = cpuid.GetApicId();
   if (_task_struct[raw_cpuid].state == TaskQueueState::kSlept) {
     if (cpu_ctrl->GetCpuId().GetRawId() != raw_cpuid) {
       apic_ctrl->SendIpi(raw_cpuid);
@@ -348,7 +355,7 @@ void CountableTask::HandleSub(void *) {
   }
 }
 
-void Callout::SetHandler(uint32_t us) {
+void Callout::SetHandler(int us) {
   SetHandler(cpu_ctrl->GetCpuId(), us);
 }
 
@@ -371,7 +378,9 @@ void Callout::HandleSub(void *) {
     _pending = false;
     _state = CalloutState::kHandling;
     _func.Execute();
-    _state = CalloutState::kStopped;
+    if (_state == CalloutState::kHandling) {
+      _state = CalloutState::kStopped;
+    }
   } else {
     task_ctrl->Register(cpu_ctrl->GetCpuId(), &_task);
   }

@@ -26,10 +26,18 @@
 #include <libglobal.h>
 #include <idt.h>
 #include <apic.h>
+#include <timer.h>
+#include <tty.h>
+#include <global.h>
 
 void IntSpinLock::Lock() {
   if ((_flag % 2) == 1) {
-    kassert(!_cpuid.IsValid() || _cpuid.GetRawId() != cpu_ctrl->GetCpuId().GetRawId());
+    kassert(_cpuid != cpu_ctrl->GetCpuId());
+  }
+  bool showed_timeout_warning = false;
+  uint64_t t1;
+  if (kTimeout && timer != nullptr && timer->DidSetup()) {
+    t1 = timer->GetCntAfterPeriod(timer->ReadMainCnt(), 10 * 1000000); // 10s
   }
   volatile unsigned int flag = GetFlag();
   while(true) {
@@ -40,6 +48,13 @@ void IntSpinLock::Lock() {
         break;
       }
       enable_interrupt(iflag);
+    }
+    if (kTimeout && !showed_timeout_warning && timer != nullptr && timer->DidSetup() && timer->IsTimePassed(t1)) {
+      gtty->CprintfRaw("[warning]: unable to take SpinLock for a long time on cpuid %d.\nA deadlock may occur.\n", cpu_ctrl->GetCpuId().GetRawId());
+      size_t *rbp;
+      asm volatile("movq %%rbp, %0":"=r"(rbp));
+      show_backtrace(rbp);
+      showed_timeout_warning = true;
     }
     flag = GetFlag();
   }

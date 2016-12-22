@@ -133,7 +133,7 @@ inline void CpuId::CheckIfValid() {
   }
 }
 
-inline uint8_t CpuId::GetApicId() {
+inline uint32_t CpuId::GetApicId() {
   return apic_ctrl->GetApicIdFromCpuId(*this);
 }
 
