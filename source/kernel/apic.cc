@@ -183,8 +183,6 @@ void ApicCtrl::Lapic::Setup() {
     kernel_panic("ApicCtrl", "unable to initialize local APIC");
   }
 
-  WriteReg(RegisterOffset::kSvr, kRegSvrApicEnableFlag | Idt::ReservedIntVector::kError);
-
   // disable all local interrupt sources
   WriteReg(RegisterOffset::kLvtTimer, kRegLvtMask | kRegTimerPeriodic);
   // TODO : check APIC version before mask tsensor & pcnt
@@ -199,6 +197,8 @@ void ApicCtrl::Lapic::Setup() {
   idt->SetExceptionCallback(cpu_ctrl->GetCpuId(), Idt::ReservedIntVector::kIpi, IpiCallback, nullptr);
   idt->SetExceptionCallback(cpu_ctrl->GetCpuId(), Idt::ReservedIntVector::k8259Spurious1, PicSpuriousCallback, nullptr);
   idt->SetExceptionCallback(cpu_ctrl->GetCpuId(), Idt::ReservedIntVector::k8259Spurious2, PicSpuriousCallback, nullptr);
+
+  WriteReg(RegisterOffset::kSvr, kRegSvrApicEnableFlag | Idt::ReservedIntVector::kError);
 }
 
 void ApicCtrl::Lapic::Start(uint32_t apicId, uint64_t entryPoint) {
