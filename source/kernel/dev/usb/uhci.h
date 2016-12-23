@@ -27,7 +27,7 @@
 
 #include <dev/pci.h>
 #include <buf.h>
-#include <dev/usb/usb11.h>
+#include <dev/usb/usb.h>
 
 class DevUhci final : public DevPci {
 public:
@@ -42,7 +42,7 @@ private:
     }
     virtual ~DevUhciUsbController() {
     }
-    virtual bool SendControlTransfer(Usb11Ctrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) override {
+    virtual bool SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) override {
       return _dev_uhci->SendControlTransfer(request, data, data_size, device_addr);
     }
   private:
@@ -94,10 +94,10 @@ private:
       
       _token = (max_len << 21) | (data_toggle ? (1 << 19) : 0) | (endpoint << 15) | (device_address << 8) | static_cast<uint8_t>(pid);
     }
-    void SetBuffer(Usb11Ctrl::DeviceRequest *pointer, int offset) {
+    void SetBuffer(UsbCtrl::DeviceRequest *pointer, int offset) {
       SetBufferSub(v2p(ptr2virtaddr(pointer)) + offset);
     }
-    void SetBuffer(Usb11Ctrl::DeviceDescriptor *pointer, int offset) {
+    void SetBuffer(UsbCtrl::DeviceDescriptor *pointer, int offset) {
       SetBufferSub(v2p(ptr2virtaddr(pointer)) + offset);
     }
     void SetBuffer(/* nullptr */) {
@@ -207,7 +207,7 @@ private:
 
   uint16_t GetCurrentFameListIndex();
 
-  bool SendControlTransfer(Usb11Ctrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr);
+  bool SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr);
 };
 
 template <> inline volatile uint16_t DevUhci::ReadControllerReg<uint16_t>(uint16_t reg) {

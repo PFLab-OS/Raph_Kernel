@@ -28,7 +28,7 @@
 #include <x86.h>
 #include <dev/pci.h>
 #include <buf.h>
-#include <dev/usb/usb11.h>
+#include <dev/usb/usb.h>
 #include <timer.h>
 
 // for debug
@@ -48,7 +48,7 @@ private:
     }
     virtual ~DevEhciUsbController() {
     }
-    virtual bool SendControlTransfer(Usb11Ctrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) override {
+    virtual bool SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) override {
       return _dev_ehci->SendControlTransfer(request, data, data_size, device_addr);
     }
   private:
@@ -59,7 +59,7 @@ private:
   public:
     virtual void Init() = 0;
     virtual phys_addr GetRepresentativeQueueHead() = 0;
-    virtual bool SendControlTransfer(Usb11Ctrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) = 0;
+    virtual bool SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) = 0;
   } *_sub;
   
   class DevEhciSub32 : public DevEhciSub {
@@ -68,7 +68,7 @@ private:
     virtual phys_addr GetRepresentativeQueueHead() override {
       return v2p(ptr2virtaddr(_qh0));
     }
-    virtual bool SendControlTransfer(Usb11Ctrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) override;
+    virtual bool SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) override;
   private:
     class QueueHead;
   
@@ -99,7 +99,7 @@ private:
       }
       void SetTokenAndBuffer(bool interrupt_on_complete, bool data_toggle, PacketIdentification pid, int total_bytes, virt_addr buf) {
         SetTokenAndBufferSub(interrupt_on_complete, data_toggle, pid, total_bytes);
-        phys_addr buf_p = v2p(buf);
+        phys_addr buf_p = k2p(buf);
         phys_addr buf_p_end = buf_p + total_bytes;
         _buffer_pointer[0] = buf_p;
         buf_p = ((buf_p + 4096) / 4096) * 4096;
@@ -182,12 +182,12 @@ private:
       void SetNextTd(/* nullptr */) {
         _next_td = 1;
       }
-      void SetCharacteristics(int max_packetsize, Usb11Ctrl::TransactionType ttype, bool head, bool data_toggle_control, uint8_t endpoint_num, bool inactivate, uint8_t device_address) {
+      void SetCharacteristics(int max_packetsize, UsbCtrl::TransactionType ttype, bool head, bool data_toggle_control, uint8_t endpoint_num, bool inactivate, uint8_t device_address) {
         _characteristics = 0;
         if (_speed == EndpointSpeed::kHigh) {
           assert(!inactivate);
         } else {
-          if (ttype == Usb11Ctrl::TransactionType::kControl) {
+          if (ttype == UsbCtrl::TransactionType::kControl) {
             _characteristics |= (1 << 27); // control endpoint flag
           }
         }
@@ -248,7 +248,7 @@ private:
       assert(false);
       return 0;
     }
-    virtual bool SendControlTransfer(Usb11Ctrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) override {
+    virtual bool SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) override {
       assert(false);
       return true;
     }
@@ -303,7 +303,7 @@ private:
   uint32_t kOperationalRegPortScFlagPortReset = 1 << 8;
 
   bool _is_64bit_addressing;
-  bool SendControlTransfer(Usb11Ctrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) {
+  bool SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) {
     return _sub->SendControlTransfer(request, data, data_size, device_addr);
   }
 

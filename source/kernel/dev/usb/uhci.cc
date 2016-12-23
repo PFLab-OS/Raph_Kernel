@@ -24,11 +24,7 @@
 #include <mem/paging.h>
 #include <mem/virtmem.h>
 #include <mem/physmem.h>
-#include <dev/usb/usb11.h>
-
-// for debug
-#include <tty.h>
-#include <global.h>
+#include <dev/usb/usb.h>
 
 DevPci *DevUhci::InitPci(uint8_t bus, uint8_t device, uint8_t function) {
   DevUhci *dev = new DevUhci(bus, device, function);
@@ -120,13 +116,13 @@ void DevUhci::Init() {
   }
 }
 
-bool DevUhci::SendControlTransfer(Usb11Ctrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) {
+bool DevUhci::SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) {
   // TODO rewrite
   kernel_panic("Uhci", "");
  //  bool success = true;
 
  //  // debug
- //  memset(reinterpret_cast<uint8_t *>(desc), 0xFF, sizeof(Usb11Ctrl::DeviceDescriptor));
+ //  memset(reinterpret_cast<uint8_t *>(desc), 0xFF, sizeof(UsbCtrl::DeviceDescriptor));
 
  //  // debug
  //  TransferDescriptor *td0;
@@ -243,67 +239,3 @@ bool DevUhci::SendControlTransfer(Usb11Ctrl::DeviceRequest *request, virt_addr d
  //  return success;
 }
 
-DevUsb *DevUsbKeyboard::InitUsb(DevUsbController *controller, int addr) {
-  DevUsbKeyboard *that = new DevUsbKeyboard(controller, addr);
-
-  while(true) {
-    Usb11Ctrl::DeviceDescriptor *desc = nullptr;
-    Usb11Ctrl::DeviceRequest *request = nullptr;
-    if (!Usb11Ctrl::GetCtrl().AllocDescriptor(desc)) {
-      continue;
-    }
-
-    if (!Usb11Ctrl::GetCtrl().AllocDeviceRequest(request)) {
-      goto release1;
-    }
-
-    request->MakePacketOfGetDescriptorRequest(Usb11Ctrl::DescriptorType::kDevice);
-
-    if (!controller->SendControlTransfer(request, ptr2virtaddr(desc), sizeof(Usb11Ctrl::DeviceDescriptor), addr)) {
-      goto release1;
-    }
-
-    gtty->CprintfRaw("vid: %x, did: %x ", desc->vendor_id, desc->product_id);
-
-    break;
-
-  release1:
-    if (desc != nullptr) {
-      assert(Usb11Ctrl::GetCtrl().ReuseDescriptor(desc));
-    }
-    if (request != nullptr) {
-      assert(Usb11Ctrl::GetCtrl().ReuseDeviceRequest(request));
-    }
-  }
-
-  while(true) {
-    Usb11Ctrl::InterfaceDescriptor *desc = nullptr;
-    Usb11Ctrl::DeviceRequest *request = nullptr;
-    if (!Usb11Ctrl::GetCtrl().AllocDescriptor(desc)) {
-      continue;
-    }
-
-    if (!Usb11Ctrl::GetCtrl().AllocDeviceRequest(request)) {
-      goto release2;
-    }
-
-    request->MakePacketOfGetDescriptorRequest(Usb11Ctrl::DescriptorType::kInterface);
-
-    if (!controller->SendControlTransfer(request, ptr2virtaddr(desc), sizeof(Usb11Ctrl::InterfaceDescriptor), addr)) {
-      goto release2;
-    }
-
-    gtty->CprintfRaw("cid: %x, pid: %x ", desc->class_code, desc->protocol_code);
-
-    break;
-
-  release2:
-    if (desc != nullptr) {
-      assert(Usb11Ctrl::GetCtrl().ReuseDescriptor(desc));
-    }
-    if (request != nullptr) {
-      assert(Usb11Ctrl::GetCtrl().ReuseDeviceRequest(request));
-    }
-  }
-  return nullptr;
-}

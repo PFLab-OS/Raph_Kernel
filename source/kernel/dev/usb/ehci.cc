@@ -24,7 +24,7 @@
 #include <mem/paging.h>
 #include <mem/virtmem.h>
 #include <mem/physmem.h>
-#include <dev/usb/usb11.h>
+#include <dev/usb/usb.h>
 
 // for debug
 #include <tty.h>
@@ -109,9 +109,9 @@ void DevEhci::Init() {
     if (_operational_reg_base_addr[kOperationalRegOffsetPortScBase + i] & kOperationalRegPortScFlagCurrentConnectStatus) {
       ResetPort(i);
       while(true) {
-      	Usb11Ctrl::DeviceRequest *request = nullptr;
+      	UsbCtrl::DeviceRequest *request = nullptr;
 
-      	if (!Usb11Ctrl::GetCtrl().AllocDeviceRequest(request)) {
+      	if (!UsbCtrl::GetCtrl().AllocDeviceRequest(request)) {
       	  goto release;
       	}
 
@@ -127,7 +127,7 @@ void DevEhci::Init() {
 
       release:
       	if (request != nullptr) {
-      	  assert(Usb11Ctrl::GetCtrl().ReuseDeviceRequest(request));
+      	  assert(UsbCtrl::GetCtrl().ReuseDeviceRequest(request));
       	}
       }
       int dev = i + 1;
@@ -164,7 +164,7 @@ void DevEhci::DevEhciSub64::Init() {
   kernel_panic("Ehci", "needs implementation of 64-bit addressing");
 }
 
-bool DevEhci::DevEhciSub32::SendControlTransfer(Usb11Ctrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) {
+bool DevEhci::DevEhciSub32::SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) {
   bool success = true;
 
   QueueHead *qh1 = nullptr;
@@ -192,7 +192,7 @@ bool DevEhci::DevEhciSub32::SendControlTransfer(Usb11Ctrl::DeviceRequest *reques
   qh1->Init(QueueHead::EndpointSpeed::kHigh);
   qh1->SetHorizontalNext(_qh0);
   qh1->SetNextTd(td1);
-  qh1->SetCharacteristics(64, Usb11Ctrl::TransactionType::kControl, false, true, 0, false, device_addr);
+  qh1->SetCharacteristics(64, UsbCtrl::TransactionType::kControl, false, true, 0, false, device_addr);
 
   // see Figure 8-12. Control Read and Write Sequence
   td1->Init();
