@@ -79,26 +79,13 @@ class Tty {
     Locker locker(_lock);
     PrintString(&str);
   }
-  [[deprecated]] void Printf() {
+  void Printf() __attribute__((deprecated)) {
   }
   template<class... T>
-  [[deprecated]] void Printf(const T& ...args) {
-    String *str = String::New();
-    Printf_sub1(*str, args...);
-    str->Exit();
-    DoString(str);
-  }
+    void Printf(const T& ...args) __attribute__((deprecated));
   // use to print error message
   template<class... T>
-  [[deprecated]] void PrintfRaw(const T& ...args) {
-    String str;
-    str.Init();
-    str.type = String::Type::kSingle;
-    Printf_sub1(str, args...);
-    str.Exit();
-    Locker locker(_lock);
-    PrintString(&str);
-  }
+    void PrintfRaw(const T& ...args) __attribute__((deprecated));
   virtual void SetColor(Color) = 0;
   virtual void ResetColor() = 0;
  protected:
@@ -274,5 +261,24 @@ class Tty {
   IntSpinLock _lock;
   CpuId _cpuid;
 };
+
+template<class... T>
+void Tty::Printf(const T& ...args) {
+  String *str = String::New();
+  Printf_sub1(*str, args...);
+  str->Exit();
+  DoString(str);
+}
+
+template<class... T>
+void Tty::PrintfRaw(const T& ...args) {
+  String str;
+  str.Init();
+  str.type = String::Type::kSingle;
+  Printf_sub1(str, args...);
+  str.Exit();
+  Locker locker(_lock);
+  PrintString(&str);
+}
 
 #endif // __RAPH_KERNEL_TTY_H__
