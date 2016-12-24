@@ -33,7 +33,7 @@ class BsdDevPci;
 
 class BsdDevice {
 public:
-  BsdDevice(BsdDevice *parent, char *name_, int unit_) {
+  BsdDevice(BsdDevice *parent, const char *name_, int unit_) {
     _parent = parent;
     name = name_;
     unit = unit_;
