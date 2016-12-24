@@ -35,7 +35,7 @@
 
 class BsdDevBus : public BsdDevice {
 public:
-  BsdDevBus(BsdDevice *parent, char *name, int unit) : BsdDevice(parent, name, unit) {
+  BsdDevBus(BsdDevice *parent, const char *name_, int unit_) : BsdDevice(parent, name_, unit_) {
     SetBusClass(this);
   }
   BsdDevBus() {
