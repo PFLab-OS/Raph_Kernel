@@ -31,7 +31,6 @@ class AcpiCtrl;
 class MultibootCtrl;
 class PagingCtrl;
 class PhysmemCtrl;
-class VirtmemCtrl;
 class Gdt;
 class Idt;
 
@@ -41,20 +40,16 @@ class PciCtrl;
 
 class NetDevCtrl;
 
+class BsdDevPciCtrl;
+
 extern AcpiCtrl *acpi_ctrl;
 
-#ifndef __UNIT_TEST__
 class ApicCtrl;
 extern ApicCtrl *apic_ctrl;
-#else
-class PthreadCtrl;
-extern PthreadCtrl *apic_ctrl;
-#endif // __UNIT_TEST__
 
 extern MultibootCtrl *multiboot_ctrl;
 extern PagingCtrl *paging_ctrl;
 extern PhysmemCtrl *physmem_ctrl;
-extern VirtmemCtrl *virtmem_ctrl;
 extern Gdt *gdt;
 extern Idt *idt;
 
@@ -67,8 +62,8 @@ extern PciCtrl *pci_ctrl;
  */
 
 // Network Devices
-class DevEthernetCtrl;
-extern DevEthernetCtrl *netdev_ctrl;
+class NetDevCtrl;
+extern NetDevCtrl *netdev_ctrl;
 
 // ARP Table
 class ArpTable;

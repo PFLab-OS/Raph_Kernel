@@ -26,6 +26,7 @@
 #include <mem/physmem.h>
 #include <mem/virtmem.h>
 #include <mem/paging.h>
+#include <mem/kstack.h>
 
 void Gdt::SetupProc() {
   // setup 64bit TSS
@@ -57,57 +58,42 @@ void Gdt::SetupProc() {
   gdt_desc[10] = tss_vaddr >> 32;
 
   Tss *tss = reinterpret_cast<Tss *>(tss_vaddr);
+  CpuId cpuid = cpu_ctrl->GetCpuId();
   
-  PhysAddr rsp0_paddr;
-  physmem_ctrl->Alloc(rsp0_paddr, PagingCtrl::kPageSize);
-  virt_addr rsp0 = rsp0_paddr.GetVirtAddr() + PagingCtrl::kPageSize - 8;
+  virt_addr rsp0 = KernelStackCtrl::GetCtrl().AllocIntStack(cpuid);
   tss->rsp0l = rsp0;
   tss->rsp0h = rsp0 >> 32;
 
-  PhysAddr rsp1_paddr;
-  physmem_ctrl->Alloc(rsp1_paddr, PagingCtrl::kPageSize);
-  virt_addr rsp1 = rsp1_paddr.GetVirtAddr() + PagingCtrl::kPageSize - 8;
+  virt_addr rsp1 = KernelStackCtrl::GetCtrl().AllocIntStack(cpuid);
   tss->rsp1l = rsp1;
   tss->rsp1h = rsp1 >> 32;
 
-  PhysAddr rsp2_paddr;
-  physmem_ctrl->Alloc(rsp2_paddr, PagingCtrl::kPageSize);
-  virt_addr rsp2 = rsp2_paddr.GetVirtAddr() + PagingCtrl::kPageSize - 8;
+  virt_addr rsp2 = KernelStackCtrl::GetCtrl().AllocIntStack(cpuid);
   tss->rsp2l = rsp2;
   tss->rsp2h = rsp2 >> 32;
 
-  PhysAddr dfstack_paddr;
-  physmem_ctrl->Alloc(dfstack_paddr, PagingCtrl::kPageSize);
-  virt_addr dfstack = dfstack_paddr.GetVirtAddr() + PagingCtrl::kPageSize - 8;
+  virt_addr dfstack = KernelStackCtrl::GetCtrl().AllocIntStack(cpuid);
   tss->ist1l = dfstack;
   tss->ist1h = dfstack >> 32;
 
-  PhysAddr nmistack_paddr;
-  physmem_ctrl->Alloc(nmistack_paddr, PagingCtrl::kPageSize);
-  virt_addr nmistack = nmistack_paddr.GetVirtAddr() + PagingCtrl::kPageSize - 8;
+  virt_addr nmistack = KernelStackCtrl::GetCtrl().AllocIntStack(cpuid);
   tss->ist2l = nmistack;
   tss->ist2h = nmistack >> 32;
 
-  PhysAddr debugstack_paddr;
-  physmem_ctrl->Alloc(debugstack_paddr, PagingCtrl::kPageSize);
-  virt_addr debugstack = debugstack_paddr.GetVirtAddr() + PagingCtrl::kPageSize - 8;
+  virt_addr debugstack = KernelStackCtrl::GetCtrl().AllocIntStack(cpuid);
   tss->ist3l = debugstack;
   tss->ist3h = debugstack >> 32;
 
-  PhysAddr mcestack_paddr;
-  physmem_ctrl->Alloc(mcestack_paddr, PagingCtrl::kPageSize);
-  virt_addr mcestack = mcestack_paddr.GetVirtAddr() + PagingCtrl::kPageSize - 8;
+  virt_addr mcestack = KernelStackCtrl::GetCtrl().AllocIntStack(cpuid);
   tss->ist4l = mcestack;
   tss->ist4h = mcestack >> 32;
 
-  PhysAddr genstack_paddr;
-  physmem_ctrl->Alloc(genstack_paddr, PagingCtrl::kPageSize);
-  virt_addr genstack = genstack_paddr.GetVirtAddr() + PagingCtrl::kPageSize - 8;
+  virt_addr genstack = KernelStackCtrl::GetCtrl().AllocIntStack(cpuid);
   tss->ist5l = genstack;
   tss->ist5h = genstack >> 32;
 
   tss->iomap = sizeof(Tss);  // no I/O permission map
 
-  lgdt(gdt_desc, 6);
+  x86::lgdt(gdt_desc, 6);
   asm volatile("ltr %0;"::"r"((uint16_t)TSS));
 }

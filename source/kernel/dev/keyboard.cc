@@ -20,60 +20,26 @@
  * 
  */
 
+#include <stdint.h>
+#include <cpu.h>
+
 #include <global.h>
 #include <apic.h>
 #include <idt.h>
+#include <buf.h>
 #include <dev/keyboard.h>
 
-void Keyboard::Setup(int cpuid) {
+void Keyboard::Setup(const GenericFunction &func) {
   kassert(apic_ctrl != nullptr);
   kassert(idt != nullptr);
+  CpuId cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority);
   int vector = idt->SetIntCallback(cpuid, Keyboard::Handler, nullptr);
-  apic_ctrl->SetupIoInt(ApicCtrl::Ioapic::kIrqKeyboard, apic_ctrl->GetApicIdFromCpuId(cpuid), vector);
+  apic_ctrl->SetupIoInt(ApicCtrl::kIrqKeyboard, cpuid.GetApicId(), vector);
+  _buf.SetFunction(cpuid, func);
 }
-
-void Keyboard::Write(uint8_t code){
-  if (_next_w == _next_r+1) _overflow = true;
-  _buf[_next_w] = code;
-  _next_w++;
-  _count++;
-  _next_w %= kbufSize;
-}
-uint8_t Keyboard::Read() {
-  uint8_t data = _buf[_next_r];
-  if (_next_r == _next_w) _underflow = true;
-  _next_r++;
-  _count--;
-  _next_r %= kbufSize;
-  return data;
-}
-
-char Keyboard::GetCh() {
-  uint8_t data = Read();
-  return kScanCode[data];
-}
-bool Keyboard::Overflow() {
-  return _overflow;
-}
-bool Keyboard::Underflow() {
-  return _underflow;
-}
-
-int Keyboard::Count() {
-  return _count;
-}
-
-void Keyboard::Reset() {
-  _overflow = false;
-  _underflow = false;
-  _count=_next_w = 0;
-  _next_r = 0;
-}
-
 
 void Keyboard::Handler(Regs *reg, void *arg) {
-  uint8_t data;
-  data = inb(kDataPort);
+  uint8_t data = inb(kDataPort);
   if (data < (1 << 7)) keyboard->Write(data);
 }
 

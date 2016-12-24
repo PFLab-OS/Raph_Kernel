@@ -29,15 +29,17 @@
 #ifndef _FREEBSD_SYS__TASK_H_
 #define _FREEBSD_SYS__TASK_H_
 
-#include <freebsd/sys/types.h>
+#include <sys/types.h>
 
 typedef void task_fn_t(void *context, int pending);
+
+class Task;
 
 struct task {
   u_short	ta_pending;		/* (q) count times queued */
   task_fn_t *ta_func;		/* (c) task handler */
   void	*ta_context;		/* (c) argument for handler */
-  Task ta_task;
+  Task *ta_task;
 };
 
 

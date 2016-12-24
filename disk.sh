@@ -4,6 +4,7 @@ IMAGE="disk.img"
 umount() {
     sudo umount ${MOUNT_DIR}
     sudo kpartx -d ${IMAGE}
+    sudo losetup -d /dev/loop[0-9] > /dev/null 2>&1 || return 0
 }
 
 loopsetup() {

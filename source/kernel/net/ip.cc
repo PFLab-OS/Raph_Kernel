@@ -16,95 +16,59 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
- * Author: Levelfour
+ * Author: levelfour
  * 
  */
 
-#include <string.h>
-#include <raph.h>
-#include <mem/physmem.h>
-#include <mem/virtmem.h>
+
 #include <net/ip.h>
-#include <arpa/inet.h>
+#include <net/arp.h>
 
-// offset in header
-const uint32_t kProtocolTypeOffset = 9;
-const uint32_t kSrcAddrOffset      = 13;
 
-// IPv4
-const uint8_t kIpVersion           = 4;
+bool Ipv4Layer::FilterPacket(NetDev::Packet *packet) {
+  Ipv4Layer::Header *header = reinterpret_cast<Ipv4Layer::Header *>(packet->buf);
 
-// packet priority
-const uint8_t kPktPriority         = (7 << 5);
-const uint8_t kPktDelay            = (1 << 4);
-const uint8_t kPktThroughput       = (1 << 3);
-const uint8_t kPktReliability      = (1 << 2);
+  if (header->pid != _upper_protocol) {
+    return false;
+  }
 
-// packet flag
-const uint8_t kFlagNoFragment      = (1 << 6);
-const uint8_t kFlagMoreFragment    = (1 << 5);
+  if (ntohl(header->daddr) != _ipv4_addr) {
+    return false;
+  }
 
-// time to live (number of hops)
-const uint8_t kTimeToLive          = 16;
+  if (_peer_addr != kAddressNotSet && ntohl(header->saddr) != _peer_addr) {
+    return false;
+  } else {
+    // reset for next filtering, preventing from repeatedly using
+    // the same peer address inadvertently
+    ResetPeerAddress();
+  }
 
-// IP header id
-uint16_t _id_auto_increment;
+  return true;
+}
 
-uint16_t CheckSum(uint8_t *buf, uint32_t size);
 
-int32_t IpGenerateHeader(uint8_t *buffer, uint32_t length, uint8_t type, uint32_t saddr, uint32_t daddr) {
-  Ipv4Header * volatile header = reinterpret_cast<Ipv4Header*>(buffer);
-  header->ip_header_len_version = (sizeof(Ipv4Header) >> 2) | (kIpVersion << 4);
-  header->type = kPktPriority | kPktDelay | kPktThroughput | kPktReliability;
-  header->total_len = htons(sizeof(Ipv4Header) + length);
-  header->id = _id_auto_increment++;
-  // TODO: fragment on IP layer
-  uint16_t frag = 0;
-  header->frag_offset_hi_flag = ((frag >> 8) & 0x1f) | kFlagNoFragment;
-  header->frag_offset_lo = (frag & 0xff);
-  header->ttl = kTimeToLive;
-  header->proto_id = type;
+bool Ipv4Layer::PreparePacket(NetDev::Packet *packet) {
+  Ipv4Layer::Header *header = reinterpret_cast<Ipv4Layer::Header *>(packet->buf);
+
+  header->hlen = sizeof(Ipv4Layer::Header) >> 2;
+  header->ver = kIpVersion;
+  header->type = 0;
+  header->total_len = htons(packet->len);
+  header->id = _id++;
+  header->frag_offset = htons(kFlagNoFragment);
+  header->ttl = _ttl;
+  header->pid = _upper_protocol;
   header->checksum = 0;
-  header->saddr = htonl(saddr);
-  header->daddr = htonl(daddr);
-  header->checksum = CheckSum(reinterpret_cast<uint8_t*>(header), sizeof(Ipv4Header));
+  header->saddr = htonl(_ipv4_addr);
+  header->daddr = htonl(_peer_addr);
 
-  return 0;
+  header->checksum = Ipv4Layer::CheckSum(header, sizeof(Ipv4Layer::Header));
+
+  return true;
 }
 
-bool IpFilterPacket(uint8_t *packet, uint8_t type, uint32_t saddr, uint32_t daddr) {
-  Ipv4Header * volatile header = reinterpret_cast<Ipv4Header*>(packet);
-  return (header->proto_id == type)
-      && (!saddr || ntohl(header->saddr) == saddr)
-      && (!daddr || ntohl(header->daddr) == daddr);
-}
-
-uint32_t IpGetDestIpAddress(uint8_t *packet) {
-  Ipv4Header * volatile header = reinterpret_cast<Ipv4Header*>(packet);
-  return ntohl(header->daddr);
-}
-
-uint16_t CheckSum(uint8_t *buf, uint32_t size) {
-  uint64_t sum = 0;
-
-  while(size > 1) {
-    sum += *reinterpret_cast<uint16_t*>(buf);
-    buf += 2;
-    if(sum & 0x80000000) {
-      // if high order bit set, fold
-      sum = (sum & 0xFFFF) + (sum >> 16);
-    }
-    size -= 2;
-  }
-
-  if(size) {
-    // take care of left over byte
-    sum += static_cast<uint16_t>(*buf);
-  }
- 
-  while(sum >> 16) {
-    sum = (sum & 0xFFFF) + (sum >> 16);
-  }
-
-  return ~sum;
+bool Ipv4Layer::GetHardwareDestinationAddress(NetDev::Packet *packet, uint8_t *addr) {
+  Ipv4Layer::Header *header = reinterpret_cast<Ipv4Layer::Header *>(packet->buf);
+  return arp_table->Find(ntohl(header->daddr), addr);
 }

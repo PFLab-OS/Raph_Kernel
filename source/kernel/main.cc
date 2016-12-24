@@ -34,15 +34,21 @@
 #include <timer.h>
 #include <tty.h>
 #include <shell.h>
+#include <measure.h>
+#include <mem/kstack.h>
 
 #include <dev/hpet.h>
 #include <dev/keyboard.h>
 #include <dev/pci.h>
+#include <dev/usb/usb.h>
 #include <dev/vga.h>
+#include <dev/pciid.h>
 
-#include <net/netctrl.h>
-#include <net/socket.h>
+#include <dev/eth.h>
+#include <net/arp.h>
 #include <arpa/inet.h>
+
+#include <x86.h>
 
 AcpiCtrl *acpi_ctrl = nullptr;
 ApicCtrl *apic_ctrl = nullptr;
@@ -55,6 +61,8 @@ Idt *idt = nullptr;
 Keyboard *keyboard = nullptr;
 Shell *shell = nullptr;
 PciCtrl *pci_ctrl = nullptr;
+NetDevCtrl *netdev_ctrl = nullptr;
+ArpTable *arp_table = nullptr;
 
 MultibootCtrl _multiboot_ctrl;
 AcpiCtrl _acpi_ctrl;
@@ -62,7 +70,7 @@ ApicCtrl _apic_ctrl;
 CpuCtrl _cpu_ctrl;
 Gdt _gdt;
 Idt _idt;
-KVirtmemCtrl _virtmem_ctrl;
+VirtmemCtrl _virtmem_ctrl;
 PhysmemCtrl _physmem_ctrl;
 PagingCtrl _paging_ctrl;
 TaskCtrl _task_ctrl;
@@ -71,19 +79,23 @@ Vga _vga;
 Keyboard _keyboard;
 Shell _shell;
 AcpicaPciCtrl _acpica_pci_ctrl;
+NetDevCtrl _netdev_ctrl;
+ArpTable _arp_table;
+
+CpuId network_cpu;
+CpuId pstack_cpu;
 
 static uint32_t rnd_next = 1;
 
-#include <freebsd/net/if_var.h>
-BsdDevEthernet *eth;
-uint64_t cnt;
-int64_t sum;
-static const int stime = 3000;
-int time, rtime;
+#include <dev/disk/ahci/ahci-raph.h>
+AhciChannel *g_channel = nullptr;
+#include <dev/fs/fat/fat.h>
+FatFs *fatfs;
 
 Callout tt1;
 Callout tt2;
 Callout tt3;
+Callout tt4;
 
 uint8_t ip1[] = {0, 0, 0, 0};
 uint8_t ip2[] = {0, 0, 0, 0};
@@ -103,12 +115,959 @@ void reset(int argc, const char* argv[]) {
   acpi_ctrl->Reset();
 }
 
+void lspci(int argc, const char* argv[]){
+  MCFG *mcfg = acpi_ctrl->GetMCFG();
+  if (mcfg == nullptr) {
+    gtty->Cprintf("[Pci] error: could not find MCFG table.\n");
+    return;
+  }
+
+  PciData::Table table;
+  table.Init();
+
+  for (int i = 0; i * sizeof(MCFGSt) < mcfg->header.Length - sizeof(ACPISDTHeader); i++) {
+    if (i == 1) {
+      gtty->Cprintf("[Pci] info: multiple MCFG tables.\n");
+      break;
+    }
+    for (int j = mcfg->list[i].pci_bus_start; j <= mcfg->list[i].pci_bus_end; j++) {
+      for (int k = 0; k < 32; k++) {
+        uint16_t vid = pci_ctrl->ReadReg<uint16_t>(j, k, 0, PciCtrl::kVendorIDReg);
+        if (vid == 0xffff) {
+          continue;
+        }
+        uint16_t did = pci_ctrl->ReadReg<uint16_t>(j, k, 0, PciCtrl::kDeviceIDReg);
+        uint16_t svid = pci_ctrl->ReadReg<uint16_t>(j, k, 0, PciCtrl::kSubsystemVendorIdReg);
+        uint16_t ssid = pci_ctrl->ReadReg<uint16_t>(j, k, 0, PciCtrl::kSubsystemIdReg);
+        table.Search(vid, did, svid, ssid);
+      }
+    }
+  }
+}
+
+static bool is_knl() {
+  return x86::get_display_family_model() == 0x0657;
+}
+
+static void membench() {
+  if (!is_knl()) {
+    return;
+  }
+
+  gtty->CprintfRaw("-%d-", cpu_ctrl->GetCpuId().GetRawId());
+  
+  int entry = 20 * 1024 * 1024 / sizeof(int);
+  int *tmp = new int[entry];
+  for(int i = 0; i < entry - 1; i++) {
+    tmp[i] = i + 1;
+  }
+  // http://mementoo.info/archives/746
+  for(int i=0;i<entry - 1;i++)
+    {
+      int j = rand()%(entry - 1);
+      int t = tmp[i];
+      tmp[i] = tmp[j];
+      tmp[j] = t;
+    }
+
+  {      
+    int *buf = new int[entry];
+    // init
+    {
+      int j = 0;
+      for (int i = 0; i < entry - 1; i++) {
+        j = (buf[j] = tmp[i]);
+      }
+      buf[j] = -1;
+    }
+    // bench
+    measure {
+      int j = 0;
+      do {
+        j = buf[j];
+      } while(buf[j] != -1);
+    }
+    delete buf;
+  }
+  {      
+    PhysAddr paddr;
+    physmem_ctrl->Alloc(paddr, PagingCtrl::ConvertNumToPageSize(entry * sizeof(int)));
+    int *buf = reinterpret_cast<int *>(paddr.GetVirtAddr());
+    // init
+    int sum_bkup = 0;
+    {
+      for (int i = 0; i < entry - 1; i++) {
+        buf[i] = i;
+        sum_bkup += buf[i];
+      }
+    }
+    int sum = 0;
+    // bench
+    measure {
+      for (int i = 0; i < entry - 1; i++) {
+        sum += buf[i];
+      }
+    }
+    assert(sum == sum_bkup);
+    delete buf;
+  }
+  {      
+    //int *buf = new int[entry];
+    int *buf = reinterpret_cast<int *>(p2v(0x1840000000));
+    // init
+    {
+      int j = 0;
+      for (int i = 0; i < entry - 1; i++) {
+        j = (buf[j] = tmp[i]);
+      }
+      buf[j] = -1;
+    }
+    // bench
+    measure {
+      int j = 0;
+      do {
+        j = buf[j];
+      } while(buf[j] != -1);
+    }
+    // delete buf;
+  }
+  {      
+    // int *buf = new int[entry];
+    int *buf = reinterpret_cast<int *>(p2v(0x1840000000));
+    // init
+    int sum_bkup = 0;
+    {
+      for (int i = 0; i < entry - 1; i++) {
+        buf[i] = i;
+        sum_bkup += buf[i];
+      }
+    }
+    int sum = 0;
+    // bench
+    measure {
+      for (int i = 0; i < entry - 1; i++) {
+        sum += buf[i];
+      }
+    }
+    assert(sum == sum_bkup);
+    // delete buf;
+  }
+  delete tmp;
+}
+
+int *init, *answer;
+int *ddr, *mcdram;
+static inline int min(int a, int b) {
+  return a > b ? b : a;
+}
+
+static inline void sync(volatile int &l1, volatile int &l2, volatile int &l3) {
+  int cpunum = cpu_ctrl->GetHowManyCpus();
+  l2 = 0;
+  while(true) {
+    int tmp = l1;
+    if (__sync_bool_compare_and_swap(&l1, tmp, tmp + 1)) {
+      break;
+    }
+  }
+  do {
+  } while(!__sync_bool_compare_and_swap(&l1, cpunum, cpunum));
+  l3 = 0;
+  while(true) {
+    int tmp = l2;
+    if (__sync_bool_compare_and_swap(&l2, tmp, tmp + 1)) {
+      break;
+    }
+  }
+  do {
+  } while(!__sync_bool_compare_and_swap(&l2, cpunum, cpunum));
+  l1 = 0;
+  while(true) {
+    int tmp = l3;
+    if (__sync_bool_compare_and_swap(&l3, tmp, tmp + 1)) {
+      break;
+    }
+  }
+  do {
+  } while(!__sync_bool_compare_and_swap(&l3, cpunum, cpunum));
+}
+
+static inline void sync2(int cpunum, volatile int &l1, volatile int &l2, volatile int &l3) {
+  l2 = 0;
+  while(true) {
+    int tmp = l1;
+    if (__sync_bool_compare_and_swap(&l1, tmp, tmp + 1)) {
+      break;
+    }
+  }
+  do {
+  } while(!__sync_bool_compare_and_swap(&l1, cpunum, cpunum));
+  l3 = 0;
+  while(true) {
+    int tmp = l2;
+    if (__sync_bool_compare_and_swap(&l2, tmp, tmp + 1)) {
+      break;
+    }
+  }
+  do {
+  } while(!__sync_bool_compare_and_swap(&l2, cpunum, cpunum));
+  l1 = 0;
+  while(true) {
+    int tmp = l3;
+    if (__sync_bool_compare_and_swap(&l3, tmp, tmp + 1)) {
+      break;
+    }
+  }
+  do {
+  } while(!__sync_bool_compare_and_swap(&l3, cpunum, cpunum));
+}
+
+struct Sync {
+  static const int kSubStructNum = 37;
+  static const int kPhysAvailableCoreNum = 32;
+  int top_level_lock1;
+  int top_level_lock2;
+  int top_level_lock3;
+  struct SyncSub {
+    int lock;
+    void Init() {
+      lock = 0;
+    }
+    void Do() {
+      while(true) {
+        int tmp = lock;
+        if (__sync_bool_compare_and_swap(&lock, tmp, tmp + 1)) {
+          break;
+        }
+      }
+      do {
+      } while(!__sync_bool_compare_and_swap(&lock, 8, 8));
+    }
+  };
+  SyncSub second_level_lock1[kSubStructNum];
+  SyncSub second_level_lock2[kSubStructNum];
+  SyncSub second_level_lock3[kSubStructNum];
+  void Init() {
+    top_level_lock1 = 0;
+    top_level_lock2 = 0;
+    for (int i = 0; i < kSubStructNum; i++) {
+      second_level_lock1[i].Init();
+      second_level_lock2[i].Init();
+      second_level_lock3[i].Init();
+    }
+  }
+  void Do() {
+    uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
+    if (apicid % 8 == 0) {
+      top_level_lock2 = 0;
+      while(true) {
+        int tmp = top_level_lock1;
+        if (__sync_bool_compare_and_swap(&top_level_lock1, tmp, tmp + 1)) {
+          break;
+        }
+      }
+      do {
+      } while(!__sync_bool_compare_and_swap(&top_level_lock1, kPhysAvailableCoreNum, kPhysAvailableCoreNum));
+      top_level_lock3 = 0;
+      while(true) {
+        int tmp = top_level_lock2;
+        if (__sync_bool_compare_and_swap(&top_level_lock2, tmp, tmp + 1)) {
+          break;
+        }
+      }
+      do {
+      } while(!__sync_bool_compare_and_swap(&top_level_lock2, kPhysAvailableCoreNum, kPhysAvailableCoreNum)); 
+     top_level_lock1 = 0;
+      while(true) {
+        int tmp = top_level_lock3;
+        if (__sync_bool_compare_and_swap(&top_level_lock3, tmp, tmp + 1)) {
+          break;
+        }
+      }
+      do {
+      } while(!__sync_bool_compare_and_swap(&top_level_lock3, kPhysAvailableCoreNum, kPhysAvailableCoreNum));
+    }
+    second_level_lock2[apicid / 8].Init();
+    second_level_lock1[apicid / 8].Do();
+    second_level_lock3[apicid / 8].Init();
+    second_level_lock2[apicid / 8].Do();
+    second_level_lock1[apicid / 8].Init();
+    second_level_lock3[apicid / 8].Do();
+  }
+};
+
+struct Sync2 {
+  static const int kSubStructNum = 37;
+  static const int kPhysAvailableCoreNum = 32;
+  int top_level_lock1;
+  int top_level_lock2;
+  int top_level_lock3;
+  struct SyncSub {
+    int lock;
+    void Init() {
+      lock = 0;
+    }
+    void Do() {
+      while(true) {
+        int tmp = lock;
+        if (__sync_bool_compare_and_swap(&lock, tmp, tmp + 1)) {
+          break;
+        }
+      }
+      do {
+      } while(!__sync_bool_compare_and_swap(&lock, 2, 2));
+    }
+  };
+  SyncSub second_level_lock1[kSubStructNum];
+  SyncSub second_level_lock2[kSubStructNum];
+  SyncSub second_level_lock3[kSubStructNum];
+  struct SyncSub2 {
+    int lock;
+    void Init() {
+      lock = 0;
+    }
+    void Do() {
+      while(true) {
+        int tmp = lock;
+        if (__sync_bool_compare_and_swap(&lock, tmp, tmp + 1)) {
+          break;
+        }
+      }
+      do {
+      } while(!__sync_bool_compare_and_swap(&lock, 4, 4));
+    }
+  };
+  SyncSub2 third_level_lock1[kSubStructNum*2];
+  SyncSub2 third_level_lock2[kSubStructNum*2];
+  SyncSub2 third_level_lock3[kSubStructNum*2];
+  void Init() {
+    top_level_lock1 = 0;
+    top_level_lock2 = 0;
+    for (int i = 0; i < kSubStructNum; i++) {
+      second_level_lock1[i].Init();
+      second_level_lock2[i].Init();
+      second_level_lock3[i].Init();
+    }
+  }
+  void Do() {
+    uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
+    if (apicid % 8 == 0) {
+      top_level_lock2 = 0;
+      while(true) {
+        int tmp = top_level_lock1;
+        if (__sync_bool_compare_and_swap(&top_level_lock1, tmp, tmp + 1)) {
+          break;
+        }
+      }
+      do {
+      } while(!__sync_bool_compare_and_swap(&top_level_lock1, kPhysAvailableCoreNum, kPhysAvailableCoreNum));
+      top_level_lock3 = 0;
+      while(true) {
+        int tmp = top_level_lock2;
+        if (__sync_bool_compare_and_swap(&top_level_lock2, tmp, tmp + 1)) {
+          break;
+        }
+      }
+      do {
+      } while(!__sync_bool_compare_and_swap(&top_level_lock2, kPhysAvailableCoreNum, kPhysAvailableCoreNum)); 
+     top_level_lock1 = 0;
+      while(true) {
+        int tmp = top_level_lock3;
+        if (__sync_bool_compare_and_swap(&top_level_lock3, tmp, tmp + 1)) {
+          break;
+        }
+      }
+      do {
+      } while(!__sync_bool_compare_and_swap(&top_level_lock3, kPhysAvailableCoreNum, kPhysAvailableCoreNum));
+    }
+    if (apicid % 4 == 0) {
+      second_level_lock2[apicid / 8].Init();
+      second_level_lock1[apicid / 8].Do();
+      second_level_lock3[apicid / 8].Init();
+      second_level_lock2[apicid / 8].Do();
+      second_level_lock1[apicid / 8].Init();
+      second_level_lock3[apicid / 8].Do();
+    }
+    third_level_lock2[apicid / 4].Init();
+    third_level_lock1[apicid / 4].Do();
+    third_level_lock3[apicid / 4].Init();
+    third_level_lock2[apicid / 4].Do();
+    third_level_lock1[apicid / 4].Init();
+    third_level_lock3[apicid / 4].Do();
+  }
+};
+
+struct Sync3 {
+  static const int kSubStructNum = 37;
+  int kPhysAvailableCoreNum;
+  int top_level_lock1;
+  int top_level_lock2;
+  int top_level_lock3;
+  struct SyncSub {
+    int lock;
+    void Init() {
+      lock = 0;
+    }
+    void Do() {
+      while(true) {
+        int tmp = lock;
+        if (__sync_bool_compare_and_swap(&lock, tmp, tmp + 1)) {
+          break;
+        }
+      }
+      do {
+      } while(!__sync_bool_compare_and_swap(&lock, 2, 2));
+    }
+  };
+  SyncSub second_level_lock1[kSubStructNum];
+  SyncSub second_level_lock2[kSubStructNum];
+  SyncSub second_level_lock3[kSubStructNum];
+  struct SyncSub2 {
+    int lock;
+    void Init() {
+      lock = 0;
+    }
+    void Do() {
+      while(true) {
+        int tmp = lock;
+        if (__sync_bool_compare_and_swap(&lock, tmp, tmp + 1)) {
+          break;
+        }
+      }
+      do {
+      } while(!__sync_bool_compare_and_swap(&lock, 4, 4));
+    }
+  };
+  SyncSub2 third_level_lock1[kSubStructNum*2];
+  SyncSub2 third_level_lock2[kSubStructNum*2];
+  SyncSub2 third_level_lock3[kSubStructNum*2];
+  void Init(int substruct_num) {
+    kPhysAvailableCoreNum = substruct_num;
+    top_level_lock1 = 0;
+    top_level_lock2 = 0;
+    for (int i = 0; i < kSubStructNum; i++) {
+      second_level_lock1[i].Init();
+      second_level_lock2[i].Init();
+      second_level_lock3[i].Init();
+    }
+  }
+  void Do() {
+    uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
+    if (apicid % 8 == 0) {
+      top_level_lock2 = 0;
+      while(true) {
+        int tmp = top_level_lock1;
+        if (__sync_bool_compare_and_swap(&top_level_lock1, tmp, tmp + 1)) {
+          break;
+        }
+      }
+      do {
+      } while(!__sync_bool_compare_and_swap(&top_level_lock1, kPhysAvailableCoreNum, kPhysAvailableCoreNum));
+      top_level_lock3 = 0;
+      while(true) {
+        int tmp = top_level_lock2;
+        if (__sync_bool_compare_and_swap(&top_level_lock2, tmp, tmp + 1)) {
+          break;
+        }
+      }
+      do {
+      } while(!__sync_bool_compare_and_swap(&top_level_lock2, kPhysAvailableCoreNum, kPhysAvailableCoreNum)); 
+     top_level_lock1 = 0;
+      while(true) {
+        int tmp = top_level_lock3;
+        if (__sync_bool_compare_and_swap(&top_level_lock3, tmp, tmp + 1)) {
+          break;
+        }
+      }
+      do {
+      } while(!__sync_bool_compare_and_swap(&top_level_lock3, kPhysAvailableCoreNum, kPhysAvailableCoreNum));
+    }
+    if (apicid % 4 == 0) {
+      second_level_lock2[apicid / 8].Init();
+      second_level_lock1[apicid / 8].Do();
+      second_level_lock3[apicid / 8].Init();
+      second_level_lock2[apicid / 8].Do();
+      second_level_lock1[apicid / 8].Init();
+      second_level_lock3[apicid / 8].Do();
+    }
+    third_level_lock2[apicid / 4].Init();
+    third_level_lock1[apicid / 4].Do();
+    third_level_lock3[apicid / 4].Init();
+    third_level_lock2[apicid / 4].Do();
+    third_level_lock1[apicid / 4].Init();
+    third_level_lock3[apicid / 4].Do();
+  }
+};
+
+
+// ワーシャル-フロイド
+static void membench2() {
+  if (!is_knl()) {
+    return;
+  }
+
+  int cpuid = cpu_ctrl->GetCpuId().GetRawId();
+
+  for (int num = 100; num < 60000; num += 1000) {
+    if (cpuid == 0) {
+      gtty->CprintfRaw("\nnum: %d\n", num);
+      
+      PhysAddr paddr1;
+      physmem_ctrl->Alloc(paddr1, PagingCtrl::ConvertNumToPageSize(num * num * sizeof(int)));
+      init = reinterpret_cast<int *>(paddr1.GetVirtAddr());
+      PhysAddr paddr2;
+      physmem_ctrl->Alloc(paddr2, PagingCtrl::ConvertNumToPageSize(num * num * sizeof(int)));
+      answer = reinterpret_cast<int *>(paddr2.GetVirtAddr());
+      // init
+      {
+        for (int i = 0; i < num; i++) {
+          for (int j = 0; j < i; j++) {
+            int r = rand() % 999;
+            init[i * num + j] = r;
+            answer[i * num + j] = r;
+            init[j * num + i] = r;
+            answer[j * num + i] = r;
+          }
+          init[i * num + i] = 0;
+          answer[i * num + i] = 0;
+        }
+      }
+
+      uint64_t t1 = timer->ReadMainCnt();
+
+      for (int k = 0; k < num; k++) {
+        for (int i = 0; i < num; i++) {
+          for (int j = 0; j < num; j++) {
+            answer[i * num + j] = min(answer[i * num + j], answer[i * num + k] + answer[k * num + j]);
+          }
+        }
+      }
+
+      gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+    }
+
+    // if (cpuid == 0) {
+    //   PhysAddr paddr;
+    //   physmem_ctrl->Alloc(paddr, PagingCtrl::ConvertNumToPageSize(num * num * sizeof(int)));
+    //   ddr = reinterpret_cast<int *>(paddr.GetVirtAddr());
+    //   memcpy(ddr, init, num * num * sizeof(int));
+    //   gtty->CprintfRaw("init ddr ");
+    // }
+  
+    // {
+    //   {
+    //     static volatile int l1 = 0, l2 = 0;
+    //     sync(l1, l2);
+    //   }
+  
+    //   uint64_t t1 = timer->ReadMainCnt();
+
+    
+    //   static volatile int cnt = 0;
+    //   while(true) {
+    //     int k = cnt;
+    //     if (k == num) {
+    //       break;
+    //     }
+    //     if (!__sync_bool_compare_and_swap(&cnt, k, k + 1)) {
+    //       continue;
+    //     }
+    //     for (int i = 0; i < num; i++) {
+    //       for (int j = 0; j < num; j++) {
+    //         ddr[i * num + j] = min(ddr[i * num + j], ddr[i * num + k] + ddr[k * num + j]);
+    //       }
+    //     }
+    //   }
+
+    //   {
+    //     static volatile int l1 = 0, l2 = 0;
+    //     sync(l1, l2);
+    //   }
+      
+    //   if (cpuid == 0) {
+    //     gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+    //     cnt = 0;
+    //   }
+    // }
+
+
+    if (cpuid == 0) {
+      mcdram = reinterpret_cast<int *>(p2v(0x1840000000));
+      memcpy(mcdram, init, num * num * sizeof(int));
+      gtty->CprintfRaw("init mcdram ");
+    }
+
+
+    {
+      {
+        static volatile int l1 = 0, l2 = 0, l3 = 0;
+        sync(l1, l2, l3);
+      }
+  
+      uint64_t t1 = timer->ReadMainCnt();
+
+      for (int k = 0; k < num; k++) {
+        {
+          static volatile int l1 = 0, l2 = 0, l3 = 0;
+          sync(l1, l2, l3);
+        }
+        static volatile int cnt = 0;
+        while(true) {
+          int i = cnt;
+          if (i == num) {
+            break;
+          }
+          if (__sync_bool_compare_and_swap(&cnt, i, i + 1)) {
+            continue;
+          }
+          for (int j = 0; j < num; j++) {
+            mcdram[i * num + j] = min(mcdram[i * num + j], mcdram[i * num + k] + mcdram[k * num + j]);
+          }
+        }
+      }
+
+      {
+        static volatile int l1 = 0, l2 = 0, l3 = 0;
+        sync(l1, l2, l3);
+      }
+      if (cpuid == 0) {
+        gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+        for (int i = 0; i < num; i++) {
+          for (int j = 0; j < num; j++) {
+            kassert(mcdram[i * num + j] == answer[i * num + j]);
+          }
+        }
+      }
+    }
+  }
+}
+
+// ２コアで同期を取るベンチマーク
+static void membench3() {
+  if (!is_knl()) {
+    return;
+  }
+
+  int cpuid = cpu_ctrl->GetCpuId().GetRawId();
+
+  {
+    static volatile int l1 = 0, l2 = 0, l3 = 0;
+    sync(l1, l2, l3);
+  }
+  if (cpuid == 0) {
+    gtty->CprintfRaw("bench start\n");
+  }
+  for (int i = 1; i < 256; i++) {
+    static volatile int cnt = 0;
+    if (cpuid == 0) {
+      cnt = 0;
+    }
+    {
+      static volatile int l1 = 0, l2 = 0, l3 = 0;
+      sync(l1, l2, l3);
+    }
+    if (cpuid == 0) {
+      uint64_t t1 = timer->ReadMainCnt();
+      for (int j = 0; j < 0xFFF; j+=2) {
+        do {
+        } while(!__sync_bool_compare_and_swap(&cnt, j, j + 1));
+      }
+      {
+        CpuId cpuid_(i);
+        gtty->CprintfRaw("%d:%d:%d ", i, cpuid_.GetApicId(), (((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod())) / 1000);
+      }
+      for (int j = 1; j < cpu_ctrl->GetHowManyCpus(); j++) {
+        if (i != j) {
+          CpuId cpuid_(j);
+          apic_ctrl->SendIpi(cpuid_.GetApicId());
+        }
+      }
+    } else {
+      if (cpuid == i) {
+        for (int j = 1; j < 0xFFF; j+=2) {
+          do {
+          } while(!__sync_bool_compare_and_swap(&cnt, j, j + 1));
+        }
+      } else {
+        asm volatile("hlt;");
+      }
+    }
+  }
+}
+
+static void membench4() {
+  if (!is_knl()) {
+    return;
+  }
+
+  int cpuid = cpu_ctrl->GetCpuId().GetRawId();
+
+  {
+    static volatile int l1 = 0, l2 = 0, l3 = 0;
+    sync(l1, l2, l3);
+  }
+  if (cpuid == 0) {
+    gtty->CprintfRaw("bench start\n");
+  }
+  for (int i = 1; i < 256; i++) {
+    static volatile int cnt = 0;
+    if (cpuid == 0) {
+      cnt = 0;
+    }
+    {
+      static volatile int l1 = 0, l2 = 0, l3 = 0;
+      sync(l1, l2, l3);
+    }
+    if (cpuid == 0) {
+      uint64_t t1 = timer->ReadMainCnt();
+      for (int j = 0; j < 0xFFF; j+=(i+1)) {
+        do {
+        } while(!__sync_bool_compare_and_swap(&cnt, j, j + 1));
+      }
+      {
+        CpuId cpuid_(i);
+        gtty->CprintfRaw("%d:%d:%d ", i, cpuid_.GetApicId(), (((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod())) / 1000);
+      }
+      for (int j = 1; j < 256; j++) {
+        if (i < j) {
+          CpuId cpuid_(j);
+          apic_ctrl->SendIpi(cpuid_.GetApicId());
+        }
+      }
+    } else {
+      if (cpuid <= i) {
+        for (int j = cpuid; j < 0xFFF; j+=(i+1)) {
+          do {
+          } while(!__sync_bool_compare_and_swap(&cnt, j, j + 1));
+        }
+      } else {
+        asm volatile("hlt;");
+      }
+    }
+  }
+}
+
+// syncのテスト
+static void membench5() {
+  if (!is_knl()) {
+    return;
+  }
+
+  int cpuid = cpu_ctrl->GetCpuId().GetRawId();
+
+  {
+    static volatile int l1 = 0, l2 = 0, l3 = 0;
+    sync(l1, l2, l3);
+  }
+
+  if (cpuid == 0) {
+    gtty->CprintfRaw("start >>>");
+  }
+  
+  {
+    static volatile int l1 = 0, l2 = 0, l3 = 0;
+    sync(l1, l2, l3);
+  }
+  
+  uint64_t t1 = timer->ReadMainCnt();
+  for (int i = 0; i < 100; i++) {
+    static volatile int l1 = 0, l2 = 0, l3 = 0;
+    sync(l1, l2, l3);
+  }
+  if (cpuid == 0) {
+    gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+  }
+
+  static Sync2 sync_;
+  sync_.Init();
+
+  {
+    static volatile int l1 = 0, l2 = 0, l3 = 0;
+    sync(l1, l2, l3);
+  }
+  
+  uint64_t t2 = timer->ReadMainCnt();
+  for (int i = 0; i < 100; i++) {
+    sync_.Do();
+  }
+  if (cpuid == 0) {
+    gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t2) * timer->GetCntClkPeriod()) / 1000);
+  }
+
+}
+
+// コアの個数を変えた同期
+static void membench6() {
+  if (!is_knl()) {
+    return;
+  }
+
+  int cpuid = cpu_ctrl->GetCpuId().GetRawId();
+  uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
+
+  {
+    static volatile int l1 = 0, l2 = 0, l3 = 0;
+    sync(l1, l2, l3);
+  }
+
+  if (cpuid == 0) {
+    gtty->CprintfRaw("start >>>");
+  }
+  
+  for (unsigned int i = 1; i <= 37; i++) {
+    static volatile int cpu_num;
+    if (cpuid == 0) {
+      cpu_num = 0;
+    }
+    {
+      static volatile int l1 = 0, l2 = 0, l3 = 0;
+      sync(l1, l2, l3);
+    }
+    
+    if (apicid < i * 8) {
+      while(true) {
+	int tmp = cpu_num;
+	if (__sync_bool_compare_and_swap(&cpu_num, tmp, tmp + 1)) {
+	  break;
+	}
+      }
+    }
+
+    {
+      static volatile int l1 = 0, l2 = 0, l3 = 0;
+      sync(l1, l2, l3);
+    }
+
+    if (apicid < i * 8) {
+      {
+	static volatile int l1 = 0, l2 = 0, l3 = 0;
+	sync2(cpu_num, l1, l2, l3);
+      }
+  
+      uint64_t t1 = timer->ReadMainCnt();
+      for (int j = 0; j < 100; j++) {
+	static volatile int l1 = 0, l2 = 0, l3 = 0;
+	sync2(cpu_num, l1, l2, l3);
+      }
+      if (apicid == 0) {
+	gtty->CprintfRaw("<%d %d us> ", cpu_num, ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+	for (int j = 0; j < 256; j++) {
+	  CpuId cpuid_(j);
+	  if (cpuid_.GetApicId() != 0) {
+	    apic_ctrl->SendIpi(cpuid_.GetApicId());
+	  }
+	}
+      }
+    } else {
+      asm volatile("hlt;");
+    }
+  }
+
+
+
+  for (unsigned int i = 1; i <= 37; i++) {
+    static volatile int cpu_num;
+    if (cpuid == 0) {
+      cpu_num = 0;
+    }
+    {
+      static volatile int l1 = 0, l2 = 0, l3 = 0;
+      sync(l1, l2, l3);
+    }
+    
+    if (apicid < i * 8) {
+      while(true) {
+	int tmp = cpu_num;
+	if (__sync_bool_compare_and_swap(&cpu_num, tmp, tmp + 1)) {
+	  break;
+	}
+      }
+    }
+
+    {
+      static volatile int l1 = 0, l2 = 0, l3 = 0;
+      sync(l1, l2, l3);
+    }
+
+    if (apicid < i * 8) {
+      assert(cpu_num % 8 == 0);
+      static Sync3 sync_;
+      sync_.Init(cpu_num / 8);
+
+      {
+	static volatile int l1 = 0, l2 = 0, l3 = 0;
+	sync2(cpu_num, l1, l2, l3);
+      }
+  
+      // uint64_t t2 = timer->ReadMainCnt();
+      for (int j = 0; j < 100; j++) {
+	sync_.Do();
+      }
+
+      if (apicid == 0) {
+	//	gtty->CprintfRaw("<%d %d us> ", cpu_num, ((timer->ReadMainCnt() - t2) * timer->GetCntClkPeriod()) / 1000);
+	for (int j = 0; j < 256; j++) {
+	  CpuId cpuid_(j);
+	  if (cpuid_.GetApicId() != 0) {
+	    apic_ctrl->SendIpi(cpuid_.GetApicId());
+	  }
+	}
+      }
+    } else {
+      asm volatile("hlt;");
+    }
+  }
+
+}
+
+
+Callout callout[256];
+static void register_membench_callout() {
+  static int id = 0;
+  int cpuid = cpu_ctrl->GetCpuId().GetRawId();
+  new(&callout[cpuid]) Callout;
+  Function oneshot_bench_func;
+  oneshot_bench_func.Init([](void *){
+      int cpuid_ = cpu_ctrl->GetCpuId().GetRawId();
+      if (id != cpuid_) {
+        callout[cpuid_].SetHandler(1000);
+        return;
+      }
+      membench();
+      id++;
+    }, nullptr);
+  callout[cpuid].Init(oneshot_bench_func);
+  callout[cpuid].SetHandler(10);
+}
+
+static void register_membench2_callout() {
+  int cpuid = cpu_ctrl->GetCpuId().GetRawId();
+  new(&callout[cpuid]) Callout;
+  Function oneshot_bench_func;
+  oneshot_bench_func.Init([](void *){
+      if (false) {
+        membench2();
+        membench3();
+        membench4();
+        membench5();
+      }
+      membench6();
+    }, nullptr);
+  callout[cpuid].Init(oneshot_bench_func);
+  callout[cpuid].SetHandler(10);
+}
+
 void bench(int argc, const char* argv[]) {
+  static uint64_t cnt = 0;
+  static int64_t sum = 0;
+  static const int stime = 3000;
+  static int time = stime, rtime = 0;
+
   if (argc != 2) {
     gtty->Cprintf("invalid argument.\n");
     return;
   }
-  if (eth == nullptr) {
+  if (!netdev_ctrl->Exists("en0")) {
     gtty->Cprintf("no ethernet interface.\n");
     return;
   }
@@ -135,109 +1094,122 @@ void bench(int argc, const char* argv[]) {
     return;
   }
 
+  netdev_ctrl->AssignIpv4Address("en0", inet_atoi(ip1));
+
   {
-    static int state = 0;
+    static ArpSocket socket;
+    socket.AssignNetworkDevice("en0");
+
+    if(socket.Open() < 0) {
+      gtty->Cprintf("[error] failed to open socket\n");
+    }
     cnt = 0;
     new(&tt2) Callout;
     Function func;
     func.Init([](void *){
-        if (state == 0) {
-          if (!apic_ctrl->IsBootupAll()) {
-            tt2.SetHandler(1000);
-            return;
-          } else {
-            state = 1;
+      if (!apic_ctrl->IsBootupAll()) {
+        tt2.SetHandler(1000);
+        return;
+      }
+      if (!netdev_ctrl->IsLinkUp("en0")) {
+        tt2.SetHandler(1000);
+        return;
+      }
+      if (bstate != BenchState::kRcv) {
+        if (cnt != 0) {
+          tt2.SetHandler(1000);
+          return;
+        }
+        for(int k = 0; k < 1; k++) {
+          if (time == 0) {
+            break;
           }
-        }
-        if (state == 1) {
-          eth->UpdateLinkStatus();
-          if (eth->GetStatus() != BsdDevEthernet::LinkStatus::kUp) {
-            tt2.SetHandler(1000);
-            return;
+          cnt = timer->ReadMainCnt();
+          if(socket.Request(inet_atoi(ip2)) < 0) {
+            gtty->Cprintf("[arp] failed to transmit request\n");
           }
-          state = 2;
+          time--;
         }
-        if (state == 2) {
-          state = 3;
-          tt2.SetHandler(0);
-          return ;
+        if (time != 0) {
+          tt2.SetHandler(1000);
         }
-        if (state == 3) {
-          if (bstate != BenchState::kRcv) {
-            if (cnt != 0) {
-              tt2.SetHandler(1000);
-              return;
-            }
-            for(int k = 0; k < 1; k++) {
-              if (time == 0) {
-                break;
-              }
-              uint8_t data[] = {
-                0xff, 0xff, 0xff, 0xff, 0xff, 0xff, // Target MAC Address
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source MAC Address
-                0x08, 0x06, // Type: ARP
-                // ARP Packet
-                0x00, 0x01, // HardwareType: Ethernet
-                0x08, 0x00, // ProtocolType: IPv4
-                0x06, // HardwareLength
-                0x04, // ProtocolLength
-                0x00, 0x01, // Operation: ARP Request
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source Hardware Address
-                0x00, 0x00, 0x00, 0x00, // Source Protocol Address
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
-                // Target Protocol Address
-                0x00, 0x00, 0x00, 0x00
-              };
-              eth->GetEthAddr(data + 6);
-              memcpy(data + 22, data + 6, 6);
-              memcpy(data + 28, ip1, 4);
-              memcpy(data + 38, ip2, 4);
-              uint32_t len = sizeof(data)/sizeof(uint8_t);
-              BsdDevEthernet::Packet *tpacket;
-              kassert(eth->GetTxPacket(tpacket));
-              memcpy(tpacket->buf, data, len);
-              tpacket->len = len;
-              cnt = timer->ReadMainCnt();
-              eth->TransmitPacket(tpacket);
-              // gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
-              time--;
-            }
-            if (time != 0) {
-              tt2.SetHandler(1000);
-            }
-          } else {
-            gtty->Printf("s", "[debug] info: Link is Up\n");
-          }
-        }
-      }, nullptr);
+      } else {
+        gtty->Cprintf("[debug] info: Link is Up\n");
+      }
+    }, nullptr);
     tt2.Init(func);
-    tt2.SetHandler(3, 10);
+    CpuId cpuid(3);
+    tt2.SetHandler(cpuid, 10);
   }
 
   if (bstate != BenchState::kRcv) {
     new(&tt3) Callout;
     Function func;
     func.Init([](void *){
-        if (rtime > 0) {
-          gtty->Printf("s","ARP Reply average latency:","d",sum / rtime,"s","us [","d",rtime,"s","/","d",stime,"s","]\n");
+      if (rtime > 0) {
+        gtty->Cprintf("ARP Reply average latency: %d us [%d / %d]\n", sum / rtime, rtime, stime);
+      } else {
+        if (netdev_ctrl->IsLinkUp("en0")) {
+          gtty->Cprintf("Link is Up, but no ARP Reply\n");
         } else {
-          if (eth->GetStatus() == BsdDevEthernet::LinkStatus::kUp) {
-            gtty->Printf("s","Link is Up, but no ARP Reply\n");
-          } else {
-            gtty->Printf("s","Link is Down, please wait...\n");
-          }
+          gtty->Cprintf("Link is Down, please wait...\n");
         }
-        if (rtime != stime) {
-          tt3.SetHandler(1000*1000*3);
-        }
-      }, nullptr);
+      }
+      if (rtime != stime) {
+        tt3.SetHandler(1000*1000*3);
+      }
+    }, nullptr);
     tt3.Init(func);
-    tt3.SetHandler(6, 1000*1000*3);
+    CpuId cpuid(6);
+    tt3.SetHandler(cpuid, 1000*1000*3);
+  }
+
+  static ArpSocket socket;
+  socket.AssignNetworkDevice("en0");
+
+  if(socket.Open() < 0) {
+    gtty->Cprintf("[error] failed to open socket\n");
+  } else {
+    Function func;
+    func.Init([](void *){
+      uint32_t ipaddr;
+      uint16_t op;
+        
+      if (socket.Read(op, ipaddr) >= 0) {
+        if(op == ArpSocket::kOpReply) {
+          uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;
+          cnt = 0;
+          sum += l;
+          rtime++;
+        } else if(op == ArpSocket::kOpRequest) {
+          socket.Reply(ipaddr);
+        }
+      }
+    }, nullptr);
+    CpuId cpuid(2);
+    socket.SetReceiveCallback(cpuid, func);
+  }
+}
+
+static void show(int argc, const char *argv[]) {
+  if (argc == 1) {
+    gtty->Cprintf("invalid argument.\n");
+    return;
+  }
+  if (strcmp(argv[1], "module") == 0) {
+    if (argc != 2) {
+      gtty->Cprintf("invalid argument.\n");
+      return;
+    }
+    multiboot_ctrl->ShowModuleInfo();
+  } else {
+    gtty->Cprintf("invalid argument.\n");
+    return;
   }
 }
 
 extern "C" int main() {
-  
+
   multiboot_ctrl = new (&_multiboot_ctrl) MultibootCtrl;
 
   acpi_ctrl = new (&_acpi_ctrl) AcpiCtrl;
@@ -247,17 +1219,17 @@ extern "C" int main() {
   cpu_ctrl = new (&_cpu_ctrl) CpuCtrl;
 
   gdt = new (&_gdt) Gdt;
-  
+
   idt = new (&_idt) Idt;
 
-  virtmem_ctrl = new (&_virtmem_ctrl) KVirtmemCtrl;
+  virtmem_ctrl = new (&_virtmem_ctrl) VirtmemCtrl;
 
   physmem_ctrl = new (&_physmem_ctrl) PhysmemCtrl;
-  
+
   paging_ctrl = new (&_paging_ctrl) PagingCtrl;
 
   task_ctrl = new (&_task_ctrl) TaskCtrl;
-  
+
   timer = new (&_htimer) Hpet;
 
   gtty = new (&_vga) Vga;
@@ -266,230 +1238,207 @@ extern "C" int main() {
 
   shell = new (&_shell) Shell;
 
+  netdev_ctrl = new (&_netdev_ctrl) NetDevCtrl();
+
+  arp_table = new (&_arp_table) ArpTable();
+
+  physmem_ctrl->Init();
+
   multiboot_ctrl->Setup();
 
   paging_ctrl->MapAllPhysMemory();
 
-  PhysAddr paddr;
-  physmem_ctrl->Alloc(paddr, PagingCtrl::kPageSize * 3);
-  extern int kKernelEndAddr;
-  kassert(paging_ctrl->MapPhysAddrToVirtAddr(reinterpret_cast<virt_addr>(&kKernelEndAddr) - PagingCtrl::kPageSize * 5, paddr, PagingCtrl::kPageSize * 3, PDE_WRITE_BIT, PTE_WRITE_BIT | PTE_GLOBAL_BIT));
+  KernelStackCtrl::Init();
 
-  
+  apic_ctrl->Init();
+
   acpi_ctrl->Setup();
 
   if (timer->Setup()) {
-    gtty->Printf("s","[timer] info: HPET supported.\n");
+    gtty->Cprintf("[timer] info: HPET supported.\n");
   } else {
     kernel_panic("timer", "HPET not supported.\n");
   }
 
-  // timer->Sertup()より後
   apic_ctrl->Setup();
+
+  cpu_ctrl->Init();
+  
+  network_cpu = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kHighPerformance);
+
+  pstack_cpu = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kHighPerformance);
 
   rnd_next = timer->ReadMainCnt();
 
-  // apic_ctrl->Setup()より後
   task_ctrl->Setup();
 
   idt->SetupGeneric();
-  
+
   apic_ctrl->BootBSP();
 
   gdt->SetupProc();
 
   idt->SetupProc();
-
-  //  InitNetCtrl();
-
-  pci_ctrl = new (&_acpica_pci_ctrl) AcpicaPciCtrl;
   
+  pci_ctrl = new (&_acpica_pci_ctrl) AcpicaPciCtrl;
+
   acpi_ctrl->SetupAcpica();
+
+  UsbCtrl::Init();
 
   InitDevices<PciCtrl, Device>();
 
-  gtty->Init();
-
-  keyboard->Setup(1);
-
-  cnt = 0;
-  sum = 0;
-  time = stime;
-  rtime = 0;
-
-  extern int kKernelEndAddr;
-  // stackは16K
-  kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr)));
-  kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 1) + 1));
-  kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 2) + 1));
-  kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 3) + 1));
-  kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 4) + 1));
-  kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 5) + 1));
-  kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (4096 * 6) + 1));
-  kassert(!paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - 4096 * 7));
-
-  gtty->Printf("s", "[cpu] info: #", "d", cpu_ctrl->GetId(), "s", "(apic id:", "d", apic_ctrl->GetApicIdFromCpuId(cpu_ctrl->GetId()), "s", ") started.\n");
-  if (eth != nullptr) {
-    Function func;
-    func.Init([](void *){
-        BsdDevEthernet::Packet *rpacket;
-        if(!eth->ReceivePacket(rpacket)) {
-          return;
-        }
-        // received packet
-        if(rpacket->buf[12] == 0x08 && rpacket->buf[13] == 0x06 && rpacket->buf[21] == 0x02) {
-          uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;
-          cnt = 0;
-          sum += l;
-          rtime++;
-          // ARP packet
-          char buf[40];
-          memcpy(buf, rpacket->buf,40);
-          // gtty->Printf(
-          //              "s", "ARP Reply received; ",
-          //              "x", rpacket->buf[22], "s", ":",
-          //              "x", rpacket->buf[23], "s", ":",
-          //              "x", rpacket->buf[24], "s", ":",
-          //              "x", rpacket->buf[25], "s", ":",
-          //              "x", rpacket->buf[26], "s", ":",
-          //              "x", rpacket->buf[27], "s", " is ",
-          //              "d", rpacket->buf[28], "s", ".",
-          //              "d", rpacket->buf[29], "s", ".",
-          //              "d", rpacket->buf[30], "s", ".",
-          //              "d", rpacket->buf[31], "s", " ",
-          //              "s","latency:","d",l,"s","us\n");
-        }
-        if(rpacket->buf[12] == 0x08 && rpacket->buf[13] == 0x06 && rpacket->buf[21] == 0x01 && (memcmp(rpacket->buf + 38, ip1, 4) == 0)) {
-          // ARP packet
-          uint8_t data[] = {
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target MAC Address
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source MAC Address
-            0x08, 0x06, // Type: ARP
-            // ARP Packet
-            0x00, 0x01, // HardwareType: Ethernet
-            0x08, 0x00, // ProtocolType: IPv4
-            0x06, // HardwareLength
-            0x04, // ProtocolLength
-            0x00, 0x02, // Operation: ARP Reply
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source Hardware Address
-            0x00, 0x00, 0x00, 0x00, // Source Protocol Address
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
-            0x00, 0x00, 0x00, 0x00, // Target Protocol Address
-          };
-          memcpy(data, rpacket->buf + 6, 6);
-          eth->GetEthAddr(data + 6);
-          memcpy(data + 22, data + 6, 6);
-          memcpy(data + 28, ip1, 4);
-          memcpy(data + 32, rpacket->buf + 22, 6);
-          memcpy(data + 38, rpacket->buf + 28, 4);
-
-          uint32_t len = sizeof(data)/sizeof(uint8_t);
-          BsdDevEthernet::Packet *tpacket;
-          kassert(eth->GetTxPacket(tpacket));
-          memcpy(tpacket->buf, data, len);
-          tpacket->len = len;
-          eth->TransmitPacket(tpacket);
-          // gtty->Printf(
-          //              "s", "ARP Request received; ",
-          //              "x", rpacket->buf[22], "s", ":",
-          //              "x", rpacket->buf[23], "s", ":",
-          //              "x", rpacket->buf[24], "s", ":",
-          //              "x", rpacket->buf[25], "s", ":",
-          //              "x", rpacket->buf[26], "s", ":",
-          //              "x", rpacket->buf[27], "s", ",",
-          //              "d", rpacket->buf[28], "s", ".",
-          //              "d", rpacket->buf[29], "s", ".",
-          //              "d", rpacket->buf[30], "s", ".",
-          //              "d", rpacket->buf[31], "s", " says who's ",
-          //              "d", rpacket->buf[38], "s", ".",
-          //              "d", rpacket->buf[39], "s", ".",
-          //              "d", rpacket->buf[40], "s", ".",
-          //              "d", rpacket->buf[41], "s", "\n");
-          // gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
-        }
-        eth->ReuseRxBuffer(rpacket);
-      }, nullptr);
-    eth->SetReceiveCallback(2, func);
-  }
- 
   // 各コアは最低限の初期化ののち、TaskCtrlに制御が移さなければならない
   // 特定のコアで専用の処理をさせたい場合は、TaskCtrlに登録したジョブとして
   // 実行する事
 
   apic_ctrl->StartAPs();
 
-  gtty->Printf("s", "\n\n[kernel] info: initialization completed\n");
+  gtty->Init();
+  
+  arp_table->Setup();
+
+  Function kbd_func;
+  kbd_func.Init([](void *){
+    uint8_t data;
+    if(!keyboard->Read(data)){
+      return;
+    }
+    char c = Keyboard::Interpret(data);
+    gtty->Cprintf("%c", c);
+    shell->ReadCh(c);
+  }, nullptr);
+  keyboard->Setup(kbd_func);
+
+  // gtty->Cprintf("[cpu] info: #%d (apic id: %d) started.\n",
+  //               cpu_ctrl->GetCpuId(),
+  //               cpu_ctrl->GetCpuId().GetApicId());
+
+  while (!apic_ctrl->IsBootupAll()) {
+  }
+  gtty->Cprintf("\n\n[kernel] info: initialization completed\n");
 
   shell->Setup();
   shell->Register("halt", halt);
   shell->Register("reset", reset);
   shell->Register("bench", bench);
-  
-  // print keyboard_input
-  // TODO: Functional FIFOにすべき
-  PollingFunc _keyboard_polling;
-  Function func;
-  func.Init([](void *) {
-      // print keyboard_input
-      while(keyboard->Count() > 0) {
-        char ch[2] = {'\0','\0'};
-        ch[0] = keyboard->GetCh();
-        gtty->Printf("s", ch);
-        shell->ReadCh(ch[0]);
+  shell->Register("lspci", lspci);
+  shell->Register("show", show);
+
+  register_membench2_callout();
+
+  CpuId beep_cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority);
+  new(&tt4) Callout;
+  Function beep;
+  beep.Init([](void *) {
+      static int i = 0;
+      if(i < 6) {
+	uint16_t sound[6] = {905, 761, 452, 570, 508, 380};
+	uint8_t a = 0xb6;
+	outb(0x43, a);
+	uint8_t l = sound[i] & 0x00FF;
+	outb(0x42, l);
+	uint8_t h = (sound[i] >> 8) & 0x00FF;
+	outb(0x42, h);
+	uint8_t on = inb(0x61);
+	outb(0x61, (on | 0x03) & 0x0f);
+	i++;
+	tt4.SetHandler(110000);
+      } else {
+	uint8_t off = inb(0x61);
+	outb(0x61, off & 0xd);
       }
     }, nullptr);
-  _keyboard_polling.Init(func);
-  _keyboard_polling.Register(1);
+  tt4.Init(beep);
+  tt4.SetHandler(beep_cpuid, 1);
   
   task_ctrl->Run();
-
-  DismissNetCtrl();
 
   return 0;
 }
 
 extern "C" int main_of_others() {
-// according to mp spec B.3, system should switch over to Symmetric I/O mode
+  // according to mp spec B.3, system should switch over to Symmetric I/O mode
+  
   apic_ctrl->BootAP();
 
   gdt->SetupProc();
   idt->SetupProc();
 
-  gtty->Printf("s", "[cpu] info: #", "d", cpu_ctrl->GetId(), "s", "(apic id:", "d", apic_ctrl->GetApicIdFromCpuId(cpu_ctrl->GetId()), "s", ") started.\n");
+  // gtty->Cprintf("[cpu] info: #%d (apic id: %d) started.\n",
+  //               cpu_ctrl->GetCpuId(),
+  //               cpu_ctrl->GetCpuId().GetApicId());
  
-  // ループ性能測定用 
-  // PollingFunc p;
-  // if (cpu_ctrl->GetId() == 4) {
-  //   static int hoge = 0;
-  //   p.Init([](void *){
-  //       int hoge2 = timer->GetUsecFromCnt(timer->ReadMainCnt()) - hoge;
-  //       gtty->Printf("d",hoge2,"s"," ");
-  //       hoge = timer->GetUsecFromCnt(timer->ReadMainCnt());
-  //     }, nullptr);
-  //   p.Register();
-  // }
+  // ループ性能測定用
+  //#define LOOP_BENCHMARK
+#ifdef LOOP_BENCHMARK
+#define LOOP_BENCHMARK_CPU  4
+  PollingFunc p;
+  if (cpu_ctrl->GetCpuId().GetRawId() == LOOP_BENCHMARK_CPU) {
+    Function f;
+    static int hoge = 0;
+    f.Init([](void *){
+      int hoge2 = timer->GetUsecFromCnt(timer->ReadMainCnt()) - hoge;
+      gtty->Cprintf("%d ", hoge2);
+      hoge = timer->GetUsecFromCnt(timer->ReadMainCnt());
+    }, nullptr);
+    p.Init(f);
+    p.Register();
+  }
+#endif
   
-  // ワンショット性能測定用
-  if (cpu_ctrl->GetId() == 5) {
+// ワンショット性能測定用
+// #define ONE_SHOT_BENCHMARK
+#ifdef ONE_SHOT_BENCHMARK
+#define ONE_SHOT_BENCHMARK_CPU  5
+  if (cpu_ctrl->GetCpuId().GetRawId() == ONE_SHOT_BENCHMARK_CPU) {
     new(&tt1) Callout;
-    Function func;
-    func.Init([](void *){
-        if (!apic_ctrl->IsBootupAll()) {
-          tt1.SetHandler(1000);
-          return;
-        }
-      }, nullptr);
-    tt1.Init(func);
+    Function oneshot_bench_func;
+    oneshot_bench_func.Init([](void *){
+      if (!apic_ctrl->IsBootupAll()) {
+        tt1.SetHandler(1000);
+        return;
+      }
+      // kassert(g_channel != nullptr);
+      // FatFs *fatfs = new FatFs();
+      // kassert(fatfs->Mount());
+      //        g_channel->Read(0, 1);
+    }, nullptr);
+    tt1.Init(oneshot_bench_func);
     tt1.SetHandler(10);
   }
+#endif
+  if (false) {
+    register_membench_callout();
+  }
+  register_membench2_callout();
 
   task_ctrl->Run();
   return 0;
 }
 
-extern "C" void kernel_panic(const char *class_name, const char *err_str) {
+static int error_output_flag = 0;
+
+void show_backtrace(size_t *rbp) {
+    for (int i = 0; i < 3; i++) {
+      gtty->CprintfRaw("backtrace(%d): rip:%llx,\n", i, rbp[1]);
+      rbp = reinterpret_cast<size_t *>(rbp[0]);
+    }
+}
+
+extern "C" void _kernel_panic(const char *class_name, const char *err_str) {
   if (gtty != nullptr) {
-    gtty->PrintfRaw("s", "\n[","s",class_name,"s","] error: ","s",err_str);
+    while(!__sync_bool_compare_and_swap(&error_output_flag, 0, 1)) {
+    }
+    gtty->CprintfRaw("\n!!!! Kernel Panic !!!!\n");
+    gtty->CprintfRaw("[%s] error: %s\n",class_name, err_str);
+    gtty->CprintfRaw("\n"); 
+    gtty->CprintfRaw(">> debugging information >>\n");
+    gtty->CprintfRaw("cpuid: %d\n", cpu_ctrl->GetCpuId().GetRawId());
+    size_t *rbp;
+    asm volatile("movq %%rbp, %0":"=r"(rbp));
+    show_backtrace(rbp);
+    __sync_bool_compare_and_swap(&error_output_flag, 1, 0);
   }
   while(true) {
     asm volatile("cli;hlt;");
@@ -497,8 +1446,8 @@ extern "C" void kernel_panic(const char *class_name, const char *err_str) {
 }
 
 extern "C" void checkpoint(int id, const char *str) {
-  if (id < 0 || cpu_ctrl->GetId() == id) {
-    gtty->PrintfRaw("s",str);
+  if (id < 0 || cpu_ctrl->GetCpuId().GetRawId() == id) {
+    gtty->CprintfRaw(str);
   }
 }
 
@@ -508,7 +1457,7 @@ extern "C" void _checkpoint(const char *func, const int line) {
 
 extern "C" void abort() {
   if (gtty != nullptr) {
-    gtty->Cprintf("system stopped by unexpected error.\n");
+    gtty->CprintfRaw("system stopped by unexpected error.\n");
   }
   while(true){
     asm volatile("cli;hlt");
@@ -517,7 +1466,14 @@ extern "C" void abort() {
 
 extern "C" void _kassert(const char *file, int line, const char *func) {
   if (gtty != nullptr) {
-    gtty->Cprintf("assertion failed at %s l.%d (%s) cpuid: %d\n", file, line, func, cpu_ctrl->GetId());
+    while(!__sync_bool_compare_and_swap(&error_output_flag, 0, 1)) {
+    }
+    gtty->CprintfRaw("assertion failed at %s l.%d (%s) cpuid: %d\n",
+                     file, line, func, cpu_ctrl->GetCpuId().GetRawId());
+    size_t *rbp;
+    asm volatile("movq %%rbp, %0":"=r"(rbp));
+    show_backtrace(rbp);
+    __sync_bool_compare_and_swap(&error_output_flag, 1, 0);
   }
   while(true){
     asm volatile("cli;hlt");

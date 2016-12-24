@@ -16,41 +16,62 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
- * Author: Levelfour
+ * Author: levelfour
  * 
  */
 
-#include <string.h>
-#include <global.h>
-#include <mem/physmem.h>
-#include <mem/virtmem.h>
 #include <net/eth.h>
-#include <arpa/inet.h>
+#include <net/arp.h>
+#include <net/ip.h>
 
-// field offset in Ethernet header
-const uint32_t kDstAddrOffset      = 0;
-const uint32_t kSrcAddrOffset      = 6;
-const uint32_t kProtocolTypeOffset = 12;
 
-// broadcast MAC address (ff:ff:ff:ff:ff:ff)
-const uint8_t kBcastAddress[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+const uint8_t EthernetLayer::kArpRequestMacAddress[6] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+const uint8_t EthernetLayer::kBroadcastMacAddress[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 
-int32_t EthGenerateHeader(uint8_t *buffer, uint8_t *saddr, uint8_t *daddr, uint16_t type) {
-  EthHeader * volatile header = reinterpret_cast<EthHeader*>(buffer);
-  if(daddr) memcpy(header->daddr, daddr, 6);
-  if(saddr) memcpy(header->saddr, saddr, 6);
-  header->type = htons(type);
-  return 0;
+
+bool EthernetLayer::FilterPacket(NetDev::Packet *packet) {
+  EthernetLayer::Header *header = reinterpret_cast<EthernetLayer::Header *>(packet->buf);
+
+  if (!EthernetLayer::CompareAddress(header->daddr, _mac_address)) {
+    return false;
+  }
+
+  if (ntohs(header->type) != _protocol) {
+    return false;
+  }
+
+  return true;
 }
 
-bool EthFilterPacket(uint8_t *packet, uint8_t *saddr, uint8_t *daddr, uint16_t type) {
-  EthHeader * volatile header = reinterpret_cast<EthHeader*>(packet);
-  return (!daddr || !memcmp(header->daddr, daddr, 6) || !memcmp(header->daddr, kBcastAddress, 6))
-      && (!saddr || !memcmp(header->saddr, saddr, 6))
-      && (!type || ntohs(header->type) == type);
-}
 
-uint16_t GetL3PtclType(uint8_t *packet) {
-  EthHeader * volatile header = reinterpret_cast<EthHeader*>(packet);
-  return ntohs(header->type);
+bool EthernetLayer::PreparePacket(NetDev::Packet *packet) {
+  EthernetLayer::Header *header = reinterpret_cast<EthernetLayer::Header *>(packet->buf);
+
+  switch (_protocol) {
+    case kProtocolArp:
+      DetachProtocolHeader(packet);
+      ArpLayer::GetHardwareDestinationAddress(packet, header->daddr);
+      AttachProtocolHeader(packet);
+      break;
+
+    case kProtocolIpv4: {
+      DetachProtocolHeader(packet);
+      bool found = Ipv4Layer::GetHardwareDestinationAddress(packet, header->daddr);
+      AttachProtocolHeader(packet);
+
+      if (!found) {
+        return false;
+      }
+
+      break;
+    }
+
+    default:
+      return false;
+  }
+
+  memcpy(header->saddr, _mac_address, 6);
+  header->type = htons(_protocol);
+
+  return true;
 }

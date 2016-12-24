@@ -35,10 +35,17 @@ class Vga : public Tty {
     kassert(physmem_ctrl != nullptr);
     
     phys_addr vga_addr = 0xb8000;
+    ResetColor();
     // TODO : virt_addrに対してphys_addrを突っ込んでる
     // TODO : サイズ適当
     physmem_ctrl->Reserve(PagingCtrl::RoundAddrOnPageBoundary(vga_addr), PagingCtrl::RoundUpAddrOnPageBoundary(0x1000));
     _vga_addr = reinterpret_cast<uint8_t *>(p2v(vga_addr));
+  }
+  void SetColor(Color c) override {
+    _color = c;
+  }
+  void ResetColor() override {
+    _color = Color::kWhite;
   }
  private:
   virtual void Write(uint8_t c) override {
@@ -46,14 +53,14 @@ class Vga : public Tty {
     case '\n':
       for (int x = _cx; x < _x; x++) {
         _vga_addr[(_cy * _x + x) * 2] = ' ';
-        _vga_addr[(_cy * _x + x) * 2 + 1] = 0x0f;
+        _vga_addr[(_cy * _x + x) * 2 + 1] = static_cast<uint8_t>(_color);
       }
       _cx = 0;
       _cy++;
       break;
     default:
       _vga_addr[(_cy * _x + _cx) * 2] = c;
-      _vga_addr[(_cy * _x + _cx) * 2 + 1] = 0x0f;
+      _vga_addr[(_cy * _x + _cx) * 2 + 1] = static_cast<uint8_t>(_color);
       _cx++;
       if (_cx == _x) {
         _cx = 0;
@@ -73,11 +80,12 @@ class Vga : public Tty {
       }
       for (int x = 0; x < _x; x++) {
         _vga_addr[(_cy * _x + x) * 2] = ' ';
-        _vga_addr[(_cy * _x + x) * 2 + 1] = 0x0f;
+        _vga_addr[(_cy * _x + x) * 2 + 1] = static_cast<uint8_t>(_color);
       }
     }
   }
   uint8_t *_vga_addr;
+  Color _color;
   static const int _x = 80;
   static const int _y = 25;
 };

@@ -31,66 +31,66 @@
 
 ******************************************************************************/
 /*$FreeBSD$*/
-/*
-#ifndef EM_STANDALONE_BUILD
-#include "opt_em.h"
-#include "opt_ddb.h"
-#include "opt_inet.h"
-#include "opt_inet6.h"
-#endif
 
-#ifdef HAVE_KERNEL_OPTION_HEADERS
-#include "opt_device_polling.h"
-#endif
+// #ifndef EM_STANDALONE_BUILD
+// #include "opt_em.h"
+// #include "opt_ddb.h"
+// #include "opt_inet.h"
+// #include "opt_inet6.h"
+// #endif
+
+// #ifdef HAVE_KERNEL_OPTION_HEADERS
+// #include "opt_device_polling.h"
+// #endif
 
 #include <sys/param.h>
-#include <sys/systm.h>
-#ifdef DDB
-#include <sys/types.h>
-#include <ddb/ddb.h>
-#endif
-#include <sys/buf_ring.h>
+// #include <sys/systm.h>
+// #ifdef DDB
+// #include <sys/types.h>
+// #include <ddb/ddb.h>
+// #endif
+// #include <sys/buf_ring.h>
 #include <sys/bus.h>
-#include <sys/endian.h>
+// #include <sys/endian.h>
 #include <sys/kernel.h>
-#include <sys/kthread.h>
-#include <sys/malloc.h>
-#include <sys/mbuf.h>
-#include <sys/module.h>
+// #include <sys/kthread.h>
+// #include <sys/malloc.h>
+// #include <sys/mbuf.h>
+// #include <sys/module.h>
 #include <sys/rman.h>
-#include <sys/smp.h>
-#include <sys/socket.h>
-#include <sys/sockio.h>
-#include <sys/sysctl.h>
+// #include <sys/smp.h>
+// #include <sys/socket.h>
+// #include <sys/sockio.h>
+// #include <sys/sysctl.h>
 #include <sys/taskqueue.h>
 #include <sys/eventhandler.h>
 #include <machine/bus.h>
-#include <machine/resource.h>
+// #include <machine/resource.h>
 
-#include <net/bpf.h>
-#include <net/ethernet.h>
-#include <net/if.h>
-#include <net/if_var.h>
-#include <net/if_arp.h>
-#include <net/if_dl.h>
-#include <net/if_media.h>
+// #include <net/bpf.h>
+// #include <net/ethernet.h>
+// #include <net/if.h>
+// #include <net/if_var.h>
+// #include <net/if_arp.h>
+// #include <net/if_dl.h>
+// #include <net/if_media.h>
 
-#include <net/if_types.h>
-#include <net/if_vlan_var.h>
+// #include <net/if_types.h>
+// #include <net/if_vlan_var.h>
 
-#include <netinet/in_systm.h>
-#include <netinet/in.h>
-#include <netinet/if_ether.h>
-#include <netinet/ip.h>
-#include <netinet/ip6.h>
-#include <netinet/tcp.h>
-#include <netinet/udp.h>
+// #include <netinet/in_systm.h>
+// #include <netinet/in.h>
+// #include <netinet/if_ether.h>
+// #include <netinet/ip.h>
+// #include <netinet/ip6.h>
+// #include <netinet/tcp.h>
+// #include <netinet/udp.h>
 
-#include <machine/in_cksum.h>
-#include <dev/led/led.h>
+// #include <machine/in_cksum.h>
+// #include <dev/led/led.h>
 #include <dev/pci/pcivar.h>
 #include <dev/pci/pcireg.h>
-*/
+
 #include <stdint.h>
 #include <string.h>
 #include <mem/paging.h>
@@ -102,6 +102,8 @@
 #include "e1000_osdep.h"
 #include "e1000_api.h"
 #include "if_em.h"
+
+#include <freebsd/sys/rman.h>
 
 #include <timer.h>
 #include <global.h>
@@ -121,89 +123,89 @@ char em_driver_version[] = "7.6.1";
  *********************************************************************/
 
 static em_vendor_info_t em_vendor_info_array[] =
-{
-	/* Intel(R) PRO/1000 Network Connection */
-	{ 0x8086, E1000_DEV_ID_82571EB_COPPER,	PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_82571EB_FIBER,	PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_82571EB_SERDES,	PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_82571EB_SERDES_DUAL,
-						PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_82571EB_SERDES_QUAD,
-						PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_82571EB_QUAD_COPPER,
-						PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_82571EB_QUAD_COPPER_LP,
-						PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_82571EB_QUAD_FIBER,
-						PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_82571PT_QUAD_COPPER,
-						PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_82572EI_COPPER,	PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_82572EI_FIBER,	PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_82572EI_SERDES,	PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_82572EI,		PCI_ANY_ID, PCI_ANY_ID, 0},
+  {
+    /* Intel(R) PRO/1000 Network Connection */
+    { 0x8086, E1000_DEV_ID_82571EB_COPPER,	PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_82571EB_FIBER,	PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_82571EB_SERDES,	PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_82571EB_SERDES_DUAL,
+      PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_82571EB_SERDES_QUAD,
+      PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_82571EB_QUAD_COPPER,
+      PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_82571EB_QUAD_COPPER_LP,
+      PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_82571EB_QUAD_FIBER,
+      PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_82571PT_QUAD_COPPER,
+      PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_82572EI_COPPER,	PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_82572EI_FIBER,	PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_82572EI_SERDES,	PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_82572EI,		PCI_ANY_ID, PCI_ANY_ID, 0},
 
-	{ 0x8086, E1000_DEV_ID_82573E,		PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_82573E_IAMT,	PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_82573L,		PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_82583V,		PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_80003ES2LAN_COPPER_SPT,
-						PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_80003ES2LAN_SERDES_SPT,
-						PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_80003ES2LAN_COPPER_DPT,
-						PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_80003ES2LAN_SERDES_DPT,
-						PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_ICH8_IGP_M_AMT,	PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_ICH8_IGP_AMT,	PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_ICH8_IGP_C,	PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_ICH8_IFE,	PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_ICH8_IFE_GT,	PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_ICH8_IFE_G,	PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_ICH8_IGP_M,	PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_ICH8_82567V_3,	PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_ICH9_IGP_M_AMT,	PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_ICH9_IGP_AMT,	PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_ICH9_IGP_C,	PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_ICH9_IGP_M,	PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_ICH9_IGP_M_V,	PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_ICH9_IFE,	PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_ICH9_IFE_GT,	PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_ICH9_IFE_G,	PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_ICH9_BM,		PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_82574L,		PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_82574LA,		PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_ICH10_R_BM_LM,	PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_ICH10_R_BM_LF,	PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_ICH10_R_BM_V,	PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_ICH10_D_BM_LM,	PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_ICH10_D_BM_LF,	PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_ICH10_D_BM_V,	PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_PCH_M_HV_LM,	PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_PCH_M_HV_LC,	PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_PCH_D_HV_DM,	PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_PCH_D_HV_DC,	PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_PCH2_LV_LM,	PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_PCH2_LV_V,	PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_PCH_LPT_I217_LM,	PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_PCH_LPT_I217_V,	PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_PCH_LPTLP_I218_LM,
-						PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_PCH_LPTLP_I218_V,
-						PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_PCH_I218_LM2,	PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_PCH_I218_V2,	PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_PCH_I218_LM3,	PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_PCH_I218_V3,	PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_PCH_SPT_I219_LM, PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_PCH_SPT_I219_V,  PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_PCH_SPT_I219_LM2,
-                                                PCI_ANY_ID, PCI_ANY_ID, 0},
-	{ 0x8086, E1000_DEV_ID_PCH_SPT_I219_V2, PCI_ANY_ID, PCI_ANY_ID, 0},
-	/* required last entry */
-	{ 0, 0, 0, 0, 0}
-};
+    { 0x8086, E1000_DEV_ID_82573E,		PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_82573E_IAMT,	PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_82573L,		PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_82583V,		PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_80003ES2LAN_COPPER_SPT,
+      PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_80003ES2LAN_SERDES_SPT,
+      PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_80003ES2LAN_COPPER_DPT,
+      PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_80003ES2LAN_SERDES_DPT,
+      PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_ICH8_IGP_M_AMT,	PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_ICH8_IGP_AMT,	PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_ICH8_IGP_C,	PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_ICH8_IFE,	PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_ICH8_IFE_GT,	PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_ICH8_IFE_G,	PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_ICH8_IGP_M,	PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_ICH8_82567V_3,	PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_ICH9_IGP_M_AMT,	PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_ICH9_IGP_AMT,	PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_ICH9_IGP_C,	PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_ICH9_IGP_M,	PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_ICH9_IGP_M_V,	PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_ICH9_IFE,	PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_ICH9_IFE_GT,	PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_ICH9_IFE_G,	PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_ICH9_BM,		PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_82574L,		PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_82574LA,		PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_ICH10_R_BM_LM,	PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_ICH10_R_BM_LF,	PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_ICH10_R_BM_V,	PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_ICH10_D_BM_LM,	PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_ICH10_D_BM_LF,	PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_ICH10_D_BM_V,	PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_PCH_M_HV_LM,	PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_PCH_M_HV_LC,	PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_PCH_D_HV_DM,	PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_PCH_D_HV_DC,	PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_PCH2_LV_LM,	PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_PCH2_LV_V,	PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_PCH_LPT_I217_LM,	PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_PCH_LPT_I217_V,	PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_PCH_LPTLP_I218_LM,
+      PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_PCH_LPTLP_I218_V,
+      PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_PCH_I218_LM2,	PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_PCH_I218_V2,	PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_PCH_I218_LM3,	PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_PCH_I218_V3,	PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_PCH_SPT_I219_LM, PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_PCH_SPT_I219_V,  PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_PCH_SPT_I219_LM2,
+      PCI_ANY_ID, PCI_ANY_ID, 0},
+    { 0x8086, E1000_DEV_ID_PCH_SPT_I219_V2, PCI_ANY_ID, PCI_ANY_ID, 0},
+    /* required last entry */
+    { 0, 0, 0, 0, 0}
+  };
 
 /*********************************************************************
  *  Table of branding strings for all supported NICs.
@@ -225,7 +227,7 @@ static int	em_attach(device_t);
 #ifdef EM_MULTIQUEUE
 static int	em_mq_start(if_t, struct mbuf *);
 static int	em_mq_start_locked(if_t,
-		    struct tx_ring *);
+                               struct tx_ring *);
 // static void	em_qflush(if_t);
 #else
 static void	em_start(if_t);
@@ -286,9 +288,9 @@ static void	em_refresh_mbufs(struct rx_ring *, int);
 // static void	em_register_vlan(void *, if_t, u16);
 // static void	em_unregister_vlan(void *, if_t, u16);
 // static void	em_setup_vlan_hw_support(struct adapter *);
-static int	em_xmit(struct tx_ring *, BsdDevEthernet::Packet *);
+static int	em_xmit(struct tx_ring *, BsdEthernet::Packet *);
 static int	em_dma_malloc(struct adapter *, bus_size_t,
-		    struct em_dma_alloc *, int);
+                          struct em_dma_alloc *, int);
 // static void	em_dma_free(struct adapter *, struct em_dma_alloc *);
 // static int	em_sysctl_nvm_info(SYSCTL_HANDLER_ARGS);
 // static void	em_print_nvm_info(struct adapter *);
@@ -409,14 +411,14 @@ static int em_smart_pwr_down = FALSE;
 //     "Show bad packets in promiscuous mode");
 
 // RaphineはMSIXをサポートしていない
-static int em_enable_msix = FALSE;
+// static int em_enable_msix = FALSE;
 // SYSCTL_INT(_hw_em, OID_AUTO, enable_msix, CTLFLAG_RDTUN, &em_enable_msix, 0,
 //     "Enable MSI-X interrupts");
 
 #ifdef EM_MULTIQUEUE
 static int em_num_queues = 1;
 SYSCTL_INT(_hw_em, OID_AUTO, num_queues, CTLFLAG_RDTUN, &em_num_queues, 0,
-    "82574 only: Number of queues to configure, 0 indicates autoconfigure");
+           "82574 only: Number of queues to configure, 0 indicates autoconfigure");
 #endif
 
 /*
@@ -480,13 +482,13 @@ em_probe(device_t dev)
 		    (pci_device_id == ent->device_id) &&
 
 		    ((pci_subvendor_id == ent->subvendor_id) ||
-		    (ent->subvendor_id == PCI_ANY_ID)) &&
+         (ent->subvendor_id == PCI_ANY_ID)) &&
 
 		    ((pci_subdevice_id == ent->subdevice_id) ||
-		    (ent->subdevice_id == PCI_ANY_ID))) {
+         (ent->subdevice_id == PCI_ANY_ID))) {
 			sprintf(adapter_name, "%s %s",
-				em_strings[ent->index],
-				em_driver_version);
+              em_strings[ent->index],
+              em_driver_version);
 			device_set_desc_copy(dev, adapter_name);
 			return (BUS_PROBE_DEFAULT);
 		}
@@ -520,7 +522,7 @@ em_attach(device_t dev)
 	// 	return (ENXIO);
 	// }
 
-	adapter = device_get_softc(dev);
+	adapter = reinterpret_cast<struct adapter *>(device_get_softc(dev));
 	adapter->dev = adapter->osdep.dev = dev;
 	hw = &adapter->hw;
 	EM_CORE_LOCK_INIT(adapter, device_get_nameunit(dev));
@@ -567,7 +569,7 @@ em_attach(device_t dev)
 	    (hw->mac.type == e1000_pch_lpt)) {
 		int rid = EM_BAR_TYPE_FLASH;
 		adapter->flash = bus_alloc_resource_any(dev,
-		    SYS_RES_MEMORY, &rid, RF_ACTIVE);
+                                            SYS_RES_MEMORY, &rid, RF_ACTIVE);
 		if (adapter->flash == NULL) {
 			device_printf(dev, "Mapping of Flash failed\n");
 			error = ENXIO;
@@ -576,9 +578,9 @@ em_attach(device_t dev)
 		/* This is used in the shared code */
 		hw->flash_address = (u8 *)adapter->flash;
 		adapter->osdep.flash_bus_space_tag =
-		    rman_get_bustag(adapter->flash);
+      rman_get_bustag(adapter->flash);
 		adapter->osdep.flash_bus_space_handle =
-		    rman_get_bushandle(adapter->flash);
+      rman_get_bushandle(adapter->flash);
 	}
 	/*
 	** In the new SPT device flash is not  a
@@ -588,17 +590,17 @@ em_attach(device_t dev)
 	*/
 	else if (hw->mac.type == e1000_pch_spt) {
 		adapter->osdep.flash_bus_space_tag =
-		    adapter->osdep.mem_bus_space_tag;
+      adapter->osdep.mem_bus_space_tag;
 		adapter->osdep.flash_bus_space_handle =
-		    adapter->osdep.mem_bus_space_handle
-		    + E1000_FLASH_BASE_ADDR;
+      adapter->osdep.mem_bus_space_handle
+      + E1000_FLASH_BASE_ADDR;
 	}
 
 	/* Do Shared Code initialization */
 	error = e1000_setup_init_funcs(hw, TRUE);
 	if (error) {
 		device_printf(dev, "Setup of Shared code failed, error %d\n",
-		    error);
+                  error);
 		error = ENXIO;
 		goto err_pci;
 	}
@@ -646,7 +648,7 @@ em_attach(device_t dev)
 	if (((em_txd * sizeof(struct e1000_tx_desc)) % EM_DBA_ALIGN) != 0 ||
 	    (em_txd > EM_MAX_TXD) || (em_txd < EM_MIN_TXD)) {
 		device_printf(dev, "Using %d TX descriptors instead of %d!\n",
-		    EM_DEFAULT_TXD, em_txd);
+                  EM_DEFAULT_TXD, em_txd);
 		adapter->num_tx_desc = EM_DEFAULT_TXD;
 	} else
 		adapter->num_tx_desc = em_txd;
@@ -654,7 +656,7 @@ em_attach(device_t dev)
 	if (((em_rxd * sizeof(struct e1000_rx_desc)) % EM_DBA_ALIGN) != 0 ||
 	    (em_rxd > EM_MAX_RXD) || (em_rxd < EM_MIN_RXD)) {
 		device_printf(dev, "Using %d RX descriptors instead of %d!\n",
-		    EM_DEFAULT_RXD, em_rxd);
+                  EM_DEFAULT_RXD, em_rxd);
 		adapter->num_rx_desc = EM_DEFAULT_RXD;
 	} else
 		adapter->num_rx_desc = em_rxd;
@@ -675,7 +677,7 @@ em_attach(device_t dev)
 	 * standard ethernet sized frames.
 	 */
 	adapter->hw.mac.max_frame_size =
-	    ETHERMTU + ETHER_HDR_LEN + ETHERNET_FCS_SIZE;
+    ETHERMTU + ETHER_HDR_LEN + ETHERNET_FCS_SIZE;
 
 	/*
 	 * This controls when hardware reports transmit completion
@@ -694,8 +696,8 @@ em_attach(device_t dev)
 	/* Allocate multicast array memory. */
 	// adapter->mta = malloc(sizeof(u8) * ETH_ADDR_LEN *
 	//     MAX_NUM_MULTICAST_ADDRESSES, M_DEVBUF, M_NOWAIT);
-        adapter->mta = reinterpret_cast<u8 *>(virtmem_ctrl->Alloc(sizeof(u8) * ETH_ADDR_LEN *
-                                                                  MAX_NUM_MULTICAST_ADDRESSES));
+  adapter->mta = reinterpret_cast<u8 *>(virtmem_ctrl->Alloc(sizeof(u8) * ETH_ADDR_LEN *
+                                                            MAX_NUM_MULTICAST_ADDRESSES));
 	if (adapter->mta == NULL) {
 		device_printf(dev, "Can not allocate multicast setup array\n");
 		error = ENOMEM;
@@ -705,7 +707,7 @@ em_attach(device_t dev)
 	/* Check SOL/IDER usage */
 	if (e1000_check_reset_block(hw))
 		device_printf(dev, "PHY reset is blocked"
-		    " due to SOL/IDER session.\n");
+                  " due to SOL/IDER session.\n");
 
 	/* Sysctl for setting Energy Efficient Ethernet */
 	hw->dev_spec.ich8lan.eee_disable = eee_setting;
@@ -732,7 +734,7 @@ em_attach(device_t dev)
 		*/
 		if (e1000_validate_nvm_checksum(hw) < 0) {
 			device_printf(dev,
-			    "The EEPROM Checksum Is Not Valid\n");
+                    "The EEPROM Checksum Is Not Valid\n");
 			error = EIO;
 			goto err_late;
 		}
@@ -741,7 +743,7 @@ em_attach(device_t dev)
 	/* Copy the permanent MAC address out of the EEPROM */
 	if (e1000_read_mac_addr(hw) < 0) {
 		device_printf(dev, "EEPROM read error while reading MAC"
-		    " address\n");
+                  " address\n");
 		error = EIO;
 		goto err_late;
 	}
@@ -797,7 +799,7 @@ em_attach(device_t dev)
 	/* Tell the stack that the interface is not active */
 	if_setdrvflagbits(adapter->ifp, IFF_DRV_OACTIVE, IFF_DRV_RUNNING);
 
-        adapter->led_dev = NULL;
+  adapter->led_dev = NULL;
 	// adapter->led_dev = led_create(em_led_func, adapter,
 	//     device_get_nameunit(dev));
 #ifdef DEV_NETMAP
@@ -808,13 +810,13 @@ em_attach(device_t dev)
 
 	return (0);
 
-err_late:
+ err_late:
 	// em_free_transmit_structures(adapter);
 	// em_free_receive_structures(adapter);
 	// em_release_hw_control(adapter);
 	// if (adapter->ifp != (void *)NULL)
 	// 	if_free(adapter->ifp);
-err_pci:
+ err_pci:
 	// em_free_pci_resources(adapter);
 	// free(adapter->mta, M_DEVBUF);
 	EM_CORE_LOCK_DESTROY(adapter);
@@ -960,7 +962,7 @@ static void
 em_start_locked(if_t ifp, struct tx_ring *txr)
 {
   struct adapter	*adapter = reinterpret_cast<struct adapter *>(if_getsoftc(ifp));
-  BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
+  E1000 *e1000 = adapter->dev->GetMasterClass<E1000>();
 	// struct mbuf	*m_head;
 
 	EM_TX_LOCK_ASSERT(txr);
@@ -972,9 +974,9 @@ em_start_locked(if_t ifp, struct tx_ring *txr)
 	if (!adapter->link_active)
 		return;
 
-        while (!e1000->_tx_buffered.IsEmpty()) {
-	// while (!if_sendq_empty(ifp)) {
-        	/* Call cleanup if number of TX descriptors low */
+  while (!e1000->GetNetInterface()._tx_buffered.IsEmpty()) {
+    // while (!if_sendq_empty(ifp)) {
+    /* Call cleanup if number of TX descriptors low */
 		if (txr->tx_avail <= EM_TX_CLEANUP_THRESHOLD)
 			em_txeof(txr);
 		if (txr->tx_avail < EM_MAX_SCATTER) {
@@ -994,10 +996,10 @@ em_start_locked(if_t ifp, struct tx_ring *txr)
 		// 	if_sendq_prepend(ifp, m_head);
 		// 	break;
 		// }
-                BsdDevEthernet::Packet *packet;
-                kassert(e1000->_tx_buffered.Pop(packet));
-                em_xmit(txr, packet);
-                e1000->ReuseTxBuffer(packet);
+    BsdEthernet::Packet *packet;
+    kassert(e1000->GetNetInterface()._tx_buffered.Pop(packet));
+    em_xmit(txr, packet);
+    e1000->GetNetInterface().ReuseTxBuffer(packet);
 
 		/* Mark the queue as having work */
 		if (txr->busy == EM_TX_IDLE)
@@ -1067,8 +1069,8 @@ static int
 em_mq_start_locked(if_t ifp, struct tx_ring *txr)
 {
 	struct adapter  *adapter = txr->adapter;
-        struct mbuf     *next;
-        int             err = 0, enq = 0;
+  struct mbuf     *next;
+  int             err = 0, enq = 0;
 
 	EM_TX_LOCK_ASSERT(txr);
 
@@ -1100,7 +1102,7 @@ em_mq_start_locked(if_t ifp, struct tx_ring *txr)
 		// 	if_inc_counter(ifp, IFCOUNTER_OMCASTS, 1);
 		// ETHER_BPF_MTAP(ifp, next);
 		if ((if_getdrvflags(ifp) & IFF_DRV_RUNNING) == 0)
-                        break;
+      break;
 	}
 
 	/* Mark the queue as having work */
@@ -1368,8 +1370,8 @@ em_init_locked(struct adapter *adapter)
 	callout_stop(&adapter->timer);
 
 	/* Get the latest mac address, User can use a LAA */
-        // bcopy(if_getlladdr(adapter->ifp), adapter->hw.mac.addr,
-        //       ETHER_ADDR_LEN);
+  // bcopy(if_getlladdr(adapter->ifp), adapter->hw.mac.addr,
+  //       ETHER_ADDR_LEN);
 
 	/* Put the address into the Receive Address Array */
 	e1000_rar_set(&adapter->hw, adapter->hw.mac.addr, 0);
@@ -1383,7 +1385,7 @@ em_init_locked(struct adapter *adapter)
 	if (adapter->hw.mac.type == e1000_82571) {
 		e1000_set_laa_state_82571(&adapter->hw, TRUE);
 		e1000_rar_set(&adapter->hw, adapter->hw.mac.addr,
-		    E1000_RAR_ENTRIES - 1);
+                  E1000_RAR_ENTRIES - 1);
 	}
 
 	/* Initialize the hardware */
@@ -1473,11 +1475,11 @@ em_init_locked(struct adapter *adapter)
 	 * Only enable interrupts if we are not polling, make sure
 	 * they are off otherwise.
 	 */
-        if (if_getcapenable(ifp) & IFCAP_POLLING)
-          em_disable_intr(adapter);
-        else
+  if (if_getcapenable(ifp) & IFCAP_POLLING)
+    em_disable_intr(adapter);
+  else
 #endif /* DEVICE_POLLING */
-          em_enable_intr(adapter);
+    em_enable_intr(adapter);
 
 	/* AMT based hardware can now take control from firmware */
 	if (adapter->has_manage && adapter->has_amt)
@@ -1505,7 +1507,7 @@ int
 em_poll(if_t ifp)
 {
   struct adapter *adapter = reinterpret_cast<struct adapter *>(if_getsoftc(ifp));
-  BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
+  E1000 *e1000 = adapter->dev->GetMasterClass<E1000>();
 	struct tx_ring	*txr = adapter->tx_rings;
 	struct rx_ring	*rxr = adapter->rx_rings;
 	// u32		reg_icr;
@@ -1517,7 +1519,7 @@ em_poll(if_t ifp)
 		return (0);
 	}
 
-        // TODO : 要対応
+  // TODO : 要対応
 	// if (cmd == POLL_AND_CHECK_STATUS) {
 	// 	reg_icr = E1000_READ_REG(&adapter->hw, E1000_ICR);
 	// 	if (reg_icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC)) {
@@ -1529,17 +1531,17 @@ em_poll(if_t ifp)
 	// 	}
 	// }
 	EM_CORE_UNLOCK(adapter);
-        int count = 1;
+  int count = 1;
 	em_rxeof(rxr, count, &rx_done);
 
 	EM_TX_LOCK(txr);
-        em_txeof(txr);
+  em_txeof(txr);
 #ifdef EM_MULTIQUEUE
 	if (!drbr_empty(ifp, txr->br))
 		em_mq_start_locked(ifp, txr);
 #else
 	// if (!if_sendq_empty(ifp))
-        if (!e1000->_tx_buffered.IsEmpty())
+  if (!e1000->GetNetInterface()._tx_buffered.IsEmpty())
 		em_start_locked(ifp, txr);
 #endif
 	EM_TX_UNLOCK(txr);
@@ -1600,7 +1602,7 @@ static void
 em_handle_que(void *context, int pending)
 {
   struct adapter	*adapter = reinterpret_cast<struct adapter *>(context);
-  BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
+  E1000 *e1000 = adapter->dev->GetMasterClass<E1000>();
 	if_t ifp = adapter->ifp;
 	struct tx_ring	*txr = adapter->tx_rings;
 	struct rx_ring	*rxr = adapter->rx_rings;
@@ -1615,8 +1617,8 @@ em_handle_que(void *context, int pending)
 			em_mq_start_locked(ifp, txr);
 #else
 		// if (!if_sendq_empty(ifp))
-                if (!e1000->_tx_buffered.IsEmpty())
-                  em_start_locked(ifp, txr);
+    if (!e1000->GetNetInterface()._tx_buffered.IsEmpty())
+      em_start_locked(ifp, txr);
 #endif
 		EM_TX_UNLOCK(txr);
 		if (more) {
@@ -1742,7 +1744,7 @@ em_handle_tx(void *context, int pending)
 {
   struct tx_ring	*txr = reinterpret_cast<struct tx_ring *>(context);
 	struct adapter	*adapter = reinterpret_cast<struct adapter *>(txr->adapter);
-        BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
+  E1000 *e1000 = adapter->dev->GetMasterClass<E1000>();
 	if_t ifp = adapter->ifp;
 
 	EM_TX_LOCK(txr);
@@ -1752,7 +1754,7 @@ em_handle_tx(void *context, int pending)
 		em_mq_start_locked(ifp, txr);
 #else
 	// if (!if_sendq_empty(ifp))
-        if (!e1000->_tx_buffered.IsEmpty())
+  if (!e1000->GetNetInterface()._tx_buffered.IsEmpty())
 		em_start_locked(ifp, txr);
 #endif
 	E1000_WRITE_REG(&adapter->hw, E1000_IMS, txr->ims);
@@ -1763,7 +1765,7 @@ static void
 em_handle_link(void *context, int pending)
 {
   struct adapter	*adapter = reinterpret_cast<struct adapter *>(context);
-  BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
+  E1000 *e1000 = adapter->dev->GetMasterClass<E1000>();
 	struct tx_ring	*txr = adapter->tx_rings;
 	if_t ifp = adapter->ifp;
 
@@ -1775,7 +1777,7 @@ em_handle_link(void *context, int pending)
 	em_update_link_status(adapter);
 	callout_reset(&adapter->timer, hz, em_local_timer, adapter);
 	E1000_WRITE_REG(&adapter->hw, E1000_IMS,
-	    EM_MSIX_LINK | E1000_IMS_LSC);
+                  EM_MSIX_LINK | E1000_IMS_LSC);
 	if (adapter->link_active) {
 		for (int i = 0; i < adapter->num_queues; i++, txr++) {
 			EM_TX_LOCK(txr);
@@ -1784,8 +1786,8 @@ em_handle_link(void *context, int pending)
 				em_mq_start_locked(ifp, txr);
 #else
 			// if (if_sendq_empty(ifp))
-                        if (!e1000->_tx_buffered.IsEmpty())
-                          em_start_locked(ifp, txr);
+      if (!e1000->GetNetInterface()._tx_buffered.IsEmpty())
+        em_start_locked(ifp, txr);
 #endif
 			EM_TX_UNLOCK(txr);
 		}
@@ -1911,7 +1913,7 @@ em_handle_link(void *context, int pending)
  **********************************************************************/
 
 static int
-em_xmit(struct tx_ring *txr, BsdDevEthernet::Packet *packet)
+em_xmit(struct tx_ring *txr, BsdEthernet::Packet *packet)
 {
 	struct adapter		*adapter = txr->adapter;
 	// bus_dma_segment_t	segs[EM_MAX_SCATTER];
@@ -1929,9 +1931,9 @@ em_xmit(struct tx_ring *txr, BsdDevEthernet::Packet *packet)
 
 	// m_head = *m_headp;
 	txd_upper = txd_lower = txd_used = txd_saved = 0;
-        do_tso = 0;
+  do_tso = 0;
 	// do_tso = ((m_head->m_pkthdr.csum_flags & CSUM_TSO) != 0);
-        // ip_off = poff = 0;
+  // ip_off = poff = 0;
 
 	/*
 	 * Intel recommends entire IP/TCP header length reside in a single
@@ -2053,9 +2055,9 @@ em_xmit(struct tx_ring *txr, BsdDevEthernet::Packet *packet)
 	tx_buffer_mapped = tx_buffer;
 	map = tx_buffer->map;
 
-// retry:
-        error = 0;
-        nsegs = 1;
+  // retry:
+  error = 0;
+  nsegs = 1;
 	// error = bus_dmamap_load_mbuf_sg(txr->txtag, map,
 	//     *m_headp, segs, &nsegs, BUS_DMA_NOWAIT);
 
@@ -2069,7 +2071,7 @@ em_xmit(struct tx_ring *txr, BsdDevEthernet::Packet *packet)
 	 * mbuf chain from ever going through.  Drop it and report error.
 	 */
 	if (error == EFBIG && remap) {
-          kassert(false);
+    kassert(false);
 		// struct mbuf *m;
 
 		// m = m_defrag(*m_headp, M_NOWAIT);
@@ -2106,11 +2108,11 @@ em_xmit(struct tx_ring *txr, BsdDevEthernet::Packet *packet)
 		txr->tx_tso = FALSE;
 	}
 
-        if (nsegs > (txr->tx_avail - 2)) {
-                txr->no_desc_avail++;
+  if (nsegs > (txr->tx_avail - 2)) {
+    txr->no_desc_avail++;
 		bus_dmamap_unload(txr->txtag, map);
 		return (ENOBUFS);
-        }
+  }
 	// m_head = *m_headp;
 
 	/* Do hardware assists */
@@ -2126,9 +2128,9 @@ em_xmit(struct tx_ring *txr, BsdDevEthernet::Packet *packet)
 	// if (m_head->m_flags & M_VLANTAG) {
 	// 	/* Set the vlan id. */
 	// 	txd_upper |= htole16(if_getvtag(m_head)) << 16;
-        //         /* Tell hardware to add tag */
-        //         txd_lower |= htole32(E1000_TXD_CMD_VLE);
-        // }
+  //         /* Tell hardware to add tag */
+  //         txd_lower |= htole32(E1000_TXD_CMD_VLE);
+  // }
 
 	i = txr->next_avail_desc;
 
@@ -2181,26 +2183,26 @@ em_xmit(struct tx_ring *txr, BsdDevEthernet::Packet *packet)
 	// 	tx_buffer->m_head = NULL;
 	// 	tx_buffer->next_eop = -1;
 	// }
-        bus_size_t seg_len;
-        // bus_addr_t seg_addr;
-        tx_buffer = &txr->tx_buffers[i];
-        ctxd = &txr->tx_base[i];
-        seg_len = packet->len;
-        memcpy(reinterpret_cast<void *>(p2v(ctxd->buffer_addr)), packet->buf, seg_len);
-        ctxd->lower.data = htole32(adapter->txd_cmd | txd_lower | seg_len);
-        ctxd->upper.data = htole32(txd_upper);
-        last = i;
-        if (++i == adapter->num_tx_desc)
-          i = 0;
-        // tx_buffer->m_head = NULL;
-        tx_buffer->next_eop = -1;
+  bus_size_t seg_len;
+  // bus_addr_t seg_addr;
+  tx_buffer = &txr->tx_buffers[i];
+  ctxd = &txr->tx_base[i];
+  seg_len = packet->len;
+  memcpy(reinterpret_cast<void *>(p2v(ctxd->buffer_addr)), packet->buf, seg_len);
+  ctxd->lower.data = htole32(adapter->txd_cmd | txd_lower | seg_len);
+  ctxd->upper.data = htole32(txd_upper);
+  last = i;
+  if (++i == adapter->num_tx_desc)
+    i = 0;
+  // tx_buffer->m_head = NULL;
+  tx_buffer->next_eop = -1;
 
 	txr->next_avail_desc = i;
 	txr->tx_avail -= nsegs;
 	if (tso_desc) /* TSO used an extra for sentinel */
 		txr->tx_avail -= txd_used;
 
-        // tx_buffer->m_head = m_head;
+  // tx_buffer->m_head = m_head;
 	/*
 	** Here we swap the map so the last descriptor,
 	** which gets the completion interrupt has the
@@ -2209,15 +2211,15 @@ em_xmit(struct tx_ring *txr, BsdDevEthernet::Packet *packet)
 	*/
 	tx_buffer_mapped->map = tx_buffer->map;
 	tx_buffer->map = map;
-        bus_dmamap_sync(txr->txtag, map, BUS_DMASYNC_PREWRITE);
+  bus_dmamap_sync(txr->txtag, map, BUS_DMASYNC_PREWRITE);
 
-        /*
-         * Last Descriptor of Packet
+  /*
+   * Last Descriptor of Packet
 	 * needs End Of Packet (EOP)
 	 * and Report Status (RS)
-         */
-        ctxd->lower.data |=
-	    htole32(E1000_TXD_CMD_EOP | E1000_TXD_CMD_RS);
+   */
+  ctxd->lower.data |=
+    htole32(E1000_TXD_CMD_EOP | E1000_TXD_CMD_RS);
 	/*
 	 * Keep track in the first buffer which
 	 * descriptor will be written back
@@ -2230,7 +2232,7 @@ em_xmit(struct tx_ring *txr, BsdDevEthernet::Packet *packet)
 	 * that this frame is available to transmit.
 	 */
 	bus_dmamap_sync(txr->txdma.dma_tag, txr->txdma.dma_map,
-	    BUS_DMASYNC_PREREAD | BUS_DMASYNC_PREWRITE);
+                  BUS_DMASYNC_PREREAD | BUS_DMASYNC_PREWRITE);
 	E1000_WRITE_REG(&adapter->hw, E1000_TDT(txr->me), i);
 
 	return (0);
@@ -2361,7 +2363,7 @@ em_local_timer(void *arg)
 	// 		trigger |= rxr->ims;
 	// 	rxr = adapter->rx_rings;
 	// } else
-		// trigger = E1000_ICS_RXDMT0;
+  // trigger = E1000_ICS_RXDMT0;
 
 	/*
 	** Check on the state of the TX queue(s), this 
@@ -2384,10 +2386,10 @@ em_local_timer(void *arg)
 	E1000_WRITE_REG(&adapter->hw, E1000_ICS, trigger);
 #endif
 	return;
-hung:
+ hung:
 	/* Looks like we're hung */
 	device_printf(adapter->dev, "Watchdog timeout Queue[%d]-- resetting\n",
-			txr->me);
+                txr->me);
 	// em_print_debug_info(adapter);
 	if_setdrvflagbits(ifp, 0, IFF_DRV_RUNNING);
 	adapter->watchdog_events++;
@@ -2403,7 +2405,7 @@ em_update_link_status(struct adapter *adapter)
   device_t dev = adapter->dev;
 	struct tx_ring *txr = adapter->tx_rings;
 	u32 link_check = 0;
-        BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
+  E1000 *e1000 = adapter->dev->GetMasterClass<E1000>();
 
 	/* Get the cached link value or read phy for real */
 	switch (hw->phy.media_type) {
@@ -2422,7 +2424,7 @@ em_update_link_status(struct adapter *adapter)
 	case e1000_media_type_fiber:
 		e1000_check_for_link(hw);
 		link_check = (E1000_READ_REG(hw, E1000_STATUS) &
-                                 E1000_STATUS_LU);
+                  E1000_STATUS_LU);
 		break;
 	case e1000_media_type_internal_serdes:
 		e1000_check_for_link(hw);
@@ -2436,11 +2438,11 @@ em_update_link_status(struct adapter *adapter)
 	/* Now check for a transition */
 	if (link_check && (adapter->link_active == 0)) {
 		e1000_get_speed_and_duplex(hw, &adapter->link_speed,
-		    &adapter->link_duplex);
+                               &adapter->link_duplex);
 		/* Check if we must disable SPEED_MODE bit on PCI-E */
 		if ((adapter->link_speed != SPEED_1000) &&
 		    ((hw->mac.type == e1000_82571) ||
-		    (hw->mac.type == e1000_82572))) {
+         (hw->mac.type == e1000_82572))) {
 			int tarc0;
 			tarc0 = E1000_READ_REG(hw, E1000_TARC(0));
 			tarc0 &= ~TARC_SPEED_MODE_BIT;
@@ -2448,14 +2450,14 @@ em_update_link_status(struct adapter *adapter)
 		}
 		if (bootverbose)
 			device_printf(dev, "Link is up %d Mbps %s\n",
-			    adapter->link_speed,
-			    ((adapter->link_duplex == FULL_DUPLEX) ?
-			    "Full Duplex" : "Half Duplex"));
+                    adapter->link_speed,
+                    ((adapter->link_duplex == FULL_DUPLEX) ?
+                     "Full Duplex" : "Half Duplex"));
 		adapter->link_active = 1;
 		adapter->smartspeed = 0;
 		// if_setbaudrate(ifp, adapter->link_speed * 1000000);
 		// if_link_state_change(ifp, LINK_STATE_UP);
-                e1000->SetStatus(BsdDevEthernet::LinkStatus::kUp);
+    e1000->GetNetInterface().SetStatus(BsdEthernet::LinkStatus::kUp);
 	} else if (!link_check && (adapter->link_active == 1)) {
 		// if_setbaudrate(ifp, 0);
 		adapter->link_speed = 0;
@@ -2467,7 +2469,7 @@ em_update_link_status(struct adapter *adapter)
 		for (int i = 0; i < adapter->num_queues; i++, txr++)
 			txr->busy = EM_TX_IDLE;
 		// if_link_state_change(ifp, LINK_STATE_DOWN);
-                e1000->SetStatus(BsdDevEthernet::LinkStatus::kDown);
+    e1000->GetNetInterface().SetStatus(BsdEthernet::LinkStatus::kDown);
 	}
 }
 
@@ -2497,7 +2499,7 @@ em_stop(struct adapter *arg)
 	/* Tell the stack that the interface is no longer active */
 	if_setdrvflagbits(ifp, IFF_DRV_OACTIVE, IFF_DRV_RUNNING);
 
-        /* Disarm Hang Detection. */
+  /* Disarm Hang Detection. */
 	for (int i = 0; i < adapter->num_queues; i++, txr++) {
 		EM_TX_LOCK(txr);
 		txr->busy = EM_TX_IDLE;
@@ -2535,9 +2537,9 @@ em_identify_hardware(struct adapter *adapter)
 	adapter->hw.device_id = pci_get_device(dev);
 	adapter->hw.revision_id = pci_read_config(dev, PCIR_REVID, 1);
 	adapter->hw.subsystem_vendor_id =
-	    pci_read_config(dev, PCIR_SUBVEND_0, 2);
+    pci_read_config(dev, PCIR_SUBVEND_0, 2);
 	adapter->hw.subsystem_device_id =
-	    pci_read_config(dev, PCIR_SUBDEV_0, 2);
+    pci_read_config(dev, PCIR_SUBDEV_0, 2);
 
 	/* Do Shared Code Init and Setup */
 	if (e1000_set_mac_type(&adapter->hw)) {
@@ -2554,15 +2556,15 @@ em_allocate_pci_resources(struct adapter *adapter)
 
 	rid = PCIR_BAR(0);
 	adapter->memory = bus_alloc_resource_any(dev, SYS_RES_MEMORY,
-	    &rid, RF_ACTIVE);
+                                           &rid, RF_ACTIVE);
 	if (adapter->memory == NULL) {
 		device_printf(dev, "Unable to allocate bus resource: memory\n");
 		return (ENXIO);
 	}
 	adapter->osdep.mem_bus_space_tag =
-	    rman_get_bustag(adapter->memory);
+    rman_get_bustag(adapter->memory);
 	adapter->osdep.mem_bus_space_handle =
-	    rman_get_bushandle(adapter->memory);
+    rman_get_bushandle(adapter->memory);
 	adapter->hw.hw_addr = (u8 *)&adapter->osdep.mem_bus_space_handle;
 
 	adapter->hw.back = &adapter->osdep;
@@ -2711,10 +2713,10 @@ em_allocate_msix(struct adapter *adapter)
 	// 	bus_describe_intr(dev, txr->res, txr->tag, "tx%d", i);
 	// 	txr->msix = vector;
 
-        //         if (em_last_bind_cpu < 0)
-        //                 em_last_bind_cpu = CPU_FIRST();
-        //         cpu_id = em_last_bind_cpu;
-        //         bus_bind_intr(dev, txr->res, cpu_id);
+  //         if (em_last_bind_cpu < 0)
+  //                 em_last_bind_cpu = CPU_FIRST();
+  //         cpu_id = em_last_bind_cpu;
+  //         bus_bind_intr(dev, txr->res, cpu_id);
 
 	// 	TASK_INIT(&txr->tx_task, 0, em_handle_tx, txr);
 	// 	txr->tq = taskqueue_create_fast("em_txq", M_NOWAIT,
@@ -2742,7 +2744,7 @@ em_allocate_msix(struct adapter *adapter)
 	// 	device_printf(dev,"Unable to allocate "
 	// 	    "bus resource: Link interrupt [%d]\n", rid);
 	// 	return (ENXIO);
-        // }
+  // }
 	// /* Set the link handler function */
 	// error = bus_setup_intr(dev, adapter->res,
 	//     INTR_TYPE_NET | INTR_MPSAFE, NULL,
@@ -2837,8 +2839,8 @@ em_allocate_msix(struct adapter *adapter)
 static int
 em_setup_msix(struct adapter *adapter)
 {
-// 	device_t dev = adapter->dev;
-// 	int val;
+  // 	device_t dev = adapter->dev;
+  // 	int val;
 
 	/* Nearly always going to use one queue */
 	adapter->num_queues = 1;
@@ -2846,73 +2848,73 @@ em_setup_msix(struct adapter *adapter)
 	/*
 	** Try using MSI-X for Hartwell adapters
 	*/
-// 	if ((adapter->hw.mac.type == e1000_82574) &&
-// 	    (em_enable_msix == TRUE)) {
-// #ifdef EM_MULTIQUEUE
-// 		adapter->num_queues = (em_num_queues == 1) ? 1 : 2;
-// 		if (adapter->num_queues > 1)
-// 			em_enable_vectors_82574(adapter);
-// #endif
-// 		/* Map the MSIX BAR */
-// 		int rid = PCIR_BAR(EM_MSIX_BAR);
-// 		adapter->msix_mem = bus_alloc_resource_any(dev,
-// 		    SYS_RES_MEMORY, &rid, RF_ACTIVE);
-//        		if (adapter->msix_mem == NULL) {
-// 			/* May not be enabled */
-//                		device_printf(adapter->dev,
-// 			    "Unable to map MSIX table \n");
-// 			goto msi;
-//        		}
-// 		val = pci_msix_count(dev); 
+  // 	if ((adapter->hw.mac.type == e1000_82574) &&
+  // 	    (em_enable_msix == TRUE)) {
+  // #ifdef EM_MULTIQUEUE
+  // 		adapter->num_queues = (em_num_queues == 1) ? 1 : 2;
+  // 		if (adapter->num_queues > 1)
+  // 			em_enable_vectors_82574(adapter);
+  // #endif
+  // 		/* Map the MSIX BAR */
+  // 		int rid = PCIR_BAR(EM_MSIX_BAR);
+  // 		adapter->msix_mem = bus_alloc_resource_any(dev,
+  // 		    SYS_RES_MEMORY, &rid, RF_ACTIVE);
+  //        		if (adapter->msix_mem == NULL) {
+  // 			/* May not be enabled */
+  //                		device_printf(adapter->dev,
+  // 			    "Unable to map MSIX table \n");
+  // 			goto msi;
+  //        		}
+  // 		val = pci_msix_count(dev); 
 
-// #ifdef EM_MULTIQUEUE
-// 		/* We need 5 vectors in the multiqueue case */
-// 		if (adapter->num_queues > 1 ) {
-// 			if (val >= 5)
-// 				val = 5;
-// 			else {
-// 				adapter->num_queues = 1;
-// 				device_printf(adapter->dev,
-// 				    "Insufficient MSIX vectors for >1 queue, "
-// 				    "using single queue...\n");
-// 				goto msix_one;
-// 			}
-// 		} else {
-// msix_one:
-// #endif
-// 			if (val >= 3)
-// 				val = 3;
-// 			else {
-// 				device_printf(adapter->dev,
-// 			    	"Insufficient MSIX vectors, using MSI\n");
-// 				goto msi;
-// 			}
-// #ifdef EM_MULTIQUEUE
-// 		}
-// #endif
+  // #ifdef EM_MULTIQUEUE
+  // 		/* We need 5 vectors in the multiqueue case */
+  // 		if (adapter->num_queues > 1 ) {
+  // 			if (val >= 5)
+  // 				val = 5;
+  // 			else {
+  // 				adapter->num_queues = 1;
+  // 				device_printf(adapter->dev,
+  // 				    "Insufficient MSIX vectors for >1 queue, "
+  // 				    "using single queue...\n");
+  // 				goto msix_one;
+  // 			}
+  // 		} else {
+  // msix_one:
+  // #endif
+  // 			if (val >= 3)
+  // 				val = 3;
+  // 			else {
+  // 				device_printf(adapter->dev,
+  // 			    	"Insufficient MSIX vectors, using MSI\n");
+  // 				goto msi;
+  // 			}
+  // #ifdef EM_MULTIQUEUE
+  // 		}
+  // #endif
 
-// 		if ((pci_alloc_msix(dev, &val) == 0)) {
-// 			device_printf(adapter->dev,
-// 			    "Using MSIX interrupts "
-// 			    "with %d vectors\n", val);
-// 			return (val);
-// 		}
+  // 		if ((pci_alloc_msix(dev, &val) == 0)) {
+  // 			device_printf(adapter->dev,
+  // 			    "Using MSIX interrupts "
+  // 			    "with %d vectors\n", val);
+  // 			return (val);
+  // 		}
 
-// 		/*
-// 		** If MSIX alloc failed or provided us with
-// 		** less than needed, free and fall through to MSI
-// 		*/
-// 		pci_release_msi(dev);
-// 	}
-// msi:
-// 	if (adapter->msix_mem != NULL) {
-// 		bus_release_resource(dev, SYS_RES_MEMORY,
-// 		    PCIR_BAR(EM_MSIX_BAR), adapter->msix_mem);
-// 		adapter->msix_mem = NULL;
-// 	}
-//        	val = 1;
-       	// if (pci_alloc_msi(dev, &val) == 0) {
-        //        	device_printf(adapter->dev, "Using an MSI interrupt\n");
+  // 		/*
+  // 		** If MSIX alloc failed or provided us with
+  // 		** less than needed, free and fall through to MSI
+  // 		*/
+  // 		pci_release_msi(dev);
+  // 	}
+  // msi:
+  // 	if (adapter->msix_mem != NULL) {
+  // 		bus_release_resource(dev, SYS_RES_MEMORY,
+  // 		    PCIR_BAR(EM_MSIX_BAR), adapter->msix_mem);
+  // 		adapter->msix_mem = NULL;
+  // 	}
+  //        	val = 1;
+  // if (pci_alloc_msi(dev, &val) == 0) {
+  //        	device_printf(adapter->dev, "Using an MSI interrupt\n");
 	// 	return (val);
 	// } 
 	/* Should only happen due to manual configuration */
@@ -3050,7 +3052,7 @@ em_reset(struct adapter *adapter)
 
 	/* Set up smart power down as default off on newer adapters. */
 	if (!em_smart_pwr_down && (hw->mac.type == e1000_82571 ||
-	    hw->mac.type == e1000_82572)) {
+                             hw->mac.type == e1000_82572)) {
 		u16 phy_tmp = 0;
 
 		/* Speed up time to link by disabling smart power down. */
@@ -3065,18 +3067,18 @@ em_reset(struct adapter *adapter)
 	 * the remainder is used for the transmit buffer.
 	 */
 	switch (hw->mac.type) {
-	/* Total Packet Buffer on these is 48K */
+    /* Total Packet Buffer on these is 48K */
 	case e1000_82571:
 	case e1000_82572:
 	case e1000_80003es2lan:
-			pba = E1000_PBA_32K; /* 32K for Rx, 16K for Tx */
+    pba = E1000_PBA_32K; /* 32K for Rx, 16K for Tx */
 		break;
 	case e1000_82573: /* 82573: Total Packet Buffer is 32K */
-			pba = E1000_PBA_12K; /* 12K for Rx, 20K for Tx */
+    pba = E1000_PBA_12K; /* 12K for Rx, 20K for Tx */
 		break;
 	case e1000_82574:
 	case e1000_82583:
-			pba = E1000_PBA_20K; /* 20K for Rx, 20K for Tx */
+    pba = E1000_PBA_20K; /* 20K for Rx, 20K for Tx */
 		break;
 	case e1000_ich8lan:
 		pba = E1000_PBA_8K;
@@ -3119,7 +3121,7 @@ em_reset(struct adapter *adapter)
 	 */
 	rx_buffer_size = ((E1000_READ_REG(hw, E1000_PBA) & 0xffff) << 10 );
 	hw->fc.high_water = rx_buffer_size -
-	    roundup2(adapter->hw.mac.max_frame_size, 1024);
+    roundup2(adapter->hw.mac.max_frame_size, 1024);
 	hw->fc.low_water = hw->fc.high_water - 1500;
 
 	if (adapter->fc) /* locally set flow control value? */
@@ -3138,7 +3140,7 @@ em_reset(struct adapter *adapter)
 	switch (hw->mac.type) {
 	case e1000_pchlan:
 		/* Workaround: no TX flow ctrl for PCH */
-                hw->fc.requested_mode = e1000_fc_rx_pause;
+    hw->fc.requested_mode = e1000_fc_rx_pause;
 		hw->fc.pause_time = 0xFFFF; /* override */
 		if (if_getmtu(ifp) > ETHERMTU) {
 			hw->fc.high_water = 0x3500;
@@ -3162,8 +3164,8 @@ em_reset(struct adapter *adapter)
 		else
 			E1000_WRITE_REG(hw, E1000_PBA, 26);
 		break;
-        case e1000_ich9lan:
-        case e1000_ich10lan:
+  case e1000_ich9lan:
+  case e1000_ich10lan:
 		if (if_getmtu(ifp) > ETHERMTU) {
 			hw->fc.high_water = 0x2800;
 			hw->fc.low_water = hw->fc.high_water - 8;
@@ -3209,46 +3211,46 @@ em_setup_interface(device_t dev, struct adapter *adapter)
 	INIT_DEBUGOUT("em_setup_interface: begin");
 
 	// ifp = adapter->ifp = if_gethandle(dev, IFT_ETHER);
-	ifp = adapter->ifp = &dev->GetMasterClass<E1000>()->_ifp;
+	ifp = adapter->ifp = &dev->GetMasterClass<E1000>()->GetNetInterface()._ifp;
 	if (ifp == 0) {
 		device_printf(dev, "can not allocate ifnet structure\n");
 		return (-1);
 	}
 	// if_initname(ifp, device_get_name(dev), device_get_unit(dev));
-        if_setdev(ifp, reinterpret_cast<void *>(dev));
+  if_setdev(ifp, reinterpret_cast<void *>(dev));
 	// if_setinitfn(ifp, em_init);
 	if_setsoftc(ifp, adapter);
 	// if_setflags(ifp, IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST);
 	// if_setioctlfn(ifp, em_ioctl);
-// #if __FreeBSD_version >= 1100036
-// 	if_setgetcounterfn(ifp, em_get_counter);
-// #endif
-// #ifdef EM_MULTIQUEUE
-// 	/* Multiqueue stack interface */
-// 	if_settransmitfn(ifp, em_mq_start);
-// 	if_setqflushfn(ifp, em_qflush);
-// #else
-// 	if_setstartfn(ifp, em_start);
-// 	if_setsendqlen(ifp, adapter->num_tx_desc - 1);
-// 	if_setsendqready(ifp);
-// #endif	
+  // #if __FreeBSD_version >= 1100036
+  // 	if_setgetcounterfn(ifp, em_get_counter);
+  // #endif
+  // #ifdef EM_MULTIQUEUE
+  // 	/* Multiqueue stack interface */
+  // 	if_settransmitfn(ifp, em_mq_start);
+  // 	if_setqflushfn(ifp, em_qflush);
+  // #else
+  // 	if_setstartfn(ifp, em_start);
+  // 	if_setsendqlen(ifp, adapter->num_tx_desc - 1);
+  // 	if_setsendqready(ifp);
+  // #endif	
 
 	// ether_ifattach(ifp, adapter->hw.mac.addr);
 
-        if_setcapabilities(ifp, 0);
-        if_setcapenable(ifp, 0);
+  if_setcapabilities(ifp, 0);
+  if_setcapenable(ifp, 0);
 
 
-        if_setcapabilitiesbit(ifp, IFCAP_HWCSUM | IFCAP_VLAN_HWCSUM |
-                              IFCAP_TSO4, 0);
+  if_setcapabilitiesbit(ifp, IFCAP_HWCSUM | IFCAP_VLAN_HWCSUM |
+                        IFCAP_TSO4, 0);
 	/*
 	 * Tell the upper layer(s) we
 	 * support full VLAN capability
 	 */
 	// if_setifheaderlen(ifp, sizeof(struct ether_vlan_header));
-        if_setcapabilitiesbit(ifp, IFCAP_VLAN_HWTAGGING | IFCAP_VLAN_HWTSO |
-                              IFCAP_VLAN_MTU, 0);
-        if_setcapenable(ifp, if_getcapabilities(ifp));
+  if_setcapabilitiesbit(ifp, IFCAP_VLAN_HWTAGGING | IFCAP_VLAN_HWTSO |
+                        IFCAP_VLAN_MTU, 0);
+  if_setcapenable(ifp, if_getcapabilities(ifp));
 
 	/*
 	** Don't turn this on by default, if vlans are
@@ -3307,76 +3309,69 @@ em_setup_interface(device_t dev, struct adapter *adapter)
 /*
  * Manage DMA'able memory.
  */
-// static void
-// em_dmamap_cb(void *arg, bus_dma_segment_t *segs, int nseg, int error)
-// {
-// 	if (error)
-// 		return;
-// 	*(bus_addr_t *) arg = segs[0].ds_addr;
-// }
+static void
+em_dmamap_cb(void *arg, bus_dma_segment_t *segs, int nseg, int error)
+{
+	if (error)
+		return;
+	*(bus_addr_t *) arg = segs[0].ds_addr;
+}
 
 static int
 em_dma_malloc(struct adapter *adapter, bus_size_t size,
-        struct em_dma_alloc *dma, int mapflags)
+              struct em_dma_alloc *dma, int mapflags)
 {
-  PhysAddr paddr;
-  physmem_ctrl->Alloc(paddr, PagingCtrl::RoundUpAddrOnPageBoundary(size));
-  dma->dma_paddr = reinterpret_cast<bus_addr_t>(paddr.GetAddr());
-  dma->dma_vaddr = reinterpret_cast<caddr_t>(p2v(paddr.GetAddr()));
+  	int error;
 
-  return (0);
+  	error = bus_dma_tag_create(bus_get_dma_tag(adapter->dev), /* parent */
+  				EM_DBA_ALIGN, 0,	/* alignment, bounds */
+  				BUS_SPACE_MAXADDR,	/* lowaddr */
+  				BUS_SPACE_MAXADDR,	/* highaddr */
+  				NULL, NULL,		/* filter, filterarg */
+  				size,			/* maxsize */
+  				1,			/* nsegments */
+  				size,			/* maxsegsize */
+  				0,			/* flags */
+  				NULL,			/* lockfunc */
+  				NULL,			/* lockarg */
+  				&dma->dma_tag);
+  	if (error) {
+  		device_printf(adapter->dev,
+  		    "%s: bus_dma_tag_create failed: %d\n",
+  		    __func__, error);
+  		goto fail_0;
+  	}
 
-// 	int error;
+  	error = bus_dmamem_alloc(dma->dma_tag, (void**) &dma->dma_vaddr,
+  	    BUS_DMA_NOWAIT | BUS_DMA_COHERENT, &dma->dma_map);
+  	if (error) {
+  		device_printf(adapter->dev,
+  		    "%s: bus_dmamem_alloc(%ju) failed: %d\n",
+  		    __func__, (uintmax_t)size, error);
+  		goto fail_2;
+  	}
 
-// 	error = bus_dma_tag_create(bus_get_dma_tag(adapter->dev), /* parent */
-// 				EM_DBA_ALIGN, 0,	/* alignment, bounds */
-// 				BUS_SPACE_MAXADDR,	/* lowaddr */
-// 				BUS_SPACE_MAXADDR,	/* highaddr */
-// 				NULL, NULL,		/* filter, filterarg */
-// 				size,			/* maxsize */
-// 				1,			/* nsegments */
-// 				size,			/* maxsegsize */
-// 				0,			/* flags */
-// 				NULL,			/* lockfunc */
-// 				NULL,			/* lockarg */
-// 				&dma->dma_tag);
-// 	if (error) {
-// 		device_printf(adapter->dev,
-// 		    "%s: bus_dma_tag_create failed: %d\n",
-// 		    __func__, error);
-// 		goto fail_0;
-// 	}
+  	dma->dma_paddr = 0;
+  	error = bus_dmamap_load(dma->dma_tag, dma->dma_map, dma->dma_vaddr,
+  	    size, em_dmamap_cb, &dma->dma_paddr, mapflags | BUS_DMA_NOWAIT);
+  	if (error || dma->dma_paddr == 0) {
+  		device_printf(adapter->dev,
+  		    "%s: bus_dmamap_load failed: %d\n",
+  		    __func__, error);
+  		goto fail_3;
+  	}
 
-// 	error = bus_dmamem_alloc(dma->dma_tag, (void**) &dma->dma_vaddr,
-// 	    BUS_DMA_NOWAIT | BUS_DMA_COHERENT, &dma->dma_map);
-// 	if (error) {
-// 		device_printf(adapter->dev,
-// 		    "%s: bus_dmamem_alloc(%ju) failed: %d\n",
-// 		    __func__, (uintmax_t)size, error);
-// 		goto fail_2;
-// 	}
+  	return (0);
 
-// 	dma->dma_paddr = 0;
-// 	error = bus_dmamap_load(dma->dma_tag, dma->dma_map, dma->dma_vaddr,
-// 	    size, em_dmamap_cb, &dma->dma_paddr, mapflags | BUS_DMA_NOWAIT);
-// 	if (error || dma->dma_paddr == 0) {
-// 		device_printf(adapter->dev,
-// 		    "%s: bus_dmamap_load failed: %d\n",
-// 		    __func__, error);
-// 		goto fail_3;
-// 	}
+  fail_3:
+  	bus_dmamap_unload(dma->dma_tag, dma->dma_map);
+  fail_2:
+  	bus_dmamem_free(dma->dma_tag, dma->dma_vaddr, dma->dma_map);
+  	bus_dma_tag_destroy(dma->dma_tag);
+  fail_0:
+  	dma->dma_tag = NULL;
 
-// 	return (0);
-
-// fail_3:
-// 	bus_dmamap_unload(dma->dma_tag, dma->dma_map);
-// fail_2:
-// 	bus_dmamem_free(dma->dma_tag, dma->dma_vaddr, dma->dma_map);
-// 	bus_dma_tag_destroy(dma->dma_tag);
-// fail_0:
-// 	dma->dma_tag = NULL;
-
-// 	return (error);
+  	return (error);
 }
 
 // static void
@@ -3416,9 +3411,9 @@ em_allocate_queues(struct adapter *adapter)
 
 	/* Allocate the TX ring struct memory */
 	if (!(adapter->tx_rings =
-              (struct tx_ring *)reinterpret_cast<u8 *>(virtmem_ctrl->AllocZ(sizeof(struct tx_ring) * adapter->num_queues))
-              /* malloc(sizeof(struct tx_ring) *
-                 adapter->num_queues, M_DEVBUF, M_NOWAIT | M_ZERO) */)) {
+        (struct tx_ring *)reinterpret_cast<u8 *>(virtmem_ctrl->AllocZ(sizeof(struct tx_ring) * adapter->num_queues))
+        /* malloc(sizeof(struct tx_ring) *
+           adapter->num_queues, M_DEVBUF, M_NOWAIT | M_ZERO) */)) {
 		device_printf(dev, "Unable to allocate TX ring memory\n");
 		error = ENOMEM;
 		goto fail;
@@ -3426,16 +3421,16 @@ em_allocate_queues(struct adapter *adapter)
 
 	/* Now allocate the RX */
 	if (!(adapter->rx_rings =
-              (struct rx_ring *)reinterpret_cast<u8 *>(virtmem_ctrl->AllocZ(sizeof(struct rx_ring) *adapter->num_queues))
-              /*malloc(sizeof(struct rx_ring) *
-                adapter->num_queues, M_DEVBUF, M_NOWAIT | M_ZERO)*/)) {
+        (struct rx_ring *)reinterpret_cast<u8 *>(virtmem_ctrl->AllocZ(sizeof(struct rx_ring) *adapter->num_queues))
+        /*malloc(sizeof(struct rx_ring) *
+          adapter->num_queues, M_DEVBUF, M_NOWAIT | M_ZERO)*/)) {
 		device_printf(dev, "Unable to allocate RX ring memory\n");
 		error = ENOMEM;
 		goto rx_fail;
 	}
 
 	tsize = roundup2(adapter->num_tx_desc *
-	    sizeof(struct e1000_tx_desc), EM_DBA_ALIGN);
+                   sizeof(struct e1000_tx_desc), EM_DBA_ALIGN);
 	/*
 	 * Now set up the TX queues, txconf is needed to handle the
 	 * possibility that things fail midcourse and we need to
@@ -3450,25 +3445,24 @@ em_allocate_queues(struct adapter *adapter)
 		/* Initialize the TX lock */
 		// snprintf(txr->mtx_name, sizeof(txr->mtx_name), "%s:tx(%d)",
 		//     device_get_nameunit(dev), txr->me);
-		// mtx_init(&txr->tx_mtx, txr->mtx_name, NULL, MTX_DEF);
-                new(&txr->tx_mtx) mtx;
+    mtx_init(&txr->tx_mtx, txr->mtx_name, NULL, MTX_DEF);
 
 		if (em_dma_malloc(adapter, tsize,
-			&txr->txdma, BUS_DMA_NOWAIT)) {
+                      &txr->txdma, BUS_DMA_NOWAIT)) {
 			device_printf(dev,
-			    "Unable to allocate TX Descriptor memory\n");
+                    "Unable to allocate TX Descriptor memory\n");
 			error = ENOMEM;
 			goto err_tx_desc;
 		}
 		txr->tx_base = (struct e1000_tx_desc *)txr->txdma.dma_vaddr;
 		bzero((void *)txr->tx_base, tsize);
 
-        	if (em_allocate_transmit_buffers(txr)) {
+    if (em_allocate_transmit_buffers(txr)) {
 			device_printf(dev,
-			    "Critical Failure setting up transmit buffers\n");
+                    "Critical Failure setting up transmit buffers\n");
 			error = ENOMEM;
 			goto err_tx_desc;
-        	}
+    }
 		/* Allocate a buf ring */
 		// txr->br = buf_ring_alloc(4096, M_DEVBUF,
 		//     M_WAITOK, &txr->tx_mtx);
@@ -3478,7 +3472,7 @@ em_allocate_queues(struct adapter *adapter)
 	 * Next the RX queues...
 	 */ 
 	rsize = roundup2(adapter->num_rx_desc *
-	    sizeof(struct e1000_rx_desc), EM_DBA_ALIGN);
+                   sizeof(struct e1000_rx_desc), EM_DBA_ALIGN);
 	for (int i = 0; i < adapter->num_queues; i++, rxconf++) {
 		rxr = &adapter->rx_rings[i];
 		rxr->adapter = adapter;
@@ -3487,23 +3481,22 @@ em_allocate_queues(struct adapter *adapter)
 		/* Initialize the RX lock */
 		// snprintf(rxr->mtx_name, sizeof(rxr->mtx_name), "%s:rx(%d)",
 		//     device_get_nameunit(dev), txr->me);
-		// mtx_init(&rxr->rx_mtx, rxr->mtx_name, NULL, MTX_DEF);
-                new(&rxr->rx_mtx) mtx;
+    mtx_init(&rxr->rx_mtx, rxr->mtx_name, NULL, MTX_DEF);
 
 		if (em_dma_malloc(adapter, rsize,
-			&rxr->rxdma, BUS_DMA_NOWAIT)) {
+                      &rxr->rxdma, BUS_DMA_NOWAIT)) {
 			device_printf(dev,
-			    "Unable to allocate RxDescriptor memory\n");
+                    "Unable to allocate RxDescriptor memory\n");
 			error = ENOMEM;
 			goto err_rx_desc;
 		}
 		rxr->rx_base = (struct e1000_rx_desc *)rxr->rxdma.dma_vaddr;
 		bzero((void *)rxr->rx_base, rsize);
 
-        	/* Allocate receive buffers for the ring*/
+    /* Allocate receive buffers for the ring*/
 		if (em_allocate_receive_buffers(rxr)) {
 			device_printf(dev,
-			    "Critical Failure setting up receive buffers\n");
+                    "Critical Failure setting up receive buffers\n");
 			error = ENOMEM;
 			goto err_rx_desc;
 		}
@@ -3511,17 +3504,17 @@ em_allocate_queues(struct adapter *adapter)
 
 	return (0);
 
-err_rx_desc:
+ err_rx_desc:
 	// for (rxr = adapter->rx_rings; rxconf > 0; rxr++, rxconf--)
 	// 	em_dma_free(adapter, &rxr->rxdma);
-err_tx_desc:
+ err_tx_desc:
 	// for (txr = adapter->tx_rings; txconf > 0; txr++, txconf--)
 	// 	em_dma_free(adapter, &txr->txdma);
 	// free(adapter->rx_rings, M_DEVBUF);
-rx_fail:
+ rx_fail:
 	// buf_ring_free(txr->br, M_DEVBUF);
 	// free(adapter->tx_rings, M_DEVBUF);
-fail:
+ fail:
 	return (error);
 }
 
@@ -3540,37 +3533,37 @@ em_allocate_transmit_buffers(struct tx_ring *txr)
 	device_t dev = adapter->dev;
 	struct em_buffer *txbuf;
 	int error, i;
-  BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
+  E1000 *e1000 = adapter->dev->GetMasterClass<E1000>();
 
 	/*
 	 * Setup DMA descriptor areas.
 	 */
 	if ((error = bus_dma_tag_create(bus_get_dma_tag(dev),
-			       1, 0,			/* alignment, bounds */
-			       BUS_SPACE_MAXADDR,	/* lowaddr */
-			       BUS_SPACE_MAXADDR,	/* highaddr */
-			       NULL, NULL,		/* filter, filterarg */
-			       EM_TSO_SIZE,		/* maxsize */
-			       EM_MAX_SCATTER,		/* nsegments */
-			       PAGE_SIZE,		/* maxsegsize */
-			       0,			/* flags */
-			       NULL,			/* lockfunc */
-			       NULL,			/* lockfuncarg */
-			       &txr->txtag))) {
+                                  1, 0,			/* alignment, bounds */
+                                  BUS_SPACE_MAXADDR,	/* lowaddr */
+                                  BUS_SPACE_MAXADDR,	/* highaddr */
+                                  NULL, NULL,		/* filter, filterarg */
+                                  EM_TSO_SIZE,		/* maxsize */
+                                  EM_MAX_SCATTER,		/* nsegments */
+                                  PAGE_SIZE,		/* maxsegsize */
+                                  0,			/* flags */
+                                  NULL,			/* lockfunc */
+                                  NULL,			/* lockfuncarg */
+                                  &txr->txtag))) {
 		device_printf(dev,"Unable to allocate TX DMA tag\n");
 		goto fail;
 	}
 
 	if (!(txr->tx_buffers =
-              reinterpret_cast<struct em_buffer *>(virtmem_ctrl->AllocZ(sizeof(struct em_buffer) * adapter->num_tx_desc))
-              /*(struct em_buffer *) malloc(sizeof(struct em_buffer) *
-                adapter->num_tx_desc, M_DEVBUF, M_NOWAIT | M_ZERO)*/)) {
+        reinterpret_cast<struct em_buffer *>(virtmem_ctrl->AllocZ(sizeof(struct em_buffer) * adapter->num_tx_desc))
+        /*(struct em_buffer *) malloc(sizeof(struct em_buffer) *
+          adapter->num_tx_desc, M_DEVBUF, M_NOWAIT | M_ZERO)*/)) {
 		device_printf(dev, "Unable to allocate tx_buffer memory\n");
 		error = ENOMEM;
 		goto fail;
 	}
 
-        /* Create the descriptor buffer dma maps */
+  /* Create the descriptor buffer dma maps */
 	txbuf = txr->tx_buffers;
 	for (i = 0; i < adapter->num_tx_desc; i++, txbuf++) {
 		error = bus_dmamap_create(txr->txtag, 0, &txbuf->map);
@@ -3579,10 +3572,10 @@ em_allocate_transmit_buffers(struct tx_ring *txr)
 			goto fail;
 		}
 	}
-        e1000->InitTxPacketBuffer();
+  e1000->GetNetInterface().InitTxPacketBuffer();
 
 	return 0;
-fail:
+ fail:
 	/* We free all, it handles case where we are in the middle */
 	// em_free_transmit_structures(adapter);
 	return (error);
@@ -3597,7 +3590,7 @@ static void
 em_setup_transmit_ring(struct tx_ring *txr)
 {
 	struct adapter *adapter = txr->adapter;
-        BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
+  E1000 *e1000 = adapter->dev->GetMasterClass<E1000>();
 	struct em_buffer *txbuf;
 	int i;
 #ifdef DEV_NETMAP
@@ -3618,42 +3611,42 @@ em_setup_transmit_ring(struct tx_ring *txr)
 	txr->next_to_clean = 0;
 
 	/* Free any existing tx buffers. */
-        txbuf = txr->tx_buffers;
+  txbuf = txr->tx_buffers;
 	for (i = 0; i < adapter->num_tx_desc; i++, txbuf++) {
-// 		if (txbuf->m_head != NULL) {
-// 			bus_dmamap_sync(txr->txtag, txbuf->map,
-// 			    BUS_DMASYNC_POSTWRITE);
-// 			bus_dmamap_unload(txr->txtag, txbuf->map);
-// 			m_freem(txbuf->m_head);
-// 			txbuf->m_head = NULL;
-// 		}
-// #ifdef DEV_NETMAP
-// 		if (slot) {
-// 			int si = netmap_idx_n2k(&na->tx_rings[txr->me], i);
-// 			uint64_t paddr;
-// 			void *addr;
+    // 		if (txbuf->m_head != NULL) {
+    // 			bus_dmamap_sync(txr->txtag, txbuf->map,
+    // 			    BUS_DMASYNC_POSTWRITE);
+    // 			bus_dmamap_unload(txr->txtag, txbuf->map);
+    // 			m_freem(txbuf->m_head);
+    // 			txbuf->m_head = NULL;
+    // 		}
+    // #ifdef DEV_NETMAP
+    // 		if (slot) {
+    // 			int si = netmap_idx_n2k(&na->tx_rings[txr->me], i);
+    // 			uint64_t paddr;
+    // 			void *addr;
 
-// 			addr = PNMB(na, slot + si, &paddr);
-// 			txr->tx_base[i].buffer_addr = htole64(paddr);
-// 			/* reload the map for netmap mode */
-// 			netmap_load_map(na, txr->txtag, txbuf->map, addr);
-// 		}
-// #endif /* DEV_NETMAP */
+    // 			addr = PNMB(na, slot + si, &paddr);
+    // 			txr->tx_base[i].buffer_addr = htole64(paddr);
+    // 			/* reload the map for netmap mode */
+    // 			netmap_load_map(na, txr->txtag, txbuf->map, addr);
+    // 		}
+    // #endif /* DEV_NETMAP */
 
-          /* clear the watch index */
-          txbuf->next_eop = -1;
-        }
+    /* clear the watch index */
+    txbuf->next_eop = -1;
+  }
 
-        BsdDevEthernet::Packet *packet;
-        while(e1000->_tx_buffered.Pop(packet)) {
-          kassert(e1000->_tx_reserved.Push(packet));
-        }
+  BsdEthernet::Packet *packet;
+  while(e1000->GetNetInterface()._tx_buffered.Pop(packet)) {
+    kassert(e1000->GetNetInterface()._tx_reserved.Push(packet));
+  }
 
-	for (int j = 0; j < adapter->num_tx_desc; j++) {
-          PhysAddr paddr;
-          physmem_ctrl->Alloc(paddr, PagingCtrl::ConvertNumToPageSize(MCLBYTES));
-          txr->tx_base[j].buffer_addr = htole64(paddr.GetAddr());
-        }
+  for (int j = 0; j < adapter->num_tx_desc; j++) {
+    PhysAddr paddr;
+    physmem_ctrl->Alloc(paddr, PagingCtrl::ConvertNumToPageSize(MCLBYTES));
+    txr->tx_base[j].buffer_addr = htole64(paddr.GetAddr());
+  }
 
 	/* Set number of descriptors available */
 	txr->tx_avail = adapter->num_tx_desc;
@@ -3667,7 +3660,7 @@ em_setup_transmit_ring(struct tx_ring *txr)
 	txr->last_hw_tucso = 0;
 
 	bus_dmamap_sync(txr->txdma.dma_tag, txr->txdma.dma_map,
-	    BUS_DMASYNC_PREREAD | BUS_DMASYNC_PREWRITE);
+                  BUS_DMASYNC_PREREAD | BUS_DMASYNC_PREWRITE);
 	EM_TX_UNLOCK(txr);
 }
 
@@ -3699,35 +3692,35 @@ em_initialize_transmit_unit(struct adapter *adapter)
 	struct e1000_hw	*hw = &adapter->hw;
 	u32	tctl, txdctl = 0, tarc, tipg = 0;
 
-	 INIT_DEBUGOUT("em_initialize_transmit_unit: begin");
+  INIT_DEBUGOUT("em_initialize_transmit_unit: begin");
 
 	for (int i = 0; i < adapter->num_queues; i++, txr++) {
-          u64 bus_addr = reinterpret_cast<u64>(txr->txdma.dma_paddr);
+    u64 bus_addr = reinterpret_cast<u64>(txr->txdma.dma_paddr);
 		/* Base and Len of TX Ring */
 		E1000_WRITE_REG(hw, E1000_TDLEN(i),
-	    	    adapter->num_tx_desc * sizeof(struct e1000_tx_desc));
+                    adapter->num_tx_desc * sizeof(struct e1000_tx_desc));
 		E1000_WRITE_REG(hw, E1000_TDBAH(i),
-	    	    (u32)(bus_addr >> 32));
+                    (u32)(bus_addr >> 32));
 		E1000_WRITE_REG(hw, E1000_TDBAL(i),
-	    	    (u32)bus_addr);
+                    (u32)bus_addr);
 		/* Init the HEAD/TAIL indices */
 		E1000_WRITE_REG(hw, E1000_TDT(i), 0);
 		E1000_WRITE_REG(hw, E1000_TDH(i), 0);
 
 		HW_DEBUGOUT2("Base = %x, Length = %x\n",
-		    E1000_READ_REG(&adapter->hw, E1000_TDBAL(i)),
-		    E1000_READ_REG(&adapter->hw, E1000_TDLEN(i)));
+                 E1000_READ_REG(&adapter->hw, E1000_TDBAL(i)),
+                 E1000_READ_REG(&adapter->hw, E1000_TDLEN(i)));
 
 		txr->busy = EM_TX_IDLE;
 		txdctl = 0; /* clear txdctl */
-                txdctl |= 0x1f; /* PTHRESH */
-                txdctl |= 1 << 8; /* HTHRESH */
-                txdctl |= 1 << 16;/* WTHRESH */
+    txdctl |= 0x1f; /* PTHRESH */
+    txdctl |= 1 << 8; /* HTHRESH */
+    txdctl |= 1 << 16;/* WTHRESH */
 		txdctl |= 1 << 22; /* Reserved bit 22 must always be 1 */
 		txdctl |= E1000_TXDCTL_GRAN;
-                txdctl |= 1 << 25; /* LWTHRESH */
+    txdctl |= 1 << 25; /* LWTHRESH */
 
-                E1000_WRITE_REG(hw, E1000_TXDCTL(i), txdctl);
+    E1000_WRITE_REG(hw, E1000_TXDCTL(i), txdctl);
 	}
 
 	/* Set the default values for the Tx Inter Packet Gap timer */
@@ -3735,12 +3728,12 @@ em_initialize_transmit_unit(struct adapter *adapter)
 	case e1000_80003es2lan:
 		tipg = DEFAULT_82543_TIPG_IPGR1;
 		tipg |= DEFAULT_80003ES2LAN_TIPG_IPGR2 <<
-		    E1000_TIPG_IPGR2_SHIFT;
+      E1000_TIPG_IPGR2_SHIFT;
 		break;
 	default:
 		if ((adapter->hw.phy.media_type == e1000_media_type_fiber) ||
 		    (adapter->hw.phy.media_type ==
-		    e1000_media_type_internal_serdes))
+         e1000_media_type_internal_serdes))
 			tipg = DEFAULT_82543_TIPG_IPGT_FIBER;
 		else
 			tipg = DEFAULT_82543_TIPG_IPGT_COPPER;
@@ -3753,7 +3746,7 @@ em_initialize_transmit_unit(struct adapter *adapter)
 
 	if(adapter->hw.mac.type >= e1000_82540)
 		E1000_WRITE_REG(&adapter->hw, E1000_TADV,
-		    adapter->tx_abs_int_delay.value);
+                    adapter->tx_abs_int_delay.value);
 
 	if ((adapter->hw.mac.type == e1000_82571) ||
 	    (adapter->hw.mac.type == e1000_82572)) {
@@ -3787,7 +3780,7 @@ em_initialize_transmit_unit(struct adapter *adapter)
 	tctl = E1000_READ_REG(&adapter->hw, E1000_TCTL);
 	tctl &= ~E1000_TCTL_CT;
 	tctl |= (E1000_TCTL_PSP | E1000_TCTL_RTLC | E1000_TCTL_EN |
-		   (E1000_COLLISION_THRESHOLD << E1000_CT_SHIFT));
+           (E1000_COLLISION_THRESHOLD << E1000_CT_SHIFT));
 
 	if (adapter->hw.mac.type >= e1000_82571)
 		tctl |= E1000_TCTL_MULR;
@@ -4116,9 +4109,9 @@ static void
 em_txeof(struct tx_ring *txr)
 {
 	struct adapter	*adapter = txr->adapter;
-        int first, last, done, processed;
-        struct em_buffer *tx_buffer;
-        struct e1000_tx_desc   *tx_desc, *eop_desc;
+  int first, last, done, processed;
+  struct em_buffer *tx_buffer;
+  struct e1000_tx_desc   *tx_desc, *eop_desc;
 	if_t ifp = adapter->ifp;
 
 	EM_TX_LOCK_ASSERT(txr);
@@ -4128,17 +4121,17 @@ em_txeof(struct tx_ring *txr)
 #endif /* DEV_NETMAP */
 
 	/* No work, make sure hang detection is disabled */
-        if (txr->tx_avail == adapter->num_tx_desc) {
+  if (txr->tx_avail == adapter->num_tx_desc) {
 		txr->busy = EM_TX_IDLE;
-                return;
+    return;
 	}
 
 	processed = 0;
-        first = txr->next_to_clean;
-        tx_desc = &txr->tx_base[first];
-        tx_buffer = &txr->tx_buffers[first];
+  first = txr->next_to_clean;
+  tx_desc = &txr->tx_base[first];
+  tx_buffer = &txr->tx_buffers[first];
 	last = tx_buffer->next_eop;
-        eop_desc = &txr->tx_base[last];
+  eop_desc = &txr->tx_base[last];
 
 	/*
 	 * What this does is get the index of the
@@ -4150,16 +4143,16 @@ em_txeof(struct tx_ring *txr)
  		last = 0;
 	done = last;
 
-        bus_dmamap_sync(txr->txdma.dma_tag, txr->txdma.dma_map,
-            BUS_DMASYNC_POSTREAD);
+  bus_dmamap_sync(txr->txdma.dma_tag, txr->txdma.dma_map,
+                  BUS_DMASYNC_POSTREAD);
 
-        while (eop_desc->upper.fields.status & E1000_TXD_STAT_DD) {
+  while (eop_desc->upper.fields.status & E1000_TXD_STAT_DD) {
 		/* We clean the range of the packet */
 		while (first != done) {
-                	tx_desc->upper.data = 0;
-                	tx_desc->lower.data = 0;
-                	tx_desc->buffer_addr = 0;
-                	++txr->tx_avail;
+      tx_desc->upper.data = 0;
+      tx_desc->lower.data = 0;
+      tx_desc->buffer_addr = 0;
+      ++txr->tx_avail;
 			++processed;
 
 			// if (tx_buffer->m_head) {
@@ -4168,33 +4161,33 @@ em_txeof(struct tx_ring *txr)
 			// 	    BUS_DMASYNC_POSTWRITE);
 			// 	bus_dmamap_unload(txr->txtag,
 			// 	    tx_buffer->map);
-                        //	 m_freem(tx_buffer->m_head);
-                        // 	tx_buffer->m_head = NULL;
-                	// }
+      //	 m_freem(tx_buffer->m_head);
+      // 	tx_buffer->m_head = NULL;
+      // }
 			tx_buffer->next_eop = -1;
 
-	                if (++first == adapter->num_tx_desc)
+      if (++first == adapter->num_tx_desc)
 				first = 0;
 
-	                tx_buffer = &txr->tx_buffers[first];
+      tx_buffer = &txr->tx_buffers[first];
 			tx_desc = &txr->tx_base[first];
 		}
 		// if_inc_counter(ifp, IFCOUNTER_OPACKETS, 1);
 		/* See if we can continue to the next packet */
 		last = tx_buffer->next_eop;
 		if (last != -1) {
-        		eop_desc = &txr->tx_base[last];
+      eop_desc = &txr->tx_base[last];
 			/* Get new done point */
 			if (++last == adapter->num_tx_desc) last = 0;
 			done = last;
 		} else
 			break;
-        }
+  }
 
-        bus_dmamap_sync(txr->txdma.dma_tag, txr->txdma.dma_map,
-            BUS_DMASYNC_PREREAD | BUS_DMASYNC_PREWRITE);
+  bus_dmamap_sync(txr->txdma.dma_tag, txr->txdma.dma_map,
+                  BUS_DMASYNC_PREREAD | BUS_DMASYNC_PREWRITE);
 
-        txr->next_to_clean = first;
+  txr->next_to_clean = first;
 
 	/*
 	** Hang detection: we know there's work outstanding
@@ -4208,14 +4201,14 @@ em_txeof(struct tx_ring *txr)
 	} else /* At least one descriptor was cleaned */
 		txr->busy = EM_TX_BUSY; /* note this clears HUNG */
 
-        /*
-         * If we have a minimum free, clear IFF_DRV_OACTIVE
-         * to tell the stack that it is OK to send packets.
+  /*
+   * If we have a minimum free, clear IFF_DRV_OACTIVE
+   * to tell the stack that it is OK to send packets.
 	 * Notice that all writes of OACTIVE happen under the
 	 * TX lock which, with a single queue, guarantees 
 	 * sanity.
-         */
-        if (txr->tx_avail >= EM_MAX_SCATTER) {
+   */
+  if (txr->tx_avail >= EM_MAX_SCATTER) {
 		if_setdrvflagbits(ifp, 0, IFF_DRV_OACTIVE);
 	}
 
@@ -4291,14 +4284,14 @@ em_refresh_mbufs(struct rx_ring *rxr, int limit)
 		if (++j == adapter->num_rx_desc)
 			j = 0;
 	}
-// update:
+  // update:
 	/*
 	** Update the tail pointer only if,
 	** and as far as we have refreshed.
 	*/
 	if (cleaned)
 		E1000_WRITE_REG(&adapter->hw,
-		    E1000_RDT(rxr->me), rxr->next_to_refresh);
+                    E1000_RDT(rxr->me), rxr->next_to_refresh);
 
 	return;
 }
@@ -4319,7 +4312,7 @@ em_allocate_receive_buffers(struct rx_ring *rxr)
   device_t                dev = adapter->dev;
 	struct em_buffer	*rxbuf;
 	int			error;
-  BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
+  E1000 *e1000 = adapter->dev->GetMasterClass<E1000>();
 
 	rxr->rx_buffers = reinterpret_cast<struct em_buffer *>(virtmem_ctrl->AllocZ(sizeof(struct em_buffer) * adapter->num_rx_desc));
 	// rxr->rx_buffers = malloc(sizeof(struct em_buffer) *
@@ -4330,20 +4323,20 @@ em_allocate_receive_buffers(struct rx_ring *rxr)
 	}
 
 	error = bus_dma_tag_create(bus_get_dma_tag(dev), /* parent */
-				1, 0,			/* alignment, bounds */
-				BUS_SPACE_MAXADDR,	/* lowaddr */
-				BUS_SPACE_MAXADDR,	/* highaddr */
-				NULL, NULL,		/* filter, filterarg */
-				MJUM9BYTES,		/* maxsize */
-				1,			/* nsegments */
-				MJUM9BYTES,		/* maxsegsize */
-				0,			/* flags */
-				NULL,			/* lockfunc */
-				NULL,			/* lockarg */
-				&rxr->rxtag);
+                             1, 0,			/* alignment, bounds */
+                             BUS_SPACE_MAXADDR,	/* lowaddr */
+                             BUS_SPACE_MAXADDR,	/* highaddr */
+                             NULL, NULL,		/* filter, filterarg */
+                             MJUM9BYTES,		/* maxsize */
+                             1,			/* nsegments */
+                             MJUM9BYTES,		/* maxsegsize */
+                             0,			/* flags */
+                             NULL,			/* lockfunc */
+                             NULL,			/* lockarg */
+                             &rxr->rxtag);
 	if (error) {
 		device_printf(dev, "%s: bus_dma_tag_create failed %d\n",
-		    __func__, error);
+                  __func__, error);
 		goto fail;
 	}
 	rxbuf = rxr->rx_buffers;
@@ -4352,16 +4345,16 @@ em_allocate_receive_buffers(struct rx_ring *rxr)
 		error = bus_dmamap_create(rxr->rxtag, 0, &rxbuf->map);
 		if (error) {
 			device_printf(dev, "%s: bus_dmamap_create failed: %d\n",
-			    __func__, error);
+                    __func__, error);
 			goto fail;
 		}
 	}
 
-        e1000->InitRxPacketBuffer();
+  e1000->GetNetInterface().InitRxPacketBuffer();
 
 	return (0);
 
-fail:
+ fail:
 	// em_free_receive_structures(adapter);
 	return (error);
 }
@@ -4376,8 +4369,8 @@ static int
 em_setup_receive_ring(struct rx_ring *rxr)
 {
 	struct	adapter 	*adapter = rxr->adapter;
-        BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
-        // struct em_buffer	*rxbuf;
+  E1000 *e1000 = adapter->dev->GetMasterClass<E1000>();
+  // struct em_buffer	*rxbuf;
 	// bus_dma_segment_t	seg[1];
 	int			rsize, /* nsegs, */ error = 0;
 #ifdef DEV_NETMAP
@@ -4389,7 +4382,7 @@ em_setup_receive_ring(struct rx_ring *rxr)
 	/* Clear the ring contents */
 	EM_RX_LOCK(rxr);
 	rsize = roundup2(adapter->num_rx_desc *
-	    sizeof(struct e1000_rx_desc), EM_DBA_ALIGN);
+                   sizeof(struct e1000_rx_desc), EM_DBA_ALIGN);
 	bzero((void *)rxr->rx_base, rsize);
 #ifdef DEV_NETMAP
 	slot = netmap_reset(na, NR_RX, rxr->me, 0);
@@ -4408,13 +4401,13 @@ em_setup_receive_ring(struct rx_ring *rxr)
 	// 		rxbuf->m_head = NULL; /* mark as freed */
 	// 	}
 	// }
-        BsdDevEthernet::Packet *packet;
-        while(e1000->_rx_buffered.Pop(packet)) {
-          kassert(e1000->_rx_reserved.Push(packet));
-        }
+  BsdEthernet::Packet *packet;
+  while(e1000->GetNetInterface()._rx_buffered.Pop(packet)) {
+    kassert(e1000->GetNetInterface()._rx_reserved.Push(packet));
+  }
 
 	/* Now replenish the mbufs */
-        for (int j = 0; j != adapter->num_rx_desc; ++j) {
+  for (int j = 0; j != adapter->num_rx_desc; ++j) {
 		// rxbuf = &rxr->rx_buffers[j];
 #ifdef DEV_NETMAP
 		if (slot) {
@@ -4453,16 +4446,16 @@ em_setup_receive_ring(struct rx_ring *rxr)
 
 		/* Update descriptor */
 		// rxr->rx_base[j].buffer_addr = htole64(seg[0].ds_addr);
-          PhysAddr paddr;
-          physmem_ctrl->Alloc(paddr, PagingCtrl::ConvertNumToPageSize(MCLBYTES));
-          rxr->rx_base[j].buffer_addr = htole64(paddr.GetAddr());
+    PhysAddr paddr;
+    physmem_ctrl->Alloc(paddr, PagingCtrl::ConvertNumToPageSize(MCLBYTES));
+    rxr->rx_base[j].buffer_addr = htole64(paddr.GetAddr());
 	}
 	rxr->next_to_check = 0;
 	rxr->next_to_refresh = 0;
 	bus_dmamap_sync(rxr->rxdma.dma_tag, rxr->rxdma.dma_map,
-	    BUS_DMASYNC_PREREAD | BUS_DMASYNC_PREWRITE);
+                  BUS_DMASYNC_PREREAD | BUS_DMASYNC_PREWRITE);
 
-// fail:
+  // fail:
 	EM_RX_UNLOCK(rxr);
 	return (error);
 }
@@ -4483,7 +4476,7 @@ em_setup_receive_structures(struct adapter *adapter)
 			goto fail;
 
 	return (0);
-fail:
+ fail:
 	/*
 	 * Free RX buffers allocated so far, we will only handle
 	 * the rings that completed, the failing case will have
@@ -4492,15 +4485,15 @@ fail:
 	for (int i = 0; i < q; ++i) {
 		rxr = &adapter->rx_rings[i];
 		// for (int n = 0; n < adapter->num_rx_desc; n++) {
-			// struct em_buffer *rxbuf;
-			// rxbuf = &rxr->rx_buffers[n];
-			// if (rxbuf->m_head != NULL) {
-			// 	bus_dmamap_sync(rxr->rxtag, rxbuf->map,
-			//   	  BUS_DMASYNC_POSTREAD);
-			// 	bus_dmamap_unload(rxr->rxtag, rxbuf->map);
-			// 	 m_freem(rxbuf->m_head);
-			// 	rxbuf->m_head = NULL;
-			// }
+    // struct em_buffer *rxbuf;
+    // rxbuf = &rxr->rx_buffers[n];
+    // if (rxbuf->m_head != NULL) {
+    // 	bus_dmamap_sync(rxr->rxtag, rxbuf->map,
+    //   	  BUS_DMASYNC_POSTREAD);
+    // 	bus_dmamap_unload(rxr->rxtag, rxbuf->map);
+    // 	 m_freem(rxbuf->m_head);
+    // 	rxbuf->m_head = NULL;
+    // }
 		// }
 		rxr->next_to_check = 0;
 		rxr->next_to_refresh = 0;
@@ -4599,10 +4592,10 @@ em_initialize_receive_unit(struct adapter *adapter)
 		E1000_WRITE_REG(hw, E1000_RCTL, rctl & ~E1000_RCTL_EN);
 
 	E1000_WRITE_REG(&adapter->hw, E1000_RADV,
-	    adapter->rx_abs_int_delay.value);
+                  adapter->rx_abs_int_delay.value);
 
 	E1000_WRITE_REG(&adapter->hw, E1000_RDTR,
-	    adapter->rx_int_delay.value);
+                  adapter->rx_int_delay.value);
 	/*
 	 * Set the interrupt throttling rate. Value is calculated
 	 * as DEFAULT_ITR = 1/(MAX_INTS_PER_SEC * 256ns)
@@ -4617,7 +4610,7 @@ em_initialize_receive_unit(struct adapter *adapter)
 		u32 rfctl;
 		for (int i = 0; i < 4; i++)
 			E1000_WRITE_REG(hw, E1000_EITR_82574(i),
-			    DEFAULT_ITR);
+                      DEFAULT_ITR);
 		/* Disable accelerated acknowledge */
 		rfctl = E1000_READ_REG(hw, E1000_RFCTL);
 		rfctl |= E1000_RFCTL_ACK_DIS;
@@ -4627,14 +4620,14 @@ em_initialize_receive_unit(struct adapter *adapter)
 	rxcsum = E1000_READ_REG(hw, E1000_RXCSUM);
  	if (if_getcapenable(ifp) & IFCAP_RXCSUM) {
 #ifdef EM_MULTIQUEUE
-          rxcsum |= E1000_RXCSUM_TUOFL |
-            E1000_RXCSUM_IPOFL |
-            E1000_RXCSUM_PCSD;
+    rxcsum |= E1000_RXCSUM_TUOFL |
+      E1000_RXCSUM_IPOFL |
+      E1000_RXCSUM_PCSD;
 #else
-          rxcsum |= E1000_RXCSUM_TUOFL;
+    rxcsum |= E1000_RXCSUM_TUOFL;
 #endif
  	} else
-          rxcsum &= ~E1000_RXCSUM_TUOFL;
+    rxcsum &= ~E1000_RXCSUM_TUOFL;
 
 	E1000_WRITE_REG(hw, E1000_RXCSUM, rxcsum);
 
@@ -4645,16 +4638,16 @@ em_initialize_receive_unit(struct adapter *adapter)
 		int i;
 
 		/*
-		* Configure RSS key
-		*/
+     * Configure RSS key
+     */
 		arc4rand(rss_key, sizeof(rss_key), 0);
 		for (i = 0; i < 10; ++i)
 			E1000_WRITE_REG_ARRAY(hw,E1000_RSSRK(0), i, rss_key[i]);
 
 		/*
-		* Configure RSS redirect table in following fashion:
-		* (hash & ring_cnt_mask) == rdr_table[(hash & rdr_table_mask)]
-		*/
+     * Configure RSS redirect table in following fashion:
+     * (hash & ring_cnt_mask) == rdr_table[(hash & rdr_table_mask)]
+     */
 		reta = 0;
 		for (i = 0; i < 4; ++i) {
 			uint32_t q;
@@ -4665,12 +4658,12 @@ em_initialize_receive_unit(struct adapter *adapter)
 			E1000_WRITE_REG(hw, E1000_RETA(i), reta);
 
 		E1000_WRITE_REG(hw, E1000_MRQC, E1000_MRQC_RSS_ENABLE_2Q | 
-				E1000_MRQC_RSS_FIELD_IPV4_TCP |
-				E1000_MRQC_RSS_FIELD_IPV4 |
-				E1000_MRQC_RSS_FIELD_IPV6_TCP_EX |
-				E1000_MRQC_RSS_FIELD_IPV6_EX |
-				E1000_MRQC_RSS_FIELD_IPV6 |
-				E1000_MRQC_RSS_FIELD_IPV6_TCP);
+                    E1000_MRQC_RSS_FIELD_IPV4_TCP |
+                    E1000_MRQC_RSS_FIELD_IPV4 |
+                    E1000_MRQC_RSS_FIELD_IPV6_TCP_EX |
+                    E1000_MRQC_RSS_FIELD_IPV6_EX |
+                    E1000_MRQC_RSS_FIELD_IPV6 |
+                    E1000_MRQC_RSS_FIELD_IPV6_TCP);
 	}
 #endif
 	/*
@@ -4689,7 +4682,7 @@ em_initialize_receive_unit(struct adapter *adapter)
 
 		bus_addr = reinterpret_cast<u64>(rxr->rxdma.dma_paddr);
 		E1000_WRITE_REG(hw, E1000_RDLEN(i),
-		    adapter->num_rx_desc * sizeof(struct e1000_rx_desc));
+                    adapter->num_rx_desc * sizeof(struct e1000_rx_desc));
 		E1000_WRITE_REG(hw, E1000_RDBAH(i), (u32)(bus_addr >> 32));
 		E1000_WRITE_REG(hw, E1000_RDBAL(i), (u32)bus_addr);
 		/* Setup the Head and Tail Descriptor Pointers */
@@ -4715,19 +4708,19 @@ em_initialize_receive_unit(struct adapter *adapter)
 	 * settings.
 	 */
 	if (((adapter->hw.mac.type == e1000_ich9lan) ||
-	    (adapter->hw.mac.type == e1000_pch2lan) ||
-	    (adapter->hw.mac.type == e1000_ich10lan)) &&
+       (adapter->hw.mac.type == e1000_pch2lan) ||
+       (adapter->hw.mac.type == e1000_ich10lan)) &&
 	    (if_getmtu(ifp) > ETHERMTU)) {
 		u32 rxdctl = E1000_READ_REG(hw, E1000_RXDCTL(0));
 		E1000_WRITE_REG(hw, E1000_RXDCTL(0), rxdctl | 3);
 	} else if ((adapter->hw.mac.type == e1000_82574) &&
-		  (if_getmtu(ifp) > ETHERMTU)) {
+             (if_getmtu(ifp) > ETHERMTU)) {
 		for (int i = 0; i < adapter->num_queues; i++) {
 			u32 rxdctl = E1000_READ_REG(hw, E1000_RXDCTL(i));
 
-                	rxdctl |= 0x20; /* PTHRESH */
-                	rxdctl |= 4 << 8; /* HTHRESH */
-                	rxdctl |= 4 << 16;/* WTHRESH */
+      rxdctl |= 0x20; /* PTHRESH */
+      rxdctl |= 4 << 8; /* HTHRESH */
+      rxdctl |= 4 << 16;/* WTHRESH */
 			rxdctl |= 1 << 24; /* Switch to granularity */
 			E1000_WRITE_REG(hw, E1000_RXDCTL(i), rxdctl);
 		}
@@ -4743,14 +4736,14 @@ em_initialize_receive_unit(struct adapter *adapter)
 	/* Setup the Receive Control Register */
 	rctl &= ~(3 << E1000_RCTL_MO_SHIFT);
 	rctl |= E1000_RCTL_EN | E1000_RCTL_BAM |
-	    E1000_RCTL_LBM_NO | E1000_RCTL_RDMTS_HALF |
-	    (hw->mac.mc_filter_type << E1000_RCTL_MO_SHIFT);
+    E1000_RCTL_LBM_NO | E1000_RCTL_RDMTS_HALF |
+    (hw->mac.mc_filter_type << E1000_RCTL_MO_SHIFT);
 
-        /* Strip the CRC */
-        rctl |= E1000_RCTL_SECRC;
+  /* Strip the CRC */
+  rctl |= E1000_RCTL_SECRC;
 
-        /* Make sure VLAN Filters are off */
-        rctl &= ~E1000_RCTL_VFE;
+  /* Make sure VLAN Filters are off */
+  rctl &= ~E1000_RCTL_VFE;
 	rctl &= ~E1000_RCTL_SBP;
 
 	// if (adapter->rx_mbuf_sz == MCLBYTES)
@@ -4794,13 +4787,13 @@ em_rxeof(struct rx_ring *rxr, int count, int *done)
 	int			i, processed, rxdone = 0;
 	bool			eop;
 	struct e1000_rx_desc	*cur;
-        BsdDevEthernet *e1000 = adapter->dev->GetMasterClass<E1000>();
+  E1000 *e1000 = adapter->dev->GetMasterClass<E1000>();
 
 	EM_RX_LOCK(rxr);
 
 	/* Sync the ring */
 	bus_dmamap_sync(rxr->rxdma.dma_tag, rxr->rxdma.dma_map,
-	    BUS_DMASYNC_POSTREAD | BUS_DMASYNC_POSTWRITE);
+                  BUS_DMASYNC_POSTREAD | BUS_DMASYNC_POSTWRITE);
 
 
 #ifdef DEV_NETMAP
@@ -4836,18 +4829,18 @@ em_rxeof(struct rx_ring *rxr, int count, int *done)
 			goto next_desc;
 		}
 
-                BsdDevEthernet::Packet *packet;
-                if (e1000->_rx_reserved.Pop(packet)) {
-                  memcpy(packet->buf, reinterpret_cast<void *>(p2v(rxr->rx_base[i].buffer_addr)), len);
-                  packet->len = len;
-                  if (!e1000->_rx_buffered.Push(packet)) {
-                    kassert(e1000->_rx_reserved.Push(packet));
-                    adapter->dropped_pkts++;
-                  }
-                } else {
-                  adapter->dropped_pkts++;
-                }
-
+    BsdEthernet::Packet *packet;
+    if (e1000->GetNetInterface()._rx_reserved.Pop(packet)) {
+      memcpy(packet->buf, reinterpret_cast<void *>(p2v(rxr->rx_base[i].buffer_addr)), len);
+      packet->len = len;
+      if (!e1000->GetNetInterface()._rx_buffered.Push(packet)) {
+        kassert(e1000->GetNetInterface()._rx_reserved.Push(packet));
+        adapter->dropped_pkts++;
+      }
+    } else {
+      adapter->dropped_pkts++;
+    }
+    
 		// bus_dmamap_unload(rxr->rxtag, rxr->rx_buffers[i].map);
 
 		/* Assign correct length to the current fragment */
@@ -4862,7 +4855,7 @@ em_rxeof(struct rx_ring *rxr, int count, int *done)
 		// 	mp->m_pkthdr.len = len;
 		// 	rxr->fmp = rxr->lmp = mp;
 		// } else {
-			/* Chain mbuf's together */
+    /* Chain mbuf's together */
 		// 	mp->m_flags &= ~M_PKTHDR;
 		// 	rxr->lmp->m_next = mp;
 		// 	rxr->lmp = mp;
@@ -4875,26 +4868,26 @@ em_rxeof(struct rx_ring *rxr, int count, int *done)
 			// if_setrcvif(sendmp, ifp);
 			// if_inc_counter(ifp, IFCOUNTER_IPACKETS, 1);
 			// em_receive_checksum(cur, sendmp);
-// #ifndef __NO_STRICT_ALIGNMENT
-// 			if (adapter->hw.mac.max_frame_size >
-// 			    (MCLBYTES - ETHER_ALIGN) &&
-// 			    em_fixup_rx(rxr) != 0)
-// 				goto skip;
-// #endif
+      // #ifndef __NO_STRICT_ALIGNMENT
+      // 			if (adapter->hw.mac.max_frame_size >
+      // 			    (MCLBYTES - ETHER_ALIGN) &&
+      // 			    em_fixup_rx(rxr) != 0)
+      // 				goto skip;
+      // #endif
 			// if (status & E1000_RXD_STAT_VP) {
 			// 	if_setvtag(sendmp, 
 			// 	    le16toh(cur->special));
 			// 	sendmp->m_flags |= M_VLANTAG;
 			// }
-// #ifndef __NO_STRICT_ALIGNMENT
-// skip:
-// #endif
+      // #ifndef __NO_STRICT_ALIGNMENT
+      // skip:
+      // #endif
 			rxr->fmp = rxr->lmp = NULL;
 		}
-next_desc:
+  next_desc:
 		/* Sync the ring */
 		bus_dmamap_sync(rxr->rxdma.dma_tag, rxr->rxdma.dma_map,
-	    		BUS_DMASYNC_POSTREAD | BUS_DMASYNC_POSTWRITE);
+                    BUS_DMASYNC_POSTREAD | BUS_DMASYNC_POSTWRITE);
 
 		/* Zero out the receive descriptors status. */
 		cur->status = 0;
@@ -4922,8 +4915,8 @@ next_desc:
 	}
 
 	/* Catch any remaining refresh work */
-        if (e1000_rx_unrefreshed(rxr))
-          em_refresh_mbufs(rxr, i);
+  if (e1000_rx_unrefreshed(rxr))
+    em_refresh_mbufs(rxr, i);
 
 	rxr->next_to_check = i;
 	if (done != NULL)
@@ -4953,8 +4946,8 @@ em_rx_discard(struct rx_ring *rxr, int i)
 	** to clean up and recharge buffer.
 	*/
 	// if (rbuf->m_head) {
-        //   m_free(rbuf->m_head);
-        //   rbuf->m_head = NULL;
+  //   m_free(rbuf->m_head);
+  //   rbuf->m_head = NULL;
 	// }
 	return;
 }
@@ -5167,7 +5160,7 @@ em_init_manageability(struct adapter *adapter)
 		/* disable hardware interception of ARP */
 		manc &= ~(E1000_MANC_ARP_EN);
 
-                /* enable receiving management packets to the host */
+    /* enable receiving management packets to the host */
 		manc |= E1000_MANC_EN_MNG2HOST;
 #define E1000_MNG2HOST_PORT_623 (1 << 5)
 #define E1000_MNG2HOST_PORT_664 (1 << 6)
@@ -5210,13 +5203,13 @@ em_get_hw_control(struct adapter *adapter)
 	if (adapter->hw.mac.type == e1000_82573) {
 		swsm = E1000_READ_REG(&adapter->hw, E1000_SWSM);
 		E1000_WRITE_REG(&adapter->hw, E1000_SWSM,
-		    swsm | E1000_SWSM_DRV_LOAD);
+                    swsm | E1000_SWSM_DRV_LOAD);
 		return;
 	}
 	/* else */
 	ctrl_ext = E1000_READ_REG(&adapter->hw, E1000_CTRL_EXT);
 	E1000_WRITE_REG(&adapter->hw, E1000_CTRL_EXT,
-	    ctrl_ext | E1000_CTRL_EXT_DRV_LOAD);
+                  ctrl_ext | E1000_CTRL_EXT_DRV_LOAD);
 	return;
 }
 
@@ -5267,7 +5260,7 @@ em_is_valid_ether_addr(u8 *addr)
 static void
 em_get_wakeup(device_t dev)
 {
-	struct adapter	*adapter = device_get_softc(dev);
+	struct adapter	*adapter = reinterpret_cast<struct adapter *>(device_get_softc(dev));
 	u16		eeprom_data = 0, device_id, apme_mask;
 
 	adapter->has_manage = e1000_enable_mng_pass_thru(&adapter->hw);
@@ -5283,11 +5276,11 @@ em_get_wakeup(device_t dev)
 	case e1000_80003es2lan:
 		if (adapter->hw.bus.func == 1) {
 			e1000_read_nvm(&adapter->hw,
-			    NVM_INIT_CONTROL3_PORT_B, 1, &eeprom_data);
+                     NVM_INIT_CONTROL3_PORT_B, 1, &eeprom_data);
 			break;
 		} else
 			e1000_read_nvm(&adapter->hw,
-			    NVM_INIT_CONTROL3_PORT_A, 1, &eeprom_data);
+                     NVM_INIT_CONTROL3_PORT_A, 1, &eeprom_data);
 		break;
 	case e1000_ich8lan:
 	case e1000_ich9lan:
@@ -5300,18 +5293,18 @@ em_get_wakeup(device_t dev)
 		break;
 	default:
 		e1000_read_nvm(&adapter->hw,
-		    NVM_INIT_CONTROL3_PORT_A, 1, &eeprom_data);
+                   NVM_INIT_CONTROL3_PORT_A, 1, &eeprom_data);
 		break;
 	}
 	if (eeprom_data & apme_mask)
 		adapter->wol = (E1000_WUFC_MAG | E1000_WUFC_MC);
 	/*
-         * We have the eeprom settings, now apply the special cases
-         * where the eeprom may be wrong or the board won't support
-         * wake on lan on a particular port
+   * We have the eeprom settings, now apply the special cases
+   * where the eeprom may be wrong or the board won't support
+   * wake on lan on a particular port
 	 */
 	device_id = pci_get_device(dev);
-        switch (device_id) {
+  switch (device_id) {
 	case E1000_DEV_ID_82571EB_FIBER:
 		/* Wake events only supported on port A for dual fiber
 		 * regardless of eeprom setting */
@@ -5322,13 +5315,13 @@ em_get_wakeup(device_t dev)
 	case E1000_DEV_ID_82571EB_QUAD_COPPER:
 	case E1000_DEV_ID_82571EB_QUAD_FIBER:
 	case E1000_DEV_ID_82571EB_QUAD_COPPER_LP:
-                /* if quad port adapter, disable WoL on all but port A */
+    /* if quad port adapter, disable WoL on all but port A */
 		if (global_quad_port_a != 0)
 			adapter->wol = 0;
 		/* Reset for multiple quad port adapters */
 		if (++global_quad_port_a == 4)
 			global_quad_port_a = 0;
-                break;
+    break;
 	}
 	return;
 }
@@ -5506,12 +5499,12 @@ em_disable_aspm(struct adapter *adapter)
 	device_t	dev = adapter->dev;
 
 	switch (adapter->hw.mac.type) {
-		case e1000_82573:
-		case e1000_82574:
-		case e1000_82583:
-			break;
-		default:
-			return;
+  case e1000_82573:
+  case e1000_82574:
+  case e1000_82583:
+    break;
+  default:
+    return;
 	}
 	if (pci_find_cap(dev, PCIY_EXPRESS, &base) != 0)
 		return;
@@ -5570,9 +5563,9 @@ em_update_stats_counters(struct adapter *adapter)
 	/* Both registers clear on the read of the high dword */
 
 	adapter->stats.gorc += E1000_READ_REG(&adapter->hw, E1000_GORCL) +
-	    ((u64)E1000_READ_REG(&adapter->hw, E1000_GORCH) << 32);
+    ((u64)E1000_READ_REG(&adapter->hw, E1000_GORCH) << 32);
 	adapter->stats.gotc += E1000_READ_REG(&adapter->hw, E1000_GOTCL) +
-	    ((u64)E1000_READ_REG(&adapter->hw, E1000_GOTCH) << 32);
+    ((u64)E1000_READ_REG(&adapter->hw, E1000_GOTCH) << 32);
 
 	adapter->stats.rnbc += E1000_READ_REG(&adapter->hw, E1000_RNBC);
 	adapter->stats.ruc += E1000_READ_REG(&adapter->hw, E1000_RUC);
@@ -5608,17 +5601,17 @@ em_update_stats_counters(struct adapter *adapter)
 
 	if (adapter->hw.mac.type >= e1000_82543) {
 		adapter->stats.algnerrc += 
-		E1000_READ_REG(&adapter->hw, E1000_ALGNERRC);
+      E1000_READ_REG(&adapter->hw, E1000_ALGNERRC);
 		adapter->stats.rxerrc += 
-		E1000_READ_REG(&adapter->hw, E1000_RXERRC);
+      E1000_READ_REG(&adapter->hw, E1000_RXERRC);
 		adapter->stats.tncrs += 
-		E1000_READ_REG(&adapter->hw, E1000_TNCRS);
+      E1000_READ_REG(&adapter->hw, E1000_TNCRS);
 		adapter->stats.cexterr += 
-		E1000_READ_REG(&adapter->hw, E1000_CEXTERR);
+      E1000_READ_REG(&adapter->hw, E1000_CEXTERR);
 		adapter->stats.tsctc += 
-		E1000_READ_REG(&adapter->hw, E1000_TSCTC);
+      E1000_READ_REG(&adapter->hw, E1000_TSCTC);
 		adapter->stats.tsctfc += 
-		E1000_READ_REG(&adapter->hw, E1000_TSCTFC);
+      E1000_READ_REG(&adapter->hw, E1000_TSCTFC);
 	}
 }
 
@@ -5635,12 +5628,12 @@ em_get_counter(if_t ifp, ift_counter cnt)
 		return (adapter->stats.colc);
 	case IFCOUNTER_IERRORS:
 		return (adapter->dropped_pkts + adapter->stats.rxerrc +
-		    adapter->stats.crcerrs + adapter->stats.algnerrc +
-		    adapter->stats.ruc + adapter->stats.roc +
-		    adapter->stats.mpc + adapter->stats.cexterr);
+            adapter->stats.crcerrs + adapter->stats.algnerrc +
+            adapter->stats.ruc + adapter->stats.roc +
+            adapter->stats.mpc + adapter->stats.cexterr);
 	case IFCOUNTER_OERRORS:
 		return (adapter->stats.ecol + adapter->stats.latecol +
-		    adapter->watchdog_events);
+            adapter->watchdog_events);
 	default:
 		return (if_get_counter_default(ifp, cnt));
 	}
@@ -6218,7 +6211,7 @@ em_enable_vectors_82574(struct adapter *adapter)
 	printf("Current cap: %#06x\n", edata);
 	if (((edata & EM_NVM_MSIX_N_MASK) >> EM_NVM_MSIX_N_SHIFT) != 4) {
 		device_printf(dev, "Writing to eeprom: increasing "
-		    "reported MSIX vectors from 3 to 5...\n");
+                  "reported MSIX vectors from 3 to 5...\n");
 		edata &= ~(EM_NVM_MSIX_N_MASK);
 		edata |= 4 << EM_NVM_MSIX_N_SHIFT;
 		e1000_write_nvm(hw, EM_NVM_PCIE_CTRL, 1, &edata);
@@ -6241,7 +6234,7 @@ DB_COMMAND(em_reset_dev, em_ddb_reset_dev)
 		device_t dev;
 		dev = devclass_get_device(dc, index);
 		if (device_get_driver(dev) == &em_driver) {
-			struct adapter *adapter = device_get_softc(dev);
+			struct adapter *adapter = reinterpret_cast<struct adapter *>(device_get_softc(dev));
 			em_init_locked(adapter);
 		}
 	}
@@ -6258,7 +6251,7 @@ DB_COMMAND(em_dump_queue, em_ddb_dump_queue)
 		device_t dev;
 		dev = devclass_get_device(dc, index);
 		if (device_get_driver(dev) == &em_driver)
-			em_print_debug_info(device_get_softc(dev));
+			em_print_debug_info(reinterpret_cast<struct adapter *>(device_get_softc(dev)));
 	}
 
 }
@@ -6290,41 +6283,45 @@ DB_COMMAND(em_dump_queue, em_ddb_dump_queue)
 #include "e1000_raph.h"
 #include "e1000_hw.h"
 #include "if_em.h"
+#include <stdlib.h>
 
 int	em_probe(device_t);
 int	em_attach(device_t);
-void	em_init(struct adapter *);
+void em_init(struct adapter *);
 int em_poll(if_t ifp);
 void em_update_link_status(struct adapter *adapter);
 
-extern BsdDevEthernet *eth;
+int E1000::DevMethodBusProbe() {
+  return em_probe(this);
+}
+
+int E1000::DevMethodBusAttach() {
+  int rval = em_attach(this);
+  em_init(reinterpret_cast<struct adapter *>(softc));
+  _bsd_eth.SetupNetInterface();
+  _bsd_eth.SetHandleMethod(E1000BsdEthernet::HandleMethod::kPolling);
+  return rval;
+}
+
 DevPci *E1000::InitPci(uint8_t bus, uint8_t device, uint8_t function) {
-  E1000 *addr = reinterpret_cast<E1000 *>(virtmem_ctrl->Alloc(sizeof(E1000)));
-  addr = new(addr) E1000(bus, device, function);
-  addr->_bsd.SetMasterClass(addr);
-  addr->_bsd.adapter = reinterpret_cast<struct adapter *>(virtmem_ctrl->AllocZ(sizeof(adapter)));
-  if (em_probe(&addr->_bsd) == BUS_PROBE_DEFAULT) {
-    kassert(em_attach(&addr->_bsd) == 0);
-    em_init(addr->_bsd.adapter);
-    addr->SetupNetInterface();
-    addr->SetHandleMethod(HandleMethod::kPolling);
-    eth = addr;
-    return addr->_bsd.GetPciClass();
+  E1000 *addr = new E1000(bus, device, function);
+  addr->InitBsdDevice(addr, sizeof(struct adapter));
+  if (addr->ProbeAndAttach() == 0) {
+    return &addr->GetDevPci();
   } else {
-    virtmem_ctrl->Free(ptr2virtaddr(addr->_bsd.adapter));
-    virtmem_ctrl->Free(ptr2virtaddr(addr));
+    delete addr;
     return nullptr;
-  }  
+  }
 }
 
-void E1000::GetEthAddr(uint8_t *buffer) {
-  memcpy(buffer, _bsd.adapter->hw.mac.addr, 6);
+void E1000::E1000BsdEthernet::GetEthAddr(uint8_t *buffer) {
+  memcpy(buffer, reinterpret_cast<struct adapter *>(GetMasterClass().softc)->hw.mac.addr, 6);
 }
 
-void E1000::UpdateLinkStatus() {
+void E1000::E1000BsdEthernet::UpdateLinkStatus() {
   if (GetHandleMethod() == HandleMethod::kPolling) {
     u32		reg_icr;
-    struct adapter *adapter = this->_bsd.adapter;
+    struct adapter *adapter = reinterpret_cast<struct adapter *>(GetMasterClass().softc);
 		reg_icr = E1000_READ_REG(&adapter->hw, E1000_ICR);
 		if (reg_icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC)) {
 			callout_stop(&adapter->timer);
@@ -6336,18 +6333,19 @@ void E1000::UpdateLinkStatus() {
   }
 }
 
-void E1000::PollingHandler(void *arg) {
+void E1000::E1000BsdEthernet::PollingHandler(void *arg) {
   E1000 *that = reinterpret_cast<E1000 *>(arg);
-  em_poll(that->_bsd.adapter->ifp);
+  em_poll(reinterpret_cast<struct adapter *>(that->softc)->ifp);
 }
 
-void E1000::ChangeHandleMethodToPolling() {
+void E1000::E1000BsdEthernet::ChangeHandleMethodToPolling() {
   Function func;
-  func.Init(PollingHandler, reinterpret_cast<void *>(this));
+  func.Init(PollingHandler, reinterpret_cast<void *>(&GetMasterClass()));
   _polling.Init(func);
-  _polling.Register(0);
+  extern CpuId network_cpu;
+  _polling.Register(network_cpu);
   
-  struct adapter *adapter = this->_bsd.adapter;
+  struct adapter *adapter = reinterpret_cast<struct adapter *>(GetMasterClass().softc);
   if_t ifp = adapter->ifp;
   EM_CORE_LOCK(adapter);
   em_disable_intr(adapter);
@@ -6355,10 +6353,10 @@ void E1000::ChangeHandleMethodToPolling() {
   EM_CORE_UNLOCK(adapter);
 }
 
-void E1000::ChangeHandleMethodToInt() {
+void E1000::E1000BsdEthernet::ChangeHandleMethodToInt() {
   _polling.Remove();
   
-  struct adapter *adapter = this->_bsd.adapter;
+  struct adapter *adapter = reinterpret_cast<struct adapter *>(GetMasterClass().softc);
   if_t ifp = adapter->ifp;
   EM_CORE_LOCK(adapter);
   em_enable_intr(adapter);
@@ -6366,6 +6364,6 @@ void E1000::ChangeHandleMethodToInt() {
   EM_CORE_UNLOCK(adapter);
 }
 
-void E1000::Transmit(void *) {
+void E1000::E1000BsdEthernet::Transmit(void *) {
   em_start(&_ifp);
 }

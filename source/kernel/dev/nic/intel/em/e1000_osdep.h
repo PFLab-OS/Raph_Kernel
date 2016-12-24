@@ -36,11 +36,11 @@
 #ifndef _FREEBSD_OS_H_
 #define _FREEBSD_OS_H_
 
-/* #include <sys/types.h> */
-/* #include <sys/param.h> */
-/* #include <sys/systm.h> */
-/* #include <sys/lock.h> */
-/* #include <sys/mutex.h> */
+#include <sys/types.h>
+#include <sys/param.h>
+#include <sys/systm.h>
+#include <sys/lock.h>
+#include <sys/mutex.h>
 /* #include <sys/mbuf.h> */
 /* #include <sys/protosw.h> */
 /* #include <sys/socket.h> */
@@ -56,11 +56,17 @@
 /* #include <dev/pci/pcivar.h> */
 /* #include <dev/pci/pcireg.h> */
 
+#include <sys/types.h>
+#include <sys/param.h>
+#include <machine/bus.h>
+#include <sys/rman.h>
+
 #include <stddef.h>
 #include <string.h>
 #include <timer.h>
 #include <spinlock.h>
-#include <freebsd/sys/bus.h>
+#include <global.h>
+#include <freebsd/sys/bus-raph.h>
 
 #define ASSERT(x) (kassert(x))
 

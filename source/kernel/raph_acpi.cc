@@ -39,47 +39,47 @@ extern "C" {
 #include <tty.h>
 #include <task.h>
 #include <global.h>
-
-#define ACPI_MAX_INIT_TABLES    128
-static ACPI_TABLE_DESC      TableArray[ACPI_MAX_INIT_TABLES];
+#include <mem/physmem.h>
 
 void AcpiCtrl::Setup() {
-  bzero(TableArray, sizeof(ACPI_TABLE_DESC) * ACPI_MAX_INIT_TABLES);
-  AcpiInitializeTables (TableArray, ACPI_MAX_INIT_TABLES, TRUE);
+  kassert(!ACPI_FAILURE(AcpiInitializeSubsystem()));
+  kassert(!ACPI_FAILURE(AcpiInitializeTables(NULL, 16, FALSE)));
 
-  ACPI_TABLE_HEADER *table;
-  kassert(!ACPI_FAILURE(AcpiGetTable("APIC", 1, &table)));
-  apic_ctrl->SetMADT(reinterpret_cast<MADT *>(table));
+  ACPI_TABLE_HEADER *madt;
+  kassert(!ACPI_FAILURE(AcpiGetTable(const_cast<char *>("APIC"), 1, &madt)));
+  apic_ctrl->SetMADT(reinterpret_cast<MADT *>(madt));
+
+  ACPI_TABLE_HEADER *srat;
+  if (!ACPI_FAILURE(AcpiGetTable(const_cast<char *>("SRAT"), 1, &srat))) {
+    physmem_ctrl->SetSrat(reinterpret_cast<Srat *>(srat));
+  }
 }
 
 MCFG *AcpiCtrl::GetMCFG() {
   ACPI_TABLE_HEADER *table;
-  kassert(!ACPI_FAILURE(AcpiGetTable("MCFG", 1, &table)));
+  kassert(!ACPI_FAILURE(AcpiGetTable(const_cast<char *>("MCFG"), 1, &table)));
   return reinterpret_cast<MCFG *>(table);
 }
 
 HPETDT *AcpiCtrl::GetHPETDT() {
   ACPI_TABLE_HEADER *table;
-  kassert(!ACPI_FAILURE(AcpiGetTable("HPET", 1, &table)));
+  kassert(!ACPI_FAILURE(AcpiGetTable(const_cast<char *>("HPET"), 1, &table)));
   return reinterpret_cast<HPETDT *>(table);
 }
 
 FADT *AcpiCtrl::GetFADT() {
   ACPI_TABLE_HEADER *table;
-  kassert(!ACPI_FAILURE(AcpiGetTable("FACP", 1, &table)));
+  kassert(!ACPI_FAILURE(AcpiGetTable(const_cast<char *>("FACP"), 1, &table)));
   return reinterpret_cast<FADT *>(table);
 }
 
 void AcpiGlobalEventHandler(UINT32 type, ACPI_HANDLE device, UINT32 num, void *context) {
-  //TODO cpuid
   if (num == ACPI_EVENT_POWER_BUTTON) {
-    task_ctrl->Register(1, reinterpret_cast<Task *>(context));
+    task_ctrl->Register(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), reinterpret_cast<Task *>(context));
   }
 }
 
 void AcpiCtrl::SetupAcpica() {
-  kassert(!ACPI_FAILURE(AcpiInitializeSubsystem()));
-  kassert(!ACPI_FAILURE(AcpiReallocateRootTable()));
   kassert(!ACPI_FAILURE(AcpiEnableSubsystem(ACPI_FULL_INITIALIZATION)));
   kassert(!ACPI_FAILURE(AcpiLoadTables()));
   kassert(!ACPI_FAILURE(AcpiInitializeObjects(ACPI_FULL_INITIALIZATION)));
@@ -104,6 +104,9 @@ void AcpiCtrl::GlobalEventHandler(void *) {
 
 void AcpiCtrl::Reset() {
   AcpiReset();
+
+  // send CPU reset to 8042 keyboad controller
+  outb(0x64, 0xfe);
 }
 
 static ACPI_STATUS GetIntNum(ACPI_RESOURCE *resource, void *context) {
@@ -165,7 +168,7 @@ static ACPI_STATUS GetRouteTable(ACPI_HANDLE obj_handle, UINT32 level, void *con
 
   kassert(info->Type == ACPI_TYPE_DEVICE);
   if (info->Flags & ACPI_PCI_ROOT_BRIDGE) {
-    status = AcpiEvaluateObjectTyped(obj_handle, METHOD_NAME__BBN, nullptr, &buf, ACPI_TYPE_INTEGER);
+    status = AcpiEvaluateObjectTyped(obj_handle, const_cast<char *>(METHOD_NAME__BBN), nullptr, &buf, ACPI_TYPE_INTEGER);
     uint8_t bus = 0;
     if (ACPI_SUCCESS(status)) {
       kassert(param.Type == ACPI_TYPE_INTEGER);
@@ -229,11 +232,11 @@ static ACPI_STATUS GetIntLink(ACPI_HANDLE obj_handle, UINT32 level, void *contex
 
   kassert(info->Type == ACPI_TYPE_DEVICE);
   if (info->Valid & ACPI_VALID_HID &&
-      !strncmp(info->HardwareId.String, "PNP0C0F", info->HardwareId.Length)) {
+      !strncmp(info->HardwareId.String, const_cast<char *>("PNP0C0F"), info->HardwareId.Length)) {
 
     if (!strncmp(reinterpret_cast<char *>(&info->Name), container->linkname, 4)) {
       int irq = -1;
-      AcpiWalkResources(obj_handle, METHOD_NAME__CRS, GetIntNum, &irq);
+      AcpiWalkResources(obj_handle, const_cast<char *>(METHOD_NAME__CRS), GetIntNum, &irq);
       container->irq = irq;
     }
   }

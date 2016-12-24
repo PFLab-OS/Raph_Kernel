@@ -27,6 +27,7 @@
 #include <timer.h>
 #include <idt.h>
 #include <mem/physmem.h>
+#include <cpu.h>
 #include <dev/pci.h>
 
 extern "C" {
@@ -169,10 +170,7 @@ extern "C" {
   }
 
   ACPI_STATUS AcpiOsCreateSemaphore(UINT32 MaxUnits, UINT32 InitialUnits, ACPI_SEMAPHORE *OutHandle) {
-    Semaphore *semaphore = virtmem_ctrl->New<Semaphore>(MaxUnits);
-    for (; MaxUnits > InitialUnits; MaxUnits--) {
-      semaphore->Acquire();
-    }
+    Semaphore *semaphore = new Semaphore(MaxUnits, InitialUnits);
     *OutHandle = reinterpret_cast<ACPI_SEMAPHORE>(semaphore);
     return (AE_OK);
   }
@@ -243,8 +241,7 @@ extern "C" {
   ACPI_STATUS AcpiOsInstallInterruptHandler(UINT32 InterruptLevel, ACPI_OSD_HANDLER Handler, void *Context) {
     kassert(apic_ctrl != nullptr);
     kassert(idt != nullptr);
-    // TODO fix cpuid
-    int cpuid = 1;
+    CpuId cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority);
     int vector = idt->SetIntCallback(cpuid, AcpiHandlerSub, Context);
     for(int i = 0; i < 10; i++) {
       if (handler[i].func == nullptr) {

@@ -20,6 +20,35 @@
  * 
  */
 
+#include <raph.h>
+#include <task.h>
+#include <cpu.h>
 #include "taskqueue.h"
 
-struct taskqueue *taskqueue_fast = nullptr;
+extern "C" {
+
+  struct taskqueue *taskqueue_fast = nullptr;
+  
+  static void __taskqueue_handle(void *arg) {
+    struct task *task = reinterpret_cast<struct task *>(arg);
+    task->ta_func(task->ta_context, task->ta_pending);
+    task->ta_pending++;
+  }
+
+
+  void _task_init(struct task *t, int priority, task_fn_t *func, void *context) {
+    t->ta_task = new Task;
+    Function f;
+    f.Init(__taskqueue_handle, reinterpret_cast<void *>(t));
+    t->ta_task->SetFunc(f);
+    t->ta_pending = 0;
+    t->ta_func = (func);
+    t->ta_context = (context);
+  }
+
+  int taskqueue_enqueue(struct taskqueue *queue, struct task *task) {
+    task_ctrl->Register(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), task->ta_task);
+    return 0;
+  }
+
+}

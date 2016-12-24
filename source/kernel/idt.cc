@@ -24,6 +24,7 @@
 #include <mem/virtmem.h>
 #include <mem/physmem.h>
 #include <apic.h>
+#include <mem/kstack.h>
 #include <gdt.h>
 #include <global.h>
 #include <tty.h>
@@ -31,20 +32,23 @@
 namespace C {
 extern "C" void handle_int(Regs *rs) {
   //TODO 例外処理中のフラグを立て、IntSpinLock内では弾く
-  apic_ctrl->DisableInt();
-  int cpuid = apic_ctrl->GetCpuId();
+  bool iflag = disable_interrupt();
+  int cpuid = cpu_ctrl->GetCpuId().GetRawId();
   idt->_handling_cnt[cpuid]++;
   if (idt->_callback[cpuid][rs->n].callback == nullptr) {
     if (gtty != nullptr) {
-      gtty->CprintfRaw("[kernel] error: unimplemented interrupt %d at cpuid: %d\n", rs->n, cpuid);
+      gtty->CprintfRaw("[kernel] error: unimplemented interrupt %d at cpuid: %d\nrip: %llx rbp: %llx\n", rs->n, cpuid, rs->rip, rs->rbp);
+      show_backtrace(reinterpret_cast<size_t *>(rs->rbp));
     }
-    asm volatile("cli; hlt; nop; nop; hlt; nop; hlt;"::"a"(rs->rip));
+    while(true) {
+      asm volatile("cli; hlt;");
+    }
   } else {
     idt->_callback[cpuid][rs->n].callback(rs, idt->_callback[cpuid][rs->n].arg);
   }
   idt->_handling_cnt[cpuid]--;
-  apic_ctrl->EnableInt();
-  //TODO 普通の例外の場合にまずい
+  enable_interrupt(iflag);
+  //TODO 普通の割り込みの場合にまずい
   apic_ctrl->SendEoi();
 }
 }
@@ -96,11 +100,11 @@ void Idt::SetupGeneric() {
       _callback[i][j].callback = nullptr;
     }
   }
-  // x86 specific
-  for (int i = 0; i < apic_ctrl->GetHowManyCpus(); i++) {
-    SetExceptionCallback(i, 14, HandlePageFault, nullptr);
-  }
   _is_gen_initialized = true;
+  for (int i = 0; i < apic_ctrl->GetHowManyCpus(); i++) {
+    CpuId cpuid(apic_ctrl->GetCpuIdFromApicId(i));
+    SetExceptionCallback(cpuid, 14, HandlePageFault, nullptr);
+  }
 }
 
 void Idt::SetupProc() {
@@ -117,19 +121,22 @@ void Idt::SetGate(idt_callback gate, int vector, uint8_t dpl, bool trap, uint8_t
   idt_def[vector].entry[3] = 0;
 }
 
-int Idt::SetIntCallback(int cpuid, int_callback callback, void *arg) {
+int Idt::SetIntCallback(CpuId cpuid, int_callback callback, void *arg) {
+  kassert(_is_gen_initialized);
   Locker locker(_lock);
+  int raw_cpu_id = cpuid.GetRawId();
   for(int vector = 64; vector < 256; vector++) {
-    if (_callback[cpuid][vector].callback == nullptr) {
-      _callback[cpuid][vector].callback = callback;
-      _callback[cpuid][vector].arg = arg;
+    if (_callback[raw_cpu_id][vector].callback == nullptr) {
+      _callback[raw_cpu_id][vector].callback = callback;
+      _callback[raw_cpu_id][vector].arg = arg;
       return vector;
     }
   }
   return ReservedIntVector::kError;
 }
 
-int Idt::SetIntCallback(int cpuid, int_callback *callback, void **arg, int range) {
+int Idt::SetIntCallback(CpuId cpuid, int_callback *callback, void **arg, int range) {
+  kassert(_is_gen_initialized);
   int _range = 1;
   while(_range < range) {
     _range *= 2;
@@ -139,10 +146,11 @@ int Idt::SetIntCallback(int cpuid, int_callback *callback, void **arg, int range
   }
   Locker locker(_lock);
   int vector = range > 64 ? range : 64;
+  int raw_cpu_id = cpuid.GetRawId();
   for(; vector < 256; vector += range) {
     int i;
     for (i = 0; i < range; i++) {
-      if (_callback[cpuid][vector + i].callback != nullptr) {
+      if (_callback[raw_cpu_id][vector + i].callback != nullptr) {
         break;
       }
     }
@@ -150,26 +158,29 @@ int Idt::SetIntCallback(int cpuid, int_callback *callback, void **arg, int range
       continue;
     }
     for (i = 0; i < range; i++) {
-      _callback[cpuid][vector + i].callback = callback[i];
-      _callback[cpuid][vector + i].arg = arg[i];
+      _callback[raw_cpu_id][vector + i].callback = callback[i];
+      _callback[raw_cpu_id][vector + i].arg = arg[i];
     }
     return vector;
   }
   return ReservedIntVector::kError;
 }
 
-void Idt::SetExceptionCallback(int cpuid, int vector, int_callback callback, void *arg) {
+void Idt::SetExceptionCallback(CpuId cpuid, int vector, int_callback callback, void *arg) {
+  kassert(_is_gen_initialized);
   kassert(vector < 64 && vector >= 1);
   Locker locker(_lock);
-  _callback[cpuid][vector].callback = callback;
-  _callback[cpuid][vector].arg = arg;
+  int raw_cpu_id = cpuid.GetRawId();
+  _callback[raw_cpu_id][vector].callback = callback;
+  _callback[raw_cpu_id][vector].arg = arg;
 }
 
 void Idt::HandlePageFault(Regs *rs, void *arg) {
   if (gtty != nullptr) {
     uint64_t addr;
     asm volatile("movq %%cr2, %0;":"=r"(addr));
-    gtty->CprintfRaw("\nunexpected page fault occured!\naddress: %llx\n", addr);
+    int cpuid = cpu_ctrl->GetCpuId().GetRawId();
+    gtty->CprintfRaw("\nunexpected page fault occured at cpuid %d!\naddress: %llx rip: %llx rbp: %llx\n", cpuid, addr, rs->rip, rs->rbp);
   }
   while(true){
     asm volatile("cli;hlt");

@@ -20,10 +20,11 @@
  * 
  */
 
-#define ASM_FILE
-#include "multiboot2.h"
-#include <mem/paging.h>
-#include <gdt.h>
+  #define ASM_FILE
+  #include "multiboot2.h"
+  #include <mem/paging.h>
+  #include <mem/kstack.h>
+  #include <gdt.h>
 
 #define MULTIBOOTHEADER_SIZE (multibootheader_end - multibootheader_start)
 
@@ -68,7 +69,7 @@ entry:
   je unknown_state
   mov %ebx, (multiboot_info)
   mov $initial_stack_buffer, %esp
-  add 0x1000, %esp
+  add $0x1000, %esp
 
   // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
   // Originally from http://wiki.osdev.org/Setting_Up_Long_Mode
@@ -180,6 +181,14 @@ setup_paging:
   mov $0, %eax
   or  $(PDE_PRESENT_BIT | PDE_WRITE_BIT | PDE_2MPAGE_BIT | PDE_GLOBAL_BIT), %eax
   mov %eax, (%edi)
+  lea (0x7000 + 1 * 8)(%ebx), %edi
+  mov $0x200000, %eax
+  or  $(PDE_PRESENT_BIT | PDE_WRITE_BIT | PDE_2MPAGE_BIT | PDE_GLOBAL_BIT), %eax
+  mov %eax, (%edi)
+  lea (0x7000 + 2 * 8)(%ebx), %edi
+  mov $0x400000, %eax
+  or  $(PDE_PRESENT_BIT | PDE_WRITE_BIT | PDE_2MPAGE_BIT | PDE_GLOBAL_BIT), %eax
+  mov %eax, (%edi)
 
   // setup pd6
   lea (0x8000 + 511 * 8)(%ebx), %edi
@@ -188,15 +197,7 @@ setup_paging:
   mov %eax, (%edi)
 
   // setup pt1
-  lea (0x9000 + 509 * 8)(%ebx), %edi
-  lea 0xA000(%ebx), %eax
-  or  $(PTE_PRESENT_BIT | PTE_WRITE_BIT | PTE_GLOBAL_BIT), %eax
-  mov %eax, (%edi)
   lea (0x9000 + 510 * 8)(%ebx), %edi
-  lea 0xB000(%ebx), %eax
-  or  $(PTE_PRESENT_BIT | PTE_WRITE_BIT | PTE_GLOBAL_BIT), %eax
-  mov %eax, (%edi)
-  lea (0x9000 + 511 * 8)(%ebx), %edi
   movl $initial_stack_buffer, %eax
   or  $(PTE_PRESENT_BIT | PTE_WRITE_BIT | PTE_GLOBAL_BIT), %eax
   mov %eax, (%edi)
@@ -249,7 +250,12 @@ trampoline:
   mov %ax, %fs
   mov %ax, %gs
   mov %ax, %ss
-  mov $kKernelEndAddr - 7, %rsp
+  mov $kKernelEndAddr - 4096 + 1, %rsp
+  pushq $0
+  pushq $0
+  pushq $0
+  movq $INITIAL_STACK_MAGIC, %rax
+  pushq %rax
   pushq $0   // return addr
   pushq $KERNEL_CS
   mov $main, %rax

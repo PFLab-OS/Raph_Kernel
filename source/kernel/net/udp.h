@@ -16,30 +16,169 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
- * Author: Levelfour
+ * Author: levelfour
  * 
  */
 
 #ifndef __RAPH_KERNEL_NET_UDP_H__
 #define __RAPH_KERNEL_NET_UDP_H__
 
-#include <stdint.h>
 
-struct UdpHeader {
-  // source port
-  uint16_t sport;
-  // destination port
-  uint16_t dport;
-  // length (header + datagram)
-  uint16_t len;
-  // checksum
-  uint16_t checksum;
-} __attribute__ ((packed));
+#include <net/pstack.h>
+#include <net/socket.h>
 
-int32_t UdpGenerateHeader(uint8_t *buffer, uint32_t length, uint16_t sport, uint16_t dport);
-bool UdpFilterPacket(uint8_t *packet, uint16_t sport, uint16_t dport);
 
-// extract sender port
-uint16_t UdpGetSourcePort(uint8_t *packet);
+class UdpSocket : public Socket {
+public:
+
+  /** do not specify peer port */
+  static const uint16_t kPortAny = 0xffff;
+
+  UdpSocket() {}
+
+  /**
+   * Reserve the connection on protocol stack and construct the stack.
+   *
+   * @return 0 if succeeds.
+   */
+  virtual int Open() override;
+
+  /**
+   * Bind port to this socket.
+   *
+   * @param port
+   */
+  void BindPort(uint16_t port) {
+    _port = port;
+  }
+
+  /**
+   * Bind peer address info to this socket.
+   *
+   * @param ipv4_addr
+   * @param port
+   */
+  void BindPeer(uint32_t ipv4_addr, uint16_t port) {
+    _peer_addr = ipv4_addr;
+    _peer_port = port;
+  }
+
+  int Read(uint8_t *buf, int len) {
+    NetDev::Packet *packet = nullptr;
+    if (this->ReceivePacket(packet)) {
+      int len0 = packet->len;
+      int ret = len0 <= len ? len0 : len;
+
+      memcpy(buf, packet->buf, ret);
+
+      this->ReuseRxBuffer(packet);
+
+      return ret;
+    } else {
+      return -1;
+    }
+  }
+
+  int Write(uint8_t *buf, int len) {
+    NetDev::Packet *packet = nullptr;
+    if (this->FetchTxBuffer(packet) < 0) {
+      return -1;
+    } else {
+      memcpy(packet->buf, buf, len);
+      packet->len = len;
+
+      return this->TransmitPacket(packet) ? len : -1;
+    }
+  }
+
+  /**
+   * Update information of the interface.
+   */
+  virtual void Update() {
+    kassert(GetIpv4Address(_ipv4_addr));
+  }
+
+private:
+  /** my IPv4 address */
+  uint32_t _ipv4_addr;
+
+  /** my port */
+  uint16_t _port;
+
+  /** target IPv4 address */
+  uint32_t _peer_addr;
+
+  /** target port */
+  uint16_t _peer_port;
+};
+
+
+class UdpLayer : public ProtocolStackLayer {
+public:
+
+  UdpLayer() {}
+
+  /**
+   * UDP header
+   */
+  struct Header {
+    uint16_t sport;     /** source port */
+    uint16_t dport;     /** destination port */
+    uint16_t len;       /** length of header + payload */
+    uint16_t checksum;  /** checksum */
+  } __attribute__((packed));
+
+  /**
+   * Set my UDP port.
+   *
+   * @param port 
+   */
+  void SetPort(uint16_t port) {
+    _port = port;
+  }
+
+  /**
+   * Set peer UDP port.
+   *
+   * @param port 
+   */
+  void SetPeerPort(uint16_t port) {
+    _peer_port = port;
+  }
+
+protected:
+  /**
+   * Return UDP header size.
+   * 
+   * @return protocol header length.
+   */
+  virtual int GetProtocolHeaderLength() {
+    return sizeof(UdpLayer::Header);
+  }
+
+  /**
+   * Filter the received packet by its header content.
+   *
+   * @param packet
+   * @return if the packet is to be received or not.
+   */
+  virtual bool FilterPacket(NetDev::Packet *packet);
+
+  /**
+   * Make contents of the header before transmitting the packet.
+   *
+   * @param packet
+   * @return if succeeds.
+   */
+  virtual bool PreparePacket(NetDev::Packet *packet);
+
+private:
+  /** port number of this connection */
+  uint16_t _port;
+
+  /** port number of the peer */
+  uint16_t _peer_port;
+};
+
 
 #endif // __RAPH_KERNEL_NET_UDP_H__

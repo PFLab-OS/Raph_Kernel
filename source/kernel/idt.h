@@ -24,8 +24,9 @@
 #define __RAPH_KERNEL_IDT_H__
 
 #include <stdint.h>
-#include <apic.h>
+#include <cpu.h>
 #include <spinlock.h>
+#include <cpu.h>
 
 struct Regs {
   uint64_t rax, rbx, rcx, rdx, rbp, rsi, rdi, r8, r9, r10, r11, r12, r13, r14, r15;
@@ -48,23 +49,25 @@ class Idt {
   // I/O等用の割り込みハンドラ
   // 確保したvectorが返る(vector >= 64)
   // 確保できなかった場合はReservedIntVector::kErrorが返る
-  int SetIntCallback(int cpuid, int_callback callback, void *arg);
+  int SetIntCallback(CpuId cpuid, int_callback callback, void *arg);
   // 一括で連続したvectorを確保する
   // rangeは2のn乗である必要がある
   // 戻り値は先頭vectorで、rangeで割り切れる事を保証する
-  int SetIntCallback(int cpuid, int_callback *callback, void **arg, int range);
+  int SetIntCallback(CpuId cpuid, int_callback *callback, void **arg, int range);
   // 例外等用の割り込みハンドラ
   // vector < 64でなければならない
-  void SetExceptionCallback(int cpuid, int vector, int_callback callback, void *arg);
+  void SetExceptionCallback(CpuId cpuid, int vector, int_callback callback, void *arg);
   // if 0, cpu is not handling interrupt
   volatile int GetHandlingCnt() {
     if (!_is_gen_initialized) {
       return false;
     }
-    return _handling_cnt[apic_ctrl->GetCpuId()];
+    return _handling_cnt[cpu_ctrl->GetCpuId().GetRawId()];
   }
   struct ReservedIntVector {
     static const int kIpi      = 33;
+    static const int k8259Spurious1 = 47;
+    static const int k8259Spurious2 = 55;
     static const int kError    = 63;
   };
  private:

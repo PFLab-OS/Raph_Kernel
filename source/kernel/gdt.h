@@ -30,6 +30,10 @@
 #ifndef ASM_FILE
 
 #include <stdint.h>
+#include <raph.h>
+#include <mem/paging.h>
+#include <global.h>
+#include <cpu.h>
 
 class Gdt {
  public:

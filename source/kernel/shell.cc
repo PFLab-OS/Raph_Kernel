@@ -21,38 +21,40 @@
  */
 
 
-/*this shell-like program is substituted later*/
-#include<global.h>
-#include<tty.h>
-#include<string.h>
-#include<shell.h>
+/*this shell-like program will be substituted later*/
+#include <global.h>
+#include <tty.h>
+#include <string.h>
+#include <shell.h>
 
 void Shell::Setup() {
   _liner.Setup(this);
 }
 
 void Shell::Register(const char *name, void (*func)(int argc, const char *argv[])) {
-  if (_next_buf == kNameSize){
-    //error
+  if (_next_buf == kBufSize){
+    kernel_panic("Shell", "command buffer is full");
   }else{
     int slen = strlen(name);
     if (slen < kNameSize){
       strncpy(_name_func_mapping[_next_buf].name, name, slen);
       _name_func_mapping[_next_buf].func = func;
       _next_buf++;
+    } else {
+      kernel_panic("Shell", "command name is too long");
     }
   }
 }
 
 void Shell::Exec(const char *name,int argc, const char* argv[]) {
-  for (int i = 0; i < kBufSize; i++) {
-    if (strncmp(name, _name_func_mapping[i].name, strlen(name)) == 0) {
+  for (int i = 0; i < _next_buf; i++) {
+    if (strncmp(name, _name_func_mapping[i].name, strlen(_name_func_mapping[i].name)) == 0) {
       _name_func_mapping[i].func(argc, argv);
       return;
     }
   }
 
-  gtty->Printf("s","unknown command:", "s", name, "s", "\n");
+  gtty->Cprintf("unknown command: %s\n", name);
 }
 
 void Shell::ReadCh(char c) {
@@ -79,19 +81,19 @@ void Shell::Liner::Tokenize() {
     if (_command[i] == '\0') return;
     if (inToken) {
       if (_command[i] == ' ') {
-	_command[i] = '\0';
-	inToken = false;
+        _command[i] = '\0';
+        inToken = false;
       }
     } else {
       if (_command[i] == ' ') {
-	_command[i] = '\0';
+        _command[i] = '\0';
       } else {
-	if (_argc < kArgumentMax) {
-	  _arguments[_argc] = _command + i;
-	  _argc++;
-	  _arguments[_argc] = nullptr;
-	}
-	inToken = true;
+        if (_argc < kArgumentMax) {
+          _arguments[_argc] = _command + i;
+          _argc++;
+          _arguments[_argc] = nullptr;
+        }
+        inToken = true;
       }
     }
   }
@@ -102,5 +104,5 @@ void Shell::Liner::Reset() {
     _arguments[0] = nullptr;
     _next_command = 0;
     _argc = 0;
-    gtty->Printf("s", ">");
+    gtty->Cprintf(">");
 }
