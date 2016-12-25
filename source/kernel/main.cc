@@ -86,11 +86,6 @@ CpuId pstack_cpu;
 
 static uint32_t rnd_next = 1;
 
-uint64_t cnt;
-int64_t sum;
-static const int stime = 3000;
-int time, rtime;
-
 #include <dev/disk/ahci/ahci-raph.h>
 AhciChannel *g_channel = nullptr;
 #include <dev/fs/fat/fat.h>
@@ -741,7 +736,6 @@ static void membench2() {
             kassert(mcdram[i * num + j] == answer[i * num + j]);
           }
         }
-        cnt = 0;
       }
     }
   }
@@ -778,13 +772,13 @@ static void membench3() {
         } while(!__sync_bool_compare_and_swap(&cnt, j, j + 1));
       }
       {
-        CpuId cpuid(i);
-        gtty->CprintfRaw("%d:%d:%d ", i, cpuid.GetApicId(), (((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod())) / 1000);
+        CpuId cpuid_(i);
+        gtty->CprintfRaw("%d:%d:%d ", i, cpuid_.GetApicId(), (((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod())) / 1000);
       }
       for (int j = 1; j < cpu_ctrl->GetHowManyCpus(); j++) {
         if (i != j) {
-          CpuId cpuid(j);
-          apic_ctrl->SendIpi(cpuid.GetApicId());
+          CpuId cpuid_(j);
+          apic_ctrl->SendIpi(cpuid_.GetApicId());
         }
       }
     } else {
@@ -831,13 +825,13 @@ static void membench4() {
         } while(!__sync_bool_compare_and_swap(&cnt, j, j + 1));
       }
       {
-        CpuId cpuid(i);
-        gtty->CprintfRaw("%d:%d:%d ", i, cpuid.GetApicId(), (((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod())) / 1000);
+        CpuId cpuid_(i);
+        gtty->CprintfRaw("%d:%d:%d ", i, cpuid_.GetApicId(), (((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod())) / 1000);
       }
       for (int j = 1; j < 256; j++) {
         if (i < j) {
-          CpuId cpuid(j);
-          apic_ctrl->SendIpi(cpuid.GetApicId());
+          CpuId cpuid_(j);
+          apic_ctrl->SendIpi(cpuid_.GetApicId());
         }
       }
     } else {
@@ -920,7 +914,7 @@ static void membench6() {
     gtty->CprintfRaw("start >>>");
   }
   
-  for (int i = 1; i <= 37; i++) {
+  for (unsigned int i = 1; i <= 37; i++) {
     static volatile int cpu_num;
     if (cpuid == 0) {
       cpu_num = 0;
@@ -951,16 +945,16 @@ static void membench6() {
       }
   
       uint64_t t1 = timer->ReadMainCnt();
-      for (int i = 0; i < 100; i++) {
+      for (int j = 0; j < 100; j++) {
 	static volatile int l1 = 0, l2 = 0, l3 = 0;
 	sync2(cpu_num, l1, l2, l3);
       }
       if (apicid == 0) {
 	gtty->CprintfRaw("<%d %d us> ", cpu_num, ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
 	for (int j = 0; j < 256; j++) {
-	  CpuId cpuid(j);
-	  if (cpuid.GetApicId() != 0) {
-	    apic_ctrl->SendIpi(cpuid.GetApicId());
+	  CpuId cpuid_(j);
+	  if (cpuid_.GetApicId() != 0) {
+	    apic_ctrl->SendIpi(cpuid_.GetApicId());
 	  }
 	}
       }
@@ -971,7 +965,7 @@ static void membench6() {
 
 
 
-  for (int i = 1; i <= 37; i++) {
+  for (unsigned int i = 1; i <= 37; i++) {
     static volatile int cpu_num;
     if (cpuid == 0) {
       cpu_num = 0;
@@ -1005,17 +999,17 @@ static void membench6() {
 	sync2(cpu_num, l1, l2, l3);
       }
   
-      uint64_t t2 = timer->ReadMainCnt();
-      for (int i = 0; i < 100; i++) {
+      // uint64_t t2 = timer->ReadMainCnt();
+      for (int j = 0; j < 100; j++) {
 	sync_.Do();
       }
 
       if (apicid == 0) {
 	//	gtty->CprintfRaw("<%d %d us> ", cpu_num, ((timer->ReadMainCnt() - t2) * timer->GetCntClkPeriod()) / 1000);
 	for (int j = 0; j < 256; j++) {
-	  CpuId cpuid(j);
-	  if (cpuid.GetApicId() != 0) {
-	    apic_ctrl->SendIpi(cpuid.GetApicId());
+	  CpuId cpuid_(j);
+	  if (cpuid_.GetApicId() != 0) {
+	    apic_ctrl->SendIpi(cpuid_.GetApicId());
 	  }
 	}
       }
@@ -1476,31 +1470,41 @@ static void register_membench_callout() {
   new(&callout[cpuid]) Callout;
   Function oneshot_bench_func;
   oneshot_bench_func.Init([](void *){
-    int cpuid = cpu_ctrl->GetCpuId().GetRawId();
-    if (id != cpuid) {
-      callout[cpuid].SetHandler(1000);
-      return;
-    }
-    membench();
-    id++;
-  }, nullptr);
+      int cpuid_ = cpu_ctrl->GetCpuId().GetRawId();
+      if (id != cpuid_) {
+        callout[cpuid_].SetHandler(1000);
+        return;
+      }
+      membench();
+      id++;
+    }, nullptr);
   callout[cpuid].Init(oneshot_bench_func);
   callout[cpuid].SetHandler(10);
 }
 
 static void register_membench2_callout() {
-  static int id = 0;
   int cpuid = cpu_ctrl->GetCpuId().GetRawId();
   new(&callout[cpuid]) Callout;
   Function oneshot_bench_func;
   oneshot_bench_func.Init([](void *){
     membench7();
-  }, nullptr);
+    if (false) {
+      membench2();
+      membench3();
+      membench4();
+      membench5();
+      membench6();
+    }
   callout[cpuid].Init(oneshot_bench_func);
   callout[cpuid].SetHandler(10);
 }
 
 void bench(int argc, const char* argv[]) {
+  static uint64_t cnt = 0;
+  static int64_t sum = 0;
+  static const int stime = 3000;
+  static int time = stime, rtime = 0;
+
   if (argc != 2) {
     gtty->Cprintf("invalid argument.\n");
     return;
@@ -1702,11 +1706,10 @@ extern "C" int main() {
 
   cpu_ctrl->Init();
   
-  CpuId network_cpu = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kHighPerformance);
-  ;
-  CpuId pstack_cpu = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kHighPerformance);
-  ;
-    
+  network_cpu = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kHighPerformance);
+
+  pstack_cpu = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kHighPerformance);
+
   rnd_next = timer->ReadMainCnt();
 
   task_ctrl->Setup();
@@ -1746,11 +1749,6 @@ extern "C" int main() {
       shell->ReadCh(c);
     }, nullptr);
   keyboard->Setup(kbd_func);
-
-  cnt = 0;
-  sum = 0;
-  time = stime;
-  rtime = 0;
 
   // gtty->Cprintf("[cpu] info: #%d (apic id: %d) started.\n",
   //               cpu_ctrl->GetCpuId(),
@@ -1850,6 +1848,9 @@ extern "C" int main_of_others() {
     tt1.SetHandler(10);
   }
 #endif
+  if (false) {
+    register_membench_callout();
+  }
   register_membench2_callout();
 
   task_ctrl->Run();

@@ -52,16 +52,9 @@ public:
     return addr;
   }
   template <class T, class... Y>
-  [[deprecated]] T *New(const Y& ...args) {
-    virt_addr addr = Alloc(sizeof(T));
-    T *t = reinterpret_cast<T *>(addr);
-    return new(t) T(args...);
-  }
+    T *New(const Y& ...args) __attribute__((deprecated));
   template <class T>
-  [[deprecated]] void Delete(T *c) {
-    c->~T();
-    Free(reinterpret_cast<virt_addr>(c));
-  }
+    void Delete(T *c) __attribute__((deprecated));
 
   virt_addr Sbrk(int64_t increment);
 private:
@@ -70,5 +63,18 @@ private:
   virt_addr _heap_limit;
   SpinLock _lock;
 };
+
+template <class T, class... Y>
+  T *VirtmemCtrl::New(const Y& ...args) {
+  virt_addr addr = Alloc(sizeof(T));
+  T *t = reinterpret_cast<T *>(addr);
+  return new(t) T(args...);
+}
+
+template <class T>
+void VirtmemCtrl::Delete(T *c) {
+  c->~T();
+  Free(reinterpret_cast<virt_addr>(c));
+}
 
 #endif // __RAPH_LIB_MEM_VIRTMEM_H__

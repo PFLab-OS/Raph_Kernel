@@ -411,7 +411,7 @@ static int em_smart_pwr_down = FALSE;
 //     "Show bad packets in promiscuous mode");
 
 // RaphineはMSIXをサポートしていない
-static int em_enable_msix = FALSE;
+// static int em_enable_msix = FALSE;
 // SYSCTL_INT(_hw_em, OID_AUTO, enable_msix, CTLFLAG_RDTUN, &em_enable_msix, 0,
 //     "Enable MSI-X interrupts");
 

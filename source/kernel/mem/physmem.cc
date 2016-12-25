@@ -47,13 +47,13 @@ void PhysmemCtrl::Init() {
       switch (srat_st->type) {
       case SratStructType::kLocalApicAffinity:
         {
-          SratStructLapic *srat_st_lapic = reinterpret_cast<SratStructLapic *>(ptr);
+          // SratStructLapic *srat_st_lapic = reinterpret_cast<SratStructLapic *>(ptr);
           // gtty->CprintfRaw("(APIC(%d), domain:%d)", srat_st_lapic->lapic_id, (srat_st_lapic->proximity_domain_high << 24) | (srat_st_lapic->proximity_domain_middle << 16) | srat_st_lapic->proximity_domain_low);
         }
         break;
       case SratStructType::kLocalX2ApicAffinity:
         {
-          SratStructLx2apic *srat_st_lapic = reinterpret_cast<SratStructLx2apic *>(ptr);
+          // SratStructLx2apic *srat_st_lapic = reinterpret_cast<SratStructLx2apic *>(ptr);
           // gtty->CprintfRaw("(APIC(%d), domain:%d)", srat_st_lapic->lapic_id, srat_st_lapic->proximity_domain);
         }
         break;
