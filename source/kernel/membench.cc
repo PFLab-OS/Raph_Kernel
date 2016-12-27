@@ -20,269 +20,469 @@
  * 
  */
 
+#include <x86.h>
 #include <stdlib.h>
 #include <raph.h>
 #include <cpu.h>
-#include <x86.h>
 #include <measure.h>
 #include <tty.h>
 #include <global.h>
 #include <mem/physmem.h>
 
 static bool is_knl() {
-return x86::get_display_family_model() == 0x0657;
+  return x86::get_display_family_model() == 0x0657;
 }
 
 static void membench() {
-if (!is_knl()) {
-return;
-}
-
-gtty->CprintfRaw("-%d-", cpu_ctrl->GetCpuId().GetRawId());
+  if (!is_knl()) {
+    return;
+  }
   
-int entry = 20 * 1024 * 1024 / sizeof(int);
-int *tmp = new int[entry];
-for(int i = 0; i < entry - 1; i++) {
-tmp[i] = i + 1;
-}
-// http://mementoo.info/archives/746
-for(int i=0;i<entry - 1;i++)
-  {
-int j = rand()%(entry - 1);
-int t = tmp[i];
-tmp[i] = tmp[j];
-tmp[j] = t;
-}
+  gtty->CprintfRaw("-%d-", cpu_ctrl->GetCpuId().GetRawId());
+  
+  int entry = 20 * 1024 * 1024 / sizeof(int);
+  int *tmp = new int[entry];
+  for(int i = 0; i < entry - 1; i++) {
+    tmp[i] = i + 1;
+  }
+  // http://mementoo.info/archives/746
+  for(int i=0;i<entry - 1;i++)
+    {
+      int j = rand()%(entry - 1);
+      int t = tmp[i];
+      tmp[i] = tmp[j];
+      tmp[j] = t;
+    }
 
-{      
-int *buf = new int[entry];
-// init
-{
-int j = 0;
-for (int i = 0; i < entry - 1; i++) {
-j = (buf[j] = tmp[i]);
-}
-buf[j] = -1;
-}
-// bench
-measure {
-int j = 0;
-do {
-j = buf[j];
-} while(buf[j] != -1);
-}
-delete buf;
-}
-{      
-PhysAddr paddr;
-physmem_ctrl->Alloc(paddr, PagingCtrl::ConvertNumToPageSize(entry * sizeof(int)));
-int *buf = reinterpret_cast<int *>(paddr.GetVirtAddr());
-// init
-int sum_bkup = 0;
-{
-for (int i = 0; i < entry - 1; i++) {
-buf[i] = i;
-sum_bkup += buf[i];
-}
-}
-int sum = 0;
-// bench
-measure {
-for (int i = 0; i < entry - 1; i++) {
-sum += buf[i];
-}
-}
-assert(sum == sum_bkup);
-delete buf;
-}
-{      
-//int *buf = new int[entry];
-int *buf = reinterpret_cast<int *>(p2v(0x1840000000));
-// init
-{
-int j = 0;
-for (int i = 0; i < entry - 1; i++) {
-j = (buf[j] = tmp[i]);
-}
-buf[j] = -1;
-}
-// bench
-measure {
-int j = 0;
-do {
-j = buf[j];
-} while(buf[j] != -1);
-}
-// delete buf;
-}
-{      
-// int *buf = new int[entry];
-int *buf = reinterpret_cast<int *>(p2v(0x1840000000));
-// init
-int sum_bkup = 0;
-{
-for (int i = 0; i < entry - 1; i++) {
-buf[i] = i;
-sum_bkup += buf[i];
-}
-}
-int sum = 0;
-// bench
-measure {
-for (int i = 0; i < entry - 1; i++) {
-sum += buf[i];
-}
-}
-assert(sum == sum_bkup);
-// delete buf;
-}
-delete tmp;
+  {      
+    int *buf = new int[entry];
+    // init
+    {
+      int j = 0;
+      for (int i = 0; i < entry - 1; i++) {
+        j = (buf[j] = tmp[i]);
+      }
+      buf[j] = -1;
+    }
+    // bench
+    measure {
+      int j = 0;
+      do {
+        j = buf[j];
+      } while(buf[j] != -1);
+    }
+    delete buf;
+  }
+  {      
+    PhysAddr paddr;
+    physmem_ctrl->Alloc(paddr, PagingCtrl::ConvertNumToPageSize(entry * sizeof(int)));
+    int *buf = reinterpret_cast<int *>(paddr.GetVirtAddr());
+    // init
+    int sum_bkup = 0;
+    {
+      for (int i = 0; i < entry - 1; i++) {
+        buf[i] = i;
+        sum_bkup += buf[i];
+      }
+    }
+    int sum = 0;
+    // bench
+    measure {
+      for (int i = 0; i < entry - 1; i++) {
+        sum += buf[i];
+      }
+    }
+    assert(sum == sum_bkup);
+    delete buf;
+  }
+  {      
+    //int *buf = new int[entry];
+    int *buf = reinterpret_cast<int *>(p2v(0x1840000000));
+    // init
+    {
+      int j = 0;
+      for (int i = 0; i < entry - 1; i++) {
+        j = (buf[j] = tmp[i]);
+      }
+      buf[j] = -1;
+    }
+    // bench
+    measure {
+      int j = 0;
+      do {
+        j = buf[j];
+      } while(buf[j] != -1);
+    }
+    // delete buf;
+  }
+  {      
+    // int *buf = new int[entry];
+    int *buf = reinterpret_cast<int *>(p2v(0x1840000000));
+    // init
+    int sum_bkup = 0;
+    {
+      for (int i = 0; i < entry - 1; i++) {
+        buf[i] = i;
+        sum_bkup += buf[i];
+      }
+    }
+    int sum = 0;
+    // bench
+    measure {
+      for (int i = 0; i < entry - 1; i++) {
+        sum += buf[i];
+      }
+    }
+    assert(sum == sum_bkup);
+    // delete buf;
+  }
+  delete tmp;
 }
 
 int *init, *answer;
 int *ddr, *mcdram;
 static inline int min(int a, int b) {
-return a > b ? b : a;
+  return a > b ? b : a;
 }
 
 static inline void sync(volatile int &l1, volatile int &l2, volatile int &l3) {
-int cpunum = cpu_ctrl->GetHowManyCpus();
-l2 = 0;
-while(true) {
-int tmp = l1;
-if (__sync_bool_compare_and_swap(&l1, tmp, tmp + 1)) {
-break;
-}
-}
-do {
-} while(!__sync_bool_compare_and_swap(&l1, cpunum, cpunum));
-l3 = 0;
-while(true) {
-int tmp = l2;
-if (__sync_bool_compare_and_swap(&l2, tmp, tmp + 1)) {
-break;
-}
-}
-do {
-} while(!__sync_bool_compare_and_swap(&l2, cpunum, cpunum));
-l1 = 0;
-while(true) {
-int tmp = l3;
-if (__sync_bool_compare_and_swap(&l3, tmp, tmp + 1)) {
-break;
-}
-}
-do {
-} while(!__sync_bool_compare_and_swap(&l3, cpunum, cpunum));
+  int cpunum = cpu_ctrl->GetHowManyCpus();
+  l2 = 0;
+  while(true) {
+    int tmp = l1;
+    if (__sync_bool_compare_and_swap(&l1, tmp, tmp + 1)) {
+      break;
+    }
+  }
+  do {
+  } while(!__sync_bool_compare_and_swap(&l1, cpunum, cpunum));
+  l3 = 0;
+  while(true) {
+    int tmp = l2;
+    if (__sync_bool_compare_and_swap(&l2, tmp, tmp + 1)) {
+      break;
+    }
+  }
+  do {
+  } while(!__sync_bool_compare_and_swap(&l2, cpunum, cpunum));
+  l1 = 0;
+  while(true) {
+    int tmp = l3;
+    if (__sync_bool_compare_and_swap(&l3, tmp, tmp + 1)) {
+      break;
+    }
+  }
+  do {
+  } while(!__sync_bool_compare_and_swap(&l3, cpunum, cpunum));
 }
 
+// syncのコア数制限版
 static inline void sync2(int cpunum, volatile int &l1, volatile int &l2, volatile int &l3) {
-l2 = 0;
-while(true) {
-int tmp = l1;
-if (__sync_bool_compare_and_swap(&l1, tmp, tmp + 1)) {
-break;
-}
-}
-do {
-} while(!__sync_bool_compare_and_swap(&l1, cpunum, cpunum));
-l3 = 0;
-while(true) {
-int tmp = l2;
-if (__sync_bool_compare_and_swap(&l2, tmp, tmp + 1)) {
-break;
-}
-}
-do {
-} while(!__sync_bool_compare_and_swap(&l2, cpunum, cpunum));
-l1 = 0;
-while(true) {
-int tmp = l3;
-if (__sync_bool_compare_and_swap(&l3, tmp, tmp + 1)) {
-break;
-}
-}
-do {
-} while(!__sync_bool_compare_and_swap(&l3, cpunum, cpunum));
+  l2 = 0;
+  while(true) {
+    int tmp = l1;
+    if (__sync_bool_compare_and_swap(&l1, tmp, tmp + 1)) {
+      break;
+    }
+  }
+  do {
+  } while(!__sync_bool_compare_and_swap(&l1, cpunum, cpunum));
+  l3 = 0;
+  while(true) {
+    int tmp = l2;
+    if (__sync_bool_compare_and_swap(&l2, tmp, tmp + 1)) {
+      break;
+    }
+  }
+  do {
+  } while(!__sync_bool_compare_and_swap(&l2, cpunum, cpunum));
+  l1 = 0;
+  while(true) {
+    int tmp = l3;
+    if (__sync_bool_compare_and_swap(&l3, tmp, tmp + 1)) {
+      break;
+    }
+  }
+  do {
+  } while(!__sync_bool_compare_and_swap(&l3, cpunum, cpunum));
 }
 
+// syncのSpin On Read番
+static inline void sync_read(volatile int &l1, volatile int &l2, volatile int &l3) {
+  int cpunum = cpu_ctrl->GetHowManyCpus();
+  l2 = 0;
+  while(true) {
+    int tmp = l1;
+    if (__sync_bool_compare_and_swap(&l1, tmp, tmp + 1)) {
+      break;
+    }
+  }
+  while(true) {
+    while(l1 != cpunum) {
+      asm volatile("nop");
+    }
+    if (__sync_bool_compare_and_swap(&l1, cpunum, cpunum)) {
+      break;
+    }
+  }
+  l3 = 0;
+  while(true) {
+    int tmp = l2;
+    if (__sync_bool_compare_and_swap(&l2, tmp, tmp + 1)) {
+      break;
+    }
+  }
+  while(true) {
+    while(l2 != cpunum) {
+      asm volatile("nop");
+    }
+    if (__sync_bool_compare_and_swap(&l2, cpunum, cpunum)) {
+      break;
+    }
+  }
+  l1 = 0;
+  while(true) {
+    int tmp = l3;
+    if (__sync_bool_compare_and_swap(&l3, tmp, tmp + 1)) {
+      break;
+    }
+  }
+  while(true) {
+    while(l3 != cpunum) {
+      asm volatile("nop");
+    }
+    if (__sync_bool_compare_and_swap(&l3, cpunum, cpunum)) {
+      break;
+    }
+  }
+}
+
+// sync2のSpin On Read版
+static inline void sync2_read(int cpunum, volatile int &l1, volatile int &l2, volatile int &l3) {
+  l2 = 0;
+  while(true) {
+    int tmp = l1;
+    if (__sync_bool_compare_and_swap(&l1, tmp, tmp + 1)) {
+      break;
+    }
+  }
+  while(true) {
+    while(l1 != cpunum) {
+      asm volatile("nop");
+    }
+    if (__sync_bool_compare_and_swap(&l1, cpunum, cpunum)) {
+      break;
+    }
+  }
+  l3 = 0;
+  while(true) {
+    int tmp = l2;
+    if (__sync_bool_compare_and_swap(&l2, tmp, tmp + 1)) {
+      break;
+    }
+  }
+  while(true) {
+    while(l2 != cpunum) {
+      asm volatile("nop");
+    }
+    if (__sync_bool_compare_and_swap(&l2, cpunum, cpunum)) {
+      break;
+    }
+  }
+  l1 = 0;
+  while(true) {
+    int tmp = l3;
+    if (__sync_bool_compare_and_swap(&l3, tmp, tmp + 1)) {
+      break;
+    }
+  }
+  while(true) {
+    while(l3 != cpunum) {
+      asm volatile("nop");
+    }
+    if (__sync_bool_compare_and_swap(&l3, cpunum, cpunum)) {
+      break;
+    }
+  }
+}
+
+// 1階層
+template<int kSubStructNum, int kPhysAvailableCoreNum, int kGroupCoreNum>
 struct Sync {
-static const int kSubStructNum = 37;
-static const int kPhysAvailableCoreNum = 32;
-int top_level_lock1;
-int top_level_lock2;
-int top_level_lock3;
-struct SyncSub {
-int lock;
-void Init() {
-lock = 0;
-}
-void Do() {
-while(true) {
-int tmp = lock;
-if (__sync_bool_compare_and_swap(&lock, tmp, tmp + 1)) {
-break;
-}
-}
-do {
-} while(!__sync_bool_compare_and_swap(&lock, 8, 8));
-}
+  int top_level_lock1;
+  int top_level_lock2;
+  int top_level_lock3;
+  struct SyncSub {
+    int lock;
+    void Init() {
+      lock = 0;
+    }
+    void Do() {
+      while(true) {
+        int tmp = lock;
+        if (__sync_bool_compare_and_swap(&lock, tmp, tmp + 1)) {
+          break;
+        }
+      }
+      do {
+      } while(!__sync_bool_compare_and_swap(&lock, kGroupCoreNum, kGroupCoreNum));
+    }
+  };
+  SyncSub second_level_lock1[kSubStructNum];
+  SyncSub second_level_lock2[kSubStructNum];
+  SyncSub second_level_lock3[kSubStructNum];
+  void Init() {
+    top_level_lock1 = 0;
+    top_level_lock2 = 0;
+    for (int i = 0; i < kSubStructNum; i++) {
+      second_level_lock1[i].Init();
+      second_level_lock2[i].Init();
+      second_level_lock3[i].Init();
+    }
+  }
+  void Do() {
+    uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
+    if (apicid % kGroupCoreNum == 0) {
+      top_level_lock2 = 0;
+      while(true) {
+        int tmp = top_level_lock1;
+        if (__sync_bool_compare_and_swap(&top_level_lock1, tmp, tmp + 1)) {
+          break;
+        }
+      }
+      do {
+      } while(!__sync_bool_compare_and_swap(&top_level_lock1, kPhysAvailableCoreNum, kPhysAvailableCoreNum));
+      top_level_lock3 = 0;
+      while(true) {
+        int tmp = top_level_lock2;
+        if (__sync_bool_compare_and_swap(&top_level_lock2, tmp, tmp + 1)) {
+          break;
+        }
+      }
+      do {
+      } while(!__sync_bool_compare_and_swap(&top_level_lock2, kPhysAvailableCoreNum, kPhysAvailableCoreNum)); 
+      top_level_lock1 = 0;
+      while(true) {
+        int tmp = top_level_lock3;
+        if (__sync_bool_compare_and_swap(&top_level_lock3, tmp, tmp + 1)) {
+          break;
+        }
+      }
+      do {
+      } while(!__sync_bool_compare_and_swap(&top_level_lock3, kPhysAvailableCoreNum, kPhysAvailableCoreNum));
+    }
+    second_level_lock2[apicid / kGroupCoreNum].Init();
+    second_level_lock1[apicid / kGroupCoreNum].Do();
+    second_level_lock3[apicid / kGroupCoreNum].Init();
+    second_level_lock2[apicid / kGroupCoreNum].Do();
+    second_level_lock1[apicid / kGroupCoreNum].Init();
+    second_level_lock3[apicid / kGroupCoreNum].Do();
+  }
 };
-SyncSub second_level_lock1[kSubStructNum];
-SyncSub second_level_lock2[kSubStructNum];
-SyncSub second_level_lock3[kSubStructNum];
-void Init() {
-top_level_lock1 = 0;
-top_level_lock2 = 0;
-for (int i = 0; i < kSubStructNum; i++) {
-second_level_lock1[i].Init();
-second_level_lock2[i].Init();
-second_level_lock3[i].Init();
-}
-}
-void Do() {
-uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
-if (apicid % 8 == 0) {
-top_level_lock2 = 0;
-while(true) {
-int tmp = top_level_lock1;
-if (__sync_bool_compare_and_swap(&top_level_lock1, tmp, tmp + 1)) {
-break;
-}
-}
-do {
-} while(!__sync_bool_compare_and_swap(&top_level_lock1, kPhysAvailableCoreNum, kPhysAvailableCoreNum));
-top_level_lock3 = 0;
- while(true) {
-   int tmp = top_level_lock2;
-   if (__sync_bool_compare_and_swap(&top_level_lock2, tmp, tmp + 1)) {
-     break;
-   }
- }
- do {
- } while(!__sync_bool_compare_and_swap(&top_level_lock2, kPhysAvailableCoreNum, kPhysAvailableCoreNum)); 
- top_level_lock1 = 0;
- while(true) {
-   int tmp = top_level_lock3;
-   if (__sync_bool_compare_and_swap(&top_level_lock3, tmp, tmp + 1)) {
-     break;
-   }
- }
- do {
- } while(!__sync_bool_compare_and_swap(&top_level_lock3, kPhysAvailableCoreNum, kPhysAvailableCoreNum));
- }
- second_level_lock2[apicid / 8].Init();
- second_level_lock1[apicid / 8].Do();
- second_level_lock3[apicid / 8].Init();
- second_level_lock2[apicid / 8].Do();
- second_level_lock1[apicid / 8].Init();
- second_level_lock3[apicid / 8].Do();
-}
-};
+using SyncE3 = Sync<4, 4, 2>;
 
+// 1階層 Spin On Read
+template<int kSubStructNum, int kPhysAvailableCoreNum, int kGroupCoreNum>
+struct SyncRead {
+  int top_level_lock1;
+  int top_level_lock2;
+  int top_level_lock3;
+  struct SyncSub {
+    int lock;
+    void Init() {
+      lock = 0;
+    }
+    void Do() {
+      while(true) {
+        int tmp = lock;
+        if (__sync_bool_compare_and_swap(&lock, tmp, tmp + 1)) {
+          break;
+        }
+      }
+      while(true) {
+        while(lock != kGroupCoreNum) {
+          asm volatile("nop");
+        }
+        if (__sync_bool_compare_and_swap(&lock, kGroupCoreNum, kGroupCoreNum)) {
+          break;
+        }
+      }
+    }
+  };
+  SyncSub second_level_lock1[kSubStructNum];
+  SyncSub second_level_lock2[kSubStructNum];
+  SyncSub second_level_lock3[kSubStructNum];
+  void Init() {
+    top_level_lock1 = 0;
+    top_level_lock2 = 0;
+    for (int i = 0; i < kSubStructNum; i++) {
+      second_level_lock1[i].Init();
+      second_level_lock2[i].Init();
+      second_level_lock3[i].Init();
+    }
+  }
+  void Do() {
+    uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
+    if (apicid % kGroupCoreNum == 0) {
+      top_level_lock2 = 0;
+      while(true) {
+        int tmp = top_level_lock1;
+        if (__sync_bool_compare_and_swap(&top_level_lock1, tmp, tmp + 1)) {
+          break;
+        }
+      }
+      while(true) {
+        while(top_level_lock1 != kPhysAvailableCoreNum) {
+          asm volatile("nop");
+        }
+        if (__sync_bool_compare_and_swap(&top_level_lock1, kPhysAvailableCoreNum, kPhysAvailableCoreNum)) {
+          break;
+        }
+      }
+      top_level_lock3 = 0;
+      while(true) {
+        int tmp = top_level_lock2;
+        if (__sync_bool_compare_and_swap(&top_level_lock2, tmp, tmp + 1)) {
+          break;
+        }
+      }
+      while(true) {
+        while(top_level_lock2 != kPhysAvailableCoreNum) {
+          asm volatile("nop");
+        }
+        if (__sync_bool_compare_and_swap(&top_level_lock2, kPhysAvailableCoreNum, kPhysAvailableCoreNum)) {
+          break;
+        }
+      }
+      top_level_lock1 = 0;
+      while(true) {
+        int tmp = top_level_lock3;
+        if (__sync_bool_compare_and_swap(&top_level_lock3, tmp, tmp + 1)) {
+          break;
+        }
+      }
+      while(true) {
+        while(top_level_lock3 != kPhysAvailableCoreNum) {
+          asm volatile("nop");
+        }
+        if (__sync_bool_compare_and_swap(&top_level_lock3, kPhysAvailableCoreNum, kPhysAvailableCoreNum)) {
+          break;
+        }
+      }
+    }
+    second_level_lock2[apicid / kGroupCoreNum].Init();
+    second_level_lock1[apicid / kGroupCoreNum].Do();
+    second_level_lock3[apicid / kGroupCoreNum].Init();
+    second_level_lock2[apicid / kGroupCoreNum].Do();
+    second_level_lock1[apicid / kGroupCoreNum].Init();
+    second_level_lock3[apicid / kGroupCoreNum].Do();
+  }
+};
+using SyncReadE3 = SyncRead<4, 4, 2>;
+
+// 2階層
+template<int kSubStructNum, int kPhysAvailableCoreNum>
 struct Sync2 {
-  static const int kSubStructNum = 37;
-  static const int kPhysAvailableCoreNum = 32;
   int top_level_lock1;
   int top_level_lock2;
   int top_level_lock3;
@@ -380,9 +580,143 @@ struct Sync2 {
     third_level_lock3[apicid / 4].Do();
   }
 };
+using Sync2Phi = Sync2<37, 32>;
 
+// 2階層 Spin On Read
+template<int kSubStructNum, int kPhysAvailableCoreNum>
+struct Sync2Read {
+  int top_level_lock1;
+  int top_level_lock2;
+  int top_level_lock3;
+  struct SyncSub {
+    int lock;
+    void Init() {
+      lock = 0;
+    }
+    void Do() {
+      while(true) {
+        int tmp = lock;
+        if (__sync_bool_compare_and_swap(&lock, tmp, tmp + 1)) {
+          break;
+        }
+      }
+      while(true) {
+        while(lock != 2) {
+          asm volatile("nop");
+        }
+        if (__sync_bool_compare_and_swap(&lock, 2, 2)) {
+          break;
+        }
+      }
+    }
+  };
+  SyncSub second_level_lock1[kSubStructNum];
+  SyncSub second_level_lock2[kSubStructNum];
+  SyncSub second_level_lock3[kSubStructNum];
+  struct SyncSub2 {
+    int lock;
+    void Init() {
+      lock = 0;
+    }
+    void Do() {
+      while(true) {
+        int tmp = lock;
+        if (__sync_bool_compare_and_swap(&lock, tmp, tmp + 1)) {
+          break;
+        }
+      }
+      while(true) {
+        while(lock != 4) {
+          asm volatile("nop");
+        }
+        if (__sync_bool_compare_and_swap(&lock, 4, 4)) {
+          break;
+        }
+      }
+    }
+  };
+  SyncSub2 third_level_lock1[kSubStructNum*2];
+  SyncSub2 third_level_lock2[kSubStructNum*2];
+  SyncSub2 third_level_lock3[kSubStructNum*2];
+  void Init() {
+    top_level_lock1 = 0;
+    top_level_lock2 = 0;
+    for (int i = 0; i < kSubStructNum; i++) {
+      second_level_lock1[i].Init();
+      second_level_lock2[i].Init();
+      second_level_lock3[i].Init();
+    }
+  }
+  void Do() {
+    uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
+    if (apicid % 8 == 0) {
+      top_level_lock2 = 0;
+      while(true) {
+        int tmp = top_level_lock1;
+        if (__sync_bool_compare_and_swap(&top_level_lock1, tmp, tmp + 1)) {
+          break;
+        }
+      }
+      while(true) {
+        while(top_level_lock1 != kPhysAvailableCoreNum) {
+          asm volatile("nop");
+        }
+        if (__sync_bool_compare_and_swap(&top_level_lock1, kPhysAvailableCoreNum, kPhysAvailableCoreNum)) {
+          break;
+        }
+      }
+      top_level_lock3 = 0;
+      while(true) {
+        int tmp = top_level_lock2;
+        if (__sync_bool_compare_and_swap(&top_level_lock2, tmp, tmp + 1)) {
+          break;
+        }
+      }
+      while(true) {
+        while(top_level_lock2 != kPhysAvailableCoreNum) {
+          asm volatile("nop");
+        }
+        if (__sync_bool_compare_and_swap(&top_level_lock2, kPhysAvailableCoreNum, kPhysAvailableCoreNum)) {
+          break;
+        }
+      }
+      top_level_lock1 = 0;
+      while(true) {
+        int tmp = top_level_lock3;
+        if (__sync_bool_compare_and_swap(&top_level_lock3, tmp, tmp + 1)) {
+          break;
+        }
+      }
+      while(true) {
+        while(top_level_lock3 != kPhysAvailableCoreNum) {
+          asm volatile("nop");
+        }
+        if (__sync_bool_compare_and_swap(&top_level_lock3, kPhysAvailableCoreNum, kPhysAvailableCoreNum)) {
+          break;
+        }
+      }
+    }
+    if (apicid % 4 == 0) {
+      second_level_lock2[apicid / 8].Init();
+      second_level_lock1[apicid / 8].Do();
+      second_level_lock3[apicid / 8].Init();
+      second_level_lock2[apicid / 8].Do();
+      second_level_lock1[apicid / 8].Init();
+      second_level_lock3[apicid / 8].Do();
+    }
+    third_level_lock2[apicid / 4].Init();
+    third_level_lock1[apicid / 4].Do();
+    third_level_lock3[apicid / 4].Init();
+    third_level_lock2[apicid / 4].Do();
+    third_level_lock1[apicid / 4].Init();
+    third_level_lock3[apicid / 4].Do();
+  }
+};
+using Sync2ReadPhi = Sync2Read<37, 32>;
+
+// Sync2のコア数制限版
+template<int kSubStructNum>
 struct Sync3 {
-  static const int kSubStructNum = 37;
   int kPhysAvailableCoreNum;
   int top_level_lock1;
   int top_level_lock2;
@@ -482,7 +816,141 @@ struct Sync3 {
     third_level_lock3[apicid / 4].Do();
   }
 };
+using Sync3Phi = Sync3<37>;
 
+// Sync3のSpinOnRead版
+template<int kSubStructNum>
+struct Sync3Read {
+  int kPhysAvailableCoreNum;
+  int top_level_lock1;
+  int top_level_lock2;
+  int top_level_lock3;
+  struct SyncSub {
+    int lock;
+    void Init() {
+      lock = 0;
+    }
+    void Do() {
+      while(true) {
+        int tmp = lock;
+        if (__sync_bool_compare_and_swap(&lock, tmp, tmp + 1)) {
+          break;
+        }
+      }
+      while(true) {
+        while(lock != 2) {
+          asm volatile("nop");
+        }
+        if (__sync_bool_compare_and_swap(&lock, 2, 2)) {
+          break;
+        }
+      }
+    }
+  };
+  SyncSub second_level_lock1[kSubStructNum];
+  SyncSub second_level_lock2[kSubStructNum];
+  SyncSub second_level_lock3[kSubStructNum];
+  struct SyncSub2 {
+    int lock;
+    void Init() {
+      lock = 0;
+    }
+    void Do() {
+      while(true) {
+        int tmp = lock;
+        if (__sync_bool_compare_and_swap(&lock, tmp, tmp + 1)) {
+          break;
+        }
+      }
+      while(true) {
+        while(lock != 4) {
+          asm volatile("nop");
+        }
+        if (__sync_bool_compare_and_swap(&lock, 4, 4)) {
+          break;
+        }
+      }
+    }
+  };
+  SyncSub2 third_level_lock1[kSubStructNum*2];
+  SyncSub2 third_level_lock2[kSubStructNum*2];
+  SyncSub2 third_level_lock3[kSubStructNum*2];
+  void Init(int substruct_num) {
+    kPhysAvailableCoreNum = substruct_num;
+    top_level_lock1 = 0;
+    top_level_lock2 = 0;
+    for (int i = 0; i < kSubStructNum; i++) {
+      second_level_lock1[i].Init();
+      second_level_lock2[i].Init();
+      second_level_lock3[i].Init();
+    }
+  }
+  void Do() {
+    uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
+    if (apicid % 8 == 0) {
+      top_level_lock2 = 0;
+      while(true) {
+        int tmp = top_level_lock1;
+        if (__sync_bool_compare_and_swap(&top_level_lock1, tmp, tmp + 1)) {
+          break;
+        }
+      }
+      while(true) {
+        while(top_level_lock1 != kPhysAvailableCoreNum) {
+          asm volatile("nop");
+        }
+        if (__sync_bool_compare_and_swap(&top_level_lock1, kPhysAvailableCoreNum, kPhysAvailableCoreNum)) {
+          break;
+        }
+      }
+      top_level_lock3 = 0;
+      while(true) {
+        int tmp = top_level_lock2;
+        if (__sync_bool_compare_and_swap(&top_level_lock2, tmp, tmp + 1)) {
+          break;
+        }
+      }
+      while(true) {
+        while(top_level_lock2 != kPhysAvailableCoreNum) {
+          asm volatile("nop");
+        }
+        if (__sync_bool_compare_and_swap(&top_level_lock2, kPhysAvailableCoreNum, kPhysAvailableCoreNum)) {
+          break;
+        }
+      }
+      top_level_lock1 = 0;
+      while(true) {
+        int tmp = top_level_lock3;
+        if (__sync_bool_compare_and_swap(&top_level_lock3, tmp, tmp + 1)) {
+          break;
+        }
+      }
+      while(true) {
+        while(top_level_lock3 != kPhysAvailableCoreNum) {
+          asm volatile("nop");
+        }
+        if (__sync_bool_compare_and_swap(&top_level_lock3, kPhysAvailableCoreNum, kPhysAvailableCoreNum)) {
+          break;
+        }
+      }
+    }
+    if (apicid % 4 == 0) {
+      second_level_lock2[apicid / 8].Init();
+      second_level_lock1[apicid / 8].Do();
+      second_level_lock3[apicid / 8].Init();
+      second_level_lock2[apicid / 8].Do();
+      second_level_lock1[apicid / 8].Init();
+      second_level_lock3[apicid / 8].Do();
+    }
+    third_level_lock2[apicid / 4].Init();
+    third_level_lock1[apicid / 4].Do();
+    third_level_lock3[apicid / 4].Init();
+    third_level_lock2[apicid / 4].Do();
+    third_level_lock1[apicid / 4].Init();
+    third_level_lock3[apicid / 4].Do();
+  }
+};
+using Sync3ReadPhi = Sync3Read<37>;
 
 // ワーシャル-フロイド
 static void membench2() {
@@ -750,35 +1218,72 @@ static void membench5() {
   }
   
   {
-    static volatile int l1 = 0, l2 = 0, l3 = 0;
-    sync(l1, l2, l3);
-  }
+    {
+      static volatile int l1 = 0, l2 = 0, l3 = 0;
+      sync(l1, l2, l3);
+    }
   
-  uint64_t t1 = timer->ReadMainCnt();
-  for (int i = 0; i < 100; i++) {
-    static volatile int l1 = 0, l2 = 0, l3 = 0;
-    sync(l1, l2, l3);
+    uint64_t t1 = timer->ReadMainCnt();
+    for (int i = 0; i < 100; i++) {
+      static volatile int l1 = 0, l2 = 0, l3 = 0;
+      sync(l1, l2, l3);
+    }
+    if (cpuid == 0) {
+      gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+    }
   }
-  if (cpuid == 0) {
-    gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
-  }
-
-  static Sync2 sync_;
-  sync_.Init();
 
   {
-    static volatile int l1 = 0, l2 = 0, l3 = 0;
-    sync(l1, l2, l3);
-  }
+    {
+      static volatile int l1 = 0, l2 = 0, l3 = 0;
+      sync(l1, l2, l3);
+    }
   
-  uint64_t t2 = timer->ReadMainCnt();
-  for (int i = 0; i < 100; i++) {
-    sync_.Do();
-  }
-  if (cpuid == 0) {
-    gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t2) * timer->GetCntClkPeriod()) / 1000);
+    uint64_t t1 = timer->ReadMainCnt();
+    for (int i = 0; i < 100; i++) {
+      static volatile int l1 = 0, l2 = 0, l3 = 0;
+      sync_read(l1, l2, l3);
+    }
+    if (cpuid == 0) {
+      gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+    }
   }
 
+  {
+    static Sync2Phi sync_;
+    sync_.Init();
+
+    {
+      static volatile int l1 = 0, l2 = 0, l3 = 0;
+      sync(l1, l2, l3);
+    }
+  
+    uint64_t t2 = timer->ReadMainCnt();
+    for (int i = 0; i < 100; i++) {
+      sync_.Do();
+    }
+    if (cpuid == 0) {
+      gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t2) * timer->GetCntClkPeriod()) / 1000);
+    }
+  }
+
+  {
+    static Sync2ReadPhi sync_;
+    sync_.Init();
+
+    {
+      static volatile int l1 = 0, l2 = 0, l3 = 0;
+      sync(l1, l2, l3);
+    }
+  
+    uint64_t t2 = timer->ReadMainCnt();
+    for (int i = 0; i < 100; i++) {
+      sync_.Do();
+    }
+    if (cpuid == 0) {
+      gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t2) * timer->GetCntClkPeriod()) / 1000);
+    }
+  }
 }
 
 // コアの個数を変えた同期
@@ -799,7 +1304,7 @@ static void membench6() {
     gtty->CprintfRaw("start >>>");
   }
   
-  for (unsigned int i = 1; i <= 37; i++) {
+  for (unsigned int i = 1; i <= 1/*37*/; i++) {
     static volatile int cpu_num;
     if (cpuid == 0) {
       cpu_num = 0;
@@ -846,11 +1351,40 @@ static void membench6() {
     } else {
       asm volatile("hlt;");
     }
+
+    {
+      static volatile int l1 = 0, l2 = 0, l3 = 0;
+      sync(l1, l2, l3);
+    }
+
+    if (apicid < i * 8) {
+      {
+        static volatile int l1 = 0, l2 = 0, l3 = 0;
+        sync2(cpu_num, l1, l2, l3);
+      }
+  
+      uint64_t t1 = timer->ReadMainCnt();
+      for (int j = 0; j < 100; j++) {
+        static volatile int l1 = 0, l2 = 0, l3 = 0;
+        sync2_read(cpu_num, l1, l2, l3);
+      }
+      if (apicid == 0) {
+        gtty->CprintfRaw("<%d %d us> ", cpu_num, ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+        for (int j = 0; j < 256; j++) {
+          CpuId cpuid_(j);
+          if (cpuid_.GetApicId() != 0) {
+            apic_ctrl->SendIpi(cpuid_.GetApicId());
+          }
+        }
+      }
+    } else {
+      asm volatile("hlt;");
+    }
   }
 
 
 
-  for (unsigned int i = 1; i <= 37; i++) {
+  for (unsigned int i = 1; i <= 1/*37*/; i++) {
     static volatile int cpu_num;
     if (cpuid == 0) {
       cpu_num = 0;
@@ -876,7 +1410,7 @@ static void membench6() {
 
     if (apicid < i * 8) {
       assert(cpu_num % 8 == 0);
-      static Sync3 sync_;
+      static Sync3Phi sync_;
       sync_.Init(cpu_num / 8);
 
       {
@@ -884,13 +1418,46 @@ static void membench6() {
         sync2(cpu_num, l1, l2, l3);
       }
   
-      // uint64_t t2 = timer->ReadMainCnt();
+      uint64_t t2 = timer->ReadMainCnt();
       for (int j = 0; j < 100; j++) {
         sync_.Do();
       }
 
       if (apicid == 0) {
-        //	gtty->CprintfRaw("<%d %d us> ", cpu_num, ((timer->ReadMainCnt() - t2) * timer->GetCntClkPeriod()) / 1000);
+        gtty->CprintfRaw("<%d %d us> ", cpu_num, ((timer->ReadMainCnt() - t2) * timer->GetCntClkPeriod()) / 1000);
+        for (int j = 0; j < 256; j++) {
+          CpuId cpuid_(j);
+          if (cpuid_.GetApicId() != 0) {
+            apic_ctrl->SendIpi(cpuid_.GetApicId());
+          }
+        }
+      }
+    } else {
+      asm volatile("hlt;");
+    }
+
+    {
+      static volatile int l1 = 0, l2 = 0, l3 = 0;
+      sync(l1, l2, l3);
+    }
+
+    if (apicid < i * 8) {
+      assert(cpu_num % 8 == 0);
+      static Sync3ReadPhi sync_;
+      sync_.Init(cpu_num / 8);
+
+      {
+        static volatile int l1 = 0, l2 = 0, l3 = 0;
+        sync2(cpu_num, l1, l2, l3);
+      }
+  
+      uint64_t t2 = timer->ReadMainCnt();
+      for (int j = 0; j < 100; j++) {
+        sync_.Do();
+      }
+
+      if (apicid == 0) {
+        gtty->CprintfRaw("<%d %d us> ", cpu_num, ((timer->ReadMainCnt() - t2) * timer->GetCntClkPeriod()) / 1000);
         for (int j = 0; j < 256; j++) {
           CpuId cpuid_(j);
           if (cpuid_.GetApicId() != 0) {
@@ -905,6 +1472,7 @@ static void membench6() {
 
 }
 
+// 単純
 class SimpleSpinLock {
 public:
   SimpleSpinLock() {
@@ -921,6 +1489,7 @@ private:
 };
 
 // 1階層ロック
+template <int kSubStructNum>
 class McSpinLock1 {
 public:
   McSpinLock1() {
@@ -938,20 +1507,45 @@ public:
     assert(__sync_bool_compare_and_swap(&_second_flag[apicid / 8], 1, 0));
   }
 private:
-  static const int kSubStructNum = 37;
-  static const int kPhysAvailableCoreNum = 32;
   volatile unsigned int _top_flag = 0;
   volatile unsigned int _second_flag[kSubStructNum] = {0};
 };
 
+// 2階層ロック
+template <int kSubStructNum>
 class McSpinLock2 {
 public:
   McSpinLock2() {
   }
   void Lock() {
+    uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
+    while(!__sync_bool_compare_and_swap(&_third_flag[apicid / 4], 0, 1)) {
+    }
+    while(!__sync_bool_compare_and_swap(&_second_flag[apicid / 8], 0, 1)) {
+    }
+    while(!__sync_bool_compare_and_swap(&_top_flag, 0, 1)) {
+    }
+  }
+  void Unlock() {
+    uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
+    assert(__sync_bool_compare_and_swap(&_top_flag, 1, 0));
+    assert(__sync_bool_compare_and_swap(&_second_flag[apicid / 8], 1, 0));
+    assert(__sync_bool_compare_and_swap(&_third_flag[apicid / 4], 1, 0));
+  }
+private:
+  volatile unsigned int _top_flag = 0;
+  volatile unsigned int _second_flag[kSubStructNum] = {0};
+  volatile unsigned int _third_flag[kSubStructNum*2] = {0};
+};
+
+// 単純 Spin On Read
+class SimpleSpinLockRead {
+public:
+  SimpleSpinLockRead() {
+  }
+  void Lock() {
     while (true) {
       while(_flag == 1) {
-        asm volatile("nop");
       }
       if (__sync_bool_compare_and_swap(&_flag, 0, 1)) {
         break;
@@ -959,12 +1553,14 @@ public:
     }
   }
   void Unlock() {
-    _flag = 0;
+    assert(__sync_bool_compare_and_swap(&_flag, 1, 0));
   }
 private:
   volatile unsigned int _flag = 0;
 };
 
+// 1階層 Spin On Read
+template <int kSubStructNum>
 class McSpinLock3 {
 public:
   McSpinLock3() {
@@ -994,12 +1590,11 @@ public:
     _second_flag[apicid / 8] = 0;
   }
 private:
-  static const int kSubStructNum = 37;
-  static const int kPhysAvailableCoreNum = 32;
   volatile unsigned int _top_flag = 0;
   volatile unsigned int _second_flag[kSubStructNum] = {0};
 };
 
+// 2階層 Spin On Read
 class McSpinLock4 {
 public:
   McSpinLock4() {
@@ -1015,7 +1610,7 @@ public:
       }
     }
     while(true) {
-      while(_second_flag[apicid / 8] == 1) {
+      while(_second_flag[apicid / 8] != 0) {
         asm volatile("nop");
       }
       if(__sync_bool_compare_and_swap(&_second_flag[apicid / 8], 0, 1)) {
@@ -1045,37 +1640,6 @@ private:
   volatile unsigned int _third_flag[kSubStructNum*2] = {0};
 };
 
-// 2階層ロック
-// class McSpinLock2 {
-// public:
-//   McSpinLock2() {
-//   }
-//   void Lock() {
-//     uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
-//     // while(!__sync_bool_compare_and_swap(&_third_flag[apicid / 4], 0, 1)) {
-//     // }
-//     while(!__sync_bool_compare_and_swap(&_second_flag[apicid / 8], 0, 1)) {
-//     }
-//     while(!__sync_bool_compare_and_swap(&_second_flag2[apicid / 8], 0, 1)) {
-//     }
-//     while(!__sync_bool_compare_and_swap(&_top_flag, 0, 1)) {
-//     }
-//   }
-//   void Unlock() {
-//     uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
-//     assert(__sync_bool_compare_and_swap(&_top_flag, 1, 0));
-//     assert(__sync_bool_compare_and_swap(&_second_flag2[apicid / 8], 1, 0));
-//     assert(__sync_bool_compare_and_swap(&_second_flag[apicid / 8], 1, 0));
-//     //    assert(__sync_bool_compare_and_swap(&_third_flag[apicid / 4], 1, 0));
-//   }
-// private:
-//   static const int kSubStructNum = 37;
-//   volatile unsigned int _top_flag = 0;
-//   volatile unsigned int _second_flag[kSubStructNum] = {0};
-//   volatile unsigned int _second_flag2[kSubStructNum] = {0};
-//   volatile unsigned int _third_flag[kSubStructNum*2] = {0};
-// };
-
 template <class L>
 class LinkedList {
 public:
@@ -1097,7 +1661,9 @@ public:
     _lock.Unlock();
     int i = 0;
     if (c != nullptr) {
-      i = c->i;
+      for (int j = 0; j < 100; j++) {
+        i = c->i * c->j * c->k * c->l * c->m;
+      }
       delete c;
     }
     return i;
@@ -1106,6 +1672,10 @@ public:
     assert(i != 0);
     Container *c = new Container;
     c->i = i;
+    c->j = i;
+    c->k = i;
+    c->l = i;
+    c->m = i;
     c->next = nullptr;
     _lock.Lock();
     _last->next = c;
@@ -1115,6 +1685,10 @@ public:
 private:
   struct Container {
     int i;
+    int j;
+    int k;
+    int l;
+    int m;
     Container *next;
   };
   L _lock;
@@ -1132,25 +1706,28 @@ static void membench7() {
   // uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
 
   static LinkedList<SimpleSpinLock> list;
-  static LinkedList<McSpinLock1> list2;
-  static LinkedList<McSpinLock2> list3;
-  static LinkedList<McSpinLock3> list4;
+  static LinkedList<McSpinLock1<37>> list2;
+  static LinkedList<McSpinLock2<37>> list3;
+  static LinkedList<SimpleSpinLockRead> list_sr;
+  static LinkedList<McSpinLock3<37>> list4;
   static LinkedList<McSpinLock4> list5;
 
   if (cpuid == 0) {
-    gtty->CprintfRaw("Initializing...");
+    gtty->CprintfRaw("(init)");
   }
 
   if (cpuid == 0) {
     new (&list) LinkedList<SimpleSpinLock>;
-    new (&list2) LinkedList<McSpinLock1>;
-    new (&list3) LinkedList<McSpinLock2>;
-    new (&list4) LinkedList<McSpinLock3>;
+    new (&list2) LinkedList<McSpinLock1<37>>;
+    new (&list3) LinkedList<McSpinLock2<37>>;
+    new (&list_sr) LinkedList<SimpleSpinLockRead>;
+    new (&list4) LinkedList<McSpinLock3<37>>;
     new (&list5) LinkedList<McSpinLock4>;
     for (int i = 1; i < 256 * 2000; i++) {
       list.Push(i);
       list2.Push(i);
       list3.Push(i);
+      list_sr.Push(i);
       list4.Push(i);
       list5.Push(i);
     }
@@ -1162,7 +1739,7 @@ static void membench7() {
 
   {
     {
-      static Sync2 sync={0};
+      static Sync2Phi sync={0};
       sync.Do();
     }
 
@@ -1174,14 +1751,43 @@ static void membench7() {
     while(list.Get() != 0) {
     }
 
+    {
+      static Sync2Phi sync={0};
+      sync.Do();
+    }
+
     if (cpuid == 0) {
-      gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+      gtty->CprintfRaw("<s %d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
     }
   }
 
   {
     {
-      static Sync2 sync={0};
+      static Sync2Phi sync={0};
+      sync.Do();
+    }
+
+    uint64_t t1;
+    if (cpuid == 0) {
+      t1 = timer->ReadMainCnt();
+    }
+  
+    while(list_sr.Get() != 0) {
+    }
+
+    {
+      static Sync2Phi sync={0};
+      sync.Do();
+    }
+
+    if (cpuid == 0) {
+      gtty->CprintfRaw("<sr %d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+    }
+  }
+
+  {
+    {
+      static Sync2Phi sync={0};
       sync.Do();
     }
 
@@ -1193,14 +1799,19 @@ static void membench7() {
     while(list2.Get() != 0) {
     }
 
+    {
+      static Sync2Phi sync={0};
+      sync.Do();
+    }
+
     if (cpuid == 0) {
-      gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+      gtty->CprintfRaw("<1 %d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
     }
   }
 
   {
     {
-      static Sync2 sync={0};
+      static Sync2Phi sync={0};
       sync.Do();
     }
 
@@ -1212,14 +1823,19 @@ static void membench7() {
     while(list3.Get() != 0) {
     }
 
+    {
+      static Sync2Phi sync={0};
+      sync.Do();
+    }
+
     if (cpuid == 0) {
-      gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+      gtty->CprintfRaw("<2 %d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
     }
   }
 
   {
     {
-      static Sync2 sync={0};
+      static Sync2Phi sync={0};
       sync.Do();
     }
 
@@ -1231,6 +1847,11 @@ static void membench7() {
     while(list4.Get() != 0) {
     }
 
+    {
+      static Sync2Phi sync={0};
+      sync.Do();
+    }
+
     if (cpuid == 0) {
       gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
     }
@@ -1238,7 +1859,7 @@ static void membench7() {
 
   {
     {
-      static Sync2 sync={0};
+      static Sync2Phi sync={0};
       sync.Do();
     }
 
@@ -1248,6 +1869,11 @@ static void membench7() {
     }
   
     while(list5.Get() != 0) {
+    }
+    
+    {
+      static Sync2Phi sync={0};
+      sync.Do();
     }
 
     if (cpuid == 0) {
@@ -1345,6 +1971,88 @@ static void membench8() {
   }
 }
 
+// for Xeon E3
+static void membench9() {
+
+  int cpuid = cpu_ctrl->GetCpuId().GetRawId();
+
+  {
+    static volatile int l1 = 0, l2 = 0, l3 = 0;
+    sync(l1, l2, l3);
+  }
+
+  if (cpuid == 0) {
+    gtty->CprintfRaw("start >>>");
+  }
+  
+  {
+    {
+      static volatile int l1 = 0, l2 = 0, l3 = 0;
+      sync(l1, l2, l3);
+    }
+  
+    uint64_t t1 = timer->ReadMainCnt();
+    for (int i = 0; i < 100; i++) {
+      static volatile int l1 = 0, l2 = 0, l3 = 0;
+      sync(l1, l2, l3);
+    }
+    if (cpuid == 0) {
+      gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+    }
+  }
+
+  {
+    {
+      static volatile int l1 = 0, l2 = 0, l3 = 0;
+      sync(l1, l2, l3);
+    }
+  
+    uint64_t t1 = timer->ReadMainCnt();
+    for (int i = 0; i < 100; i++) {
+      static volatile int l1 = 0, l2 = 0, l3 = 0;
+      sync_read(l1, l2, l3);
+    }
+    if (cpuid == 0) {
+      gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+    }
+  }
+
+  {
+    static SyncE3 sync_;
+    sync_.Init();
+
+    {
+      static volatile int l1 = 0, l2 = 0, l3 = 0;
+      sync(l1, l2, l3);
+    }
+  
+    uint64_t t2 = timer->ReadMainCnt();
+    for (int i = 0; i < 100; i++) {
+      sync_.Do();
+    }
+    if (cpuid == 0) {
+      gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t2) * timer->GetCntClkPeriod()) / 1000);
+    }
+  }
+
+  {
+    static SyncReadE3 sync_;
+    sync_.Init();
+
+    {
+      static volatile int l1 = 0, l2 = 0, l3 = 0;
+      sync(l1, l2, l3);
+    }
+  
+    uint64_t t2 = timer->ReadMainCnt();
+    for (int i = 0; i < 100; i++) {
+      sync_.Do();
+    }
+    if (cpuid == 0) {
+      gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t2) * timer->GetCntClkPeriod()) / 1000);
+    }
+  }
+}
 
 
 Callout callout[256];
@@ -1371,13 +2079,20 @@ void register_membench2_callout() {
   new(&callout[cpuid]) Callout;
   Function oneshot_bench_func;
   oneshot_bench_func.Init([](void *){
-      membench7();
+      if (is_knl()) {
+        // membench5();
+        membench7();
+      } else {
+        membench9();
+      }
       if (false) {
         membench2();
         membench3();
         membench4();
         membench5();
         membench6();
+        membench7();
+        membench8();
       }
     }, nullptr);
   callout[cpuid].Init(oneshot_bench_func);

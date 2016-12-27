@@ -94,6 +94,7 @@ Callout tt2;
 Callout tt3;
 Callout tt4;
 
+static const bool do_membench = true;
 void register_membench2_callout();
 
 uint8_t ip1[] = {0, 0, 0, 0};
@@ -114,7 +115,11 @@ void reset(int argc, const char* argv[]) {
   acpi_ctrl->Reset();
 }
 
-void lspci(int argc, const char* argv[]){
+void cpuinfo(int argc, const char* argv[]) {
+  gtty->CprintfRaw("cpu num: %d\n", cpu_ctrl->GetHowManyCpus());
+}
+
+void lspci(int argc, const char* argv[]) {
   MCFG *mcfg = acpi_ctrl->GetMCFG();
   if (mcfg == nullptr) {
     gtty->Cprintf("[Pci] error: could not find MCFG table.\n");
@@ -396,9 +401,11 @@ extern "C" int main() {
     }, nullptr);
   keyboard->Setup(kbd_func);
 
-  // gtty->Cprintf("[cpu] info: #%d (apic id: %d) started.\n",
-  //               cpu_ctrl->GetCpuId(),
-  //               cpu_ctrl->GetCpuId().GetApicId());
+  if (cpu_ctrl->GetHowManyCpus() <= 16) {
+    gtty->Cprintf("[cpu] info: #%d (apic id: %d) started.\n",
+                  cpu_ctrl->GetCpuId(),
+                  cpu_ctrl->GetCpuId().GetApicId());
+  }
 
   while (!apic_ctrl->IsBootupAll()) {
   }
@@ -409,34 +416,37 @@ extern "C" int main() {
   shell->Register("reset", reset);
   shell->Register("bench", bench);
   shell->Register("lspci", lspci);
+  shell->Register("cpuinfo", cpuinfo);
   shell->Register("show", show);
 
   register_membench2_callout();
 
-  CpuId beep_cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority);
-  new(&tt4) Callout;
-  Function beep;
-  beep.Init([](void *) {
-      static int i = 0;
-      if(i < 6) {
-	uint16_t sound[6] = {905, 761, 452, 570, 508, 380};
-	uint8_t a = 0xb6;
-	outb(0x43, a);
-	uint8_t l = sound[i] & 0x00FF;
-	outb(0x42, l);
-	uint8_t h = (sound[i] >> 8) & 0x00FF;
-	outb(0x42, h);
-	uint8_t on = inb(0x61);
-	outb(0x61, (on | 0x03) & 0x0f);
-	i++;
-	tt4.SetHandler(110000);
-      } else {
-	uint8_t off = inb(0x61);
-	outb(0x61, off & 0xd);
-      }
-    }, nullptr);
-  tt4.Init(beep);
-  tt4.SetHandler(beep_cpuid, 1);
+  if (!do_membench) {
+    CpuId beep_cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority);
+    new(&tt4) Callout;
+    Function beep;
+    beep.Init([](void *) {
+        static int i = 0;
+        if(i < 6) {
+          uint16_t sound[6] = {905, 761, 452, 570, 508, 380};
+          uint8_t a = 0xb6;
+          outb(0x43, a);
+          uint8_t l = sound[i] & 0x00FF;
+          outb(0x42, l);
+          uint8_t h = (sound[i] >> 8) & 0x00FF;
+          outb(0x42, h);
+          uint8_t on = inb(0x61);
+          outb(0x61, (on | 0x03) & 0x0f);
+          i++;
+          tt4.SetHandler(110000);
+        } else {
+          uint8_t off = inb(0x61);
+          outb(0x61, off & 0xd);
+        }
+      }, nullptr);
+    tt4.Init(beep);
+    tt4.SetHandler(beep_cpuid, 1);
+  }
   
   task_ctrl->Run();
 
@@ -451,9 +461,11 @@ extern "C" int main_of_others() {
   gdt->SetupProc();
   idt->SetupProc();
 
-  // gtty->Cprintf("[cpu] info: #%d (apic id: %d) started.\n",
-  //               cpu_ctrl->GetCpuId(),
-  //               cpu_ctrl->GetCpuId().GetApicId());
+  if (cpu_ctrl->GetHowManyCpus() <= 16) {
+    gtty->Cprintf("[cpu] info: #%d (apic id: %d) started.\n",
+                  cpu_ctrl->GetCpuId(),
+                  cpu_ctrl->GetCpuId().GetApicId());
+  }
  
 // ループ性能測定用
 //#define LOOP_BENCHMARK
