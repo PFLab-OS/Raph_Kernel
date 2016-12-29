@@ -1,5 +1,5 @@
 .globl _start
 
 _start:
-    call main
-    ret
+  call main
+  ret

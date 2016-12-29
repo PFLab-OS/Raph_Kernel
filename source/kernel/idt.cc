@@ -181,6 +181,8 @@ void Idt::HandlePageFault(Regs *rs, void *arg) {
     asm volatile("movq %%cr2, %0;":"=r"(addr));
     int cpuid = cpu_ctrl->GetCpuId().GetRawId();
     gtty->CprintfRaw("\nunexpected page fault occured at cpuid %d!\naddress: %llx rip: %llx rbp: %llx\n", cpuid, addr, rs->rip, rs->rbp);
+    gtty->CprintfRaw("\nrax: %llx rbx:%llx rcx:%llx rdx:%llx\n", rs->rax, rs->rbx, rs->rcx, rs->rdx);
+    gtty->CprintfRaw("\nrsi:%llx r13: %llx \n", rs->rsi, rs->r13);
   }
   while(true){
     asm volatile("cli;hlt");

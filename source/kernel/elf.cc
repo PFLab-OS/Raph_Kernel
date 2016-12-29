@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
- * Author: hikalium
+ * Author: hikalium, Liva
  * 
  */
 
@@ -77,7 +77,7 @@ void readElf(const void *p)
     const char *sname = (const char *)(head + shstr->sh_offset + shdr->sh_name); 
     if (shdr->sh_type == SHT_NOBITS) {
       if ((shdr->sh_flags & SHF_ALLOC) != 0) {
-	memset(membuffer + shdr->sh_addr, 0, shdr->sh_size);
+        memset(membuffer + shdr->sh_addr, 0, shdr->sh_size);
       }
     } else {
       memcpy(membuffer + shdr->sh_addr, &head[shdr->sh_offset], shdr->sh_size);
@@ -87,11 +87,19 @@ void readElf(const void *p)
 
   using FType = int (*)(int, char*[]);
   FType f = reinterpret_cast<FType>(membuffer + ehdr->e_entry);
+  
+  const char *str = "123";
+  int64_t rval;
 
-  char *argv[1] = {"123"};
-  gtty->CprintfRaw("%s\n", argv[0]);
-  gtty->CprintfRaw("return value: %d\n", f(1, argv)); 
-  gtty->CprintfRaw("%s Returned.\n", argv[0]);
+  asm volatile("add $64, %%rsp;"
+               "movq $1, (%%rsp);"
+               "movq %2, 8(%%rsp);"
+               "movq $0, 16(%%rsp);"
+               "movq $0, 24(%%rsp);"
+               "jmp *%1;":"=a"(rval):"r"(f), "r"(str),"d"(0));
+
+  gtty->CprintfRaw("return value: %d\n", rval); 
+  gtty->CprintfRaw("%s Returned.\n", str);
 
   free(membuffer);
 }
