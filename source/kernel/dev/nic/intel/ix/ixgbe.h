@@ -39,58 +39,58 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#ifndef IXGBE_LEGACY_TX
-#include <sys/buf_ring.h>
-#endif
-#include <sys/mbuf.h>
-#include <sys/protosw.h>
-#include <sys/socket.h>
-#include <sys/malloc.h>
+// #ifndef IXGBE_LEGACY_TX
+// #include <sys/buf_ring.h>
+// #endif
+// #include <sys/mbuf.h>
+// #include <sys/protosw.h>
+// #include <sys/socket.h>
+// #include <sys/malloc.h>
 #include <sys/kernel.h>
-#include <sys/module.h>
-#include <sys/sockio.h>
+// #include <sys/module.h>
+// #include <sys/sockio.h>
 #include <sys/eventhandler.h>
 
-#include <net/if.h>
-#include <net/if_var.h>
-#include <net/if_arp.h>
-#include <net/bpf.h>
-#include <net/ethernet.h>
-#include <net/if_dl.h>
-#include <net/if_media.h>
+// #include <net/if.h>
+// #include <net/if_var.h>
+// #include <net/if_arp.h>
+// #include <net/bpf.h>
+// #include <net/ethernet.h>
+// #include <net/if_dl.h>
+// #include <net/if_media.h>
 
-#include <net/bpf.h>
-#include <net/if_types.h>
-#include <net/if_vlan_var.h>
+// #include <net/bpf.h>
+// #include <net/if_types.h>
+// #include <net/if_vlan_var.h>
 
-#include <netinet/in_systm.h>
-#include <netinet/in.h>
-#include <netinet/if_ether.h>
-#include <netinet/ip.h>
-#include <netinet/ip6.h>
-#include <netinet/tcp.h>
-#include <netinet/tcp_lro.h>
-#include <netinet/udp.h>
+// #include <netinet/in_systm.h>
+// #include <netinet/in.h>
+// #include <netinet/if_ether.h>
+// #include <netinet/ip.h>
+// #include <netinet/ip6.h>
+// #include <netinet/tcp.h>
+// #include <netinet/tcp_lro.h>
+// #include <netinet/udp.h>
 
-#include <machine/in_cksum.h>
+// #include <machine/in_cksum.h>
 
 #include <sys/bus.h>
 #include <machine/bus.h>
 #include <sys/rman.h>
 #include <machine/resource.h>
-#include <vm/vm.h>
-#include <vm/pmap.h>
-#include <machine/clock.h>
+// #include <vm/vm.h>
+// #include <vm/pmap.h>
+// #include <machine/clock.h>
 #include <dev/pci/pcivar.h>
 #include <dev/pci/pcireg.h>
-#include <sys/proc.h>
-#include <sys/sysctl.h>
-#include <sys/endian.h>
+// #include <sys/proc.h>
+// #include <sys/sysctl.h>
+// #include <sys/endian.h>
 #include <sys/taskqueue.h>
-#include <sys/pcpu.h>
-#include <sys/smp.h>
-#include <machine/smp.h>
-#include <sys/sbuf.h>
+// #include <sys/pcpu.h>
+// #include <sys/smp.h>
+// #include <machine/smp.h>
+// #include <sys/sbuf.h>
 
 #ifdef PCI_IOV
 #include <sys/nv.h>

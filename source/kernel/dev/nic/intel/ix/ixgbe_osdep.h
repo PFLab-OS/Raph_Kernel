@@ -40,18 +40,18 @@
 #include <sys/param.h>
 #include <sys/endian.h>
 #include <sys/systm.h>
-#include <sys/mbuf.h>
-#include <sys/protosw.h>
-#include <sys/socket.h>
-#include <sys/malloc.h>
+// #include <sys/mbuf.h>
+// #include <sys/protosw.h>
+// #include <sys/socket.h>
+// #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
 #include <machine/bus.h>
 #include <sys/rman.h>
 #include <machine/resource.h>
-#include <vm/vm.h>
-#include <vm/pmap.h>
-#include <machine/clock.h>
+// #include <vm/vm.h>
+// #include <vm/pmap.h>
+// #include <machine/clock.h>
 #include <dev/pci/pcivar.h>
 #include <dev/pci/pcireg.h>
 
@@ -125,9 +125,9 @@ typedef int16_t		s16;
 typedef uint32_t	u32;
 typedef int32_t		s32;
 typedef uint64_t	u64;
-#ifndef __bool_true_false_are_defined
-typedef boolean_t	bool;
-#endif
+// #ifndef __bool_true_false_are_defined
+// typedef boolean_t	bool;
+// #endif
 
 /* shared code requires this */
 #define __le16  u16

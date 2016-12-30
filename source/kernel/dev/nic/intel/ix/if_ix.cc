@@ -33,11 +33,11 @@
 /*$FreeBSD$*/
 
 
-#ifndef IXGBE_STANDALONE_BUILD
-#include "opt_inet.h"
-#include "opt_inet6.h"
-#include "opt_rss.h"
-#endif
+// #ifndef IXGBE_STANDALONE_BUILD
+// #include "opt_inet.h"
+// #include "opt_inet6.h"
+// #include "opt_rss.h"
+// #endif
 
 #include "ixgbe.h"
 
