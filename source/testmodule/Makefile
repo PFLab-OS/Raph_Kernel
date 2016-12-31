@@ -1,5 +1,5 @@
 MODULE = testmodule
-"SRCS = testmodule.cc stubstart.S
+#SRCS = testmodule.cc stubstart.S
 SRCS = testmodule.cc
 
 defalut:

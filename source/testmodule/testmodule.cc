@@ -21,6 +21,7 @@ int calc() {
 
 int main(int argc, char *argv[])
 {
+  asm volatile("cli;hlt;");
   if(argv && argv[0]){
     argv[0][0] = 'X';
     argv[0][1] = 0;

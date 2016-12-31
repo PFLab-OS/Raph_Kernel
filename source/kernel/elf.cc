@@ -40,6 +40,9 @@ void readElfTest(struct multiboot_tag_module *module)
 #define IS_OSABI_SYSV(ehdr)   (ehdr->e_ident[EI_OSABI] == ELFOSABI_SYSV)
 #define IS_OSABI_GNU(ehdr)   (ehdr->e_ident[EI_OSABI] == ELFOSABI_GNU)
 
+using FType = int (*)(int, char*[]);
+extern "C" int execute_elf_binary(FType f, const char *str);
+
 void readElf(const void *p)
 {
   const uint8_t *head = reinterpret_cast<const uint8_t *>(p);
@@ -85,18 +88,10 @@ void readElf(const void *p)
   }
 
 
-  using FType = int (*)(int, char*[]);
   FType f = reinterpret_cast<FType>(membuffer + ehdr->e_entry);
   
   const char *str = "123";
-  int64_t rval;
-
-  asm volatile("add $64, %%rsp;"
-               "movq $1, (%%rsp);"
-               "movq %2, 8(%%rsp);"
-               "movq $0, 16(%%rsp);"
-               "movq $0, 24(%%rsp);"
-               "jmp *%1;":"=a"(rval):"r"(f), "r"(str),"d"(0));
+  int64_t rval = execute_elf_binary(f, str);
 
   gtty->CprintfRaw("return value: %d\n", rval); 
   gtty->CprintfRaw("%s Returned.\n", str);
