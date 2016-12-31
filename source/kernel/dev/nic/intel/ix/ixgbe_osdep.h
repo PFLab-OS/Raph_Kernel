@@ -166,10 +166,10 @@ void prefetch(void *x)
  * non-overlapping regions and 32-byte padding on both src and dst.
  */
 static __inline int
-ixgbe_bcopy(void *restrict _src, void *restrict _dst, int l)
+ixgbe_bcopy(void *__restrict _src, void *__restrict _dst, int l)
 {
-	uint64_t *src = _src;
-	uint64_t *dst = _dst;
+	uint64_t *src = reinterpret_cast<uint64_t *>(_src);
+	uint64_t *dst = reinterpret_cast<uint64_t *>(_dst);
 
 	for (; l > 0; l -= 32) {
 		*dst++ = *src++;

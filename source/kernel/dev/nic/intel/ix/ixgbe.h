@@ -51,16 +51,16 @@
 // #include <sys/sockio.h>
 #include <sys/eventhandler.h>
 
-// #include <net/if.h>
-// #include <net/if_var.h>
+#include <net/if.h>
+#include <net/if_var.h>
 // #include <net/if_arp.h>
 // #include <net/bpf.h>
 // #include <net/ethernet.h>
 // #include <net/if_dl.h>
-// #include <net/if_media.h>
+#include <net/if_media.h>
 
 // #include <net/bpf.h>
-// #include <net/if_types.h>
+#include <net/if_types.h>
 // #include <net/if_vlan_var.h>
 
 // #include <netinet/in_systm.h>
@@ -194,15 +194,15 @@
 #define DEBUG_IOCTL 0
 #define DEBUG_HW    0
 
-#define INIT_DEBUGOUT(S)            if (DEBUG_INIT)  printf(S "\n")
-#define INIT_DEBUGOUT1(S, A)        if (DEBUG_INIT)  printf(S "\n", A)
-#define INIT_DEBUGOUT2(S, A, B)     if (DEBUG_INIT)  printf(S "\n", A, B)
-#define IOCTL_DEBUGOUT(S)           if (DEBUG_IOCTL) printf(S "\n")
-#define IOCTL_DEBUGOUT1(S, A)       if (DEBUG_IOCTL) printf(S "\n", A)
-#define IOCTL_DEBUGOUT2(S, A, B)    if (DEBUG_IOCTL) printf(S "\n", A, B)
-#define HW_DEBUGOUT(S)              if (DEBUG_HW) printf(S "\n")
-#define HW_DEBUGOUT1(S, A)          if (DEBUG_HW) printf(S "\n", A)
-#define HW_DEBUGOUT2(S, A, B)       if (DEBUG_HW) printf(S "\n", A, B)
+#define INIT_DEBUGOUT(S)            // if (DEBUG_INIT)  printf(S "\n")
+#define INIT_DEBUGOUT1(S, A)        // if (DEBUG_INIT)  printf(S "\n", A)
+#define INIT_DEBUGOUT2(S, A, B)     // if (DEBUG_INIT)  printf(S "\n", A, B)
+#define IOCTL_DEBUGOUT(S)           // if (DEBUG_IOCTL) printf(S "\n")
+#define IOCTL_DEBUGOUT1(S, A)       // if (DEBUG_IOCTL) printf(S "\n", A)
+#define IOCTL_DEBUGOUT2(S, A, B)    // if (DEBUG_IOCTL) printf(S "\n", A, B)
+#define HW_DEBUGOUT(S)              // if (DEBUG_HW) printf(S "\n")
+#define HW_DEBUGOUT1(S, A)          // if (DEBUG_HW) printf(S "\n", A)
+#define HW_DEBUGOUT2(S, A, B)       // if (DEBUG_HW) printf(S "\n", A, B)
 
 #define MAX_NUM_MULTICAST_ADDRESSES     128
 #define IXGBE_82598_SCATTER		100
@@ -458,7 +458,7 @@ struct adapter {
 	struct ixgbe_hw		hw;
 	struct ixgbe_osdep	osdep;
 
-	struct device		*dev;
+	device_t dev;
 	struct ifnet		*ifp;
 
 	struct resource		*pci_mem;

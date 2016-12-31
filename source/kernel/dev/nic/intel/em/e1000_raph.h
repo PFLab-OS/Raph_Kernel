@@ -50,8 +50,6 @@ static inline int sprintf(const char *s, const char *format, ...) {
 
 typedef char *caddr_t;
 
-struct ifmedia {};
-
 struct mbuf {};
 
 typedef struct {} eventhandler_tag;
