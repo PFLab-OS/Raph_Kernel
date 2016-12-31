@@ -1207,6 +1207,8 @@ static void show(int argc, const char *argv[]) {
   }
 }
 
+void freebsd_main();
+
 extern "C" int main() {
 
   multiboot_ctrl = new (&_multiboot_ctrl) MultibootCtrl;
@@ -1282,6 +1284,8 @@ extern "C" int main() {
   pci_ctrl = new (&_acpica_pci_ctrl) AcpicaPciCtrl;
 
   acpi_ctrl->SetupAcpica();
+
+  freebsd_main();
 
   InitDevices<PciCtrl, Device>();
 

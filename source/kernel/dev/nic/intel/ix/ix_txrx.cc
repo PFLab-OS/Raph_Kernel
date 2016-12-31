@@ -33,13 +33,14 @@
 /*$FreeBSD$*/
 
 
-#ifndef IXGBE_STANDALONE_BUILD
-#include "opt_inet.h"
-#include "opt_inet6.h"
-#include "opt_rss.h"
-#endif
+// #ifndef IXGBE_STANDALONE_BUILD
+// #include "opt_inet.h"
+// #include "opt_inet6.h"
+// #include "opt_rss.h"
+// #endif
 
 #include "ixgbe.h"
+#include "ix.h"
 
 #ifdef	RSS
 #include <net/rss_config.h>
@@ -91,11 +92,11 @@ static void     ixgbe_free_receive_buffers(struct rx_ring *);
 
 static void	ixgbe_rx_checksum(u32, struct mbuf *, u32);
 static void	ixgbe_refresh_mbufs(struct rx_ring *, int);
-static int      ixgbe_xmit(struct tx_ring *, struct mbuf **);
+static int      ixgbe_xmit(struct tx_ring *, BsdEthernet::Packet *packet);
 static int	ixgbe_tx_ctx_setup(struct tx_ring *,
 		    struct mbuf *, u32 *, u32 *);
-static int	ixgbe_tso_setup(struct tx_ring *,
-		    struct mbuf *, u32 *, u32 *);
+// static int	ixgbe_tso_setup(struct tx_ring *,
+// 		    struct mbuf *, u32 *, u32 *);
 #ifdef IXGBE_FDIR
 static void	ixgbe_atr(struct tx_ring *, struct mbuf *);
 #endif
@@ -174,7 +175,7 @@ ixgbe_start(struct ifnet *ifp)
 int
 ixgbe_mq_start(struct ifnet *ifp, struct mbuf *m)
 {
-	struct adapter	*adapter = ifp->if_softc;
+	struct adapter	*adapter = reinterpret_cast<struct adapter *>(ifp->if_softc);
 	struct ix_queue	*que;
 	struct tx_ring	*txr;
 	int 		i, err = 0;
@@ -302,21 +303,21 @@ ixgbe_deferred_mq_start(void *arg, int pending)
 /*
  * Flush all ring buffers
  */
-void
-ixgbe_qflush(struct ifnet *ifp)
-{
-	struct adapter	*adapter = ifp->if_softc;
-	struct tx_ring	*txr = adapter->tx_rings;
-	struct mbuf	*m;
+// void
+// ixgbe_qflush(struct ifnet *ifp)
+// {
+// 	struct adapter	*adapter = ifp->if_softc;
+// 	struct tx_ring	*txr = adapter->tx_rings;
+// 	struct mbuf	*m;
 
-	for (int i = 0; i < adapter->num_queues; i++, txr++) {
-		IXGBE_TX_LOCK(txr);
-		while ((m = buf_ring_dequeue_sc(txr->br)) != NULL)
-			m_freem(m);
-		IXGBE_TX_UNLOCK(txr);
-	}
-	if_qflush(ifp);
-}
+// 	for (int i = 0; i < adapter->num_queues; i++, txr++) {
+// 		IXGBE_TX_LOCK(txr);
+// 		while ((m = buf_ring_dequeue_sc(txr->br)) != NULL)
+// 			m_freem(m);
+// 		IXGBE_TX_UNLOCK(txr);
+// 	}
+// 	if_qflush(ifp);
+// }
 #endif /* IXGBE_LEGACY_TX */
 
 
@@ -329,7 +330,7 @@ ixgbe_qflush(struct ifnet *ifp)
  **********************************************************************/
 
 static int
-ixgbe_xmit(struct tx_ring *txr, struct mbuf **m_headp)
+ixgbe_xmit(struct tx_ring *txr, BsdEthernet::Packet *packet)
 {
 	struct adapter  *adapter = txr->adapter;
 	u32		olinfo_status = 0, cmd_type_len;
@@ -372,24 +373,25 @@ retry:
 
 		switch (error) {
 		case EFBIG:
-			/* Try it again? - one try */
-			if (remap == TRUE) {
-				remap = FALSE;
-				/*
-				 * XXX: m_defrag will choke on
-				 * non-MCLBYTES-sized clusters
-				 */
-				m = m_defrag(*m_headp, M_NOWAIT);
-				if (m == NULL) {
-					adapter->mbuf_defrag_failed++;
-					m_freem(*m_headp);
-					*m_headp = NULL;
-					return (ENOBUFS);
-				}
-				*m_headp = m;
-				goto retry;
-			} else
-				return (error);
+      kassert(false);
+			// /* Try it again? - one try */
+			// if (remap == TRUE) {
+			// 	remap = FALSE;
+			// 	/*
+			// 	 * XXX: m_defrag will choke on
+			// 	 * non-MCLBYTES-sized clusters
+			// 	 */
+			// 	m = m_defrag(*m_headp, M_NOWAIT);
+			// 	if (m == NULL) {
+			// 		adapter->mbuf_defrag_failed++;
+			// 		m_freem(*m_headp);
+			// 		*m_headp = NULL;
+			// 		return (ENOBUFS);
+			// 	}
+			// 	*m_headp = m;
+			// 	goto retry;
+			// } else
+			// 	return (error);
 		case ENOMEM:
 			txr->no_tx_dma_setup++;
 			return (error);
@@ -524,8 +526,8 @@ ixgbe_allocate_transmit_buffers(struct tx_ring *txr)
 	}
 
 	if (!(txr->tx_buffers =
-	    (struct ixgbe_tx_buf *) malloc(sizeof(struct ixgbe_tx_buf) *
-	    adapter->num_tx_desc, M_DEVBUF, M_NOWAIT | M_ZERO))) {
+	    (struct ixgbe_tx_buf *) virtmem_ctrl->AllocZ(sizeof(struct ixgbe_tx_buf) *
+                                                   adapter->num_tx_desc/*, M_DEVBUF, M_NOWAIT | M_ZERO*/))) {
 		device_printf(dev, "Unable to allocate tx_buffer memory\n");
 		error = ENOMEM;
 		goto fail;
@@ -743,8 +745,8 @@ ixgbe_tx_ctx_setup(struct tx_ring *txr, struct mbuf *mp,
 
 
 	/* First check if TSO is to be used */
-	if (mp->m_pkthdr.csum_flags & (CSUM_IP_TSO|CSUM_IP6_TSO))
-		return (ixgbe_tso_setup(txr, mp, cmd_type_len, olinfo_status));
+	// if (mp->m_pkthdr.csum_flags & (CSUM_IP_TSO|CSUM_IP6_TSO))
+	// 	return (ixgbe_tso_setup(txr, mp, cmd_type_len, olinfo_status));
 
 	if ((mp->m_pkthdr.csum_flags & CSUM_OFFLOAD) == 0)
 		offload = FALSE;
@@ -874,113 +876,113 @@ no_offloads:
  *  adapters using advanced tx descriptors
  *
  **********************************************************************/
-static int
-ixgbe_tso_setup(struct tx_ring *txr, struct mbuf *mp,
-    u32 *cmd_type_len, u32 *olinfo_status)
-{
-	struct ixgbe_adv_tx_context_desc *TXD;
-	u32 vlan_macip_lens = 0, type_tucmd_mlhl = 0;
-	u32 mss_l4len_idx = 0, paylen;
-	u16 vtag = 0, eh_type;
-	int ctxd, ehdrlen, ip_hlen, tcp_hlen;
-	struct ether_vlan_header *eh;
-#ifdef INET6
-	struct ip6_hdr *ip6;
-#endif
-#ifdef INET
-	struct ip *ip;
-#endif
-	struct tcphdr *th;
+// static int
+// ixgbe_tso_setup(struct tx_ring *txr, struct mbuf *mp,
+//     u32 *cmd_type_len, u32 *olinfo_status)
+// {
+// 	struct ixgbe_adv_tx_context_desc *TXD;
+// 	u32 vlan_macip_lens = 0, type_tucmd_mlhl = 0;
+// 	u32 mss_l4len_idx = 0, paylen;
+// 	u16 vtag = 0, eh_type;
+// 	int ctxd, ehdrlen, ip_hlen, tcp_hlen;
+// 	struct ether_vlan_header *eh;
+// #ifdef INET6
+// 	struct ip6_hdr *ip6;
+// #endif
+// #ifdef INET
+// 	struct ip *ip;
+// #endif
+// 	struct tcphdr *th;
 
-	/*
-	 * Determine where frame payload starts.
-	 * Jump over vlan headers if already present
-	 */
-	eh = mtod(mp, struct ether_vlan_header *);
-	if (eh->evl_encap_proto == htons(ETHERTYPE_VLAN)) {
-		ehdrlen = ETHER_HDR_LEN + ETHER_VLAN_ENCAP_LEN;
-		eh_type = eh->evl_proto;
-	} else {
-		ehdrlen = ETHER_HDR_LEN;
-		eh_type = eh->evl_encap_proto;
-	}
+// 	/*
+// 	 * Determine where frame payload starts.
+// 	 * Jump over vlan headers if already present
+// 	 */
+// 	eh = mtod(mp, struct ether_vlan_header *);
+// 	if (eh->evl_encap_proto == htons(ETHERTYPE_VLAN)) {
+// 		ehdrlen = ETHER_HDR_LEN + ETHER_VLAN_ENCAP_LEN;
+// 		eh_type = eh->evl_proto;
+// 	} else {
+// 		ehdrlen = ETHER_HDR_LEN;
+// 		eh_type = eh->evl_encap_proto;
+// 	}
 
-	switch (ntohs(eh_type)) {
-#ifdef INET6
-	case ETHERTYPE_IPV6:
-		ip6 = (struct ip6_hdr *)(mp->m_data + ehdrlen);
-		/* XXX-BZ For now we do not pretend to support ext. hdrs. */
-		if (ip6->ip6_nxt != IPPROTO_TCP)
-			return (ENXIO);
-		ip_hlen = sizeof(struct ip6_hdr);
-		ip6 = (struct ip6_hdr *)(mp->m_data + ehdrlen);
-		th = (struct tcphdr *)((caddr_t)ip6 + ip_hlen);
-		th->th_sum = in6_cksum_pseudo(ip6, 0, IPPROTO_TCP, 0);
-		type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_IPV6;
-		break;
-#endif
-#ifdef INET
-	case ETHERTYPE_IP:
-		ip = (struct ip *)(mp->m_data + ehdrlen);
-		if (ip->ip_p != IPPROTO_TCP)
-			return (ENXIO);
-		ip->ip_sum = 0;
-		ip_hlen = ip->ip_hl << 2;
-		th = (struct tcphdr *)((caddr_t)ip + ip_hlen);
-		th->th_sum = in_pseudo(ip->ip_src.s_addr,
-		    ip->ip_dst.s_addr, htons(IPPROTO_TCP));
-		type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_IPV4;
-		/* Tell transmit desc to also do IPv4 checksum. */
-		*olinfo_status |= IXGBE_TXD_POPTS_IXSM << 8;
-		break;
-#endif
-	default:
-		panic("%s: CSUM_TSO but no supported IP version (0x%04x)",
-		    __func__, ntohs(eh_type));
-		break;
-	}
+// 	switch (ntohs(eh_type)) {
+// #ifdef INET6
+// 	case ETHERTYPE_IPV6:
+// 		ip6 = (struct ip6_hdr *)(mp->m_data + ehdrlen);
+// 		/* XXX-BZ For now we do not pretend to support ext. hdrs. */
+// 		if (ip6->ip6_nxt != IPPROTO_TCP)
+// 			return (ENXIO);
+// 		ip_hlen = sizeof(struct ip6_hdr);
+// 		ip6 = (struct ip6_hdr *)(mp->m_data + ehdrlen);
+// 		th = (struct tcphdr *)((caddr_t)ip6 + ip_hlen);
+// 		th->th_sum = in6_cksum_pseudo(ip6, 0, IPPROTO_TCP, 0);
+// 		type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_IPV6;
+// 		break;
+// #endif
+// #ifdef INET
+// 	case ETHERTYPE_IP:
+// 		ip = (struct ip *)(mp->m_data + ehdrlen);
+// 		if (ip->ip_p != IPPROTO_TCP)
+// 			return (ENXIO);
+// 		ip->ip_sum = 0;
+// 		ip_hlen = ip->ip_hl << 2;
+// 		th = (struct tcphdr *)((caddr_t)ip + ip_hlen);
+// 		th->th_sum = in_pseudo(ip->ip_src.s_addr,
+// 		    ip->ip_dst.s_addr, htons(IPPROTO_TCP));
+// 		type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_IPV4;
+// 		/* Tell transmit desc to also do IPv4 checksum. */
+// 		*olinfo_status |= IXGBE_TXD_POPTS_IXSM << 8;
+// 		break;
+// #endif
+// 	default:
+// 		panic("%s: CSUM_TSO but no supported IP version (0x%04x)",
+// 		    __func__, ntohs(eh_type));
+// 		break;
+// 	}
 
-	ctxd = txr->next_avail_desc;
-	TXD = (struct ixgbe_adv_tx_context_desc *) &txr->tx_base[ctxd];
+// 	ctxd = txr->next_avail_desc;
+// 	TXD = (struct ixgbe_adv_tx_context_desc *) &txr->tx_base[ctxd];
 
-	tcp_hlen = th->th_off << 2;
+// 	tcp_hlen = th->th_off << 2;
 
-	/* This is used in the transmit desc in encap */
-	paylen = mp->m_pkthdr.len - ehdrlen - ip_hlen - tcp_hlen;
+// 	/* This is used in the transmit desc in encap */
+// 	paylen = mp->m_pkthdr.len - ehdrlen - ip_hlen - tcp_hlen;
 
-	/* VLAN MACLEN IPLEN */
-	if (mp->m_flags & M_VLANTAG) {
-		vtag = htole16(mp->m_pkthdr.ether_vtag);
-                vlan_macip_lens |= (vtag << IXGBE_ADVTXD_VLAN_SHIFT);
-	}
+// 	/* VLAN MACLEN IPLEN */
+// 	if (mp->m_flags & M_VLANTAG) {
+// 		vtag = htole16(mp->m_pkthdr.ether_vtag);
+//                 vlan_macip_lens |= (vtag << IXGBE_ADVTXD_VLAN_SHIFT);
+// 	}
 
-	vlan_macip_lens |= ehdrlen << IXGBE_ADVTXD_MACLEN_SHIFT;
-	vlan_macip_lens |= ip_hlen;
-	TXD->vlan_macip_lens = htole32(vlan_macip_lens);
+// 	vlan_macip_lens |= ehdrlen << IXGBE_ADVTXD_MACLEN_SHIFT;
+// 	vlan_macip_lens |= ip_hlen;
+// 	TXD->vlan_macip_lens = htole32(vlan_macip_lens);
 
-	/* ADV DTYPE TUCMD */
-	type_tucmd_mlhl |= IXGBE_ADVTXD_DCMD_DEXT | IXGBE_ADVTXD_DTYP_CTXT;
-	type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_L4T_TCP;
-	TXD->type_tucmd_mlhl = htole32(type_tucmd_mlhl);
+// 	/* ADV DTYPE TUCMD */
+// 	type_tucmd_mlhl |= IXGBE_ADVTXD_DCMD_DEXT | IXGBE_ADVTXD_DTYP_CTXT;
+// 	type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_L4T_TCP;
+// 	TXD->type_tucmd_mlhl = htole32(type_tucmd_mlhl);
 
-	/* MSS L4LEN IDX */
-	mss_l4len_idx |= (mp->m_pkthdr.tso_segsz << IXGBE_ADVTXD_MSS_SHIFT);
-	mss_l4len_idx |= (tcp_hlen << IXGBE_ADVTXD_L4LEN_SHIFT);
-	TXD->mss_l4len_idx = htole32(mss_l4len_idx);
+// 	/* MSS L4LEN IDX */
+// 	mss_l4len_idx |= (mp->m_pkthdr.tso_segsz << IXGBE_ADVTXD_MSS_SHIFT);
+// 	mss_l4len_idx |= (tcp_hlen << IXGBE_ADVTXD_L4LEN_SHIFT);
+// 	TXD->mss_l4len_idx = htole32(mss_l4len_idx);
 
-	TXD->seqnum_seed = htole32(0);
+// 	TXD->seqnum_seed = htole32(0);
 
-	if (++ctxd == txr->num_desc)
-		ctxd = 0;
+// 	if (++ctxd == txr->num_desc)
+// 		ctxd = 0;
 
-	txr->tx_avail--;
-	txr->next_avail_desc = ctxd;
-	*cmd_type_len |= IXGBE_ADVTXD_DCMD_TSE;
-	*olinfo_status |= IXGBE_TXD_POPTS_TXSM << 8;
-	*olinfo_status |= paylen << IXGBE_ADVTXD_PAYLEN_SHIFT;
-	++txr->tso_tx;
-	return (0);
-}
+// 	txr->tx_avail--;
+// 	txr->next_avail_desc = ctxd;
+// 	*cmd_type_len |= IXGBE_ADVTXD_DCMD_TSE;
+// 	*olinfo_status |= IXGBE_TXD_POPTS_TXSM << 8;
+// 	*olinfo_status |= paylen << IXGBE_ADVTXD_PAYLEN_SHIFT;
+// 	++txr->tso_tx;
+// 	return (0);
+// }
 
 
 /**********************************************************************
@@ -1338,8 +1340,8 @@ ixgbe_refresh_mbufs(struct rx_ring *rxr, int limit)
 			error = bus_dmamap_load_mbuf_sg(rxr->ptag,
 			    rxbuf->pmap, mp, seg, &nsegs, BUS_DMA_NOWAIT);
 			if (error != 0) {
-				printf("Refresh mbufs: payload dmamap load"
-				    " failure - %d\n", error);
+				// printf("Refresh mbufs: payload dmamap load"
+				//     " failure - %d\n", error);
 				m_free(mp);
 				rxbuf->buf = NULL;
 				goto update;
@@ -1386,8 +1388,8 @@ ixgbe_allocate_receive_buffers(struct rx_ring *rxr)
 
 	bsize = sizeof(struct ixgbe_rx_buf) * rxr->num_desc;
 	if (!(rxr->rx_buffers =
-	    (struct ixgbe_rx_buf *) malloc(bsize,
-	    M_DEVBUF, M_NOWAIT | M_ZERO))) {
+	    (struct ixgbe_rx_buf *) virtmem_ctrl->AllocZ(bsize,
+                                                   /*M_DEVBUF, M_NOWAIT | M_ZERO*/))) {
 		device_printf(dev, "Unable to allocate rx_buffer memory\n");
 		error = ENOMEM;
 		goto fail;
@@ -2027,30 +2029,31 @@ next_desc:
 static void
 ixgbe_rx_checksum(u32 staterr, struct mbuf * mp, u32 ptype)
 {
-	u16	status = (u16) staterr;
-	u8	errors = (u8) (staterr >> 24);
-	bool	sctp = false;
+  kassert(false);
+	// u16	status = (u16) staterr;
+	// u8	errors = (u8) (staterr >> 24);
+	// bool	sctp = false;
 
-	if ((ptype & IXGBE_RXDADV_PKTTYPE_ETQF) == 0 &&
-	    (ptype & IXGBE_RXDADV_PKTTYPE_SCTP) != 0)
-		sctp = true;
+	// if ((ptype & IXGBE_RXDADV_PKTTYPE_ETQF) == 0 &&
+	//     (ptype & IXGBE_RXDADV_PKTTYPE_SCTP) != 0)
+	// 	sctp = true;
 
-	/* IPv4 checksum */
-	if (status & IXGBE_RXD_STAT_IPCS) {
-		mp->m_pkthdr.csum_flags |= CSUM_L3_CALC;
-		/* IP Checksum Good */
-		if (!(errors & IXGBE_RXD_ERR_IPE))
-			mp->m_pkthdr.csum_flags |= CSUM_L3_VALID;
-	}
-	/* TCP/UDP/SCTP checksum */
-	if (status & IXGBE_RXD_STAT_L4CS) {
-		mp->m_pkthdr.csum_flags |= CSUM_L4_CALC;
-		if (!(errors & IXGBE_RXD_ERR_TCPE)) {
-			mp->m_pkthdr.csum_flags |= CSUM_L4_VALID;
-			if (!sctp)
-				mp->m_pkthdr.csum_data = htons(0xffff);
-		}
-	}
+	// /* IPv4 checksum */
+	// if (status & IXGBE_RXD_STAT_IPCS) {
+	// 	mp->m_pkthdr.csum_flags |= CSUM_L3_CALC;
+	// 	/* IP Checksum Good */
+	// 	if (!(errors & IXGBE_RXD_ERR_IPE))
+	// 		mp->m_pkthdr.csum_flags |= CSUM_L3_VALID;
+	// }
+	// /* TCP/UDP/SCTP checksum */
+	// if (status & IXGBE_RXD_STAT_L4CS) {
+	// 	mp->m_pkthdr.csum_flags |= CSUM_L4_CALC;
+	// 	if (!(errors & IXGBE_RXD_ERR_TCPE)) {
+	// 		mp->m_pkthdr.csum_flags |= CSUM_L4_VALID;
+	// 		if (!sctp)
+	// 			mp->m_pkthdr.csum_data = htons(0xffff);
+	// 	}
+	// }
 }
 
 /********************************************************************
@@ -2149,8 +2152,8 @@ ixgbe_allocate_queues(struct adapter *adapter)
 
         /* First allocate the top level queue structs */
         if (!(adapter->queues =
-            (struct ix_queue *) malloc(sizeof(struct ix_queue) *
-            adapter->num_queues, M_DEVBUF, M_NOWAIT | M_ZERO))) {
+            (struct ix_queue *) virtmem_ctrl->AllocZ(sizeof(struct ix_queue) *
+                                                     adapter->num_queues/*, M_DEVBUF, M_NOWAIT | M_ZERO*/))) {
                 device_printf(dev, "Unable to allocate queue memory\n");
                 error = ENOMEM;
                 goto fail;
@@ -2158,8 +2161,8 @@ ixgbe_allocate_queues(struct adapter *adapter)
 
 	/* First allocate the TX ring struct memory */
 	if (!(adapter->tx_rings =
-	    (struct tx_ring *) malloc(sizeof(struct tx_ring) *
-	    adapter->num_queues, M_DEVBUF, M_NOWAIT | M_ZERO))) {
+	    (struct tx_ring *) virtmem_ctrl->AllocZ(sizeof(struct tx_ring) *
+                                              adapter->num_queues/*, M_DEVBUF, M_NOWAIT | M_ZERO*/))) {
 		device_printf(dev, "Unable to allocate TX ring memory\n");
 		error = ENOMEM;
 		goto tx_fail;
@@ -2167,8 +2170,8 @@ ixgbe_allocate_queues(struct adapter *adapter)
 
 	/* Next allocate the RX */
 	if (!(adapter->rx_rings =
-	    (struct rx_ring *) malloc(sizeof(struct rx_ring) *
-	    adapter->num_queues, M_DEVBUF, M_NOWAIT | M_ZERO))) {
+	    (struct rx_ring *) virtmem_ctrl->AllocZ(sizeof(struct rx_ring) *
+                                              adapter->num_queues/*, M_DEVBUF, M_NOWAIT | M_ZERO*/))) {
 		device_printf(dev, "Unable to allocate RX ring memory\n");
 		error = ENOMEM;
 		goto rx_fail;
@@ -2201,8 +2204,8 @@ ixgbe_allocate_queues(struct adapter *adapter)
 		txr->num_desc = adapter->num_tx_desc;
 
 		/* Initialize the TX side lock */
-		snprintf(txr->mtx_name, sizeof(txr->mtx_name), "%s:tx(%d)",
-		    device_get_nameunit(dev), txr->me);
+		// snprintf(txr->mtx_name, sizeof(txr->mtx_name), "%s:tx(%d)",
+		//     device_get_nameunit(dev), txr->me);
 		mtx_init(&txr->tx_mtx, txr->mtx_name, NULL, MTX_DEF);
 
 		if (ixgbe_dma_malloc(adapter, tsize,
@@ -2294,11 +2297,11 @@ err_rx_desc:
 err_tx_desc:
 	for (txr = adapter->tx_rings; txconf > 0; txr++, txconf--)
 		ixgbe_dma_free(adapter, &txr->txdma);
-	free(adapter->rx_rings, M_DEVBUF);
+	free(adapter->rx_rings/*, M_DEVBUF*/);
 rx_fail:
-	free(adapter->tx_rings, M_DEVBUF);
+	free(adapter->tx_rings/*, M_DEVBUF*/);
 tx_fail:
-	free(adapter->queues, M_DEVBUF);
+	free(adapter->queues/*, M_DEVBUF*/);
 fail:
 	return (error);
 }

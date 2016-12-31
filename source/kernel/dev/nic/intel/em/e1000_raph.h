@@ -52,8 +52,6 @@ typedef char *caddr_t;
 
 struct mbuf {};
 
-typedef struct {} eventhandler_tag;
-
 #define DRIVER_MODULE(...) 
 #define MODULE_DEPEND(...)
 #define TUNABLE_INT(...)

@@ -36,6 +36,7 @@
 #ifndef _IXGBE_H_
 #define _IXGBE_H_
 
+#include <stdlib.h>
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -88,7 +89,7 @@
 // #include <sys/endian.h>
 #include <sys/taskqueue.h>
 // #include <sys/pcpu.h>
-// #include <sys/smp.h>
+#include <sys/smp.h>
 // #include <machine/smp.h>
 // #include <sys/sbuf.h>
 
@@ -404,7 +405,7 @@ struct rx_ring {
 	u32			tail;
 	union ixgbe_adv_rx_desc	*rx_base;
 	struct ixgbe_dma_alloc	rxdma;
-	struct lro_ctrl		lro;
+	// struct lro_ctrl		lro;
 	bool			lro_enabled;
 	bool			hw_rsc;
 	bool			vtag_strip;

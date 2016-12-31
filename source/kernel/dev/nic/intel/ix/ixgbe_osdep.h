@@ -55,8 +55,8 @@
 #include <dev/pci/pcivar.h>
 #include <dev/pci/pcireg.h>
 
-#define ASSERT(x) if(!(x)) panic("IXGBE: x")
-#define EWARN(H, W, S) printf(W)
+#define ASSERT(x) // if(!(x)) panic("IXGBE: x")
+#define EWARN(H, W, S) // printf(W)
 
 /* The happy-fun DELAY macro is defined in /usr/src/sys/i386/include/clock.h */
 #define usec_delay(x) DELAY(x)

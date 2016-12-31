@@ -38,6 +38,9 @@
 #ifndef _FREEBSD_PARAM_H_
 #define _FREEBSD_PARAM_H_
 
+// for htons & ntohs & htonl & ntohl ...
+#include <arpa/inet.h>
+
 #ifndef LOCORE
 #include <sys/types.h>
 #endif
@@ -111,6 +114,5 @@
 
 #define ctodb(db)                       /* calculates pages to devblks */ \
         ((db) << (PAGE_SHIFT - DEV_BSHIFT))
-
 
 #endif /* _FREEBSD_PARAM_H_ */
