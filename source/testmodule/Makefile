@@ -7,7 +7,7 @@ defalut:
 	cp $(MODULE) ../../build/$(MODULE).elf
 
 $(MODULE) : $(SRCS) Makefile
-	musl-gcc -fpic -static -o $(MODULE) $(SRCS)
+	musl-gcc -mcmodel=large -pie -fPIE -static -o $(MODULE) $(SRCS)
 #	g++ -fpic -nostdlib -static -o $(MODULE) $(SRCS)
 
 clean:
