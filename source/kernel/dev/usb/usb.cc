@@ -199,5 +199,6 @@ void DevUsbKeyboard::Init() {
     kernel_panic("DevUsbKeyboard", "not supported");
   }
   gtty->CprintfRaw("<%x>", GetEndpointDescriptorInCombinedDescriptors(0)->address);
-  assert((GetEndpointDescriptorInCombinedDescriptors(0)->attributes & 3) == 3);
+  assert((GetEndpointDescriptorInCombinedDescriptors(0)->attributes & 3) == 3); // interrupt
+  gtty->CprintfRaw("<%d>", GetEndpointDescriptorInCombinedDescriptors(0)->interval);
 }

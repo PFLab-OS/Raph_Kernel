@@ -44,18 +44,18 @@ DevPci *DevEhci::InitPci(uint8_t bus, uint8_t device, uint8_t function) {
 }
 
 void DevEhci::Init() {
-  if ((_operational_reg_base_addr[kOperationalRegOffsetUsbSts] & kOperationalRegUsbStsFlagHcHalted) == 0) {
+  if ((_op_reg_base_addr[kOpRegOffsetUsbSts] & kOpRegUsbStsFlagHcHalted) == 0) {
     // halt controller
-    _operational_reg_base_addr[kOperationalRegOffsetUsbCmd] |= kOperationalRegUsbCmdFlagRunStop; 
+    _op_reg_base_addr[kOpRegOffsetUsbCmd] |= kOpRegUsbCmdFlagRunStop; 
   }
 
-  while((READ_MEM_VOLATILE(&_operational_reg_base_addr[kOperationalRegOffsetUsbSts]) & kOperationalRegUsbStsFlagHcHalted) == 0) {
+  while((READ_MEM_VOLATILE(&_op_reg_base_addr[kOpRegOffsetUsbSts]) & kOpRegUsbStsFlagHcHalted) == 0) {
   }
 
   // reset controller
-  _operational_reg_base_addr[kOperationalRegOffsetUsbCmd] |= kOperationalRegUsbCmdFlagHcReset;
+  _op_reg_base_addr[kOpRegOffsetUsbCmd] |= kOpRegUsbCmdFlagHcReset;
 
-  while((READ_MEM_VOLATILE(&_operational_reg_base_addr[kOperationalRegOffsetUsbCmd]) & kOperationalRegUsbCmdFlagHcReset) == 0) {
+  while((READ_MEM_VOLATILE(&_op_reg_base_addr[kOpRegOffsetUsbCmd]) & kOpRegUsbCmdFlagHcReset) == 0) {
   }
 
   
@@ -66,12 +66,12 @@ void DevEhci::Init() {
   }
   addr &= 0xFFFFFFFFFFFFFF00;
   _capability_reg_base_addr = addr2ptr<volatile uint8_t>(p2v(addr));
-  _operational_reg_base_addr = reinterpret_cast<volatile uint32_t *>(_capability_reg_base_addr + ReadCapabilityRegCapLength());
+  _op_reg_base_addr = reinterpret_cast<volatile uint32_t *>(_capability_reg_base_addr + ReadCapabilityRegCapLength());
 
   int n_ports = ReadCapabilityRegHcsParams() & 0xF;
 
   for (int i = 0; i < n_ports; i++) {
-    if (_operational_reg_base_addr[kOperationalRegOffsetPortScBase + i] & kOperationalRegPortScFlagCurrentConnectStatus) {
+    if (_op_reg_base_addr[kOpRegOffsetPortScBase + i] & kOpRegPortScFlagCurrentConnectStatus) {
       DisablePort(i);
     }
   }
@@ -88,25 +88,29 @@ void DevEhci::Init() {
   
   _sub->Init();
 
-  _operational_reg_base_addr[kOperationalRegOffsetUsbCmd] &= ~kOperationalRegUsbCmdFlagAsynchronousScheduleEnable;
-  _operational_reg_base_addr[kOperationalRegOffsetUsbCmd] &= ~kOperationalRegUsbCmdFlagsPeriodicScheduleEnable;
+  _op_reg_base_addr[kOpRegOffsetUsbCmd] &= ~kOpRegUsbCmdFlagAsynchronousScheduleEnable;
+  _op_reg_base_addr[kOpRegOffsetUsbCmd] &= ~kOpRegUsbCmdFlagPeriodicScheduleEnable;
 
-  while((READ_MEM_VOLATILE(&_operational_reg_base_addr[kOperationalRegOffsetUsbSts]) & kOperationalRegUsbStsFlagAsynchronousSchedule) != 0) {
+  while((READ_MEM_VOLATILE(&_op_reg_base_addr[kOpRegOffsetUsbSts]) & kOpRegUsbStsFlagAsynchronousSchedule) != 0) {
   }
   
-  if (_is_64bit_addressing) {
-    kassert(false);
-  } else {
-    _operational_reg_base_addr[kOperationalRegOffsetAsyncListAddr] = _sub->GetRepresentativeQueueHead();
+  _op_reg_base_addr[kOpRegOffsetAsyncListAddr] = _sub->GetRepresentativeQueueHead();
+  _op_reg_base_addr[kOpRegOffsetUsbCmd] |= kOpRegUsbCmdFlagAsynchronousScheduleEnable;
+
+  if ((_op_reg_base_addr[kOpRegOffsetUsbCmd] & kOpRegUsbCmdOffsetFrameListSize) != 0) {
+    kernel_panic("DevEhci", "non supported function");
   }
+  _op_reg_base_addr[kOpRegOffsetPeriodicListBase] = _sub->GetPeriodicFrameList();
+  _op_reg_base_addr[kOpRegOffsetUsbCmd] |= kOpRegUsbCmdFlagPeriodicScheduleEnable;
 
-  _operational_reg_base_addr[kOperationalRegOffsetUsbCmd] |= kOperationalRegUsbCmdFlagAsynchronousScheduleEnable;
 
-  while((READ_MEM_VOLATILE(&_operational_reg_base_addr[kOperationalRegOffsetUsbSts]) & kOperationalRegUsbStsFlagAsynchronousSchedule) == 0) {
+  while((READ_MEM_VOLATILE(&_op_reg_base_addr[kOpRegOffsetUsbSts]) & kOpRegUsbStsFlagAsynchronousSchedule) == 0) {
+  }
+  while((READ_MEM_VOLATILE(&_op_reg_base_addr[kOpRegOffsetUsbSts]) & kOpRegUsbStsFlagPeriodicSchedule) == 0) {
   }
   
   for (int i = 0; i < n_ports; i++) {
-    if (_operational_reg_base_addr[kOperationalRegOffsetPortScBase + i] & kOperationalRegPortScFlagCurrentConnectStatus) {
+    if (_op_reg_base_addr[kOpRegOffsetPortScBase + i] & kOpRegPortScFlagCurrentConnectStatus) {
       ResetPort(i);
       while(true) {
       	UsbCtrl::DeviceRequest *request = nullptr;
@@ -158,6 +162,15 @@ void DevEhci::DevEhciSub32::Init() {
   }
   _qh0 = qh_array + qh_buf_size;
   _qh0->InitEmpty();
+
+  PhysAddr pframe_list_paddr;
+  static_assert(sizeof(FrameListElementPointer) * 1024 == PagingCtrl::kPageSize, "");
+  physmem_ctrl->Alloc(pframe_list_paddr, PagingCtrl::kPageSize);
+  assert(pframe_list_paddr.GetAddr() <= 0xFFFFFFFF);
+  _periodic_frame_list = addr2ptr<FrameListElementPointer>(pframe_list_paddr.GetVirtAddr());
+  for (int i = 0; i < 1024; i++) {
+    _periodic_frame_list[i].Set();
+  }
 }
 
 void DevEhci::DevEhciSub64::Init() {

@@ -60,6 +60,7 @@ private:
     virtual void Init() = 0;
     virtual phys_addr GetRepresentativeQueueHead() = 0;
     virtual bool SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) = 0;
+    virtual phys_addr GetPeriodicFrameList() = 0;
   } *_sub;
   
   class DevEhciSub32 : public DevEhciSub {
@@ -68,9 +69,30 @@ private:
     virtual phys_addr GetRepresentativeQueueHead() override {
       return v2p(ptr2virtaddr(_qh0));
     }
+    virtual phys_addr GetPeriodicFrameList() override {
+      return v2p(ptr2virtaddr(_periodic_frame_list));
+    }
     virtual bool SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) override;
   private:
     class QueueHead;
+
+    class FrameListElementPointer {
+    public:
+      void Set(/* nullptr */) {
+        SetSub(0, 0, true);
+      }
+      void Set(QueueHead *ptr) {
+        SetSub(v2p(ptr2virtaddr(ptr)), 1, false);
+      }
+    private:
+      void SetSub(phys_addr ptr, uint8_t type, bool terminate) {
+        _ptr = ptr | (type << 1) | (terminate ? 1 : 0);
+      }
+      uint32_t _ptr;
+    };
+    static_assert(sizeof(FrameListElementPointer) == 4, "");
+    FrameListElementPointer *_periodic_frame_list;
+      
   
     class TransferDescriptor {
     public:
@@ -89,7 +111,7 @@ private:
         SetNextSub(0, true);
       }
       uint32_t GetToken() {
-	return READ_MEM_VOLATILE(&_token);
+        return READ_MEM_VOLATILE(&_token);
       }
       bool IsActiveOfStatus() {
         return READ_MEM_VOLATILE(&_token) & (1 << 7);
@@ -248,6 +270,10 @@ private:
       assert(false);
       return 0;
     }
+    virtual phys_addr GetPeriodicFrameList() override {
+      assert(false);
+      return 0;
+    }
     virtual bool SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) override {
       assert(false);
       return true;
@@ -275,32 +301,34 @@ private:
     return *(reinterpret_cast<volatile uint64_t *>(_capability_reg_base_addr + 0xC));
   }
 
-  volatile uint32_t *_operational_reg_base_addr;
-  // see 2.3 Host Controller Operational Registers
-  int kOperationalRegOffsetUsbCmd = 0x00;
-  int kOperationalRegOffsetUsbSts = 0x01;
-  int kOperationalRegOffsetUsbIntr = 0x02;
-  int kOperationalRegOffsetFrIndex = 0x03;
-  int kOperationalRegOffsetCtrlDsSegment = 0x04;
-  int kOperationalRegOffsetPeriodicListBase = 0x05;
-  int kOperationalRegOffsetAsyncListAddr = 0x06;
-  int kOperationalRegOffsetConfigFlag = 0x10;
-  int kOperationalRegOffsetPortScBase = 0x11;
+  volatile uint32_t *_op_reg_base_addr;
+  // see 2.3 Host Controller Op Registers
+  int kOpRegOffsetUsbCmd = 0x00;
+  int kOpRegOffsetUsbSts = 0x01;
+  int kOpRegOffsetUsbIntr = 0x02;
+  int kOpRegOffsetFrIndex = 0x03;
+  int kOpRegOffsetCtrlDsSegment = 0x04;
+  int kOpRegOffsetPeriodicListBase = 0x05;
+  int kOpRegOffsetAsyncListAddr = 0x06;
+  int kOpRegOffsetConfigFlag = 0x10;
+  int kOpRegOffsetPortScBase = 0x11;
 
   // see Table2-9. USBCMD USB Command Register Bit Definitions
-  uint32_t kOperationalRegUsbCmdFlagRunStop = 1 << 0;
-  uint32_t kOperationalRegUsbCmdFlagHcReset = 1 << 1;
-  uint32_t kOperationalRegUsbCmdFlagsPeriodicScheduleEnable = 1 << 4;
-  uint32_t kOperationalRegUsbCmdFlagAsynchronousScheduleEnable = 1 << 5;
+  uint32_t kOpRegUsbCmdFlagRunStop = 1 << 0;
+  uint32_t kOpRegUsbCmdFlagHcReset = 1 << 1;
+  uint32_t kOpRegUsbCmdOffsetFrameListSize = 0b11 << 2;
+  uint32_t kOpRegUsbCmdFlagPeriodicScheduleEnable = 1 << 4;
+  uint32_t kOpRegUsbCmdFlagAsynchronousScheduleEnable = 1 << 5;
 
   // see Table2-10. USBSTS USB Status Register Bit Definitions
-  uint32_t kOperationalRegUsbStsFlagHcHalted = 1 << 12;
-  uint32_t kOperationalRegUsbStsFlagAsynchronousSchedule = 1 << 15;
+  uint32_t kOpRegUsbStsFlagHcHalted = 1 << 12;
+  uint32_t kOpRegUsbStsFlagPeriodicSchedule = 1 << 14;
+  uint32_t kOpRegUsbStsFlagAsynchronousSchedule = 1 << 15;
 
   // see Table2-16. PORTSC Port Status and Control
-  uint32_t kOperationalRegPortScFlagCurrentConnectStatus = 1 << 0;
-  uint32_t kOperationalRegPortScFlagPortEnable = 1 << 2;
-  uint32_t kOperationalRegPortScFlagPortReset = 1 << 8;
+  uint32_t kOpRegPortScFlagCurrentConnectStatus = 1 << 0;
+  uint32_t kOpRegPortScFlagPortEnable = 1 << 2;
+  uint32_t kOpRegPortScFlagPortReset = 1 << 8;
 
   bool _is_64bit_addressing;
   bool SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) {
@@ -308,17 +336,17 @@ private:
   }
 
   void DisablePort(int port) {
-    _operational_reg_base_addr[kOperationalRegOffsetPortScBase + port] &= ~kOperationalRegPortScFlagPortEnable;
+    _op_reg_base_addr[kOpRegOffsetPortScBase + port] &= ~kOpRegPortScFlagPortEnable;
   }
   void ResetPort(int port) {
     DisablePort(port);
-    _operational_reg_base_addr[kOperationalRegOffsetPortScBase + port] |= kOperationalRegPortScFlagPortReset;
+    _op_reg_base_addr[kOpRegOffsetPortScBase + port] |= kOpRegPortScFlagPortReset;
     // set reset bit for 50ms
     timer->BusyUwait(50*1000);
     // then unset reset bit
-    _operational_reg_base_addr[kOperationalRegOffsetPortScBase + port] &= ~kOperationalRegPortScFlagPortReset;
+    _op_reg_base_addr[kOpRegOffsetPortScBase + port] &= ~kOpRegPortScFlagPortReset;
     // wait until end of reset sequence
-    while ((READ_MEM_VOLATILE(&_operational_reg_base_addr[kOperationalRegOffsetPortScBase + port]) & kOperationalRegPortScFlagPortEnable) == 0) {
+    while ((READ_MEM_VOLATILE(&_op_reg_base_addr[kOpRegOffsetPortScBase + port]) & kOpRegPortScFlagPortEnable) == 0) {
     }
   }
 };
