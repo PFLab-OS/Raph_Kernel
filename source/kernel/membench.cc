@@ -1720,6 +1720,7 @@ static void membench7() {
     for (int i = 1; i < 256 * 2000; i++) {
       list4->Push(i);
     }
+    for (int i = 1; i < 256 * 2000; i++) {
       list5->Push(i);
     }
   }
