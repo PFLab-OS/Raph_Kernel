@@ -73,6 +73,7 @@ private:
       return v2p(ptr2virtaddr(_periodic_frame_list));
     }
     virtual bool SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) override;
+    virtual void EnqueueInterruptTransfer();
   private:
     class QueueHead;
 

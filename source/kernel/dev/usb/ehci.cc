@@ -247,3 +247,7 @@ bool DevEhci::DevEhciSub32::SendControlTransfer(UsbCtrl::DeviceRequest *request,
 
   return success;
 }
+
+void DevEhci::DevEhciSub32::EnqueueInterruptTransfer() {
+  
+}

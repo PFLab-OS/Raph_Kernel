@@ -1,4 +1,4 @@
-OBJS = usb.o uhci.o ehci.o
+OBJS = usb.o ehci.o #uhci.o
 
 DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))
 
