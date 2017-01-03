@@ -32,7 +32,7 @@ image:
 	make mount
 	make bin
 	sudo cp memtest86+.bin $(MOUNT_DIR)/boot/memtest86+.bin
-	sudo cp grub.cfg $(MOUNT_DIR)/boot/grub/grub.cfg 
+	sudo cp grub.cfg $(MOUNT_DIR)/boot/grub/grub.cfg
 	-sudo rm -rf $(MOUNT_DIR)/core
 	sudo cp -r $(BUILD_DIR) $(MOUNT_DIR)/core
 	make umount
@@ -69,3 +69,11 @@ clean: deldisk
 	make -C source clean
 
 diskclean: deldisk clean
+
+showerror:
+	make 2>&1 | egrep "function|error:"
+
+numerror:
+	@echo -n "number of error: "
+	@make 2>&1 | egrep "error:" | wc -l
+
