@@ -226,7 +226,7 @@ void TaskCtrl::Wait() {
 }
 
 extern "C" {
-  static void initialize_TaskThread(TaskWithStack::TaskThread *t) {
+  void initialize_TaskThread(TaskWithStack::TaskThread *t) {
     t->InitBuffer();
   }
 }
