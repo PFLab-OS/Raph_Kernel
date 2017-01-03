@@ -75,6 +75,18 @@ void readElf(const void *p)
   }
 
   uint8_t *membuffer = reinterpret_cast<uint8_t *>(malloc(total_memsize));
+  gtty->CprintfRaw("membuffer: 0x%llx (%llx)\n", membuffer, total_memsize);
+  // PT_LOADとなっているセグメントをメモリ上にロード
+  for(int i = 0; i < ehdr->e_phnum; i++){
+    const Elf64_Phdr *phdr = (const Elf64_Phdr *)(head + ehdr->e_phoff + ehdr->e_phentsize * i);
+    switch(phdr->p_type){
+      case PT_LOAD:
+        gtty->CprintfRaw("phdr[%d]: Load to +0x%llx\n", i, phdr->p_vaddr);
+        memcpy(membuffer + phdr->p_vaddr, &head[phdr->p_offset], phdr->p_filesz);
+        break;
+    }
+  }
+  // セクション .bss を0クリア
   for(int i = 0; i < ehdr->e_shnum; i++){
     const Elf64_Shdr *shdr = (const Elf64_Shdr *)(head + ehdr->e_shoff + ehdr->e_shentsize * i);
     const char *sname = (const char *)(head + shstr->sh_offset + shdr->sh_name); 
@@ -82,12 +94,8 @@ void readElf(const void *p)
       if ((shdr->sh_flags & SHF_ALLOC) != 0) {
         memset(membuffer + shdr->sh_addr, 0, shdr->sh_size);
       }
-    } else {
-      memcpy(membuffer + shdr->sh_addr, &head[shdr->sh_offset], shdr->sh_size);
     }
   }
-
-
   FType f = reinterpret_cast<FType>(membuffer + ehdr->e_entry);
   
   const char *str = "123";
