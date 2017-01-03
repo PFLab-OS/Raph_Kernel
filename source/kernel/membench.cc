@@ -207,7 +207,7 @@ static inline void sync2(int cpunum, volatile int &l1, volatile int &l2, volatil
   } while(!__sync_bool_compare_and_swap(&l3, cpunum, cpunum));
 }
 
-// syncのSpin On Read番
+// syncのSpin On Read版
 static inline void sync_read(volatile int &l1, volatile int &l2, volatile int &l3) {
   int cpunum = cpu_ctrl->GetHowManyCpus();
   l2 = 0;
@@ -219,7 +219,6 @@ static inline void sync_read(volatile int &l1, volatile int &l2, volatile int &l
   }
   while(true) {
     while(l1 != cpunum) {
-      asm volatile("nop");
     }
     if (__sync_bool_compare_and_swap(&l1, cpunum, cpunum)) {
       break;
@@ -234,7 +233,6 @@ static inline void sync_read(volatile int &l1, volatile int &l2, volatile int &l
   }
   while(true) {
     while(l2 != cpunum) {
-      asm volatile("nop");
     }
     if (__sync_bool_compare_and_swap(&l2, cpunum, cpunum)) {
       break;
@@ -249,7 +247,6 @@ static inline void sync_read(volatile int &l1, volatile int &l2, volatile int &l
   }
   while(true) {
     while(l3 != cpunum) {
-      asm volatile("nop");
     }
     if (__sync_bool_compare_and_swap(&l3, cpunum, cpunum)) {
       break;
@@ -268,7 +265,6 @@ static inline void sync2_read(int cpunum, volatile int &l1, volatile int &l2, vo
   }
   while(true) {
     while(l1 != cpunum) {
-      asm volatile("nop");
     }
     if (__sync_bool_compare_and_swap(&l1, cpunum, cpunum)) {
       break;
@@ -283,7 +279,6 @@ static inline void sync2_read(int cpunum, volatile int &l1, volatile int &l2, vo
   }
   while(true) {
     while(l2 != cpunum) {
-      asm volatile("nop");
     }
     if (__sync_bool_compare_and_swap(&l2, cpunum, cpunum)) {
       break;
@@ -298,7 +293,6 @@ static inline void sync2_read(int cpunum, volatile int &l1, volatile int &l2, vo
   }
   while(true) {
     while(l3 != cpunum) {
-      asm volatile("nop");
     }
     if (__sync_bool_compare_and_swap(&l3, cpunum, cpunum)) {
       break;
@@ -401,7 +395,6 @@ struct SyncRead {
       }
       while(true) {
         while(lock != kGroupCoreNum) {
-          asm volatile("nop");
         }
         if (__sync_bool_compare_and_swap(&lock, kGroupCoreNum, kGroupCoreNum)) {
           break;
@@ -433,7 +426,6 @@ struct SyncRead {
       }
       while(true) {
         while(top_level_lock1 != kPhysAvailableCoreNum) {
-          asm volatile("nop");
         }
         if (__sync_bool_compare_and_swap(&top_level_lock1, kPhysAvailableCoreNum, kPhysAvailableCoreNum)) {
           break;
@@ -448,7 +440,6 @@ struct SyncRead {
       }
       while(true) {
         while(top_level_lock2 != kPhysAvailableCoreNum) {
-          asm volatile("nop");
         }
         if (__sync_bool_compare_and_swap(&top_level_lock2, kPhysAvailableCoreNum, kPhysAvailableCoreNum)) {
           break;
@@ -463,7 +454,6 @@ struct SyncRead {
       }
       while(true) {
         while(top_level_lock3 != kPhysAvailableCoreNum) {
-          asm volatile("nop");
         }
         if (__sync_bool_compare_and_swap(&top_level_lock3, kPhysAvailableCoreNum, kPhysAvailableCoreNum)) {
           break;
@@ -602,7 +592,6 @@ struct Sync2Read {
       }
       while(true) {
         while(lock != 2) {
-          asm volatile("nop");
         }
         if (__sync_bool_compare_and_swap(&lock, 2, 2)) {
           break;
@@ -627,7 +616,6 @@ struct Sync2Read {
       }
       while(true) {
         while(lock != 4) {
-          asm volatile("nop");
         }
         if (__sync_bool_compare_and_swap(&lock, 4, 4)) {
           break;
@@ -659,7 +647,6 @@ struct Sync2Read {
       }
       while(true) {
         while(top_level_lock1 != kPhysAvailableCoreNum) {
-          asm volatile("nop");
         }
         if (__sync_bool_compare_and_swap(&top_level_lock1, kPhysAvailableCoreNum, kPhysAvailableCoreNum)) {
           break;
@@ -674,7 +661,6 @@ struct Sync2Read {
       }
       while(true) {
         while(top_level_lock2 != kPhysAvailableCoreNum) {
-          asm volatile("nop");
         }
         if (__sync_bool_compare_and_swap(&top_level_lock2, kPhysAvailableCoreNum, kPhysAvailableCoreNum)) {
           break;
@@ -689,7 +675,6 @@ struct Sync2Read {
       }
       while(true) {
         while(top_level_lock3 != kPhysAvailableCoreNum) {
-          asm volatile("nop");
         }
         if (__sync_bool_compare_and_swap(&top_level_lock3, kPhysAvailableCoreNum, kPhysAvailableCoreNum)) {
           break;
@@ -839,7 +824,6 @@ struct Sync3Read {
       }
       while(true) {
         while(lock != 2) {
-          asm volatile("nop");
         }
         if (__sync_bool_compare_and_swap(&lock, 2, 2)) {
           break;
@@ -864,7 +848,6 @@ struct Sync3Read {
       }
       while(true) {
         while(lock != 4) {
-          asm volatile("nop");
         }
         if (__sync_bool_compare_and_swap(&lock, 4, 4)) {
           break;
@@ -897,7 +880,6 @@ struct Sync3Read {
       }
       while(true) {
         while(top_level_lock1 != kPhysAvailableCoreNum) {
-          asm volatile("nop");
         }
         if (__sync_bool_compare_and_swap(&top_level_lock1, kPhysAvailableCoreNum, kPhysAvailableCoreNum)) {
           break;
@@ -912,7 +894,6 @@ struct Sync3Read {
       }
       while(true) {
         while(top_level_lock2 != kPhysAvailableCoreNum) {
-          asm volatile("nop");
         }
         if (__sync_bool_compare_and_swap(&top_level_lock2, kPhysAvailableCoreNum, kPhysAvailableCoreNum)) {
           break;
@@ -927,7 +908,6 @@ struct Sync3Read {
       }
       while(true) {
         while(top_level_lock3 != kPhysAvailableCoreNum) {
-          asm volatile("nop");
         }
         if (__sync_bool_compare_and_swap(&top_level_lock3, kPhysAvailableCoreNum, kPhysAvailableCoreNum)) {
           break;
@@ -1569,7 +1549,6 @@ public:
     uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
     while(true) {
       while(_second_flag[apicid / 8] == 1) {
-        asm volatile("nop");
       }
       if(__sync_bool_compare_and_swap(&_second_flag[apicid / 8], 0, 1)) {
         break;
@@ -1577,7 +1556,6 @@ public:
     }
     while (true) {
       while(_top_flag == 1) {
-        asm volatile("nop");
       }
       if (__sync_bool_compare_and_swap(&_top_flag, 0, 1)) {
         break;
@@ -1586,8 +1564,8 @@ public:
   }
   void Unlock() {
     uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
-    _top_flag = 0;
-    _second_flag[apicid / 8] = 0;
+    assert(__sync_bool_compare_and_swap(&_top_flag, 1, 0));
+    assert(__sync_bool_compare_and_swap(&_second_flag[apicid / 8], 1, 0));
   }
 private:
   volatile unsigned int _top_flag = 0;
@@ -1603,7 +1581,6 @@ public:
     uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
     while(true) {
       while(_third_flag[apicid / 4] == 1) {
-        asm volatile("nop");
       }
       if(__sync_bool_compare_and_swap(&_third_flag[apicid / 4], 0, 1)) {
         break;
@@ -1611,7 +1588,6 @@ public:
     }
     while(true) {
       while(_second_flag[apicid / 8] != 0) {
-        asm volatile("nop");
       }
       if(__sync_bool_compare_and_swap(&_second_flag[apicid / 8], 0, 1)) {
         break;
@@ -1619,7 +1595,6 @@ public:
     }
     while (true) {
       while(_top_flag == 1) {
-        asm volatile("nop");
       }
       if (__sync_bool_compare_and_swap(&_top_flag, 0, 1)) {
         break;
@@ -1662,7 +1637,7 @@ public:
     int i = 0;
     if (c != nullptr) {
       for (int j = 0; j < 100; j++) {
-        i = c->i * c->j * c->k * c->l * c->m;
+        i += c->i * c->j * c->k * c->l * c->m;
       }
       delete c;
     }
@@ -1705,31 +1680,47 @@ static void membench7() {
   int cpuid = cpu_ctrl->GetCpuId().GetRawId();
   // uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
 
-  static LinkedList<SimpleSpinLock> list;
-  static LinkedList<McSpinLock1<37>> list2;
-  static LinkedList<McSpinLock2<37>> list3;
-  static LinkedList<SimpleSpinLockRead> list_sr;
-  static LinkedList<McSpinLock3<37>> list4;
-  static LinkedList<McSpinLock4> list5;
+  static LinkedList<SimpleSpinLock> _list;
+  static LinkedList<McSpinLock1<37>> _list2;
+  static LinkedList<McSpinLock2<37>> _list3;
+  static LinkedList<SimpleSpinLockRead> _list_sr;
+  static LinkedList<McSpinLock3<37>> _list4;
+  static LinkedList<McSpinLock4> _list5;
+  LinkedList<SimpleSpinLock> *list = &_list;
+  LinkedList<McSpinLock1<37>> *list2 = &_list2;
+  LinkedList<McSpinLock2<37>> *list3 = &_list3;
+  LinkedList<SimpleSpinLockRead> *list_sr = &_list_sr;
+  LinkedList<McSpinLock3<37>> *list4 = &_list4;
+  LinkedList<McSpinLock4> *list5 = &_list5;
+   
 
   if (cpuid == 0) {
     gtty->CprintfRaw("(init)");
   }
 
   if (cpuid == 0) {
-    new (&list) LinkedList<SimpleSpinLock>;
-    new (&list2) LinkedList<McSpinLock1<37>>;
-    new (&list3) LinkedList<McSpinLock2<37>>;
-    new (&list_sr) LinkedList<SimpleSpinLockRead>;
-    new (&list4) LinkedList<McSpinLock3<37>>;
-    new (&list5) LinkedList<McSpinLock4>;
+    new (list) LinkedList<SimpleSpinLock>;
+    new (list2) LinkedList<McSpinLock1<37>>;
+    new (list3) LinkedList<McSpinLock2<37>>;
+    new (list_sr) LinkedList<SimpleSpinLockRead>;
+    new (list4) LinkedList<McSpinLock3<37>>;
+    new (list5) LinkedList<McSpinLock4>;
     for (int i = 1; i < 256 * 2000; i++) {
-      list.Push(i);
-      list2.Push(i);
-      list3.Push(i);
-      list_sr.Push(i);
-      list4.Push(i);
-      list5.Push(i);
+      list->Push(i);
+    }
+    for (int i = 1; i < 256 * 2000; i++) {
+      list2->Push(i);
+    }
+    for (int i = 1; i < 256 * 2000; i++) {
+      list3->Push(i);
+    }
+    for (int i = 1; i < 256 * 2000; i++) {
+      list_sr->Push(i);
+    }
+    for (int i = 1; i < 256 * 2000; i++) {
+      list4->Push(i);
+    }
+      list5->Push(i);
     }
   }
 
@@ -1748,7 +1739,50 @@ static void membench7() {
       t1 = timer->ReadMainCnt();
     }
   
-    while(list.Get() != 0) {
+    {
+      static Sync2Phi sync={0};
+      sync.Do();
+    }
+
+    if (cpuid == 0) {
+      gtty->CprintfRaw("<sync %d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+    }
+  }
+
+  {
+    {
+      static Sync2ReadPhi sync={0};
+      sync.Do();
+    }
+
+    uint64_t t1;
+    if (cpuid == 0) {
+      t1 = timer->ReadMainCnt();
+    }
+  
+    {
+      static Sync2ReadPhi sync={0};
+      sync.Do();
+    }
+
+    if (cpuid == 0) {
+      gtty->CprintfRaw("<syncread %d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+    }
+  }
+
+
+  {
+    {
+      static Sync2Phi sync={0};
+      sync.Do();
+    }
+
+    uint64_t t1;
+    if (cpuid == 0) {
+      t1 = timer->ReadMainCnt();
+    }
+  
+    while(list->Get() != 0) {
     }
 
     {
@@ -1772,7 +1806,7 @@ static void membench7() {
       t1 = timer->ReadMainCnt();
     }
   
-    while(list_sr.Get() != 0) {
+    while(list_sr->Get() != 0) {
     }
 
     {
@@ -1796,7 +1830,7 @@ static void membench7() {
       t1 = timer->ReadMainCnt();
     }
   
-    while(list2.Get() != 0) {
+    while(list2->Get() != 0) {
     }
 
     {
@@ -1820,7 +1854,7 @@ static void membench7() {
       t1 = timer->ReadMainCnt();
     }
   
-    while(list3.Get() != 0) {
+    while(list3->Get() != 0) {
     }
 
     {
@@ -1844,7 +1878,7 @@ static void membench7() {
       t1 = timer->ReadMainCnt();
     }
   
-    while(list4.Get() != 0) {
+    while(list4->Get() != 0) {
     }
 
     {
@@ -1853,9 +1887,10 @@ static void membench7() {
     }
 
     if (cpuid == 0) {
-      gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+      gtty->CprintfRaw("<1sr %d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
     }
   }
+
 
   {
     {
@@ -1868,7 +1903,7 @@ static void membench7() {
       t1 = timer->ReadMainCnt();
     }
   
-    while(list5.Get() != 0) {
+    while(list5->Get() != 0) {
     }
     
     {
@@ -1877,7 +1912,7 @@ static void membench7() {
     }
 
     if (cpuid == 0) {
-      gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+      gtty->CprintfRaw("<2sr %d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
     }
   }
 }
