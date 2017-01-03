@@ -25,6 +25,8 @@
 #include <mem/physmem.h>
 #include <string.h>
 #include <stdlib.h>
+#include <x86.h>
+#include <syscall.h>
 
 void readElf(const void *p);
 void readElfTest(struct multiboot_tag_module *module)
@@ -48,7 +50,15 @@ void readElf(const void *p)
   const uint8_t *head = reinterpret_cast<const uint8_t *>(p);
   const Elf64_Ehdr *ehdr = reinterpret_cast<const Elf64_Ehdr *>(p);
   const Elf64_Shdr *shstr;
-  
+
+  // IA32_EFER.SCE = 1
+  const uint32_t addr_efer = 0xC0000080;
+  const uint64_t bit_efer_SCE = 0x01;
+  uint64_t efer = x86::rdmsr(addr_efer);
+  efer |= bit_efer_SCE;
+  x86::wrmsr(addr_efer, efer);
+
+  //  
   if(!IS_ELF(ehdr) || !IS_ELF64(ehdr) || (!IS_OSABI_SYSV(ehdr) && !IS_OSABI_GNU(ehdr))){
     gtty->CprintfRaw("Not supported module type.\n");
     return;
@@ -96,8 +106,21 @@ void readElf(const void *p)
       }
     }
   }
+  // デバッグ用にロードしたメモリを表示
+  for(int i = 0xB3D; i < 0xB40; i++){
+    gtty->CprintfRaw("+%llx Load to +0x%llx\n", i, membuffer[i]);
+  }
+
+  // syscallのデバッグ
+  const uint32_t addr_IA32_LSTAR = 0xC0000082;
+  uint64_t vLSTAR = x86::rdmsr(addr_IA32_LSTAR);
+  gtty->CprintfRaw("LSTAR: 0x%llx\n", vLSTAR);
+  x86::wrmsr(addr_IA32_LSTAR, (uint64_t)syscall_handler);
+
+
+  // 実行
   FType f = reinterpret_cast<FType>(membuffer + ehdr->e_entry);
-  
+ 
   const char *str = "123";
   int64_t rval = execute_elf_binary(f, str);
 
