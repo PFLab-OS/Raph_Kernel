@@ -3,7 +3,7 @@ KERNEL = kernel.elf
 OBJS = boot/boot.o boot/bootap.o x86_asm.o x86.o main.o multiboot.o apic.o raph_acpi.o gdt.o idt.o \
 	 int.o freebsd.o dev.o acpica.o mem/virtmem.o shell.o mem/paging.o mem/physmem.o \
 	 mem/dlmalloc.o mem/kstack.o ../libc/lib.o net.o task.o spinlock.o libglobal.o \
-	 tty.o queue.o cpu.o elf.o elf_load.o syscall.o
+	 tty.o queue.o cpu.o elf.o elf_load.o syscall.o syscall_handler.o
 
 BUILD = ../../build/
 DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))

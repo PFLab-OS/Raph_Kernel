@@ -20,29 +20,19 @@
  * 
  */
 
-#ifndef __RAPH_LIB_SYSCALL_H__
-#define __RAPH_LIB_SYSCALL_H__
+.code64
+.balign 4
+.text
 
-#include <x86.h>
+.extern syscall_handler_sub
+  
+.globl syscall_handler 
+syscall_handler:
+  push %rcx
+  push %r11
+  mov %rax, %rcx
+  call syscall_handler_sub
+  pop %r11
+  pop %rcx
+  sysretq
 
-class SystemCallCtrl {
-public:
-  static void init();
-  static int64_t handler(int64_t v1, int64_t v2, int64_t v3, int64_t rcx, int64_t v5, int64_t v6);
-private:
-  enum MSRAddr : uint32_t {
-    kIA32EFER     = 0xC0000080,
-    kIA32STAR     = 0xC0000081,
-    kIA32LSTAR    = 0xC0000082,
-    kIA32FSBase  = 0xC0000100,
-    kIA32GSBase   = 0xC0000101,
-  };
-  static uint64_t rdmsr(MSRAddr addr) {
-    return x86::rdmsr(addr);
-  }
-  static void wrmsr(MSRAddr addr, uint64_t data) {
-    x86::wrmsr(addr, data);
-  }
-};
-
-#endif // __RAPH_LIB_SYSCALL_H__

@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
- * Author: hikalium, Liva
+ * Author: hikalium
  * 
  */
 
@@ -25,26 +25,58 @@
 #include <string.h>
 #include <stdlib.h>
 #include <x86.h>
+#include <syscall.h>
+#include <gdt.h>
 
 #define ARCH_SET_GS 0x1001
 #define ARCH_SET_FS 0x1002
 #define ARCH_GET_FS 0x1003
 #define ARCH_GET_GS 0x1004
 
+extern "C" int64_t syscall_handler();
 
-void syscall_handler()
+extern "C" int64_t  syscall_handler_sub(int64_t rdi, int64_t rsi, int64_t rdx, int64_t rcx, int64_t r8, int64_t r9)
 {
-  asm volatile("push %rcx; ");
-  int64_t id, args[6];
-  asm volatile(
-    "mov %%rax, %0;"
-    "mov %%rdi, %1;"
-    :"=r"(id), "=r"(args[0])
-  );
-  gtty->CprintfRaw("syscall_handler! id=%d \n", id);
-  if(id == 158){
-    
+  return SystemCallCtrl::handler(rdi, rsi, rdx, rcx, r8, r9);
+}
+
+
+void SystemCallCtrl::init()
+{
+  // IA32_EFER.SCE = 1
+  const uint64_t bit_efer_SCE = 0x01;
+  uint64_t efer = rdmsr(kIA32EFER);
+  efer |= bit_efer_SCE;
+  wrmsr(kIA32EFER, efer);
+  // set vLSTAR
+  wrmsr(kIA32STAR, (uint64_t)KERNEL_CS << 47);
+  wrmsr(kIA32LSTAR, (uint64_t)syscall_handler);
+}
+
+int64_t SystemCallCtrl::handler(int64_t rdi, int64_t rsi, int64_t rdx, int64_t rcx, int64_t r8, int64_t r9)
+{
+  gtty->CprintfRaw("syscall(%llx) \n", rcx);
+  if(rcx == 158){
+    gtty->CprintfRaw("sys_arch_prctl code=%llx addr=%llx\n", rdi, rsi);
+    switch(rdi){
+      case ARCH_SET_GS:
+        wrmsr(kIA32GSBase, rsi);
+        break;
+      case ARCH_SET_FS:
+        wrmsr(kIA32FSBase, rsi);
+        break;
+      case ARCH_GET_FS:
+        *(uint64_t *)rsi = rdmsr(kIA32FSBase);
+        break;
+      case ARCH_GET_GS:
+        *(uint64_t *)rsi = rdmsr(kIA32GSBase);
+        break;
+      default:
+        gtty->CprintfRaw("Invalid args\n", rcx);
+        kassert(false);
+    }
   }
-  asm volatile("pop %rcx; pop %rbp; sysret;");
+  gtty->CprintfRaw("syscall(%llx) end \n", rcx);
+  return 0;
 }
 
