@@ -13,7 +13,7 @@ else
 	VNC = @echo non supported OS; exit 1
 endif
 
-.PHONY: clean disk mount umount vboxrun run_pxeserver pxeimg burn_ipxe burn_ipxe_remote vboxkill vnc
+.PHONY: clean disk mount umount showerror numerror vboxrun run_pxeserver pxeimg burn_ipxe burn_ipxe_remote vboxkill vnc
 
 default: image
 
@@ -44,7 +44,7 @@ _image:
 	make _mount
 	make _bin
 	sudo cp memtest86+.bin $(MOUNT_DIR)/boot/memtest86+.bin
-	sudo cp grub.cfg $(MOUNT_DIR)/boot/grub/grub.cfg 
+	sudo cp grub.cfg $(MOUNT_DIR)/boot/grub/grub.cfg
 	-sudo rm -rf $(MOUNT_DIR)/core
 	sudo cp -r $(BUILD_DIR) $(MOUNT_DIR)/core
 	make _umount
@@ -79,6 +79,13 @@ _clean: _deldisk
 
 _diskclean: _deldisk _clean
 
+_showerror:
+	make _image 2>&1 | egrep "function|error:"
+
+_numerror:
+	@echo -n "number of error: "
+	@make _image 2>&1 | egrep "error:" | wc -l
+
 ###################################
 # for local host
 ###################################
@@ -94,6 +101,12 @@ hd:
 
 clean:
 	@vagrant ssh -c "cd /vagrant/; make _clean"
+
+showerror:
+	@vagrant ssh -c "cd /vagrant/; make _showerror"
+
+numerror:
+	@vagrant ssh -c "cd /vagrant/; make _numerror"
 
 vboxrun: vboxkill
 	-vboxmanage unregistervm RK_Test --delete
@@ -129,3 +142,4 @@ vboxkill:
 vnc:
 	@echo info: vnc password is "a"
 	$(VNC)
+

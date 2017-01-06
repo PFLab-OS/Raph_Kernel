@@ -1,31 +1,31 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2015, Intel Corporation 
+  Copyright (c) 2001-2015, Intel Corporation
   All rights reserved.
-  
-  Redistribution and use in source and binary forms, with or without 
+
+  Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions are met:
-  
-   1. Redistributions of source code must retain the above copyright notice, 
+
+   1. Redistributions of source code must retain the above copyright notice,
       this list of conditions and the following disclaimer.
-  
-   2. Redistributions in binary form must reproduce the above copyright 
-      notice, this list of conditions and the following disclaimer in the 
+
+   2. Redistributions in binary form must reproduce the above copyright
+      notice, this list of conditions and the following disclaimer in the
       documentation and/or other materials provided with the distribution.
-  
-   3. Neither the name of the Intel Corporation nor the names of its 
-      contributors may be used to endorse or promote products derived from 
+
+   3. Neither the name of the Intel Corporation nor the names of its
+      contributors may be used to endorse or promote products derived from
       this software without specific prior written permission.
-  
+
   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
-  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE 
-  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE 
-  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
-  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF 
-  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
-  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN 
-  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
+  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE.
 
@@ -142,7 +142,7 @@ ixgbe_start_locked(struct tx_ring *txr, struct ifnet * ifp)
 			break;
 		}
 		/* Send a copy of the frame to the BPF listener */
-		ETHER_BPF_MTAP(ifp, m_head);
+		// ETHER_BPF_MTAP(ifp, m_head);
 	}
 	return;
 }
@@ -190,20 +190,20 @@ ixgbe_mq_start(struct ifnet *ifp, struct mbuf *m)
 	 * If everything is setup correctly, it should be the
 	 * same bucket that the current CPU we're on is.
 	 */
-	if (M_HASHTYPE_GET(m) != M_HASHTYPE_NONE) {
-#ifdef	RSS
-		if (rss_hash2bucket(m->m_pkthdr.flowid,
-		    M_HASHTYPE_GET(m), &bucket_id) == 0) {
-			i = bucket_id % adapter->num_queues;
-#ifdef IXGBE_DEBUG
-			if (bucket_id > adapter->num_queues)
-				if_printf(ifp, "bucket_id (%d) > num_queues "
-				    "(%d)\n", bucket_id, adapter->num_queues);
-#endif
-		} else 
-#endif
-			i = m->m_pkthdr.flowid % adapter->num_queues;
-	} else
+// 	if (M_HASHTYPE_GET(m) != M_HASHTYPE_NONE) {
+// #ifdef	RSS
+// 		if (rss_hash2bucket(m->m_pkthdr.flowid,
+// 		    M_HASHTYPE_GET(m), &bucket_id) == 0) {
+// 			i = bucket_id % adapter->num_queues;
+// #ifdef IXGBE_DEBUG
+// 			if (bucket_id > adapter->num_queues)
+// 				if_printf(ifp, "bucket_id (%d) > num_queues "
+// 				    "(%d)\n", bucket_id, adapter->num_queues);
+// #endif
+// 		} else
+// #endif
+// 			i = m->m_pkthdr.flowid % adapter->num_queues;
+// 	} else
 		i = curcpu % adapter->num_queues;
 
 	/* Check for a hung queue and pick alternative */
@@ -270,7 +270,7 @@ ixgbe_mq_start_locked(struct ifnet *ifp, struct tx_ring *txr)
 #endif
 #endif
 		/* Send a copy of the frame to the BPF listener */
-		ETHER_BPF_MTAP(ifp, next);
+		// ETHER_BPF_MTAP(ifp, next);
 		if ((ifp->if_drv_flags & IFF_DRV_RUNNING) == 0)
 			break;
 #if __FreeBSD_version < 901504
@@ -290,7 +290,7 @@ ixgbe_mq_start_locked(struct ifnet *ifp, struct tx_ring *txr)
 void
 ixgbe_deferred_mq_start(void *arg, int pending)
 {
-	struct tx_ring *txr = arg;
+	struct tx_ring *txr = reinterpret_cast<struct tx_ring*>(arg);
 	struct adapter *adapter = txr->adapter;
 	struct ifnet *ifp = adapter->ifp;
 
@@ -324,7 +324,7 @@ ixgbe_deferred_mq_start(void *arg, int pending)
 /*********************************************************************
  *
  *  This routine maps the mbufs to tx descriptors, allowing the
- *  TX engine to transmit the packets. 
+ *  TX engine to transmit the packets.
  *  	- return 0 on success, positive on failure
  *
  **********************************************************************/
@@ -343,14 +343,14 @@ ixgbe_xmit(struct tx_ring *txr, BsdEthernet::Packet *packet)
 	struct ixgbe_tx_buf *txbuf;
 	union ixgbe_adv_tx_desc *txd = NULL;
 
-	m_head = *m_headp;
+	// m_head = *m_headp;
 
 	/* Basic descriptor defines */
         cmd_type_len = (IXGBE_ADVTXD_DTYP_DATA |
 	    IXGBE_ADVTXD_DCMD_IFCS | IXGBE_ADVTXD_DCMD_DEXT);
 
-	if (m_head->m_flags & M_VLANTAG)
-        	cmd_type_len |= IXGBE_ADVTXD_DCMD_VLE;
+	// if (m_head->m_flags & M_VLANTAG)
+    //     	cmd_type_len |= IXGBE_ADVTXD_DCMD_VLE;
 
         /*
          * Important to capture the first descriptor
@@ -365,43 +365,42 @@ ixgbe_xmit(struct tx_ring *txr, BsdEthernet::Packet *packet)
 	 * Map the packet for DMA.
 	 */
 retry:
-	error = bus_dmamap_load_mbuf_sg(txr->txtag, map,
-	    *m_headp, segs, &nsegs, BUS_DMA_NOWAIT);
+	// error = bus_dmamap_load_mbuf_sg(txr->txtag, map,
+	//     *m_headp, segs, &nsegs, BUS_DMA_NOWAIT);
 
-	if (__predict_false(error)) {
-		struct mbuf *m;
-
-		switch (error) {
-		case EFBIG:
-      kassert(false);
-			// /* Try it again? - one try */
-			// if (remap == TRUE) {
-			// 	remap = FALSE;
-			// 	/*
-			// 	 * XXX: m_defrag will choke on
-			// 	 * non-MCLBYTES-sized clusters
-			// 	 */
-			// 	m = m_defrag(*m_headp, M_NOWAIT);
-			// 	if (m == NULL) {
-			// 		adapter->mbuf_defrag_failed++;
-			// 		m_freem(*m_headp);
-			// 		*m_headp = NULL;
-			// 		return (ENOBUFS);
-			// 	}
-			// 	*m_headp = m;
-			// 	goto retry;
-			// } else
-			// 	return (error);
-		case ENOMEM:
-			txr->no_tx_dma_setup++;
-			return (error);
-		default:
-			txr->no_tx_dma_setup++;
-			m_freem(*m_headp);
-			*m_headp = NULL;
-			return (error);
-		}
-	}
+	// if (__predict_false(error)) {
+	// 	struct mbuf *m;
+    //
+	// 	switch (error) {
+	// 	case EFBIG:
+	// 		#<{(| Try it again? - one try |)}>#
+	// 		if (remap == TRUE) {
+	// 			remap = FALSE;
+	// 			#<{(|
+	// 			 * XXX: m_defrag will choke on
+	// 			 * non-MCLBYTES-sized clusters
+	// 			 |)}>#
+	// 			m = m_defrag(*m_headp, M_NOWAIT);
+	// 			if (m == NULL) {
+	// 				adapter->mbuf_defrag_failed++;
+	// 				m_freem(*m_headp);
+	// 				*m_headp = NULL;
+	// 				return (ENOBUFS);
+	// 			}
+	// 			*m_headp = m;
+	// 			goto retry;
+	// 		} else
+	// 			return (error);
+	// 	case ENOMEM:
+	// 		txr->no_tx_dma_setup++;
+	// 		return (error);
+	// 	default:
+	// 		txr->no_tx_dma_setup++;
+	// 		m_freem(*m_headp);
+	// 		*m_headp = NULL;
+	// 		return (error);
+	// 	}
+	// }
 
 	/* Make certain there are enough descriptors */
 	if (nsegs > txr->tx_avail - 2) {
@@ -415,7 +414,7 @@ retry:
 	 * Set up the appropriate offload context
 	 * this will consume the first descriptor
 	 */
-	error = ixgbe_tx_ctx_setup(txr, m_head, &cmd_type_len, &olinfo_status);
+	error = 0; // ixgbe_tx_ctx_setup(txr, m_head, &cmd_type_len, &olinfo_status);
 	if (__predict_false(error)) {
 		if (error == ENOBUFS)
 			*m_headp = NULL;
@@ -435,23 +434,39 @@ retry:
 
 	olinfo_status |= IXGBE_ADVTXD_CC;
 	i = txr->next_avail_desc;
-	for (j = 0; j < nsegs; j++) {
-		bus_size_t seglen;
-		bus_addr_t segaddr;
+	// for (j = 0; j < nsegs; j++) {
+	// 	bus_size_t seglen;
+	// 	bus_addr_t segaddr;
+    //
+	// 	txbuf = &txr->tx_buffers[i];
+	// 	txd = &txr->tx_base[i];
+	// 	seglen = segs[j].ds_len;
+	// 	segaddr = htole64(segs[j].ds_addr);
+    //
+	// 	txd->read.buffer_addr = segaddr;
+	// 	txd->read.cmd_type_len = htole32(txr->txd_cmd |
+	// 	    cmd_type_len |seglen);
+	// 	txd->read.olinfo_status = htole32(olinfo_status);
+    //
+	// 	if (++i == txr->num_desc)
+	// 		i = 0;
+	// }
+    bus_size_t seglen;
+    // bus_addr_t segaddr;
 
-		txbuf = &txr->tx_buffers[i];
-		txd = &txr->tx_base[i];
-		seglen = segs[j].ds_len;
-		segaddr = htole64(segs[j].ds_addr);
+    txbuf = &txr->tx_buffers[i];
+    txd = &txr->tx_base[i];
+    seglen = packet->len; // seglen = segs[j].ds_len;
+    // segaddr = htole64(segs[j].ds_addr);
+    memcpy(reinterpret_cast<void *>(p2v(txd->read.buffer_addr)), packet->buf, seglen);
 
-		txd->read.buffer_addr = segaddr;
-		txd->read.cmd_type_len = htole32(txr->txd_cmd |
-		    cmd_type_len |seglen);
-		txd->read.olinfo_status = htole32(olinfo_status);
+	// 	txd->read.buffer_addr = segaddr;
+    txd->read.cmd_type_len = htole32(txr->txd_cmd |
+        cmd_type_len |seglen);
+    txd->read.olinfo_status = htole32(olinfo_status);
 
-		if (++i == txr->num_desc)
-			i = 0;
-	}
+    if (++i == txr->num_desc)
+        i = 0;
 
 	txd->read.cmd_type_len |=
 	    htole32(IXGBE_TXD_CMD_EOP | IXGBE_TXD_CMD_RS);
@@ -546,7 +561,7 @@ ixgbe_allocate_transmit_buffers(struct tx_ring *txr)
 	return 0;
 fail:
 	/* We free all, it handles case where we are in the middle */
-	ixgbe_free_transmit_structures(adapter);
+	// ixgbe_free_transmit_structures(adapter);
 	return (error);
 }
 
@@ -587,7 +602,7 @@ ixgbe_setup_transmit_ring(struct tx_ring *txr)
 			bus_dmamap_sync(txr->txtag, txbuf->map,
 			    BUS_DMASYNC_POSTWRITE);
 			bus_dmamap_unload(txr->txtag, txbuf->map);
-			m_freem(txbuf->m_head);
+			// m_freem(txbuf->m_head);
 			txbuf->m_head = NULL;
 		}
 #ifdef DEV_NETMAP
@@ -646,74 +661,74 @@ ixgbe_setup_transmit_structures(struct adapter *adapter)
  *  Free all transmit rings.
  *
  **********************************************************************/
-void
-ixgbe_free_transmit_structures(struct adapter *adapter)
-{
-	struct tx_ring *txr = adapter->tx_rings;
-
-	for (int i = 0; i < adapter->num_queues; i++, txr++) {
-		IXGBE_TX_LOCK(txr);
-		ixgbe_free_transmit_buffers(txr);
-		ixgbe_dma_free(adapter, &txr->txdma);
-		IXGBE_TX_UNLOCK(txr);
-		IXGBE_TX_LOCK_DESTROY(txr);
-	}
-	free(adapter->tx_rings, M_DEVBUF);
-}
+// void
+// ixgbe_free_transmit_structures(struct adapter *adapter)
+// {
+// 	struct tx_ring *txr = adapter->tx_rings;
+//
+// 	for (int i = 0; i < adapter->num_queues; i++, txr++) {
+// 		IXGBE_TX_LOCK(txr);
+// 		ixgbe_free_transmit_buffers(txr);
+// 		ixgbe_dma_free(adapter, &txr->txdma);
+// 		IXGBE_TX_UNLOCK(txr);
+// 		IXGBE_TX_LOCK_DESTROY(txr);
+// 	}
+// 	free(adapter->tx_rings #<{(| , M_DEVBUF |)}># );
+// }
 
 /*********************************************************************
  *
  *  Free transmit ring related data structures.
  *
  **********************************************************************/
-static void
-ixgbe_free_transmit_buffers(struct tx_ring *txr)
-{
-	struct adapter *adapter = txr->adapter;
-	struct ixgbe_tx_buf *tx_buffer;
-	int             i;
-
-	INIT_DEBUGOUT("ixgbe_free_transmit_ring: begin");
-
-	if (txr->tx_buffers == NULL)
-		return;
-
-	tx_buffer = txr->tx_buffers;
-	for (i = 0; i < adapter->num_tx_desc; i++, tx_buffer++) {
-		if (tx_buffer->m_head != NULL) {
-			bus_dmamap_sync(txr->txtag, tx_buffer->map,
-			    BUS_DMASYNC_POSTWRITE);
-			bus_dmamap_unload(txr->txtag,
-			    tx_buffer->map);
-			m_freem(tx_buffer->m_head);
-			tx_buffer->m_head = NULL;
-			if (tx_buffer->map != NULL) {
-				bus_dmamap_destroy(txr->txtag,
-				    tx_buffer->map);
-				tx_buffer->map = NULL;
-			}
-		} else if (tx_buffer->map != NULL) {
-			bus_dmamap_unload(txr->txtag,
-			    tx_buffer->map);
-			bus_dmamap_destroy(txr->txtag,
-			    tx_buffer->map);
-			tx_buffer->map = NULL;
-		}
-	}
-#ifdef IXGBE_LEGACY_TX
-	if (txr->br != NULL)
-		buf_ring_free(txr->br, M_DEVBUF);
-#endif
-	if (txr->tx_buffers != NULL) {
-		free(txr->tx_buffers, M_DEVBUF);
-		txr->tx_buffers = NULL;
-	}
-	if (txr->txtag != NULL) {
-		bus_dma_tag_destroy(txr->txtag);
-		txr->txtag = NULL;
-	}
-	return;
-}
+// static void
+// ixgbe_free_transmit_buffers(struct tx_ring *txr)
+// {
+// 	struct adapter *adapter = txr->adapter;
+// 	struct ixgbe_tx_buf *tx_buffer;
+// 	int             i;
+//
+// 	INIT_DEBUGOUT("ixgbe_free_transmit_ring: begin");
+//
+// 	if (txr->tx_buffers == NULL)
+// 		return;
+//
+// 	tx_buffer = txr->tx_buffers;
+// 	for (i = 0; i < adapter->num_tx_desc; i++, tx_buffer++) {
+// 		if (tx_buffer->m_head != NULL) {
+// 			bus_dmamap_sync(txr->txtag, tx_buffer->map,
+// 			    BUS_DMASYNC_POSTWRITE);
+// 			bus_dmamap_unload(txr->txtag,
+// 			    tx_buffer->map);
+// 			m_freem(tx_buffer->m_head);
+// 			tx_buffer->m_head = NULL;
+// 			if (tx_buffer->map != NULL) {
+// 				bus_dmamap_destroy(txr->txtag,
+// 				    tx_buffer->map);
+// 				tx_buffer->map = NULL;
+// 			}
+// 		} else if (tx_buffer->map != NULL) {
+// 			bus_dmamap_unload(txr->txtag,
+// 			    tx_buffer->map);
+// 			bus_dmamap_destroy(txr->txtag,
+// 			    tx_buffer->map);
+// 			tx_buffer->map = NULL;
+// 		}
+// 	}
+// #ifdef IXGBE_LEGACY_TX
+// 	if (txr->br != NULL)
+// 		buf_ring_free(txr->br, M_DEVBUF);
+// #endif
+// 	if (txr->tx_buffers != NULL) {
+// 		free(txr->tx_buffers, M_DEVBUF);
+// 		txr->tx_buffers = NULL;
+// 	}
+// 	if (txr->txtag != NULL) {
+// 		bus_dma_tag_destroy(txr->txtag);
+// 		txr->txtag = NULL;
+// 	}
+// 	return;
+// }
 
 /*********************************************************************
  *
@@ -721,154 +736,154 @@ ixgbe_free_transmit_buffers(struct tx_ring *txr)
  *
  **********************************************************************/
 
-static int
-ixgbe_tx_ctx_setup(struct tx_ring *txr, struct mbuf *mp,
-    u32 *cmd_type_len, u32 *olinfo_status)
-{
-	struct adapter *adapter = txr->adapter;
-	struct ixgbe_adv_tx_context_desc *TXD;
-	struct ether_vlan_header *eh;
-#ifdef INET
-	struct ip *ip;
-#endif
-#ifdef INET6
-	struct ip6_hdr *ip6;
-#endif
-	u32 vlan_macip_lens = 0, type_tucmd_mlhl = 0;
-	int	ehdrlen, ip_hlen = 0;
-	u16	etype;
-	u8	ipproto = 0;
-	int	offload = TRUE;
-	int	ctxd = txr->next_avail_desc;
-	u16	vtag = 0;
-	caddr_t l3d;
-
-
-	/* First check if TSO is to be used */
-	// if (mp->m_pkthdr.csum_flags & (CSUM_IP_TSO|CSUM_IP6_TSO))
-	// 	return (ixgbe_tso_setup(txr, mp, cmd_type_len, olinfo_status));
-
-	if ((mp->m_pkthdr.csum_flags & CSUM_OFFLOAD) == 0)
-		offload = FALSE;
-
-
-	/* Indicate the whole packet as payload when not doing TSO */
-       	*olinfo_status |= mp->m_pkthdr.len << IXGBE_ADVTXD_PAYLEN_SHIFT;
-
-	/* Now ready a context descriptor */
-	TXD = (struct ixgbe_adv_tx_context_desc *) &txr->tx_base[ctxd];
-
-	/*
-	** In advanced descriptors the vlan tag must 
-	** be placed into the context descriptor. Hence
-	** we need to make one even if not doing offloads.
-	*/
-	if (mp->m_flags & M_VLANTAG) {
-		vtag = htole16(mp->m_pkthdr.ether_vtag);
-		vlan_macip_lens |= (vtag << IXGBE_ADVTXD_VLAN_SHIFT);
-	} else if (!IXGBE_IS_X550VF(adapter) && (offload == FALSE))
-		return (0);
-
-	/*
-	 * Determine where frame payload starts.
-	 * Jump over vlan headers if already present,
-	 * helpful for QinQ too.
-	 */
-	eh = mtod(mp, struct ether_vlan_header *);
-	if (eh->evl_encap_proto == htons(ETHERTYPE_VLAN)) {
-		etype = ntohs(eh->evl_proto);
-		ehdrlen = ETHER_HDR_LEN + ETHER_VLAN_ENCAP_LEN;
-	} else {
-		etype = ntohs(eh->evl_encap_proto);
-		ehdrlen = ETHER_HDR_LEN;
-	}
-
-	/* Set the ether header length */
-	vlan_macip_lens |= ehdrlen << IXGBE_ADVTXD_MACLEN_SHIFT;
-
-	if (offload == FALSE)
-		goto no_offloads;
-
-	/*
-	 * If the first mbuf only includes the ethernet header, jump to the next one
-	 * XXX: This assumes the stack splits mbufs containing headers on header boundaries
-	 * XXX: And assumes the entire IP header is contained in one mbuf
-	 */
-	if (mp->m_len == ehdrlen && mp->m_next)
-		l3d = mtod(mp->m_next, caddr_t);
-	else
-		l3d = mtod(mp, caddr_t) + ehdrlen;
-
-	switch (etype) {
-		case ETHERTYPE_IP:
-			ip = (struct ip *)(l3d);
-			ip_hlen = ip->ip_hl << 2;
-			ipproto = ip->ip_p;
-			type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_IPV4;
-			/* Insert IPv4 checksum into data descriptors */
-			if (mp->m_pkthdr.csum_flags & CSUM_IP) {
-				ip->ip_sum = 0;
-				*olinfo_status |= IXGBE_TXD_POPTS_IXSM << 8;
-			}
-			break;
-		case ETHERTYPE_IPV6:
-			ip6 = (struct ip6_hdr *)(l3d);
-			ip_hlen = sizeof(struct ip6_hdr);
-			ipproto = ip6->ip6_nxt;
-			type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_IPV6;
-			break;
-		default:
-			offload = FALSE;
-			break;
-	}
-
-	vlan_macip_lens |= ip_hlen;
-
-	/* No support for offloads for non-L4 next headers */
-	switch (ipproto) {
-		case IPPROTO_TCP:
-			if (mp->m_pkthdr.csum_flags & (CSUM_IP_TCP | CSUM_IP6_TCP))
-				type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_L4T_TCP;
-			else
-				offload = false;
-			break;
-		case IPPROTO_UDP:
-			if (mp->m_pkthdr.csum_flags & (CSUM_IP_UDP | CSUM_IP6_UDP))
-				type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_L4T_UDP;
-			else
-				offload = false;
-			break;
-		case IPPROTO_SCTP:
-			if (mp->m_pkthdr.csum_flags & (CSUM_IP_SCTP | CSUM_IP6_SCTP))
-				type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_L4T_SCTP;
-			else
-				offload = false;
-			break;
-		default:
-			offload = false;
-			break;
-	}
-
-	if (offload) /* Insert L4 checksum into data descriptors */
-		*olinfo_status |= IXGBE_TXD_POPTS_TXSM << 8;
-
-no_offloads:
-	type_tucmd_mlhl |= IXGBE_ADVTXD_DCMD_DEXT | IXGBE_ADVTXD_DTYP_CTXT;
-
-	/* Now copy bits into descriptor */
-	TXD->vlan_macip_lens = htole32(vlan_macip_lens);
-	TXD->type_tucmd_mlhl = htole32(type_tucmd_mlhl);
-	TXD->seqnum_seed = htole32(0);
-	TXD->mss_l4len_idx = htole32(0);
-
-	/* We've consumed the first desc, adjust counters */
-	if (++ctxd == txr->num_desc)
-		ctxd = 0;
-	txr->next_avail_desc = ctxd;
-	--txr->tx_avail;
-
-        return (0);
-}
+// static int
+// ixgbe_tx_ctx_setup(struct tx_ring *txr, struct mbuf *mp,
+//     u32 *cmd_type_len, u32 *olinfo_status)
+// {
+// 	struct adapter *adapter = txr->adapter;
+// 	struct ixgbe_adv_tx_context_desc *TXD;
+// 	struct ether_vlan_header *eh;
+// #ifdef INET
+// 	struct ip *ip;
+// #endif
+// #ifdef INET6
+// 	struct ip6_hdr *ip6;
+// #endif
+// 	u32 vlan_macip_lens = 0, type_tucmd_mlhl = 0;
+// 	int	ehdrlen, ip_hlen = 0;
+// 	u16	etype;
+// 	u8	ipproto = 0;
+// 	int	offload = TRUE;
+// 	int	ctxd = txr->next_avail_desc;
+// 	u16	vtag = 0;
+// 	caddr_t l3d;
+//
+//
+// 	#<{(| First check if TSO is to be used |)}>#
+// 	// if (mp->m_pkthdr.csum_flags & (CSUM_IP_TSO|CSUM_IP6_TSO))
+// 	// 	return (ixgbe_tso_setup(txr, mp, cmd_type_len, olinfo_status));
+//
+// 	if ((mp->m_pkthdr.csum_flags & CSUM_OFFLOAD) == 0)
+// 		offload = FALSE;
+//
+//
+// 	#<{(| Indicate the whole packet as payload when not doing TSO |)}>#
+//        	*olinfo_status |= mp->m_pkthdr.len << IXGBE_ADVTXD_PAYLEN_SHIFT;
+//
+// 	#<{(| Now ready a context descriptor |)}>#
+// 	TXD = (struct ixgbe_adv_tx_context_desc *) &txr->tx_base[ctxd];
+//
+// 	#<{(|
+// 	** In advanced descriptors the vlan tag must
+// 	** be placed into the context descriptor. Hence
+// 	** we need to make one even if not doing offloads.
+// 	|)}>#
+// 	if (mp->m_flags & M_VLANTAG) {
+// 		vtag = htole16(mp->m_pkthdr.ether_vtag);
+// 		vlan_macip_lens |= (vtag << IXGBE_ADVTXD_VLAN_SHIFT);
+// 	} else if (!IXGBE_IS_X550VF(adapter) && (offload == FALSE))
+// 		return (0);
+//
+// 	#<{(|
+// 	 * Determine where frame payload starts.
+// 	 * Jump over vlan headers if already present,
+// 	 * helpful for QinQ too.
+// 	 |)}>#
+// 	eh = mtod(mp, struct ether_vlan_header *);
+// 	if (eh->evl_encap_proto == htons(ETHERTYPE_VLAN)) {
+// 		etype = ntohs(eh->evl_proto);
+// 		ehdrlen = ETHER_HDR_LEN + ETHER_VLAN_ENCAP_LEN;
+// 	} else {
+// 		etype = ntohs(eh->evl_encap_proto);
+// 		ehdrlen = ETHER_HDR_LEN;
+// 	}
+//
+// 	#<{(| Set the ether header length |)}>#
+// 	vlan_macip_lens |= ehdrlen << IXGBE_ADVTXD_MACLEN_SHIFT;
+//
+// 	if (offload == FALSE)
+// 		goto no_offloads;
+//
+// 	#<{(|
+// 	 * If the first mbuf only includes the ethernet header, jump to the next one
+// 	 * XXX: This assumes the stack splits mbufs containing headers on header boundaries
+// 	 * XXX: And assumes the entire IP header is contained in one mbuf
+// 	 |)}>#
+// 	if (mp->m_len == ehdrlen && mp->m_next)
+// 		l3d = mtod(mp->m_next, caddr_t);
+// 	else
+// 		l3d = mtod(mp, caddr_t) + ehdrlen;
+//
+// 	switch (etype) {
+// 		case ETHERTYPE_IP:
+// 			ip = (struct ip *)(l3d);
+// 			ip_hlen = ip->ip_hl << 2;
+// 			ipproto = ip->ip_p;
+// 			type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_IPV4;
+// 			#<{(| Insert IPv4 checksum into data descriptors |)}>#
+// 			if (mp->m_pkthdr.csum_flags & CSUM_IP) {
+// 				ip->ip_sum = 0;
+// 				*olinfo_status |= IXGBE_TXD_POPTS_IXSM << 8;
+// 			}
+// 			break;
+// 		case ETHERTYPE_IPV6:
+// 			ip6 = (struct ip6_hdr *)(l3d);
+// 			ip_hlen = sizeof(struct ip6_hdr);
+// 			ipproto = ip6->ip6_nxt;
+// 			type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_IPV6;
+// 			break;
+// 		default:
+// 			offload = FALSE;
+// 			break;
+// 	}
+//
+// 	vlan_macip_lens |= ip_hlen;
+//
+// 	#<{(| No support for offloads for non-L4 next headers |)}>#
+// 	switch (ipproto) {
+// 		case IPPROTO_TCP:
+// 			if (mp->m_pkthdr.csum_flags & (CSUM_IP_TCP | CSUM_IP6_TCP))
+// 				type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_L4T_TCP;
+// 			else
+// 				offload = false;
+// 			break;
+// 		case IPPROTO_UDP:
+// 			if (mp->m_pkthdr.csum_flags & (CSUM_IP_UDP | CSUM_IP6_UDP))
+// 				type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_L4T_UDP;
+// 			else
+// 				offload = false;
+// 			break;
+// 		case IPPROTO_SCTP:
+// 			if (mp->m_pkthdr.csum_flags & (CSUM_IP_SCTP | CSUM_IP6_SCTP))
+// 				type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_L4T_SCTP;
+// 			else
+// 				offload = false;
+// 			break;
+// 		default:
+// 			offload = false;
+// 			break;
+// 	}
+//
+// 	if (offload) #<{(| Insert L4 checksum into data descriptors |)}>#
+// 		*olinfo_status |= IXGBE_TXD_POPTS_TXSM << 8;
+//
+// no_offloads:
+// 	type_tucmd_mlhl |= IXGBE_ADVTXD_DCMD_DEXT | IXGBE_ADVTXD_DTYP_CTXT;
+//
+// 	#<{(| Now copy bits into descriptor |)}>#
+// 	TXD->vlan_macip_lens = htole32(vlan_macip_lens);
+// 	TXD->type_tucmd_mlhl = htole32(type_tucmd_mlhl);
+// 	TXD->seqnum_seed = htole32(0);
+// 	TXD->mss_l4len_idx = htole32(0);
+//
+// 	#<{(| We've consumed the first desc, adjust counters |)}>#
+// 	if (++ctxd == txr->num_desc)
+// 		ctxd = 0;
+// 	txr->next_avail_desc = ctxd;
+// 	--txr->tx_avail;
+//
+//         return (0);
+// }
 
 /**********************************************************************
  *
@@ -1057,17 +1072,17 @@ ixgbe_txeof(struct tx_ring *txr)
 		if ((eop->wb.status & IXGBE_TXD_STAT_DD) == 0)
 			break;	/* I/O not complete */
 
-		if (buf->m_head) {
-			txr->bytes +=
-			    buf->m_head->m_pkthdr.len;
-			bus_dmamap_sync(txr->txtag,
-			    buf->map,
-			    BUS_DMASYNC_POSTWRITE);
-			bus_dmamap_unload(txr->txtag,
-			    buf->map);
-			m_freem(buf->m_head);
-			buf->m_head = NULL;
-		}
+		// if (buf->m_head) {
+		// 	txr->bytes +=
+		// 	    buf->m_head->m_pkthdr.len;
+		// 	bus_dmamap_sync(txr->txtag,
+		// 	    buf->map,
+		// 	    BUS_DMASYNC_POSTWRITE);
+		// 	bus_dmamap_unload(txr->txtag,
+		// 	    buf->map);
+		// 	m_freem(buf->m_head);
+		// 	buf->m_head = NULL;
+		// }
 		buf->eop = NULL;
 		++txr->tx_avail;
 
@@ -1082,17 +1097,17 @@ ixgbe_txeof(struct tx_ring *txr)
 				buf = txr->tx_buffers;
 				txd = txr->tx_base;
 			}
-			if (buf->m_head) {
-				txr->bytes +=
-				    buf->m_head->m_pkthdr.len;
-				bus_dmamap_sync(txr->txtag,
-				    buf->map,
-				    BUS_DMASYNC_POSTWRITE);
-				bus_dmamap_unload(txr->txtag,
-				    buf->map);
-				m_freem(buf->m_head);
-				buf->m_head = NULL;
-			}
+			// if (buf->m_head) {
+			// 	txr->bytes +=
+			// 	    buf->m_head->m_pkthdr.len;
+			// 	bus_dmamap_sync(txr->txtag,
+			// 	    buf->map,
+			// 	    BUS_DMASYNC_POSTWRITE);
+			// 	bus_dmamap_unload(txr->txtag,
+			// 	    buf->map);
+			// 	m_freem(buf->m_head);
+			// 	buf->m_head = NULL;
+			// }
 			++txr->tx_avail;
 			buf->eop = NULL;
 
@@ -1124,7 +1139,7 @@ ixgbe_txeof(struct tx_ring *txr)
 	** work outstanding or the first return
 	** would have been taken, so increment busy
 	** if nothing managed to get cleaned, then
-	** in local_timer it will be checked and 
+	** in local_timer it will be checked and
 	** marked as HUNG if it exceeds a MAX attempt.
 	*/
 	if ((processed == 0) && (txr->busy != IXGBE_QUEUE_HUNG))
@@ -1146,7 +1161,7 @@ ixgbe_txeof(struct tx_ring *txr)
 #ifdef IXGBE_FDIR
 /*
 ** This routine parses packet headers so that Flow
-** Director can make a hashed filter table entry 
+** Director can make a hashed filter table entry
 ** allowing traffic flows to be identified and kept
 ** on the same cpu.  This would be a performance
 ** hit, but we only do it at IXGBE_FDIR_RATE of
@@ -1161,8 +1176,8 @@ ixgbe_atr(struct tx_ring *txr, struct mbuf *mp)
 	struct tcphdr			*th;
 	struct udphdr			*uh;
 	struct ether_vlan_header	*eh;
-	union ixgbe_atr_hash_dword	input = {.dword = 0}; 
-	union ixgbe_atr_hash_dword	common = {.dword = 0}; 
+	union ixgbe_atr_hash_dword	input = {.dword = 0};
+	union ixgbe_atr_hash_dword	common = {.dword = 0};
 	int  				ehdrlen, ip_hlen;
 	u16				etype;
 
@@ -1236,7 +1251,7 @@ ixgbe_rsc_count(union ixgbe_adv_rx_desc *rx)
  *  for an RX ring, this is toggled by the LRO capability
  *  even though it is transparent to the stack.
  *
- *  NOTE: since this HW feature only works with IPV4 and 
+ *  NOTE: since this HW feature only works with IPV4 and
  *        our testing has shown soft LRO to be as effective
  *        I have decided to disable this by default.
  *
@@ -1306,9 +1321,9 @@ static void
 ixgbe_refresh_mbufs(struct rx_ring *rxr, int limit)
 {
 	struct adapter		*adapter = rxr->adapter;
-	bus_dma_segment_t	seg[1];
-	struct ixgbe_rx_buf	*rxbuf;
-	struct mbuf		*mp;
+	// bus_dma_segment_t	seg[1];
+	// struct ixgbe_rx_buf	*rxbuf;
+	// struct mbuf		*mp;
 	int			i, j, nsegs, error;
 	bool			refreshed = FALSE;
 
@@ -1318,46 +1333,46 @@ ixgbe_refresh_mbufs(struct rx_ring *rxr, int limit)
 		j = 0;
 
 	while (j != limit) {
-		rxbuf = &rxr->rx_buffers[i];
-		if (rxbuf->buf == NULL) {
-			mp = m_getjcl(M_NOWAIT, MT_DATA,
-			    M_PKTHDR, rxr->mbuf_sz);
-			if (mp == NULL)
-				goto update;
-			if (adapter->max_frame_size <= (MCLBYTES - ETHER_ALIGN))
-				m_adj(mp, ETHER_ALIGN);
-		} else
-			mp = rxbuf->buf;
-
-		mp->m_pkthdr.len = mp->m_len = rxr->mbuf_sz;
-
-		/* If we're dealing with an mbuf that was copied rather
-		 * than replaced, there's no need to go through busdma.
-		 */
-		if ((rxbuf->flags & IXGBE_RX_COPY) == 0) {
-			/* Get the memory mapping */
-			bus_dmamap_unload(rxr->ptag, rxbuf->pmap);
-			error = bus_dmamap_load_mbuf_sg(rxr->ptag,
-			    rxbuf->pmap, mp, seg, &nsegs, BUS_DMA_NOWAIT);
-			if (error != 0) {
-				// printf("Refresh mbufs: payload dmamap load"
-				//     " failure - %d\n", error);
-				m_free(mp);
-				rxbuf->buf = NULL;
-				goto update;
-			}
-			rxbuf->buf = mp;
-			bus_dmamap_sync(rxr->ptag, rxbuf->pmap,
-			    BUS_DMASYNC_PREREAD);
-			rxbuf->addr = rxr->rx_base[i].read.pkt_addr =
-			    htole64(seg[0].ds_addr);
-		} else {
-			rxr->rx_base[i].read.pkt_addr = rxbuf->addr;
-			rxbuf->flags &= ~IXGBE_RX_COPY;
-		}
-
+		// rxbuf = &rxr->rx_buffers[i];
+		// if (rxbuf->buf == NULL) {
+		// 	mp = m_getjcl(M_NOWAIT, MT_DATA,
+		// 	    M_PKTHDR, rxr->mbuf_sz);
+		// 	if (mp == NULL)
+		// 		goto update;
+		// 	if (adapter->max_frame_size <= (MCLBYTES - ETHER_ALIGN))
+		// 		m_adj(mp, ETHER_ALIGN);
+		// } else
+		// 	mp = rxbuf->buf;
+        //
+		// mp->m_pkthdr.len = mp->m_len = rxr->mbuf_sz;
+        //
+		// #<{(| If we're dealing with an mbuf that was copied rather
+		//  * than replaced, there's no need to go through busdma.
+		//  |)}>#
+		// if ((rxbuf->flags & IXGBE_RX_COPY) == 0) {
+		// 	#<{(| Get the memory mapping |)}>#
+		// 	bus_dmamap_unload(rxr->ptag, rxbuf->pmap);
+		// 	// error = bus_dmamap_load_mbuf_sg(rxr->ptag,
+		// 	//     rxbuf->pmap, mp, seg, &nsegs, BUS_DMA_NOWAIT);
+		// 	// if (error != 0) {
+		// 	// 	printf("Refresh mbufs: payload dmamap load"
+		// 	// 	     " failure - %d\n", error);
+		// 	// 	m_free(mp);
+		// 	// 	rxbuf->buf = NULL;
+		// 	// 	goto update;
+		// 	// }
+		// 	rxbuf->buf = mp;
+		// 	bus_dmamap_sync(rxr->ptag, rxbuf->pmap,
+		// 	    BUS_DMASYNC_PREREAD);
+		// 	rxbuf->addr = rxr->rx_base[i].read.pkt_addr =
+		// 	    htole64(seg[0].ds_addr);
+		// } else {
+		// 	rxr->rx_base[i].read.pkt_addr = rxbuf->addr;
+	    // 	rxbuf->flags &= ~IXGBE_RX_COPY;
+		// }
+        //
 		refreshed = TRUE;
-		/* Next is precalculated */
+		// #<{(| Next is precalculated |)}>#
 		i = j;
 		rxr->next_to_refresh = i;
 		if (++j == rxr->num_desc)
@@ -1424,13 +1439,13 @@ ixgbe_allocate_receive_buffers(struct rx_ring *rxr)
 
 fail:
 	/* Frees all, but can handle partial completion */
-	ixgbe_free_receive_structures(adapter);
+	// ixgbe_free_receive_structures(adapter);
 	return (error);
 }
 
-static void     
+static void
 ixgbe_free_receive_ring(struct rx_ring *rxr)
-{ 
+{
 	struct ixgbe_rx_buf       *rxbuf;
 
 	for (int i = 0; i < rxr->num_desc; i++) {
@@ -1488,7 +1503,7 @@ ixgbe_setup_receive_ring(struct rx_ring *rxr)
 
 	/* Now replenish the mbufs */
 	for (int j = 0; j != rxr->num_desc; ++j) {
-		struct mbuf	*mp;
+		// struct mbuf	*mp;
 
 		rxbuf = &rxr->rx_buffers[j];
 #ifdef DEV_NETMAP
@@ -1512,26 +1527,26 @@ ixgbe_setup_receive_ring(struct rx_ring *rxr)
 			continue;
 		}
 #endif /* DEV_NETMAP */
-		rxbuf->flags = 0; 
-		rxbuf->buf = m_getjcl(M_NOWAIT, MT_DATA,
-		    M_PKTHDR, adapter->rx_mbuf_sz);
-		if (rxbuf->buf == NULL) {
-			error = ENOBUFS;
-                        goto fail;
-		}
-		mp = rxbuf->buf;
-		mp->m_pkthdr.len = mp->m_len = rxr->mbuf_sz;
-		/* Get the memory mapping */
-		error = bus_dmamap_load_mbuf_sg(rxr->ptag,
-		    rxbuf->pmap, mp, seg,
-		    &nsegs, BUS_DMA_NOWAIT);
-		if (error != 0)
-                        goto fail;
-		bus_dmamap_sync(rxr->ptag,
-		    rxbuf->pmap, BUS_DMASYNC_PREREAD);
-		/* Update the descriptor and the cached value */
-		rxr->rx_base[j].read.pkt_addr = htole64(seg[0].ds_addr);
-		rxbuf->addr = htole64(seg[0].ds_addr);
+		// rxbuf->flags = 0;
+		// rxbuf->buf = m_getjcl(M_NOWAIT, MT_DATA,
+		//     M_PKTHDR, adapter->rx_mbuf_sz);
+		// if (rxbuf->buf == NULL) {
+		// 	error = ENOBUFS;
+        //                 goto fail;
+		// }
+		// mp = rxbuf->buf;
+		// mp->m_pkthdr.len = mp->m_len = rxr->mbuf_sz;
+		// #<{(| Get the memory mapping |)}>#
+		// // error = bus_dmamap_load_mbuf_sg(rxr->ptag,
+		// //     rxbuf->pmap, mp, seg,
+		// //     &nsegs, BUS_DMA_NOWAIT);
+		// // if (error != 0)
+        // //                 goto fail;
+		// bus_dmamap_sync(rxr->ptag,
+		//     rxbuf->pmap, BUS_DMASYNC_PREREAD);
+		// #<{(| Update the descriptor and the cached value |)}>#
+		// rxr->rx_base[j].read.pkt_addr = htole64(seg[0].ds_addr);
+		// rxbuf->addr = htole64(seg[0].ds_addr);
 	}
 
 
@@ -1607,24 +1622,24 @@ fail:
  *  Free all receive rings.
  *
  **********************************************************************/
-void
-ixgbe_free_receive_structures(struct adapter *adapter)
-{
-	struct rx_ring *rxr = adapter->rx_rings;
-
-	INIT_DEBUGOUT("ixgbe_free_receive_structures: begin");
-
-	for (int i = 0; i < adapter->num_queues; i++, rxr++) {
-		struct lro_ctrl		*lro = &rxr->lro;
-		ixgbe_free_receive_buffers(rxr);
-		/* Free LRO memory */
-		tcp_lro_free(lro);
-		/* Free the ring memory as well */
-		ixgbe_dma_free(adapter, &rxr->rxdma);
-	}
-
-	free(adapter->rx_rings, M_DEVBUF);
-}
+// void
+// ixgbe_free_receive_structures(struct adapter *adapter)
+// {
+// 	struct rx_ring *rxr = adapter->rx_rings;
+//
+// 	INIT_DEBUGOUT("ixgbe_free_receive_structures: begin");
+//
+// 	for (int i = 0; i < adapter->num_queues; i++, rxr++) {
+// 		struct lro_ctrl		*lro = &rxr->lro;
+// 		ixgbe_free_receive_buffers(rxr);
+// 		#<{(| Free LRO memory |)}>#
+// 		tcp_lro_free(lro);
+// 		#<{(| Free the ring memory as well |)}>#
+// 		ixgbe_dma_free(adapter, &rxr->rxdma);
+// 	}
+//
+// 	free(adapter->rx_rings, M_DEVBUF);
+// }
 
 
 /*********************************************************************
@@ -1632,77 +1647,77 @@ ixgbe_free_receive_structures(struct adapter *adapter)
  *  Free receive ring data structures
  *
  **********************************************************************/
-void
-ixgbe_free_receive_buffers(struct rx_ring *rxr)
-{
-	struct adapter		*adapter = rxr->adapter;
-	struct ixgbe_rx_buf	*rxbuf;
+// void
+// ixgbe_free_receive_buffers(struct rx_ring *rxr)
+// {
+// 	struct adapter		*adapter = rxr->adapter;
+// 	struct ixgbe_rx_buf	*rxbuf;
+//
+// 	INIT_DEBUGOUT("ixgbe_free_receive_buffers: begin");
+//
+// 	#<{(| Cleanup any existing buffers |)}>#
+// 	if (rxr->rx_buffers != NULL) {
+// 		for (int i = 0; i < adapter->num_rx_desc; i++) {
+// 			rxbuf = &rxr->rx_buffers[i];
+// 			if (rxbuf->buf != NULL) {
+// 				bus_dmamap_sync(rxr->ptag, rxbuf->pmap,
+// 				    BUS_DMASYNC_POSTREAD);
+// 				bus_dmamap_unload(rxr->ptag, rxbuf->pmap);
+// 				rxbuf->buf->m_flags |= M_PKTHDR;
+// 				m_freem(rxbuf->buf);
+// 			}
+// 			rxbuf->buf = NULL;
+// 			if (rxbuf->pmap != NULL) {
+// 				bus_dmamap_destroy(rxr->ptag, rxbuf->pmap);
+// 				rxbuf->pmap = NULL;
+// 			}
+// 		}
+// 		if (rxr->rx_buffers != NULL) {
+// 			free(rxr->rx_buffers, M_DEVBUF);
+// 			rxr->rx_buffers = NULL;
+// 		}
+// 	}
+//
+// 	if (rxr->ptag != NULL) {
+// 		bus_dma_tag_destroy(rxr->ptag);
+// 		rxr->ptag = NULL;
+// 	}
+//
+// 	return;
+// }
 
-	INIT_DEBUGOUT("ixgbe_free_receive_buffers: begin");
-
-	/* Cleanup any existing buffers */
-	if (rxr->rx_buffers != NULL) {
-		for (int i = 0; i < adapter->num_rx_desc; i++) {
-			rxbuf = &rxr->rx_buffers[i];
-			if (rxbuf->buf != NULL) {
-				bus_dmamap_sync(rxr->ptag, rxbuf->pmap,
-				    BUS_DMASYNC_POSTREAD);
-				bus_dmamap_unload(rxr->ptag, rxbuf->pmap);
-				rxbuf->buf->m_flags |= M_PKTHDR;
-				m_freem(rxbuf->buf);
-			}
-			rxbuf->buf = NULL;
-			if (rxbuf->pmap != NULL) {
-				bus_dmamap_destroy(rxr->ptag, rxbuf->pmap);
-				rxbuf->pmap = NULL;
-			}
-		}
-		if (rxr->rx_buffers != NULL) {
-			free(rxr->rx_buffers, M_DEVBUF);
-			rxr->rx_buffers = NULL;
-		}
-	}
-
-	if (rxr->ptag != NULL) {
-		bus_dma_tag_destroy(rxr->ptag);
-		rxr->ptag = NULL;
-	}
-
-	return;
-}
-
-static __inline void
-ixgbe_rx_input(struct rx_ring *rxr, struct ifnet *ifp, struct mbuf *m, u32 ptype)
-{
-                 
-        /*
-         * ATM LRO is only for IP/TCP packets and TCP checksum of the packet
-         * should be computed by hardware. Also it should not have VLAN tag in
-         * ethernet header.  In case of IPv6 we do not yet support ext. hdrs.
-         */
-        if (rxr->lro_enabled &&
-            (ifp->if_capenable & IFCAP_VLAN_HWTAGGING) != 0 &&
-            (ptype & IXGBE_RXDADV_PKTTYPE_ETQF) == 0 &&
-            ((ptype & (IXGBE_RXDADV_PKTTYPE_IPV4 | IXGBE_RXDADV_PKTTYPE_TCP)) ==
-            (IXGBE_RXDADV_PKTTYPE_IPV4 | IXGBE_RXDADV_PKTTYPE_TCP) ||
-            (ptype & (IXGBE_RXDADV_PKTTYPE_IPV6 | IXGBE_RXDADV_PKTTYPE_TCP)) ==
-            (IXGBE_RXDADV_PKTTYPE_IPV6 | IXGBE_RXDADV_PKTTYPE_TCP)) &&
-            (m->m_pkthdr.csum_flags & (CSUM_DATA_VALID | CSUM_PSEUDO_HDR)) ==
-            (CSUM_DATA_VALID | CSUM_PSEUDO_HDR)) {
-                /*
-                 * Send to the stack if:
-                 **  - LRO not enabled, or
-                 **  - no LRO resources, or
-                 **  - lro enqueue fails
-                 */
-                if (rxr->lro.lro_cnt != 0)
-                        if (tcp_lro_rx(&rxr->lro, m, 0) == 0)
-                                return;
-        }
-	IXGBE_RX_UNLOCK(rxr);
-        (*ifp->if_input)(ifp, m);
-	IXGBE_RX_LOCK(rxr);
-}
+// static __inline void
+// ixgbe_rx_input(struct rx_ring *rxr, struct ifnet *ifp, struct mbuf *m, u32 ptype)
+// {
+//
+//         #<{(|
+//          * ATM LRO is only for IP/TCP packets and TCP checksum of the packet
+//          * should be computed by hardware. Also it should not have VLAN tag in
+//          * ethernet header.  In case of IPv6 we do not yet support ext. hdrs.
+//          |)}>#
+//         if (rxr->lro_enabled &&
+//             (ifp->if_capenable & IFCAP_VLAN_HWTAGGING) != 0 &&
+//             (ptype & IXGBE_RXDADV_PKTTYPE_ETQF) == 0 &&
+//             ((ptype & (IXGBE_RXDADV_PKTTYPE_IPV4 | IXGBE_RXDADV_PKTTYPE_TCP)) ==
+//             (IXGBE_RXDADV_PKTTYPE_IPV4 | IXGBE_RXDADV_PKTTYPE_TCP) ||
+//             (ptype & (IXGBE_RXDADV_PKTTYPE_IPV6 | IXGBE_RXDADV_PKTTYPE_TCP)) ==
+//             (IXGBE_RXDADV_PKTTYPE_IPV6 | IXGBE_RXDADV_PKTTYPE_TCP)) &&
+//             (m->m_pkthdr.csum_flags & (CSUM_DATA_VALID | CSUM_PSEUDO_HDR)) ==
+//             (CSUM_DATA_VALID | CSUM_PSEUDO_HDR)) {
+//                 #<{(|
+//                  * Send to the stack if:
+//                  **  - LRO not enabled, or
+//                  **  - no LRO resources, or
+//                  **  - lro enqueue fails
+//                  |)}>#
+//                 if (rxr->lro.lro_cnt != 0)
+//                         if (tcp_lro_rx(&rxr->lro, m, 0) == 0)
+//                                 return;
+//         }
+// 	IXGBE_RX_UNLOCK(rxr);
+//         (*ifp->if_input)(ifp, m);
+// 	IXGBE_RX_LOCK(rxr);
+// }
 
 static __inline void
 ixgbe_rx_discard(struct rx_ring *rxr, int i)
@@ -1732,7 +1747,7 @@ ixgbe_rx_discard(struct rx_ring *rxr, int i)
 	bus_dmamap_unload(rxr->ptag, rbuf->pmap);
 
 	rbuf->flags = 0;
- 
+
 	return;
 }
 
@@ -1771,12 +1786,12 @@ ixgbe_rxeof(struct ix_queue *que)
 #endif /* DEV_NETMAP */
 
 	for (i = rxr->next_to_check; count != 0;) {
-		struct mbuf	*sendmp, *mp;
+		// struct mbuf	*sendmp, *mp;
 		u32		rsc, ptype;
 		u16		len;
 		u16		vtag = 0;
 		bool		eop;
- 
+
 		/* Sync the ring. */
 		bus_dmamap_sync(rxr->rxdma.dma_tag, rxr->rxdma.dma_map,
 		    BUS_DMASYNC_POSTREAD | BUS_DMASYNC_POSTWRITE);
@@ -1918,57 +1933,57 @@ ixgbe_rxeof(struct ix_queue *que)
                         /*
                          * In case of multiqueue, we have RXCSUM.PCSD bit set
                          * and never cleared. This means we have RSS hash
-                         * available to be used.   
+                         * available to be used.
                          */
                         if (adapter->num_queues > 1) {
                                 sendmp->m_pkthdr.flowid =
                                     le32toh(cur->wb.lower.hi_dword.rss);
-                                switch (pkt_info & IXGBE_RXDADV_RSSTYPE_MASK) {  
-                                    case IXGBE_RXDADV_RSSTYPE_IPV4:
-                                        M_HASHTYPE_SET(sendmp,
-                                            M_HASHTYPE_RSS_IPV4);
-                                        break;
-                                    case IXGBE_RXDADV_RSSTYPE_IPV4_TCP:
-                                        M_HASHTYPE_SET(sendmp,
-                                            M_HASHTYPE_RSS_TCP_IPV4);
-                                        break;
-                                    case IXGBE_RXDADV_RSSTYPE_IPV6:
-                                        M_HASHTYPE_SET(sendmp,
-                                            M_HASHTYPE_RSS_IPV6);
-                                        break;
-                                    case IXGBE_RXDADV_RSSTYPE_IPV6_TCP:
-                                        M_HASHTYPE_SET(sendmp,
-                                            M_HASHTYPE_RSS_TCP_IPV6);
-                                        break;
-                                    case IXGBE_RXDADV_RSSTYPE_IPV6_EX:
-                                        M_HASHTYPE_SET(sendmp,
-                                            M_HASHTYPE_RSS_IPV6_EX);
-                                        break;
-                                    case IXGBE_RXDADV_RSSTYPE_IPV6_TCP_EX:
-                                        M_HASHTYPE_SET(sendmp,
-                                            M_HASHTYPE_RSS_TCP_IPV6_EX);
-                                        break;
-#if __FreeBSD_version > 1100000
-                                    case IXGBE_RXDADV_RSSTYPE_IPV4_UDP:
-                                        M_HASHTYPE_SET(sendmp,
-                                            M_HASHTYPE_RSS_UDP_IPV4);
-                                        break;
-                                    case IXGBE_RXDADV_RSSTYPE_IPV6_UDP:
-                                        M_HASHTYPE_SET(sendmp,
-                                            M_HASHTYPE_RSS_UDP_IPV6);
-                                        break;
-                                    case IXGBE_RXDADV_RSSTYPE_IPV6_UDP_EX:
-                                        M_HASHTYPE_SET(sendmp,
-                                            M_HASHTYPE_RSS_UDP_IPV6_EX);
-                                        break;
-#endif
-                                    default:
-                                        M_HASHTYPE_SET(sendmp,
-                                            M_HASHTYPE_OPAQUE);
-                                }
+//                                 switch (pkt_info & IXGBE_RXDADV_RSSTYPE_MASK) {
+//                                     case IXGBE_RXDADV_RSSTYPE_IPV4:
+//                                         M_HASHTYPE_SET(sendmp,
+//                                             M_HASHTYPE_RSS_IPV4);
+//                                         break;
+//                                     case IXGBE_RXDADV_RSSTYPE_IPV4_TCP:
+//                                         M_HASHTYPE_SET(sendmp,
+//                                             M_HASHTYPE_RSS_TCP_IPV4);
+//                                         break;
+//                                     case IXGBE_RXDADV_RSSTYPE_IPV6:
+//                                         M_HASHTYPE_SET(sendmp,
+//                                             M_HASHTYPE_RSS_IPV6);
+//                                         break;
+//                                     case IXGBE_RXDADV_RSSTYPE_IPV6_TCP:
+//                                         M_HASHTYPE_SET(sendmp,
+//                                             M_HASHTYPE_RSS_TCP_IPV6);
+//                                         break;
+//                                     case IXGBE_RXDADV_RSSTYPE_IPV6_EX:
+//                                         M_HASHTYPE_SET(sendmp,
+//                                             M_HASHTYPE_RSS_IPV6_EX);
+//                                         break;
+//                                     case IXGBE_RXDADV_RSSTYPE_IPV6_TCP_EX:
+//                                         M_HASHTYPE_SET(sendmp,
+//                                             M_HASHTYPE_RSS_TCP_IPV6_EX);
+//                                         break;
+// #if __FreeBSD_version > 1100000
+//                                     case IXGBE_RXDADV_RSSTYPE_IPV4_UDP:
+//                                         M_HASHTYPE_SET(sendmp,
+//                                             M_HASHTYPE_RSS_UDP_IPV4);
+//                                         break;
+//                                     case IXGBE_RXDADV_RSSTYPE_IPV6_UDP:
+//                                         M_HASHTYPE_SET(sendmp,
+//                                             M_HASHTYPE_RSS_UDP_IPV6);
+//                                         break;
+//                                     case IXGBE_RXDADV_RSSTYPE_IPV6_UDP_EX:
+//                                         M_HASHTYPE_SET(sendmp,
+//                                             M_HASHTYPE_RSS_UDP_IPV6_EX);
+//                                         break;
+// #endif
+//                                     default:
+//                                         M_HASHTYPE_SET(sendmp,
+//                                             M_HASHTYPE_OPAQUE);
+//                                 }
                         } else {
                                 sendmp->m_pkthdr.flowid = que->msix;
-				M_HASHTYPE_SET(sendmp, M_HASHTYPE_OPAQUE);
+				// M_HASHTYPE_SET(sendmp, M_HASHTYPE_OPAQUE);
 			}
 		}
 next_desc:
@@ -1982,7 +1997,7 @@ next_desc:
 		/* Now send to the stack or do LRO */
 		if (sendmp != NULL) {
 			rxr->next_to_check = i;
-			ixgbe_rx_input(rxr, ifp, sendmp, ptype);
+			// ixgbe_rx_input(rxr, ifp, sendmp, ptype);
 			i = rxr->next_to_check;
 		}
 
@@ -2191,7 +2206,7 @@ ixgbe_allocate_queues(struct adapter *adapter)
 	 * Now set up the TX queues, txconf is needed to handle the
 	 * possibility that things fail midcourse and we need to
 	 * undo memory gracefully
-	 */ 
+	 */
 	for (int i = 0; i < adapter->num_queues; i++, txconf++) {
 		/* Set up some basics */
 		txr = &adapter->tx_rings[i];
@@ -2240,7 +2255,7 @@ ixgbe_allocate_queues(struct adapter *adapter)
 
 	/*
 	 * Next the RX queues...
-	 */ 
+	 */
 	rsize = roundup2(adapter->num_rx_desc *
 	    sizeof(union ixgbe_adv_rx_desc), DBA_ALIGN);
 	for (int i = 0; i < adapter->num_queues; i++, rxconf++) {
@@ -2255,8 +2270,8 @@ ixgbe_allocate_queues(struct adapter *adapter)
 		rxr->num_desc = adapter->num_rx_desc;
 
 		/* Initialize the RX side lock */
-		snprintf(rxr->mtx_name, sizeof(rxr->mtx_name), "%s:rx(%d)",
-		    device_get_nameunit(dev), rxr->me);
+		// snprintf(rxr->mtx_name, sizeof(rxr->mtx_name), "%s:rx(%d)",
+		//     device_get_nameunit(dev), rxr->me);
 		mtx_init(&rxr->rx_mtx, rxr->mtx_name, NULL, MTX_DEF);
 
 		if (ixgbe_dma_malloc(adapter, rsize,
