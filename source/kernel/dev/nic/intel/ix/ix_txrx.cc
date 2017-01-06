@@ -173,7 +173,7 @@ ixgbe_start(struct ifnet *ifp)
 ** (if_transmit function)
 */
 int
-ixgbe_mq_start(struct ifnet *ifp, struct mbuf *m)
+ixgbe_mq_start(struct ifnet *ifp/*, struct mbuf *m*/)
 {
 	struct adapter	*adapter = reinterpret_cast<struct adapter *>(ifp->if_softc);
 	struct ix_queue	*que;
@@ -213,9 +213,9 @@ ixgbe_mq_start(struct ifnet *ifp, struct mbuf *m)
 	txr = &adapter->tx_rings[i];
 	que = &adapter->queues[i];
 
-	err = drbr_enqueue(ifp, txr->br, m);
-	if (err)
-		return (err);
+// 	err = drbr_enqueue(ifp, txr->br, m);
+// 	if (err)
+// 		return (err);
 	if (IXGBE_TX_TRYLOCK(txr)) {
 		ixgbe_mq_start_locked(ifp, txr);
 		IXGBE_TX_UNLOCK(txr);
@@ -229,7 +229,8 @@ int
 ixgbe_mq_start_locked(struct ifnet *ifp, struct tx_ring *txr)
 {
 	struct adapter  *adapter = txr->adapter;
-        struct mbuf     *next;
+//         struct mbuf     *next;
+	BsdEthernet::Packet *next;
         int             enqueued = 0, err = 0;
 
 	if (((ifp->if_drv_flags & IFF_DRV_RUNNING) == 0) ||
@@ -237,27 +238,29 @@ ixgbe_mq_start_locked(struct ifnet *ifp, struct tx_ring *txr)
 		return (ENETDOWN);
 
 	/* Process the queue */
-#if __FreeBSD_version < 901504
-	next = drbr_dequeue(ifp, txr->br);
-	while (next != NULL) {
-		if ((err = ixgbe_xmit(txr, &next)) != 0) {
-			if (next != NULL)
-				err = drbr_enqueue(ifp, txr->br, next);
-#else
-	while ((next = drbr_peek(ifp, txr->br)) != NULL) {
-		if ((err = ixgbe_xmit(txr, &next)) != 0) {
-			if (next == NULL) {
-				drbr_advance(ifp, txr->br);
-			} else {
-				drbr_putback(ifp, txr->br, next);
-			}
-#endif
-			break;
-		}
-#if __FreeBSD_version >= 901504
-		drbr_advance(ifp, txr->br);
-#endif
-		enqueued++;
+	// TODO here
+	while(false) {  // dummy
+// #if __FreeBSD_version < 901504
+// 	next = drbr_dequeue(ifp, txr->br);
+// 	while (next != NULL) {
+// 		if ((err = ixgbe_xmit(txr, &next)) != 0) {
+// 			if (next != NULL)
+// 				err = drbr_enqueue(ifp, txr->br, next);
+// #else
+// 	while ((next = drbr_peek(ifp, txr->br)) != NULL) {
+// 		if ((err = ixgbe_xmit(txr, &next)) != 0) {
+// 			if (next == NULL) {
+// 				drbr_advance(ifp, txr->br);
+// 			} else {
+// 				drbr_putback(ifp, txr->br, next);
+// 			}
+// #endif
+// 			break;
+// 		}
+// #if __FreeBSD_version >= 901504
+// 		drbr_advance(ifp, txr->br);
+// #endif
+// 		enqueued++;
 #if 0 // this is VF-only
 #if __FreeBSD_version >= 1100036
 		/*
@@ -273,9 +276,9 @@ ixgbe_mq_start_locked(struct ifnet *ifp, struct tx_ring *txr)
 		// ETHER_BPF_MTAP(ifp, next);
 		if ((ifp->if_drv_flags & IFF_DRV_RUNNING) == 0)
 			break;
-#if __FreeBSD_version < 901504
-		next = drbr_dequeue(ifp, txr->br);
-#endif
+// #if __FreeBSD_version < 901504
+// 		next = drbr_dequeue(ifp, txr->br);
+// #endif
 	}
 
 	if (txr->tx_avail < IXGBE_TX_CLEANUP_THRESHOLD)
@@ -295,7 +298,8 @@ ixgbe_deferred_mq_start(void *arg, int pending)
 	struct ifnet *ifp = adapter->ifp;
 
 	IXGBE_TX_LOCK(txr);
-	if (!drbr_empty(ifp, txr->br))
+	// TODO here
+// 	if (!drbr_empty(ifp, txr->br))
 		ixgbe_mq_start_locked(ifp, txr);
 	IXGBE_TX_UNLOCK(txr);
 }
@@ -1812,7 +1816,7 @@ ixgbe_rxeof(struct ix_queue *que)
 		rsc = 0;
 		cur->wb.upper.status_error = 0;
 		rbuf = &rxr->rx_buffers[i];
-		mp = rbuf->buf;
+// 		mp = rbuf->buf;
 
 		len = le16toh(cur->wb.upper.length);
 		ptype = le32toh(cur->wb.lower.lo_dword.data) &
@@ -1869,7 +1873,7 @@ ixgbe_rxeof(struct ix_queue *que)
 		** buffer struct and pass this along from one
 		** descriptor to the next, until we get EOP.
 		*/
-		mp->m_len = len;
+// 		mp->m_len = len;
 		/*
 		** See if there is a stored head
 		** that determines what we are
@@ -1913,7 +1917,7 @@ ixgbe_rxeof(struct ix_queue *que)
 		if (eop == 0) {
 // 			nbuf->fmp = sendmp;
 // 			sendmp = NULL;
-			mp->m_next = nbuf->buf;
+// 			mp->m_next = nbuf->buf;
 		} else { /* Sending this frame */
 // 			sendmp->m_pkthdr.rcvif = ifp;
 			rxr->rx_packets++;
@@ -1996,11 +2000,11 @@ next_desc:
 			i = 0;
 
 		/* Now send to the stack or do LRO */
-		if (sendmp != NULL) {
-			rxr->next_to_check = i;
-			// ixgbe_rx_input(rxr, ifp, sendmp, ptype);
-			i = rxr->next_to_check;
-		}
+// 		if (sendmp != NULL) {
+// 			rxr->next_to_check = i;
+// 			ixgbe_rx_input(rxr, ifp, sendmp, ptype);
+// 			i = rxr->next_to_check;
+// 		}
 
                /* Every 8 descriptors we go to refresh mbufs */
 		if (processed == 8) {
@@ -2243,14 +2247,14 @@ ixgbe_allocate_queues(struct adapter *adapter)
         	}
 #ifndef IXGBE_LEGACY_TX
 		/* Allocate a buf ring */
-		txr->br = buf_ring_alloc(IXGBE_BR_SIZE, M_DEVBUF,
-		    M_WAITOK, &txr->tx_mtx);
-		if (txr->br == NULL) {
-			device_printf(dev,
-			    "Critical Failure setting up buf ring\n");
-			error = ENOMEM;
-			goto err_tx_desc;
-        	}
+// 		txr->br = buf_ring_alloc(IXGBE_BR_SIZE, M_DEVBUF,
+// 		    M_WAITOK, &txr->tx_mtx);
+// 		if (txr->br == NULL) {
+// 			device_printf(dev,
+// 			    "Critical Failure setting up buf ring\n");
+// 			error = ENOMEM;
+// 			goto err_tx_desc;
+//         	}
 #endif
 	}
 

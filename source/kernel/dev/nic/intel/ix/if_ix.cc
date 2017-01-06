@@ -1423,7 +1423,7 @@ ixgbe_handle_que(void *context, int pending)
 		ixgbe_txeof(txr);
 #ifndef IXGBE_LEGACY_TX
 		// if (!drbr_empty(ifp, txr->br))
-    // TODO if (!e1000->GetNetInterface()._tx_buffered.IsEmpty())
+		// TODO here
 			ixgbe_mq_start_locked(ifp, txr);
 #else
 		if (!IFQ_DRV_IS_EMPTY(&ifp->if_snd))
