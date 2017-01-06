@@ -74,7 +74,7 @@ void	__mtx_assert(struct lock_object *l);
 	_mtx_init(&(m)->lock_object)
 #define	mtx_destroy(m)							\
 	_mtx_destroy(&(m)->lock_object)
-#define	mtx_trylock_flags_(m, o, f, l)					\
+#define	mtx_trylock_flags_(m)					\
 	_mtx_trylock_flags_(&(m)->lock_object)
 #define	_mtx_lock_sleep(m, t, o, f, l)					\
 	__mtx_lock_sleep(&(m)->lock_object)
