@@ -1,5 +1,5 @@
 MOUNT_DIR = /mnt/Raph_Kernel
-IMAGE = disk.img
+IMAGE = /tmp/disk.img
 BUILD_DIR = build
 
 .PHONY: clean disk mount
