@@ -15,8 +15,9 @@ Desktop.ini
 .Spotlight-V100
 .Trashes
 
-testcase/test.c
-hoge.c
+load.cfg
+net/disk.img.gz
+.vagrant
 
 # Object files
 *.o
