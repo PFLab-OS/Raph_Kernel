@@ -3,6 +3,8 @@ IMAGEFILE = disk.img
 IMAGE = /tmp/$(IMAGEFILE)
 BUILD_DIR = build
 
+SSH_CMD = ssh -F .ssh_config default
+
 VDI = disk.vdi
 UNAME = ${shell uname}
 ifeq ($(OS),Windows_NT)
@@ -95,26 +97,26 @@ _numerror:
 # for local host
 ###################################
 
-image:
-	@vagrant ssh -c "cd /vagrant/; make _image"
+image: .ssh_config
+	@$(SSH_CMD) "cd /vagrant/; make _image"
 
-run:
-	@vagrant ssh -c "cd /vagrant/; make _run"
+run: .ssh_config
+	@$(SSH_CMD) "cd /vagrant/; make _run"
 
-hd:
-	@vagrant ssh -c "cd /vagrant/; make _hd"
+hd: .ssh_config
+	@$(SSH_CMD) "cd /vagrant/; make _hd"
 
-clean:
-	@vagrant ssh -c "cd /vagrant/; make _clean"
+clean: .ssh_config
+	@$(SSH_CMD) "cd /vagrant/; make _clean"
 
-showerror:
-	@vagrant ssh -c "cd /vagrant/; make _showerror"
+showerror: .ssh_config
+	@$(SSH_CMD) -c "cd /vagrant/; make _showerror"
 
-numerror:
-	@vagrant ssh -c "cd /vagrant/; make _numerror"
+numerror: .ssh_config
+	@$(SSH_CMD) -c "cd /vagrant/; make _numerror"
 
-vboxrun: vboxkill
-	@vagrant ssh -c "cd /vagrant/; make _cpimage"
+vboxrun: vboxkill .ssh_config
+	@$(SSH_CMD) "cd /vagrant/; make _cpimage"
 	-vboxmanage unregistervm RK_Test --delete
 	-rm $(VDI)
 	vboxmanage createvm --name RK_Test --register
@@ -129,18 +131,18 @@ run_pxeserver:
 	@echo info: allow port 8080 in your firewall settings
 	cd net; python -m SimpleHTTPServer 8080
 
-pxeimg:
-	@vagrant ssh -c "cd /vagrant/; make _cpimage"
+pxeimg: .ssh_config
+	@$(SSH_CMD) "cd /vagrant/; make _cpimage"
 	gzip $(IMAGEFILE)
 	mv $(IMAGEFILE).gz net/
 
-burn_ipxe:
+burn_ipxe: .ssh_config
 	./lan.sh local
-	@vagrant ssh -c "cd ipxe/src; make bin-x86_64-pcbios/ipxe.usb EMBED=/vagrant/load.cfg; if [ ! -e /dev/sdb ]; then echo 'error: insert usb memory!'; exit -1; fi; sudo dd if=bin-x86_64-pcbios/ipxe.usb of=/dev/sdb"
+	@$(SSH_CMD) "cd ipxe/src; make bin-x86_64-pcbios/ipxe.usb EMBED=/vagrant/load.cfg; if [ ! -e /dev/sdb ]; then echo 'error: insert usb memory!'; exit -1; fi; sudo dd if=bin-x86_64-pcbios/ipxe.usb of=/dev/sdb"
 
-burn_ipxe_remote:
+burn_ipxe_remote: .ssh_config
 	./lan.sh remote
-	@vagrant ssh -c "cd ipxe/src; make bin-x86_64-pcbios/ipxe.usb EMBED=/vagrant/load.cfg; if [ ! -e /dev/sdb ]; then echo 'error: insert usb memory!'; exit -1; fi; sudo dd if=bin-x86_64-pcbios/ipxe.usb of=/dev/sdb"
+	@$(SSH_CMD) "cd ipxe/src; make bin-x86_64-pcbios/ipxe.usb EMBED=/vagrant/load.cfg; if [ ! -e /dev/sdb ]; then echo 'error: insert usb memory!'; exit -1; fi; sudo dd if=bin-x86_64-pcbios/ipxe.usb of=/dev/sdb"
 
 vboxkill:
 	-vboxmanage controlvm RK_Test poweroff
@@ -149,3 +151,5 @@ vnc:
 	@echo info: vnc password is "a"
 	$(VNC)
 
+.ssh_config:
+	vagrant ssh-config > .ssh_config
