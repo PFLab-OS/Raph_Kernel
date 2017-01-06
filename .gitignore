@@ -17,6 +17,7 @@ Desktop.ini
 
 load.cfg
 disk.img
+disk.vdi
 net/disk.img.gz
 .vagrant
 
