@@ -80,7 +80,7 @@ _clean: _deldisk
 _diskclean: _deldisk _clean
 
 _showerror:
-	make _image 2>&1 | egrep "function|error:"
+	make _image 2>&1 | egrep "In function|error:"
 
 _numerror:
 	@echo -n "number of error: "
