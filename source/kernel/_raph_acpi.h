@@ -23,6 +23,8 @@
 #ifndef __RAPH_KERNEL__RAPH_ACPI_H__
 #define __RAPH_KERNEL__RAPH_ACPI_H__
 
+#include <stdint.h>
+
 // see acpi spec
 
 struct ACPISDTHeader {

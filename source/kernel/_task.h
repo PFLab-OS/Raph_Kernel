@@ -123,7 +123,7 @@ public:
   volatile bool CanExecute() {
     return _func.CanExecute();
   }
-  void SetHandler(uint32_t us);
+  void SetHandler(int us);
   void SetHandler(CpuId cpuid, int us);
   void Cancel();
   bool IsPending() {
@@ -163,7 +163,7 @@ class LckCallout {
   volatile bool CanExecute() {
     return callout.CanExecute();
   }
-  void SetHandler(uint32_t us) {
+  void SetHandler(int us) {
     callout.SetHandler(us);
   }
   void SetHandler(CpuId cpuid, int us) {

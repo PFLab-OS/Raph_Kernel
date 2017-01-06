@@ -1,0 +1,9 @@
+初期化
+vagrant up
+
+起動
+vagrant ssh
+
+
+sshの鍵を置いて、cloneする所は自分でやる
+

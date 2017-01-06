@@ -109,7 +109,7 @@ class PagingCtrl {
   // kHeapEndAddr以降から空き領域を探す
   //virt_addr SearchUnmappedArea(size_t size);
   // 数字をページサイズに広げる
-  static int ConvertNumToPageSize(int size) {
+  static size_t ConvertNumToPageSize(size_t size) {
     return ((size + kPageSize - 1) / kPageSize) * kPageSize;
   }
   static virt_addr RoundUpAddrOnPageBoundary(virt_addr addr) {

@@ -22,6 +22,9 @@
 
 #include "physmem.h"
 #include "paging.h"
+#include <global.h>
+#include <multiboot.h>
+#include <tty.h>
 
 extern int *phys_memory_end;
 
@@ -36,7 +39,44 @@ PhysmemCtrl::PhysmemCtrl() {
   _allocated_area->next = nullptr;
 }
 
+void PhysmemCtrl::Init() {
+  if (_srat != nullptr) {
+    for(uint32_t offset = 0; offset < _srat->header.Length - sizeof(Srat);) {
+      virt_addr ptr = ptr2virtaddr(_srat->table) + offset;
+      SratStruct *srat_st = reinterpret_cast<SratStruct *>(ptr);
+      switch (srat_st->type) {
+      case SratStructType::kLocalApicAffinity:
+        {
+          // SratStructLapic *srat_st_lapic = reinterpret_cast<SratStructLapic *>(ptr);
+          // gtty->CprintfRaw("(APIC(%d), domain:%d)", srat_st_lapic->lapic_id, (srat_st_lapic->proximity_domain_high << 24) | (srat_st_lapic->proximity_domain_middle << 16) | srat_st_lapic->proximity_domain_low);
+        }
+        break;
+      case SratStructType::kLocalX2ApicAffinity:
+        {
+          // SratStructLx2apic *srat_st_lapic = reinterpret_cast<SratStructLx2apic *>(ptr);
+          // gtty->CprintfRaw("(APIC(%d), domain:%d)", srat_st_lapic->lapic_id, srat_st_lapic->proximity_domain);
+        }
+        break;
+      case SratStructType::kMemoryAffinity:
+        {
+          SratStructMemAffinity *srat_st_mem = reinterpret_cast<SratStructMemAffinity *>(ptr);
+          if ((srat_st_mem->flags & SratStructMemAffinity::kFlagEnabled) != 0) {
+            gtty->CprintfRaw("(Mem domain:%d, base:%llx, length:%llx)\n", srat_st_mem->proximity_domain, srat_st_mem->base_addr, srat_st_mem->length);
+          }
+        }
+        break;
+      default:
+        break;
+      }
+      offset += srat_st->length;
+    }
+  }
+  
+  _is_initialized = true;
+}
+
 void PhysmemCtrl::Alloc(PhysAddr &paddr, size_t size) {
+  kassert(_is_initialized);
   kassert(size > 0);
   kassert(size % PagingCtrl::kPageSize == 0);
   _alloc_lock = false;
@@ -59,8 +99,12 @@ void PhysmemCtrl::Alloc(PhysAddr &paddr, size_t size) {
       allocated_area = allocated_area->next;
     }
     allocated_addr = allocated_area->end_addr;
-    //TODO 物理メモリチェック
+
     allocated_area->end_addr += size;
+
+    if (allocated_area->end_addr >= multiboot_ctrl->GetPhysMemoryEnd()) {
+      kernel_panic("PhysmemCtrl", "no physical memory");
+    }
     
     // 断片化された領域を結合する
     if (fraged_area != nullptr) {
@@ -125,6 +169,11 @@ void PhysmemCtrl::ReserveSub(phys_addr addr, size_t size) {
   kassert(addr % PagingCtrl::kPageSize == 0);
   AllocatedArea *fraged_area = nullptr;
   AllocatedArea *allocated_area = _allocated_area;
+  assert(allocated_area != nullptr);
+  if (allocated_area->next == nullptr) {
+    ReserveSub2(allocated_area, addr, size);
+    return;
+  }
   while(allocated_area->next) {
     if (fraged_area == nullptr &&
         allocated_area->next->start_addr == allocated_area->end_addr) {
@@ -158,6 +207,10 @@ void PhysmemCtrl::ReserveSub(phys_addr addr, size_t size) {
       return;
     }
     allocated_area = allocated_area->next;
+    if (allocated_area->next == nullptr) {
+      ReserveSub2(allocated_area, addr, size);
+      break;
+    }
   }
     
   // 断片化された領域を結合する
@@ -167,5 +220,27 @@ void PhysmemCtrl::ReserveSub(phys_addr addr, size_t size) {
     fraged_area->next = remove_area->next;
     fraged_area = remove_area;
     _allocated_area_buffer.Free(fraged_area);
+  }
+}
+
+void PhysmemCtrl::ReserveSub2(AllocatedArea *allocated_area, phys_addr addr, size_t size) {
+  if (allocated_area->end_addr > addr) {
+    if (allocated_area->end_addr < addr + size) {
+      allocated_area->end_addr = addr + size;
+    }
+  } else {
+    AllocatedArea *newarea = _allocated_area_buffer.Alloc();
+    newarea->next = allocated_area->next;
+    allocated_area->next = newarea;
+    newarea->start_addr = addr;
+    newarea->end_addr = addr + size;
+  }
+}
+
+void PhysmemCtrl::Show() {
+  AllocatedArea *allocated_area = _allocated_area;
+  while(allocated_area) {
+    gtty->CprintfRaw(">> %llx, %llx\n", allocated_area->start_addr, allocated_area->end_addr);
+    allocated_area = allocated_area->next;
   }
 }

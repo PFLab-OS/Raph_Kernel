@@ -69,7 +69,7 @@ entry:
   je unknown_state
   mov %ebx, (multiboot_info)
   mov $initial_stack_buffer, %esp
-  add 0x1000, %esp
+  add $0x1000, %esp
 
   // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
   // Originally from http://wiki.osdev.org/Setting_Up_Long_Mode
