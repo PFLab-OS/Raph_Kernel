@@ -16,6 +16,17 @@ make -j2
 sudo make install
 cd ..
 
+# make & install musl with CFLAGS="-fpie -fPIE"
+git clone git://git.musl-libc.org/musl
+cd musl
+git checkout refs/tags/v1.1.16
+export CFLAGS="-fpie -fPIE"
+./configure
+unset CFLAGS
+make
+sudo make install
+cd ..
+
 # install grub
 #sudo apt-get install -y autoconf bison flex libdevmapper-dev
 #wget http://alpha.gnu.org/gnu/grub/grub-2.02~beta3.tar.gz

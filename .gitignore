@@ -16,6 +16,8 @@ Desktop.ini
 .Trashes
 
 load.cfg
+disk.img
+disk.vdi
 net/disk.img.gz
 .vagrant
 

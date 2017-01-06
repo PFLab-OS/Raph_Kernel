@@ -1,7 +1,9 @@
 MOUNT_DIR = /mnt/Raph_Kernel
-IMAGE = /tmp/disk.img
+IMAGEFILE = disk.img
+IMAGE = /tmp/$(IMAGEFILE)
 BUILD_DIR = build
 
+VDI = disk.vdi
 UNAME = ${shell uname}
 ifeq ($(OS),Windows_NT)
 	VNC = @echo windows is not supported; exit 1
@@ -48,6 +50,9 @@ _image:
 	-sudo rm -rf $(MOUNT_DIR)/core
 	sudo cp -r $(BUILD_DIR) $(MOUNT_DIR)/core
 	make _umount
+
+_cpimage: _image
+	cp $(IMAGE) /vagrant/
 
 $(IMAGE):
 	make _umount
@@ -109,11 +114,12 @@ numerror:
 	@vagrant ssh -c "cd /vagrant/; make _numerror"
 
 vboxrun: vboxkill
+	@vagrant ssh -c "cd /vagrant/; make _cpimage"
 	-vboxmanage unregistervm RK_Test --delete
 	-rm $(VDI)
 	vboxmanage createvm --name RK_Test --register
 	vboxmanage modifyvm RK_Test --cpus 4 --ioapic on --chipset ich9 --hpet on --x2apic on --nic1 nat --nictype1 82540EM
-	vboxmanage convertfromraw $(IMAGE) $(VDI)
+	vboxmanage convertfromraw $(IMAGEFILE) $(VDI)
 	vboxmanage storagectl RK_Test --name SATAController --add sata --controller IntelAHCI --bootable on
 	vboxmanage storageattach RK_Test --storagectl SATAController --port 0 --device 0 --type hdd --medium disk.vdi
 	vboxmanage startvm RK_Test --type gui
@@ -124,9 +130,9 @@ run_pxeserver:
 	cd net; python -m SimpleHTTPServer 8080
 
 pxeimg:
-	make image
-	gzip $(IMAGE)
-	mv $(IMAGE).gz net/
+	@vagrant ssh -c "cd /vagrant/; make _cpimage"
+	gzip $(IMAGEFILE)
+	mv $(IMAGEFILE).gz net/
 
 burn_ipxe:
 	./lan.sh local
