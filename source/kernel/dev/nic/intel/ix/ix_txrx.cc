@@ -1867,6 +1867,8 @@ ixgbe_rxeof(struct ix_queue *que)
 			nbuf = &rxr->rx_buffers[nextp];
 			prefetch(nbuf);
 		}
+
+		//TODO here
 		/*
 		** Rather than using the fmp/lmp global pointers
 		** we now keep the head of a packet chain in the
@@ -1914,35 +1916,35 @@ ixgbe_rxeof(struct ix_queue *que)
 		++processed;
 
 		/* Pass the head pointer on */
-		if (eop == 0) {
+// 		if (eop == 0) {
 // 			nbuf->fmp = sendmp;
 // 			sendmp = NULL;
 // 			mp->m_next = nbuf->buf;
-		} else { /* Sending this frame */
+// 		} else { /* Sending this frame */
 // 			sendmp->m_pkthdr.rcvif = ifp;
-			rxr->rx_packets++;
-			/* capture data for AIM */
-			rxr->bytes += sendmp->m_pkthdr.len;
-			rxr->rx_bytes += sendmp->m_pkthdr.len;
-			/* Process vlan info */
-			if ((rxr->vtag_strip) &&
-			    (staterr & IXGBE_RXD_STAT_VP))
-				vtag = le16toh(cur->wb.upper.vlan);
-			if (vtag) {
-				sendmp->m_pkthdr.ether_vtag = vtag;
-				sendmp->m_flags |= M_VLANTAG;
-			}
-			if ((ifp->if_capenable & IFCAP_RXCSUM) != 0)
-				ixgbe_rx_checksum(staterr, sendmp, ptype);
+// 			rxr->rx_packets++;
+// 			/* capture data for AIM */
+// 			rxr->bytes += sendmp->m_pkthdr.len;
+// 			rxr->rx_bytes += sendmp->m_pkthdr.len;
+// 			/* Process vlan info */
+// 			if ((rxr->vtag_strip) &&
+// 			    (staterr & IXGBE_RXD_STAT_VP))
+// 				vtag = le16toh(cur->wb.upper.vlan);
+// 			if (vtag) {
+// 				sendmp->m_pkthdr.ether_vtag = vtag;
+// 				sendmp->m_flags |= M_VLANTAG;
+// 			}
+// 			if ((ifp->if_capenable & IFCAP_RXCSUM) != 0)
+// 				ixgbe_rx_checksum(staterr, sendmp, ptype);
 
-                        /*
-                         * In case of multiqueue, we have RXCSUM.PCSD bit set
-                         * and never cleared. This means we have RSS hash
-                         * available to be used.
-                         */
-                        if (adapter->num_queues > 1) {
-                                sendmp->m_pkthdr.flowid =
-                                    le32toh(cur->wb.lower.hi_dword.rss);
+//                         /*
+//                          * In case of multiqueue, we have RXCSUM.PCSD bit set
+//                          * and never cleared. This means we have RSS hash
+//                          * available to be used.
+//                          */
+//                         if (adapter->num_queues > 1) {
+//                                 sendmp->m_pkthdr.flowid =
+//                                     le32toh(cur->wb.lower.hi_dword.rss);
 //                                 switch (pkt_info & IXGBE_RXDADV_RSSTYPE_MASK) {
 //                                     case IXGBE_RXDADV_RSSTYPE_IPV4:
 //                                         M_HASHTYPE_SET(sendmp,
@@ -1986,11 +1988,11 @@ ixgbe_rxeof(struct ix_queue *que)
 //                                         M_HASHTYPE_SET(sendmp,
 //                                             M_HASHTYPE_OPAQUE);
 //                                 }
-                        } else {
-                                sendmp->m_pkthdr.flowid = que->msix;
+//                         } else {
+//                                 sendmp->m_pkthdr.flowid = que->msix;
 				// M_HASHTYPE_SET(sendmp, M_HASHTYPE_OPAQUE);
-			}
-		}
+// 			}
+// 		}
 next_desc:
 		bus_dmamap_sync(rxr->rxdma.dma_tag, rxr->rxdma.dma_map,
 		    BUS_DMASYNC_PREREAD | BUS_DMASYNC_PREWRITE);

@@ -634,8 +634,8 @@ ixgbe_attach(device_t dev)
 	return (0);
 
 err_late:
-	ixgbe_free_transmit_structures(adapter);
-	ixgbe_free_receive_structures(adapter);
+	// ixgbe_free_transmit_structures(adapter);
+	// ixgbe_free_receive_structures(adapter);
 err_out:
 	// if (adapter->ifp != NULL)
 	// 	if_free(adapter->ifp);
@@ -727,8 +727,8 @@ ixgbe_detach(device_t dev)
 	// bus_generic_detach(dev);
 	// if_free(adapter->ifp);
 
-	ixgbe_free_transmit_structures(adapter);
-	ixgbe_free_receive_structures(adapter);
+// 	ixgbe_free_transmit_structures(adapter);
+// 	ixgbe_free_receive_structures(adapter);
 	free(adapter->mta/*, M_DEVBUF*/);
 
 	IXGBE_CORE_LOCK_DESTROY(adapter);
@@ -4302,8 +4302,8 @@ ixgbe_add_hw_stats(struct adapter *adapter)
 	struct tx_ring *txr = adapter->tx_rings;
 	struct rx_ring *rxr = adapter->rx_rings;
 
-	struct sysctl_ctx_list *ctx = device_get_sysctl_ctx(dev);
-	struct sysctl_oid *tree = device_get_sysctl_tree(dev);
+// 	struct sysctl_ctx_list *ctx = device_get_sysctl_ctx(dev);
+// 	struct sysctl_oid *tree = device_get_sysctl_tree(dev);
 	// struct sysctl_oid_list *child = SYSCTL_CHILDREN(tree);
 	struct ixgbe_hw_stats *stats = &adapter->stats.pf;
 
