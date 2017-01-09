@@ -1,3 +1,7 @@
+// RAPH_DEBUG
+#include <tty.h>
+#include <global.h>
+
 /******************************************************************************
 
   Copyright (c) 2001-2015, Intel Corporation
@@ -1489,8 +1493,8 @@ ixgbe_allocate_receive_buffers(struct rx_ring *rxr)
  static int
  ixgbe_setup_receive_ring(struct rx_ring *rxr)
  {
-	 struct	adapter 	*adapter;
-     IxGbe *ixgbe = adapter->dev->GetMasterClass<IxGbe>();
+	 struct	adapter 	*adapter = rxr->adapter;
+   IxGbe *ixgbe = adapter->dev->GetMasterClass<IxGbe>();
 
 	 struct ifnet		*ifp;
 	 device_t		dev;
@@ -1503,7 +1507,7 @@ ixgbe_allocate_receive_buffers(struct rx_ring *rxr)
 	 struct netmap_slot *slot;
  #endif /* DEV_NETMAP */
 
-	 adapter = rxr->adapter;
+	 // adapter = rxr->adapter;
 	 ifp = adapter->ifp;
 	 dev = adapter->dev;
 

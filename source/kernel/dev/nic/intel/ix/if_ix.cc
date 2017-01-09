@@ -2781,6 +2781,7 @@ ixgbe_setup_interface(device_t dev, struct adapter *adapter)
 	INIT_DEBUGOUT("ixgbe_setup_interface: begin");
 
 	// ifp = adapter->ifp = if_alloc(IFT_ETHER);
+  ifp = adapter->ifp = &dev->GetMasterClass<IxGbe>()->GetNetInterface()._ifp;
 	if (ifp == NULL) {
 		device_printf(dev, "can not allocate ifnet structure\n");
 		return (-1);
@@ -2788,7 +2789,7 @@ ixgbe_setup_interface(device_t dev, struct adapter *adapter)
 // 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 // 	ifp->if_baudrate = IF_Gbps(10);
 // 	ifp->if_init = ixgbe_init;
-// 	ifp->if_softc = adapter;
+ 	ifp->if_softc = adapter;
 // 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 // 	ifp->if_ioctl = ixgbe_ioctl;
 // #if __FreeBSD_version >= 1100036
@@ -2821,19 +2822,20 @@ ixgbe_setup_interface(device_t dev, struct adapter *adapter)
 	// ifp->if_hdrlen = sizeof(struct ether_vlan_header);
 
 	/* Set capability flags */
-	ifp->if_capabilities |= IFCAP_RXCSUM
-			     |  IFCAP_TXCSUM
-			     |  IFCAP_RXCSUM_IPV6
-			     |  IFCAP_TXCSUM_IPV6
-			     |  IFCAP_TSO4
-			     |  IFCAP_TSO6
-			     |  IFCAP_LRO
-			     |  IFCAP_VLAN_HWTAGGING
-			     |  IFCAP_VLAN_HWTSO
-			     |  IFCAP_VLAN_HWCSUM
-			     |  IFCAP_JUMBO_MTU
-			     |  IFCAP_VLAN_MTU
-			     |  IFCAP_HWSTATS;
+	// ifp->if_capabilities |= IFCAP_RXCSUM
+	// 		     |  IFCAP_TXCSUM
+	// 		     |  IFCAP_RXCSUM_IPV6
+	// 		     |  IFCAP_TXCSUM_IPV6
+	// 		     |  IFCAP_TSO4
+	// 		     |  IFCAP_TSO6
+	// 		     |  IFCAP_LRO
+	// 		     |  IFCAP_VLAN_HWTAGGING
+	// 		     |  IFCAP_VLAN_HWTSO
+	// 		     |  IFCAP_VLAN_HWCSUM
+	// 		     |  IFCAP_JUMBO_MTU
+	// 		     |  IFCAP_VLAN_MTU
+	// 		     |  IFCAP_HWSTATS;
+  ifp->if_capabilities = 0;
 
 	/* Enable the above capabilities by default */
 	ifp->if_capenable = ifp->if_capabilities;

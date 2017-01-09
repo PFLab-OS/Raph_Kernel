@@ -144,11 +144,12 @@ void lspci(int argc, const char* argv[]){
   }
 }
 
-void lsnetdev(int argc, const char* argv[]){
+void ifconfig(int argc, const char* argv[]){
   auptr<const char *> list = netdev_ctrl->GetNamesOfAllDevices();
   gtty->CprintfRaw("\n");
   for (int i = 0; i < list.GetLen(); i++) {
-    gtty->CprintfRaw("%s%s", list[i], (i == list.GetLen() - 1) ? "" : ",");
+    gtty->CprintfRaw("%s", list[i]);
+    gtty->CprintfRaw("  link: %s\n", netdev_ctrl->IsLinkUp(list[i]) ? "up" : "down");
   }
 }
 
@@ -1070,7 +1071,7 @@ void bench(int argc, const char* argv[]) {
   static const int stime = 3000;
   static int time = stime, rtime = 0;
 
-  if (argc != 2 || argc != 3) {
+  if (argc != 2 && argc != 3) {
     gtty->Cprintf("invalid argument.\n");
     return;
   }
@@ -1190,6 +1191,7 @@ void bench(int argc, const char* argv[]) {
             sum += l;
             rtime++;
           } else if(op == ArpSocket::kOpRequest) {
+            kassert(false);
             socket.Reply(ipaddr);
           }
         }
@@ -1333,7 +1335,7 @@ extern "C" int main() {
   shell->Register("reset", reset);
   shell->Register("bench", bench);
   shell->Register("lspci", lspci);
-  shell->Register("lsnetdev", lsnetdev);
+  shell->Register("ifconfig", ifconfig);
   shell->Register("show", show);
 
   register_membench2_callout();
