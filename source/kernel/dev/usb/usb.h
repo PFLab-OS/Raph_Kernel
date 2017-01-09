@@ -54,11 +54,17 @@ public:
     kSynchFrame = 12,
   };
 
-  enum class TransactionType {
-    kBulk,
-    kControl,
-    kInterrupt,
-    kIsochronous,
+  enum class TransferType {
+    kControl = 0,
+    kIsochronous = 1,
+    kBulk = 2,
+    kInterrupt = 3,
+  };
+
+  enum class PacketIdentification : uint8_t {
+    kOut = 0b00,
+    kIn = 0b01,
+    kSetup = 0b10,
   };
   
   // see Table 9-5 Descriptor Types
@@ -122,6 +128,22 @@ public:
   // see Table 9-10 Standard Endpoint Desciptor
   class EndpointDescriptor {
   public:
+    TransferType GetTransferType() {
+      return static_cast<TransferType>(attributes & 0b11);
+    }
+    uint8_t GetEndpointNumber() {
+      return address & 0b1111;
+    }
+    PacketIdentification GetDirection() {
+      return static_cast<PacketIdentification>(address >> 7);
+    }
+    uint16_t GetMaxPacketSize() {
+      return max_packet_size;
+    }
+    uint8_t GetInterval() {
+      return interval;
+    }
+  private:
     uint8_t length;
     uint8_t type;
     uint8_t address;
@@ -160,8 +182,8 @@ public:
       _index = 0;
       _length = 0;
     }
-    bool IsDirectionDeviceToHost() {
-      return (_request_type & 0b10000000) != 0;
+    PacketIdentification GetDirection() {
+      return (_request_type & 0b10000000) != 0 ? PacketIdentification::kIn : PacketIdentification::kOut;
     }
   private:
     uint8_t _request_type;
@@ -193,6 +215,7 @@ private:
 class DevUsbController {
 public:
   virtual bool SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) = 0;
+  virtual void SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer) = 0;
 };
 
 // !!! important !!!
@@ -218,6 +241,13 @@ protected:
     return reinterpret_cast<UsbCtrl::EndpointDescriptor *>(GetDescriptorInCombinedDescriptors(UsbCtrl::DescriptorType::kEndpoint, desc_index));
   }
   int GetDescriptorNumInCombinedDescriptors(UsbCtrl::DescriptorType type);
+  void SetupInterruptTransfer(int num_td, uint8_t *buffer);
+  int GetAddr() {
+    return _addr;
+  }
+  DevUsbController * const GetController() {
+    return _controller;
+  }
 private:
   UsbCtrl::DummyDescriptor *GetDescriptorInCombinedDescriptors(UsbCtrl::DescriptorType type, int desc_index);
   DevUsbController * const _controller;
@@ -234,6 +264,9 @@ public:
   void Init();
 private:
   DevUsbKeyboard();
+  static const int kTdNum = 32; // TODO is this ok?
+  static const int kMaxPacketSize = 8;
+  uint8_t buffer[kTdNum * kMaxPacketSize];
 };
 
 #endif // __RAPH_KERNEL_DEV_USB_USB11_H__

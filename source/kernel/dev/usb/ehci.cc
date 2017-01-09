@@ -113,7 +113,7 @@ void DevEhci::Init() {
     if (_op_reg_base_addr[kOpRegOffsetPortScBase + i] & kOpRegPortScFlagCurrentConnectStatus) {
       ResetPort(i);
       while(true) {
-      	UsbCtrl::DeviceRequest *request = nullptr;
+        UsbCtrl::DeviceRequest *request = nullptr;
 
       	if (!UsbCtrl::GetCtrl().AllocDeviceRequest(request)) {
       	  goto release;
@@ -168,7 +168,7 @@ void DevEhci::DevEhciSub32::Init() {
   physmem_ctrl->Alloc(pframe_list_paddr, PagingCtrl::kPageSize);
   assert(pframe_list_paddr.GetAddr() <= 0xFFFFFFFF);
   _periodic_frame_list = addr2ptr<FrameListElementPointer>(pframe_list_paddr.GetVirtAddr());
-  for (int i = 0; i < 1024; i++) {
+  for (int i = 0; i < GetPeriodicFrameListEntryNum(); i++) {
     _periodic_frame_list[i].Set();
   }
 }
@@ -205,26 +205,26 @@ bool DevEhci::DevEhciSub32::SendControlTransfer(UsbCtrl::DeviceRequest *request,
   qh1->Init(QueueHead::EndpointSpeed::kHigh);
   qh1->SetHorizontalNext(_qh0);
   qh1->SetNextTd(td1);
-  qh1->SetCharacteristics(64, UsbCtrl::TransactionType::kControl, false, true, 0, false, device_addr);
+  qh1->SetCharacteristics(64, UsbCtrl::TransferType::kControl, false, true, 0, false, device_addr);
 
   // see Figure 8-12. Control Read and Write Sequence
   td1->Init();
   td1->SetNext(td2);
-  td1->SetTokenAndBuffer(false, false, TransferDescriptor::PacketIdentification::kSetup, 8, ptr2virtaddr(request));
+  td1->SetTokenAndBuffer(false, false, UsbCtrl::PacketIdentification::kSetup, 8, ptr2virtaddr(request));
 
   if (data != 0) {
-    bool direction = request->IsDirectionDeviceToHost();
+    UsbCtrl::PacketIdentification direction = request->GetDirection();
     td2->Init();
     td2->SetNext(td3);
-    td2->SetTokenAndBuffer(false, true, direction ? TransferDescriptor::PacketIdentification::kIn : TransferDescriptor::PacketIdentification::kOut, data_size, data);
+    td2->SetTokenAndBuffer(false, true, direction, data_size, data);
     
     td3->Init();
     td3->SetNext();
-    td3->SetTokenAndBuffer(false, true, direction ? TransferDescriptor::PacketIdentification::kOut : TransferDescriptor::PacketIdentification::kIn, 0);
+    td3->SetTokenAndBuffer(false, true, direction, 0);
   } else {
     td2->Init();
     td2->SetNext();
-    td2->SetTokenAndBuffer(false, true, TransferDescriptor::PacketIdentification::kIn, 0);
+    td2->SetTokenAndBuffer(false, true, UsbCtrl::PacketIdentification::kIn, 0);
   }
 
   _qh0->SetHorizontalNext(qh1);
@@ -248,6 +248,77 @@ bool DevEhci::DevEhciSub32::SendControlTransfer(UsbCtrl::DeviceRequest *request,
   return success;
 }
 
-void DevEhci::DevEhciSub32::EnqueueInterruptTransfer() {
+void DevEhci::DevEhciSub32::SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer) {
+  if (interval <= 0) {
+    kernel_panic("Ehci", "unknown interval");
+  }
+
+  {
+    int i = 0;
+    while(interval != 1) {
+      i++;
+      interval >>= 1;
+    }
+    for (; i > 0; i--) {
+      interval <<= 1;
+    }
+  }
+
+  QueueHead *qh;
+  TransferDescriptor *td[num_td];
+
+  while(true) {
+    QueueHead *tmp_qh = nullptr;
+    TransferDescriptor *tmp_td[num_td];
+    for (int i = 0; i < num_td; i++) {
+      tmp_td[i] = nullptr;
+    }
+
+    if (!_qh_buf.Pop(tmp_qh)) {
+      goto retry;
+    }
+    for (int i = 0; i < num_td; i++) {
+      _td_buf.Pop(tmp_td[i]);
+    }
+
+    qh = tmp_qh;
+    for (int i = 0; i < num_td; i++) {
+      td[i] = tmp_td[i];
+    }
+    break;
+    
+  retry:
+    if (tmp_qh != nullptr) {
+      assert(_qh_buf.Push(tmp_qh));
+    }
+    for (int i = 0; i < num_td; i++) {
+      if (tmp_td[i] != nullptr) {
+        assert(_td_buf.Push(tmp_td[i]));
+      }
+    }
+  }
   
+  qh->Init(QueueHead::EndpointSpeed::kHigh);
+  qh->SetHorizontalNext();
+  qh->SetNextTd(td[0]);
+  qh->SetCharacteristics(max_packetsize, UsbCtrl::TransferType::kInterrupt, false, true, endpt_address, false, device_addr);
+
+  assert(direction != UsbCtrl::PacketIdentification::kSetup);
+
+  for (int i = 0; i < num_td; i++) {
+    td[i]->Init();
+    if (i == num_td) {
+      td[i]->SetNext();
+    } else {
+      td[i]->SetNext(td[i + 1]);
+    }
+    td[i]->SetTokenAndBuffer(false, false, direction, max_packetsize, ptr2virtaddr(buffer));
+    buffer += max_packetsize;
+  }
+
+  for (int i = 0; i < GetPeriodicFrameListEntryNum(); i++) {
+    if (i % interval == 0) {
+      _periodic_frame_list[i].Set(qh);
+    }
+  }
 }

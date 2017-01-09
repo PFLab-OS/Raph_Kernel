@@ -61,9 +61,9 @@ static void ahci_intr(void *data);
 static void ahci_intr_one(void *data);
 static void ahci_intr_one_edge(void *data);
 static int ahci_ch_init(device_t dev);
-static int ahci_ch_deinit(device_t dev);
-static int ahci_ch_suspend(device_t dev);
-static int ahci_ch_resume(device_t dev);
+// static int ahci_ch_deinit(device_t dev);
+// static int ahci_ch_suspend(device_t dev);
+// static int ahci_ch_resume(device_t dev);
 static void ahci_ch_pm(void *arg);
 static void ahci_ch_intr(void *arg);
 static void ahci_ch_intr_direct(void *arg);
@@ -78,13 +78,13 @@ static void ahci_dmainit(device_t dev);
 static void ahci_dmasetupc_cb(void *xsc, bus_dma_segment_t *segs, int nsegs, int error);
 static void ahci_dmafini(device_t dev);
 static void ahci_slotsalloc(device_t dev);
-static void ahci_slotsfree(device_t dev);
+// static void ahci_slotsfree(device_t dev);
 static void ahci_reset(struct ahci_channel *ch);
 static void ahci_start(struct ahci_channel *ch, int fbs);
 static void ahci_stop(struct ahci_channel *ch);
 static void ahci_clo(struct ahci_channel *ch);
 static void ahci_start_fr(struct ahci_channel *ch);
-static void ahci_stop_fr(struct ahci_channel *ch);
+// static void ahci_stop_fr(struct ahci_channel *ch);
 
 static int ahci_sata_connect(struct ahci_channel *ch);
 static int ahci_sata_phy_reset(struct ahci_channel *ch);
@@ -95,7 +95,7 @@ static void ahci_process_read_log(struct ahci_channel *ch, PacketAtaio *ataio);
 static void ahci_process_request_sense(struct ahci_channel *ch, PacketAtaio *ataio);
 
 static void ahciaction(struct ahci_channel *ch, PacketAtaio *ataio);
-static void ahcipoll(struct cam_sim *sim);
+// static void ahcipoll(struct cam_sim *sim);
 
 // static MALLOC_DEFINE(M_AHCI, "AHCI driver", "AHCI driver data buffers");
 
@@ -795,9 +795,9 @@ ahci_ch_attach(device_t dev)
 	mtx_unlock(&ch->mtx);
  	return (0);
 
-err3:
+// err3:
 	// xpt_bus_deregister(cam_sim_path(ch->sim));
-err2:
+// err2:
 	// cam_sim_free(ch->sim, /*free_devq*/TRUE);
 err1:
 	bus_release_resource(dev, SYS_RES_IRQ, ATA_IRQ_RID, ch->r_irq);
@@ -1139,7 +1139,7 @@ ahci_cpd_check_events(struct ahci_channel *ch)
 static void
 ahci_notify_events(struct ahci_channel *ch, u_int32_t status)
 {
-	struct cam_path *dpath;
+	// struct cam_path *dpath;
 	int i;
 
 	if (ch->caps & AHCI_CAP_SSNTF)
@@ -1194,7 +1194,7 @@ static void
 ahci_ch_intr_direct(void *arg)
 {
 	struct ahci_channel *ch = (struct ahci_channel *)arg;
-  struct ccb_hdr *ccb_h;
+  // struct ccb_hdr *ccb_h;
 	uint32_t istatus;
   // STAILQ_HEAD(, ccb_hdr) tmp_doneq = STAILQ_HEAD_INITIALIZER(tmp_doneq);
   Queue2<PacketAtaio *> tmp_doneq;
@@ -2067,7 +2067,7 @@ ahci_issue_recovery(struct ahci_channel *ch)
   ataio = PacketAtaio::XptAlloc();
 	if (ataio == NULL) {
 		device_printf(ch->dev, "Unable to allocate recovery command\n");
-completeall:
+// completeall:
 		/* We can't do anything -- complete held commands. */
 		for (i = 0; i < ch->numslots; i++) {
 			if (ch->hold[i] == NULL)

@@ -3094,7 +3094,7 @@ static s32 e1000_access_phy_wakeup_reg_bm(struct e1000_hw *hw, u32 offset,
 {
 	s32 ret_val;
 	u16 reg = BM_PHY_REG_NUM(offset);
-	u16 page = BM_PHY_REG_PAGE(offset);
+	// u16 page = BM_PHY_REG_PAGE(offset);
 	u16 phy_reg = 0;
 
 	DEBUGFUNC("e1000_access_phy_wakeup_reg_bm");

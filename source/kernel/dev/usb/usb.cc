@@ -177,6 +177,13 @@ int DevUsb::GetDescriptorNumInCombinedDescriptors(UsbCtrl::DescriptorType type) 
   return num;
 }
 
+void DevUsb::SetupInterruptTransfer(int num_td, uint8_t *buffer) {
+  UsbCtrl::EndpointDescriptor *ed0 = GetEndpointDescriptorInCombinedDescriptors(0);
+  assert(ed0->GetTransferType() == UsbCtrl::TransferType::kInterrupt);
+  assert(ed0->GetDirection() == UsbCtrl::PacketIdentification::kIn);
+  GetController()->SetupInterruptTransfer(ed0->GetEndpointNumber(), _addr, ed0->GetInterval(), ed0->GetDirection(), ed0->GetMaxPacketSize(), num_td, buffer);
+}
+
 DevUsb *DevUsbKeyboard::InitUsb(DevUsbController *controller, int addr) {
   DevUsbKeyboard *that = new DevUsbKeyboard(controller, addr);
 
@@ -198,7 +205,7 @@ void DevUsbKeyboard::Init() {
   if (GetDescriptorNumInCombinedDescriptors(UsbCtrl::DescriptorType::kEndpoint) != 1) {
     kernel_panic("DevUsbKeyboard", "not supported");
   }
-  gtty->CprintfRaw("<%x>", GetEndpointDescriptorInCombinedDescriptors(0)->address);
-  assert((GetEndpointDescriptorInCombinedDescriptors(0)->attributes & 3) == 3); // interrupt
-  gtty->CprintfRaw("<%d>", GetEndpointDescriptorInCombinedDescriptors(0)->interval);
+  UsbCtrl::EndpointDescriptor *ed0 = GetEndpointDescriptorInCombinedDescriptors(0);
+  assert(ed0->GetMaxPacketSize() == kMaxPacketSize);
+  SetupInterruptTransfer(kTdNum, buffer);
 }

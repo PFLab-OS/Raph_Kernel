@@ -51,6 +51,9 @@ private:
     virtual bool SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) override {
       return _dev_ehci->SendControlTransfer(request, data, data_size, device_addr);
     }
+    virtual void SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer) override {
+      _dev_ehci->SetupInterruptTransfer(endpt_address, device_addr, interval, direction, max_packetsize, num_td, buffer);
+    }
   private:
     DevEhci *const _dev_ehci;
   } _controller_dev;
@@ -61,6 +64,10 @@ private:
     virtual phys_addr GetRepresentativeQueueHead() = 0;
     virtual bool SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) = 0;
     virtual phys_addr GetPeriodicFrameList() = 0;
+    virtual void SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer) = 0;
+    virtual int GetPeriodicFrameListEntryNum() {
+      return 1024;
+    }
   } *_sub;
   
   class DevEhciSub32 : public DevEhciSub {
@@ -73,7 +80,7 @@ private:
       return v2p(ptr2virtaddr(_periodic_frame_list));
     }
     virtual bool SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) override;
-    virtual void EnqueueInterruptTransfer();
+    virtual void SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer) override;
   private:
     class QueueHead;
 
@@ -97,11 +104,6 @@ private:
   
     class TransferDescriptor {
     public:
-      enum class PacketIdentification : uint8_t {
-        kOut = 0b00,
-        kIn = 0b01,
-        kSetup = 0b10,
-      };
       void Init() {
         _alt_next_td = 1;
       }
@@ -120,10 +122,13 @@ private:
       bool IsDataBufferErrorOfStatus() {
         return READ_MEM_VOLATILE(&_token) & (1 << 5);
       }
-      void SetTokenAndBuffer(bool interrupt_on_complete, bool data_toggle, PacketIdentification pid, int total_bytes, virt_addr buf) {
+      void SetTokenAndBuffer(bool interrupt_on_complete, bool data_toggle, UsbCtrl::PacketIdentification pid, int total_bytes, virt_addr buf) {
         SetTokenAndBufferSub(interrupt_on_complete, data_toggle, pid, total_bytes);
         phys_addr buf_p = k2p(buf);
         phys_addr buf_p_end = buf_p + total_bytes;
+        if (buf_p_end > 0xFFFFFFFF) {
+          kernel_panic("Ehci", "64-bit address is not supported");
+        }
         _buffer_pointer[0] = buf_p;
         buf_p = ((buf_p + 4096) / 4096) * 4096;
         for (int i = 1; i < 5; i++) {
@@ -135,14 +140,14 @@ private:
           }
         }
       }
-      void SetTokenAndBuffer(bool interrupt_on_complete, bool data_toggle, PacketIdentification pid, int total_bytes) {
+      void SetTokenAndBuffer(bool interrupt_on_complete, bool data_toggle, UsbCtrl::PacketIdentification pid, int total_bytes) {
         SetTokenAndBufferSub(interrupt_on_complete, data_toggle, pid, total_bytes);
         for (int i = 0; i < 5; i++) {
           _buffer_pointer[i] = 0;
         }
       }
     private:
-      void SetTokenAndBufferSub(bool interrupt_on_complete, bool data_toggle, PacketIdentification pid, int total_bytes) {
+      void SetTokenAndBufferSub(bool interrupt_on_complete, bool data_toggle, UsbCtrl::PacketIdentification pid, int total_bytes) {
         _token = 0;
         _token |= data_toggle ? (1 << 31) : 0;
         assert(total_bytes <= 0x5000);
@@ -205,12 +210,12 @@ private:
       void SetNextTd(/* nullptr */) {
         _next_td = 1;
       }
-      void SetCharacteristics(int max_packetsize, UsbCtrl::TransactionType ttype, bool head, bool data_toggle_control, uint8_t endpoint_num, bool inactivate, uint8_t device_address) {
+      void SetCharacteristics(int max_packetsize, UsbCtrl::TransferType ttype, bool head, bool data_toggle_control, uint8_t endpoint_num, bool inactivate, uint8_t device_address) {
         _characteristics = 0;
         if (_speed == EndpointSpeed::kHigh) {
           assert(!inactivate);
         } else {
-          if (ttype == UsbCtrl::TransactionType::kControl) {
+          if (ttype == UsbCtrl::TransferType::kControl) {
             _characteristics |= (1 << 27); // control endpoint flag
           }
         }
@@ -279,6 +284,9 @@ private:
       assert(false);
       return true;
     }
+    virtual void SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer) override {
+      assert(false);
+    }
   };
     
   // see 2.1.3 USBBASE - Register Space Base Address Register
@@ -334,6 +342,9 @@ private:
   bool _is_64bit_addressing;
   bool SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) {
     return _sub->SendControlTransfer(request, data, data_size, device_addr);
+  }
+  void SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer) {
+    return _sub->SetupInterruptTransfer(endpt_address, device_addr, interval, direction, max_packetsize, num_td, buffer);
   }
 
   void DisablePort(int port) {
