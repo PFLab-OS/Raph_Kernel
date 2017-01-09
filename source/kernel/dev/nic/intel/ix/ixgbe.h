@@ -1,31 +1,31 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2015, Intel Corporation 
+  Copyright (c) 2001-2015, Intel Corporation
   All rights reserved.
-  
-  Redistribution and use in source and binary forms, with or without 
+
+  Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions are met:
-  
-   1. Redistributions of source code must retain the above copyright notice, 
+
+   1. Redistributions of source code must retain the above copyright notice,
       this list of conditions and the following disclaimer.
-  
-   2. Redistributions in binary form must reproduce the above copyright 
-      notice, this list of conditions and the following disclaimer in the 
+
+   2. Redistributions in binary form must reproduce the above copyright
+      notice, this list of conditions and the following disclaimer in the
       documentation and/or other materials provided with the distribution.
-  
-   3. Neither the name of the Intel Corporation nor the names of its 
-      contributors may be used to endorse or promote products derived from 
+
+   3. Neither the name of the Intel Corporation nor the names of its
+      contributors may be used to endorse or promote products derived from
       this software without specific prior written permission.
-  
+
   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
-  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE 
-  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE 
-  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
-  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF 
-  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
-  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN 
-  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
+  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE.
 
@@ -127,9 +127,9 @@
  * RxDescriptors Valid Range: 64-4096 Default Value: 256 This value is the
  * number of receive descriptors allocated for each RX queue. Increasing this
  * value allows the driver to buffer more incoming packets. Each descriptor
- * is 16 bytes.  A receive buffer is also allocated for each descriptor. 
- * 
- * Note: with 8 rings and a dual port card, it is possible to bump up 
+ * is 16 bytes.  A receive buffer is also allocated for each descriptor.
+ *
+ * Note: with 8 rings and a dual port card, it is possible to bump up
  *	against the system mbuf pool limit, you can tune nmbclusters
  *	to adjust for this.
  */
@@ -171,7 +171,7 @@
 /*
  * Used for optimizing small rx mbufs.  Effort is made to keep the copy
  * small and aligned for the CPU L1 cache.
- * 
+ *
  * MHLEN is typically 168 bytes, giving us 8-byte alignment.  Getting
  * 32 byte alignment needed for the fast bcopy results in 8 bytes being
  * wasted.  Getting 64 byte alignment, which _should_ be ideal for
@@ -241,7 +241,7 @@
 #endif
 
 /*
- * Interrupt Moderation parameters 
+ * Interrupt Moderation parameters
  */
 #define IXGBE_LOW_LATENCY	128
 #define IXGBE_AVE_LATENCY	400
@@ -273,7 +273,7 @@
 
 #define IXGBE_VF_GET_QUEUES_RESP_LEN	5
 
-#define IXGBE_API_VER_1_0	0		
+#define IXGBE_API_VER_1_0	0
 #define IXGBE_API_VER_2_0	1	/* Solaris API.  Not supported. */
 #define IXGBE_API_VER_1_1	2
 #define IXGBE_API_VER_UNKNOWN	UINT16_MAX
@@ -289,10 +289,10 @@ enum ixgbe_iov_mode {
 /*
  *****************************************************************************
  * vendor_info_array
- * 
+ *
  * This array contains the list of Subvendor/Subdevice IDs on which the driver
  * should load.
- * 
+ *
  *****************************************************************************
  */
 typedef struct _ixgbe_vendor_info_t {
@@ -530,7 +530,7 @@ struct adapter {
 	struct taskqueue	*tq;
 
 	/*
-	** Queues: 
+	** Queues:
 	**   This is the irq holder, it has
 	**   and RX/TX pair or rings associated
 	**   with it.
@@ -702,13 +702,13 @@ drbr_needs_enqueue(struct ifnet *ifp, struct buf_ring *br)
 */
 static inline u16
 ixgbe_rx_unrefreshed(struct rx_ring *rxr)
-{       
+{
 	if (rxr->next_to_check > rxr->next_to_refresh)
 		return (rxr->next_to_check - rxr->next_to_refresh - 1);
 	else
 		return ((rxr->num_desc + rxr->next_to_check) -
 		    rxr->next_to_refresh - 1);
-}       
+}
 
 /*
 ** This checks for a zero mac addr, something that will be likely
@@ -731,7 +731,7 @@ ixv_check_ether_addr(u8 *addr)
 void     ixgbe_start(struct ifnet *);
 void     ixgbe_start_locked(struct tx_ring *, struct ifnet *);
 #else /* ! IXGBE_LEGACY_TX */
-int	ixgbe_mq_start(struct ifnet *, struct mbuf *);
+int	ixgbe_mq_start(struct ifnet * /*, struct mbuf * */);
 int	ixgbe_mq_start_locked(struct ifnet *, struct tx_ring *);
 void	ixgbe_qflush(struct ifnet *);
 void	ixgbe_deferred_mq_start(void *, int);
@@ -765,7 +765,7 @@ ixgbe_send_vf_msg(struct adapter *adapter, struct ixgbe_vf *vf, u32 msg)
 
 	if (vf->flags & IXGBE_VF_CTS)
 		msg |= IXGBE_VT_MSGTYPE_CTS;
-	
+
 	ixgbe_write_mbx(&adapter->hw, &msg, 1, vf->pool);
 }
 

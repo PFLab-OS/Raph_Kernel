@@ -110,10 +110,10 @@ clean: .ssh_config
 	@$(SSH_CMD) "cd /vagrant/; make _clean"
 
 showerror: .ssh_config
-	@$(SSH_CMD) -c "cd /vagrant/; make _showerror"
+	@$(SSH_CMD) "cd /vagrant/; make _showerror"
 
 numerror: .ssh_config
-	@$(SSH_CMD) -c "cd /vagrant/; make _numerror"
+	@$(SSH_CMD) "cd /vagrant/; make _numerror"
 
 vboxrun: vboxkill .ssh_config
 	@$(SSH_CMD) "cd /vagrant/; make _cpimage"

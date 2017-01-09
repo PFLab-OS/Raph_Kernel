@@ -1,31 +1,31 @@
 /******************************************************************************
 
-  Copyright (c) 2001-2015, Intel Corporation 
+  Copyright (c) 2001-2015, Intel Corporation
   All rights reserved.
-  
-  Redistribution and use in source and binary forms, with or without 
+
+  Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions are met:
-  
-   1. Redistributions of source code must retain the above copyright notice, 
+
+   1. Redistributions of source code must retain the above copyright notice,
       this list of conditions and the following disclaimer.
-  
-   2. Redistributions in binary form must reproduce the above copyright 
-      notice, this list of conditions and the following disclaimer in the 
+
+   2. Redistributions in binary form must reproduce the above copyright
+      notice, this list of conditions and the following disclaimer in the
       documentation and/or other materials provided with the distribution.
-  
-   3. Neither the name of the Intel Corporation nor the names of its 
-      contributors may be used to endorse or promote products derived from 
+
+   3. Neither the name of the Intel Corporation nor the names of its
+      contributors may be used to endorse or promote products derived from
       this software without specific prior written permission.
-  
+
   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
-  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE 
-  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE 
-  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
-  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF 
-  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
-  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN 
-  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
+  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE.
 
@@ -40,6 +40,7 @@
 // #endif
 
 #include "ixgbe.h"
+#include "ix.h"
 
 #ifdef	RSS
 #include <net/rss_config.h>
@@ -341,7 +342,7 @@ static int allow_unsupported_sfp = FALSE;
 static int ixgbe_total_ports;
 
 #ifdef IXGBE_FDIR
-/* 
+/*
 ** Flow Director actually 'steals'
 ** part of the packet buffer as its
 ** filter pool, this variable controls
@@ -524,7 +525,7 @@ ixgbe_attach(device_t dev)
 	if (error == IXGBE_ERR_SFP_NOT_PRESENT) {
 		/*
 		** No optics in this port, set up
-		** so the timer routine will probe 
+		** so the timer routine will probe
 		** for later insertion.
 		*/
 		adapter->sfp_probe = TRUE;
@@ -567,10 +568,10 @@ ixgbe_attach(device_t dev)
 	}
 
 	if ((adapter->msix > 1) && (ixgbe_enable_msix))
-		error = ixgbe_allocate_msix(adapter); 
+		error = ixgbe_allocate_msix(adapter);
 	else
-		error = ixgbe_allocate_legacy(adapter); 
-	if (error) 
+		error = ixgbe_allocate_legacy(adapter);
+	if (error)
 		goto err_late;
 
 	/* Setup OS specific network interface */
@@ -1113,7 +1114,7 @@ ixgbe_init_locked(struct adapter *adapter)
 	// 	mhadd |= adapter->max_frame_size << IXGBE_MHADD_MFS_SHIFT;
 	// 	IXGBE_WRITE_REG(hw, IXGBE_MHADD, mhadd);
 	// }
-	
+
 	/* Now enable all the queues */
 	for (int i = 0; i < adapter->num_queues; i++) {
 		txr = &adapter->tx_rings[i];
@@ -1416,14 +1417,14 @@ ixgbe_handle_que(void *context, int pending)
 	struct adapter  *adapter = que->adapter;
 	struct tx_ring  *txr = que->txr;
 	struct ifnet    *ifp = adapter->ifp;
+    IxGbe* ixgbe = adapter->dev->GetMasterClass<IxGbe>();
 
 	if (ifp->if_drv_flags & IFF_DRV_RUNNING) {
 		ixgbe_rxeof(que);
 		IXGBE_TX_LOCK(txr);
 		ixgbe_txeof(txr);
 #ifndef IXGBE_LEGACY_TX
-		// if (!drbr_empty(ifp, txr->br))
-		// TODO here
+        if (!ixgbe->GetNetInterface()._tx_buffered.IsEmpty())
 			ixgbe_mq_start_locked(ifp, txr);
 #else
 		if (!IFQ_DRV_IS_EMPTY(&ifp->if_snd))
@@ -1457,6 +1458,7 @@ ixgbe_legacy_irq(void *arg)
 	struct 		tx_ring *txr = adapter->tx_rings;
 	bool		more;
 	u32       	reg_eicr;
+    IxGbe* ixbge = adapter->dev->GetMasterClass<IxGbe>();
 
 
 	reg_eicr = IXGBE_READ_REG(hw, IXGBE_EICR);
@@ -1475,9 +1477,8 @@ ixgbe_legacy_irq(void *arg)
 	if (!IFQ_DRV_IS_EMPTY(&ifp->if_snd))
 		ixgbe_start_locked(txr, ifp);
 #else
-  // if (!drbr_empty(ifp, txr->br))
-  // TODO if (!e1000->GetNetInterface()._tx_buffered.IsEmpty())
 	// if (!drbr_empty(ifp, txr->br))
+    if (!ixbge->GetNetInterface()._tx_buffered.IsEmpty())
 		ixgbe_mq_start_locked(ifp, txr);
 #endif
 	IXGBE_TX_UNLOCK(txr);
@@ -1522,6 +1523,7 @@ ixgbe_msix_que(void *arg)
 	struct rx_ring	*rxr = que->rxr;
 	bool		more;
 	u32		newitr = 0;
+    IxGbe* ixgbe = adapter->dev->GetMasterClass<IxGbe>();
 
 
 	/* Protect against spurious interrupts */
@@ -1540,8 +1542,7 @@ ixgbe_msix_que(void *arg)
 		ixgbe_start_locked(txr, ifp);
 #else
   // if (!drbr_empty(ifp, txr->br))
-  // TODO if (!e1000->GetNetInterface()._tx_buffered.IsEmpty())
-	// if (!drbr_empty(ifp, txr->br))
+    if (!ixgbe->GetNetInterface()._tx_buffered.IsEmpty())
 		ixgbe_mq_start_locked(ifp, txr);
 #endif
 	IXGBE_TX_UNLOCK(txr);
@@ -1559,13 +1560,13 @@ ixgbe_msix_que(void *arg)
         if (que->eitr_setting)
                 IXGBE_WRITE_REG(&adapter->hw,
                     IXGBE_EITR(que->msix), que->eitr_setting);
- 
+
         que->eitr_setting = 0;
 
         /* Idle, do nothing */
         if ((txr->bytes == 0) && (rxr->bytes == 0))
                 goto no_calc;
-                                
+
 	if ((txr->bytes) && (txr->packets))
                	newitr = txr->bytes/txr->packets;
 	if ((rxr->bytes) && (rxr->packets))
@@ -1586,7 +1587,7 @@ ixgbe_msix_que(void *arg)
                 newitr |= newitr << 16;
         else
                 newitr |= IXGBE_EITR_CNT_WDIS;
-                 
+
         /* save for next interrupt */
         que->eitr_setting = newitr;
 
@@ -1838,11 +1839,11 @@ ixgbe_msix_link(void *arg)
 // 			break;
 // 		}
 // #endif
-	
+
 // 	/* If nothing is recognized... */
 // 	if (IFM_SUBTYPE(ifmr->ifm_active) == 0)
 // 		ifmr->ifm_active |= IFM_UNKNOWN;
-	
+
 // #if __FreeBSD_version >= 900025
 // 	/* Display current flow control setting used on link */
 // 	if (hw->fc.current_mode == ixgbe_fc_rx_pause ||
@@ -2056,7 +2057,7 @@ ixgbe_set_multi(struct adapter *adapter)
 	// 	fctrl &= ~IXGBE_FCTRL_UPE;
 	// } else
 		fctrl &= ~(IXGBE_FCTRL_UPE | IXGBE_FCTRL_MPE);
-	
+
 	IXGBE_WRITE_REG(&adapter->hw, IXGBE_FCTRL, fctrl);
 
 	if (mcnt < MAX_NUM_MULTICAST_ADDRESSES) {
@@ -2117,7 +2118,7 @@ ixgbe_local_timer(void *arg)
 	** Check the TX queues status
 	**	- mark hung queues so we don't schedule on them
 	**      - watchdog only if all queues show hung
-	*/          
+	*/
 	for (int i = 0; i < adapter->num_queues; i++, que++) {
 		/* Keep track of queues with work for soft irq */
 		if (que->txr->busy)
@@ -2175,8 +2176,9 @@ ixgbe_update_link_status(struct adapter *adapter)
 {
 	struct ifnet	*ifp = adapter->ifp;
 	device_t dev = adapter->dev;
+    IxGbe* ixgbe = adapter->dev->GetMasterClass<IxGbe>();
 
-	if (adapter->link_up){ 
+	if (adapter->link_up){
 		if (adapter->link_active == FALSE) {
 			if (bootverbose)
 				device_printf(dev,"Link is up %d Gbps %s \n",
@@ -2188,6 +2190,7 @@ ixgbe_update_link_status(struct adapter *adapter)
 			/* Update DMA coalescing config */
 			ixgbe_config_dmac(adapter);
 			// if_link_state_change(ifp, LINK_STATE_UP);
+            ixgbe->GetNetInterface().SetStatus(BsdEthernet::LinkStatus::kUp);
 #ifdef PCI_IOV
 			ixgbe_ping_all_vfs(adapter);
 #endif
@@ -2197,6 +2200,7 @@ ixgbe_update_link_status(struct adapter *adapter)
 			if (bootverbose)
 				device_printf(dev,"Link is Down\n");
 			// if_link_state_change(ifp, LINK_STATE_DOWN);
+            ixgbe->GetNetInterface().SetStatus(BsdEthernet::LinkStatus::kUp);
 			adapter->link_active = FALSE;
 #ifdef PCI_IOV
 			ixgbe_ping_all_vfs(adapter);
@@ -2418,7 +2422,7 @@ ixgbe_allocate_legacy(struct adapter *adapter)
 
 /*********************************************************************
  *
- *  Setup MSIX Interrupt resources and handlers 
+ *  Setup MSIX Interrupt resources and handlers
  *
  **********************************************************************/
 static int
@@ -2585,7 +2589,7 @@ ixgbe_setup_msix(struct adapter *adapter)
 		goto msi;
 
 	/* First try MSI/X */
-	msgs = pci_msix_count(dev); 
+	msgs = pci_msix_count(dev);
 	if (msgs == 0)
 		goto msi;
 	rid = PCIR_BAR(MSIX_82598_BAR);
@@ -2876,7 +2880,7 @@ ixgbe_setup_interface(device_t dev, struct adapter *adapter)
 // 		ifmedia_add(&adapter->media, IFM_ETHER | IFM_1000_T, 0, NULL);
 // 	if (layer & IXGBE_PHYSICAL_LAYER_100BASE_TX)
 // 		ifmedia_add(&adapter->media, IFM_ETHER | IFM_100_TX, 0, NULL);
-	
+
 // 	if (layer & IXGBE_PHYSICAL_LAYER_SFP_PLUS_CU ||
 // 	    layer & IXGBE_PHYSICAL_LAYER_SFP_ACTIVE_DA)
 // 		ifmedia_add(&adapter->media, IFM_ETHER | IFM_10G_TWINAX, 0, NULL);
@@ -2921,7 +2925,7 @@ ixgbe_setup_interface(device_t dev, struct adapter *adapter)
 // #endif
 // 	if (layer & IXGBE_PHYSICAL_LAYER_1000BASE_BX)
 // 		device_printf(dev, "Media supported: 1000baseBX\n");
-	
+
 // 	if (hw->device_id == IXGBE_DEV_ID_82598AT) {
 // 		ifmedia_add(&adapter->media,
 // 		    IFM_ETHER | IFM_1000_T | IFM_FDX, 0, NULL);
@@ -2938,10 +2942,10 @@ ixgbe_config_link(struct adapter *adapter)
 	struct ixgbe_hw *hw = &adapter->hw;
 	u32	autoneg, err = 0;
 	bool	sfp, negotiate;
-  
+
 	sfp = ixgbe_is_sfp(hw);
 
-	if (sfp) { 
+	if (sfp) {
 		if (hw->phy.multispeed_fiber) {
 			hw->mac.ops.setup_sfp(hw);
 			ixgbe_enable_tx_laser(hw);
@@ -3176,7 +3180,7 @@ ixgbe_initialize_rss_mapping(struct adapter *adapter)
 #define IXGBE_SRRCTL_BSIZEHDRSIZE_SHIFT 2
 
 #define BSIZEPKT_ROUNDUP ((1<<IXGBE_SRRCTL_BSIZEPKT_SHIFT)-1)
-	
+
 static void
 ixgbe_initialize_receive_units(struct adapter *adapter)
 {
@@ -3697,7 +3701,7 @@ ixgbe_configure_ivars(struct adapter *adapter)
 /*
 ** ixgbe_sfp_probe - called in the local timer to
 ** determine if a port had optics inserted.
-*/  
+*/
 static bool
 ixgbe_sfp_probe(struct adapter *adapter)
 {
@@ -3866,7 +3870,7 @@ ixgbe_config_dmac(struct adapter *adapter)
 		dcfg->fcoe_en = false;
 		dcfg->link_speed = adapter->link_speed;
 		dcfg->num_tcs = 1;
-		
+
 		INIT_DEBUGOUT2("dmac settings: watchdog %d, link speed %d\n",
 		    dcfg->watchdog_timer, dcfg->link_speed);
 
@@ -4115,7 +4119,7 @@ ixgbe_get_counter(struct ifnet *ifp, ift_counter cnt)
 /** ixgbe_sysctl_tdh_handler - Handler function
  *  Retrieves the TDH value from the hardware
  */
-// static int 
+// static int
 // ixgbe_sysctl_tdh_handler(SYSCTL_HANDLER_ARGS)
 // {
 // 	int error;
@@ -4133,7 +4137,7 @@ ixgbe_get_counter(struct ifnet *ifp, ift_counter cnt)
 /** ixgbe_sysctl_tdt_handler - Handler function
  *  Retrieves the TDT value from the hardware
  */
-// static int 
+// static int
 // ixgbe_sysctl_tdt_handler(SYSCTL_HANDLER_ARGS)
 // {
 // 	int error;
@@ -4151,7 +4155,7 @@ ixgbe_get_counter(struct ifnet *ifp, ift_counter cnt)
 /** ixgbe_sysctl_rdh_handler - Handler function
  *  Retrieves the RDH value from the hardware
  */
-// static int 
+// static int
 // ixgbe_sysctl_rdh_handler(SYSCTL_HANDLER_ARGS)
 // {
 // 	int error;
@@ -4169,7 +4173,7 @@ ixgbe_get_counter(struct ifnet *ifp, ift_counter cnt)
 /** ixgbe_sysctl_rdt_handler - Handler function
  *  Retrieves the RDT value from the hardware
  */
-// static int 
+// static int
 // ixgbe_sysctl_rdt_handler(SYSCTL_HANDLER_ARGS)
 // {
 // 	int error;
@@ -4341,11 +4345,11 @@ ixgbe_add_hw_stats(struct adapter *adapter)
 		// SYSCTL_ADD_UQUAD(ctx, queue_list, OID_AUTO, "irqs",
 		// 		CTLFLAG_RD, &(adapter->queues[i].irqs),
 		// 		"irqs on this queue");
-		// SYSCTL_ADD_PROC(ctx, queue_list, OID_AUTO, "txd_head", 
+		// SYSCTL_ADD_PROC(ctx, queue_list, OID_AUTO, "txd_head",
 		// 		CTLTYPE_UINT | CTLFLAG_RD, txr, sizeof(txr),
 		// 		ixgbe_sysctl_tdh_handler, "IU",
 		// 		"Transmit Descriptor Head");
-		// SYSCTL_ADD_PROC(ctx, queue_list, OID_AUTO, "txd_tail", 
+		// SYSCTL_ADD_PROC(ctx, queue_list, OID_AUTO, "txd_tail",
 		// 		CTLTYPE_UINT | CTLFLAG_RD, txr, sizeof(txr),
 		// 		ixgbe_sysctl_tdt_handler, "IU",
 		// 		"Transmit Descriptor Tail");
@@ -4368,22 +4372,22 @@ ixgbe_add_hw_stats(struct adapter *adapter)
 
 	for (int i = 0; i < adapter->num_queues; i++, rxr++) {
 		// snprintf(namebuf, QUEUE_NAME_LEN, "queue%d", i);
-		// queue_node = SYSCTL_ADD_NODE(ctx, child, OID_AUTO, namebuf, 
+		// queue_node = SYSCTL_ADD_NODE(ctx, child, OID_AUTO, namebuf,
 		// 			    CTLFLAG_RD, NULL, "Queue Name");
 		// queue_list = SYSCTL_CHILDREN(queue_node);
 
 		// struct lro_ctrl *lro = &rxr->lro;
 
 		// snprintf(namebuf, QUEUE_NAME_LEN, "queue%d", i);
-		// queue_node = SYSCTL_ADD_NODE(ctx, child, OID_AUTO, namebuf, 
+		// queue_node = SYSCTL_ADD_NODE(ctx, child, OID_AUTO, namebuf,
 		// 			    CTLFLAG_RD, NULL, "Queue Name");
 		// queue_list = SYSCTL_CHILDREN(queue_node);
 
-		// SYSCTL_ADD_PROC(ctx, queue_list, OID_AUTO, "rxd_head", 
+		// SYSCTL_ADD_PROC(ctx, queue_list, OID_AUTO, "rxd_head",
 		// 		CTLTYPE_UINT | CTLFLAG_RD, rxr, sizeof(rxr),
 		// 		ixgbe_sysctl_rdh_handler, "IU",
 		// 		"Receive Descriptor Head");
-		// SYSCTL_ADD_PROC(ctx, queue_list, OID_AUTO, "rxd_tail", 
+		// SYSCTL_ADD_PROC(ctx, queue_list, OID_AUTO, "rxd_tail",
 		// 		CTLTYPE_UINT | CTLFLAG_RD, rxr, sizeof(rxr),
 		// 		ixgbe_sysctl_rdt_handler, "IU",
 		// 		"Receive Descriptor Tail");
@@ -4406,7 +4410,7 @@ ixgbe_add_hw_stats(struct adapter *adapter)
 
 	/* MAC stats get the own sub node */
 
-	// stat_node = SYSCTL_ADD_NODE(ctx, child, OID_AUTO, "mac_stats", 
+	// stat_node = SYSCTL_ADD_NODE(ctx, child, OID_AUTO, "mac_stats",
 	// 			    CTLFLAG_RD, NULL, "MAC Statistics");
 	// stat_list = SYSCTL_CHILDREN(stat_node);
 
@@ -4448,11 +4452,11 @@ ixgbe_add_hw_stats(struct adapter *adapter)
 
 	// /* Packet Reception Stats */
 	// SYSCTL_ADD_UQUAD(ctx, stat_list, OID_AUTO, "total_octets_rcvd",
-	// 		CTLFLAG_RD, &stats->tor, 
-	// 		"Total Octets Received"); 
+	// 		CTLFLAG_RD, &stats->tor,
+	// 		"Total Octets Received");
 	// SYSCTL_ADD_UQUAD(ctx, stat_list, OID_AUTO, "good_octets_rcvd",
-	// 		CTLFLAG_RD, &stats->gorc, 
-	// 		"Good Octets Received"); 
+	// 		CTLFLAG_RD, &stats->gorc,
+	// 		"Good Octets Received");
 	// SYSCTL_ADD_UQUAD(ctx, stat_list, OID_AUTO, "total_pkts_rcvd",
 	// 		CTLFLAG_RD, &stats->tpr,
 	// 		"Total Packets Received");
@@ -4507,8 +4511,8 @@ ixgbe_add_hw_stats(struct adapter *adapter)
 
 	// /* Packet Transmission Stats */
 	// SYSCTL_ADD_UQUAD(ctx, stat_list, OID_AUTO, "good_octets_txd",
-	// 		CTLFLAG_RD, &stats->gotc, 
-	// 		"Good Octets Transmitted"); 
+	// 		CTLFLAG_RD, &stats->gotc,
+	// 		"Good Octets Transmitted");
 	// SYSCTL_ADD_UQUAD(ctx, stat_list, OID_AUTO, "total_pkts_txd",
 	// 		CTLFLAG_RD, &stats->tpt,
 	// 		"Total Packets Transmitted");
@@ -4975,7 +4979,7 @@ ixgbe_add_hw_stats(struct adapter *adapter)
 ** Enable the hardware to drop packets when the buffer is
 ** full. This is useful when multiqueue,so that no single
 ** queue being full stalls the entire RX engine. We only
-** enable this when Multiqueue AND when Flow Control is 
+** enable this when Multiqueue AND when Flow Control is
 ** disabled.
 */
 static void
@@ -5072,7 +5076,7 @@ ixgbe_vf_set_default_vlan(struct adapter *adapter, struct ixgbe_vf *vf,
 	hw = &adapter->hw;
 
 	vf->vlan_tag = tag;
-	
+
 	vmolr = IXGBE_READ_REG(hw, IXGBE_VMOLR(vf->pool));
 
 	/* Do not receive packets that pass inexact filters. */
@@ -5145,7 +5149,7 @@ ixgbe_vf_frame_size_compatible(struct adapter *adapter, struct ixgbe_vf *vf)
 			return (TRUE);
 
 		return (FALSE);
-	
+
 	}
 }
 
@@ -5185,7 +5189,7 @@ ixgbe_vf_enable_receive(struct adapter *adapter, struct ixgbe_vf *vf)
 	uint32_t vf_index, vfre;
 
 	hw = &adapter->hw;
-	
+
 	vf_index = IXGBE_VF_INDEX(vf->pool);
 	vfre = IXGBE_READ_REG(hw, IXGBE_VFRE(vf_index));
 	if (ixgbe_vf_frame_size_compatible(adapter, vf))
@@ -5246,7 +5250,7 @@ ixgbe_vf_set_mac(struct adapter *adapter, struct ixgbe_vf *vf, uint32_t *msg)
 
 	bcopy(mac, vf->ether_addr, ETHER_ADDR_LEN);
 
-	ixgbe_set_rar(&adapter->hw, vf->rar_index, vf->ether_addr, 
+	ixgbe_set_rar(&adapter->hw, vf->rar_index, vf->ether_addr,
 	    vf->pool, TRUE);
 
 	ixgbe_send_vf_ack(adapter, vf, msg[0]);
@@ -5309,7 +5313,7 @@ ixgbe_vf_set_vlan(struct adapter *adapter, struct ixgbe_vf *vf, uint32_t *msg)
 		ixgbe_send_vf_nack(adapter, vf, msg[0]);
 		return;
 	}
-	
+
 	ixgbe_set_vfta(hw, tag, vf->pool, enable);
 	ixgbe_send_vf_ack(adapter, vf, msg[0]);
 }
@@ -5406,7 +5410,7 @@ ixgbe_vf_get_queues(struct adapter *adapter, struct ixgbe_vf *vf,
 		return;
 	}
 
-	resp[0] = IXGBE_VF_GET_QUEUES | IXGBE_VT_MSGTYPE_ACK | 
+	resp[0] = IXGBE_VF_GET_QUEUES | IXGBE_VT_MSGTYPE_ACK |
 	    IXGBE_VT_MSGTYPE_CTS;
 
 	num_queues = ixgbe_vf_queues(ixgbe_get_iov_mode(adapter));
@@ -5523,7 +5527,7 @@ ixgbe_init_iov(device_t dev, u16 num_vfs, const nvlist_t *config)
 
 	IXGBE_CORE_LOCK(adapter);
 
-	adapter->vfs = virtmem_ctrl->AllocZ(sizeof(*adapter->vfs) * num_vfs/*, M_IXGBE, 
+	adapter->vfs = virtmem_ctrl->AllocZ(sizeof(*adapter->vfs) * num_vfs/*, M_IXGBE,
                                                          M_NOWAIT | M_ZERO*/);
 
 	if (adapter->vfs == NULL) {
@@ -5617,7 +5621,7 @@ ixgbe_initialize_iov(struct adapter *adapter)
 		panic("Unexpected SR-IOV mode %d", mode);
 	}
 	IXGBE_WRITE_REG(hw, IXGBE_MTQC, mtqc);
-	
+
 
 	gcr_ext = IXGBE_READ_REG(hw, IXGBE_GCR_EXT);
 	gcr_ext |= IXGBE_GCR_EXT_MSIX_EN;
@@ -5633,7 +5637,7 @@ ixgbe_initialize_iov(struct adapter *adapter)
 		panic("Unexpected SR-IOV mode %d", mode);
 	}
 	IXGBE_WRITE_REG(hw, IXGBE_GCR_EXT, gcr_ext);
-	
+
 
 	gpie = IXGBE_READ_REG(hw, IXGBE_GPIE);
 	gcr_ext &= ~IXGBE_GPIE_VTMODE_MASK;
@@ -5651,9 +5655,9 @@ ixgbe_initialize_iov(struct adapter *adapter)
 
 	/* Enable rx/tx for the PF. */
 	vf_reg = IXGBE_VF_INDEX(adapter->pool);
-	IXGBE_WRITE_REG(hw, IXGBE_VFRE(vf_reg), 
+	IXGBE_WRITE_REG(hw, IXGBE_VFRE(vf_reg),
 	    IXGBE_VF_BIT(adapter->pool));
-	IXGBE_WRITE_REG(hw, IXGBE_VFTE(vf_reg), 
+	IXGBE_WRITE_REG(hw, IXGBE_VFTE(vf_reg),
 	    IXGBE_VF_BIT(adapter->pool));
 
 	/* Allow VM-to-VM communication. */
@@ -5715,7 +5719,7 @@ ixgbe_init_vf(struct adapter *adapter, struct ixgbe_vf *vf)
 
 	ixgbe_vf_enable_transmit(adapter, vf);
 	ixgbe_vf_enable_receive(adapter, vf);
-	
+
 	ixgbe_send_vf_msg(adapter, vf, IXGBE_PF_CONTROL_MSG);
 }
 
@@ -5762,3 +5766,104 @@ ixgbe_add_vf(device_t dev, u16 vfnum, const nvlist_t *config)
 }
 #endif /* PCI_IOV */
 
+
+/*
+ *
+ * Copyright (c) 2017 Raphine Project
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ * Author: slankdev
+ *
+ */
+
+#include "ix.h"
+#include <stdlib.h>
+
+
+int IxGbe::DevMethodBusProbe() {
+  return ixgbe_probe(this);
+}
+
+int IxGbe::DevMethodBusAttach() {
+  int rval = ixgbe_attach(this);
+  ixgbe_init(reinterpret_cast<struct adapter *>(softc));
+  _bsd_eth.SetupNetInterface();
+  _bsd_eth.SetHandleMethod(IxGbeBsdEthernet::HandleMethod::kPolling);
+  return rval;
+}
+
+DevPci *IxGbe::InitPci(uint8_t bus, uint8_t device, uint8_t function) {
+  IxGbe *addr = new IxGbe(bus, device, function);
+  addr->InitBsdDevice(addr, sizeof(struct adapter));
+  if (addr->ProbeAndAttach() == 0) {
+    return &addr->GetDevPci();
+  } else {
+    delete addr;
+    return nullptr;
+  }
+}
+
+void IxGbe::IxGbeBsdEthernet::GetEthAddr(uint8_t *buffer) {
+  memcpy(buffer, reinterpret_cast<struct adapter *>(GetMasterClass().softc)->hw.mac.addr, 6);
+}
+
+void IxGbe::IxGbeBsdEthernet::UpdateLinkStatus() {
+  struct adapter *adapter = reinterpret_cast<struct adapter *>(GetMasterClass().softc);
+  if (GetHandleMethod() == HandleMethod::kPolling) {
+      u32 reg_eicr = IXGBE_READ_REG(&adapter->hw, IXGBE_EICS);
+
+	  /* Link status change */
+	  if (reg_eicr & IXGBE_EICR_LSC) {
+	  	IXGBE_WRITE_REG(&adapter->hw, IXGBE_EIMC, IXGBE_EIMC_LSC);
+        ixgbe_handle_link(reinterpret_cast<void*>(adapter), 0);
+	  }
+  }
+}
+
+void IxGbe::IxGbeBsdEthernet::PollingHandler(void *arg) {
+  IxGbe *that = reinterpret_cast<IxGbe *>(arg);
+  // em_poll(reinterpret_cast<struct adapter *>(that->softc)->ifp); // TODO here
+}
+
+void IxGbe::IxGbeBsdEthernet::ChangeHandleMethodToPolling() {
+  Function func;
+  func.Init(PollingHandler, reinterpret_cast<void *>(&GetMasterClass()));
+  _polling.Init(func);
+  extern CpuId network_cpu;
+  _polling.Register(network_cpu);
+
+  struct adapter *adapter = reinterpret_cast<struct adapter *>(GetMasterClass().softc);
+  if_t ifp = adapter->ifp;
+  IXGBE_CORE_LOCK(adapter);
+  ixgbe_disable_intr(adapter);
+  if_setcapenablebit(ifp, IFCAP_POLLING, 0);
+  IXGBE_CORE_UNLOCK(adapter);
+}
+
+void IxGbe::IxGbeBsdEthernet::ChangeHandleMethodToInt() {
+  _polling.Remove();
+
+  struct adapter *adapter = reinterpret_cast<struct adapter *>(GetMasterClass().softc);
+  if_t ifp = adapter->ifp;
+  IXGBE_CORE_LOCK(adapter);
+  ixgbe_enable_intr(adapter);
+  if_setcapenablebit(ifp, 0, IFCAP_POLLING);
+  IXGBE_CORE_UNLOCK(adapter);
+}
+
+void IxGbe::IxGbeBsdEthernet::Transmit(void *) {
+  ixgbe_mq_start(&_ifp);
+}

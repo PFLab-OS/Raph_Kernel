@@ -230,7 +230,7 @@ ixgbe_mq_start_locked(struct ifnet *ifp, struct tx_ring *txr)
 {
 	struct adapter  *adapter = txr->adapter;
 //         struct mbuf     *next;
-	BsdEthernet::Packet *next;
+    IxGbe* ixgbe = adapter->dev->GetMasterClass<IxGbe>();
         int             enqueued = 0, err = 0;
 
 	if (((ifp->if_drv_flags & IFF_DRV_RUNNING) == 0) ||
@@ -238,8 +238,12 @@ ixgbe_mq_start_locked(struct ifnet *ifp, struct tx_ring *txr)
 		return (ENETDOWN);
 
 	/* Process the queue */
-	// TODO here
-	while(false) {  // dummy
+	while(!ixgbe->GetNetInterface()._tx_buffered.IsEmpty()) {
+        BsdEthernet::Packet* packet;
+        kassert(ixgbe->GetNetInterface()._tx_buffered.Pop(packet));
+        ixgbe_xmit(txr, packet);
+        ixgbe->GetNetInterface().ReuseTxBuffer(packet);
+
 // #if __FreeBSD_version < 901504
 // 	next = drbr_dequeue(ifp, txr->br);
 // 	while (next != NULL) {
@@ -296,10 +300,11 @@ ixgbe_deferred_mq_start(void *arg, int pending)
 	struct tx_ring *txr = reinterpret_cast<struct tx_ring*>(arg);
 	struct adapter *adapter = txr->adapter;
 	struct ifnet *ifp = adapter->ifp;
+    IxGbe* ixgbe = adapter->dev->GetMasterClass<IxGbe>();
 
 	IXGBE_TX_LOCK(txr);
-	// TODO here
 // 	if (!drbr_empty(ifp, txr->br))
+    if (!ixgbe->GetNetInterface()._tx_buffered.IsEmpty())
 		ixgbe_mq_start_locked(ifp, txr);
 	IXGBE_TX_UNLOCK(txr);
 }
@@ -523,6 +528,7 @@ ixgbe_allocate_transmit_buffers(struct tx_ring *txr)
 	device_t dev = adapter->dev;
 	struct ixgbe_tx_buf *txbuf;
 	int error, i;
+    IxGbe* ixgbe = adapter->dev->GetMasterClass<IxGbe>();
 
 	/*
 	 * Setup DMA descriptor areas.
@@ -562,6 +568,7 @@ ixgbe_allocate_transmit_buffers(struct tx_ring *txr)
 		}
 	}
 
+    ixgbe->GetNetInterface().InitTxPacketBuffer();
 	return 0;
 fail:
 	/* We free all, it handles case where we are in the middle */
@@ -578,6 +585,7 @@ static void
 ixgbe_setup_transmit_ring(struct tx_ring *txr)
 {
 	struct adapter *adapter = txr->adapter;
+    IxGbe* ixgbe = adapter->dev->GetMasterClass<IxGbe>();
 	struct ixgbe_tx_buf *txbuf;
 #ifdef DEV_NETMAP
 	struct netmap_adapter *na = NA(adapter->ifp);
@@ -629,6 +637,11 @@ ixgbe_setup_transmit_ring(struct tx_ring *txr)
 		/* Clear the EOP descriptor pointer */
 		txbuf->eop = NULL;
         }
+
+    BsdEthernet::Packet *packet;
+    while(ixgbe->GetNetInterface()._tx_buffered.Pop(packet)) {
+        kassert(ixgbe->GetNetInterface()._tx_reserved.Push(packet));
+    }
 
 #ifdef IXGBE_FDIR
 	/* Set the rate at which we sample packets */
@@ -1401,6 +1414,7 @@ int
 ixgbe_allocate_receive_buffers(struct rx_ring *rxr)
 {
 	struct	adapter 	*adapter = rxr->adapter;
+    IxGbe* ixgbe = adapter->dev->GetMasterClass<IxGbe>();
 	device_t 		dev = adapter->dev;
 	struct ixgbe_rx_buf 	*rxbuf;
 	int             	bsize, error;
@@ -1439,6 +1453,7 @@ ixgbe_allocate_receive_buffers(struct rx_ring *rxr)
 		 }
 	 }
 
+     ixgbe->GetNetInterface().InitRxPacketBuffer();
 	 return (0);
 
  fail:
@@ -1475,6 +1490,8 @@ ixgbe_allocate_receive_buffers(struct rx_ring *rxr)
  ixgbe_setup_receive_ring(struct rx_ring *rxr)
  {
 	 struct	adapter 	*adapter;
+     IxGbe *ixgbe = adapter->dev->GetMasterClass<IxGbe>();
+
 	 struct ifnet		*ifp;
 	 device_t		dev;
 	 struct ixgbe_rx_buf	*rxbuf;
@@ -1504,6 +1521,12 @@ ixgbe_allocate_receive_buffers(struct rx_ring *rxr)
 
 	 /* Free current RX buffer structs and their mbufs */
 	 ixgbe_free_receive_ring(rxr);
+
+
+     BsdEthernet::Packet *packet;
+     while(ixgbe->GetNetInterface()._rx_buffered.Pop(packet)) {
+       kassert(ixgbe->GetNetInterface()._rx_reserved.Push(packet));
+     }
 
 	 /* Now replenish the mbufs */
 	 for (int j = 0; j != rxr->num_desc; ++j) {
@@ -1769,6 +1792,7 @@ bool
 ixgbe_rxeof(struct ix_queue *que)
 {
 	struct adapter		*adapter = que->adapter;
+    IxGbe* ixgbe = adapter->dev->GetMasterClass<IxGbe>();
 	struct rx_ring		*rxr = que->rxr;
 	struct ifnet		*ifp = adapter->ifp;
 // 	struct lro_ctrl		*lro = &rxr->lro;
@@ -1868,7 +1892,17 @@ ixgbe_rxeof(struct ix_queue *que)
 			prefetch(nbuf);
 		}
 
-		//TODO here
+        BsdEthernet::Packet *packet;
+        if (ixgbe->GetNetInterface()._rx_reserved.Pop(packet)) {
+          memcpy(packet->buf, reinterpret_cast<void *>(p2v(rxr->rx_base[i].read.pkt_addr)), len);
+          packet->len = len;
+          if (!ixgbe->GetNetInterface()._rx_buffered.Push(packet)) {
+            kassert(ixgbe->GetNetInterface()._rx_reserved.Push(packet));
+            adapter->dropped_pkts++;
+          }
+        } else {
+          adapter->dropped_pkts++;
+        }
 		/*
 		** Rather than using the fmp/lmp global pointers
 		** we now keep the head of a packet chain in the
