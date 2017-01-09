@@ -5835,7 +5835,31 @@ void IxGbe::IxGbeBsdEthernet::UpdateLinkStatus() {
 
 void IxGbe::IxGbeBsdEthernet::PollingHandler(void *arg) {
   IxGbe *that = reinterpret_cast<IxGbe *>(arg);
-  // em_poll(reinterpret_cast<struct adapter *>(that->softc)->ifp); // TODO here
+  if_t ifp = reinterpret_cast<struct adapter *>(that->softc)->ifp;
+  struct adapter *adapter = reinterpret_cast<struct adapter *>(if_getsoftc(ifp));
+	struct tx_ring	*txr = adapter->tx_rings;
+	struct ix_queue	*que = adapter->queues;
+
+	IXGBE_CORE_LOCK(adapter);
+	if ((if_getdrvflags(ifp) & IFF_DRV_RUNNING) == 0) {
+		IXGBE_CORE_UNLOCK(adapter);
+		return;
+	}
+
+	IXGBE_CORE_UNLOCK(adapter);
+	ixgbe_rxeof(que);
+
+	IXGBE_TX_LOCK(txr);
+  ixgbe_txeof(txr);
+#ifdef IXGBE_LEGACY_TX
+	if (!IFQ_DRV_IS_EMPTY(&ifp->if_snd))
+		ixgbe_start_locked(txr, ifp);
+#else
+	// if (!drbr_empty(ifp, txr->br))
+  if (!that->GetNetInterface()._tx_buffered.IsEmpty())
+		ixgbe_mq_start_locked(ifp, txr);
+#endif
+	IXGBE_TX_UNLOCK(txr);
 }
 
 void IxGbe::IxGbeBsdEthernet::ChangeHandleMethodToPolling() {
