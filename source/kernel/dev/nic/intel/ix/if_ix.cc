@@ -5800,7 +5800,7 @@ int IxGbe::DevMethodBusProbe() {
 int IxGbe::DevMethodBusAttach() {
   int rval = ixgbe_attach(this);
   ixgbe_init(reinterpret_cast<struct adapter *>(softc));
-  _bsd_eth.SetupNetInterface();
+  _bsd_eth.SetupNetInterface("ixgbe");
   _bsd_eth.SetHandleMethod(IxGbeBsdEthernet::HandleMethod::kPolling);
   return rval;
 }

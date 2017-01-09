@@ -6298,7 +6298,7 @@ int E1000::DevMethodBusProbe() {
 int E1000::DevMethodBusAttach() {
   int rval = em_attach(this);
   em_init(reinterpret_cast<struct adapter *>(softc));
-  _bsd_eth.SetupNetInterface();
+  _bsd_eth.SetupNetInterface("em");
   _bsd_eth.SetHandleMethod(E1000BsdEthernet::HandleMethod::kPolling);
   return rval;
 }

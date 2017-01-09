@@ -144,6 +144,14 @@ void lspci(int argc, const char* argv[]){
   }
 }
 
+void lsnetdev(int argc, const char* argv[]){
+  auptr<const char *> list = netdev_ctrl->GetNamesOfAllDevices();
+  gtty->CprintfRaw("\n");
+  for (int i = 0; i < list.GetLen(); i++) {
+    gtty->CprintfRaw("%s%s", list[i], (i == list.GetLen() - 1) ? "" : ",");
+  }
+}
+
 static bool is_knl() {
   return x86::get_display_family_model() == 0x0657;
 }
@@ -1062,12 +1070,13 @@ void bench(int argc, const char* argv[]) {
   static const int stime = 3000;
   static int time = stime, rtime = 0;
 
-  if (argc != 2) {
+  if (argc != 2 || argc != 3) {
     gtty->Cprintf("invalid argument.\n");
     return;
   }
-  if (!netdev_ctrl->Exists("en0")) {
-    gtty->Cprintf("no ethernet interface.\n");
+  static const char *device = (argc == 2) ? "eth0" : argv[2];
+  if (!netdev_ctrl->Exists(device)) {
+    gtty->Cprintf("no ethernet interface(%s).\n", device);
     return;
   }
   if (strcmp(argv[1], "snd") == 0) {
@@ -1093,11 +1102,11 @@ void bench(int argc, const char* argv[]) {
     return;
   }
 
-  netdev_ctrl->AssignIpv4Address("en0", inet_atoi(ip1));
+  netdev_ctrl->AssignIpv4Address(device, inet_atoi(ip1));
 
   {
     static ArpSocket socket;
-    socket.AssignNetworkDevice("en0");
+    socket.AssignNetworkDevice(device);
 
     if(socket.Open() < 0) {
       gtty->Cprintf("[error] failed to open socket\n");
@@ -1110,7 +1119,7 @@ void bench(int argc, const char* argv[]) {
           tt2.SetHandler(1000);
           return;
         }
-        if (!netdev_ctrl->IsLinkUp("en0")) {
+        if (!netdev_ctrl->IsLinkUp(device)) {
           tt2.SetHandler(1000);
           return;
         }
@@ -1148,7 +1157,7 @@ void bench(int argc, const char* argv[]) {
         if (rtime > 0) {
           gtty->Cprintf("ARP Reply average latency: %d us [%d / %d]\n", sum / rtime, rtime, stime);
         } else {
-          if (netdev_ctrl->IsLinkUp("en0")) {
+          if (netdev_ctrl->IsLinkUp(device)) {
             gtty->Cprintf("Link is Up, but no ARP Reply\n");
           } else {
             gtty->Cprintf("Link is Down, please wait...\n");
@@ -1164,7 +1173,7 @@ void bench(int argc, const char* argv[]) {
   }
 
   static ArpSocket socket;
-  socket.AssignNetworkDevice("en0");
+  socket.AssignNetworkDevice(device);
 
   if(socket.Open() < 0) {
     gtty->Cprintf("[error] failed to open socket\n");
@@ -1324,6 +1333,7 @@ extern "C" int main() {
   shell->Register("reset", reset);
   shell->Register("bench", bench);
   shell->Register("lspci", lspci);
+  shell->Register("lsnetdev", lsnetdev);
   shell->Register("show", show);
 
   register_membench2_callout();
