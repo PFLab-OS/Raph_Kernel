@@ -425,7 +425,7 @@ retry:
 	 * Set up the appropriate offload context
 	 * this will consume the first descriptor
 	 */
-	error = 0; // ixgbe_tx_ctx_setup(txr, m_head, &cmd_type_len, &olinfo_status);
+	error = ixgbe_tx_ctx_setup(txr, nullptr /* m_head */, &cmd_type_len, &olinfo_status);
 	if (__predict_false(error)) {
 		if (error == ENOBUFS)
 // 			*m_headp = NULL;
@@ -446,7 +446,7 @@ retry:
 	olinfo_status |= IXGBE_ADVTXD_CC;
 	i = txr->next_avail_desc;
 	// for (j = 0; j < nsegs; j++) {
-	// 	bus_size_t seglen;
+	// 	bus_size_t seglen
 	// 	bus_addr_t segaddr;
     //
 	// 	txbuf = &txr->tx_buffers[i];
@@ -469,6 +469,7 @@ retry:
     txd = &txr->tx_base[i];
     seglen = packet->len; // seglen = segs[j].ds_len;
     // segaddr = htole64(segs[j].ds_addr);
+    olinfo_status |= seglen << IXGBE_ADVTXD_PAYLEN_SHIFT;
     memcpy(reinterpret_cast<void *>(p2v(txd->read.buffer_addr)), packet->buf, seglen);
 
 	// 	txd->read.buffer_addr = segaddr;
@@ -761,154 +762,155 @@ ixgbe_setup_transmit_structures(struct adapter *adapter)
  *
  **********************************************************************/
 
-// static int
-// ixgbe_tx_ctx_setup(struct tx_ring *txr, struct mbuf *mp,
-//     u32 *cmd_type_len, u32 *olinfo_status)
-// {
-// 	struct adapter *adapter = txr->adapter;
-// 	struct ixgbe_adv_tx_context_desc *TXD;
-// 	struct ether_vlan_header *eh;
-// #ifdef INET
-// 	struct ip *ip;
-// #endif
-// #ifdef INET6
-// 	struct ip6_hdr *ip6;
-// #endif
-// 	u32 vlan_macip_lens = 0, type_tucmd_mlhl = 0;
-// 	int	ehdrlen, ip_hlen = 0;
-// 	u16	etype;
-// 	u8	ipproto = 0;
-// 	int	offload = TRUE;
-// 	int	ctxd = txr->next_avail_desc;
-// 	u16	vtag = 0;
-// 	caddr_t l3d;
-//
-//
-// 	#<{(| First check if TSO is to be used |)}>#
-// 	// if (mp->m_pkthdr.csum_flags & (CSUM_IP_TSO|CSUM_IP6_TSO))
-// 	// 	return (ixgbe_tso_setup(txr, mp, cmd_type_len, olinfo_status));
-//
-// 	if ((mp->m_pkthdr.csum_flags & CSUM_OFFLOAD) == 0)
-// 		offload = FALSE;
-//
-//
-// 	#<{(| Indicate the whole packet as payload when not doing TSO |)}>#
-//        	*olinfo_status |= mp->m_pkthdr.len << IXGBE_ADVTXD_PAYLEN_SHIFT;
-//
-// 	#<{(| Now ready a context descriptor |)}>#
-// 	TXD = (struct ixgbe_adv_tx_context_desc *) &txr->tx_base[ctxd];
-//
-// 	#<{(|
-// 	** In advanced descriptors the vlan tag must
-// 	** be placed into the context descriptor. Hence
-// 	** we need to make one even if not doing offloads.
-// 	|)}>#
-// 	if (mp->m_flags & M_VLANTAG) {
-// 		vtag = htole16(mp->m_pkthdr.ether_vtag);
-// 		vlan_macip_lens |= (vtag << IXGBE_ADVTXD_VLAN_SHIFT);
-// 	} else if (!IXGBE_IS_X550VF(adapter) && (offload == FALSE))
-// 		return (0);
-//
-// 	#<{(|
-// 	 * Determine where frame payload starts.
-// 	 * Jump over vlan headers if already present,
-// 	 * helpful for QinQ too.
-// 	 |)}>#
-// 	eh = mtod(mp, struct ether_vlan_header *);
-// 	if (eh->evl_encap_proto == htons(ETHERTYPE_VLAN)) {
-// 		etype = ntohs(eh->evl_proto);
-// 		ehdrlen = ETHER_HDR_LEN + ETHER_VLAN_ENCAP_LEN;
-// 	} else {
-// 		etype = ntohs(eh->evl_encap_proto);
-// 		ehdrlen = ETHER_HDR_LEN;
-// 	}
-//
-// 	#<{(| Set the ether header length |)}>#
-// 	vlan_macip_lens |= ehdrlen << IXGBE_ADVTXD_MACLEN_SHIFT;
-//
-// 	if (offload == FALSE)
-// 		goto no_offloads;
-//
-// 	#<{(|
-// 	 * If the first mbuf only includes the ethernet header, jump to the next one
-// 	 * XXX: This assumes the stack splits mbufs containing headers on header boundaries
-// 	 * XXX: And assumes the entire IP header is contained in one mbuf
-// 	 |)}>#
-// 	if (mp->m_len == ehdrlen && mp->m_next)
-// 		l3d = mtod(mp->m_next, caddr_t);
-// 	else
-// 		l3d = mtod(mp, caddr_t) + ehdrlen;
-//
-// 	switch (etype) {
-// 		case ETHERTYPE_IP:
-// 			ip = (struct ip *)(l3d);
-// 			ip_hlen = ip->ip_hl << 2;
-// 			ipproto = ip->ip_p;
-// 			type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_IPV4;
-// 			#<{(| Insert IPv4 checksum into data descriptors |)}>#
-// 			if (mp->m_pkthdr.csum_flags & CSUM_IP) {
-// 				ip->ip_sum = 0;
-// 				*olinfo_status |= IXGBE_TXD_POPTS_IXSM << 8;
-// 			}
-// 			break;
-// 		case ETHERTYPE_IPV6:
-// 			ip6 = (struct ip6_hdr *)(l3d);
-// 			ip_hlen = sizeof(struct ip6_hdr);
-// 			ipproto = ip6->ip6_nxt;
-// 			type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_IPV6;
-// 			break;
-// 		default:
-// 			offload = FALSE;
-// 			break;
-// 	}
-//
-// 	vlan_macip_lens |= ip_hlen;
-//
-// 	#<{(| No support for offloads for non-L4 next headers |)}>#
-// 	switch (ipproto) {
-// 		case IPPROTO_TCP:
-// 			if (mp->m_pkthdr.csum_flags & (CSUM_IP_TCP | CSUM_IP6_TCP))
-// 				type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_L4T_TCP;
-// 			else
-// 				offload = false;
-// 			break;
-// 		case IPPROTO_UDP:
-// 			if (mp->m_pkthdr.csum_flags & (CSUM_IP_UDP | CSUM_IP6_UDP))
-// 				type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_L4T_UDP;
-// 			else
-// 				offload = false;
-// 			break;
-// 		case IPPROTO_SCTP:
-// 			if (mp->m_pkthdr.csum_flags & (CSUM_IP_SCTP | CSUM_IP6_SCTP))
-// 				type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_L4T_SCTP;
-// 			else
-// 				offload = false;
-// 			break;
-// 		default:
-// 			offload = false;
-// 			break;
-// 	}
-//
-// 	if (offload) #<{(| Insert L4 checksum into data descriptors |)}>#
-// 		*olinfo_status |= IXGBE_TXD_POPTS_TXSM << 8;
-//
-// no_offloads:
-// 	type_tucmd_mlhl |= IXGBE_ADVTXD_DCMD_DEXT | IXGBE_ADVTXD_DTYP_CTXT;
-//
-// 	#<{(| Now copy bits into descriptor |)}>#
-// 	TXD->vlan_macip_lens = htole32(vlan_macip_lens);
-// 	TXD->type_tucmd_mlhl = htole32(type_tucmd_mlhl);
-// 	TXD->seqnum_seed = htole32(0);
-// 	TXD->mss_l4len_idx = htole32(0);
-//
-// 	#<{(| We've consumed the first desc, adjust counters |)}>#
-// 	if (++ctxd == txr->num_desc)
-// 		ctxd = 0;
-// 	txr->next_avail_desc = ctxd;
-// 	--txr->tx_avail;
-//
-//         return (0);
-// }
+static int
+ixgbe_tx_ctx_setup(struct tx_ring *txr, struct mbuf * /* mp */,
+    u32 *cmd_type_len, u32 *olinfo_status)
+{
+	struct adapter *adapter = txr->adapter;
+	struct ixgbe_adv_tx_context_desc *TXD;
+	// struct ether_vlan_header *eh;
+#ifdef INET
+	struct ip *ip;
+#endif
+#ifdef INET6
+	struct ip6_hdr *ip6;
+#endif
+	u32 vlan_macip_lens = 0, type_tucmd_mlhl = 0;
+	int	ehdrlen, ip_hlen = 0;
+	u16	etype;
+	u8	ipproto = 0;
+	int	offload = TRUE;
+	int	ctxd = txr->next_avail_desc;
+	u16	vtag = 0;
+	caddr_t l3d;
+
+
+  /* First check if TSO is to be used */
+  // if (mp->m_pkthdr.csum_flags & (CSUM_IP_TSO|CSUM_IP6_TSO))
+ 	// 	return (ixgbe_tso_setup(txr, mp, cmd_type_len, olinfo_status));
+
+ 	// if ((mp->m_pkthdr.csum_flags & CSUM_OFFLOAD) == 0)
+  offload = FALSE;
+
+
+  /* Indicate the whole packet as payload when not doing TSO */
+  // *olinfo_status |= mp->m_pkthdr.len << IXGBE_ADVTXD_PAYLEN_SHIFT;
+  
+  /* Now ready a context descriptor */
+ 	TXD = (struct ixgbe_adv_tx_context_desc *) &txr->tx_base[ctxd];
+  
+  /*
+  ** In advanced descriptors the vlan tag must
+  ** be placed into the context descriptor. Hence
+  ** we need to make one even if not doing offloads.
+  */
+ 	// if (mp->m_flags & M_VLANTAG) {
+	// 	vtag = htole16(mp->m_pkthdr.ether_vtag);
+	// 	vlan_macip_lens |= (vtag << IXGBE_ADVTXD_VLAN_SHIFT);
+	// } else 
+  if (!IXGBE_IS_X550VF(adapter) && (offload == FALSE))
+		return (0);
+
+  /*
+   * Determine where frame payload starts.
+   * Jump over vlan headers if already present,
+   * helpful for QinQ too.
+   */
+	// eh = mtod(mp, struct ether_vlan_header *);
+	// if (eh->evl_encap_proto == htons(ETHERTYPE_VLAN)) {
+	// 	etype = ntohs(eh->evl_proto);
+	// 	ehdrlen = ETHER_HDR_LEN + ETHER_VLAN_ENCAP_LEN;
+	// } else {
+  // etype = ntohs(eh->evl_encap_proto);
+  ehdrlen = ETHER_HDR_LEN;
+	// }
+
+  /* Set the ether header length */
+ 	vlan_macip_lens |= ehdrlen << IXGBE_ADVTXD_MACLEN_SHIFT;
+  
+	if (offload == FALSE)
+		goto no_offloads;
+  
+  /*
+   * If the first mbuf only includes the ethernet header, jump to the next one
+   * XXX: This assumes the stack splits mbufs containing headers on header boundaries
+   * XXX: And assumes the entire IP header is contained in one mbuf
+   */
+	// if (mp->m_len == ehdrlen && mp->m_next)
+	// 	l3d = mtod(mp->m_next, caddr_t);
+	// else
+	// 	l3d = mtod(mp, caddr_t) + ehdrlen;
+
+	// switch (etype) {
+  // case ETHERTYPE_IP:
+  //   ip = (struct ip *)(l3d);
+  //   ip_hlen = ip->ip_hl << 2;
+  //   ipproto = ip->ip_p;
+  //   type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_IPV4;
+  //   /* Insert IPv4 checksum into data descriptors */
+  //   if (mp->m_pkthdr.csum_flags & CSUM_IP) {
+  //     ip->ip_sum = 0;
+  //     *olinfo_status |= IXGBE_TXD_POPTS_IXSM << 8;
+  //   }
+  //   break;
+  // case ETHERTYPE_IPV6:
+  //   ip6 = (struct ip6_hdr *)(l3d);
+  //   ip_hlen = sizeof(struct ip6_hdr);
+  //   ipproto = ip6->ip6_nxt;
+  //   type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_IPV6;
+  //   break;
+  // default:
+  //   offload = FALSE;
+  //   break;
+	// }
+  
+	// vlan_macip_lens |= ip_hlen;
+  
+  // /* No support for offloads for non-L4 next headers */
+  // switch (ipproto) {
+  // case IPPROTO_TCP:
+  //   if (mp->m_pkthdr.csum_flags & (CSUM_IP_TCP | CSUM_IP6_TCP))
+  //     type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_L4T_TCP;
+  //   else
+  //     offload = false;
+  //   break;
+  // case IPPROTO_UDP:
+  //   if (mp->m_pkthdr.csum_flags & (CSUM_IP_UDP | CSUM_IP6_UDP))
+  //     type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_L4T_UDP;
+  //   else
+  //     offload = false;
+  //   break;
+  // case IPPROTO_SCTP:
+  //   if (mp->m_pkthdr.csum_flags & (CSUM_IP_SCTP | CSUM_IP6_SCTP))
+  //     type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_L4T_SCTP;
+  //   else
+  //     offload = false;
+  //   break;
+  // default:
+  //   offload = false;
+  //   break;
+	// }
+  
+ 	// if (offload) /* Insert L4 checksum into data descriptors */
+  //   *olinfo_status |= IXGBE_TXD_POPTS_TXSM << 8;
+  
+ no_offloads:
+	type_tucmd_mlhl |= IXGBE_ADVTXD_DCMD_DEXT | IXGBE_ADVTXD_DTYP_CTXT;
+  
+	/* Now copy bits into descriptor */
+	TXD->vlan_macip_lens = htole32(vlan_macip_lens);
+	TXD->type_tucmd_mlhl = htole32(type_tucmd_mlhl);
+	TXD->seqnum_seed = htole32(0);
+	TXD->mss_l4len_idx = htole32(0);
+
+	/* We've consumed the first desc, adjust counters */
+	if (++ctxd == txr->num_desc)
+		ctxd = 0;
+	txr->next_avail_desc = ctxd;
+	--txr->tx_avail;
+  
+  return (0);
+}
 
 /**********************************************************************
  *
