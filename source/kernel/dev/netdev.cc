@@ -46,13 +46,13 @@ bool NetDevCtrl::RegisterDevice(NetDev *dev, const char *prefix) {
     _dev_table[_current_device_number].device = dev;
 
     // allocate protocol stack
-    ProtocolStack *addr = reinterpret_cast<ProtocolStack*>(virtmem_ctrl->Alloc(sizeof(ProtocolStack)));
-    ProtocolStack *ptcl_stack = new(addr) ProtocolStack();
-    ptcl_stack->Setup();
+    // ProtocolStack *addr = reinterpret_cast<ProtocolStack*>(virtmem_ctrl->Alloc(sizeof(ProtocolStack)));
+    // ProtocolStack *ptcl_stack = new(addr) ProtocolStack();
+    // ptcl_stack->Setup();
 
-    _dev_table[_current_device_number].ptcl_stack = ptcl_stack;
-    dev->SetProtocolStack(ptcl_stack);
-    ptcl_stack->SetDevice(dev);
+    // _dev_table[_current_device_number].ptcl_stack = ptcl_stack;
+    // dev->SetProtocolStack(ptcl_stack);
+    // ptcl_stack->SetDevice(dev);
 
     _current_device_number += 1;
 
