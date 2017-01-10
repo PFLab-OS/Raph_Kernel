@@ -223,7 +223,6 @@ ixgbe_mq_start(struct ifnet *ifp/*, struct mbuf *m*/)
 		IXGBE_TX_UNLOCK(txr);
 	} else
 		taskqueue_enqueue(que->tq, &txr->txq_task);
-
 	return (0);
 }
 
@@ -306,8 +305,8 @@ ixgbe_deferred_mq_start(void *arg, int pending)
 
 	IXGBE_TX_LOCK(txr);
 // 	if (!drbr_empty(ifp, txr->br))
-    if (!ixgbe->GetNetInterface()._tx_buffered.IsEmpty())
-		ixgbe_mq_start_locked(ifp, txr);
+  if (!ixgbe->GetNetInterface()._tx_buffered.IsEmpty())
+    ixgbe_mq_start_locked(ifp, txr);
 	IXGBE_TX_UNLOCK(txr);
 }
 
