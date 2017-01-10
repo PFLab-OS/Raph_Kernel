@@ -41,6 +41,10 @@ Vagrant.configure(2) do |config|
       "--pae", "on",
       "--paravirtprovider", "kvm",
     ]
+    vb.customize [
+      "setextradata", :id,
+      "VBoxInternal/Devices/VMMDev/0/Config/GetHostTimeDisabled", 0
+    ]
   end
 
   # Create a private network, which allows host-only access to the machine

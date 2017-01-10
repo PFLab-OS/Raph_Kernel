@@ -149,6 +149,7 @@ void ifconfig(int argc, const char* argv[]){
   gtty->CprintfRaw("\n");
   for (int i = 0; i < list.GetLen(); i++) {
     gtty->CprintfRaw("%s", list[i]);
+    netdev_ctrl->GetDeviceInfo(list[i])->device->UpdateLinkStatus();
     gtty->CprintfRaw("  link: %s\n", netdev_ctrl->IsLinkUp(list[i]) ? "up" : "down");
   }
 }
@@ -1075,7 +1076,8 @@ void bench(int argc, const char* argv[]) {
     gtty->Cprintf("invalid argument.\n");
     return;
   }
-  static const char *device = (argc == 2) ? "eth0" : argv[2];
+  static const char *device;
+  device = (argc == 2) ? "eth0" : argv[2];
   if (!netdev_ctrl->Exists(device)) {
     gtty->Cprintf("no ethernet interface(%s).\n", device);
     return;
@@ -1184,14 +1186,15 @@ void bench(int argc, const char* argv[]) {
         uint32_t ipaddr;
         uint16_t op;
         
+        gtty->CprintfRaw("=");
         if (socket.Read(op, ipaddr) >= 0) {
+            kassert(false);
           if(op == ArpSocket::kOpReply) {
             uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;
             cnt = 0;
             sum += l;
             rtime++;
           } else if(op == ArpSocket::kOpRequest) {
-            kassert(false);
             socket.Reply(ipaddr);
           }
         }

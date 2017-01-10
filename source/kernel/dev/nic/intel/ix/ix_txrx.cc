@@ -1,7 +1,3 @@
-// RAPH_DEBUG
-#include <tty.h>
-#include <global.h>
-
 /******************************************************************************
 
   Copyright (c) 2001-2015, Intel Corporation
@@ -45,6 +41,8 @@
 
 #include "ixgbe.h"
 #include "ix.h"
+
+#include <mem/paging.h>
 
 #ifdef	RSS
 #include <net/rss_config.h>
@@ -645,6 +643,12 @@ ixgbe_setup_transmit_ring(struct tx_ring *txr)
     BsdEthernet::Packet *packet;
     while(ixgbe->GetNetInterface()._tx_buffered.Pop(packet)) {
         kassert(ixgbe->GetNetInterface()._tx_reserved.Push(packet));
+    }
+
+    for (int j = 0; j < txr->num_desc; j++) {
+      PhysAddr paddr;
+      physmem_ctrl->Alloc(paddr, PagingCtrl::ConvertNumToPageSize(MCLBYTES));
+      txr->tx_base[j].read.buffer_addr = htole64(paddr.GetAddr());
     }
 
 #ifdef IXGBE_FDIR
@@ -1343,7 +1347,7 @@ ixgbe_refresh_mbufs(struct rx_ring *rxr, int limit)
 {
 	struct adapter		*adapter = rxr->adapter;
 	// bus_dma_segment_t	seg[1];
-	// struct ixgbe_rx_buf	*rxbuf;
+  struct ixgbe_rx_buf	*rxbuf;
 	// struct mbuf		*mp;
 	int			i, j, nsegs, error;
 	bool			refreshed = FALSE;
@@ -1354,7 +1358,7 @@ ixgbe_refresh_mbufs(struct rx_ring *rxr, int limit)
 		j = 0;
 
 	while (j != limit) {
-		// rxbuf = &rxr->rx_buffers[i];
+    rxbuf = &rxr->rx_buffers[i];
 		// if (rxbuf->buf == NULL) {
 		// 	mp = m_getjcl(M_NOWAIT, MT_DATA,
 		// 	    M_PKTHDR, rxr->mbuf_sz);
@@ -1391,7 +1395,8 @@ ixgbe_refresh_mbufs(struct rx_ring *rxr, int limit)
 		// 	rxr->rx_base[i].read.pkt_addr = rxbuf->addr;
 	    // 	rxbuf->flags &= ~IXGBE_RX_COPY;
 		// }
-        //
+    rxr->rx_base[i].read.pkt_addr = rxbuf->addr;
+
 		refreshed = TRUE;
 		// #<{(| Next is precalculated |)}>#
 		i = j;
@@ -1578,6 +1583,10 @@ ixgbe_allocate_receive_buffers(struct rx_ring *rxr)
 		 // #<{(| Update the descriptor and the cached value |)}>#
 		 // rxr->rx_base[j].read.pkt_addr = htole64(seg[0].ds_addr);
 		 // rxbuf->addr = htole64(seg[0].ds_addr);
+
+     PhysAddr paddr;
+     physmem_ctrl->Alloc(paddr, PagingCtrl::ConvertNumToPageSize(MCLBYTES));
+     rxbuf->addr = rxr->rx_base[j].read.pkt_addr = htole64(paddr.GetAddr());
 	 }
 
 
@@ -1898,7 +1907,7 @@ ixgbe_rxeof(struct ix_queue *que)
 
         BsdEthernet::Packet *packet;
         if (ixgbe->GetNetInterface()._rx_reserved.Pop(packet)) {
-          memcpy(packet->buf, reinterpret_cast<void *>(p2v(rxr->rx_base[i].read.pkt_addr)), len);
+          memcpy(packet->buf, reinterpret_cast<void *>(p2v(rbuf->addr)), len);
           packet->len = len;
           if (!ixgbe->GetNetInterface()._rx_buffered.Push(packet)) {
             kassert(ixgbe->GetNetInterface()._rx_reserved.Push(packet));
@@ -2040,11 +2049,11 @@ next_desc:
 			i = 0;
 
 		/* Now send to the stack or do LRO */
-// 		if (sendmp != NULL) {
-// 			rxr->next_to_check = i;
-// 			ixgbe_rx_input(rxr, ifp, sendmp, ptype);
-// 			i = rxr->next_to_check;
-// 		}
+		// if (sendmp != NULL) {
+			rxr->next_to_check = i;
+			// ixgbe_rx_input(rxr, ifp, sendmp, ptype);
+			// i = rxr->next_to_check;
+		// }
 
                /* Every 8 descriptors we go to refresh mbufs */
 		if (processed == 8) {

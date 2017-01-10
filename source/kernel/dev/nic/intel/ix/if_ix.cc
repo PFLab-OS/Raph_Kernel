@@ -169,8 +169,8 @@ static void	ixgbe_unregister_vlan(void *, struct ifnet *, u16);
 static void     ixgbe_add_hw_stats(struct adapter *);
 
 /* Sysctl handlers */
-// static void	ixgbe_set_sysctl_value(struct adapter *, const char *,
-// 		     const char *, int *, int);
+static void	ixgbe_set_sysctl_value(struct adapter *, const char *,
+		     const char *, int *, int);
 // static int	ixgbe_set_flowcntl(SYSCTL_HANDLER_ARGS);
 // static int	ixgbe_set_advertise(SYSCTL_HANDLER_ARGS);
 // static int	ixgbe_sysctl_thermal_test(SYSCTL_HANDLER_ARGS);
@@ -466,13 +466,13 @@ ixgbe_attach(device_t dev)
 	}
 
 	/* Sysctls for limiting the amount of work done in the taskqueues */
-	// ixgbe_set_sysctl_value(adapter, "rx_processing_limit",
-	//     "max number of rx packets to process",
-	//     &adapter->rx_process_limit, ixgbe_rx_process_limit);
-
-	// ixgbe_set_sysctl_value(adapter, "tx_processing_limit",
-	//     "max number of tx packets to process",
-	// &adapter->tx_process_limit, ixgbe_tx_process_limit);
+	ixgbe_set_sysctl_value(adapter, "rx_processing_limit",
+                         "max number of rx packets to process",
+                         reinterpret_cast<int *>(&adapter->rx_process_limit), ixgbe_rx_process_limit);
+  
+	ixgbe_set_sysctl_value(adapter, "tx_processing_limit",
+                         "max number of tx packets to process",
+                         reinterpret_cast<int *>(&adapter->tx_process_limit), ixgbe_tx_process_limit);
 
 	/* Do descriptor calc and sanity checks */
 	if (((ixgbe_txd * sizeof(union ixgbe_adv_tx_desc)) % DBA_ALIGN) != 0 ||
@@ -2200,7 +2200,7 @@ ixgbe_update_link_status(struct adapter *adapter)
 			if (bootverbose)
 				device_printf(dev,"Link is Down\n");
 			// if_link_state_change(ifp, LINK_STATE_DOWN);
-            ixgbe->GetNetInterface().SetStatus(BsdEthernet::LinkStatus::kUp);
+            ixgbe->GetNetInterface().SetStatus(BsdEthernet::LinkStatus::kDown);
 			adapter->link_active = FALSE;
 #ifdef PCI_IOV
 			ixgbe_ping_all_vfs(adapter);
@@ -4550,15 +4550,15 @@ ixgbe_add_hw_stats(struct adapter *adapter)
 	// 		"1024-1522 byte frames transmitted");
 }
 
-// static void
-// ixgbe_set_sysctl_value(struct adapter *adapter, const char *name,
-//     const char *description, int *limit, int value)
-// {
-// 	*limit = value;
-// 	SYSCTL_ADD_INT(device_get_sysctl_ctx(adapter->dev),
-// 	    SYSCTL_CHILDREN(device_get_sysctl_tree(adapter->dev)),
-// 	    OID_AUTO, name, CTLFLAG_RW, limit, value, description);
-// }
+static void
+ixgbe_set_sysctl_value(struct adapter *adapter, const char *name,
+    const char *description, int *limit, int value)
+{
+	*limit = value;
+	// SYSCTL_ADD_INT(device_get_sysctl_ctx(adapter->dev),
+	//     SYSCTL_CHILDREN(device_get_sysctl_tree(adapter->dev)),
+	//     OID_AUTO, name, CTLFLAG_RW, limit, value, description);
+}
 
 /*
 ** Set flow control using sysctl:
