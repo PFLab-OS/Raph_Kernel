@@ -41,17 +41,40 @@ public:
     virt_addr addr = p2v(static_cast<phys_addr>(multiboot_info));
     addr += 8;
     multiboot_tag *tag;
+    gtty->CprintfRaw("\n");
     for (tag = reinterpret_cast<multiboot_tag *>(addr); tag->type != MULTIBOOT_TAG_TYPE_END; addr = alignUp(addr + tag->size, 8), tag = reinterpret_cast<multiboot_tag *>(addr)) {
       switch(tag->type) {
       case MULTIBOOT_TAG_TYPE_MODULE: {
         multiboot_tag_module* info = (struct multiboot_tag_module *) tag;
-        gtty->CprintfRaw("module %x %x\n", info->mod_start, info->mod_end);
+        gtty->CprintfRaw("module: %x %x\n", info->mod_start, info->mod_end);
         break;
       }
       default:
         break;
       }
     }
+  }
+  void ShowBuildTimeStamp() {
+    virt_addr addr = p2v(static_cast<phys_addr>(multiboot_info));
+    addr += 8;
+    multiboot_tag *tag;
+    gtty->CprintfRaw("[kernel] info: Build Information as follows\n");
+    for (tag = reinterpret_cast<multiboot_tag *>(addr); tag->type != MULTIBOOT_TAG_TYPE_END; addr = alignUp(addr + tag->size, 8), tag = reinterpret_cast<multiboot_tag *>(addr)) {
+      switch(tag->type) {
+      case MULTIBOOT_TAG_TYPE_MODULE: {
+        multiboot_tag_module* info = (struct multiboot_tag_module *) tag;
+        if (strcmp(info->cmdline, "time") == 0) {
+          for (multiboot_uint32_t addr = info->mod_start; addr < info->mod_end; addr++) {
+            gtty->CprintfRaw("%c", *(reinterpret_cast<uint8_t *>(addr)));
+          }
+        }
+        break;
+      }
+      default:
+        break;
+      }
+    }
+    gtty->CprintfRaw("\n");
   }
   phys_addr GetPhysMemoryEnd() {
     return _phys_memory_end;

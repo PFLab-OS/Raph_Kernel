@@ -1409,6 +1409,7 @@ extern "C" int main() {
   while (!apic_ctrl->IsBootupAll()) {
   }
   gtty->Cprintf("\n\n[kernel] info: initialization completed\n");
+  multiboot_ctrl->ShowBuildTimeStamp();
 
   shell->Setup();
   shell->Register("halt", halt);
