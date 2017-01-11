@@ -144,6 +144,16 @@ void lspci(int argc, const char* argv[]){
   }
 }
 
+void ifconfig(int argc, const char* argv[]){
+  auptr<const char *> list = netdev_ctrl->GetNamesOfAllDevices();
+  gtty->CprintfRaw("\n");
+  for (int i = 0; i < list.GetLen(); i++) {
+    gtty->CprintfRaw("%s", list[i]);
+    netdev_ctrl->GetDeviceInfo(list[i])->device->UpdateLinkStatus();
+    gtty->CprintfRaw("  link: %s\n", netdev_ctrl->IsLinkUp(list[i]) ? "up" : "down");
+  }
+}
+
 static bool is_knl() {
   return x86::get_display_family_model() == 0x0657;
 }
@@ -1062,12 +1072,14 @@ void bench(int argc, const char* argv[]) {
   static const int stime = 3000;
   static int time = stime, rtime = 0;
 
-  if (argc != 2) {
+  if (argc != 2 && argc != 3) {
     gtty->Cprintf("invalid argument.\n");
     return;
   }
-  if (!netdev_ctrl->Exists("en0")) {
-    gtty->Cprintf("no ethernet interface.\n");
+  static const char *device;
+  device = (argc == 2) ? "eth0" : argv[2];
+  if (!netdev_ctrl->Exists(device)) {
+    gtty->Cprintf("no ethernet interface(%s).\n", device);
     return;
   }
   if (strcmp(argv[1], "snd") == 0) {
@@ -1093,65 +1105,85 @@ void bench(int argc, const char* argv[]) {
     return;
   }
 
-  netdev_ctrl->AssignIpv4Address("en0", inet_atoi(ip1));
-
-  {
-    static ArpSocket socket;
-    socket.AssignNetworkDevice("en0");
-
-    if(socket.Open() < 0) {
-      gtty->Cprintf("[error] failed to open socket\n");
-    }
-    cnt = 0;
-    new(&tt2) Callout;
-    Function func;
-    func.Init([](void *){
-        if (!apic_ctrl->IsBootupAll()) {
-          tt2.SetHandler(1000);
-          return;
-        }
-        if (!netdev_ctrl->IsLinkUp("en0")) {
-          tt2.SetHandler(1000);
-          return;
-        }
-        if (bstate != BenchState::kRcv) {
-          if (cnt != 0) {
-            tt2.SetHandler(1000);
-            return;
-          }
-          for(int k = 0; k < 1; k++) {
-            if (time == 0) {
-              break;
-            }
-            cnt = timer->ReadMainCnt();
-            if(socket.Request(inet_atoi(ip2)) < 0) {
-              gtty->Cprintf("[arp] failed to transmit request\n");
-            }
-            time--;
-          }
-          if (time != 0) {
-            tt2.SetHandler(1000);
-          }
-        } else {
-          gtty->Cprintf("[debug] info: Link is Up\n");
-        }
-      }, nullptr);
-    tt2.Init(func);
-    CpuId cpuid(3);
-    tt2.SetHandler(cpuid, 10);
-  }
+  NetDev *eth = netdev_ctrl->GetDeviceInfo(device)->device;
+  // send ARP
+  // {
+  //   static int state = 0;
+  //   cnt = 0;
+  //   new(&tt2) Callout;
+  //   Function func;
+  //   func.Init([](void *){
+  //       if (!apic_ctrl->IsBootupAll()) {
+  //         tt2.SetHandler(1000);
+  //         return;
+  //       }
+  //       ixgbe->UpdateLinkStatus();
+  //       if (ixgbe->GetStatus() != NetDev::LinkStatus::kUp) {
+  //         tt2.SetHandler(1000);
+  //         return;
+  //       }
+  //       if (bstate != BenchState::kRcv) {
+  //         if (cnt != 0) {
+  //           tt2.SetHandler(1000);
+  //           return;
+  //         }
+  //         for(int k = 0; k < 1; k++) {
+  //           if (time == 0) {
+  //             break;
+  //           }
+  //           uint8_t data[] = {
+  //             0xff, 0xff, 0xff, 0xff, 0xff, 0xff, // Target MAC Address
+  //             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source MAC Address
+  //             0x08, 0x06, // Type: ARP
+  //             // ARP Packet
+  //             0x00, 0x01, // HardwareType: Ethernet
+  //             0x08, 0x00, // ProtocolType: IPv4
+  //             0x06, // HardwareLength
+  //             0x04, // ProtocolLength
+  //             0x00, 0x01, // Operation: ARP Request
+  //             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source Hardware Address
+  //             0x00, 0x00, 0x00, 0x00, // Source Protocol Address
+  //             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
+  //             // Target Protocol Address
+  //             0x00, 0x00, 0x00, 0x00
+  //           };
+  //           ixgbe->GetEthAddr(data + 6);
+  //           memcpy(data + 22, data + 6, 6);
+  //           memcpy(data + 28, ip1, 4);
+  //           memcpy(data + 38, ip2, 4);
+  //           uint32_t len = sizeof(data)/sizeof(uint8_t);
+  //           NetDev::Packet *tpacket;
+  //           kassert(ixgbe->GetTxPacket(tpacket));
+  //           memcpy(tpacket->buf, data, len);
+  //           tpacket->len = len;
+  //           cnt = timer->ReadMainCnt();
+  //           ixgbe->TransmitPacket(tpacket);
+  //           // gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
+  //           time--;
+  //         }
+  //         if (time != 0) {
+  //           tt2.SetHandler(1000);
+  //         }
+  //       } else {
+  //         gtty->Printf("s", "[debug] info: Link is Up\n");
+  //       }
+  //     }, nullptr);
+  //   tt2.Init(func);
+  //   tt2.SetHandler(3, 10);
+  // }
 
   if (bstate != BenchState::kRcv) {
     new(&tt3) Callout;
     Function func;
     func.Init([](void *){
+        NetDev *eth = netdev_ctrl->GetDeviceInfo(device)->device;
         if (rtime > 0) {
-          gtty->Cprintf("ARP Reply average latency: %d us [%d / %d]\n", sum / rtime, rtime, stime);
+          gtty->Printf("s","ARP Reply average latency:","d",sum / rtime,"s","us [","d",rtime,"s","/","d",stime,"s","]\n");
         } else {
-          if (netdev_ctrl->IsLinkUp("en0")) {
-            gtty->Cprintf("Link is Up, but no ARP Reply\n");
+          if (eth->GetStatus() == NetDev::LinkStatus::kUp) {
+            gtty->Printf("s","Link is Up, but no ARP Reply\n");
           } else {
-            gtty->Cprintf("Link is Down, please wait...\n");
+            gtty->Printf("s","Link is Down, please wait...\n");
           }
         }
         if (rtime != stime) {
@@ -1159,35 +1191,94 @@ void bench(int argc, const char* argv[]) {
         }
       }, nullptr);
     tt3.Init(func);
-    CpuId cpuid(6);
+    CpuId cpuid(1);
     tt3.SetHandler(cpuid, 1000*1000*3);
   }
 
-  static ArpSocket socket;
-  socket.AssignNetworkDevice("en0");
-
-  if(socket.Open() < 0) {
-    gtty->Cprintf("[error] failed to open socket\n");
-  } else {
+  {
     Function func;
     func.Init([](void *){
-        uint32_t ipaddr;
-        uint16_t op;
-        
-        if (socket.Read(op, ipaddr) >= 0) {
-          if(op == ArpSocket::kOpReply) {
-            uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;
-            cnt = 0;
-            sum += l;
-            rtime++;
-          } else if(op == ArpSocket::kOpRequest) {
-            socket.Reply(ipaddr);
-          }
+        NetDev *eth = netdev_ctrl->GetDeviceInfo(device)->device;
+        NetDev::Packet *rpacket;
+        if(!eth->ReceivePacket(rpacket)) {
+          return;
         }
+        // received packet
+        if(rpacket->buf[12] == 0x08 && rpacket->buf[13] == 0x06 && rpacket->buf[21] == 0x02) {
+          uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;
+          cnt = 0;
+          sum += l;
+          rtime++;
+          // ARP packet
+          char buf[40];
+          memcpy(buf, rpacket->buf,40);
+          // gtty->Printf(
+          //              "s", "ARP Reply received; ",
+          //              "x", rpacket->buf[22], "s", ":",
+          //              "x", rpacket->buf[23], "s", ":",
+          //              "x", rpacket->buf[24], "s", ":",
+          //              "x", rpacket->buf[25], "s", ":",
+          //              "x", rpacket->buf[26], "s", ":",
+          //              "x", rpacket->buf[27], "s", " is ",
+          //              "d", rpacket->buf[28], "s", ".",
+          //              "d", rpacket->buf[29], "s", ".",
+          //              "d", rpacket->buf[30], "s", ".",
+          //              "d", rpacket->buf[31], "s", " ",
+          //              "s","latency:","d",l,"s","us\n");
+        }
+        if(rpacket->buf[12] == 0x08 && rpacket->buf[13] == 0x06 && rpacket->buf[21] == 0x01 && (memcmp(rpacket->buf + 38, ip1, 4) == 0)) {
+          // ARP packet
+          uint8_t data[] = {
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target MAC Address
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source MAC Address
+            0x08, 0x06, // Type: ARP
+            // ARP Packet
+            0x00, 0x01, // HardwareType: Ethernet
+            0x08, 0x00, // ProtocolType: IPv4
+            0x06, // HardwareLength
+            0x04, // ProtocolLength
+            0x00, 0x02, // Operation: ARP Reply
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source Hardware Address
+            0x00, 0x00, 0x00, 0x00, // Source Protocol Address
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
+            0x00, 0x00, 0x00, 0x00, // Target Protocol Address
+          };
+          memcpy(data, rpacket->buf + 6, 6);
+          static_cast<DevEthernet *>(eth)->GetEthAddr(data + 6);
+          memcpy(data + 22, data + 6, 6);
+          memcpy(data + 28, ip1, 4);
+          memcpy(data + 32, rpacket->buf + 22, 6);
+          memcpy(data + 38, rpacket->buf + 28, 4);
+
+          uint32_t len = sizeof(data)/sizeof(uint8_t);
+          NetDev::Packet *tpacket;
+          kassert(eth->GetTxPacket(tpacket));
+          memcpy(tpacket->buf, data, len);
+          tpacket->len = len;
+          eth->TransmitPacket(tpacket);
+          gtty->Printf(
+                       "s", "ARP Request received; ",
+                       "x", rpacket->buf[22], "s", ":",
+                       "x", rpacket->buf[23], "s", ":",
+                       "x", rpacket->buf[24], "s", ":",
+                       "x", rpacket->buf[25], "s", ":",
+                       "x", rpacket->buf[26], "s", ":",
+                       "x", rpacket->buf[27], "s", ",",
+                       "d", rpacket->buf[28], "s", ".",
+                       "d", rpacket->buf[29], "s", ".",
+                       "d", rpacket->buf[30], "s", ".",
+                       "d", rpacket->buf[31], "s", " says who's ",
+                       "d", rpacket->buf[38], "s", ".",
+                       "d", rpacket->buf[39], "s", ".",
+                       "d", rpacket->buf[40], "s", ".",
+                       "d", rpacket->buf[41], "s", "\n");
+          gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
+        }
+        eth->ReuseRxBuffer(rpacket);
       }, nullptr);
     CpuId cpuid(2);
-    socket.SetReceiveCallback(cpuid, func);
-  }
+    eth->SetReceiveCallback(cpuid, func);
+  }    
 }
 
 static void show(int argc, const char *argv[]) {
@@ -1206,6 +1297,8 @@ static void show(int argc, const char *argv[]) {
     return;
   }
 }
+
+void freebsd_main();
 
 extern "C" int main() {
 
@@ -1283,6 +1376,8 @@ extern "C" int main() {
 
   acpi_ctrl->SetupAcpica();
 
+  freebsd_main();
+
   InitDevices<PciCtrl, Device>();
 
   // 各コアは最低限の初期化ののち、TaskCtrlに制御が移さなければならない
@@ -1320,6 +1415,7 @@ extern "C" int main() {
   shell->Register("reset", reset);
   shell->Register("bench", bench);
   shell->Register("lspci", lspci);
+  shell->Register("ifconfig", ifconfig);
   shell->Register("show", show);
 
   register_membench2_callout();

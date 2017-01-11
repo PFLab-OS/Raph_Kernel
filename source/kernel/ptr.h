@@ -28,9 +28,10 @@
 template<class T>
 class uptr {
 public:
-  uptr(uptr &p) {
+  uptr(const uptr &p) {
     _obj = p._obj;
-    p._obj = nullptr;
+    uptr *p_ = const_cast<uptr *>(&p);
+    p_->_obj = nullptr;
   }
   uptr() {
     _obj = nullptr;
@@ -66,13 +67,15 @@ private:
   T *_obj;
 };
 
+// uptr for array
 template<class T>
 class auptr {
 public:
-  auptr(auptr &p) {
+  auptr(const auptr &p) {
     _obj = p._obj;
     _len = p._len;
-    p._obj = nullptr;
+    auptr *p_ = const_cast<auptr *>(&p);
+    p_->_obj = nullptr;
   }
   auptr(T *obj, int len) {
     _obj = obj;

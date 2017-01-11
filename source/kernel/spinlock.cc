@@ -31,8 +31,13 @@
 #include <global.h>
 
 void IntSpinLock::Lock() {
-  if ((_flag % 2) == 1) {
-    kassert(_cpuid != cpu_ctrl->GetCpuId());
+  if ((_flag % 2) == 1 && _cpuid == cpu_ctrl->GetCpuId()) {
+    assert(_cpuid.IsValid());
+    gtty->CprintfRaw("SpinLock is holded by cpuid %d.\n(current interrupt handling cnt: %d)\n", _cpuid.GetRawId(), idt->GetHandlingCnt());
+    for (size_t i = 0; i < sizeof(_rip) / sizeof(_rip[0]); i++) {
+      gtty->CprintfRaw("backtrace(%d): rip:%llx,\n", i, _rip[i]);
+    }
+    kernel_panic("SpinLock", "self lock! need to solve deadlock.");
   }
   bool showed_timeout_warning = false;
   uint64_t t1;
@@ -54,11 +59,22 @@ void IntSpinLock::Lock() {
       size_t *rbp;
       asm volatile("movq %%rbp, %0":"=r"(rbp));
       show_backtrace(rbp);
+      assert(_cpuid.IsValid());
+      gtty->CprintfRaw("SpinLock is holded by cpuid %d.\n", _cpuid.GetRawId());
+      for (size_t i = 0; i < sizeof(_rip) / sizeof(_rip[0]); i++) {
+        gtty->CprintfRaw("backtrace(%d): rip:%llx,\n", i, _rip[i]);
+      }
       showed_timeout_warning = true;
     }
     flag = GetFlag();
   }
   _cpuid = cpu_ctrl->GetCpuId();
+  size_t *rbp;
+  asm volatile("movq %%rbp, %0":"=r"(rbp));
+  for (size_t i = 0; i < sizeof(_rip) / sizeof(_rip[0]); i++) {
+    _rip[i] = rbp[1];
+    rbp = reinterpret_cast<size_t *>(rbp[0]);
+  }
 }
 
 void IntSpinLock::Unlock() {
@@ -73,6 +89,13 @@ int IntSpinLock::Trylock() {
   bool iflag = disable_interrupt();
   if (((flag % 2) == 0) && SetFlag(flag, flag + 1)) {
     _did_stop_interrupt = iflag;
+    _cpuid = cpu_ctrl->GetCpuId();
+    size_t *rbp;
+    asm volatile("movq %%rbp, %0":"=r"(rbp));
+    for (size_t i = 0; i < sizeof(_rip) / sizeof(_rip[0]); i++) {
+      _rip[i] = rbp[1];
+      rbp = reinterpret_cast<size_t *>(rbp[0]);
+    }
     return 0;
   } else {
     enable_interrupt(iflag);

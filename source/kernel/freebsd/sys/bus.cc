@@ -120,6 +120,17 @@ extern "C" {
     return dev->GetBusClass()->DevMethodBusSetupIntr(r, flags, filter, ithread, arg, cookiep);
   }
 
+  int     bus_teardown_intr(device_t dev, struct resource *r, void *cookie) {
+    // TODO impl
+    return -1;
+  }
+
+  int     bus_bind_intr(device_t dev, struct resource *r, int cpu) {
+    // TODO impl
+    return -1;
+  }
+
+
   int device_printf(device_t dev, const char *fmt, ...) {
     gtty->Cprintf("[pci device]:");
     va_list args;

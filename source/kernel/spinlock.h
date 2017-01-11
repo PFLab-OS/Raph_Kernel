@@ -24,6 +24,7 @@
 #define __RAPH_KERNEL_SPINLOCK_H__
 
 #include <stdint.h>
+#include <stdlib.h>
 #include <_cpu.h>
 
 class SpinLockInterface {
@@ -62,6 +63,7 @@ protected:
   }
   volatile unsigned int _flag = 0;
   CpuId _cpuid;
+  size_t _rip[3];
   bool _did_stop_interrupt = false;
   static const bool kTimeout = true;
 };

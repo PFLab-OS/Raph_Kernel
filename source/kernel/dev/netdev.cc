@@ -38,6 +38,7 @@ bool NetDevCtrl::RegisterDevice(NetDev *dev, const char *prefix) {
     char name[kNetworkInterfaceNameLen];
     strncpy(name, prefix, strlen(prefix));
     name[strlen(prefix)] = _current_device_number + '0';
+    name[strlen(prefix) + 1] = '\0';
 
     // succeed to register
     dev->SetName(name);
@@ -45,13 +46,13 @@ bool NetDevCtrl::RegisterDevice(NetDev *dev, const char *prefix) {
     _dev_table[_current_device_number].device = dev;
 
     // allocate protocol stack
-    ProtocolStack *addr = reinterpret_cast<ProtocolStack*>(virtmem_ctrl->Alloc(sizeof(ProtocolStack)));
-    ProtocolStack *ptcl_stack = new(addr) ProtocolStack();
-    ptcl_stack->Setup();
+    // ProtocolStack *addr = reinterpret_cast<ProtocolStack*>(virtmem_ctrl->Alloc(sizeof(ProtocolStack)));
+    // ProtocolStack *ptcl_stack = new(addr) ProtocolStack();
+    // ptcl_stack->Setup();
 
-    _dev_table[_current_device_number].ptcl_stack = ptcl_stack;
-    dev->SetProtocolStack(ptcl_stack);
-    ptcl_stack->SetDevice(dev);
+    // _dev_table[_current_device_number].ptcl_stack = ptcl_stack;
+    // dev->SetProtocolStack(ptcl_stack);
+    // ptcl_stack->SetDevice(dev);
 
     _current_device_number += 1;
 
@@ -72,6 +73,30 @@ NetDevCtrl::NetDevInfo *NetDevCtrl::GetDeviceInfo(const char *name) {
     }
   }
   return nullptr;
+}
+
+auptr<const char *> NetDevCtrl::GetNamesOfAllDevices() {
+  int j = 0;
+  for(uint32_t i = 0; i < _current_device_number; i++) {
+    if(_dev_table[i].device != nullptr) {
+      j++;
+    }
+  }
+  
+  auptr<const char *> list;
+  list.Init(j);
+
+  j = 0;
+  for(uint32_t i = 0; i < _current_device_number; i++) {
+    NetDev *dev = _dev_table[i].device;
+
+    if(dev != nullptr) {
+      list[j] = dev->GetName();
+      j++;
+    }
+  }
+  
+  return list;
 }
 
 bool NetDevCtrl::IsLinkUp(const char *name) {

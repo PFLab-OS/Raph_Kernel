@@ -31,6 +31,7 @@
 #include <polling.h>
 #include <freebsd/sys/param.h>
 #include <_cpu.h>
+#include <ptr.h>
 
 class ProtocolStack;
 class DevEthernet;
@@ -284,8 +285,17 @@ public:
    * Set up the network interface. Usually you must register this interface
    * to network device controller (NetDevCtrl).
    * Other initialization can be done in this method.
+   *
+   * @param prefix name of interface
    */
-  virtual void SetupNetInterface() = 0;
+  virtual void SetupNetInterface(const char *prefix) = 0;
+
+  /**
+   * Simplified method of SetupNetInterface(const char *)
+   */
+  void SetupNetInterface() {
+    SetupNetInterface("eth");
+  }
 
   /**
    * Set protocol stack to this device.
@@ -367,7 +377,14 @@ public:
    * @return netdev_info the pair of network device and corresponding protocol stack.
    */
   NetDevInfo *GetDeviceInfo(const char *name);
-
+  
+  /**
+   * Get names list of all network devices
+   *
+   * @return unique pointer to the list
+   */
+  auptr<const char *> GetNamesOfAllDevices();
+  
   /**
    * Check if the specified network device exists or not.
    *
