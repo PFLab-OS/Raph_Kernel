@@ -22,6 +22,9 @@ default: $(BUILD)$(KERNEL)
 
 $(BUILD)$(KERNEL): $(OBJS) kernel.ld
 	$(LD) -nostdinc -nostdlib -Tkernel.ld $(OBJS) -o $@
+	@{ echo -n "commit: "; git log -n 1 --format=%H; echo -n "build time: "; TZ='Asia/Tokyo' date "+%Y%m%d-%H%M%S (JST)"; } > $(BUILD)timestamp
+	@echo "build information:"
+	@cat $(BUILD)timestamp
 
 dev.o:
 	make -C dev CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
