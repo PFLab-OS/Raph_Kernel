@@ -44,8 +44,8 @@ public:
    * to network device controller (NetDevCtrl).
    * Other initialization can be done in this method.
    */
-  virtual void SetupNetInterface() override {
-    kassert(netdev_ctrl->RegisterDevice(this, "en"));
+  virtual void SetupNetInterface(const char *prefix) override {
+    kassert(netdev_ctrl->RegisterDevice(this, prefix));
   }
 
   /**

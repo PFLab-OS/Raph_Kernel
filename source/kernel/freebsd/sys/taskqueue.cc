@@ -51,4 +51,8 @@ extern "C" {
     return 0;
   }
 
+  void taskqueue_drain(struct taskqueue *queue, struct task *task) {
+    // TODO have to wait until task was finished
+    task_ctrl->Register(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), task->ta_task);
+  }
 }

@@ -36,6 +36,10 @@ void __mtx_lock(struct lock_object *l) {
   l->lock->Lock();
 }
 
+int _mtx_trylock_flags_(struct lock_object *l) {
+  return (l->lock->Trylock() == 0) ? 1 : 0;
+}
+
 void __mtx_unlock(struct lock_object *l) {
   l->lock->Unlock();
 }

@@ -50,6 +50,7 @@ extern "C" {
 #define taskqueue_start_threads(...) (0)
 
   int taskqueue_enqueue(struct taskqueue *queue, struct task *task);
+  void  taskqueue_drain(struct taskqueue *queue, struct task *task);
 
 #ifdef __cplusplus
 }

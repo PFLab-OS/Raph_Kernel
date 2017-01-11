@@ -72,13 +72,13 @@
 
 // #include <net/bpf.h>
 // #include <net/ethernet.h>
-// #include <net/if.h>
-// #include <net/if_var.h>
+#include <net/if.h>
+#include <net/if_var.h>
 // #include <net/if_arp.h>
 // #include <net/if_dl.h>
-// #include <net/if_media.h>
+#include <net/if_media.h>
 
-// #include <net/if_types.h>
+#include <net/if_types.h>
 // #include <net/if_vlan_var.h>
 
 // #include <netinet/in_systm.h>
@@ -4997,7 +4997,7 @@ int lE1000::DevMethodBusProbe() {
 int lE1000::DevMethodBusAttach() {
   int rval = lem_attach(this);
   lem_init(reinterpret_cast<struct adapter *>(softc));
-  _bsd_eth.SetupNetInterface();
+  _bsd_eth.SetupNetInterface("lem");
   // _bsd_eth.SetHandleMethod(lE1000BsdEthernet::HandleMethod::kPolling);
   return rval;
 }

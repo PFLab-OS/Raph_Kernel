@@ -15,8 +15,12 @@ Desktop.ini
 .Spotlight-V100
 .Trashes
 
-testcase/test.c
-hoge.c
+load.cfg
+disk.img
+disk.vdi
+net/disk.img.gz
+.vagrant
+.ssh_config
 
 # Object files
 *.o

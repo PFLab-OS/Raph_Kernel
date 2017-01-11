@@ -55,6 +55,7 @@ extern "C" {
   uint32_t pci_read_config(device_t dev, int reg, int width);
   int pci_enable_busmaster(device_t dev);
   int pci_find_cap(device_t dev, int capability, int *capreg);
+  int pci_find_extcap(device_t dev, int capability, int *capreg);
 
 #ifdef __cplusplus
 }
