@@ -602,7 +602,9 @@ extern "C" int main_of_others() {
     tt1.SetHandler(10);
   }
 #endif
-  register_membench2_callout();
+  if (do_membench) {
+    register_membench2_callout();
+  }
 
   task_ctrl->Run();
   return 0;
