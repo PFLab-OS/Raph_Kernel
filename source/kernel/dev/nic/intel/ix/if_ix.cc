@@ -686,26 +686,26 @@ ixgbe_detach(device_t dev)
 
 	for (int i = 0; i < adapter->num_queues; i++, que++, txr++) {
 		if (que->tq) {
-// #ifndef IXGBE_LEGACY_TX
-// 			taskqueue_drain(que->tq, &txr->txq_task);
-// #endif
-// 			taskqueue_drain(que->tq, &que->que_task);
-// 			taskqueue_free(que->tq);
+#ifndef IXGBE_LEGACY_TX
+			taskqueue_drain(que->tq, &txr->txq_task);
+#endif
+			taskqueue_drain(que->tq, &que->que_task);
+			// taskqueue_free(que->tq);
 		}
 	}
 
 	/* Drain the Link queue */
 	if (adapter->tq) {
-// 		taskqueue_drain(adapter->tq, &adapter->link_task);
-// 		taskqueue_drain(adapter->tq, &adapter->mod_task);
-// 		taskqueue_drain(adapter->tq, &adapter->msf_task);
-// #ifdef PCI_IOV
-// 		taskqueue_drain(adapter->tq, &adapter->mbx_task);
-// #endif
-// 		taskqueue_drain(adapter->tq, &adapter->phy_task);
-// #ifdef IXGBE_FDIR
-// 		taskqueue_drain(adapter->tq, &adapter->fdir_task);
-// #endif
+ 		taskqueue_drain(adapter->tq, &adapter->link_task);
+		taskqueue_drain(adapter->tq, &adapter->mod_task);
+		taskqueue_drain(adapter->tq, &adapter->msf_task);
+#ifdef PCI_IOV
+		taskqueue_drain(adapter->tq, &adapter->mbx_task);
+#endif
+		taskqueue_drain(adapter->tq, &adapter->phy_task);
+#ifdef IXGBE_FDIR
+		taskqueue_drain(adapter->tq, &adapter->fdir_task);
+#endif
 // 		taskqueue_free(adapter->tq);
 	}
 
@@ -1492,16 +1492,16 @@ ixgbe_legacy_irq(void *arg)
 	}
 
 	/* Link status change */
-	// if (reg_eicr & IXGBE_EICR_LSC)
-	// 	taskqueue_enqueue(adapter->tq, &adapter->link_task);
+  if (reg_eicr & IXGBE_EICR_LSC)
+	 	taskqueue_enqueue(adapter->tq, &adapter->link_task);
 
 	/* External PHY interrupt */
-	// if (hw->device_id == IXGBE_DEV_ID_X550EM_X_10G_T &&
-	//     (reg_eicr & IXGBE_EICR_GPI_SDP0_X540))
-	// 	taskqueue_enqueue(adapter->tq, &adapter->phy_task);
+	if (hw->device_id == IXGBE_DEV_ID_X550EM_X_10G_T &&
+	    (reg_eicr & IXGBE_EICR_GPI_SDP0_X540))
+		taskqueue_enqueue(adapter->tq, &adapter->phy_task);
 
 	if (more) {
-		// taskqueue_enqueue(que->tq, &que->que_task);
+		taskqueue_enqueue(que->tq, &que->que_task);
 	} else
 		ixgbe_enable_intr(adapter);
 	return;
@@ -1599,7 +1599,7 @@ ixgbe_msix_que(void *arg)
 
 no_calc:
         if (more) {
-          // taskqueue_enqueue(que->tq, &que->que_task);
+          taskqueue_enqueue(que->tq, &que->que_task);
         } else
           ixgbe_enable_queue(adapter, que->msix);
         return;
@@ -1628,7 +1628,7 @@ ixgbe_msix_link(void *arg)
 	/* Link status change */
 	if (reg_eicr & IXGBE_EICR_LSC) {
 		IXGBE_WRITE_REG(hw, IXGBE_EIMC, IXGBE_EIMC_LSC);
-		// taskqueue_enqueue(adapter->tq, &adapter->link_task);
+    taskqueue_enqueue(adapter->tq, &adapter->link_task);
 	}
 
 	if (adapter->hw.mac.type != ixgbe_mac_82598EB) {
@@ -1639,7 +1639,7 @@ ixgbe_msix_link(void *arg)
 				return;
                 	/* Disable the interrupt */
 			IXGBE_WRITE_REG(hw, IXGBE_EIMC, IXGBE_EICR_FLOW_DIR);
-			// taskqueue_enqueue(adapter->tq, &adapter->fdir_task);
+			taskqueue_enqueue(adapter->tq, &adapter->fdir_task);
 		} else
 #endif
 		if (reg_eicr & IXGBE_EICR_ECC) {
@@ -1656,8 +1656,8 @@ ixgbe_msix_link(void *arg)
 			IXGBE_WRITE_REG(hw, IXGBE_EICR, IXGBE_EICR_TS);
 		}
 #ifdef PCI_IOV
-		// if (reg_eicr & IXGBE_EICR_MAILBOX)
-		// 	taskqueue_enqueue(adapter->tq, &adapter->mbx_task);
+		if (reg_eicr & IXGBE_EICR_MAILBOX)
+			taskqueue_enqueue(adapter->tq, &adapter->mbx_task);
 #endif
 	}
 
@@ -1670,10 +1670,10 @@ ixgbe_msix_link(void *arg)
 	if (ixgbe_is_sfp(hw)) {
 		if (reg_eicr & IXGBE_EICR_GPI_SDP1_BY_MAC(hw)) {
 			IXGBE_WRITE_REG(hw, IXGBE_EICR, IXGBE_EICR_GPI_SDP1_BY_MAC(hw));
-			// taskqueue_enqueue(adapter->tq, &adapter->msf_task);
+			taskqueue_enqueue(adapter->tq, &adapter->msf_task);
 		} else if (reg_eicr & mod_mask) {
 			IXGBE_WRITE_REG(hw, IXGBE_EICR, mod_mask);
-			// taskqueue_enqueue(adapter->tq, &adapter->mod_task);
+			taskqueue_enqueue(adapter->tq, &adapter->mod_task);
 		}
 	}
 
@@ -1689,7 +1689,7 @@ ixgbe_msix_link(void *arg)
 	if (hw->device_id == IXGBE_DEV_ID_X550EM_X_10G_T &&
 	    (reg_eicr & IXGBE_EICR_GPI_SDP0_X540)) {
 		IXGBE_WRITE_REG(hw, IXGBE_EICR, IXGBE_EICR_GPI_SDP0_X540);
-		// taskqueue_enqueue(adapter->tq, &adapter->phy_task);
+		taskqueue_enqueue(adapter->tq, &adapter->phy_task);
 	}
 
 	/* Re-enable other interrupts */
@@ -2180,7 +2180,7 @@ ixgbe_update_link_status(struct adapter *adapter)
 
 	if (adapter->link_up){
 		if (adapter->link_active == FALSE) {
-			if (bootverbose)
+      if (bootverbose)
 				device_printf(dev,"Link is up %d Gbps %s \n",
 				    ((adapter->link_speed == 128)? 10:1),
 				    "Full Duplex");
@@ -2197,7 +2197,7 @@ ixgbe_update_link_status(struct adapter *adapter)
 		}
 	} else { /* Link down */
 		if (adapter->link_active == TRUE) {
-			if (bootverbose)
+      if (bootverbose)
 				device_printf(dev,"Link is Down\n");
 			// if_link_state_change(ifp, LINK_STATE_DOWN);
             ixgbe->GetNetInterface().SetStatus(BsdEthernet::LinkStatus::kDown);
@@ -2384,8 +2384,8 @@ ixgbe_allocate_legacy(struct adapter *adapter)
 	TASK_INIT(&txr->txq_task, 0, ixgbe_deferred_mq_start, txr);
 #endif
 	TASK_INIT(&que->que_task, 0, ixgbe_handle_que, que);
-	// que->tq = taskqueue_create_fast("ixgbe_que", M_NOWAIT,
-  //           taskqueue_thread_enqueue, &que->tq);
+	que->tq = taskqueue_create_fast("ixgbe_que", M_NOWAIT,
+            taskqueue_thread_enqueue, &que->tq);
 	// taskqueue_start_threads(&que->tq, 1, PI_NET, "%s ixq",
   //           device_get_nameunit(adapter->dev));
 
@@ -2397,8 +2397,8 @@ ixgbe_allocate_legacy(struct adapter *adapter)
 #ifdef IXGBE_FDIR
 	TASK_INIT(&adapter->fdir_task, 0, ixgbe_reinit_fdir, adapter);
 #endif
-	// adapter->tq = taskqueue_create_fast("ixgbe_link", M_NOWAIT,
-	//     taskqueue_thread_enqueue, &adapter->tq);
+	adapter->tq = taskqueue_create_fast("ixgbe_link", M_NOWAIT,
+	    taskqueue_thread_enqueue, &adapter->tq);
 	// taskqueue_start_threads(&adapter->tq, 1, PI_NET, "%s linkq",
 	//     device_get_nameunit(adapter->dev));
 
@@ -2519,8 +2519,8 @@ ixgbe_allocate_msix(struct adapter *adapter)
 		TASK_INIT(&txr->txq_task, 0, ixgbe_deferred_mq_start, txr);
 #endif
 		TASK_INIT(&que->que_task, 0, ixgbe_handle_que, que);
-		// que->tq = taskqueue_create_fast("ixgbe_que", M_NOWAIT,
-		//     taskqueue_thread_enqueue, &que->tq);
+		que->tq = taskqueue_create_fast("ixgbe_que", M_NOWAIT,
+		    taskqueue_thread_enqueue, &que->tq);
 #ifdef	RSS
 		CPU_SETOF(cpu_id, &cpu_mask);
 		// taskqueue_start_threads_cpuset(&que->tq, 1, PI_NET,
@@ -2567,8 +2567,8 @@ ixgbe_allocate_msix(struct adapter *adapter)
 #ifdef IXGBE_FDIR
 	TASK_INIT(&adapter->fdir_task, 0, ixgbe_reinit_fdir, adapter);
 #endif
-	// adapter->tq = taskqueue_create_fast("ixgbe_link", M_NOWAIT,
-	//     taskqueue_thread_enqueue, &adapter->tq);
+	adapter->tq = taskqueue_create_fast("ixgbe_link", M_NOWAIT,
+	    taskqueue_thread_enqueue, &adapter->tq);
 	// taskqueue_start_threads(&adapter->tq, 1, PI_NET, "%s linkq",
 	//     device_get_nameunit(adapter->dev));
 
@@ -2951,9 +2951,9 @@ ixgbe_config_link(struct adapter *adapter)
 		if (hw->phy.multispeed_fiber) {
 			hw->mac.ops.setup_sfp(hw);
 			ixgbe_enable_tx_laser(hw);
-			// taskqueue_enqueue(adapter->tq, &adapter->msf_task);
+			taskqueue_enqueue(adapter->tq, &adapter->msf_task);
 		} else {
-			// taskqueue_enqueue(adapter->tq, &adapter->mod_task);
+			taskqueue_enqueue(adapter->tq, &adapter->mod_task);
     }
 	} else {
 		if (hw->mac.ops.check_link)
@@ -3776,7 +3776,7 @@ ixgbe_handle_mod(void *context, int pending)
 		    "Setup failure - unsupported SFP+ module type.\n");
 		return;
 	}
-	// taskqueue_enqueue(adapter->tq, &adapter->msf_task);
+	taskqueue_enqueue(adapter->tq, &adapter->msf_task);
 	return;
 }
 
@@ -5787,13 +5787,14 @@ ixgbe_add_vf(device_t dev, u16 vfnum, const nvlist_t *config)
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
- * Author: slankdev
+ * Author: slankdev, Liva
  *
  */
 
 #include "ix.h"
 #include <stdlib.h>
-
+#include <timer.h>
+#include <global.h>
 
 int IxGbe::DevMethodBusProbe() {
   return ixgbe_probe(this);
@@ -5824,15 +5825,7 @@ void IxGbe::IxGbeBsdEthernet::GetEthAddr(uint8_t *buffer) {
 
 void IxGbe::IxGbeBsdEthernet::UpdateLinkStatus() {
   struct adapter *adapter = reinterpret_cast<struct adapter *>(GetMasterClass().softc);
-  if (GetHandleMethod() == HandleMethod::kPolling) {
-      u32 reg_eicr = IXGBE_READ_REG(&adapter->hw, IXGBE_EICS);
-
-	  /* Link status change */
-	  if (reg_eicr & IXGBE_EICR_LSC) {
-	  	IXGBE_WRITE_REG(&adapter->hw, IXGBE_EIMC, IXGBE_EIMC_LSC);
-        ixgbe_handle_link(reinterpret_cast<void*>(adapter), 0);
-	  }
-  }
+  ixgbe_handle_link(reinterpret_cast<void*>(adapter), 0);
 }
 
 void IxGbe::IxGbeBsdEthernet::PollingHandler(void *arg) {
@@ -5841,6 +5834,14 @@ void IxGbe::IxGbeBsdEthernet::PollingHandler(void *arg) {
   struct adapter *adapter = reinterpret_cast<struct adapter *>(if_getsoftc(ifp));
 	struct tx_ring	*txr = adapter->tx_rings;
 	struct ix_queue	*que = adapter->queues;
+
+  static uint64_t time = timer->GetCntAfterPeriod(timer->ReadMainCnt(), 1 * 1000 * 1000); // 1s
+
+  uint64_t t = timer->ReadMainCnt();
+  if (timer->IsGreater(t, time)) {
+    time = timer->GetCntAfterPeriod(t, 1 * 1000 * 1000);
+    ixgbe_handle_link(reinterpret_cast<void*>(adapter), 0);
+  }
 
 	IXGBE_CORE_LOCK(adapter);
 	if ((if_getdrvflags(ifp) & IFF_DRV_RUNNING) == 0) {
