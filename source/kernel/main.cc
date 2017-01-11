@@ -94,7 +94,7 @@ Callout tt2;
 Callout tt3;
 Callout tt4;
 
-static const bool do_membench = true;
+static const bool do_membench = false;
 void register_membench2_callout();
 
 uint8_t ip1[] = {0, 0, 0, 0};
@@ -515,8 +515,6 @@ extern "C" int main() {
   shell->Register("ifconfig", ifconfig);
   shell->Register("show", show);
 
-  register_membench2_callout();
-
   if (!do_membench) {
     CpuId beep_cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority);
     new(&tt4) Callout;
@@ -542,6 +540,8 @@ extern "C" int main() {
       }, nullptr);
     tt4.Init(beep);
     tt4.SetHandler(beep_cpuid, 1);
+  } else {
+    register_membench2_callout();
   }
   
   task_ctrl->Run();

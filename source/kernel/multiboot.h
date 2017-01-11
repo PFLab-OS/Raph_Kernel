@@ -40,9 +40,8 @@ public:
     kassert(align(multiboot_info, 8) == multiboot_info);
     virt_addr addr = p2v(static_cast<phys_addr>(multiboot_info));
     addr += 8;
-    multiboot_tag *tag;
     gtty->CprintfRaw("\n");
-    for (tag = reinterpret_cast<multiboot_tag *>(addr); tag->type != MULTIBOOT_TAG_TYPE_END; addr = alignUp(addr + tag->size, 8), tag = reinterpret_cast<multiboot_tag *>(addr)) {
+    for (multiboot_tag *tag = reinterpret_cast<multiboot_tag *>(addr); tag->type != MULTIBOOT_TAG_TYPE_END; addr = alignUp(addr + tag->size, 8), tag = reinterpret_cast<multiboot_tag *>(addr)) {
       switch(tag->type) {
       case MULTIBOOT_TAG_TYPE_MODULE: {
         multiboot_tag_module* info = (struct multiboot_tag_module *) tag;
@@ -57,24 +56,35 @@ public:
   void ShowBuildTimeStamp() {
     virt_addr addr = p2v(static_cast<phys_addr>(multiboot_info));
     addr += 8;
-    multiboot_tag *tag;
-    gtty->CprintfRaw("[kernel] info: Build Information as follows\n");
-    for (tag = reinterpret_cast<multiboot_tag *>(addr); tag->type != MULTIBOOT_TAG_TYPE_END; addr = alignUp(addr + tag->size, 8), tag = reinterpret_cast<multiboot_tag *>(addr)) {
+    multiboot_tag_module* info = nullptr;
+    for (multiboot_tag *tag = reinterpret_cast<multiboot_tag *>(addr); tag->type != MULTIBOOT_TAG_TYPE_END; addr = alignUp(addr + tag->size, 8), tag = reinterpret_cast<multiboot_tag *>(addr)) {
+      bool break_flag = false;
       switch(tag->type) {
       case MULTIBOOT_TAG_TYPE_MODULE: {
-        multiboot_tag_module* info = (struct multiboot_tag_module *) tag;
+        info = (struct multiboot_tag_module *) tag;
         if (strcmp(info->cmdline, "time") == 0) {
-          for (multiboot_uint32_t addr = info->mod_start; addr < info->mod_end; addr++) {
-            gtty->CprintfRaw("%c", *(reinterpret_cast<uint8_t *>(addr)));
-          }
+          break_flag = true;
         }
         break;
       }
       default:
         break;
       }
+      if (break_flag) {
+        break;
+      }
     }
-    gtty->CprintfRaw("\n");
+    size_t len = info->mod_end - info->mod_start;
+    char str[len + 1];
+    for (size_t i = 0; i < len; i++) {
+      str[i] = reinterpret_cast<uint8_t *>(info->mod_start)[i];
+    }
+    str[len] = '\0';
+    if (info == nullptr) {
+      gtty->Cprintf("[kernel] warning: No build information\n");
+    } else {
+      gtty->Cprintf("[kernel] info: Build Information as follows\n%s\n", str);
+    }
   }
   phys_addr GetPhysMemoryEnd() {
     return _phys_memory_end;
