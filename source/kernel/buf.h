@@ -82,10 +82,6 @@ class RingBufferBase {
 template<class T, int S>
   using RingBuffer = RingBufferBase<T, S, SpinLock>;
 
-template<class T, int S>
-  using IntRingBuffer = RingBufferBase<T, S, IntSpinLock>;
-
-
 template<class T, int S, class L>
   class FunctionalRingBufferBase final : public FunctionalBase<L> {
  public:
@@ -116,8 +112,5 @@ template<class T, int S, class L>
 
 template<class T, int S>
   using FunctionalRingBuffer = FunctionalRingBufferBase<T, S, SpinLock>;
-
-template<class T, int S>
-  using IntFunctionalRingBuffer = FunctionalRingBufferBase<T, S, IntSpinLock>;
 
 #endif /* __RAPH_KERNEL_BUF_H__ */

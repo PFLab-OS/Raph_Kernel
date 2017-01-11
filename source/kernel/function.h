@@ -52,6 +52,7 @@ protected:
   }
 };
 
+template<class T>
 class FunctionObj : public FunctionBaseObj {
 public:
   FunctionObj() {
@@ -62,7 +63,7 @@ public:
   }
   virtual ~FunctionObj() {
   }
-  void Init(void (*func)(void *), void *arg) {
+  void Init(void (*func)(T *), T *arg) {
     _func = func;
     _arg = arg;
   }
@@ -79,8 +80,8 @@ private:
   virtual void ExecuteSub() override {
     _func(_arg);
   }
-  void (*_func)(void *) = nullptr;
-  void *_arg;
+  void (*_func)(T *) = nullptr;
+  T *_arg;
 };
 
 template <class T>
@@ -160,15 +161,17 @@ private:
   FunctionBaseObj dummy;
   FunctionBaseObj *_obj;
 };
+
+template<class T>
 class Function : public GenericFunction {
 public:
   Function() {
-    _obj = virtmem_ctrl->New<FunctionObj>();
+    _obj = virtmem_ctrl->New<FunctionObj<T>>();
   }
   virtual ~Function() {
-    virtmem_ctrl->Delete<FunctionObj>(_obj);
+    virtmem_ctrl->Delete<FunctionObj<T>>(_obj);
   }
-  void Init(void (*func)(void *), void *arg) {
+  void Init(void (*func)(T *), T *arg) {
     _obj->Init(func, arg);
   }
 private:
@@ -176,7 +179,7 @@ private:
   virtual FunctionBaseObj *GetObj() const override {
     return _obj;
   }
-  FunctionObj *_obj;
+  FunctionObj<T> *_obj;
 };
 template <class T>
 class ClassFunction : public GenericFunction {

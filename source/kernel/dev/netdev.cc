@@ -22,7 +22,7 @@
 
 #include <mem/virtmem.h>
 #include <dev/netdev.h>
-#include <net/pstack.h>
+// #include <net/pstack.h>
 #include <global.h>
 
 NetDev::NetDev() {
@@ -99,12 +99,3 @@ auptr<const char *> NetDevCtrl::GetNamesOfAllDevices() {
   return list;
 }
 
-bool NetDevCtrl::IsLinkUp(const char *name) {
-  NetDevCtrl::NetDevInfo *info = this->GetDeviceInfo(name);
-
-  if (!info) {
-    return false;
-  } else {
-    return info->device->IsLinkUp();
-  }
-}

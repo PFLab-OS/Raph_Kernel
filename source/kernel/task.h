@@ -106,12 +106,12 @@ private:
     Task *bottom;
     Task *top_sub;
     Task *bottom_sub;
-    IntSpinLock lock;
+    SpinLock lock;
 
     TaskQueueState state;
 
     // for Callout
-    IntSpinLock dlock;
+    SpinLock dlock;
     Callout *dtop;
 
   } *_task_struct = nullptr;

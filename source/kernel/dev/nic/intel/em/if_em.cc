@@ -6333,14 +6333,13 @@ void E1000::E1000BsdEthernet::UpdateLinkStatus() {
   }
 }
 
-void E1000::E1000BsdEthernet::PollingHandler(void *arg) {
-  E1000 *that = reinterpret_cast<E1000 *>(arg);
+void E1000::E1000BsdEthernet::PollingHandler(E1000 *that) {
   em_poll(reinterpret_cast<struct adapter *>(that->softc)->ifp);
 }
 
 void E1000::E1000BsdEthernet::ChangeHandleMethodToPolling() {
-  Function func;
-  func.Init(PollingHandler, reinterpret_cast<void *>(&GetMasterClass()));
+  Function<E1000> func;
+  func.Init(PollingHandler, &GetMasterClass());
   _polling.Init(func);
   extern CpuId network_cpu;
   _polling.Register(network_cpu);

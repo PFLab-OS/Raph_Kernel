@@ -5828,8 +5828,7 @@ void IxGbe::IxGbeBsdEthernet::UpdateLinkStatus() {
   ixgbe_handle_link(reinterpret_cast<void*>(adapter), 0);
 }
 
-void IxGbe::IxGbeBsdEthernet::PollingHandler(void *arg) {
-  IxGbe *that = reinterpret_cast<IxGbe *>(arg);
+void IxGbe::IxGbeBsdEthernet::PollingHandler(IxGbe *that) {
   if_t ifp = reinterpret_cast<struct adapter *>(that->softc)->ifp;
   struct adapter *adapter = reinterpret_cast<struct adapter *>(if_getsoftc(ifp));
 	struct tx_ring	*txr = adapter->tx_rings;
@@ -5866,8 +5865,8 @@ void IxGbe::IxGbeBsdEthernet::PollingHandler(void *arg) {
 }
 
 void IxGbe::IxGbeBsdEthernet::ChangeHandleMethodToPolling() {
-  Function func;
-  func.Init(PollingHandler, reinterpret_cast<void *>(&GetMasterClass()));
+  Function<IxGbe> func;
+  func.Init(PollingHandler, &GetMasterClass());
   _polling.Init(func);
   extern CpuId network_cpu;
   _polling.Register(network_cpu);

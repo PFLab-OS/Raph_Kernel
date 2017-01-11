@@ -31,7 +31,7 @@
 
 namespace C {
 extern "C" void handle_int(Regs *rs) {
-  //TODO 例外処理中のフラグを立て、IntSpinLock内では弾く
+  //TODO 例外処理中のフラグを立て、SpinLock内では弾く
   bool iflag = disable_interrupt();
   int cpuid = cpu_ctrl->GetCpuId().GetRawId();
   idt->_handling_cnt[cpuid]++;
