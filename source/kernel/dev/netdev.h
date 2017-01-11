@@ -395,52 +395,6 @@ public:
     return GetDeviceInfo(name) != nullptr;
   }
 
-  /**
-   * Check if link of the network device is up or not.
-   *
-   * NOTE: even if this method returns false, it does not directly mean
-   * link is down, because the interface possibly does not exist.
-   * You must use NetDevCtrl::Exists to check if exists.
-   *
-   * @param name interface name.
-   * @return if link is up.
-   */
-  bool IsLinkUp(const char *name);
-
-  /**
-   * Assign IPv4 address to the specified network device.
-   *
-   * @param name interface name.
-   * @param addr IPv4 address.
-   * @return if the specified device supports IPv4 or not.
-   */
-  bool AssignIpv4Address(const char *name, uint32_t addr) {
-    NetDevInfo *info = this->GetDeviceInfo(name);
-
-    if (!info) {
-      return false;
-    } else {
-      return info->device->AssignIpv4Address(addr);
-    }
-  }
-
-  /**
-   * Get IPv4 address of the specified network device.
-   *
-   * @param name interface name.
-   * @param addr buffer to return.
-   * @return if the specified device supports IPv4 or not.
-   */
-  bool GetIpv4Address(const char *name, uint32_t &addr) {
-    NetDevInfo *info = this->GetDeviceInfo(name);
-
-    if (!info) {
-      return false;
-    } else {
-      return info->device->GetIpv4Address(addr);
-    }
-  }
-
   /** maximum length of interface names */
   static const uint32_t kNetworkInterfaceNameLen = 8;
 

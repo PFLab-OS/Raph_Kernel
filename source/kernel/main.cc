@@ -44,7 +44,8 @@
 #include <dev/pciid.h>
 
 #include <dev/eth.h>
-#include <net/arp.h>
+#include <dev/netdev.h>
+// #include <net/arp.h>
 #include <arpa/inet.h>
 
 AcpiCtrl *acpi_ctrl = nullptr;
@@ -59,7 +60,7 @@ Keyboard *keyboard = nullptr;
 Shell *shell = nullptr;
 PciCtrl *pci_ctrl = nullptr;
 NetDevCtrl *netdev_ctrl = nullptr;
-ArpTable *arp_table = nullptr;
+// ArpTable *arp_table = nullptr;
 
 MultibootCtrl _multiboot_ctrl;
 AcpiCtrl _acpi_ctrl;
@@ -77,7 +78,7 @@ Keyboard _keyboard;
 Shell _shell;
 AcpicaPciCtrl _acpica_pci_ctrl;
 NetDevCtrl _netdev_ctrl;
-ArpTable _arp_table;
+// ArpTable _arp_table;
 
 CpuId network_cpu;
 CpuId pstack_cpu;
@@ -96,16 +97,6 @@ Callout tt4;
 
 static const bool do_membench = false;
 void register_membench2_callout();
-
-uint8_t ip1[] = {0, 0, 0, 0};
-uint8_t ip2[] = {0, 0, 0, 0};
-enum class BenchState {
-  kIdle,
-  kSnd,
-  kRcv,
-  kQemu,
-};
-BenchState bstate = BenchState::kIdle;
 
 void halt(int argc, const char* argv[]) {
   acpi_ctrl->Shutdown();
@@ -154,122 +145,181 @@ void ifconfig(int argc, const char* argv[]){
   gtty->CprintfRaw("\n");
   for (int i = 0; i < list.GetLen(); i++) {
     gtty->CprintfRaw("%s", list[i]);
-    netdev_ctrl->GetDeviceInfo(list[i])->device->UpdateLinkStatus();
-    gtty->CprintfRaw("  link: %s\n", netdev_ctrl->IsLinkUp(list[i]) ? "up" : "down");
+    NetDev *dev = netdev_ctrl->GetDeviceInfo(list[i])->device;
+    dev->UpdateLinkStatus();
+    gtty->CprintfRaw("  link: %s\n", dev->IsLinkUp() ? "up" : "down");
   }
 }
 
-void bench(int argc, const char* argv[]) {
-  static uint64_t cnt = 0;
-  static int64_t sum = 0;
-  static const int stime = 3000;
-  static int time = stime, rtime = 0;
+uint64_t cnt = 0;
+int64_t sum = 0;
+static const int stime = 1000;
+int time = stime, rtime = 0;
 
-  if (argc != 2 && argc != 3) {
-    gtty->Cprintf("invalid argument.\n");
-    return;
-  }
-  static const char *device;
-  device = (argc == 2) ? "eth0" : argv[2];
-  if (!netdev_ctrl->Exists(device)) {
-    gtty->Cprintf("no ethernet interface(%s).\n", device);
-    return;
-  }
-  if (strcmp(argv[1], "snd") == 0) {
-    uint8_t ip1_[] = {192, 168, 100, 100};
-    uint8_t ip2_[] = {192, 168, 100, 104};
-    memcpy(ip1, ip1_, 4);
-    memcpy(ip2, ip2_, 4);
-    bstate = BenchState::kSnd;
-  } else if (strcmp(argv[1], "rcv") == 0) {
-    uint8_t ip1_[] = {192, 168, 100, 104};
-    uint8_t ip2_[] = {192, 168, 100, 100};
-    memcpy(ip1, ip1_, 4);
-    memcpy(ip2, ip2_, 4);
-    bstate = BenchState::kRcv;
-  } else if (strcmp(argv[1], "qemu") == 0) {
-    uint8_t ip1_[] = {10, 0, 2, 9};
-    uint8_t ip2_[] = {10, 0, 2, 15};
-    memcpy(ip1, ip1_, 4);
-    memcpy(ip2, ip2_, 4);
-    bstate = BenchState::kQemu;
-  } else {
-    gtty->Cprintf("invalid argument.\n");
-    return;
+void setup_arp_reply(NetDev *dev) {
+  Function<NetDev> func;
+  func.Init([](NetDev *eth){
+      NetDev::Packet *rpacket;
+      if(!eth->ReceivePacket(rpacket)) {
+        return;
+      }
+      uint32_t my_addr_int;
+      assert(eth->GetIpv4Address(my_addr_int));
+      uint8_t my_addr[4];
+      my_addr[0] = (my_addr_int >> 24) & 0xff;
+      my_addr[1] = (my_addr_int >> 16) & 0xff;
+      my_addr[2] = (my_addr_int >> 8) & 0xff;
+      my_addr[3] = (my_addr_int >> 0) & 0xff;
+      // received packet
+      if(rpacket->buf[12] == 0x08 && rpacket->buf[13] == 0x06 && rpacket->buf[21] == 0x02) {
+        uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;
+        cnt = 0;
+        sum += l;
+        rtime++;
+        // ARP packet
+        char buf[40];
+        memcpy(buf, rpacket->buf,40);
+        // gtty->Printf(
+        //              "s", "ARP Reply received; ",
+        //              "x", rpacket->buf[22], "s", ":",
+        //              "x", rpacket->buf[23], "s", ":",
+        //              "x", rpacket->buf[24], "s", ":",
+        //              "x", rpacket->buf[25], "s", ":",
+        //              "x", rpacket->buf[26], "s", ":",
+        //              "x", rpacket->buf[27], "s", " is ",
+        //              "d", rpacket->buf[28], "s", ".",
+        //              "d", rpacket->buf[29], "s", ".",
+        //              "d", rpacket->buf[30], "s", ".",
+        //              "d", rpacket->buf[31], "s", " ",
+        //              "s","latency:","d",l,"s","us\n");
+      }
+      if(rpacket->buf[12] == 0x08 && rpacket->buf[13] == 0x06 && rpacket->buf[21] == 0x01 && (memcmp(rpacket->buf + 38, my_addr, 4) == 0)) {
+        // ARP packet
+        uint8_t data[] = {
+          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target MAC Address
+          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source MAC Address
+          0x08, 0x06, // Type: ARP
+          // ARP Packet
+          0x00, 0x01, // HardwareType: Ethernet
+          0x08, 0x00, // ProtocolType: IPv4
+          0x06, // HardwareLength
+          0x04, // ProtocolLength
+          0x00, 0x02, // Operation: ARP Reply
+          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source Hardware Address
+          0x00, 0x00, 0x00, 0x00, // Source Protocol Address
+          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
+          0x00, 0x00, 0x00, 0x00, // Target Protocol Address
+        };
+        memcpy(data, rpacket->buf + 6, 6);
+        static_cast<DevEthernet *>(eth)->GetEthAddr(data + 6);
+        memcpy(data + 22, data + 6, 6);
+        memcpy(data + 28, my_addr, 4);
+        memcpy(data + 32, rpacket->buf + 22, 6);
+        memcpy(data + 38, rpacket->buf + 28, 4);
+
+        uint32_t len = sizeof(data)/sizeof(uint8_t);
+        NetDev::Packet *tpacket;
+        kassert(eth->GetTxPacket(tpacket));
+        memcpy(tpacket->buf, data, len);
+        tpacket->len = len;
+        eth->TransmitPacket(tpacket);
+        // gtty->Printf(
+        //              "s", "ARP Request received; ",
+        //              "x", rpacket->buf[22], "s", ":",
+        //              "x", rpacket->buf[23], "s", ":",
+        //              "x", rpacket->buf[24], "s", ":",
+        //              "x", rpacket->buf[25], "s", ":",
+        //              "x", rpacket->buf[26], "s", ":",
+        //              "x", rpacket->buf[27], "s", ",",
+        //              "d", rpacket->buf[28], "s", ".",
+        //              "d", rpacket->buf[29], "s", ".",
+        //              "d", rpacket->buf[30], "s", ".",
+        //              "d", rpacket->buf[31], "s", " says who's ",
+        //              "d", rpacket->buf[38], "s", ".",
+        //              "d", rpacket->buf[39], "s", ".",
+        //              "d", rpacket->buf[40], "s", ".",
+        //              "d", rpacket->buf[41], "s", "\n");
+        // gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
+      }
+      eth->ReuseRxBuffer(rpacket);
+    }, dev);
+  CpuId cpuid(2);
+  dev->SetReceiveCallback(cpuid, func);
+}
+
+void send_arp_packet(NetDev *dev, uint8_t *ipaddr) {
+  {
+    static uint8_t target_addr[4];
+    memcpy(target_addr, ipaddr, 4);
+    cnt = 0;
+    new(&tt2) Callout;
+    Function<NetDev> func;
+    func.Init([](NetDev *eth){
+        if (!apic_ctrl->IsBootupAll()) {
+          tt2.SetHandler(1000);
+          return;
+        }
+        eth->UpdateLinkStatus();
+        if (eth->GetStatus() != NetDev::LinkStatus::kUp) {
+          tt2.SetHandler(1000);
+          return;
+        }
+        if (cnt != 0) {
+          tt2.SetHandler(1000);
+          return;
+        }
+        for(int k = 0; k < 1; k++) {
+          if (time == 0) {
+            break;
+          }
+          uint8_t data[] = {
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, // Target MAC Address
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source MAC Address
+            0x08, 0x06, // Type: ARP
+            // ARP Packet
+            0x00, 0x01, // HardwareType: Ethernet
+            0x08, 0x00, // ProtocolType: IPv4
+            0x06, // HardwareLength
+            0x04, // ProtocolLength
+            0x00, 0x01, // Operation: ARP Request
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source Hardware Address
+            0x00, 0x00, 0x00, 0x00, // Source Protocol Address
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
+            // Target Protocol Address
+            0x00, 0x00, 0x00, 0x00
+          };
+          static_cast<DevEthernet *>(eth)->GetEthAddr(data + 6);
+          memcpy(data + 22, data + 6, 6);
+          uint32_t my_addr;
+          assert(eth->GetIpv4Address(my_addr));
+          data[28] = (my_addr >> 24) & 0xff;
+          data[29] = (my_addr >> 16) & 0xff;
+          data[30] = (my_addr >> 8) & 0xff;
+          data[31] = (my_addr >> 0) & 0xff;
+          memcpy(data + 38, target_addr, 4);
+          uint32_t len = sizeof(data)/sizeof(uint8_t);
+          NetDev::Packet *tpacket;
+          kassert(eth->GetTxPacket(tpacket));
+          memcpy(tpacket->buf, data, len);
+          tpacket->len = len;
+          cnt = timer->ReadMainCnt();
+          eth->TransmitPacket(tpacket);
+          // gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
+          time--;
+        }
+        if (time != 0) {
+          tt2.SetHandler(1000);
+        }
+      }, dev);
+    tt2.Init(func);
+    CpuId cpuid(3);
+    tt2.SetHandler(cpuid, 10);
   }
 
-  NetDev *eth = netdev_ctrl->GetDeviceInfo(device)->device;
-  // send ARP
-  // {
-  //   static int state = 0;
-  //   cnt = 0;
-  //   new(&tt2) Callout;
-  //   Function func;
-  //   func.Init([](void *){
-  //       if (!apic_ctrl->IsBootupAll()) {
-  //         tt2.SetHandler(1000);
-  //         return;
-  //       }
-  //       ixgbe->UpdateLinkStatus();
-  //       if (ixgbe->GetStatus() != NetDev::LinkStatus::kUp) {
-  //         tt2.SetHandler(1000);
-  //         return;
-  //       }
-  //       if (bstate != BenchState::kRcv) {
-  //         if (cnt != 0) {
-  //           tt2.SetHandler(1000);
-  //           return;
-  //         }
-  //         for(int k = 0; k < 1; k++) {
-  //           if (time == 0) {
-  //             break;
-  //           }
-  //           uint8_t data[] = {
-  //             0xff, 0xff, 0xff, 0xff, 0xff, 0xff, // Target MAC Address
-  //             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source MAC Address
-  //             0x08, 0x06, // Type: ARP
-  //             // ARP Packet
-  //             0x00, 0x01, // HardwareType: Ethernet
-  //             0x08, 0x00, // ProtocolType: IPv4
-  //             0x06, // HardwareLength
-  //             0x04, // ProtocolLength
-  //             0x00, 0x01, // Operation: ARP Request
-  //             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source Hardware Address
-  //             0x00, 0x00, 0x00, 0x00, // Source Protocol Address
-  //             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
-  //             // Target Protocol Address
-  //             0x00, 0x00, 0x00, 0x00
-  //           };
-  //           ixgbe->GetEthAddr(data + 6);
-  //           memcpy(data + 22, data + 6, 6);
-  //           memcpy(data + 28, ip1, 4);
-  //           memcpy(data + 38, ip2, 4);
-  //           uint32_t len = sizeof(data)/sizeof(uint8_t);
-  //           NetDev::Packet *tpacket;
-  //           kassert(ixgbe->GetTxPacket(tpacket));
-  //           memcpy(tpacket->buf, data, len);
-  //           tpacket->len = len;
-  //           cnt = timer->ReadMainCnt();
-  //           ixgbe->TransmitPacket(tpacket);
-  //           // gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
-  //           time--;
-  //         }
-  //         if (time != 0) {
-  //           tt2.SetHandler(1000);
-  //         }
-  //       } else {
-  //         gtty->Printf("s", "[debug] info: Link is Up\n");
-  //       }
-  //     }, nullptr);
-  //   tt2.Init(func);
-  //   tt2.SetHandler(3, 10);
-  // }
-
-  if (bstate != BenchState::kRcv) {
+  {
     new(&tt3) Callout;
-    Function func;
-    func.Init([](void *){
-        NetDev *eth = netdev_ctrl->GetDeviceInfo(device)->device;
+    Function<NetDev> func;
+    func.Init([](NetDev *eth){
         if (rtime > 0) {
           gtty->Printf("s","ARP Reply average latency:","d",sum / rtime,"s","us [","d",rtime,"s","/","d",stime,"s","]\n");
         } else {
@@ -282,96 +332,108 @@ void bench(int argc, const char* argv[]) {
         if (rtime != stime) {
           tt3.SetHandler(1000*1000*3);
         }
-      }, nullptr);
+      }, dev);
     tt3.Init(func);
     CpuId cpuid(1);
     tt3.SetHandler(cpuid, 1000*1000*3);
   }
+}
 
-  {
-    Function func;
-    func.Init([](void *){
-        NetDev *eth = netdev_ctrl->GetDeviceInfo(device)->device;
-        NetDev::Packet *rpacket;
-        if(!eth->ReceivePacket(rpacket)) {
-          return;
-        }
-        // received packet
-        if(rpacket->buf[12] == 0x08 && rpacket->buf[13] == 0x06 && rpacket->buf[21] == 0x02) {
-          uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;
-          cnt = 0;
-          sum += l;
-          rtime++;
-          // ARP packet
-          char buf[40];
-          memcpy(buf, rpacket->buf,40);
-          // gtty->Printf(
-          //              "s", "ARP Reply received; ",
-          //              "x", rpacket->buf[22], "s", ":",
-          //              "x", rpacket->buf[23], "s", ":",
-          //              "x", rpacket->buf[24], "s", ":",
-          //              "x", rpacket->buf[25], "s", ":",
-          //              "x", rpacket->buf[26], "s", ":",
-          //              "x", rpacket->buf[27], "s", " is ",
-          //              "d", rpacket->buf[28], "s", ".",
-          //              "d", rpacket->buf[29], "s", ".",
-          //              "d", rpacket->buf[30], "s", ".",
-          //              "d", rpacket->buf[31], "s", " ",
-          //              "s","latency:","d",l,"s","us\n");
-        }
-        if(rpacket->buf[12] == 0x08 && rpacket->buf[13] == 0x06 && rpacket->buf[21] == 0x01 && (memcmp(rpacket->buf + 38, ip1, 4) == 0)) {
-          // ARP packet
-          uint8_t data[] = {
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target MAC Address
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source MAC Address
-            0x08, 0x06, // Type: ARP
-            // ARP Packet
-            0x00, 0x01, // HardwareType: Ethernet
-            0x08, 0x00, // ProtocolType: IPv4
-            0x06, // HardwareLength
-            0x04, // ProtocolLength
-            0x00, 0x02, // Operation: ARP Reply
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source Hardware Address
-            0x00, 0x00, 0x00, 0x00, // Source Protocol Address
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
-            0x00, 0x00, 0x00, 0x00, // Target Protocol Address
-          };
-          memcpy(data, rpacket->buf + 6, 6);
-          static_cast<DevEthernet *>(eth)->GetEthAddr(data + 6);
-          memcpy(data + 22, data + 6, 6);
-          memcpy(data + 28, ip1, 4);
-          memcpy(data + 32, rpacket->buf + 22, 6);
-          memcpy(data + 38, rpacket->buf + 28, 4);
+void bench(int argc, const char* argv[]) {
 
-          uint32_t len = sizeof(data)/sizeof(uint8_t);
-          NetDev::Packet *tpacket;
-          kassert(eth->GetTxPacket(tpacket));
-          memcpy(tpacket->buf, data, len);
-          tpacket->len = len;
-          eth->TransmitPacket(tpacket);
-          gtty->Printf(
-                       "s", "ARP Request received; ",
-                       "x", rpacket->buf[22], "s", ":",
-                       "x", rpacket->buf[23], "s", ":",
-                       "x", rpacket->buf[24], "s", ":",
-                       "x", rpacket->buf[25], "s", ":",
-                       "x", rpacket->buf[26], "s", ":",
-                       "x", rpacket->buf[27], "s", ",",
-                       "d", rpacket->buf[28], "s", ".",
-                       "d", rpacket->buf[29], "s", ".",
-                       "d", rpacket->buf[30], "s", ".",
-                       "d", rpacket->buf[31], "s", " says who's ",
-                       "d", rpacket->buf[38], "s", ".",
-                       "d", rpacket->buf[39], "s", ".",
-                       "d", rpacket->buf[40], "s", ".",
-                       "d", rpacket->buf[41], "s", "\n");
-          gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
-        }
-        eth->ReuseRxBuffer(rpacket);
-      }, nullptr);
-    CpuId cpuid(2);
-    eth->SetReceiveCallback(cpuid, func);
-  }    
+  if (argc == 1) {
+    gtty->Cprintf("invalid argument.\n");
+    return;
+  }
+  if (strcmp(argv[1], "snd") == 0) {
+    if (argc == 2) {
+      gtty->Cprintf("specify ethernet interface.\n");
+      return;
+    } else if (argc == 3) {
+      gtty->Cprintf("specify ip v4 addr.\n");
+      return;
+    } else if (argc != 4) {
+      gtty->Cprintf("invalid arguments\n");
+      return;
+    }
+    NetDev *dev = netdev_ctrl->GetDeviceInfo(argv[2])->device;
+    if (dev == nullptr) {
+      gtty->Cprintf("no ethernet interface(%s).\n", argv[2]);
+      return;
+    }
+
+    uint8_t addr[4] = {0, 0, 0, 0};
+    int i = 0;
+    const char *c = argv[3];
+    while(true) {
+      if (i != 3 && *c == '.') {
+        i++;
+      } else if (i == 3 && *c == '\0') {
+        break;
+      } else if (*c >= '0' && *c <= '9') {
+        addr[i] *= 10;
+        addr[i] += *c - '0';
+      } else {
+        gtty->Cprintf("invalid ip v4 addr.\n");
+        return;
+      }
+      c++;
+    }
+
+    send_arp_packet(dev, addr);
+  } else if (strcmp(argv[1], "setip") == 0) {
+    if (argc == 2) {
+      gtty->Cprintf("specify ethernet interface.\n");
+      return;
+    } else if (argc == 3) {
+      gtty->Cprintf("specify ip v4 addr.\n");
+      return;
+    } else if (argc != 4) {
+      gtty->Cprintf("invalid arguments\n");
+      return;
+    }
+    NetDev *dev = netdev_ctrl->GetDeviceInfo(argv[2])->device;
+    if (dev == nullptr) {
+      gtty->Cprintf("no ethernet interface(%s).\n", argv[2]);
+      return;
+    }
+
+    uint8_t addr[4] = {0, 0, 0, 0};
+    int i = 0;
+    const char *c = argv[3];
+    while(true) {
+      if (i != 3 && *c == '.') {
+        i++;
+      } else if (i == 3 && *c == '\0') {
+        break;
+      } else if (*c >= '0' && *c <= '9') {
+        addr[i] *= 10;
+        addr[i] += *c - '0';
+      } else {
+        gtty->Cprintf("invalid ip v4 addr.\n");
+        return;
+      }
+      c++;
+    }
+
+    dev->AssignIpv4Address(addr[0] << 24 | addr[1] << 16 | addr[2] << 8 | addr[3]);
+    
+    setup_arp_reply(dev);
+  } /* else if (strcmp(argv[1], "qemu") == 0) {
+    uint8_t ip1_[] = {10, 0, 2, 9};
+    uint8_t ip2_[] = {10, 0, 2, 15};
+    memcpy(ip1, ip1_, 4);
+    memcpy(ip2, ip2_, 4);
+    sdevice = (argc == 2) ? "eth0" : argv[2];
+    rdevice = (argc == 2) ? "eth0" : argv[2];
+    if (!netdev_ctrl->Exists(rdevice)) {
+      gtty->Cprintf("no ethernet interface(%s).\n", rdevice);
+      return;
+    }
+    } */ else {
+    gtty->Cprintf("invalid argument.\n");
+    return;
+  }
 }
 
 static void show(int argc, const char *argv[]) {
@@ -425,7 +487,7 @@ extern "C" int main() {
 
   netdev_ctrl = new (&_netdev_ctrl) NetDevCtrl();
 
-  arp_table = new (&_arp_table) ArpTable();
+  // arp_table = new (&_arp_table) ArpTable();
 
   physmem_ctrl->Init();
 
@@ -481,9 +543,9 @@ extern "C" int main() {
 
   gtty->Init();
   
-  arp_table->Setup();
+  // arp_table->Setup();
 
-  Function kbd_func;
+  Function<void> kbd_func;
   kbd_func.Init([](void *){
       uint8_t data;
       if(!keyboard->Read(data)){
@@ -518,7 +580,7 @@ extern "C" int main() {
   if (!do_membench) {
     CpuId beep_cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority);
     new(&tt4) Callout;
-    Function beep;
+    Function<void> beep;
     beep.Init([](void *) {
         static int i = 0;
         if(i < 6) {
@@ -569,7 +631,7 @@ extern "C" int main_of_others() {
   #define LOOP_BENCHMARK_CPU  4
   PollingFunc p;
   if (cpu_ctrl->GetCpuId().GetRawId() == LOOP_BENCHMARK_CPU) {
-    Function f;
+    Function<void> f;
     static int hoge = 0;
     f.Init([](void *){
       int hoge2 = timer->GetUsecFromCnt(timer->ReadMainCnt()) - hoge;
@@ -587,7 +649,7 @@ extern "C" int main_of_others() {
   #define ONE_SHOT_BENCHMARK_CPU  5
   if (cpu_ctrl->GetCpuId().GetRawId() == ONE_SHOT_BENCHMARK_CPU) {
     new(&tt1) Callout;
-    Function oneshot_bench_func;
+    Function<void> oneshot_bench_func;
     oneshot_bench_func.Init([](void *){
         if (!apic_ctrl->IsBootupAll()) {
           tt1.SetHandler(1000);

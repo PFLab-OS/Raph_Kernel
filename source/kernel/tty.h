@@ -135,8 +135,7 @@ class Tty {
     int offset;
     String *next;
   };
-  static void Handle(void *tty){
-    Tty *that = reinterpret_cast<Tty *>(tty);
+  static void Handle(Tty *that){
     void *s;
     while(that->_queue.Pop(s)) {
       String *str = reinterpret_cast<String *>(s);
@@ -258,7 +257,7 @@ class Tty {
   void PrintString(String *str);
   void DoString(String *str);
   FunctionalQueue _queue;
-  IntSpinLock _lock;
+  SpinLock _lock;
   CpuId _cpuid;
 };
 

@@ -29,17 +29,16 @@ extern "C" {
 
   struct taskqueue *taskqueue_fast = nullptr;
   
-  static void __taskqueue_handle(void *arg) {
-    struct task *task = reinterpret_cast<struct task *>(arg);
-    task->ta_func(task->ta_context, task->ta_pending);
-    task->ta_pending++;
+  static void __taskqueue_handle(struct task *t) {
+    t->ta_func(t->ta_context, t->ta_pending);
+    t->ta_pending++;
   }
 
 
   void _task_init(struct task *t, int priority, task_fn_t *func, void *context) {
     t->ta_task = new Task;
-    Function f;
-    f.Init(__taskqueue_handle, reinterpret_cast<void *>(t));
+    Function<struct task> f;
+    f.Init(__taskqueue_handle, t);
     t->ta_task->SetFunc(f);
     t->ta_pending = 0;
     t->ta_func = (func);

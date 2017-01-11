@@ -37,8 +37,8 @@ class FunctionalBase {
     kNotFunctioning,
   };
   FunctionalBase() {
-    Function func;
-    func.Init(Handle, reinterpret_cast<void *>(this));
+    Function<FunctionalBase<L>> func;
+    func.Init(Handle, this);
     _task.SetFunc(func);
   }
   virtual ~FunctionalBase() {
@@ -49,7 +49,7 @@ class FunctionalBase {
   // check whether Functional needs to process function
   virtual bool ShouldFunc() = 0;
  private:
-  static void Handle(void *p);
+  static void Handle(FunctionalBase<L> *that);
   FunctionBase _func;
   Task _task;
   CpuId _cpuid;
@@ -71,8 +71,7 @@ void FunctionalBase<L>::WakeupFunction() {
 }
 
 template<class L>
-void FunctionalBase<L>::Handle(void *p) {
-  FunctionalBase<L> *that = reinterpret_cast<FunctionalBase<L> *>(p);
+void FunctionalBase<L>::Handle(FunctionalBase<L> *that) {
   if (that->ShouldFunc()) {
     that->_func.Execute();
   }
@@ -94,7 +93,5 @@ void FunctionalBase<L>::SetFunction(CpuId cpuid, const GenericFunction &func) {
 }
 
 using Functional = FunctionalBase<SpinLock>;
-
-using IntFunctional = FunctionalBase<IntSpinLock>;
 
 #endif // __RAPH_KERNEL_FUNCTIONAL_H__

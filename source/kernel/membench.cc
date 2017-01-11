@@ -2111,7 +2111,7 @@ void register_membench_callout() {
   static int id = 0;
   int cpuid = cpu_ctrl->GetCpuId().GetRawId();
   new(&callout[cpuid]) Callout;
-  Function oneshot_bench_func;
+  Function<void> oneshot_bench_func;
   oneshot_bench_func.Init([](void *){
       int cpuid_ = cpu_ctrl->GetCpuId().GetRawId();
       if (id != cpuid_) {
@@ -2511,7 +2511,7 @@ static void membench10() {
 void register_membench2_callout() {
   int cpuid = cpu_ctrl->GetCpuId().GetRawId();
   new(&callout[cpuid]) Callout;
-  Function oneshot_bench_func;
+  Function<void> oneshot_bench_func;
   oneshot_bench_func.Init([](void *){
       if (is_knl()) {
         // membench5();

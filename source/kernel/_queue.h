@@ -47,7 +47,7 @@ class Queue {
   };
   Container _first;
   Container *_last;
-  IntSpinLock _lock;
+  SpinLock _lock;
 };
 
 // TODO replace Queue to Queue2.
@@ -73,7 +73,7 @@ class Queue2 {
   };
   Container _first;
   Container *_last;
-  IntSpinLock _lock;
+  SpinLock _lock;
 };
 
 template <class T>
@@ -142,7 +142,7 @@ class IntQueue {
  private:
   Container _first;
   Container *_last;
-  IntSpinLock _lock;
+  SpinLock _lock;
 };
 
 template <class T>

@@ -30,7 +30,7 @@
 #include <tty.h>
 #include <global.h>
 
-void IntSpinLock::Lock() {
+void SpinLock::Lock() {
   if ((_flag % 2) == 1 && _cpuid == cpu_ctrl->GetCpuId()) {
     assert(_cpuid.IsValid());
     gtty->CprintfRaw("SpinLock is holded by cpuid %d.\n(current interrupt handling cnt: %d)\n", _cpuid.GetRawId(), idt->GetHandlingCnt());
@@ -77,14 +77,14 @@ void IntSpinLock::Lock() {
   }
 }
 
-void IntSpinLock::Unlock() {
+void SpinLock::Unlock() {
   kassert((_flag % 2) == 1);
   _cpuid = CpuId();
   _flag++;
   enable_interrupt(_did_stop_interrupt);
 }
 
-int IntSpinLock::Trylock() {
+int SpinLock::Trylock() {
   volatile unsigned int flag = GetFlag();
   bool iflag = disable_interrupt();
   if (((flag % 2) == 0) && SetFlag(flag, flag + 1)) {

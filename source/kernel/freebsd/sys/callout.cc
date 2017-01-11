@@ -58,7 +58,7 @@ extern "C" {
     if (ticks < 0) {
       ticks = 1;
     }
-    Function f;
+    Function<void> f;
     f.Init(func, arg);
     c->callout->Init(f);
     c->callout->SetHandler(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), static_cast<uint32_t>(ticks) * reciprocal_of_hz);
@@ -73,7 +73,7 @@ extern "C" {
     if (sbt < 0) {
       sbt = 1;
     }
-    Function f;
+    Function<void> f;
     f.Init(ftn, arg);
     c->callout->Init(f);
     c->callout->SetHandler(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), sbt * static_cast<sbintime_t>(1000000) / SBT_1S);

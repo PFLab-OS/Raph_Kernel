@@ -90,7 +90,7 @@ public:
 private:
   void HandleSub(void *);
   Task _task;
-  IntSpinLock _lock;
+  SpinLock _lock;
   FunctionBase _func;
   int _cnt;
   CpuId _cpuid;
@@ -136,7 +136,7 @@ private:
   uint64_t _time;
   Callout *_next;
   FunctionBase _func;
-  IntSpinLock _lock;
+  SpinLock _lock;
   bool _pending = false;
   friend TaskCtrl;
   CalloutState _state = CalloutState::kStopped;
