@@ -1462,6 +1462,7 @@ public:
     }
   }
   void Unlock() {
+    // _flag = 0;
     assert(__sync_bool_compare_and_swap(&_flag, 1, 0));
   }
 private:
@@ -1483,6 +1484,8 @@ public:
   }
   void Unlock() {
     uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
+    // _top_flag = 0;
+    // _second_flag[apicid / 8] = 0;
     assert(__sync_bool_compare_and_swap(&_top_flag, 1, 0));
     assert(__sync_bool_compare_and_swap(&_second_flag[apicid / 8], 1, 0));
   }
@@ -1508,6 +1511,9 @@ public:
   }
   void Unlock() {
     uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
+    // _top_flag = 0;
+    // _second_flag[apicid / 8] = 0;
+    // _third_flag[apicid / 4] = 0;
     assert(__sync_bool_compare_and_swap(&_top_flag, 1, 0));
     assert(__sync_bool_compare_and_swap(&_second_flag[apicid / 8], 1, 0));
     assert(__sync_bool_compare_and_swap(&_third_flag[apicid / 4], 1, 0));
@@ -1533,6 +1539,7 @@ public:
     }
   }
   void Unlock() {
+    // _flag = 0;
     assert(__sync_bool_compare_and_swap(&_flag, 1, 0));
   }
 private:
@@ -1564,6 +1571,8 @@ public:
   }
   void Unlock() {
     uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
+    // _top_flag = 0;
+    // _second_flag[apicid / 8] = 0;
     assert(__sync_bool_compare_and_swap(&_top_flag, 1, 0));
     assert(__sync_bool_compare_and_swap(&_second_flag[apicid / 8], 1, 0));
   }
@@ -1603,9 +1612,12 @@ public:
   }
   void Unlock() {
     uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
-    _top_flag = 0;
-    _second_flag[apicid / 8] = 0;
-    _third_flag[apicid / 4] = 0;
+    // _top_flag = 0;
+    // _second_flag[apicid / 8] = 0;
+    // _third_flag[apicid / 4] = 0;
+    assert(__sync_bool_compare_and_swap(&_top_flag, 1, 0));
+    assert(__sync_bool_compare_and_swap(&_second_flag[apicid / 8], 1, 0));
+    assert(__sync_bool_compare_and_swap(&_third_flag[apicid / 4], 1, 0));
   }
 private:
   static const int kSubStructNum = 37;
@@ -1615,11 +1627,13 @@ private:
   volatile unsigned int _third_flag[kSubStructNum*2] = {0};
 };
 
-template <class L>
+template <class L, int kListEntryNum>
 class LinkedList {
 public:
   LinkedList() {
-    _first.i = 0;
+    for (int j = 0; j < kListEntryNum; j++) {
+      _first.i[j] = 0;
+    }
     _first.next = nullptr;
     _last = &_first;
   }
@@ -1636,8 +1650,12 @@ public:
     _lock.Unlock();
     int i = 0;
     if (c != nullptr) {
-      for (int j = 0; j < 100; j++) {
-        i += c->i * c->j * c->k * c->l * c->m;
+      for (int l = 0; l < 1000; l++) {
+        int k = 1;
+        for (int j = 0; j < kListEntryNum; j++) {
+          k *= c->i[j];
+        }
+        i += k;
       }
       delete c;
     }
@@ -1646,11 +1664,9 @@ public:
   void Push(int i) {
     assert(i != 0);
     Container *c = new Container;
-    c->i = i;
-    c->j = i;
-    c->k = i;
-    c->l = i;
-    c->m = i;
+    for (int j = 0; j < kListEntryNum; j++) {
+      c->i[j] = i;
+    }
     c->next = nullptr;
     _lock.Lock();
     _last->next = c;
@@ -1659,17 +1675,16 @@ public:
   }
 private:
   struct Container {
-    int i;
-    int j;
-    int k;
-    int l;
-    int m;
     Container *next;
+    int i[kListEntryNum];
   };
   L _lock;
   Container _first; // 番兵
   Container *_last;
 };
+
+template <class L>
+using LinkedListFnum = LinkedList<L, 14>;
 
 // リスト
 static void membench7() {
@@ -1680,18 +1695,18 @@ static void membench7() {
   int cpuid = cpu_ctrl->GetCpuId().GetRawId();
   // uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
 
-  static LinkedList<SimpleSpinLock> _list;
-  static LinkedList<McSpinLock1<37>> _list2;
-  static LinkedList<McSpinLock2<37>> _list3;
-  static LinkedList<SimpleSpinLockRead> _list_sr;
-  static LinkedList<McSpinLock3<37>> _list4;
-  static LinkedList<McSpinLock4> _list5;
-  LinkedList<SimpleSpinLock> *list = &_list;
-  LinkedList<McSpinLock1<37>> *list2 = &_list2;
-  LinkedList<McSpinLock2<37>> *list3 = &_list3;
-  LinkedList<SimpleSpinLockRead> *list_sr = &_list_sr;
-  LinkedList<McSpinLock3<37>> *list4 = &_list4;
-  LinkedList<McSpinLock4> *list5 = &_list5;
+  static LinkedListFnum<SimpleSpinLock> _list;
+  static LinkedListFnum<McSpinLock1<37>> _list2;
+  static LinkedListFnum<McSpinLock2<37>> _list3;
+  static LinkedListFnum<SimpleSpinLockRead> _list_sr;
+  static LinkedListFnum<McSpinLock3<37>> _list4;
+  static LinkedListFnum<McSpinLock4> _list5;
+  LinkedListFnum<SimpleSpinLock> *list = &_list;
+  LinkedListFnum<McSpinLock1<37>> *list2 = &_list2;
+  LinkedListFnum<McSpinLock2<37>> *list3 = &_list3;
+  LinkedListFnum<SimpleSpinLockRead> *list_sr = &_list_sr;
+  LinkedListFnum<McSpinLock3<37>> *list4 = &_list4;
+  LinkedListFnum<McSpinLock4> *list5 = &_list5;
    
 
   if (cpuid == 0) {
@@ -1699,12 +1714,12 @@ static void membench7() {
   }
 
   if (cpuid == 0) {
-    new (list) LinkedList<SimpleSpinLock>;
-    new (list2) LinkedList<McSpinLock1<37>>;
-    new (list3) LinkedList<McSpinLock2<37>>;
-    new (list_sr) LinkedList<SimpleSpinLockRead>;
-    new (list4) LinkedList<McSpinLock3<37>>;
-    new (list5) LinkedList<McSpinLock4>;
+    new (list) LinkedListFnum<SimpleSpinLock>;
+    new (list2) LinkedListFnum<McSpinLock1<37>>;
+    new (list3) LinkedListFnum<McSpinLock2<37>>;
+    new (list_sr) LinkedListFnum<SimpleSpinLockRead>;
+    new (list4) LinkedListFnum<McSpinLock3<37>>;
+    new (list5) LinkedListFnum<McSpinLock4>;
     for (int i = 1; i < 256 * 2000; i++) {
       list->Push(i);
     }
@@ -2110,6 +2125,389 @@ void register_membench_callout() {
   callout[cpuid].SetHandler(10);
 }
 
+// リスト、要素数可変比較版
+static void membench10() {
+  if (!is_knl()) {
+    return;
+  }
+
+  int cpuid = cpu_ctrl->GetCpuId().GetRawId();
+  // uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
+
+  static LinkedList<McSpinLock4, 3> _list1;
+  static LinkedList<McSpinLock4, 5> _list13;
+  static LinkedList<McSpinLock4, 7> _list14;
+  static LinkedList<McSpinLock4, 10> _list15;
+  static LinkedList<McSpinLock4, 11> _list17;
+  static LinkedList<McSpinLock4, 12> _list18;
+  static LinkedList<McSpinLock4, 13> _list19;
+  static LinkedList<McSpinLock4, 14> _list2;
+  static LinkedList<McSpinLock4, 15> _list3;
+  static LinkedList<McSpinLock4, 20> _list4;
+  static LinkedList<McSpinLock4, 40> _list5;
+  static LinkedList<McSpinLock4, 80> _list6;
+  LinkedList<McSpinLock4, 3> *list1 = &_list1;
+  LinkedList<McSpinLock4, 5> *list13 = &_list13;
+  LinkedList<McSpinLock4, 7> *list14 = &_list14;
+  LinkedList<McSpinLock4, 10> *list15 = &_list15;
+  LinkedList<McSpinLock4, 11> *list17 = &_list17;
+  LinkedList<McSpinLock4, 12> *list18 = &_list18;
+  LinkedList<McSpinLock4, 13> *list19 = &_list19;
+  LinkedList<McSpinLock4, 14> *list2 = &_list2;
+  LinkedList<McSpinLock4, 15> *list3 = &_list3;
+  LinkedList<McSpinLock4, 20> *list4 = &_list4;
+  LinkedList<McSpinLock4, 40> *list5 = &_list5;
+  LinkedList<McSpinLock4, 80> *list6 = &_list6;
+   
+
+  if (cpuid == 0) {
+    gtty->CprintfRaw("(init)");
+  }
+
+  if (cpuid == 0) {
+    new (list1) LinkedList<McSpinLock4, 3>;
+    new (list13) LinkedList<McSpinLock4, 5>;
+    new (list14) LinkedList<McSpinLock4, 7>;
+    new (list15) LinkedList<McSpinLock4, 10>;
+    new (list17) LinkedList<McSpinLock4, 11>;
+    new (list18) LinkedList<McSpinLock4, 12>;
+    new (list19) LinkedList<McSpinLock4, 13>;
+    new (list2) LinkedList<McSpinLock4, 14>;
+    new (list3) LinkedList<McSpinLock4, 15>;
+    new (list4) LinkedList<McSpinLock4, 20>;
+    new (list5) LinkedList<McSpinLock4, 40>;
+    new (list6) LinkedList<McSpinLock4, 80>;
+    for (int i = 1; i < 256 * 2000; i++) {
+      list1->Push(i);
+    }
+    for (int i = 1; i < 256 * 2000; i++) {
+      list13->Push(i);
+    }
+    for (int i = 1; i < 256 * 2000; i++) {
+      list14->Push(i);
+    }
+    for (int i = 1; i < 256 * 2000; i++) {
+      list15->Push(i);
+    }
+    for (int i = 1; i < 256 * 2000; i++) {
+      list17->Push(i);
+    }
+    for (int i = 1; i < 256 * 2000; i++) {
+      list18->Push(i);
+    }
+    for (int i = 1; i < 256 * 2000; i++) {
+      list19->Push(i);
+    }
+    for (int i = 1; i < 256 * 2000; i++) {
+      list2->Push(i);
+    }
+    for (int i = 1; i < 256 * 2000; i++) {
+      list3->Push(i);
+    }
+    for (int i = 1; i < 256 * 2000; i++) {
+      list4->Push(i);
+    }
+    for (int i = 1; i < 256 * 2000; i++) {
+      list5->Push(i);
+    }
+    for (int i = 1; i < 256 * 2000; i++) {
+      list6->Push(i);
+    }
+  }
+
+  if (cpuid == 0) {
+    gtty->CprintfRaw("start!>");
+  }
+
+  {
+    {
+      static Sync2Phi sync={0};
+      sync.Do();
+    }
+
+    uint64_t t1;
+    if (cpuid == 0) {
+      t1 = timer->ReadMainCnt();
+    }
+  
+    while(list1->Get() != 0) {
+    }
+    
+    {
+      static Sync2Phi sync={0};
+      sync.Do();
+    }
+
+    if (cpuid == 0) {
+      gtty->CprintfRaw("<3 %d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+    }
+  }
+
+  {
+    {
+      static Sync2Phi sync={0};
+      sync.Do();
+    }
+
+    uint64_t t1;
+    if (cpuid == 0) {
+      t1 = timer->ReadMainCnt();
+    }
+  
+    while(list13->Get() != 0) {
+    }
+    
+    {
+      static Sync2Phi sync={0};
+      sync.Do();
+    }
+
+    if (cpuid == 0) {
+      gtty->CprintfRaw("<5 %d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+    }
+  }
+
+    {
+    {
+      static Sync2Phi sync={0};
+      sync.Do();
+    }
+
+    uint64_t t1;
+    if (cpuid == 0) {
+      t1 = timer->ReadMainCnt();
+    }
+  
+    while(list14->Get() != 0) {
+    }
+    
+    {
+      static Sync2Phi sync={0};
+      sync.Do();
+    }
+
+    if (cpuid == 0) {
+      gtty->CprintfRaw("<7 %d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+    }
+  }
+
+  {
+    {
+      static Sync2Phi sync={0};
+      sync.Do();
+    }
+
+    uint64_t t1;
+    if (cpuid == 0) {
+      t1 = timer->ReadMainCnt();
+    }
+  
+    while(list15->Get() != 0) {
+    }
+    
+    {
+      static Sync2Phi sync={0};
+      sync.Do();
+    }
+
+    if (cpuid == 0) {
+      gtty->CprintfRaw("<10 %d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+    }
+  }
+
+    {
+    {
+      static Sync2Phi sync={0};
+      sync.Do();
+    }
+
+    uint64_t t1;
+    if (cpuid == 0) {
+      t1 = timer->ReadMainCnt();
+    }
+  
+    while(list17->Get() != 0) {
+    }
+    
+    {
+      static Sync2Phi sync={0};
+      sync.Do();
+    }
+
+    if (cpuid == 0) {
+      gtty->CprintfRaw("<11 %d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+    }
+  }
+
+      {
+    {
+      static Sync2Phi sync={0};
+      sync.Do();
+    }
+
+    uint64_t t1;
+    if (cpuid == 0) {
+      t1 = timer->ReadMainCnt();
+    }
+  
+    while(list18->Get() != 0) {
+    }
+    
+    {
+      static Sync2Phi sync={0};
+      sync.Do();
+    }
+
+    if (cpuid == 0) {
+      gtty->CprintfRaw("<12 %d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+    }
+  }
+
+        {
+    {
+      static Sync2Phi sync={0};
+      sync.Do();
+    }
+
+    uint64_t t1;
+    if (cpuid == 0) {
+      t1 = timer->ReadMainCnt();
+    }
+  
+    while(list19->Get() != 0) {
+    }
+    
+    {
+      static Sync2Phi sync={0};
+      sync.Do();
+    }
+
+    if (cpuid == 0) {
+      gtty->CprintfRaw("<13 %d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+    }
+  }
+
+  {
+    {
+      static Sync2Phi sync={0};
+      sync.Do();
+    }
+
+    uint64_t t1;
+    if (cpuid == 0) {
+      t1 = timer->ReadMainCnt();
+    }
+  
+    while(list2->Get() != 0) {
+    }
+    
+    {
+      static Sync2Phi sync={0};
+      sync.Do();
+    }
+
+    if (cpuid == 0) {
+      gtty->CprintfRaw("<14 %d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+    }
+  }
+
+  {
+    {
+      static Sync2Phi sync={0};
+      sync.Do();
+    }
+
+    uint64_t t1;
+    if (cpuid == 0) {
+      t1 = timer->ReadMainCnt();
+    }
+  
+    while(list3->Get() != 0) {
+    }
+    
+    {
+      static Sync2Phi sync={0};
+      sync.Do();
+    }
+
+    if (cpuid == 0) {
+      gtty->CprintfRaw("<15 %d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+    }
+  }
+
+  {
+    {
+      static Sync2Phi sync={0};
+      sync.Do();
+    }
+
+    uint64_t t1;
+    if (cpuid == 0) {
+      t1 = timer->ReadMainCnt();
+    }
+  
+    while(list4->Get() != 0) {
+    }
+    
+    {
+      static Sync2Phi sync={0};
+      sync.Do();
+    }
+
+    if (cpuid == 0) {
+      gtty->CprintfRaw("<20 %d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+    }
+  }
+
+  {
+    {
+      static Sync2Phi sync={0};
+      sync.Do();
+    }
+
+    uint64_t t1;
+    if (cpuid == 0) {
+      t1 = timer->ReadMainCnt();
+    }
+  
+    while(list5->Get() != 0) {
+    }
+    
+    {
+      static Sync2Phi sync={0};
+      sync.Do();
+    }
+
+    if (cpuid == 0) {
+      gtty->CprintfRaw("<40 %d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+    }
+  }
+
+  {
+    {
+      static Sync2Phi sync={0};
+      sync.Do();
+    }
+
+    uint64_t t1;
+    if (cpuid == 0) {
+      t1 = timer->ReadMainCnt();
+    }
+  
+    while(list6->Get() != 0) {
+    }
+    
+    {
+      static Sync2Phi sync={0};
+      sync.Do();
+    }
+
+    if (cpuid == 0) {
+      gtty->CprintfRaw("<80 %d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+    }
+  }
+}
+
 void register_membench2_callout() {
   int cpuid = cpu_ctrl->GetCpuId().GetRawId();
   new(&callout[cpuid]) Callout;
@@ -2117,7 +2515,8 @@ void register_membench2_callout() {
   oneshot_bench_func.Init([](void *){
       if (is_knl()) {
         // membench5();
-        membench7();
+        // membench7();
+        membench10();
       } else {
         membench9();
       }
