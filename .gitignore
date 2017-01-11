@@ -21,6 +21,7 @@ disk.vdi
 net/disk.img.gz
 .vagrant
 .ssh_config
+build/
 
 # Object files
 *.o
