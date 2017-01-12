@@ -57,6 +57,9 @@ public:
     void Delete(T *c) __attribute__((deprecated));
 
   virt_addr Sbrk(int64_t increment);
+  virt_addr GetHeapEnd() {
+    return _brk_end;
+  }
 private:
   virt_addr _heap_allocated_end;
   virt_addr _brk_end;
