@@ -79,9 +79,12 @@ class Tty {
     Locker locker(_lock);
     PrintString(&str);
   }
+  virtual void PrintShell(char *str) = 0;
   virtual void SetColor(Color) = 0;
   virtual void ResetColor() = 0;
  protected:
+  virtual void _Init() {
+  }
   virtual void Write(uint8_t c) = 0;
   int _cx = 0;
   int _cy = 0;

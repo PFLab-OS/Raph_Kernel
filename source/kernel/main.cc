@@ -552,7 +552,6 @@ extern "C" int main() {
         return;
       }
       char c = Keyboard::Interpret(data);
-      gtty->Cprintf("%c", c);
       shell->ReadCh(c);
     }, nullptr);
   keyboard->Setup(kbd_func);

@@ -48,6 +48,9 @@ class Vga : public Tty {
     _color = Color::kWhite;
   }
  private:
+  virtual void _Init() override {
+    PrintShell("");
+  }
   virtual void Write(uint8_t c) override {
     switch(c) {
     case '\n':
@@ -69,10 +72,27 @@ class Vga : public Tty {
     }
     Scroll();
   }
+  virtual void PrintShell(char *str) override {
+    _vga_addr[((_y - 1) * _x) * 2] = '>';
+    _vga_addr[((_y - 1) * _x) * 2 + 1] = 0xF0;
+    size_t len = strlen(str);
+    if (len >= _x - 1) {
+      str += len - (_x - 1);
+    }
+    for (int x = 1; x < _x; x++) {
+      char c = ' ';
+      if (*str != '\0') {
+        c = *str;
+        str++;
+      }
+      _vga_addr[((_y - 1) * _x + x) * 2] = c;
+      _vga_addr[((_y - 1) * _x + x) * 2 + 1] = 0xF0;
+    }
+  }
   void Scroll() {
-    if (_cy == _y) {
+    if (_cy == _y - 1) {
       _cy--;
-      for(int y = 1; y < _y; y++) {
+      for(int y = 1; y < _y - 1; y++) {
         for(int x = 0; x < _x; x++) {
           _vga_addr[((y - 1) * _x + x) * 2] = _vga_addr[(y * _x + x) * 2];
           _vga_addr[((y - 1) * _x + x) * 2 + 1] = _vga_addr[(y * _x + x) * 2 + 1];
