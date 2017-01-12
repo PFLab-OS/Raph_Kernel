@@ -575,6 +575,7 @@ extern "C" int main() {
   shell->Register("cpuinfo", cpuinfo);
   shell->Register("ifconfig", ifconfig);
   shell->Register("show", show);
+  // shell->Register("exec", exec);
 
   if (!do_membench) {
     CpuId beep_cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority);

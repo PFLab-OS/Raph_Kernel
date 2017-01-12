@@ -40,9 +40,12 @@ _qemurun: _image
 _qemuend:
 	-sudo pkill -KILL qemu
 
-_bin:
+_bin: $(BUILD_DIR)/script
 	-mkdir $(BUILD_DIR)
 	make -C source
+
+$(BUILD_DIR)/script:
+	cp script $(BUILD_DIR)/script
 
 _image:
 	make _mount

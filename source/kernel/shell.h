@@ -26,6 +26,8 @@
 #ifndef __RAPH_KERNEL_SHELL_H__
 #define __RAPH_KERNEL_SHELL_H__
 
+#include <ptr.h>
+
 class Shell {
  public:
   void Setup();
@@ -33,13 +35,18 @@ class Shell {
   void ReadCh(char c);
 
  private:
-  void Exec(const char *name, int argc, const char* argv[]);
+  struct ExecContainer {
+    const char *name;
+    int argc;
+    const char **argv;
+    Shell *shell;
+  };
+  void Exec(ExecContainer *container);
 
   static const int kBufSize = 10;
   static const int kNameSize = 10;
   int _next_buf = 0;
   struct NameFuncMapping {
-
     char name[kNameSize];
     void (*func)(int argc, const char *argv[]);
   } _name_func_mapping[kBufSize];

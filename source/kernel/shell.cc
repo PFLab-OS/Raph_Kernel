@@ -46,15 +46,17 @@ void Shell::Register(const char *name, void (*func)(int argc, const char *argv[]
   }
 }
 
-void Shell::Exec(const char *name,int argc, const char* argv[]) {
+void Shell::Exec(ExecContainer *container) {
   for (int i = 0; i < _next_buf; i++) {
-    if (strncmp(name, _name_func_mapping[i].name, strlen(_name_func_mapping[i].name)) == 0) {
-      _name_func_mapping[i].func(argc, argv);
+    if (strncmp(container->name, _name_func_mapping[i].name, strlen(_name_func_mapping[i].name)) == 0) {
+      _name_func_mapping[i].func(container->argc, container->argv);
+      delete container;
       return;
     }
   }
 
-  gtty->Cprintf("unknown command: %s\n", name);
+  gtty->Cprintf("unknown command: %s\n", container->name);
+  delete container;
 }
 
 void Shell::ReadCh(char c) {
@@ -64,8 +66,17 @@ void Shell::ReadCh(char c) {
 void Shell::Liner::ReadCh(char c) {
   if (c == '\n') {
     Tokenize();
-    if (_argc > 0) {	
-      _shell->Exec(_command, _argc, (const char **)_arguments);
+    if (_argc > 0) {
+      ExecContainer *container = new ExecContainer;
+      container->name = _command;
+      container->argc = _argc;
+      container->argv = const_cast<const char **>(_arguments);
+      container->shell = _shell;
+      Function<ExecContainer> func;
+      func.Init([](ExecContainer *container_) {
+          container_->shell->Exec(container_);
+        }, container);
+      func.Execute();
     }
     Reset();
   } else if (c == '\b') {
