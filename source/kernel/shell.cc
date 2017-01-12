@@ -68,10 +68,18 @@ void Shell::Liner::ReadCh(char c) {
       _shell->Exec(_command, _argc, (const char **)_arguments);
     }
     Reset();
+  } else if (c == '\b') {
+    // backspace
+    if (_next_command > 0) {
+      _next_command--;
+      _command[_next_command] = '\0';
+      gtty->PrintShell(_command);
+    }
   } else if (_next_command != kCommandSize - 1) {
     _command[_next_command] = c;
     _next_command++;
     _command[_next_command] = '\0';
+    gtty->PrintShell(_command);
   }
 }
 
@@ -104,5 +112,5 @@ void Shell::Liner::Reset() {
     _arguments[0] = nullptr;
     _next_command = 0;
     _argc = 0;
-    gtty->Cprintf(">");
+    gtty->PrintShell("");
 }

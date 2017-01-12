@@ -31,6 +31,7 @@ void Tty::Init() {
   Function<Tty> func;
   func.Init(Handle, this);
   _queue.SetFunction(_cpuid, func);
+  _Init();
 }
 
 void Tty::PrintString(String *str) {
