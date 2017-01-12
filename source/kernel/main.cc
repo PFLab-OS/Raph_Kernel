@@ -321,12 +321,12 @@ void send_arp_packet(NetDev *dev, uint8_t *ipaddr) {
     Function<NetDev> func;
     func.Init([](NetDev *eth){
         if (rtime > 0) {
-          gtty->Printf("s","ARP Reply average latency:","d",sum / rtime,"s","us [","d",rtime,"s","/","d",stime,"s","]\n");
+          gtty->Cprintf("ARP Reply average latency:%dus [%d/%d]\n", sum / rtime, rtime, stime);
         } else {
           if (eth->GetStatus() == NetDev::LinkStatus::kUp) {
-            gtty->Printf("s","Link is Up, but no ARP Reply\n");
+            gtty->Cprintf("Link is Up, but no ARP Reply\n");
           } else {
-            gtty->Printf("s","Link is Down, please wait...\n");
+            gtty->Cprintf("Link is Down, please wait...\n");
           }
         }
         if (rtime != stime) {

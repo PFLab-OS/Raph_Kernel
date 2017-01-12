@@ -79,13 +79,6 @@ class Tty {
     Locker locker(_lock);
     PrintString(&str);
   }
-  void Printf() __attribute__((deprecated)) {
-  }
-  template<class... T>
-    void Printf(const T& ...args) __attribute__((deprecated));
-  // use to print error message
-  template<class... T>
-    void PrintfRaw(const T& ...args) __attribute__((deprecated));
   virtual void SetColor(Color) = 0;
   virtual void ResetColor() = 0;
  protected:
@@ -147,137 +140,11 @@ class Tty {
     }
   }
   void Cvprintf_sub(String *str, const char *fmt, va_list args);
-  void Printf_sub1(String &str) {
-  }
-  template<class T>
-    void Printf_sub1(String &str, T /* arg */) {
-    Printf_sub2(str, "s", "(invalid format)");
-  }
-  template<class T1, class T2, class... T>
-    void Printf_sub1(String &str, const T1 &arg1, const T2 &arg2, const T& ...args) {
-    Printf_sub2(str, arg1, arg2);
-    Printf_sub1(str, args...);
-  }
-
-  void Printf_sub2(String &str, const char *arg1, const char arg2) {
-    if (strcmp(arg1, "c")) {
-      Printf_sub2(str, "s", "(invalid format)");
-    } else {
-      str.Write(arg2);
-    }
-  }
-  void Printf_sub2(String &str, const char* arg1, const char *arg2) {
-    if (strcmp(arg1, "s")) {
-      Printf_sub2(str, "s", "(invalid format)");
-    } else {
-      while(*arg2) {
-        str.Write(*arg2);
-        arg2++;
-      }
-    }
-  }
-  void Printf_sub2(String &str, const char *arg1, const int8_t arg2) {
-    PrintInt(str, arg1, arg2);
-  }
-  void Printf_sub2(String &str, const char *arg1, const int16_t arg2) {
-    PrintInt(str, arg1, arg2);
-  }
-  void Printf_sub2(String &str, const char *arg1, const int32_t arg2) {
-    PrintInt(str, arg1, arg2);
-  }
-  void Printf_sub2(String &str, const char *arg1, const int64_t arg2) {
-    PrintInt(str, arg1, arg2);
-  }
-  void Printf_sub2(String &str, const char *arg1, const uint8_t arg2) {
-    PrintInt(str, arg1, arg2);
-  }
-  void Printf_sub2(String &str, const char *arg1, const uint16_t arg2) {
-    PrintInt(str, arg1, arg2);
-  }
-  void Printf_sub2(String &str, const char *arg1, const uint32_t arg2) {
-    PrintInt(str, arg1, arg2);
-  }
-  void Printf_sub2(String &str, const char *arg1, const uint64_t arg2) {
-    PrintInt(str, arg1, arg2);
-  }
-  template<class T1>
-    void Printf_sub2(String &str, const char *arg1, const T1& /*arg2*/) {
-    Printf_sub2(str, "s", "(unknown)");
-  }
-  template<class T1, class T2>
-    void Printf_sub2(String &str, const T1& /*arg1*/, const T2& /*arg2*/) {
-    Printf_sub2(str, "s", "(invalid format)");
-  }
-  void PrintInt(String &str, const char *arg1, const int arg2) {
-    if (!strcmp(arg1, "d")) {
-      if (arg2 < 0) {
-        str.Write('-');
-      }
-      unsigned int _arg2 = (arg2 < 0) ? -arg2 : arg2;
-      unsigned int i = _arg2;
-      int digit = 0;
-      while (i >= 10) {
-        i /= 10;
-        digit++;
-      }
-      for (int j = digit; j >= 0; j--) {
-        i = 1;
-        for (int k = 0; k < j; k++) {
-          i *= 10;
-        }
-        unsigned int l = _arg2 / i;
-        str.Write(l + '0');
-        _arg2 -= l * i;
-      }
-    } else if (!strcmp(arg1, "x")) {
-      unsigned int _arg2 = arg2;
-      unsigned int i = _arg2;
-      int digit = 0;
-      while (i >= 16) {
-        i /= 16;
-        digit++;
-      }
-      for (int j = digit; j >= 0; j--) {
-        i = 1;
-        for (int k = 0; k < j; k++) {
-          i *= 16;
-        }
-        unsigned int l = _arg2 / i;
-        if (l < 10) {
-          str.Write(l + '0');
-        } else if (l < 16) {
-          str.Write(l - 10 + 'A');
-        }
-        _arg2 -= l * i;
-      }
-    } else {
-      Printf_sub2(str, "s", "(invalid format)");
-    }
-  } 
   void PrintString(String *str);
   void DoString(String *str);
   FunctionalQueue _queue;
   SpinLock _lock;
   CpuId _cpuid;
 };
-
-template<class... T>
-void Tty::Printf(const T& ...args) {
-  String *str = String::New();
-  Printf_sub1(*str, args...);
-  str->Exit();
-  DoString(str);
-}
-
-template<class... T>
-void Tty::PrintfRaw(const T& ...args) {
-  String str;
-  str.Init();
-  str.type = String::Type::kSingle;
-  Printf_sub1(str, args...);
-  str.Exit();
-  Locker locker(_lock);
-  PrintString(&str);
-}
 
 #endif // __RAPH_KERNEL_TTY_H__

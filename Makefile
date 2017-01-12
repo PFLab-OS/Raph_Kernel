@@ -61,9 +61,9 @@ $(IMAGE):
 	dd if=/dev/zero of=$(IMAGE) bs=1M count=20
 	parted -s $(IMAGE) mklabel msdos -- mkpart primary 2048s -1
 	sh disk.sh grub-install
-	make mount
+	make _mount
 	sudo cp memtest86+.bin $(MOUNT_DIR)/boot/memtest86+.bin
-	make umount
+	make _umount
 
 _hd: _image
 	@if [ ! -e /dev/sdb ]; then echo "error: insert usb memory!"; exit -1; fi
