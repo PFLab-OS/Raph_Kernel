@@ -28,6 +28,7 @@
 #include <mem/kstack.h>
 #include <cpu.h>
 #include <apic.h>
+#include <tty.h>
 
 enum class CpuPurpose {
   kNone = 0,
@@ -129,6 +130,7 @@ inline bool CpuId::IsValid() {
 
 inline void CpuId::CheckIfValid() {
   if (!IsValid()) {
+    gtty->CprintfRaw("[CpuId] error: unknown rawid %d\n", _rawid);
     kernel_panic("CpuId", "Invalid ID");
   }
 }

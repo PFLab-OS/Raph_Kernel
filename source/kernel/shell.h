@@ -35,13 +35,7 @@ class Shell {
   void ReadCh(char c);
 
  private:
-  struct ExecContainer {
-    const char *name;
-    int argc;
-    const char **argv;
-    Shell *shell;
-  };
-  void Exec(ExecContainer *container);
+  void Exec(const char *name, int argc, const char **argv);
 
   static const int kBufSize = 10;
   static const int kNameSize = 10;
@@ -58,14 +52,19 @@ class Shell {
     }
     void ReadCh(char c);
   private:
-    void Tokenize();
-    void Reset();
     static const int kCommandSize = 100;
     static const int kArgumentMax = 10;
+    struct ExecContainer {
+      char name[kCommandSize];
+      int argc;
+      const char *argv[kArgumentMax + 1];
+      Shell *shell;
+      Callout *c;
+    };
+    uptr<ExecContainer> Tokenize(uptr<ExecContainer> ec);
+    void Reset();
     char _command[kCommandSize] = "";
-    char *_arguments[kArgumentMax + 1];
     int _next_command = 0;
-    int _argc = 0;
     Shell *_shell;
   } _liner;
 };

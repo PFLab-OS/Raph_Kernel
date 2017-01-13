@@ -61,6 +61,10 @@ inline void FunctionalBase<L>::WakeupFunction() {
   if (_state == FunctionState::kFunctioning) {
     return;
   }
+  if (!_cpuid.IsValid()) {
+    // not initialized
+    return;
+  }
   _state = FunctionState::kFunctioning;
   task_ctrl->Register(_cpuid, &_task);
 }

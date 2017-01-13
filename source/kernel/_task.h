@@ -118,17 +118,14 @@ public:
   volatile bool IsHandling() {
     return (_state == CalloutState::kHandling);
   }
-  // volatile bool CanExecute() {
-  //   return _func->CanExecute();
-  // }
   void SetHandler(int us);
   void SetHandler(CpuId cpuid, int us);
   bool Cancel();
   bool IsPending() {
     return _pending;
   }
-private:
   void HandleSub(void *);
+private:
   CpuId _cpuid;
   Task _task;
   uint64_t _time;
@@ -156,9 +153,6 @@ class LckCallout {
   volatile bool IsHandling() {
     return callout.IsHandling();
   }
-  // volatile bool CanExecute() {
-  //   return callout.CanExecute();
-  // }
   void SetHandler(int us) {
     callout.SetHandler(us);
   }
