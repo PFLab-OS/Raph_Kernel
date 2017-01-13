@@ -6338,9 +6338,7 @@ void E1000::E1000BsdEthernet::PollingHandler(E1000 *that) {
 }
 
 void E1000::E1000BsdEthernet::ChangeHandleMethodToPolling() {
-  Function<E1000> func;
-  func.Init(PollingHandler, &GetMasterClass());
-  _polling.Init(func);
+  _polling.Init(new Function<E1000>(PollingHandler, &GetMasterClass()));
   extern CpuId network_cpu;
   _polling.Register(network_cpu);
 

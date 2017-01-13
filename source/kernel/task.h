@@ -35,8 +35,8 @@ public:
     TaskThread() {
     }
     void Init();
-    void SetFunc(const GenericFunction &func) {
-      _func.Copy(func);
+    void SetFunc(uptr<GenericFunction> func) {
+      _func = func;
     }
     ~TaskThread() {
     }
@@ -47,7 +47,7 @@ public:
     virt_addr _stack;
     jmp_buf _buf;
     jmp_buf _return_buf;
-    FunctionBase _func;
+    uptr<GenericFunction> _func;
   };
   TaskWithStack() {
   }
@@ -56,7 +56,7 @@ public:
   void Init() {
     _tthread.Init();
   }
-  virtual void SetFunc(const GenericFunction &func) override {
+  virtual void SetFunc(uptr<GenericFunction> func) override {
     _tthread.SetFunc(func);
   }
   virtual void Execute() override {
@@ -96,7 +96,7 @@ private:
   
   friend Callout;
   void RegisterCallout(Callout *task);
-  void CancelCallout(Callout *task);
+  bool CancelCallout(Callout *task);
   void ForceWakeup(CpuId cpuid); 
   class TaskStruct {
   public:

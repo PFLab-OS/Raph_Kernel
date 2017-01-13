@@ -23,6 +23,7 @@
 #include <raph.h>
 #include <task.h>
 #include <cpu.h>
+#include <ptr.h>
 #include "taskqueue.h"
 
 extern "C" {
@@ -37,9 +38,7 @@ extern "C" {
 
   void _task_init(struct task *t, int priority, task_fn_t *func, void *context) {
     t->ta_task = new Task;
-    Function<struct task> f;
-    f.Init(__taskqueue_handle, t);
-    t->ta_task->SetFunc(f);
+    t->ta_task->SetFunc(make_uptr(new Function<struct task>(__taskqueue_handle, t)));
     t->ta_pending = 0;
     t->ta_func = (func);
     t->ta_context = (context);

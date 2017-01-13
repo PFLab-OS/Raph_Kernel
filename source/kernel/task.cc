@@ -248,7 +248,7 @@ void TaskWithStack::TaskThread::InitBuffer() {
   } else {
     // call from TaskThread::SwitchTo()
     while(true) {
-      _func.Execute();
+      _func->Execute();
       Wait();
     }
   }
@@ -295,7 +295,8 @@ void TaskCtrl::RegisterCallout(Callout *task) {
   ForceWakeup(task->_cpuid);
 }
 
-void TaskCtrl::CancelCallout(Callout *task) {
+bool TaskCtrl::CancelCallout(Callout *task) {
+  bool flag = false;
   switch(task->_state) {
   case Callout::CalloutState::kCalloutQueue: {
     int cpuid = task->_cpuid.GetRawId();
@@ -310,10 +311,12 @@ void TaskCtrl::CancelCallout(Callout *task) {
       dt = dtt;
     }
     task->_next = nullptr;
+    flag = true;
     break;
   }
   case Callout::CalloutState::kTaskQueue: {
     Remove(&task->_task);
+    flag = true;
     break;
   }
   case Callout::CalloutState::kHandling:
@@ -324,6 +327,7 @@ void TaskCtrl::CancelCallout(Callout *task) {
     kassert(false);
   }
   task->_state = Callout::CalloutState::kStopped;
+  return flag;
 }
 
 void TaskCtrl::ForceWakeup(CpuId cpuid) {
@@ -345,7 +349,7 @@ void CountableTask::Inc() {
 }
 
 void CountableTask::HandleSub(void *) {
-  _func.Execute();
+  _func->Execute();
   {
     Locker locker(_lock);
     _cnt--;
@@ -367,17 +371,17 @@ void Callout::SetHandler(CpuId cpuid, int us) {
   task_ctrl->RegisterCallout(this);
 }
 
-void Callout::Cancel() {
+bool Callout::Cancel() {
   Locker locker(_lock);
   _pending = false;
-  task_ctrl->CancelCallout(this);
+  return task_ctrl->CancelCallout(this);
 }
 
 void Callout::HandleSub(void *) {
   if (timer->IsTimePassed(_time)) {
     _pending = false;
     _state = CalloutState::kHandling;
-    _func.Execute();
+    _func->Execute();
     if (_state == CalloutState::kHandling) {
       _state = CalloutState::kStopped;
     }

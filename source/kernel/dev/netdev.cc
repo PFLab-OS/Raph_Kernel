@@ -16,20 +16,19 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
- * Author: Levelfour
+ * Author: Liva
  * 
  */
 
 #include <mem/virtmem.h>
 #include <dev/netdev.h>
 // #include <net/pstack.h>
+#include <ptr.h>
 #include <global.h>
 
 NetDev::NetDev() {
-  ClassFunction<NetDev> func;
-  func.Init(this, &NetDev::Transmit, nullptr);
   extern CpuId network_cpu;
-  _tx_buffered.SetFunction(network_cpu, func);
+  _tx_buffered.SetFunction(network_cpu, make_uptr(new ClassFunction<NetDev>(this, &NetDev::Transmit, nullptr)));
 }
 
 bool NetDevCtrl::RegisterDevice(NetDev *dev, const char *prefix) {

@@ -35,9 +35,7 @@ class Polling {
     kStopped,
   };
   Polling() {
-    ClassFunction<Polling> func;
-    func.Init(this, &Polling::HandleSub, nullptr);
-    _task.SetFunc(func);
+    _task.SetFunc(make_uptr(new ClassFunction<Polling>(this, &Polling::HandleSub, nullptr)));
   }
   void RegisterPolling(CpuId cpuid) {
     if (_state == PollingState::kPolling) {
@@ -79,14 +77,14 @@ class PollingFunc : public Polling {
   void Remove() {
     this->RemovePolling();
   }
-  void Init(const GenericFunction &func) {
-    _func.Copy(func);
+  void Init(uptr<GenericFunction> func) {
+    _func = func;
   }
  private:
   virtual void Handle() override {
-    _func.Execute();
+    _func->Execute();
   }
-  FunctionBase _func;
+  uptr<GenericFunction> _func;
 };
 
 #endif /* __RAPH_KERNEL_DEV_POLLING_H__ */

@@ -29,7 +29,7 @@
 #include <buf.h>
 #include <dev/keyboard.h>
 
-void Keyboard::Setup(const GenericFunction &func) {
+void Keyboard::Setup(uptr<GenericFunction> func) {
   kassert(apic_ctrl != nullptr);
   kassert(idt != nullptr);
   CpuId cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority);

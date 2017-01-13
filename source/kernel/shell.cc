@@ -72,11 +72,9 @@ void Shell::Liner::ReadCh(char c) {
       container->argc = _argc;
       container->argv = const_cast<const char **>(_arguments);
       container->shell = _shell;
-      Function<ExecContainer> func;
-      func.Init([](ExecContainer *container_) {
-          container_->shell->Exec(container_);
-        }, container);
-      func.Execute();
+      make_uptr(new Function<ExecContainer>([](ExecContainer *container_) {
+            container_->shell->Exec(container_);
+          }, container))->Execute();
     }
     Reset();
   } else if (c == '\b') {

@@ -84,9 +84,7 @@ void AcpiCtrl::SetupAcpica() {
   kassert(!ACPI_FAILURE(AcpiLoadTables()));
   kassert(!ACPI_FAILURE(AcpiInitializeObjects(ACPI_FULL_INITIALIZATION)));
 
-  ClassFunction<AcpiCtrl> func;
-  func.Init(this, &AcpiCtrl::GlobalEventHandler, nullptr);
-  _global_event_task.SetFunc(func);
+  _global_event_task.SetFunc(make_uptr(new ClassFunction<AcpiCtrl>(this, &AcpiCtrl::GlobalEventHandler, nullptr)));
    AcpiInstallGlobalEventHandler(AcpiGlobalEventHandler, reinterpret_cast<void *>(&_global_event_task));
 } 
   

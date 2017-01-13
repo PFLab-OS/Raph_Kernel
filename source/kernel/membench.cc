@@ -2111,17 +2111,15 @@ void register_membench_callout() {
   static int id = 0;
   int cpuid = cpu_ctrl->GetCpuId().GetRawId();
   new(&callout[cpuid]) Callout;
-  Function<void> oneshot_bench_func;
-  oneshot_bench_func.Init([](void *){
-      int cpuid_ = cpu_ctrl->GetCpuId().GetRawId();
-      if (id != cpuid_) {
-        callout[cpuid_].SetHandler(1000);
-        return;
-      }
-      membench();
-      id++;
-    }, nullptr);
-  callout[cpuid].Init(oneshot_bench_func);
+  callout[cpuid].Init(make_uptr(new Function<void>([](void *){
+          int cpuid_ = cpu_ctrl->GetCpuId().GetRawId();
+          if (id != cpuid_) {
+            callout[cpuid_].SetHandler(1000);
+            return;
+          }
+          membench();
+          id++;
+        }, nullptr)));
   callout[cpuid].SetHandler(10);
 }
 
@@ -2511,25 +2509,24 @@ static void membench10() {
 void register_membench2_callout() {
   int cpuid = cpu_ctrl->GetCpuId().GetRawId();
   new(&callout[cpuid]) Callout;
-  Function<void> oneshot_bench_func;
-  oneshot_bench_func.Init([](void *){
-      if (is_knl()) {
-        // membench5();
-        // membench7();
-        membench10();
-      } else {
-        membench9();
-      }
-      if (false) {
-        membench2();
-        membench3();
-        membench4();
-        membench5();
-        membench6();
-        membench7();
-        membench8();
-      }
-    }, nullptr);
+  uptr<Function<void>> oneshot_bench_func(new Function<void>([](void *){
+        if (is_knl()) {
+          // membench5();
+          // membench7();
+          membench10();
+        } else {
+          membench9();
+        }
+        if (false) {
+          membench2();
+          membench3();
+          membench4();
+          membench5();
+          membench6();
+          membench7();
+          membench8();
+        }
+      }, nullptr));
   callout[cpuid].Init(oneshot_bench_func);
   callout[cpuid].SetHandler(10);
 }

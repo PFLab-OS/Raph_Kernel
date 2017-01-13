@@ -26,6 +26,7 @@
 #include <sys/kernel.h>
 #include <task.h>
 #include <cpu.h>
+#include <ptr.h>
 
 extern "C" {
 
@@ -35,9 +36,7 @@ extern "C" {
   }
 
   int callout_stop(struct callout *c) {
-    bool flag = c->callout->CanExecute();
-    c->callout->Cancel();
-    return flag ? 1 : 0;
+    return c->callout->Cancel();
   }
 
   int callout_drain(struct callout *c) {
@@ -58,9 +57,7 @@ extern "C" {
     if (ticks < 0) {
       ticks = 1;
     }
-    Function<void> f;
-    f.Init(func, arg);
-    c->callout->Init(f);
+    c->callout->Init(make_uptr(new Function<void>(func, arg)));
     c->callout->SetHandler(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), static_cast<uint32_t>(ticks) * reciprocal_of_hz);
 
     return pending ? 1 : 0;
@@ -73,9 +70,7 @@ extern "C" {
     if (sbt < 0) {
       sbt = 1;
     }
-    Function<void> f;
-    f.Init(ftn, arg);
-    c->callout->Init(f);
+    c->callout->Init(make_uptr(new Function<void>(ftn, arg)));
     c->callout->SetHandler(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), sbt * static_cast<sbintime_t>(1000000) / SBT_1S);
 
     return pending ? 1 : 0;

@@ -20,14 +20,14 @@
  * 
  */
 
-#ifndef __RAPH_LIB__TASK_H__
-#define __RAPH_LIB__TASK_H__
+#pragma once
 
 #include <raph.h>
 #include <global.h>
 #include <function.h>
 #include <spinlock.h>
 #include <timer.h>
+#include <ptr.h>
 
 class Task {
 public:
@@ -42,14 +42,14 @@ public:
   virtual ~Task() {
     kassert(_status == Status::kOutOfQueue);
   }
-  virtual void SetFunc(const GenericFunction &func) {
-    _func.Copy(func);
+  virtual void SetFunc(uptr<GenericFunction> func) {
+    _func = func;
   }
   Status GetStatus() {
     return _status;
   }
   virtual void Execute() {
-    _func.Execute();
+    _func->Execute();
   }
   virtual void Wait() {
     kernel_panic("Task", "unable to use blocking operation(use TaskWithStack instead)");
@@ -58,7 +58,7 @@ public:
     kernel_panic("Task", "unable to kill normal Task");
   }
 private:
-  FunctionBase _func;
+  uptr<GenericFunction> _func;
   Task *_next;
   Task *_prev;
   CpuId _cpuid;
@@ -73,15 +73,14 @@ class CountableTask {
 public:
   CountableTask() {
     _cnt = 0;
-    ClassFunction<CountableTask> func;
-    func.Init(this, &CountableTask::HandleSub, nullptr);
+    uptr<ClassFunction<CountableTask>> func(new ClassFunction<CountableTask>(this, &CountableTask::HandleSub, nullptr));
     _task.SetFunc(func);
   }
   virtual ~CountableTask() {
   }
-  void SetFunc(CpuId cpuid, const GenericFunction &func) {
+  void SetFunc(CpuId cpuid, uptr<GenericFunction> func) {
     _cpuid = cpuid;
-    _func.Copy(func);
+    _func = func;
   }
   Task::Status GetStatus() {
     return _task.GetStatus();
@@ -91,7 +90,7 @@ private:
   void HandleSub(void *);
   Task _task;
   SpinLock _lock;
-  FunctionBase _func;
+  uptr<GenericFunction> _func;
   int _cnt;
   CpuId _cpuid;
 };
@@ -108,24 +107,23 @@ public:
     kStopped,
   };
   Callout() {
-    ClassFunction<Callout> func;
-    func.Init(this, &Callout::HandleSub, nullptr);
+    uptr<ClassFunction<Callout>> func(new ClassFunction<Callout>(this, &Callout::HandleSub, nullptr));
     _task.SetFunc(func);
   }
   virtual ~Callout() {
   }
-  void Init(const GenericFunction &func) {
-    _func.Copy(func);
+  void Init(uptr<GenericFunction> func) {
+    _func = func;
   }
   volatile bool IsHandling() {
     return (_state == CalloutState::kHandling);
   }
-  volatile bool CanExecute() {
-    return _func.CanExecute();
-  }
+  // volatile bool CanExecute() {
+  //   return _func->CanExecute();
+  // }
   void SetHandler(int us);
   void SetHandler(CpuId cpuid, int us);
-  void Cancel();
+  bool Cancel();
   bool IsPending() {
     return _pending;
   }
@@ -135,7 +133,7 @@ private:
   Task _task;
   uint64_t _time;
   Callout *_next;
-  FunctionBase _func;
+  uptr<GenericFunction> _func;
   SpinLock _lock;
   bool _pending = false;
   friend TaskCtrl;
@@ -145,14 +143,12 @@ private:
 class LckCallout {
  public:
   LckCallout() {
-    ClassFunction<LckCallout> func;
-    func.Init(this, &LckCallout::HandleSub, nullptr);
-    callout.Init(func);
+    callout.Init(make_uptr(new ClassFunction<LckCallout>(this, &LckCallout::HandleSub, nullptr)));
   }
   virtual ~LckCallout() {
   }
-  void Init(const GenericFunction &func) {
-    _func.Copy(func);
+  void Init(uptr<GenericFunction> func) {
+    _func = func;
   }
   void SetLock(SpinLock *lock) {
     _lock = lock;
@@ -160,17 +156,17 @@ class LckCallout {
   volatile bool IsHandling() {
     return callout.IsHandling();
   }
-  volatile bool CanExecute() {
-    return callout.CanExecute();
-  }
+  // volatile bool CanExecute() {
+  //   return callout.CanExecute();
+  // }
   void SetHandler(int us) {
     callout.SetHandler(us);
   }
   void SetHandler(CpuId cpuid, int us) {
     callout.SetHandler(cpuid, us);
   }
-  void Cancel() {
-    callout.Cancel();
+  bool Cancel() {
+    return callout.Cancel();
   }
   bool IsPending() {
     return callout.IsPending();
@@ -180,14 +176,12 @@ class LckCallout {
     if (_lock != nullptr) {
       _lock->Lock();
     }
-    _func.Execute();
+    _func->Execute();
     if (_lock != nullptr) {
       _lock->Unlock();
     }
   }
   SpinLock *_lock = nullptr;
   Callout callout;
-  FunctionBase _func;
+  uptr<GenericFunction> _func;
 };
-
-#endif /* __RAPH_LIB__TASK_H__ */

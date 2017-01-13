@@ -28,6 +28,12 @@
 template<class T>
 class uptr {
 public:
+  template <class A>
+  uptr(const uptr<A> &p) {
+    _obj = p._obj;
+    uptr<A> *p_ = const_cast<uptr<A> *>(&p);
+    p_->_obj = nullptr;
+  }
   uptr(const uptr &p) {
     _obj = p._obj;
     uptr *p_ = const_cast<uptr *>(&p);
@@ -41,10 +47,12 @@ public:
   uptr(T *obj) {
     _obj = obj;
   }
-  template <class ...Args>
-  void Init(Args ...args) {
-    kassert(_obj == nullptr);
-    _obj = new T(args...);
+  uptr &operator=(const uptr &p) {
+    _obj = p._obj;
+    uptr *p_ = const_cast<uptr *>(&p);
+    p_->_obj = nullptr;
+
+    return (*this);
   }
   ~uptr() {
     delete _obj;
@@ -64,8 +72,16 @@ public:
     return _obj;
   }
 private:
+  template <typename A>
+  friend class uptr;
   T *_obj;
 };
+
+template <class T>
+inline uptr<T> make_uptr(T *ptr) {
+  uptr<T> p(ptr);
+  return p;
+}
 
 // uptr for array
 template<class T>
@@ -84,6 +100,13 @@ public:
   auptr() {
     _len = 0;
     _obj = nullptr;
+  }
+  auptr &operator=(const auptr &p) {
+    _obj = p._obj;
+    auptr *p_ = const_cast<auptr *>(&p);
+    p_->_obj = nullptr;
+
+    return (*this);
   }
   void Init(int len) {
     kassert(_obj == nullptr);
@@ -122,6 +145,13 @@ private:
 template<class T>
 class sptr {
 public:
+  template<class A>
+  sptr(const sptr<A> &p) {
+    _obj = p._obj;
+    _ref_cnt = p._ref_cnt;
+    while(!__sync_bool_compare_and_swap(_ref_cnt, *_ref_cnt, *_ref_cnt + 1)) {
+    }
+  }
   sptr(const sptr &p) {
     _obj = p._obj;
     _ref_cnt = p._ref_cnt;
@@ -134,6 +164,14 @@ public:
   }
   sptr() {
     _obj = nullptr;
+  }
+  sptr &operator=(const sptr &p) {
+    _obj = p._obj;
+    _ref_cnt = p._ref_cnt;
+    while(!__sync_bool_compare_and_swap(_ref_cnt, *_ref_cnt, *_ref_cnt + 1)) {
+    }
+
+    return (*this);
   }
   template <class ...Args>
   void Init(Args ...args) {
@@ -161,6 +199,8 @@ public:
     return _obj;
   }
 private:
+  template <typename A>
+  friend class sptr;
   T *_obj;
   int *_ref_cnt;
 };

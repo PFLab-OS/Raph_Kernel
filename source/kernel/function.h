@@ -20,104 +20,10 @@
  * 
  */
 
-#ifndef __RAPH_KERNEL_FUNCTION_H__
-#define __RAPH_KERNEL_FUNCTION_H__
+#pragma once
 
 #include <global.h>
 #include <mem/virtmem.h>
-
-class FunctionBaseObj {
-public:
-  FunctionBaseObj() {
-  }
-  FunctionBaseObj(const FunctionBaseObj &f) {
-  }
-  virtual ~FunctionBaseObj() {
-  }
-  void Execute() {
-    if (CanExecute()) {
-      ExecuteSub();
-    }
-  }
-  virtual bool CanExecute() {
-    return false;
-  }
-  virtual void Clear() {
-  }
-  virtual FunctionBaseObj *Duplicate() const {
-    return virtmem_ctrl->New<FunctionBaseObj>(*this);
-  }
-protected:
-  virtual void ExecuteSub() {
-  }
-};
-
-template<class T>
-class FunctionObj : public FunctionBaseObj {
-public:
-  FunctionObj() {
-  }
-  FunctionObj(const FunctionObj &f) {
-    _func = f._func;
-    _arg = f._arg;
-  }
-  virtual ~FunctionObj() {
-  }
-  void Init(void (*func)(T *), T *arg) {
-    _func = func;
-    _arg = arg;
-  }
-  virtual bool CanExecute() override {
-    return (_func != nullptr);
-  }
-  virtual void Clear() override {
-    _func = nullptr;
-  }
-  virtual FunctionBaseObj *Duplicate() const override {
-    return virtmem_ctrl->New<FunctionObj>(*this);
-  }
-private:
-  virtual void ExecuteSub() override {
-    _func(_arg);
-  }
-  void (*_func)(T *) = nullptr;
-  T *_arg;
-};
-
-template <class T>
-class ClassFunctionObj : public FunctionBaseObj {
-public:
-  ClassFunctionObj() {
-  }
-  ClassFunctionObj(const ClassFunctionObj<T> &f) {
-    _c = f._c;
-    _func = f._func;
-    _arg = f._arg;
-  }
-  virtual ~ClassFunctionObj() {
-  }
-  void Init(T *c, void (T::*func)(void *), void *arg) {
-    _c = c;
-    _func = func;
-    _arg = arg;
-  }
-  virtual bool CanExecute() override {
-    return (_func != nullptr);
-  }
-  virtual void Clear() override {
-    _func = nullptr;
-  }
-  virtual FunctionBaseObj *Duplicate() const override {
-    return virtmem_ctrl->New<ClassFunctionObj<T>>(*this);
-  }
-private:
-  virtual void ExecuteSub() override {
-    (_c->*_func)(_arg);
-  }
-  T *_c;
-  void (T::*_func)(void *) = nullptr;
-  void *_arg;
-};
 
 class GenericFunction {
 public:
@@ -125,80 +31,54 @@ public:
   }
   virtual ~GenericFunction() {
   }
-  void Execute() {
-    GetObj()->Execute();
+  virtual void Execute() {
   }
-  bool CanExecute() {
-    return GetObj()->CanExecute();
-  }
-  void Clear() {
-    GetObj()->Clear();
-  }
-  virtual FunctionBaseObj *GetObj() const = 0;
-};
-class FunctionBase : public GenericFunction {
-public:
-  FunctionBase() {
-    _obj = &dummy;
-  }
-  virtual ~FunctionBase() {
-    if (_obj != &dummy) {
-      delete(_obj);
-    }
-  }
-  void Copy(const GenericFunction &obj) {
-    // TODO Lockをかけるべき？
-    if (_obj != &dummy) {
-      delete(_obj);
-    }
-    _obj = obj.GetObj()->Duplicate();
-  }
-private:
-  FunctionBase(const FunctionBase &obj);
-  virtual FunctionBaseObj *GetObj() const override {
-    return _obj;
-  }
-  FunctionBaseObj dummy;
-  FunctionBaseObj *_obj;
 };
 
 template<class T>
 class Function : public GenericFunction {
 public:
-  Function() {
-    _obj = virtmem_ctrl->New<FunctionObj<T>>();
+  Function(void (*func)(T *), T *arg) {
+    _func = func;
+    _arg = arg;
   }
   virtual ~Function() {
-    virtmem_ctrl->Delete<FunctionObj<T>>(_obj);
   }
-  void Init(void (*func)(T *), T *arg) {
-    _obj->Init(func, arg);
+  Function(const Function &obj) {
+    _func = obj._func;
+    _arg = obj._arg;
+  }
+  virtual void Execute() override {
+    _func(_arg);
   }
 private:
-  Function(const Function &obj);
-  virtual FunctionBaseObj *GetObj() const override {
-    return _obj;
-  }
-  FunctionObj<T> *_obj;
+  Function();
+  void (*_func)(T *);
+  T *_arg;
 };
 template <class T>
 class ClassFunction : public GenericFunction {
 public:
-  ClassFunction() {
-    _obj = virtmem_ctrl->New<ClassFunctionObj<T>>();
+  ClassFunction(T *c, void (T::*func)(void *), void *arg) {
+    _c = c;
+    _func = func;
+    _arg = arg;
+  }
+  ClassFunction(const ClassFunction<T> &obj) {
+    _c = obj._c;
+    _func = obj._func;
+    _arg = obj._arg;
   }
   virtual ~ClassFunction() {
-    virtmem_ctrl->Delete<ClassFunctionObj<T>>(_obj);
   }
-  void Init(T *c, void (T::*func)(void *), void *arg) {
-    this->_obj->Init(c, func, arg);
+  virtual void Execute() override {
+     (_c->*_func)(_arg);
   }
 private:
-  ClassFunction(const ClassFunction<T> &obj);
-  virtual FunctionBaseObj *GetObj() const override {
-    return _obj;
-  }
-  ClassFunctionObj<T> *_obj;
+  ClassFunction();
+  T *_c;
+  void (T::*_func)(void *);
+  void *_arg;
 };
 
 
@@ -384,4 +264,3 @@ private:
   ClassFunctionObj2<T, C> *_obj;
 };
 
-#endif /* __RAPH_KERNEL_FUNCTION_H__ */

@@ -37,20 +37,18 @@ class FunctionalBase {
     kNotFunctioning,
   };
   FunctionalBase() {
-    Function<FunctionalBase<L>> func;
-    func.Init(Handle, this);
-    _task.SetFunc(func);
+    _task.SetFunc(make_uptr(new Function<FunctionalBase<L>>(Handle, this)));
   }
   virtual ~FunctionalBase() {
   }
-  void SetFunction(CpuId cpuid, const GenericFunction &func);
+  void SetFunction(CpuId cpuid, uptr<GenericFunction> func);
  protected:
   void WakeupFunction();
   // check whether Functional needs to process function
   virtual bool ShouldFunc() = 0;
  private:
   static void Handle(FunctionalBase<L> *that);
-  FunctionBase _func;
+  uptr<GenericFunction> _func;
   Task _task;
   CpuId _cpuid;
   L _lock;
@@ -58,10 +56,7 @@ class FunctionalBase {
 };
 
 template<class L>
-void FunctionalBase<L>::WakeupFunction() {
-  if (!_func.CanExecute()) {
-    return;
-  }
+inline void FunctionalBase<L>::WakeupFunction() {
   Locker locker(_lock);
   if (_state == FunctionState::kFunctioning) {
     return;
@@ -71,9 +66,9 @@ void FunctionalBase<L>::WakeupFunction() {
 }
 
 template<class L>
-void FunctionalBase<L>::Handle(FunctionalBase<L> *that) {
+inline void FunctionalBase<L>::Handle(FunctionalBase<L> *that) {
   if (that->ShouldFunc()) {
-    that->_func.Execute();
+    that->_func->Execute();
   }
   {
     Locker locker(that->_lock);
@@ -86,10 +81,9 @@ void FunctionalBase<L>::Handle(FunctionalBase<L> *that) {
 }
 
 template<class L>
-void FunctionalBase<L>::SetFunction(CpuId cpuid, const GenericFunction &func) {
-  kassert(!_func.CanExecute());
+inline void FunctionalBase<L>::SetFunction(CpuId cpuid, uptr<GenericFunction> func) {
   _cpuid = cpuid;
-  _func.Copy(func);
+  _func = func;
 }
 
 using Functional = FunctionalBase<SpinLock>;
