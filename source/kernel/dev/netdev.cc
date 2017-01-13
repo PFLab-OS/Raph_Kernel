@@ -74,7 +74,7 @@ NetDevCtrl::NetDevInfo *NetDevCtrl::GetDeviceInfo(const char *name) {
   return nullptr;
 }
 
-auptr<const char *> NetDevCtrl::GetNamesOfAllDevices() {
+uptr<Array<const char *>> NetDevCtrl::GetNamesOfAllDevices() {
   int j = 0;
   for(uint32_t i = 0; i < _current_device_number; i++) {
     if(_dev_table[i].device != nullptr) {
@@ -82,15 +82,14 @@ auptr<const char *> NetDevCtrl::GetNamesOfAllDevices() {
     }
   }
   
-  auptr<const char *> list;
-  list.Init(j);
+  auto list = make_uptr(new Array<const char *>(j));
 
   j = 0;
   for(uint32_t i = 0; i < _current_device_number; i++) {
     NetDev *dev = _dev_table[i].device;
 
     if(dev != nullptr) {
-      list[j] = dev->GetName();
+      (*list)[j] = dev->GetName();
       j++;
     }
   }

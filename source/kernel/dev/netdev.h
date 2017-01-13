@@ -32,6 +32,7 @@
 #include <freebsd/sys/param.h>
 #include <_cpu.h>
 #include <ptr.h>
+#include <array.h>
 
 class ProtocolStack;
 class DevEthernet;
@@ -383,7 +384,7 @@ public:
    *
    * @return unique pointer to the list
    */
-  auptr<const char *> GetNamesOfAllDevices();
+  uptr<Array<const char *>> GetNamesOfAllDevices();
   
   /**
    * Check if the specified network device exists or not.

@@ -141,11 +141,11 @@ void lspci(int argc, const char* argv[]) {
 }
 
 void ifconfig(int argc, const char* argv[]){
-  auptr<const char *> list = netdev_ctrl->GetNamesOfAllDevices();
+  uptr<Array<const char *>> list = netdev_ctrl->GetNamesOfAllDevices();
   gtty->CprintfRaw("\n");
-  for (int i = 0; i < list.GetLen(); i++) {
-    gtty->CprintfRaw("%s", list[i]);
-    NetDev *dev = netdev_ctrl->GetDeviceInfo(list[i])->device;
+  for (size_t l = 0; l < list->GetLen(); l++) {
+    gtty->CprintfRaw("%s", (*list)[l]);
+    NetDev *dev = netdev_ctrl->GetDeviceInfo((*list)[l])->device;
     dev->UpdateLinkStatus();
     gtty->CprintfRaw("  link: %s\n", dev->IsLinkUp() ? "up" : "down");
   }

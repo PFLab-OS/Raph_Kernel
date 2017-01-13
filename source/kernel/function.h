@@ -24,6 +24,7 @@
 
 #include <global.h>
 #include <mem/virtmem.h>
+#include <ptr.h>
 
 class GenericFunction {
 public:
@@ -56,6 +57,51 @@ private:
   void (*_func)(T *);
   T *_arg;
 };
+
+template<class T>
+class FunctionU : public GenericFunction {
+public:
+  FunctionU(void (*func)(uptr<T>), uptr<T> arg) {
+    _func = func;
+    _arg = arg;
+  }
+  virtual ~FunctionU() {
+  }
+  FunctionU(const FunctionU &obj) {
+    _func = obj._func;
+    _arg = obj._arg;
+  }
+  virtual void Execute() override {
+    _func(_arg);
+  }
+private:
+  FunctionU();
+  void (*_func)(uptr<T>);
+  uptr<T> _arg;
+};
+
+template<class T>
+class FunctionS : public GenericFunction {
+public:
+  FunctionS(void (*func)(sptr<T>), sptr<T> arg) {
+    _func = func;
+    _arg = arg;
+  }
+  virtual ~FunctionS() {
+  }
+  FunctionS(const FunctionS &obj) {
+    _func = obj._func;
+    _arg = obj._arg;
+  }
+  virtual void Execute() override {
+    _func(_arg);
+  }
+private:
+  FunctionS();
+  void (*_func)(sptr<T>);
+  sptr<T> _arg;
+};
+
 template <class T>
 class ClassFunction : public GenericFunction {
 public:

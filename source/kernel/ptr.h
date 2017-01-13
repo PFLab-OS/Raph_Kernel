@@ -20,8 +20,7 @@
  * 
  */
 
-#ifndef __RAPH_LIBRARY_PTR_H__
-#define __RAPH_LIBRARY_PTR_H__
+#pragma once
 
 #include <raph.h>
 
@@ -58,7 +57,9 @@ public:
     delete _obj;
   }
   T *operator&();
-  T *operator*();
+  T &operator*() {
+    return *_obj;
+  }
   T *operator->() {
     if (_obj == nullptr) {
       kassert(false);
@@ -77,70 +78,66 @@ private:
   T *_obj;
 };
 
+template<class Array>
+class uptr<Array []> {
+public:
+  template <class A>
+  uptr(const uptr<A> &p) {
+    _obj = p._obj;
+    uptr<A> *p_ = const_cast<uptr<A> *>(&p);
+    p_->_obj = nullptr;
+  }
+  uptr(const uptr &p) {
+    _obj = p._obj;
+    uptr *p_ = const_cast<uptr *>(&p);
+    p_->_obj = nullptr;
+  }
+  uptr() {
+    _obj = nullptr;
+  }
+  // to manage raw ptr
+  // ptr 'obj' must be allocated by 'new'
+  uptr(Array *obj) {
+    _obj = obj;
+  }
+  uptr &operator=(const uptr &p) {
+    _obj = p._obj;
+    uptr *p_ = const_cast<uptr *>(&p);
+    p_->_obj = nullptr;
+
+    return (*this);
+  }
+  ~uptr() {
+    delete [] _obj;
+  }
+  Array *operator&();
+  Array *operator*();
+  Array *operator->() {
+    if (_obj == nullptr) {
+      kassert(false);
+    }
+    return _obj;
+  }
+  Array operator [](int n) {
+    return _obj[n];
+  }
+  Array *GetRawPtr() {
+    if (_obj == nullptr) {
+      kassert(false);
+    }
+    return _obj;
+  }
+private:
+  template <typename A>
+  friend class uptr;
+  Array *_obj;
+};
+
 template <class T>
 inline uptr<T> make_uptr(T *ptr) {
   uptr<T> p(ptr);
   return p;
 }
-
-// uptr for array
-template<class T>
-class auptr {
-public:
-  auptr(const auptr &p) {
-    _obj = p._obj;
-    _len = p._len;
-    auptr *p_ = const_cast<auptr *>(&p);
-    p_->_obj = nullptr;
-  }
-  auptr(T *obj, int len) {
-    _obj = obj;
-    _len = len;
-  }
-  auptr() {
-    _len = 0;
-    _obj = nullptr;
-  }
-  auptr &operator=(const auptr &p) {
-    _obj = p._obj;
-    auptr *p_ = const_cast<auptr *>(&p);
-    p_->_obj = nullptr;
-
-    return (*this);
-  }
-  void Init(int len) {
-    kassert(_obj == nullptr);
-    _len = len;
-    _obj = new T[_len];
-  }
-  ~auptr() {
-    delete[] _obj;
-  }
-  T *operator&();
-  T *operator*();
-  T *operator->() {
-    if (_obj == nullptr) {
-      kassert(false);
-    }
-    return _obj;
-  }
-  T & operator [](int n) {
-    kassert(0 <= n && n < _len);
-    return _obj[n];
-  }
-  T *GetRawPtr() {
-    if (_obj == nullptr) {
-      kassert(false);
-    }
-    return _obj;
-  }
-  int GetLen() {
-    return _len;
-  }
-private:
-  T *_obj;
-  int _len;
-};
 
 template<class T>
 class sptr {
@@ -204,5 +201,3 @@ private:
   T *_obj;
   int *_ref_cnt;
 };
-
-#endif // __RAPH_LIBRARY_PTR_H__
