@@ -78,24 +78,24 @@ void TaskCtrl::Run() {
         }
         dtt->_next = nullptr;
         dtt->_state = Callout::CalloutState::kTaskQueue;
-        Register(cpuid, &dtt->_task);
+        Register(cpuid, dtt->_task);
         dtt->_lock.Unlock();
         break;
       }
     }
     while(true) {
       while(true) {
-        Task *t;
+        sptr<Task> t;
         {
           Locker locker(ts->lock);
-          Task *tt = ts->top;
+          sptr<Task> tt = ts->top;
           t = tt->_next;
-          if (t == nullptr) {
+          if (t.IsNull()) {
             kassert(tt == ts->bottom);
             break;
           }
           tt->_next = t->_next;
-          if (t->_next == nullptr) {
+          if (t->_next.IsNull()) {
             kassert(ts->bottom == t);
             ts->bottom = tt;
           } else {
@@ -103,8 +103,8 @@ void TaskCtrl::Run() {
           }
           kassert(t->_status == Task::Status::kWaitingInQueue);
           t->_status = Task::Status::kRunning;
-          t->_next = nullptr;
-          t->_prev = nullptr;
+          t->_next = make_sptr<Task>();
+          t->_prev = make_sptr<Task>();
         }
 
         t->Execute();
@@ -118,12 +118,12 @@ void TaskCtrl::Run() {
       }
       Locker locker(ts->lock);
 
-      if (ts->top->_next == nullptr &&
-          ts->top_sub->_next == nullptr) {
+      if (ts->top->_next.IsNull() &&
+          ts->top_sub->_next.IsNull()) {
         ts->state = TaskQueueState::kSlept;
         break;
       }
-      Task *tmp;
+      sptr<Task> tmp;
       tmp = ts->top;
       ts->top = ts->top_sub;
       ts->top_sub = tmp;
@@ -155,7 +155,7 @@ void TaskCtrl::Run() {
   }
 }
 
-void TaskCtrl::Register(CpuId cpuid, Task *task) {
+void TaskCtrl::Register(CpuId cpuid, sptr<Task> task) {
   if (!(task->_status == Task::Status::kOutOfQueue ||
         (task->_status == Task::Status::kRunning && task->_cpuid.GetRawId() == cpuid.GetRawId()))) {
     kernel_panic("TaskCtrl", "unable to register queued Task.");
@@ -166,7 +166,7 @@ void TaskCtrl::Register(CpuId cpuid, Task *task) {
   if (task->_status == Task::Status::kWaitingInQueue) {
     return;
   }
-  task->_next = nullptr;
+  task->_next = make_sptr<Task>();
   task->_status = Task::Status::kWaitingInQueue;
   task->_cpuid = cpuid;
   _task_struct[raw_cpuid].bottom_sub->_next = task;
@@ -176,23 +176,23 @@ void TaskCtrl::Register(CpuId cpuid, Task *task) {
   ForceWakeup(cpuid);
 }
 
-void TaskCtrl::Remove(Task *task) {
+void TaskCtrl::Remove(sptr<Task> task) {
   kassert(task->_status != Task::Status::kGuard);
   if (task->_status != Task::Status::kOutOfQueue) {
     int cpuid = cpu_ctrl->GetCpuId().GetRawId();
     Locker locker(_task_struct[cpuid].lock);
     switch(task->_status) {
     case Task::Status::kWaitingInQueue: {
-      Task *next = task->_next;
-      Task *prev = task->_prev;
+      sptr<Task> next = task->_next;
+      sptr<Task> prev = task->_prev;
 
-      task->_next = nullptr;
-      task->_prev = nullptr;
+      task->_next = make_sptr<Task>();
+      task->_prev = make_sptr<Task>();
 
-      kassert(prev != nullptr);
+      kassert(!prev.IsNull());
       prev->_next = next;
 
-      if (next == nullptr) {
+      if (next.IsNull()) {
         if (task == _task_struct[cpuid].bottom) {
           _task_struct[cpuid].bottom = prev;
         } else if (task == _task_struct[cpuid].bottom_sub) {
@@ -315,7 +315,7 @@ bool TaskCtrl::CancelCallout(Callout *task) {
     break;
   }
   case Callout::CalloutState::kTaskQueue: {
-    Remove(&task->_task);
+    Remove(task->_task);
     flag = true;
     break;
   }
@@ -344,7 +344,7 @@ void CountableTask::Inc() {
   Locker locker(_lock);
   _cnt++;
   if (_cnt == 1) {
-    task_ctrl->Register(_cpuid, &_task);
+    task_ctrl->Register(_cpuid, _task);
   }
 }
 
@@ -354,7 +354,7 @@ void CountableTask::HandleSub(void *) {
     Locker locker(_lock);
     _cnt--;
     if (_cnt != 0) {
-      task_ctrl->Register(_cpuid, &_task);
+      task_ctrl->Register(_cpuid, _task);
     }
   }
 }
@@ -386,23 +386,23 @@ void Callout::HandleSub(void *) {
       _state = CalloutState::kStopped;
     }
   } else {
-    task_ctrl->Register(cpu_ctrl->GetCpuId(), &_task);
+    task_ctrl->Register(cpu_ctrl->GetCpuId(), _task);
   }
 }
 
 TaskCtrl::TaskStruct::TaskStruct() {
-  Task *t = new Task;
+  sptr<Task> t = make_sptr(new Task);
   t->_status = Task::Status::kGuard;
-  t->_next = nullptr;
-  t->_prev = nullptr;
+  t->_next = make_sptr<Task>();
+  t->_prev = make_sptr<Task>();
 
   top = t;
   bottom = t;
 
-  t = new Task;
+  t = make_sptr(new Task);
   t->_status = Task::Status::kGuard;
-  t->_next = nullptr;
-  t->_prev = nullptr;
+  t->_next = make_sptr<Task>();
+  t->_prev = make_sptr<Task>();
 
   top_sub = t;
   bottom_sub = t;

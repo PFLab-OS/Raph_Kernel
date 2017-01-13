@@ -34,8 +34,8 @@ class Polling {
     kPolling,
     kStopped,
   };
-  Polling() {
-    _task.SetFunc(make_uptr(new ClassFunction<Polling>(this, &Polling::HandleSub, nullptr)));
+  Polling() : _task(new Task) {
+    _task->SetFunc(make_uptr(new ClassFunction<Polling>(this, &Polling::HandleSub, nullptr)));
   }
   void RegisterPolling(CpuId cpuid) {
     if (_state == PollingState::kPolling) {
@@ -43,7 +43,7 @@ class Polling {
     }
     _cpuid = cpuid;
     _state = PollingState::kPolling;
-    task_ctrl->Register(_cpuid, &_task);
+    task_ctrl->Register(_cpuid, _task);
   }
   void RemovePolling() {
     if (_state == PollingState::kStopped) {
@@ -56,14 +56,14 @@ class Polling {
   void HandleSub(void *) {
     if (_state == PollingState::kPolling) {
       Handle();
-      task_ctrl->Register(_cpuid, &_task);
+      task_ctrl->Register(_cpuid, _task);
     } else {
       RemovePolling();
     }
   }
   PollingState _state = PollingState::kStopped;
   CpuId _cpuid;
-  Task _task;
+  sptr<Task> _task;
 };
 
 class PollingFunc : public Polling {

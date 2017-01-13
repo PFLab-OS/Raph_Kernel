@@ -60,6 +60,12 @@ class Shell {
       const char *argv[kArgumentMax + 1];
       Shell *shell;
       Callout *c;
+      ExecContainer(Shell *shell_) {
+        argc = 0;
+        shell = shell_;
+      }
+    private:
+      ExecContainer();
     };
     uptr<ExecContainer> Tokenize(uptr<ExecContainer> ec);
     void Reset();

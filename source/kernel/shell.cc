@@ -64,11 +64,10 @@ void Shell::ReadCh(char c) {
 
 void Shell::Liner::ReadCh(char c) {
   if (c == '\n') {
-    auto ec = make_uptr(new ExecContainer);
+    auto ec = make_uptr(new ExecContainer(_shell));
     ec = Tokenize(ec);
     if (ec->argc > 0) {
       Callout *callout = new Callout;
-      ec->shell = _shell;
       callout->Init(make_uptr(new FunctionU<ExecContainer>([](uptr<ExecContainer> ec_) {
               ec_->shell->Exec(ec_->name, ec_->argc, ec_->argv);
             }, ec)));

@@ -73,9 +73,18 @@ FADT *AcpiCtrl::GetFADT() {
   return reinterpret_cast<FADT *>(table);
 }
 
+class Container {
+public:
+  Container() : task(new Task) {
+  }
+  sptr<Task> task;
+private:
+};
+
 void AcpiGlobalEventHandler(UINT32 type, ACPI_HANDLE device, UINT32 num, void *context) {
+  Container *container = reinterpret_cast<Container *>(context);
   if (num == ACPI_EVENT_POWER_BUTTON) {
-    task_ctrl->Register(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), reinterpret_cast<Task *>(context));
+    task_ctrl->Register(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), container->task);
   }
 }
 
@@ -84,8 +93,9 @@ void AcpiCtrl::SetupAcpica() {
   kassert(!ACPI_FAILURE(AcpiLoadTables()));
   kassert(!ACPI_FAILURE(AcpiInitializeObjects(ACPI_FULL_INITIALIZATION)));
 
-  _global_event_task.SetFunc(make_uptr(new ClassFunction<AcpiCtrl>(this, &AcpiCtrl::GlobalEventHandler, nullptr)));
-   AcpiInstallGlobalEventHandler(AcpiGlobalEventHandler, reinterpret_cast<void *>(&_global_event_task));
+  Container *container = new Container();
+  container->task->SetFunc(make_uptr(new ClassFunction<AcpiCtrl>(this, &AcpiCtrl::GlobalEventHandler, nullptr)));
+   AcpiInstallGlobalEventHandler(AcpiGlobalEventHandler, reinterpret_cast<void *>(container));
 } 
   
 void AcpiCtrl::Shutdown() {

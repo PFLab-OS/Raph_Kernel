@@ -82,8 +82,8 @@ public:
   };
   TaskCtrl() {}
   void Setup();
-  void Register(CpuId cpuid, Task *task);
-  void Remove(Task *task);
+  void Register(CpuId cpuid, sptr<Task> task);
+  void Remove(sptr<Task> task);
   void Wait();
   void Run();
   TaskQueueState GetState(CpuId cpuid) {
@@ -102,10 +102,10 @@ private:
   public:
     TaskStruct();
     // queue
-    Task *top;
-    Task *bottom;
-    Task *top_sub;
-    Task *bottom_sub;
+    sptr<Task> top;
+    sptr<Task> bottom;
+    sptr<Task> top_sub;
+    sptr<Task> bottom_sub;
     SpinLock lock;
 
     TaskQueueState state;

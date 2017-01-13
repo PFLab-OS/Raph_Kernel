@@ -36,8 +36,8 @@ class FunctionalBase {
     kFunctioning,
     kNotFunctioning,
   };
-  FunctionalBase() {
-    _task.SetFunc(make_uptr(new Function<FunctionalBase<L>>(Handle, this)));
+  FunctionalBase() : _task(new Task) {
+    _task->SetFunc(make_uptr(new Function<FunctionalBase<L>>(Handle, this)));
   }
   virtual ~FunctionalBase() {
   }
@@ -49,7 +49,7 @@ class FunctionalBase {
  private:
   static void Handle(FunctionalBase<L> *that);
   uptr<GenericFunction> _func;
-  Task _task;
+  sptr<Task> _task;
   CpuId _cpuid;
   L _lock;
   FunctionState _state = FunctionState::kNotFunctioning;
@@ -66,7 +66,7 @@ inline void FunctionalBase<L>::WakeupFunction() {
     return;
   }
   _state = FunctionState::kFunctioning;
-  task_ctrl->Register(_cpuid, &_task);
+  task_ctrl->Register(_cpuid, _task);
 }
 
 template<class L>
@@ -81,7 +81,7 @@ inline void FunctionalBase<L>::Handle(FunctionalBase<L> *that) {
       return;
     }
   }
-  task_ctrl->Register(that->_cpuid, &that->_task);
+  task_ctrl->Register(that->_cpuid, that->_task);
 }
 
 template<class L>

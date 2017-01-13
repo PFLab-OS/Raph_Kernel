@@ -22,7 +22,7 @@
 
 #pragma once
 
-#include <raph.h>
+#include <assert.h>
 
 template<class T>
 class uptr {
@@ -43,10 +43,13 @@ public:
   }
   // to manage raw ptr
   // ptr 'obj' must be allocated by 'new'
-  uptr(T *obj) {
+  explicit uptr(T *obj) {
+    assert(obj != nullptr);
     _obj = obj;
   }
   uptr &operator=(const uptr &p) {
+    delete _obj;
+    
     _obj = p._obj;
     uptr *p_ = const_cast<uptr *>(&p);
     p_->_obj = nullptr;
@@ -62,15 +65,18 @@ public:
   }
   T *operator->() {
     if (_obj == nullptr) {
-      kassert(false);
+      assert(false);
     }
     return _obj;
   }
   T *GetRawPtr() {
     if (_obj == nullptr) {
-      kassert(false);
+      assert(false);
     }
     return _obj;
+  }
+  bool IsNull() {
+    return _obj == nullptr;
   }
 private:
   template <typename A>
@@ -97,10 +103,12 @@ public:
   }
   // to manage raw ptr
   // ptr 'obj' must be allocated by 'new'
-  uptr(Array *obj) {
+  explicit uptr(Array *obj) {
     _obj = obj;
   }
   uptr &operator=(const uptr &p) {
+    delete [] _obj;
+    
     _obj = p._obj;
     uptr *p_ = const_cast<uptr *>(&p);
     p_->_obj = nullptr;
@@ -114,7 +122,7 @@ public:
   Array *operator*();
   Array *operator->() {
     if (_obj == nullptr) {
-      kassert(false);
+      assert(false);
     }
     return _obj;
   }
@@ -123,9 +131,12 @@ public:
   }
   Array *GetRawPtr() {
     if (_obj == nullptr) {
-      kassert(false);
+      assert(false);
     }
     return _obj;
+  }
+  bool IsNull() {
+    return _obj == nullptr;
   }
 private:
   template <typename A>
@@ -144,18 +155,31 @@ class sptr {
 public:
   template<class A>
   sptr(const sptr<A> &p) {
-    _obj = p._obj;
-    _ref_cnt = p._ref_cnt;
-    while(!__sync_bool_compare_and_swap(_ref_cnt, *_ref_cnt, *_ref_cnt + 1)) {
+    if (p._obj == nullptr) {
+      _obj = nullptr;
+    } else {
+      _obj = p._obj;
+      _ref_cnt = p._ref_cnt;
+      int tmp = *_ref_cnt;
+      while(!__sync_bool_compare_and_swap(_ref_cnt, tmp, tmp + 1)) {
+        tmp = *_ref_cnt;
+      }
     }
   }
   sptr(const sptr &p) {
-    _obj = p._obj;
-    _ref_cnt = p._ref_cnt;
-    while(!__sync_bool_compare_and_swap(_ref_cnt, *_ref_cnt, *_ref_cnt + 1)) {
+    if (p._obj == nullptr) {
+      _obj = nullptr;
+    } else {
+      _obj = p._obj;
+      _ref_cnt = p._ref_cnt;
+      int tmp = *_ref_cnt;
+      while(!__sync_bool_compare_and_swap(_ref_cnt, tmp, tmp + 1)) {
+        tmp = *_ref_cnt;
+      }
     }
   }
-  sptr(T *obj) {
+  explicit sptr(T *obj) {
+    assert(obj != nullptr);
     _obj = obj;
     _ref_cnt = new int(1);
   }
@@ -163,41 +187,67 @@ public:
     _obj = nullptr;
   }
   sptr &operator=(const sptr &p) {
-    _obj = p._obj;
-    _ref_cnt = p._ref_cnt;
-    while(!__sync_bool_compare_and_swap(_ref_cnt, *_ref_cnt, *_ref_cnt + 1)) {
+    release();
+    
+    if (p._obj == nullptr) {
+      _obj = nullptr;
+    } else {
+      _obj = p._obj;
+      _ref_cnt = p._ref_cnt;
+      int tmp = *_ref_cnt;
+      while(!__sync_bool_compare_and_swap(_ref_cnt, tmp, tmp + 1)) {
+        tmp = *_ref_cnt;
+      }
     }
 
     return (*this);
   }
-  template <class ...Args>
-  void Init(Args ...args) {
-    kassert(_obj == nullptr);
-    _obj = new T(args...);
-    _ref_cnt = new int(1);
-  }
   ~sptr() {
-    while(!__sync_bool_compare_and_swap(_ref_cnt, *_ref_cnt, *_ref_cnt - 1)) {
-    }
-    if (*_ref_cnt == 0) {
-      delete _obj;
-      delete _ref_cnt;
-    }
+    release();
   }
   T *operator&();
   T *operator*();
   T *operator->() {
     return _obj;
   }
+  bool operator==(const sptr& rhs) const {
+    return _obj == rhs._obj;
+  }
   T *GetRawPtr() {
     if (_obj == nullptr) {
-      kassert(false);
+      assert(false);
     }
     return _obj;
   }
+  bool IsNull() {
+    return _obj == nullptr;
+  }
 private:
+  void release() {
+    if (_obj != nullptr) {
+      int tmp = *_ref_cnt;
+      while(!__sync_bool_compare_and_swap(_ref_cnt, tmp, tmp - 1)) {
+        tmp = *_ref_cnt;
+      }
+      if (tmp == 1) {
+        delete _obj;
+        delete _ref_cnt;
+      }
+    }
+  }
   template <typename A>
   friend class sptr;
   T *_obj;
   int *_ref_cnt;
 };
+template <class T>
+inline sptr<T> make_sptr(T *ptr) {
+  sptr<T> p(ptr);
+  return p;
+}
+
+template<class T>
+inline sptr<T> make_sptr() {
+  sptr<T> p;
+  return p;
+}

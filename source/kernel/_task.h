@@ -59,8 +59,8 @@ public:
   }
 private:
   uptr<GenericFunction> _func;
-  Task *_next;
-  Task *_prev;
+  sptr<Task> _next;
+  sptr<Task> _prev;
   CpuId _cpuid;
   Status _status = Status::kOutOfQueue;
   friend TaskCtrl;  // TODO should be removed
@@ -71,10 +71,9 @@ private:
 // ただし、一定時間後に立ち上げる事や割り当てcpuidを変える事はできない
 class CountableTask {
 public:
-  CountableTask() {
+  CountableTask() : _task(new Task) {
     _cnt = 0;
-    uptr<ClassFunction<CountableTask>> func(new ClassFunction<CountableTask>(this, &CountableTask::HandleSub, nullptr));
-    _task.SetFunc(func);
+    _task->SetFunc(make_uptr(new ClassFunction<CountableTask>(this, &CountableTask::HandleSub, nullptr)));
   }
   virtual ~CountableTask() {
   }
@@ -83,12 +82,12 @@ public:
     _func = func;
   }
   Task::Status GetStatus() {
-    return _task.GetStatus();
+    return _task->GetStatus();
   }
   void Inc();
 private:
   void HandleSub(void *);
-  Task _task;
+  sptr<Task> _task;
   SpinLock _lock;
   uptr<GenericFunction> _func;
   int _cnt;
@@ -106,9 +105,9 @@ public:
     kHandling,
     kStopped,
   };
-  Callout() {
+  Callout() : _task(new Task) {
     uptr<ClassFunction<Callout>> func(new ClassFunction<Callout>(this, &Callout::HandleSub, nullptr));
-    _task.SetFunc(func);
+    _task->SetFunc(func);
   }
   virtual ~Callout() {
   }
@@ -127,7 +126,7 @@ public:
   void HandleSub(void *);
 private:
   CpuId _cpuid;
-  Task _task;
+  sptr<Task> _task;
   uint64_t _time;
   Callout *_next;
   uptr<GenericFunction> _func;
