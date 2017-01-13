@@ -2110,15 +2110,15 @@ void register_membench_callout() {
   static int id = 0;
   int cpuid = cpu_ctrl->GetCpuId().GetRawId();
   auto callout_ = make_sptr(new Callout);
-  callout_->Init(make_uptr(new Function<sptr<Callout>>([](sptr<Callout> callout){
+  callout_->Init(make_uptr(new Function<wptr<Callout>>([](wptr<Callout> callout){
           int cpuid_ = cpu_ctrl->GetCpuId().GetRawId();
           if (id != cpuid_) {
-            task_ctrl->RegisterCallout(callout, 1000);
+            task_ctrl->RegisterCallout(make_sptr(callout), 1000);
             return;
           }
           membench();
           id++;
-        }, callout_)));
+        }, make_wptr(callout_))));
   task_ctrl->RegisterCallout(callout_, 10);
 }
 
@@ -2508,7 +2508,7 @@ static void membench10() {
 void register_membench2_callout() {
   int cpuid = cpu_ctrl->GetCpuId().GetRawId();
   auto callout_ = make_sptr(new Callout);
-  callout_->Init(make_uptr(new Function<sptr<Callout>>([](sptr<Callout> callout){
+  callout_->Init(make_uptr(new Function<wptr<Callout>>([](wptr<Callout> callout){
           if (is_knl()) {
             // membench5();
             // membench7();
@@ -2525,7 +2525,7 @@ void register_membench2_callout() {
             membench7();
             membench8();
           }
-        }, callout_)));
+        }, make_wptr(callout_))));
   task_ctrl->RegisterCallout(callout_, 10);
 }
 

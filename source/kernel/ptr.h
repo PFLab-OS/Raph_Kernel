@@ -171,12 +171,16 @@ private:
 };
 
 template<class T>
+class wptr;
+
+template<class T>
 class sptr {
 public:
   template<class A>
   sptr(const sptr<A> &p) {
     if (p._obj == nullptr) {
       _obj = nullptr;
+      _helper = nullptr;
     } else {
       _obj = p._obj;
       _helper = p._helper;
@@ -189,12 +193,31 @@ public:
   sptr(const sptr &p) {
     if (p._obj == nullptr) {
       _obj = nullptr;
+      _helper = nullptr;
     } else {
       _obj = p._obj;
       _helper = p._helper;
       int tmp = _helper->shared_cnt;
       while(!__sync_bool_compare_and_swap(&_helper->shared_cnt, tmp, tmp + 1)) {
         tmp = _helper->shared_cnt;
+      }
+    }
+  }
+  explicit sptr(wptr<T> &p) {
+    if (p._obj == nullptr) {
+      _obj = nullptr;
+      _helper = nullptr;
+    } else {
+      _obj = p._obj;
+      _helper = p._helper;
+      int tmp = _helper->shared_cnt;
+      while(tmp != 0 && !__sync_bool_compare_and_swap(&_helper->shared_cnt, tmp, tmp + 1)) {
+        tmp = _helper->shared_cnt;
+      }
+      if (tmp == 0) {
+        _obj = nullptr;
+        _helper = nullptr;
+        return;
       }
     }
   }
@@ -211,6 +234,7 @@ public:
     
     if (p._obj == nullptr) {
       _obj = nullptr;
+      _helper = nullptr;
     } else {
       _obj = p._obj;
       _helper = p._helper;
@@ -228,6 +252,9 @@ public:
   T *operator&();
   T *operator*();
   T *operator->() {
+    if (_obj == nullptr) {
+      assert(false);
+    }
     return _obj;
   }
   bool operator==(const sptr& rhs) const {
@@ -271,17 +298,6 @@ private:
   T *_obj;
   counter_helper *_helper;
 };
-template <class T>
-inline sptr<T> make_sptr(T *ptr) {
-  sptr<T> p(ptr);
-  return p;
-}
-
-template<class T>
-inline sptr<T> make_sptr() {
-  sptr<T> p;
-  return p;
-}
 
 template<class T>
 class wptr {
@@ -290,6 +306,7 @@ public:
   wptr(const wptr<A> &p) {
     if (p._obj == nullptr) {
       _obj = nullptr;
+      _helper = nullptr;
     } else {
       _obj = p._obj;
       _helper = p._helper;
@@ -302,6 +319,7 @@ public:
   wptr(const wptr &p) {
     if (p._obj == nullptr) {
       _obj = nullptr;
+      _helper = nullptr;
     } else {
       _obj = p._obj;
       _helper = p._helper;
@@ -314,9 +332,10 @@ public:
   wptr() {
     _obj = nullptr;
   }
-  explicit wptr(sptr<T> p) {
+  explicit wptr(sptr<T> &p) {
     if (p._obj == nullptr) {
       _obj = nullptr;
+      _helper = nullptr;
     } else {
       _obj = p._obj;
       _helper = p._helper;
@@ -331,6 +350,7 @@ public:
     
     if (p._obj == nullptr) {
       _obj = nullptr;
+      _helper = nullptr;
     } else {
       _obj = p._obj;
       _helper = p._helper;
@@ -348,6 +368,9 @@ public:
   T *operator&();
   T *operator*();
   T *operator->() {
+    if (_obj == nullptr) {
+      assert(false);
+    }
     return _obj;
   }
   bool operator==(const wptr& rhs) const {
@@ -376,11 +399,28 @@ private:
   }
   template <typename A>
   friend class wptr;
+  template <typename A>
+  friend class sptr;
   T *_obj;
   counter_helper *_helper;
 };
 template <class T>
-inline wptr<T> make_wptr(sptr<T> ptr) {
+inline sptr<T> make_sptr(T *ptr) {
+  sptr<T> p(ptr);
+  return p;
+}
+template <class T>
+inline sptr<T> make_sptr(wptr<T> &ptr) {
+  sptr<T> p(ptr);
+  return p;
+}
+template<class T>
+inline sptr<T> make_sptr() {
+  sptr<T> p;
+  return p;
+}
+template <class T>
+inline wptr<T> make_wptr(sptr<T> &ptr) {
   wptr<T> p(ptr);
   return p;
 }

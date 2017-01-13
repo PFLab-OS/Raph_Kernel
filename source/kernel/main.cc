@@ -246,18 +246,18 @@ void send_arp_packet(NetDev *dev, uint8_t *ipaddr) {
     memcpy(target_addr, ipaddr, 4);
     cnt = 0;
     auto callout_ = make_sptr(new Callout);
-    callout_->Init(make_uptr(new Function2<sptr<Callout>, NetDev *>([](sptr<Callout> callout, NetDev *eth){
+    callout_->Init(make_uptr(new Function2<wptr<Callout>, NetDev *>([](wptr<Callout> callout, NetDev *eth){
             if (!apic_ctrl->IsBootupAll()) {
-              task_ctrl->RegisterCallout(callout, 1000);
+              task_ctrl->RegisterCallout(make_sptr(callout), 1000);
               return;
             }
             eth->UpdateLinkStatus();
             if (eth->GetStatus() != NetDev::LinkStatus::kUp) {
-              task_ctrl->RegisterCallout(callout, 1000);
+              task_ctrl->RegisterCallout(make_sptr(callout), 1000);
               return;
             }
             if (cnt != 0) {
-              task_ctrl->RegisterCallout(callout, 1000);
+              task_ctrl->RegisterCallout(make_sptr(callout), 1000);
               return;
             }
             for(int k = 0; k < 1; k++) {
@@ -300,16 +300,16 @@ void send_arp_packet(NetDev *dev, uint8_t *ipaddr) {
               time--;
             }
             if (time != 0) {
-              task_ctrl->RegisterCallout(callout, 1000);
+              task_ctrl->RegisterCallout(make_sptr(callout), 1000);
             }
-          }, callout_, dev)));
+          }, make_wptr(callout_), dev)));
     CpuId cpuid(3);
     task_ctrl->RegisterCallout(callout_, cpuid, 1000);
   }
 
   {
     auto callout_ = make_sptr(new Callout);
-    callout_->Init(make_uptr(new Function2<sptr<Callout>, NetDev *>([](sptr<Callout> callout, NetDev *eth){
+    callout_->Init(make_uptr(new Function2<wptr<Callout>, NetDev *>([](wptr<Callout> callout, NetDev *eth){
             if (rtime > 0) {
               gtty->Cprintf("ARP Reply average latency:%dus [%d/%d]\n", sum / rtime, rtime, stime);
             } else {
@@ -320,9 +320,9 @@ void send_arp_packet(NetDev *dev, uint8_t *ipaddr) {
               }
             }
             if (rtime != stime) {
-              task_ctrl->RegisterCallout(callout, 1000*1000*3);
+              task_ctrl->RegisterCallout(make_sptr(callout), 1000*1000*3);
             }
-          }, callout_, dev)));
+          }, make_wptr(callout_), dev)));
     CpuId cpuid(1);
     task_ctrl->RegisterCallout(callout_, cpuid, 1000);
   }
@@ -567,7 +567,7 @@ extern "C" int main() {
   if (!do_membench) {
     CpuId beep_cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority);
     auto callout_ = make_sptr(new Callout);
-    callout_->Init(make_uptr(new Function<sptr<Callout>>([](sptr<Callout> callout) {
+    callout_->Init(make_uptr(new Function<wptr<Callout>>([](wptr<Callout> callout) {
             static int i = 0;
             if(i < 6) {
               uint16_t sound[6] = {905, 761, 452, 570, 508, 380};
@@ -580,12 +580,12 @@ extern "C" int main() {
               uint8_t on = inb(0x61);
               outb(0x61, (on | 0x03) & 0x0f);
               i++;
-              task_ctrl->RegisterCallout(callout, 110000);
+              task_ctrl->RegisterCallout(make_sptr(callout), 110000);
             } else {
               uint8_t off = inb(0x61);
               outb(0x61, off & 0xd);
             }
-          }, callout_)));
+          }, make_wptr(callout_))));
     task_ctrl->RegisterCallout(callout_, beep_cpuid, 1);
   } else {
     register_membench2_callout();
@@ -632,16 +632,16 @@ extern "C" int main_of_others() {
   #define ONE_SHOT_BENCHMARK_CPU  5
   if (cpu_ctrl->GetCpuId().GetRawId() == ONE_SHOT_BENCHMARK_CPU) {
     auto callout_ = make_sptr(new Callout);
-    callout_->Init(make_uptr(new Function<sptr<Callout>>([](sptr<Callout> callout){
+    callout_->Init(make_uptr(new Function<wptr<Callout>>([](wptr<Callout> callout){
             if (!apic_ctrl->IsBootupAll()) {
-              task_ctrl->RegisterCallout(callout, 1000);
+              task_ctrl->RegisterCallout(make_sptr(callout), 1000);
               return;
             }
             // kassert(g_channel != nullptr);
             // FatFs *fatfs = new FatFs();
             // kassert(fatfs->Mount());
             //        g_channel->Read(0, 1);
-          }, nullptr)));
+          }, make_wptr(callout_))));
     task_ctrl->RegisterCallout(callout_, 10);
   }
 #endif
