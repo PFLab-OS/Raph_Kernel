@@ -46,7 +46,7 @@ extern "C" {
 
   void _task_init(struct task *t, int priority, task_fn_t *func, void *context) {
     t->ta_task = new TaskContainer();
-    t->ta_task->task->SetFunc(make_uptr(new Function<struct task>(__taskqueue_handle, t)));
+    t->ta_task->task->SetFunc(make_uptr(new Function<struct task *>(__taskqueue_handle, t)));
     t->ta_pending = 0;
     t->ta_func = (func);
     t->ta_context = (context);

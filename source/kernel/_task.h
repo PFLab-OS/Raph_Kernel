@@ -73,7 +73,7 @@ class CountableTask {
 public:
   CountableTask() : _task(new Task) {
     _cnt = 0;
-    _task->SetFunc(make_uptr(new ClassFunction<CountableTask>(this, &CountableTask::HandleSub, nullptr)));
+    _task->SetFunc(make_uptr(new ClassFunction<CountableTask, void *>(this, &CountableTask::HandleSub, nullptr)));
   }
   virtual ~CountableTask() {
   }
@@ -106,8 +106,6 @@ public:
     kStopped,
   };
   Callout() : _task(new Task) {
-    uptr<ClassFunction<Callout>> func(new ClassFunction<Callout>(this, &Callout::HandleSub, nullptr));
-    _task->SetFunc(func);
   }
   virtual ~Callout() {
   }
@@ -117,64 +115,46 @@ public:
   volatile bool IsHandling() {
     return (_state == CalloutState::kHandling);
   }
-  void SetHandler(int us);
-  void SetHandler(CpuId cpuid, int us);
-  bool Cancel();
   bool IsPending() {
     return _pending;
   }
-  void HandleSub(void *);
+protected:
+  void HandleSub2(sptr<Callout> callout);
 private:
+  friend TaskCtrl;
+  void SetHandler(sptr<Callout> callout, CpuId cpuid, int us);
+  void Cancel();
+  virtual void HandleSub(sptr<Callout> callout) {
+    HandleSub2(callout);
+  }
   CpuId _cpuid;
   sptr<Task> _task;
   uint64_t _time;
-  Callout *_next;
+  sptr<Callout> _next;
   uptr<GenericFunction> _func;
   SpinLock _lock;
   bool _pending = false;
-  friend TaskCtrl;
   CalloutState _state = CalloutState::kStopped;
 };
 
-class LckCallout {
+class LckCallout : public Callout {
  public:
   LckCallout() {
-    callout.Init(make_uptr(new ClassFunction<LckCallout>(this, &LckCallout::HandleSub, nullptr)));
   }
   virtual ~LckCallout() {
-  }
-  void Init(uptr<GenericFunction> func) {
-    _func = func;
   }
   void SetLock(SpinLock *lock) {
     _lock = lock;
   }
-  volatile bool IsHandling() {
-    return callout.IsHandling();
-  }
-  void SetHandler(int us) {
-    callout.SetHandler(us);
-  }
-  void SetHandler(CpuId cpuid, int us) {
-    callout.SetHandler(cpuid, us);
-  }
-  bool Cancel() {
-    return callout.Cancel();
-  }
-  bool IsPending() {
-    return callout.IsPending();
-  }
  private:
-  void HandleSub(void *) {
+  virtual void HandleSub(sptr<Callout> callout) {
     if (_lock != nullptr) {
       _lock->Lock();
     }
-    _func->Execute();
+    HandleSub2(callout);
     if (_lock != nullptr) {
       _lock->Unlock();
     }
   }
   SpinLock *_lock = nullptr;
-  Callout callout;
-  uptr<GenericFunction> _func;
 };

@@ -2872,7 +2872,7 @@ ahciaction(struct ahci_channel *ch, PacketAtaio *ataio)
 AhciChannel *AhciChannel::Init(AhciCtrl *ctrl) {
   AhciChannel *channel = new AhciChannel(ctrl);
   channel->InitBsdDevice(channel, sizeof(struct ahci_channel));
-  channel->devq.SetFunction(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), make_uptr(new ClassFunction<AhciChannel>(channel, &AhciChannel::Handle, nullptr)));
+  channel->devq.SetFunction(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), make_uptr(new ClassFunction<AhciChannel, void *>(channel, &AhciChannel::Handle, nullptr)));
   return channel;
 }
 

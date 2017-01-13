@@ -67,11 +67,11 @@ void Shell::Liner::ReadCh(char c) {
     auto ec = make_uptr(new ExecContainer(_shell));
     ec = Tokenize(ec);
     if (ec->argc > 0) {
-      Callout *callout = new Callout;
-      callout->Init(make_uptr(new FunctionU<ExecContainer>([](uptr<ExecContainer> ec_) {
+      auto callout_ = make_sptr(new Callout);
+      callout_->Init(make_uptr(new Function2<wptr<Callout>, uptr<ExecContainer>>([](wptr<Callout> callout, uptr<ExecContainer> ec_) {
               ec_->shell->Exec(ec_->name, ec_->argc, ec_->argv);
-            }, ec)));
-      callout->SetHandler(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), 0);
+            }, make_wptr(callout_), ec)));
+      task_ctrl->RegisterCallout(callout_, cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), 0);
     }
     Reset();
   } else if (c == '\b') {

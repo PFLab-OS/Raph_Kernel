@@ -58,13 +58,13 @@ void TaskCtrl::Run() {
     if (oldstate == TaskQueueState::kNotRunning) {
       uint64_t time = timer->GetCntAfterPeriod(timer->ReadMainCnt(), kTaskExecutionInterval);
       
-      Callout *dt = ts->dtop;
+      sptr<Callout> dt = ts->dtop;
       while(true) {
-        Callout *dtt;
+        sptr<Callout> dtt;
         {
           Locker locker(ts->dlock);
           dtt = dt->_next;
-          if (dtt == nullptr) {
+          if (dtt.IsNull()) {
             break;
           }
           if (timer->IsGreater(dtt->_time, time)) {
@@ -76,7 +76,7 @@ void TaskCtrl::Run() {
           }
           dt->_next = dtt->_next;
         }
-        dtt->_next = nullptr;
+        dtt->_next = make_sptr<Callout>();
         dtt->_state = Callout::CalloutState::kTaskQueue;
         Register(cpuid, dtt->_task);
         dtt->_lock.Unlock();
@@ -132,9 +132,9 @@ void TaskCtrl::Run() {
       ts->bottom = ts->bottom_sub;
       ts->bottom_sub = tmp;
 
-      Callout *dtt = ts->dtop->_next;
+      sptr<Callout> dtt = ts->dtop->_next;
       volatile uint64_t time = timer->GetCntAfterPeriod(timer->ReadMainCnt(), kTaskExecutionInterval);
-      if (dtt != nullptr && timer->IsGreater(time, dtt->_time)) {
+      if (!dtt.IsNull() && timer->IsGreater(time, dtt->_time)) {
 	ts->state = TaskQueueState::kNotRunning;
 	break;
       }
@@ -144,10 +144,10 @@ void TaskCtrl::Run() {
 
     if (ts->state == TaskQueueState::kSlept) {
       {
-	Locker locker(ts->dlock);
-	if (ts->dtop->_next != nullptr) {
-	  ts->state = TaskQueueState::kNotRunning;
-	}
+        Locker locker(ts->dlock);
+        if (!ts->dtop->_next.IsNull()) {
+          ts->state = TaskQueueState::kNotRunning;
+        }
       }
       apic_ctrl->StartTimer();
       asm volatile("hlt");
@@ -269,16 +269,17 @@ void TaskWithStack::TaskThread::SwitchTo() {
   }
 }
 
-void TaskCtrl::RegisterCallout(Callout *task) {
+void TaskCtrl::RegisterCallout(sptr<Callout> task, CpuId cpuid, int us) {
+  task->SetHandler(task, cpuid, us);
   TaskStruct *ts = &_task_struct[task->_cpuid.GetRawId()];
   {
     Locker locker(ts->dlock);
-    Callout *dt = ts->dtop;
+    sptr<Callout> dt = ts->dtop;
     while(true) {
-      Callout *dtt = dt->_next;
-      if (dtt == nullptr) {
+      sptr<Callout> dtt = dt->_next;
+      if (dtt.IsNull()) {
         task->_state = Callout::CalloutState::kCalloutQueue;
-      	task->_next = nullptr;
+      	task->_next = make_sptr<Callout>();
       	dt->_next = task;
       	break;
       }
@@ -295,22 +296,23 @@ void TaskCtrl::RegisterCallout(Callout *task) {
   ForceWakeup(task->_cpuid);
 }
 
-bool TaskCtrl::CancelCallout(Callout *task) {
+bool TaskCtrl::CancelCallout(sptr<Callout> task) {
+  task->Cancel();
   bool flag = false;
   switch(task->_state) {
   case Callout::CalloutState::kCalloutQueue: {
     int cpuid = task->_cpuid.GetRawId();
     Locker locker(_task_struct[cpuid].dlock);
-    Callout *dt = _task_struct[cpuid].dtop;
-    while(dt->_next != nullptr) {
-      Callout *dtt = dt->_next;
+    sptr<Callout> dt = _task_struct[cpuid].dtop;
+    while(!dt->_next.IsNull()) {
+      sptr<Callout> dtt = dt->_next;
       if (dtt == task) {
         dt->_next = dtt->_next;
         break;
       }
       dt = dtt;
     }
-    task->_next = nullptr;
+    task->_next = make_sptr<Callout>();
     flag = true;
     break;
   }
@@ -359,28 +361,24 @@ void CountableTask::HandleSub(void *) {
   }
 }
 
-void Callout::SetHandler(int us) {
-  SetHandler(cpu_ctrl->GetCpuId(), us);
-}
-
-void Callout::SetHandler(CpuId cpuid, int us) {
+void Callout::SetHandler(sptr<Callout> callout, CpuId cpuid, int us) {
   Locker locker(_lock);
   _time = timer->GetCntAfterPeriod(timer->ReadMainCnt(), us);
   _pending = true;
   _cpuid = cpuid;
-  task_ctrl->RegisterCallout(this);
+  _task->SetFunc(make_uptr(new ClassFunction<Callout, sptr<Callout>>(this, &Callout::HandleSub, callout)));
 }
 
-bool Callout::Cancel() {
+void Callout::Cancel() {
   Locker locker(_lock);
   _pending = false;
-  return task_ctrl->CancelCallout(this);
 }
 
-void Callout::HandleSub(void *) {
+void Callout::HandleSub2(sptr<Callout> callout) {
   if (timer->IsTimePassed(_time)) {
     _pending = false;
     _state = CalloutState::kHandling;
+    _task->SetFunc(make_uptr<GenericFunction>());
     _func->Execute();
     if (_state == CalloutState::kHandling) {
       _state = CalloutState::kStopped;
@@ -409,7 +407,7 @@ TaskCtrl::TaskStruct::TaskStruct() {
 
   state = TaskQueueState::kNotStarted;
 
-  Callout *dt = new Callout;
-  dt->_next = nullptr;
+  sptr<Callout> dt = make_sptr(new Callout);
+  dt->_next = make_sptr<Callout>();
   dtop = dt;
 }

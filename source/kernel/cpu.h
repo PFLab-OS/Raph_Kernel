@@ -26,9 +26,8 @@
 #include <raph.h>
 #include <global.h>
 #include <mem/kstack.h>
-#include <cpu.h>
+#include <_cpu.h>
 #include <apic.h>
-#include <tty.h>
 
 enum class CpuPurpose {
   kNone = 0,
@@ -126,13 +125,6 @@ private:
 
 inline bool CpuId::IsValid() {
   return _rawid >= 0 && (!cpu_ctrl->IsInitialized() || _rawid < cpu_ctrl->GetHowManyCpus());
-}
-
-inline void CpuId::CheckIfValid() {
-  if (!IsValid()) {
-    gtty->CprintfRaw("[CpuId] error: unknown rawid %d\n", _rawid);
-    kernel_panic("CpuId", "Invalid ID");
-  }
 }
 
 inline uint32_t CpuId::GetApicId() {

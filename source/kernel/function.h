@@ -39,7 +39,7 @@ public:
 template<class T>
 class Function : public GenericFunction {
 public:
-  Function(void (*func)(T *), T *arg) {
+  Function(void (*func)(T), T arg) {
     _func = func;
     _arg = arg;
   }
@@ -54,63 +54,44 @@ public:
   }
 private:
   Function();
-  void (*_func)(T *);
-  T *_arg;
+  void (*_func)(T);
+  T _arg;
 };
 
-template<class T>
-class FunctionU : public GenericFunction {
+template<class T1, class T2>
+class Function2 : public GenericFunction {
 public:
-  FunctionU(void (*func)(uptr<T>), uptr<T> arg) {
+  Function2(void (*func)(T1, T2), T1 arg1, T2 arg2) {
     _func = func;
-    _arg = arg;
+    _arg1 = arg1;
+    _arg2 = arg2;
   }
-  virtual ~FunctionU() {
+  virtual ~Function2() {
   }
-  FunctionU(const FunctionU &obj) {
+  Function2(const Function2 &obj) {
     _func = obj._func;
-    _arg = obj._arg;
+    _arg1 = obj._arg1;
+    _arg2 = obj._arg2;
   }
   virtual void Execute() override {
-    _func(_arg);
+    _func(_arg1, _arg2);
   }
 private:
-  FunctionU();
-  void (*_func)(uptr<T>);
-  uptr<T> _arg;
+  Function2();
+  void (*_func)(T1, T2);
+  T1 _arg1;
+  T2 _arg2;
 };
 
-template<class T>
-class FunctionS : public GenericFunction {
-public:
-  FunctionS(void (*func)(sptr<T>), sptr<T> arg) {
-    _func = func;
-    _arg = arg;
-  }
-  virtual ~FunctionS() {
-  }
-  FunctionS(const FunctionS &obj) {
-    _func = obj._func;
-    _arg = obj._arg;
-  }
-  virtual void Execute() override {
-    _func(_arg);
-  }
-private:
-  FunctionS();
-  void (*_func)(sptr<T>);
-  sptr<T> _arg;
-};
-
-template <class T>
+template <class C, class T1>
 class ClassFunction : public GenericFunction {
 public:
-  ClassFunction(T *c, void (T::*func)(void *), void *arg) {
+  ClassFunction(C *c, void (C::*func)(T1), T1 arg) {
     _c = c;
     _func = func;
     _arg = arg;
   }
-  ClassFunction(const ClassFunction<T> &obj) {
+  ClassFunction(const ClassFunction &obj) {
     _c = obj._c;
     _func = obj._func;
     _arg = obj._arg;
@@ -122,191 +103,142 @@ public:
   }
 private:
   ClassFunction();
-  T *_c;
-  void (T::*_func)(void *);
-  void *_arg;
+  C *_c;
+  void (C::*_func)(T1);
+  T1 _arg;
 };
 
-
-
-
-
-
-template<class C>
-class FunctionBaseObj2 {
+template <class C, class T1, class T2>
+class ClassFunction2 : public GenericFunction {
 public:
-  FunctionBaseObj2() {
-  }
-  FunctionBaseObj2(const FunctionBaseObj2 &f) {
-  }
-  virtual ~FunctionBaseObj2() {
-  }
-  void Execute(C *that) {
-    if (CanExecute()) {
-      ExecuteSub(that);
-    }
-  }
-  virtual bool CanExecute() {
-    return false;
-  }
-  virtual void Clear() {
-  }
-  virtual FunctionBaseObj2<C> *Duplicate() const {
-    return virtmem_ctrl->New<FunctionBaseObj2<C>>(*this);
-  }
-protected:
-  virtual void ExecuteSub(C *that) {
-  }
-};
-
-template<class C>
-class FunctionObj2 : public FunctionBaseObj2<C> {
-public:
-  FunctionObj2() {
-  }
-  FunctionObj2(const FunctionObj2 &f) {
-    _func = f._func;
-    _arg = f._arg;
-  }
-  virtual ~FunctionObj2() {
-  }
-  void Init(void (*func)(C *, void *), void *arg) {
-    _func = func;
-    _arg = arg;
-  }
-  virtual bool CanExecute() override {
-    return (_func != nullptr);
-  }
-  virtual void Clear() override {
-    _func = nullptr;
-  }
-  virtual FunctionBaseObj2<C> *Duplicate() const override {
-    return virtmem_ctrl->New<FunctionObj2<C>>(*this);
-  }
-private:
-  virtual void ExecuteSub(C *that) override {
-    _func(that, _arg);
-  }
-  void (*_func)(C *, void *) = nullptr;
-  void *_arg;
-  C *_class;
-};
-
-template <class T, class C>
-class ClassFunctionObj2 : public FunctionBaseObj2<C> {
-public:
-  ClassFunctionObj2() {
-  }
-  ClassFunctionObj2(const ClassFunctionObj2<T, C> &f) {
-    _c = f._c;
-    _func = f._func;
-    _arg = f._arg;
-  }
-  virtual ~ClassFunctionObj2() {
-  }
-  void Init(T *c, void (T::*func)(C *, void *), void *arg) {
+  ClassFunction2(C *c, void (C::*func)(T1, T2), T1 arg1, T2 arg2) {
     _c = c;
     _func = func;
-    _arg = arg;
+    _arg1 = arg1;
+    _arg2 = arg2;
   }
-  virtual bool CanExecute() override {
-    return (_func != nullptr);
-  }
-  virtual void Clear() override {
-    _func = nullptr;
-  }
-  virtual FunctionBaseObj2<C> *Duplicate() const override {
-    return virtmem_ctrl->New<ClassFunctionObj2<T, C>>(*this);
-  }
-private:
-  virtual void ExecuteSub(C *that) override {
-    (_c->*_func)(that, _arg);
-  }
-  T *_c;
-  void (T::*_func)(C *, void *) = nullptr;
-  void *_arg;
-};
-
-template<class C>
-class GenericFunction2 {
-public:
-  GenericFunction2() {
-  }
-  virtual ~GenericFunction2() {
-  }
-  void Execute(C *c) {
-    GetObj()->Execute(c);
-  }
-  bool CanExecute() {
-    return GetObj()->CanExecute();
-  }
-  void Clear() {
-    GetObj()->Clear();
-  }
-  virtual FunctionBaseObj2<C> *GetObj() const = 0;
-};
-template<class C>
-class FunctionBase2 : public GenericFunction2<C> {
-public:
-  FunctionBase2() {
-    _obj = &dummy;
-  }
-  virtual ~FunctionBase2() {
-    if (_obj != &dummy) {
-      delete(_obj);
-    }
-  }
-  void Copy(const GenericFunction2<C> &obj) {
-    // TODO Lockをかけるべき？
-    if (_obj != &dummy) {
-      delete(_obj);
-    }
-    _obj = obj.GetObj()->Duplicate();
-  }
-private:
-  FunctionBase2(const FunctionBase2<C> &obj);
-  virtual FunctionBaseObj2<C> *GetObj() const override {
-    return _obj;
-  }
-  FunctionBaseObj2<C> dummy;
-  FunctionBaseObj2<C> *_obj;
-};
-template<class C>
-class Function2 : public GenericFunction2<C> {
-public:
-  Function2() {
-    _obj = virtmem_ctrl->New<FunctionObj2<C>>();
-  }
-  virtual ~Function2() {
-    virtmem_ctrl->Delete<FunctionObj2<C>>(_obj);
-  }
-  void Init(void (*func)(C *, void *), void *arg) {
-    _obj->Init(func, arg);
-  }
-private:
-  Function2(const Function2 &obj);
-  virtual FunctionBaseObj2<C> *GetObj() const override {
-    return _obj;
-  }
-  FunctionObj2<C> *_obj;
-};
-template <class T, class C>
-class ClassFunction2 : public GenericFunction2<C> {
-public:
-  ClassFunction2() {
-    _obj = virtmem_ctrl->New<ClassFunctionObj2<T, C>>();
+  ClassFunction2(const ClassFunction2 &obj) {
+    _c = obj._c;
+    _func = obj._func;
+    _arg1 = obj._arg1;
+    _arg2 = obj._arg2;
   }
   virtual ~ClassFunction2() {
-    virtmem_ctrl->Delete<ClassFunctionObj2<T, C>>(_obj);
   }
-  void Init(T *c, void (T::*func)(C *, void *), void *arg) {
-    this->_obj->Init(c, func, arg);
+  virtual void Execute() override {
+    (_c->*_func)(_arg1, _arg2);
   }
 private:
-  ClassFunction2(const ClassFunction2<T, C> &obj);
-  virtual FunctionBaseObj2<C> *GetObj() const override {
-    return _obj;
-  }
-  ClassFunctionObj2<T, C> *_obj;
+  ClassFunction2();
+  C *_c;
+  void (C::*_func)(T1, T2);
+  T1 _arg1;
+  T2 _arg2;
 };
+
+
+
+
+// template<class C>
+// class GenericFunction2 {
+// public:
+//   GenericFunction2() {
+//   }
+//   virtual ~GenericFunction2() {
+//   }
+//   virtual void Execute(C) {
+//   }
+// };
+
+// template<class C, class T>
+// class Function2 : public GenericFunction2<C> {
+// public:
+//   Function2(void (*func)(C, T *), T *arg) {
+//     _func = func;
+//     _arg = arg;
+//   }
+//   virtual ~Function2() {
+//   }
+//   Function2(const Function2 &obj) {
+//     _func = obj._func;
+//     _arg = obj._arg;
+//   }
+//   virtual void Execute(C c) override {
+//     _func(c, _arg);
+//   }
+// private:
+//   Function2();
+//   void (*_func)(C, T *);
+//   T *_arg;
+// };
+
+// template<class C, class T>
+// class FunctionU2 : public GenericFunction2<C> {
+// public:
+//   FunctionU2(void (*func)(C, uptr<T>), uptr<T> arg) {
+//     _func = func;
+//     _arg = arg;
+//   }
+//   virtual ~FunctionU2() {
+//   }
+//   FunctionU2(const FunctionU2 &obj) {
+//     _func = obj._func;
+//     _arg = obj._arg;
+//   }
+//   virtual void Execute(C c) override {
+//     _func(c, _arg);
+//   }
+// private:
+//   FunctionU2();
+//   void (*_func)(C, uptr<T>);
+//   uptr<T> _arg;
+// };
+
+// template<class C, class T>
+// class FunctionS2 : public GenericFunction2<C> {
+// public:
+//   FunctionS2(void (*func)(C, sptr<T>), sptr<T> arg) {
+//     _func = func;
+//     _arg = arg;
+//   }
+//   virtual ~FunctionS2() {
+//   }
+//   FunctionS2(const FunctionS2 &obj) {
+//     _func = obj._func;
+//     _arg = obj._arg;
+//   }
+//   virtual void Execute(C c) override {
+//     _func(c, _arg);
+//   }
+// private:
+//   FunctionS2();
+//   void (*_func)(C, sptr<T>);
+//   sptr<T> _arg;
+// };
+
+// template <class C, class T>
+// class ClassFunction2 : public GenericFunction2<C> {
+// public:
+//   ClassFunction2(T *c, void (T::*func)(C, void *), void *arg) {
+//     _c = c;
+//     _func = func;
+//     _arg = arg;
+//   }
+//   ClassFunction2(const ClassFunction<T> &obj) {
+//     _c = obj._c;
+//     _func = obj._func;
+//     _arg = obj._arg;
+//   }
+//   virtual ~ClassFunction2() {
+//   }
+//   virtual void Execute(C c) override {
+//     (_c->*_func)(c, _arg);
+//   }
+// private:
+//   ClassFunction2();
+//   T *_c;
+//   void (T::*_func)(C, void *);
+//   void *_arg;
+// };
+
 

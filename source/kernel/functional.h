@@ -37,7 +37,7 @@ class FunctionalBase {
     kNotFunctioning,
   };
   FunctionalBase() : _task(new Task) {
-    _task->SetFunc(make_uptr(new Function<FunctionalBase<L>>(Handle, this)));
+    _task->SetFunc(make_uptr(new Function<FunctionalBase<L> *>(Handle, this)));
   }
   virtual ~FunctionalBase() {
   }

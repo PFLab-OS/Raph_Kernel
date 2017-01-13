@@ -5865,7 +5865,7 @@ void IxGbe::IxGbeBsdEthernet::PollingHandler(IxGbe *that) {
 }
 
 void IxGbe::IxGbeBsdEthernet::ChangeHandleMethodToPolling() {
-  _polling.Init(make_uptr(new Function<IxGbe>(PollingHandler, &GetMasterClass())));
+  _polling.Init(make_uptr(new Function<IxGbe *>(PollingHandler, &GetMasterClass())));
   extern CpuId network_cpu;
   _polling.Register(network_cpu);
 

@@ -94,7 +94,7 @@ void AcpiCtrl::SetupAcpica() {
   kassert(!ACPI_FAILURE(AcpiInitializeObjects(ACPI_FULL_INITIALIZATION)));
 
   Container *container = new Container();
-  container->task->SetFunc(make_uptr(new ClassFunction<AcpiCtrl>(this, &AcpiCtrl::GlobalEventHandler, nullptr)));
+  container->task->SetFunc(make_uptr(new ClassFunction<AcpiCtrl, void *>(this, &AcpiCtrl::GlobalEventHandler, nullptr)));
    AcpiInstallGlobalEventHandler(AcpiGlobalEventHandler, reinterpret_cast<void *>(container));
 } 
   

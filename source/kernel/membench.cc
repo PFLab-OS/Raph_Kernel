@@ -2106,21 +2106,20 @@ static void membench9() {
 }
 
 
-Callout callout[256];
 void register_membench_callout() {
   static int id = 0;
   int cpuid = cpu_ctrl->GetCpuId().GetRawId();
-  new(&callout[cpuid]) Callout;
-  callout[cpuid].Init(make_uptr(new Function<void>([](void *){
+  auto callout_ = make_sptr(new Callout);
+  callout_->Init(make_uptr(new Function<sptr<Callout>>([](sptr<Callout> callout){
           int cpuid_ = cpu_ctrl->GetCpuId().GetRawId();
           if (id != cpuid_) {
-            callout[cpuid_].SetHandler(1000);
+            task_ctrl->RegisterCallout(callout, 1000);
             return;
           }
           membench();
           id++;
-        }, nullptr)));
-  callout[cpuid].SetHandler(10);
+        }, callout_)));
+  task_ctrl->RegisterCallout(callout_, 10);
 }
 
 // リスト、要素数可変比較版
@@ -2508,26 +2507,25 @@ static void membench10() {
 
 void register_membench2_callout() {
   int cpuid = cpu_ctrl->GetCpuId().GetRawId();
-  new(&callout[cpuid]) Callout;
-  uptr<Function<void>> oneshot_bench_func(new Function<void>([](void *){
-        if (is_knl()) {
-          // membench5();
-          // membench7();
-          membench10();
-        } else {
-          membench9();
-        }
-        if (false) {
-          membench2();
-          membench3();
-          membench4();
-          membench5();
-          membench6();
-          membench7();
-          membench8();
-        }
-      }, nullptr));
-  callout[cpuid].Init(oneshot_bench_func);
-  callout[cpuid].SetHandler(10);
+  auto callout_ = make_sptr(new Callout);
+  callout_->Init(make_uptr(new Function<sptr<Callout>>([](sptr<Callout> callout){
+          if (is_knl()) {
+            // membench5();
+            // membench7();
+            membench10();
+          } else {
+            membench9();
+          }
+          if (false) {
+            membench2();
+            membench3();
+            membench4();
+            membench5();
+            membench6();
+            membench7();
+            membench8();
+          }
+        }, callout_)));
+  task_ctrl->RegisterCallout(callout_, 10);
 }
 

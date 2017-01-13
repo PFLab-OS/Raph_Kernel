@@ -5037,7 +5037,7 @@ void lE1000::lE1000BsdEthernet::PollingHandler(lE1000 *that) {
 }
 
 void lE1000::lE1000BsdEthernet::ChangeHandleMethodToPolling() {
-  _polling.Init(make_uptr(new Function<lE1000> (PollingHandler, &GetMasterClass())));
+  _polling.Init(make_uptr(new Function<lE1000 *> (PollingHandler, &GetMasterClass())));
   extern CpuId network_cpu;
   _polling.Register(network_cpu);
   

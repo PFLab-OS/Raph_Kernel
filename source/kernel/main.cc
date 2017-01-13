@@ -90,11 +90,6 @@ AhciChannel *g_channel = nullptr;
 #include <dev/fs/fat/fat.h>
 FatFs *fatfs;
 
-Callout tt1;
-Callout tt2;
-Callout tt3;
-Callout tt4;
-
 static const bool do_membench = false;
 void register_membench2_callout();
 
@@ -158,7 +153,7 @@ int time = stime, rtime = 0;
 
 void setup_arp_reply(NetDev *dev) {
   CpuId cpuid(2);
-  dev->SetReceiveCallback(cpuid, make_uptr(new Function<NetDev>([](NetDev *eth){
+  dev->SetReceiveCallback(cpuid, make_uptr(new Function<NetDev *>([](NetDev *eth){
           NetDev::Packet *rpacket;
           if(!eth->ReceivePacket(rpacket)) {
             return;
@@ -250,19 +245,19 @@ void send_arp_packet(NetDev *dev, uint8_t *ipaddr) {
     static uint8_t target_addr[4];
     memcpy(target_addr, ipaddr, 4);
     cnt = 0;
-    new(&tt2) Callout;
-    tt2.Init(make_uptr(new Function<NetDev>([](NetDev *eth){
+    auto callout_ = make_sptr(new Callout);
+    callout_->Init(make_uptr(new Function2<sptr<Callout>, NetDev *>([](sptr<Callout> callout, NetDev *eth){
             if (!apic_ctrl->IsBootupAll()) {
-              tt2.SetHandler(1000);
+              task_ctrl->RegisterCallout(callout, 1000);
               return;
             }
             eth->UpdateLinkStatus();
             if (eth->GetStatus() != NetDev::LinkStatus::kUp) {
-              tt2.SetHandler(1000);
+              task_ctrl->RegisterCallout(callout, 1000);
               return;
             }
             if (cnt != 0) {
-              tt2.SetHandler(1000);
+              task_ctrl->RegisterCallout(callout, 1000);
               return;
             }
             for(int k = 0; k < 1; k++) {
@@ -305,16 +300,16 @@ void send_arp_packet(NetDev *dev, uint8_t *ipaddr) {
               time--;
             }
             if (time != 0) {
-              tt2.SetHandler(1000);
+              task_ctrl->RegisterCallout(callout, 1000);
             }
-          }, dev)));
+          }, callout_, dev)));
     CpuId cpuid(3);
-    tt2.SetHandler(cpuid, 10);
+    task_ctrl->RegisterCallout(callout_, cpuid, 1000);
   }
 
   {
-    new(&tt3) Callout;
-    tt3.Init(make_uptr(new Function<NetDev>([](NetDev *eth){
+    auto callout_ = make_sptr(new Callout);
+    callout_->Init(make_uptr(new Function2<sptr<Callout>, NetDev *>([](sptr<Callout> callout, NetDev *eth){
             if (rtime > 0) {
               gtty->Cprintf("ARP Reply average latency:%dus [%d/%d]\n", sum / rtime, rtime, stime);
             } else {
@@ -325,11 +320,11 @@ void send_arp_packet(NetDev *dev, uint8_t *ipaddr) {
               }
             }
             if (rtime != stime) {
-              tt3.SetHandler(1000*1000*3);
+              task_ctrl->RegisterCallout(callout, 1000*1000*3);
             }
-          }, dev)));
+          }, callout_, dev)));
     CpuId cpuid(1);
-    tt3.SetHandler(cpuid, 1000*1000*3);
+    task_ctrl->RegisterCallout(callout_, cpuid, 1000);
   }
 }
 
@@ -539,7 +534,7 @@ extern "C" int main() {
   
   // arp_table->Setup();
 
-  keyboard->Setup(make_uptr(new Function<void>([](void *){
+  keyboard->Setup(make_uptr(new Function<void *>([](void *){
           uint8_t data;
           if(!keyboard->Read(data)){
             return;
@@ -571,8 +566,8 @@ extern "C" int main() {
 
   if (!do_membench) {
     CpuId beep_cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority);
-    new(&tt4) Callout;
-    tt4.Init(make_uptr(new Function<void>([](void *) {
+    auto callout_ = make_sptr(new Callout);
+    callout_->Init(make_uptr(new Function<sptr<Callout>>([](sptr<Callout> callout) {
             static int i = 0;
             if(i < 6) {
               uint16_t sound[6] = {905, 761, 452, 570, 508, 380};
@@ -585,13 +580,13 @@ extern "C" int main() {
               uint8_t on = inb(0x61);
               outb(0x61, (on | 0x03) & 0x0f);
               i++;
-              tt4.SetHandler(110000);
+              task_ctrl->RegisterCallout(callout, 110000);
             } else {
               uint8_t off = inb(0x61);
               outb(0x61, off & 0xd);
             }
-          }, nullptr)));
-    tt4.SetHandler(beep_cpuid, 1);
+          }, callout_)));
+    task_ctrl->RegisterCallout(callout_, beep_cpuid, 1);
   } else {
     register_membench2_callout();
   }
@@ -622,7 +617,7 @@ extern "C" int main_of_others() {
   PollingFunc p;
   if (cpu_ctrl->GetCpuId().GetRawId() == LOOP_BENCHMARK_CPU) {
     static int hoge = 0;
-    p.Init(make_uptr(new Function<void>([](void *){
+    p.Init(make_uptr(new Function<void *>([](void *){
             int hoge2 = timer->GetUsecFromCnt(timer->ReadMainCnt()) - hoge;
             gtty->Cprintf("%d ", hoge2);
             hoge = timer->GetUsecFromCnt(timer->ReadMainCnt());
@@ -636,10 +631,10 @@ extern "C" int main_of_others() {
 #ifdef ONE_SHOT_BENCHMARK
   #define ONE_SHOT_BENCHMARK_CPU  5
   if (cpu_ctrl->GetCpuId().GetRawId() == ONE_SHOT_BENCHMARK_CPU) {
-    new(&tt1) Callout;
-    tt1.Init(make_uptr(new Function<void>([](void *){
+    auto callout_ = make_sptr(new Callout);
+    callout_->Init(make_uptr(new Function<sptr<Callout>>([](sptr<Callout> callout){
             if (!apic_ctrl->IsBootupAll()) {
-              tt1.SetHandler(1000);
+              task_ctrl->RegisterCallout(callout, 1000);
               return;
             }
             // kassert(g_channel != nullptr);
@@ -647,7 +642,7 @@ extern "C" int main_of_others() {
             // kassert(fatfs->Mount());
             //        g_channel->Read(0, 1);
           }, nullptr)));
-    tt1.SetHandler(10);
+    task_ctrl->RegisterCallout(callout_, 10);
   }
 #endif
   if (do_membench) {

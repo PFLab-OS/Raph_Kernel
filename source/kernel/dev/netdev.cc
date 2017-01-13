@@ -28,7 +28,7 @@
 
 NetDev::NetDev() {
   extern CpuId network_cpu;
-  _tx_buffered.SetFunction(network_cpu, make_uptr(new ClassFunction<NetDev>(this, &NetDev::Transmit, nullptr)));
+  _tx_buffered.SetFunction(network_cpu, make_uptr(new ClassFunction<NetDev, void *>(this, &NetDev::Transmit, nullptr)));
 }
 
 bool NetDevCtrl::RegisterDevice(NetDev *dev, const char *prefix) {

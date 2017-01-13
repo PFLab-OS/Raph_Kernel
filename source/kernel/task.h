@@ -26,6 +26,8 @@
 #include <setjmp.h>
 #include <_task.h>
 #include <_queue.h>
+#include <cpu.h>
+#include <global.h>
 
 // enable to blocking operation
 class TaskWithStack : public Task {
@@ -92,11 +94,13 @@ public:
     }
     return _task_struct[cpuid.GetRawId()].state;
   }
+  void RegisterCallout(sptr<Callout> task, int us) {
+    RegisterCallout(task, cpu_ctrl->GetCpuId(), us);
+  }
+  void RegisterCallout(sptr<Callout> task, CpuId cpuid, int us);
+  bool CancelCallout(sptr<Callout> task);
 private:
   
-  friend Callout;
-  void RegisterCallout(Callout *task);
-  bool CancelCallout(Callout *task);
   void ForceWakeup(CpuId cpuid); 
   class TaskStruct {
   public:
@@ -112,7 +116,7 @@ private:
 
     // for Callout
     SpinLock dlock;
-    Callout *dtop;
+    sptr<Callout> dtop;
 
   } *_task_struct = nullptr;
   // this const value defines interval of wakeup task controller when all task slept

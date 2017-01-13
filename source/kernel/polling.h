@@ -35,7 +35,7 @@ class Polling {
     kStopped,
   };
   Polling() : _task(new Task) {
-    _task->SetFunc(make_uptr(new ClassFunction<Polling>(this, &Polling::HandleSub, nullptr)));
+    _task->SetFunc(make_uptr(new ClassFunction<Polling, void *>(this, &Polling::HandleSub, nullptr)));
   }
   void RegisterPolling(CpuId cpuid) {
     if (_state == PollingState::kPolling) {
