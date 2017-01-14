@@ -219,7 +219,7 @@ private:
     IntHandler *inthandler;
     IrqContainer *next;
   } *_irq_container;
-  IntSpinLock _irq_container_lock;
+  SpinLock _irq_container_lock;
   static void LegacyIntHandler(Regs *rs, void *arg) {
     PciCtrl *that = reinterpret_cast<PciCtrl *>(arg);
     Locker locker(that->_irq_container_lock);

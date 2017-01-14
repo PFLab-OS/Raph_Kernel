@@ -34,4 +34,6 @@
 #include <sys/mutex.h>
 // #include <sys/queue.h>
 
+typedef struct {} *eventhandler_tag;
+
 #endif /* _SYS_EVENTHANDLER_H_ */

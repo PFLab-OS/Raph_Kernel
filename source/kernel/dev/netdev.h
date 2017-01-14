@@ -31,6 +31,8 @@
 #include <polling.h>
 #include <freebsd/sys/param.h>
 #include <_cpu.h>
+#include <ptr.h>
+#include <array.h>
 
 class ProtocolStack;
 class DevEthernet;
@@ -184,7 +186,7 @@ public:
    * @param cpuid specify a core executing the callback.
    * @param func callback function.
    */
-  void SetReceiveCallback(CpuId cpuid, const GenericFunction &func) {
+  void SetReceiveCallback(CpuId cpuid, uptr<GenericFunction> func) {
     _rx_buffered.SetFunction(cpuid, func);
   }
 
@@ -284,8 +286,17 @@ public:
    * Set up the network interface. Usually you must register this interface
    * to network device controller (NetDevCtrl).
    * Other initialization can be done in this method.
+   *
+   * @param prefix name of interface
    */
-  virtual void SetupNetInterface() = 0;
+  virtual void SetupNetInterface(const char *prefix) = 0;
+
+  /**
+   * Simplified method of SetupNetInterface(const char *)
+   */
+  void SetupNetInterface() {
+    SetupNetInterface("eth");
+  }
 
   /**
    * Set protocol stack to this device.
@@ -367,7 +378,14 @@ public:
    * @return netdev_info the pair of network device and corresponding protocol stack.
    */
   NetDevInfo *GetDeviceInfo(const char *name);
-
+  
+  /**
+   * Get names list of all network devices
+   *
+   * @return unique pointer to the list
+   */
+  uptr<Array<const char *>> GetNamesOfAllDevices();
+  
   /**
    * Check if the specified network device exists or not.
    *
@@ -376,52 +394,6 @@ public:
    */
   bool Exists(const char *name) {
     return GetDeviceInfo(name) != nullptr;
-  }
-
-  /**
-   * Check if link of the network device is up or not.
-   *
-   * NOTE: even if this method returns false, it does not directly mean
-   * link is down, because the interface possibly does not exist.
-   * You must use NetDevCtrl::Exists to check if exists.
-   *
-   * @param name interface name.
-   * @return if link is up.
-   */
-  bool IsLinkUp(const char *name);
-
-  /**
-   * Assign IPv4 address to the specified network device.
-   *
-   * @param name interface name.
-   * @param addr IPv4 address.
-   * @return if the specified device supports IPv4 or not.
-   */
-  bool AssignIpv4Address(const char *name, uint32_t addr) {
-    NetDevInfo *info = this->GetDeviceInfo(name);
-
-    if (!info) {
-      return false;
-    } else {
-      return info->device->AssignIpv4Address(addr);
-    }
-  }
-
-  /**
-   * Get IPv4 address of the specified network device.
-   *
-   * @param name interface name.
-   * @param addr buffer to return.
-   * @return if the specified device supports IPv4 or not.
-   */
-  bool GetIpv4Address(const char *name, uint32_t &addr) {
-    NetDevInfo *info = this->GetDeviceInfo(name);
-
-    if (!info) {
-      return false;
-    } else {
-      return info->device->GetIpv4Address(addr);
-    }
   }
 
   /** maximum length of interface names */

@@ -72,13 +72,13 @@
 
 // #include <net/bpf.h>
 // #include <net/ethernet.h>
-// #include <net/if.h>
-// #include <net/if_var.h>
+#include <net/if.h>
+#include <net/if_var.h>
 // #include <net/if_arp.h>
 // #include <net/if_dl.h>
-// #include <net/if_media.h>
+#include <net/if_media.h>
 
-// #include <net/if_types.h>
+#include <net/if_types.h>
 // #include <net/if_vlan_var.h>
 
 // #include <netinet/in_systm.h>
@@ -4997,7 +4997,7 @@ int lE1000::DevMethodBusProbe() {
 int lE1000::DevMethodBusAttach() {
   int rval = lem_attach(this);
   lem_init(reinterpret_cast<struct adapter *>(softc));
-  _bsd_eth.SetupNetInterface();
+  _bsd_eth.SetupNetInterface("lem");
   // _bsd_eth.SetHandleMethod(lE1000BsdEthernet::HandleMethod::kPolling);
   return rval;
 }
@@ -5032,15 +5032,12 @@ void lE1000::lE1000BsdEthernet::UpdateLinkStatus() {
   }
 }
 
-void lE1000::lE1000BsdEthernet::PollingHandler(void *arg) {
-  lE1000 *that = reinterpret_cast<lE1000 *>(arg);
+void lE1000::lE1000BsdEthernet::PollingHandler(lE1000 *that) {
   lem_poll(reinterpret_cast<struct adapter *>(that->softc)->ifp);
 }
 
 void lE1000::lE1000BsdEthernet::ChangeHandleMethodToPolling() {
-  Function func;
-  func.Init(PollingHandler, reinterpret_cast<void *>(&GetMasterClass()));
-  _polling.Init(func);
+  _polling.Init(make_uptr(new Function<lE1000 *> (PollingHandler, &GetMasterClass())));
   extern CpuId network_cpu;
   _polling.Register(network_cpu);
   

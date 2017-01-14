@@ -24,6 +24,7 @@
 #define __RAPH_KERNEL_SPINLOCK_H__
 
 #include <stdint.h>
+#include <stdlib.h>
 #include <_cpu.h>
 
 class SpinLockInterface {
@@ -40,10 +41,10 @@ public:
 
 
 // 割り込みハンドラ内でも使えるSpinLock
-class IntSpinLock : public SpinLockInterface {
+class SpinLock : public SpinLockInterface {
 public:
-  IntSpinLock() {}
-  virtual ~IntSpinLock() {}
+  SpinLock() {}
+  virtual ~SpinLock() {}
   virtual volatile unsigned int GetFlag() override {
     return _flag;
   }
@@ -62,11 +63,10 @@ protected:
   }
   volatile unsigned int _flag = 0;
   CpuId _cpuid;
+  size_t _rip[3];
   bool _did_stop_interrupt = false;
   static const bool kTimeout = true;
 };
-
-using SpinLock = IntSpinLock;
 
 // コンストラクタ、デストラクタでlock,unlockができるラッパー
 // 関数からreturnする際に必ずunlockできるので、unlock忘れを防止する

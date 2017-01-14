@@ -1,4 +1,4 @@
 test:
   override:
-    - make _bin
+    - ./test.sh
     

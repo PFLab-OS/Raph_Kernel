@@ -307,7 +307,7 @@ void DevEhci::DevEhciSub32::SetupInterruptTransfer(uint8_t endpt_address, int de
 
   for (int i = 0; i < num_td; i++) {
     td[i]->Init();
-    if (i == num_td) {
+    if (i == num_td - 1) {
       td[i]->SetNext();
     } else {
       td[i]->SetNext(td[i + 1]);

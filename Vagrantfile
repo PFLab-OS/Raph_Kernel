@@ -28,7 +28,11 @@ Vagrant.configure(2) do |config|
   config.vm.network "forwarded_port", guest: 5900, host: 15900
 
   config.vm.provider :virtualbox do |vb|
-    vb.memory = 2048
+    if ENV['VAGRANT_MEMORY']
+      vb.memory = ENV['VAGRANT_MEMORY']
+    else
+      vb.memory = 2048
+    end
     vb.cpus = 2
     vb.customize [
       "modifyvm", :id,
@@ -40,6 +44,10 @@ Vagrant.configure(2) do |config|
       "--ioapic", "on",
       "--pae", "on",
       "--paravirtprovider", "kvm",
+    ]
+    vb.customize [
+      "setextradata", :id,
+      "VBoxInternal/Devices/VMMDev/0/Config/GetHostTimeDisabled", 0
     ]
   end
 

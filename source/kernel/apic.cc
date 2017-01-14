@@ -168,9 +168,12 @@ void ApicCtrl::StartAPs() {
 }
 
 void ApicCtrl::PicSpuriousCallback(Regs *rs, void *arg) {
-  gtty->CprintfRaw("[APIC] info: spurious 8259A interrupt (IRQ7)\n");
+  gtty->CprintfRaw("[APIC] info: spurious 8259A interrupt\n");
 }
 
+void ApicCtrl::PicUnknownCallback(Regs *rs, void *arg) {
+  gtty->CprintfRaw("[APIC] info: unknown 8259A interrupt\n");
+}
 
 void ApicCtrl::Lapic::Setup() {
   kassert(cpu_ctrl->GetCpuId().GetRawId() == GetCpuId());
@@ -197,6 +200,7 @@ void ApicCtrl::Lapic::Setup() {
   idt->SetExceptionCallback(cpu_ctrl->GetCpuId(), Idt::ReservedIntVector::kIpi, IpiCallback, nullptr);
   idt->SetExceptionCallback(cpu_ctrl->GetCpuId(), Idt::ReservedIntVector::k8259Spurious1, PicSpuriousCallback, nullptr);
   idt->SetExceptionCallback(cpu_ctrl->GetCpuId(), Idt::ReservedIntVector::k8259Spurious2, PicSpuriousCallback, nullptr);
+  idt->SetExceptionCallback(cpu_ctrl->GetCpuId(), Idt::ReservedIntVector::k8259Rtc, PicUnknownCallback, nullptr);
 
   WriteReg(RegisterOffset::kSvr, kRegSvrApicEnableFlag | Idt::ReservedIntVector::kError);
 }

@@ -162,4 +162,22 @@ extern "C" {
     }
   }
 
+  int pci_find_extcap(device_t dev, int capability, int *capreg) {
+    PciCtrl::CapabilityId id;
+    switch(capability) {
+    case PCIY_EXPRESS:
+      id = PciCtrl::CapabilityId::kPcie;
+      break;
+    default:
+      kassert(false);
+    }
+    uint16_t cap;
+    if ((cap = dev->GetPciClass()->GetDevPci().FindCapability(id)) != 0) {
+      *capreg = cap;
+      return 0;
+    } else {
+      return -1;
+    }
+  }
+
 }
