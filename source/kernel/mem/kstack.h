@@ -31,7 +31,7 @@
 #include <spinlock.h>
 #include <mem/virtmem.h>
 #include <mem/paging.h>
-#include <queue.h>
+#include <_queue.h>
 #include <_cpu.h>
 
 class KernelStackCtrl;

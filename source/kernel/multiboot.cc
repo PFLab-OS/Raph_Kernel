@@ -143,3 +143,26 @@ void MultibootCtrl::ShowBuildTimeStamp() {
     gtty->Cprintf("[kernel] info: Build Information as follows\n%s\n", str);
   }
 }
+
+uptr<Array<uint8_t>> MultibootCtrl::LoadFile(const char *str) {
+  kassert(align(multiboot_info, 8) == multiboot_info);
+  virt_addr addr = p2v(static_cast<phys_addr>(multiboot_info));
+  addr += 8;
+  for (multiboot_tag *tag = reinterpret_cast<multiboot_tag *>(addr); tag->type != MULTIBOOT_TAG_TYPE_END; addr = alignUp(addr + tag->size, 8), tag = reinterpret_cast<multiboot_tag *>(addr)) {
+    switch(tag->type) {
+    case MULTIBOOT_TAG_TYPE_MODULE: {
+      multiboot_tag_module* info = (struct multiboot_tag_module *) tag;
+      if (strcmp(info->cmdline, str) == 0) {
+        size_t len = info->mod_end - info->mod_start;
+        auto array = make_uptr(new Array<uint8_t>(len));
+        memcpy(array->GetRawPtr(), reinterpret_cast<uint8_t *>(info->mod_start), len);
+        return array;
+      }
+      break;
+    }
+    default:
+      break;
+    }
+  }
+  return make_uptr<Array<uint8_t>>();
+}

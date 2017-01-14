@@ -29,7 +29,7 @@
 
 class Keyboard {
  public:
-  void Setup(const GenericFunction &func);
+  void Setup(uptr<GenericFunction> func);
   bool Read(uint8_t &data) {
     return _buf.Pop(data);
   }

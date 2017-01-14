@@ -12,7 +12,7 @@ default: ../disk.o
 	ld -r $^ -o $@
 
 ahci.o:
-	make -C ahci CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
+	@make -C ahci CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
 
 clean:
 	make -C ahci clean

@@ -49,7 +49,6 @@ private:
   friend class AcpicaPciCtrl;
   int GetPciIntNum(DevPci *device);
   void GlobalEventHandler(void *);
-  Task _global_event_task;
 };
 
 #endif /* __RAPH_KERNEL_ACPI_H__ */

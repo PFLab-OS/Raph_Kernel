@@ -42,6 +42,7 @@ _qemuend:
 
 _bin:
 	-mkdir $(BUILD_DIR)
+	cp script $(BUILD_DIR)/script
 	make -C source
 
 _image:

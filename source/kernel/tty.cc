@@ -28,9 +28,7 @@
 
 void Tty::Init() {
   _cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority);
-  Function<Tty> func;
-  func.Init(Handle, this);
-  _queue.SetFunction(_cpuid, func);
+  _queue.SetFunction(_cpuid, make_uptr(new Function<Tty *>(Handle, this)));
   _Init();
 }
 

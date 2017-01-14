@@ -2872,9 +2872,7 @@ ahciaction(struct ahci_channel *ch, PacketAtaio *ataio)
 AhciChannel *AhciChannel::Init(AhciCtrl *ctrl) {
   AhciChannel *channel = new AhciChannel(ctrl);
   channel->InitBsdDevice(channel, sizeof(struct ahci_channel));
-  ClassFunction<AhciChannel> func;
-  func.Init(channel, &AhciChannel::Handle, nullptr);
-  channel->devq.SetFunction(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), func);
+  channel->devq.SetFunction(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), make_uptr(new ClassFunction<AhciChannel, void *>(channel, &AhciChannel::Handle, nullptr)));
   return channel;
 }
 
@@ -2910,7 +2908,7 @@ void AhciChannel::Handle(void *) {
   ahciaction(ch, packet);
 }
 
-PacketAtaio *AhciChannel::MakePacket(uint32_t lba, uint8_t count, auptr<uint8_t> ptr, uint32_t flags, uint8_t cmd_flags, uint8_t command) {
+PacketAtaio *AhciChannel::MakePacket(uint32_t lba, uint8_t count, uptr<Array<uint8_t>> ptr, uint32_t flags, uint8_t cmd_flags, uint8_t command) {
   PacketAtaio *ataio = PacketAtaio::XptAlloc();
   ataio->target_id = 0;
   ataio->target_lun = 0;
@@ -2928,32 +2926,30 @@ PacketAtaio *AhciChannel::MakePacket(uint32_t lba, uint8_t count, auptr<uint8_t>
   ataio->cmd.lba_high = lba >> 16;
   ataio->cmd.device = ATA_DEV_LBA | ((lba >> 24) & 0x0f);
   ataio->cmd.sector_count = count;
-  ataio->dxfer_len = ptr.GetLen();
+  ataio->dxfer_len = ptr->GetLen();
   ataio->data_ptr = nullptr;
   ataio->ptr = ptr;
   return ataio;
 }
 
 void AhciChannel::Identify() {
-  auptr<uint8_t> ptr;
-  ptr.Init(sizeof(struct ata_params));
+  auto ptr = make_uptr(new Array<uint8_t>(sizeof(struct ata_params)));
   PacketAtaio *ataio = MakePacket(0, 0, ptr, CAM_DIR_IN, 0, ATA_ATA_IDENTIFY);
   devq.Push(ataio);
 }
 
 void AhciChannel::Read(int lba, int count) {
-  auptr<uint8_t> ptr;
-  ptr.Init(GetLogicalSectorSize() * count);
+  auto ptr = make_uptr(new Array<uint8_t>(GetLogicalSectorSize() * count));
   PacketAtaio *ataio = MakePacket(lba, count, ptr, CAM_DIR_IN, CAM_ATAIO_DMA, ATA_READ_DMA);
   devq.Push(ataio);
 }
 
-void AhciChannel::Write(int lba, auptr<uint8_t> ptr) {
-  kassert(ptr.GetLen() % GetLogicalSectorSize() == 0);
-  int count = ptr.GetLen() / GetLogicalSectorSize();
+void AhciChannel::Write(int lba, uptr<Array<uint8_t>> ptr) {
+  kassert(ptr->GetLen() % GetLogicalSectorSize() == 0);
+  int count = ptr->GetLen() / GetLogicalSectorSize();
   uint8_t c = 0;
   for(int i = 0; i < GetLogicalSectorSize(); i++) {
-    ptr[i] = c;
+    (*ptr)[i] = c;
     c++;
   }
   PacketAtaio *ataio = MakePacket(lba, count, ptr, CAM_DIR_OUT, CAM_ATAIO_DMA, ATA_WRITE_DMA);

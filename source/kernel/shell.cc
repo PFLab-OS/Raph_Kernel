@@ -26,6 +26,7 @@
 #include <tty.h>
 #include <string.h>
 #include <shell.h>
+#include <cpu.h>
 
 void Shell::Setup() {
   _liner.Setup(this);
@@ -46,7 +47,7 @@ void Shell::Register(const char *name, void (*func)(int argc, const char *argv[]
   }
 }
 
-void Shell::Exec(const char *name,int argc, const char* argv[]) {
+void Shell::Exec(const char *name, int argc, const char **argv) {
   for (int i = 0; i < _next_buf; i++) {
     if (strncmp(name, _name_func_mapping[i].name, strlen(_name_func_mapping[i].name)) == 0) {
       _name_func_mapping[i].func(argc, argv);
@@ -61,12 +62,21 @@ void Shell::ReadCh(char c) {
   _liner.ReadCh(c);
 }
 
+void Shell::Execute(uptr<ExecContainer> ec) {
+  if (ec->argc > 0) {
+    auto callout_ = make_sptr(new Callout);
+    callout_->Init(make_uptr(new Function2<wptr<Callout>, uptr<ExecContainer>>([](wptr<Callout> callout, uptr<ExecContainer> ec_) {
+            ec_->shell->Exec(ec_->name, ec_->argc, ec_->argv);
+          }, make_wptr(callout_), ec)));
+    task_ctrl->RegisterCallout(callout_, cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), 0);
+  }
+}
+
 void Shell::Liner::ReadCh(char c) {
   if (c == '\n') {
-    Tokenize();
-    if (_argc > 0) {	
-      _shell->Exec(_command, _argc, (const char **)_arguments);
-    }
+    auto ec = make_uptr(new ExecContainer(_shell));
+    ec = Tokenize(ec, _command);
+    _shell->Execute(ec);
     Reset();
   } else if (c == '\b') {
     // backspace
@@ -83,34 +93,34 @@ void Shell::Liner::ReadCh(char c) {
   }
 }
 
-void Shell::Liner::Tokenize() {
+uptr<Shell::ExecContainer> Shell::Liner::Tokenize(uptr<Shell::ExecContainer> ec, char *command) {
+  strcpy(ec->name, command);
   bool inToken = false;
   for (int i = 0; i < kCommandSize -1; i++) {
-    if (_command[i] == '\0') return;
+    if (ec->name[i] == '\0') return ec;
     if (inToken) {
-      if (_command[i] == ' ') {
-        _command[i] = '\0';
+      if (ec->name[i] == ' ') {
+        ec->name[i] = '\0';
         inToken = false;
       }
     } else {
-      if (_command[i] == ' ') {
-        _command[i] = '\0';
+      if (ec->name[i] == ' ') {
+        ec->name[i] = '\0';
       } else {
-        if (_argc < kArgumentMax) {
-          _arguments[_argc] = _command + i;
-          _argc++;
-          _arguments[_argc] = nullptr;
+        if (ec->argc < kArgumentMax) {
+          ec->argv[ec->argc] = ec->name + i;
+          ec->argc++;
+          ec->argv[ec->argc] = nullptr;
         }
         inToken = true;
       }
     }
   }
+  return ec;
 }
 
 void Shell::Liner::Reset() {
     _command[0] = '\0';
-    _arguments[0] = nullptr;
     _next_command = 0;
-    _argc = 0;
     gtty->PrintShell("");
 }

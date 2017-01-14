@@ -12,7 +12,7 @@ default: ../fs.o
 	ld -r $^ -o $@
 
 fat.o:
-	make -C fat CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
+	@make -C fat CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
 
 clean:
 	make -C fat clean

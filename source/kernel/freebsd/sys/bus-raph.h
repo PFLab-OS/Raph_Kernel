@@ -73,9 +73,7 @@ public:
   class IntContainer {
   public:
     IntContainer() {
-      Function<IntContainer> func;
-      func.Init(HandleSub, this);
-      _ctask.SetFunc(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), func);
+      _ctask.SetFunc(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), make_uptr(new Function<IntContainer *>(HandleSub, this)));
     }
     void Handle() {
       if (_filter != nullptr) {

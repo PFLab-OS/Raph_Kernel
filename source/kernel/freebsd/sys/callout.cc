@@ -26,24 +26,29 @@
 #include <sys/kernel.h>
 #include <task.h>
 #include <cpu.h>
+#include <ptr.h>
 
 extern "C" {
 
+  struct LckCalloutContainer {
+    sptr<LckCallout> callout;
+    LckCalloutContainer() : callout(make_sptr(new LckCallout)) {
+    }
+  };
+  
   void _callout_init_lock(struct callout *c, struct lock_object *lock, int flags) {
-    c->callout = new LckCallout();
-    c->callout->SetLock(lock->lock);
+    c->callout_container = new LckCalloutContainer();
+    c->callout_container->callout->SetLock(lock->lock);
   }
 
   int callout_stop(struct callout *c) {
-    bool flag = c->callout->CanExecute();
-    c->callout->Cancel();
-    return flag ? 1 : 0;
+    return task_ctrl->CancelCallout(c->callout_container->callout);
   }
 
   int callout_drain(struct callout *c) {
     int r = callout_stop(c);
     while(true) {
-      volatile bool flag = c->callout->IsHandling();
+      volatile bool flag = c->callout_container->callout->IsHandling();
       if (!flag) {
         break;
       }
@@ -52,43 +57,39 @@ extern "C" {
   }
 
   int callout_reset(struct callout *c, int ticks, void func(void *), void *arg) {
-    bool pending = c->callout->IsPending();
+    bool pending = c->callout_container->callout->IsPending();
     
-    c->callout->Cancel();
+    task_ctrl->CancelCallout(c->callout_container->callout);
     if (ticks < 0) {
       ticks = 1;
     }
-    Function<void> f;
-    f.Init(func, arg);
-    c->callout->Init(f);
-    c->callout->SetHandler(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), static_cast<uint32_t>(ticks) * reciprocal_of_hz);
+    c->callout_container->callout->Init(make_uptr(new Function<void *>(func, arg)));
+    task_ctrl->RegisterCallout(c->callout_container->callout, cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), static_cast<uint32_t>(ticks) * reciprocal_of_hz);
 
     return pending ? 1 : 0;
   }
 
   int callout_reset_sbt(struct callout *c, sbintime_t sbt, sbintime_t precision, void ftn(void *), void *arg, int flags) {
-    bool pending = c->callout->IsPending();
+    bool pending = c->callout_container->callout->IsPending();
     
-    c->callout->Cancel();
+    task_ctrl->CancelCallout(c->callout_container->callout);
     if (sbt < 0) {
       sbt = 1;
     }
-    Function<void> f;
-    f.Init(ftn, arg);
-    c->callout->Init(f);
-    c->callout->SetHandler(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), sbt * static_cast<sbintime_t>(1000000) / SBT_1S);
+    c->callout_container->callout->Init(make_uptr(new Function<void *>(ftn, arg)));
+    task_ctrl->RegisterCallout(c->callout_container->callout, cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), sbt * static_cast<sbintime_t>(1000000) / SBT_1S);
 
     return pending ? 1 : 0;
   }
 
   int	callout_schedule(struct callout *c, int ticks) {
-    bool pending = c->callout->IsPending();
+    bool pending = c->callout_container->callout->IsPending();
     
-    c->callout->Cancel();
+    task_ctrl->CancelCallout(c->callout_container->callout);
     if (ticks < 0) {
       ticks = 1;
     }
-    c->callout->SetHandler(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), static_cast<uint32_t>(ticks) * reciprocal_of_hz);
+    task_ctrl->RegisterCallout(c->callout_container->callout, cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), static_cast<uint32_t>(ticks) * reciprocal_of_hz);
 
     return pending ? 1 : 0;
   }
