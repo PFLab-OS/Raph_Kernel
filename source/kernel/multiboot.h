@@ -28,6 +28,8 @@
 #include <tty.h>
 #include <boot/multiboot2.h>
 #include <mem/physmem.h>
+#include <ptr.h>
+#include <array.h>
 
 extern uint32_t multiboot_info;
 
@@ -38,6 +40,7 @@ public:
   void Setup();
   void ShowModuleInfo();
   void ShowBuildTimeStamp();
+  uptr<Array<uint8_t>> LoadFile(const char *str);
   phys_addr GetPhysMemoryEnd() {
     return _phys_memory_end;
   }

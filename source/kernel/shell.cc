@@ -62,17 +62,21 @@ void Shell::ReadCh(char c) {
   _liner.ReadCh(c);
 }
 
+void Shell::Execute(uptr<ExecContainer> ec) {
+  if (ec->argc > 0) {
+    auto callout_ = make_sptr(new Callout);
+    callout_->Init(make_uptr(new Function2<wptr<Callout>, uptr<ExecContainer>>([](wptr<Callout> callout, uptr<ExecContainer> ec_) {
+            ec_->shell->Exec(ec_->name, ec_->argc, ec_->argv);
+          }, make_wptr(callout_), ec)));
+    task_ctrl->RegisterCallout(callout_, cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), 0);
+  }
+}
+
 void Shell::Liner::ReadCh(char c) {
   if (c == '\n') {
     auto ec = make_uptr(new ExecContainer(_shell));
-    ec = Tokenize(ec);
-    if (ec->argc > 0) {
-      auto callout_ = make_sptr(new Callout);
-      callout_->Init(make_uptr(new Function2<wptr<Callout>, uptr<ExecContainer>>([](wptr<Callout> callout, uptr<ExecContainer> ec_) {
-              ec_->shell->Exec(ec_->name, ec_->argc, ec_->argv);
-            }, make_wptr(callout_), ec)));
-      task_ctrl->RegisterCallout(callout_, cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), 0);
-    }
+    ec = Tokenize(ec, _command);
+    _shell->Execute(ec);
     Reset();
   } else if (c == '\b') {
     // backspace
@@ -89,8 +93,8 @@ void Shell::Liner::ReadCh(char c) {
   }
 }
 
-uptr<Shell::Liner::ExecContainer> Shell::Liner::Tokenize(uptr<Shell::Liner::ExecContainer> ec) {
-  strcpy(ec->name, _command);
+uptr<Shell::ExecContainer> Shell::Liner::Tokenize(uptr<Shell::ExecContainer> ec, char *command) {
+  strcpy(ec->name, command);
   bool inToken = false;
   for (int i = 0; i < kCommandSize -1; i++) {
     if (ec->name[i] == '\0') return ec;

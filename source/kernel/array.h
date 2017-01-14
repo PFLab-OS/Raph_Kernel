@@ -31,6 +31,7 @@ class Array {
 public:
   explicit Array(int len) {
     _array = new T[len];
+    _len = len;
   }
   ~Array() {
     delete[] _array;
@@ -41,6 +42,9 @@ public:
   }
   T& operator=(const T &array) {
     kassert(false);
+  }
+  T *GetRawPtr() {
+    return _array;
   }
   size_t GetLen() {
     return _len;

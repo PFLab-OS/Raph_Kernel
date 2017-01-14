@@ -34,6 +34,25 @@ class Shell {
   void Register(const char *name, void (*func)(int argc, const char *argv[]));
   void ReadCh(char c);
 
+  static const int kCommandSize = 100;
+  static const int kArgumentMax = 10;
+  struct ExecContainer {
+    char name[kCommandSize];
+    int argc;
+    const char *argv[kArgumentMax + 1];
+    Shell *shell;
+    Callout *c;
+    ExecContainer(Shell *shell_) {
+      argc = 0;
+      shell = shell_;
+    }
+  private:
+    ExecContainer();
+  };
+  uptr<ExecContainer> Tokenize(uptr<ExecContainer> ec, char *command) {
+    return _liner.Tokenize(ec, command);
+  }
+  void Execute(uptr<ExecContainer> ec);
  private:
   void Exec(const char *name, int argc, const char **argv);
 
@@ -51,23 +70,8 @@ class Shell {
       Reset();
     }
     void ReadCh(char c);
+    static uptr<ExecContainer> Tokenize(uptr<ExecContainer> ec, char *command);
   private:
-    static const int kCommandSize = 100;
-    static const int kArgumentMax = 10;
-    struct ExecContainer {
-      char name[kCommandSize];
-      int argc;
-      const char *argv[kArgumentMax + 1];
-      Shell *shell;
-      Callout *c;
-      ExecContainer(Shell *shell_) {
-        argc = 0;
-        shell = shell_;
-      }
-    private:
-      ExecContainer();
-    };
-    uptr<ExecContainer> Tokenize(uptr<ExecContainer> ec);
     void Reset();
     char _command[kCommandSize] = "";
     int _next_command = 0;

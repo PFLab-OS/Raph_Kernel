@@ -345,11 +345,12 @@ void bench(int argc, const char* argv[]) {
       gtty->Cprintf("invalid arguments\n");
       return;
     }
-    NetDev *dev = netdev_ctrl->GetDeviceInfo(argv[2])->device;
-    if (dev == nullptr) {
+    NetDevCtrl::NetDevInfo *info = netdev_ctrl->GetDeviceInfo(argv[2]);
+    if (info == nullptr) {
       gtty->Cprintf("no ethernet interface(%s).\n", argv[2]);
       return;
     }
+    NetDev *dev = info->device;
 
     uint8_t addr[4] = {0, 0, 0, 0};
     int i = 0;
@@ -381,11 +382,12 @@ void bench(int argc, const char* argv[]) {
       gtty->Cprintf("invalid arguments\n");
       return;
     }
-    NetDev *dev = netdev_ctrl->GetDeviceInfo(argv[2])->device;
-    if (dev == nullptr) {
+    NetDevCtrl::NetDevInfo *info = netdev_ctrl->GetDeviceInfo(argv[2]);
+    if (info == nullptr) {
       gtty->Cprintf("no ethernet interface(%s).\n", argv[2]);
       return;
     }
+    NetDev *dev = info->device;
 
     uint8_t addr[4] = {0, 0, 0, 0};
     int i = 0;
@@ -436,6 +438,55 @@ static void show(int argc, const char *argv[]) {
       return;
     }
     multiboot_ctrl->ShowModuleInfo();
+  } else {
+    gtty->Cprintf("invalid argument.\n");
+    return;
+  }
+}
+
+static void load(int argc, const char *argv[]) {
+  if (argc != 2) {
+    gtty->Cprintf("invalid argument.\n");
+    return;
+  }
+  if (strcmp(argv[1], "script.sh") == 0) {
+    auto callout_ = make_sptr(new Callout);
+    struct Container {
+      uptr<Array<uint8_t>> data;
+      int i;
+    };
+    auto container_ = make_sptr(new Container);
+    container_->i = 0;
+    container_->data = multiboot_ctrl->LoadFile(argv[1]);
+    callout_->Init(make_uptr(new Function2<wptr<Callout>, sptr<Container>>([](wptr<Callout> callout, sptr<Container> container){
+            size_t i = container->i;
+            while(container->i < container->data->GetLen()) {
+              if ((*container->data)[container->i] == '\n') {
+                (*container->data)[container->i] = '\0';
+                auto ec = make_uptr(new Shell::ExecContainer(shell));
+                ec = shell->Tokenize(ec, reinterpret_cast<char *>(container->data->GetRawPtr()) + i);
+                container->i++;
+                if (strcmp(ec->argv[0], "wait") != 0) {
+                  shell->Execute(ec);
+                } else {
+                  if (ec->argc == 2) {
+                    int t = 0;
+                    for(size_t l = 0; l < strlen(ec->argv[1]); l++) {
+                      t = t * 10 + ec->argv[1][l] - '0';
+                    }
+                    task_ctrl->RegisterCallout(make_sptr(callout), t * 1000 * 1000);
+                    return;
+                  } else {
+                    gtty->Cprintf("invalid argument.\n");
+                  }
+                }
+                task_ctrl->RegisterCallout(make_sptr(callout), 10);
+                return;
+              }
+              container->i++;
+            }
+          }, make_wptr(callout_), container_)));
+    task_ctrl->RegisterCallout(callout_, 10);
   } else {
     gtty->Cprintf("invalid argument.\n");
     return;
@@ -562,7 +613,7 @@ extern "C" int main() {
   shell->Register("cpuinfo", cpuinfo);
   shell->Register("ifconfig", ifconfig);
   shell->Register("show", show);
-  // shell->Register("exec", exec);
+  shell->Register("load", load);
 
   if (!do_membench) {
     CpuId beep_cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority);
