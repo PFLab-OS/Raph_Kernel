@@ -30,6 +30,8 @@
 #include <task.h>
 #include <functional.h>
 
+// The characteristic of RingBuffer is it doesn't allocate memory dynamically.
+//
 // T should be primitive data type(int or pointer).
 // If you want to contain struct (or class) in RingBuffer,
 // you should allocate struct array to different place and

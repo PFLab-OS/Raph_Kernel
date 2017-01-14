@@ -25,9 +25,12 @@
 #ifndef __RAPH_KERNEL_DEV_USB_USB11_H__
 #define __RAPH_KERNEL_DEV_USB_USB11_H__
 
+#include <ptr.h>
+#include <array.h>
 #include <stdint.h>
 #include <buf.h>
 #include <mem/physmem.h>
+#include <polling.h>
 
 // maximum data payload size for Control Transfers
 // quoted from 5.5.3 Control Transfer Packet Size Constraints
@@ -229,6 +232,10 @@ public:
     delete[] _combined_desc;
   }
 protected:
+  void Init() {
+    InitSub();
+  }
+  virtual void InitSub() = 0;
   void LoadDeviceDescriptor();
   void LoadCombinedDescriptors();
   UsbCtrl::DeviceDescriptor *GetDeviceDescriptor() {
@@ -248,20 +255,49 @@ protected:
   DevUsbController * const GetController() {
     return _controller;
   }
+  class InterruptEndpoint {
+  public:
+    InterruptEndpoint(DevUsb * const dev, UsbCtrl::EndpointDescriptor *ed) : _dev(dev), _ed(ed) {
+      assert(ed->GetTransferType() == UsbCtrl::TransferType::kInterrupt);
+      _head = 0;
+      _tail = 0;
+    }
+    uptr<Array<uint8_t>> ObjPop() {
+      uptr<Array<uint8_t>> obj;
+      _obj_buffered.Pop(obj);
+      return obj;
+    }
+    void ObjReuse(uptr<Array<uint8_t>> obj) {
+      _obj_reserved.Push(obj);
+    }
+    void Handler(void *);
+    void Setup(int num_td, uint8_t *buffer);
+  private:
+    RingBuffer<uptr<Array<uint8_t>>, 32> _obj_reserved;
+    RingBuffer<uptr<Array<uint8_t>>, 32> _obj_buffered;
+    int _head;
+    int _tail;
+    DevUsb * const _dev;
+    UsbCtrl::EndpointDescriptor * const _ed;
+    PollingFunc p;
+  };
 private:
-  UsbCtrl::DummyDescriptor *GetDescriptorInCombinedDescriptors(UsbCtrl::DescriptorType type, int desc_index);
   DevUsbController * const _controller;
   const int _addr;
   UsbCtrl::DeviceDescriptor _device_desc;
   uint8_t *_combined_desc;
+  InterruptEndpoint *_interrupt_endpoint;
+  UsbCtrl::DummyDescriptor *GetDescriptorInCombinedDescriptors(UsbCtrl::DescriptorType type, int desc_index);
 };
 
 class DevUsbKeyboard : public DevUsb {
 public:
   DevUsbKeyboard(DevUsbController *controller, int addr) : DevUsb(controller, addr) {
   }
+  virtual ~DevUsbKeyboard() {
+  }
   static DevUsb *InitUsb(DevUsbController *controller, int addr);
-  void Init();
+  virtual void InitSub() override;
 private:
   DevUsbKeyboard();
   static const int kTdNum = 32; // TODO is this ok?

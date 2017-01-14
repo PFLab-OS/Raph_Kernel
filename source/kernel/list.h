@@ -20,8 +20,7 @@
  * 
  */
 
-#ifndef __RAPH_LIB_RLIB_LIST_H__
-#define __RAPH_LIB_RLIB_LIST_H__
+#pragma once
 
 #include <raph.h>
 #include <spinlock.h>
@@ -30,14 +29,18 @@ template<class T>
 class ObjectList {
 public:
   struct Container {
+    template<class... Arg>
+    Container(Arg... args) : obj(args...) {
+      next = nullptr;
+    }
     Container *GetNext() {
       return next;
     }
     T *GetObject() {
-      return obj;
+      return &obj;
     }
   private:
-    T *obj;
+    T obj;
     Container *next;
     friend ObjectList;
   };
@@ -50,9 +53,7 @@ public:
   }
   template<class... Arg>
   Container *PushBack(Arg... args) {
-    Container *c = new Container;
-    c->obj = new T(args...);
-    c->next = nullptr;
+    Container *c = new Container(args...);
     Locker locker(_lock);
     kassert(_last->next == nullptr);
     _last->next = c;
@@ -72,4 +73,3 @@ private:
   SpinLock _lock;
 };
 
-#endif // __RAPH_LIB_RLIB_LIST_H__

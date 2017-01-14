@@ -27,7 +27,7 @@
 #include <mem/physmem.h>
 #include <mem/paging.h>
 
-// for debug
+// RAPH_DEBUG
 #include <tty.h>
 #include <global.h>
 
@@ -179,9 +179,24 @@ int DevUsb::GetDescriptorNumInCombinedDescriptors(UsbCtrl::DescriptorType type) 
 
 void DevUsb::SetupInterruptTransfer(int num_td, uint8_t *buffer) {
   UsbCtrl::EndpointDescriptor *ed0 = GetEndpointDescriptorInCombinedDescriptors(0);
-  assert(ed0->GetTransferType() == UsbCtrl::TransferType::kInterrupt);
   assert(ed0->GetDirection() == UsbCtrl::PacketIdentification::kIn);
-  GetController()->SetupInterruptTransfer(ed0->GetEndpointNumber(), _addr, ed0->GetInterval(), ed0->GetDirection(), ed0->GetMaxPacketSize(), num_td, buffer);
+  _interrupt_endpoint = new InterruptEndpoint(this, ed0);
+
+  _interrupt_endpoint->Setup(num_td, buffer);
+}
+
+void DevUsb::InterruptEndpoint::Setup(int num_td, uint8_t *buffer) {
+  while(!_obj_reserved.IsFull()) {
+    assert(_obj_reserved.Push(make_uptr(new Array<uint8_t>(_ed->GetMaxPacketSize()))));
+  }
+
+  p.Init(make_uptr(new ClassFunction<InterruptEndpoint, void *>(this, &InterruptEndpoint::Handler, nullptr)));
+  p.Register();
+  _dev->_controller->SetupInterruptTransfer(_ed->GetEndpointNumber(), _dev->_addr, _ed->GetInterval(), _ed->GetDirection(), _ed->GetMaxPacketSize(), num_td, buffer);
+}
+
+void DevUsb::InterruptEndpoint::Handler(void *) {
+  
 }
 
 DevUsb *DevUsbKeyboard::InitUsb(DevUsbController *controller, int addr) {
@@ -201,11 +216,12 @@ DevUsb *DevUsbKeyboard::InitUsb(DevUsbController *controller, int addr) {
   }
 }
 
-void DevUsbKeyboard::Init() {
+void DevUsbKeyboard::InitSub() {
   if (GetDescriptorNumInCombinedDescriptors(UsbCtrl::DescriptorType::kEndpoint) != 1) {
     kernel_panic("DevUsbKeyboard", "not supported");
   }
   UsbCtrl::EndpointDescriptor *ed0 = GetEndpointDescriptorInCombinedDescriptors(0);
   assert(ed0->GetMaxPacketSize() == kMaxPacketSize);
   SetupInterruptTransfer(kTdNum, buffer);
+
 }
