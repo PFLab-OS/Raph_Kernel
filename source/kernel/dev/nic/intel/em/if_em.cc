@@ -6339,8 +6339,7 @@ void E1000::E1000BsdEthernet::PollingHandler(E1000 *that) {
 
 void E1000::E1000BsdEthernet::ChangeHandleMethodToPolling() {
   _polling.Init(make_uptr(new Function<E1000 *>(PollingHandler, &GetMasterClass())));
-  extern CpuId network_cpu;
-  _polling.Register(network_cpu);
+  _polling.Register(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kHighPerformance));
 
   struct adapter *adapter = reinterpret_cast<struct adapter *>(GetMasterClass().softc);
   if_t ifp = adapter->ifp;
