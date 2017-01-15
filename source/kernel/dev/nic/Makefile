@@ -12,8 +12,8 @@ default: ../nic.o
 	ld -r $^ -o $@
 
 intel.o:
-	@make -C intel CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
+	@$(MAKE) -C intel CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
 
 clean:
-	make -C intel clean
+	$(MAKE) -C intel clean
 	-rm -f $(OBJS) $(TEST_OBJS) $(DEPS) *.s *.ii
