@@ -1,5 +1,5 @@
 default:
-	make -C kernel
+	$(MAKE) -C kernel
 
 clean:
-	make -C kernel clean
+	$(MAKE) -C kernel clean
