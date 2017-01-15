@@ -1,4 +1,4 @@
-OBJS = usb.o ehci.o #uhci.o
+OBJS = usb.o ehci.o keyboard.o #uhci.o
 
 DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))
 

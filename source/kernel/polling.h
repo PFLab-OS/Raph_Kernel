@@ -37,6 +37,12 @@ class Polling {
   Polling() : _task(new Task) {
     _task->SetFunc(make_uptr(new ClassFunction<Polling, void *>(this, &Polling::HandleSub, nullptr)));
   }
+  ~Polling() {
+    if (_state == PollingState::kPolling) {
+      // TODO implementation
+      kernel_panic("Polling", "unexpectedly deleted");
+    }
+  }
   void RegisterPolling(CpuId cpuid) {
     if (_state == PollingState::kPolling) {
       return;

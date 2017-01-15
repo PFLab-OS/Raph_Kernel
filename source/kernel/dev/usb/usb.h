@@ -22,8 +22,7 @@
  * 
  */
 
-#ifndef __RAPH_KERNEL_DEV_USB_USB11_H__
-#define __RAPH_KERNEL_DEV_USB_USB11_H__
+#pragma once
 
 #include <ptr.h>
 #include <array.h>
@@ -217,8 +216,16 @@ private:
 
 class DevUsbController {
 public:
+  class Manager {
+  public:
+    Manager() {
+    }
+    virtual ~Manager() {
+    }
+    virtual void HandleInterrupt(void *) = 0;
+  };
   virtual bool SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) = 0;
-  virtual void SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer) = 0;
+  virtual uptr<Manager> SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer) = 0;
 };
 
 // !!! important !!!
@@ -259,8 +266,9 @@ protected:
   public:
     InterruptEndpoint(DevUsb * const dev, UsbCtrl::EndpointDescriptor *ed) : _dev(dev), _ed(ed) {
       assert(ed->GetTransferType() == UsbCtrl::TransferType::kInterrupt);
-      _head = 0;
-      _tail = 0;
+    }
+    ~InterruptEndpoint() {
+      kernel_panic("DevUsb", "no implmementation");
     }
     uptr<Array<uint8_t>> ObjPop() {
       uptr<Array<uint8_t>> obj;
@@ -275,11 +283,10 @@ protected:
   private:
     RingBuffer<uptr<Array<uint8_t>>, 32> _obj_reserved;
     RingBuffer<uptr<Array<uint8_t>>, 32> _obj_buffered;
-    int _head;
-    int _tail;
     DevUsb * const _dev;
     UsbCtrl::EndpointDescriptor * const _ed;
     PollingFunc p;
+    uptr<DevUsbController::Manager> _manager;
   };
 private:
   DevUsbController * const _controller;
@@ -289,21 +296,4 @@ private:
   InterruptEndpoint *_interrupt_endpoint;
   UsbCtrl::DummyDescriptor *GetDescriptorInCombinedDescriptors(UsbCtrl::DescriptorType type, int desc_index);
 };
-
-class DevUsbKeyboard : public DevUsb {
-public:
-  DevUsbKeyboard(DevUsbController *controller, int addr) : DevUsb(controller, addr) {
-  }
-  virtual ~DevUsbKeyboard() {
-  }
-  static DevUsb *InitUsb(DevUsbController *controller, int addr);
-  virtual void InitSub() override;
-private:
-  DevUsbKeyboard();
-  static const int kTdNum = 32; // TODO is this ok?
-  static const int kMaxPacketSize = 8;
-  uint8_t buffer[kTdNum * kMaxPacketSize];
-};
-
-#endif // __RAPH_KERNEL_DEV_USB_USB11_H__
 

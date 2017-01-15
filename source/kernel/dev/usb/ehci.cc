@@ -25,6 +25,7 @@
 #include <mem/virtmem.h>
 #include <mem/physmem.h>
 #include <dev/usb/usb.h>
+#include "keyboard.h"
 
 // for debug
 #include <tty.h>
@@ -135,6 +136,7 @@ void DevEhci::Init() {
       	}
       }
       int dev = i + 1;
+      // RAPH_DEBUG
       DevUsbKeyboard::InitUsb(&_controller_dev, dev);
     }
   }
@@ -248,7 +250,7 @@ bool DevEhci::DevEhciSub32::SendControlTransfer(UsbCtrl::DeviceRequest *request,
   return success;
 }
 
-void DevEhci::DevEhciSub32::SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer) {
+uptr<DevUsbController::Manager> DevEhci::DevEhciSub32::SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer) {
   if (interval <= 0) {
     kernel_panic("Ehci", "unknown interval");
   }
@@ -321,4 +323,48 @@ void DevEhci::DevEhciSub32::SetupInterruptTransfer(uint8_t endpt_address, int de
       _periodic_frame_list[i].Set(qh);
     }
   }
+
+  auto manager = make_uptr(new EhciManager(num_td));
+
+  manager->interrupt_qh = qh;
+  manager->p.Init(make_uptr(new ClassFunction<EhciManager, void *>(manager.GetRawPtr(), &EhciManager::HandleInterrupt, nullptr)));
+  manager->p.Register();
+  manager->CopyTdArray(td);
+
+  uptr<DevUsbController::Manager> manager_ = manager;
+  
+  return manager_;
+}
+
+void DevEhci::DevEhciSub32::EhciManager::HandleInterrupt(void *) {
+  // scan already buffered (from device) entry
+  while(!_td_array[_tail]->IsActiveOfStatus()) {
+    _tail++;
+    if (_tail == _num_td) {
+      _tail = 0;
+    }
+    if (_head == _tail) {
+      break;
+    }
+  }
+  while(_head != _tail) {
+    if (_td_array[_head]->GetStatus() != 0) {
+      _head++;
+      if (_head == _num_td) {
+        _head = 0;
+      }
+      continue;
+    }
+
+    uint8_t *buf = addr2ptr<uint8_t>(_td_array[_head]->GetBuffer());
+    gtty->CprintfRaw("%d %x %x %x %x %x %x %x %x\n", _head, buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], buf[6], buf[7]);
+
+    _td_array[_head]->ResetToken();
+    
+    _head++;
+    if (_head == _num_td) {
+      _head = 0;
+    }
+  }
+  
 }

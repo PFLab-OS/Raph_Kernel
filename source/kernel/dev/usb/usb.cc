@@ -1,5 +1,5 @@
 /*
-1;4205;0c *
+ *
  * Copyright (c) 2016 Raphine Project
  *
  * This program is free software; you can redistribute it and/or
@@ -26,10 +26,6 @@
 #include <mem/virtmem.h>
 #include <mem/physmem.h>
 #include <mem/paging.h>
-
-// RAPH_DEBUG
-#include <tty.h>
-#include <global.h>
 
 UsbCtrl UsbCtrl::_ctrl;
 bool UsbCtrl::_is_initialized = false;
@@ -190,38 +186,12 @@ void DevUsb::InterruptEndpoint::Setup(int num_td, uint8_t *buffer) {
     assert(_obj_reserved.Push(make_uptr(new Array<uint8_t>(_ed->GetMaxPacketSize()))));
   }
 
-  p.Init(make_uptr(new ClassFunction<InterruptEndpoint, void *>(this, &InterruptEndpoint::Handler, nullptr)));
-  p.Register();
-  _dev->_controller->SetupInterruptTransfer(_ed->GetEndpointNumber(), _dev->_addr, _ed->GetInterval(), _ed->GetDirection(), _ed->GetMaxPacketSize(), num_td, buffer);
+  // p.Init(make_uptr(new ClassFunction<InterruptEndpoint, void *>(this, &InterruptEndpoint::Handler, nullptr)));
+  // p.Register();
+
+  _manager = _dev->_controller->SetupInterruptTransfer(_ed->GetEndpointNumber(), _dev->_addr, _ed->GetInterval(), _ed->GetDirection(), _ed->GetMaxPacketSize(), num_td, buffer);
 }
 
 void DevUsb::InterruptEndpoint::Handler(void *) {
-  
 }
 
-DevUsb *DevUsbKeyboard::InitUsb(DevUsbController *controller, int addr) {
-  DevUsbKeyboard *that = new DevUsbKeyboard(controller, addr);
-
-  that->LoadDeviceDescriptor();
-
-  that->LoadCombinedDescriptors();
-  UsbCtrl::InterfaceDescriptor *interface_desc = that->GetInterfaceDescriptorInCombinedDescriptors(0);
-  if (interface_desc->class_code == 3 && interface_desc->protocol_code == 1) {
-    gtty->CprintfRaw("kbd: info: usb keyboard detected\n");
-    that->Init();
-    return that;
-  } else {
-    delete that;
-    return nullptr;
-  }
-}
-
-void DevUsbKeyboard::InitSub() {
-  if (GetDescriptorNumInCombinedDescriptors(UsbCtrl::DescriptorType::kEndpoint) != 1) {
-    kernel_panic("DevUsbKeyboard", "not supported");
-  }
-  UsbCtrl::EndpointDescriptor *ed0 = GetEndpointDescriptorInCombinedDescriptors(0);
-  assert(ed0->GetMaxPacketSize() == kMaxPacketSize);
-  SetupInterruptTransfer(kTdNum, buffer);
-
-}
