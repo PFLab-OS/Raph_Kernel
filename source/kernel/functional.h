@@ -46,7 +46,7 @@ class FunctionalBase {
   void WakeupFunction();
   // check whether Functional needs to process function
   virtual bool ShouldFunc() = 0;
- private:
+private:
   static void Handle(FunctionalBase<L> *that);
   uptr<GenericFunction> _func;
   sptr<Task> _task;

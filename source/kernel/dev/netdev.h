@@ -47,11 +47,6 @@ public:
   /**
    * Network packet structure.
    *
-   * The body of data is corresponding to Packet::buf, which cannot be
-   * accessed directly, instead use a pointer Packet::buf to access it.
-   * If you dynamically allocate packets, DO NOT forget to call constructer,
-   * in which Packet::buf is aligned to Packet::data.
-   *
    * In protocol stack layers, Packet::buf will be incremented in order to
    * represent each layer packet. For example, in IP layer, which is
    * L3 protocol, Packet::buf will be incremented by 14, which is the length
@@ -59,12 +54,13 @@ public:
    */
   struct Packet {
   public:
-    Packet() : buf(data) {}
+    Packet() {}
     size_t len;
-    uint8_t *buf;
+    uint8_t *GetBuffer() {
+      return _data;
+    }
   private:
-    friend NetDev;
-    uint8_t data[MCLBYTES];  // only accessed via buf
+    uint8_t _data[MCLBYTES];  // only accessed via buf
   };
 
   enum class LinkStatus {
@@ -118,7 +114,6 @@ public:
    * @param packet a packet will be freed.
    */
   void ReuseRxBuffer(Packet *packet) {
-    packet->buf = packet->data;
     kassert(_rx_reserved.Push(packet));
   }
 
@@ -145,7 +140,6 @@ public:
   bool GetTxPacket(Packet *&packet) {
     if (_tx_reserved.Pop(packet)) {
       packet->len = MCLBYTES;
-      packet->buf = packet->data;
       return true;
     } else {
       return false;
@@ -197,7 +191,6 @@ public:
     while(!_tx_reserved.IsFull()) {
       Packet *packet_addr = reinterpret_cast<Packet *>(virtmem_ctrl->Alloc(sizeof(Packet)));
       Packet *packet = new(packet_addr) Packet();
-      packet->buf = packet->data;
       kassert(_tx_reserved.Push(packet));
     }
   }
@@ -209,7 +202,6 @@ public:
     while(!_rx_reserved.IsFull()) {
       Packet *packet_addr = reinterpret_cast<Packet *>(virtmem_ctrl->Alloc(sizeof(Packet)));
       Packet *packet = new(packet_addr) Packet();
-      packet->buf = packet->data;
       kassert(_rx_reserved.Push(packet));
     }
   }

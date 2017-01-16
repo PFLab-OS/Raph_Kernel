@@ -65,7 +65,6 @@ protected:
   CpuId _cpuid;
   size_t _rip[3];
   bool _did_stop_interrupt = false;
-  static const bool kTimeout = true;
 };
 
 // コンストラクタ、デストラクタでlock,unlockができるラッパー

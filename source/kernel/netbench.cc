@@ -31,9 +31,10 @@ int64_t sum = 0;
 static const int stime = 1000;
 int time = stime, rtime = 0;
 
+extern CpuId network_cpu;
+
 void setup_arp_reply(NetDev *dev) {
-  CpuId cpuid(2);
-  dev->SetReceiveCallback(cpuid, make_uptr(new Function<NetDev *>([](NetDev *eth){
+  dev->SetReceiveCallback(network_cpu, make_uptr(new Function<NetDev *>([](NetDev *eth){
           NetDev::Packet *rpacket;
           if(!eth->ReceivePacket(rpacket)) {
             return;
@@ -46,29 +47,29 @@ void setup_arp_reply(NetDev *dev) {
           my_addr[2] = (my_addr_int >> 8) & 0xff;
           my_addr[3] = (my_addr_int >> 0) & 0xff;
           // received packet
-          if(rpacket->buf[12] == 0x08 && rpacket->buf[13] == 0x06 && rpacket->buf[21] == 0x02) {
+          if(rpacket->GetBuffer()[12] == 0x08 && rpacket->GetBuffer()[13] == 0x06 && rpacket->GetBuffer()[21] == 0x02) {
             uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;
             cnt = 0;
             sum += l;
             rtime++;
             // ARP packet
             char buf[40];
-            memcpy(buf, rpacket->buf,40);
+            memcpy(buf, rpacket->GetBuffer(),40);
             // gtty->Printf(
             //              "s", "ARP Reply received; ",
-            //              "x", rpacket->buf[22], "s", ":",
-            //              "x", rpacket->buf[23], "s", ":",
-            //              "x", rpacket->buf[24], "s", ":",
-            //              "x", rpacket->buf[25], "s", ":",
-            //              "x", rpacket->buf[26], "s", ":",
-            //              "x", rpacket->buf[27], "s", " is ",
-            //              "d", rpacket->buf[28], "s", ".",
-            //              "d", rpacket->buf[29], "s", ".",
-            //              "d", rpacket->buf[30], "s", ".",
-            //              "d", rpacket->buf[31], "s", " ",
+            //              "x", rpacket->GetBuffer()[22], "s", ":",
+            //              "x", rpacket->GetBuffer()[23], "s", ":",
+            //              "x", rpacket->GetBuffer()[24], "s", ":",
+            //              "x", rpacket->GetBuffer()[25], "s", ":",
+            //              "x", rpacket->GetBuffer()[26], "s", ":",
+            //              "x", rpacket->GetBuffer()[27], "s", " is ",
+            //              "d", rpacket->GetBuffer()[28], "s", ".",
+            //              "d", rpacket->GetBuffer()[29], "s", ".",
+            //              "d", rpacket->GetBuffer()[30], "s", ".",
+            //              "d", rpacket->GetBuffer()[31], "s", " ",
             //              "s","latency:","d",l,"s","us\n");
           }
-          if(rpacket->buf[12] == 0x08 && rpacket->buf[13] == 0x06 && rpacket->buf[21] == 0x01 && (memcmp(rpacket->buf + 38, my_addr, 4) == 0)) {
+          if(rpacket->GetBuffer()[12] == 0x08 && rpacket->GetBuffer()[13] == 0x06 && rpacket->GetBuffer()[21] == 0x01 && (memcmp(rpacket->GetBuffer() + 38, my_addr, 4) == 0)) {
             // ARP packet
             uint8_t data[] = {
               0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target MAC Address
@@ -85,35 +86,35 @@ void setup_arp_reply(NetDev *dev) {
               0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
               0x00, 0x00, 0x00, 0x00, // Target Protocol Address
             };
-            memcpy(data, rpacket->buf + 6, 6);
+            memcpy(data, rpacket->GetBuffer() + 6, 6);
             static_cast<DevEthernet *>(eth)->GetEthAddr(data + 6);
             memcpy(data + 22, data + 6, 6);
             memcpy(data + 28, my_addr, 4);
-            memcpy(data + 32, rpacket->buf + 22, 6);
-            memcpy(data + 38, rpacket->buf + 28, 4);
+            memcpy(data + 32, rpacket->GetBuffer() + 22, 6);
+            memcpy(data + 38, rpacket->GetBuffer() + 28, 4);
 
             uint32_t len = sizeof(data)/sizeof(uint8_t);
             NetDev::Packet *tpacket;
             kassert(eth->GetTxPacket(tpacket));
-            memcpy(tpacket->buf, data, len);
+            memcpy(tpacket->GetBuffer(), data, len);
             tpacket->len = len;
             eth->TransmitPacket(tpacket);
             // gtty->Printf(
             //              "s", "ARP Request received; ",
-            //              "x", rpacket->buf[22], "s", ":",
-            //              "x", rpacket->buf[23], "s", ":",
-            //              "x", rpacket->buf[24], "s", ":",
-            //              "x", rpacket->buf[25], "s", ":",
-            //              "x", rpacket->buf[26], "s", ":",
-            //              "x", rpacket->buf[27], "s", ",",
-            //              "d", rpacket->buf[28], "s", ".",
-            //              "d", rpacket->buf[29], "s", ".",
-            //              "d", rpacket->buf[30], "s", ".",
-            //              "d", rpacket->buf[31], "s", " says who's ",
-            //              "d", rpacket->buf[38], "s", ".",
-            //              "d", rpacket->buf[39], "s", ".",
-            //              "d", rpacket->buf[40], "s", ".",
-            //              "d", rpacket->buf[41], "s", "\n");
+            //              "x", rpacket->GetBuffer()[22], "s", ":",
+            //              "x", rpacket->GetBuffer()[23], "s", ":",
+            //              "x", rpacket->GetBuffer()[24], "s", ":",
+            //              "x", rpacket->GetBuffer()[25], "s", ":",
+            //              "x", rpacket->GetBuffer()[26], "s", ":",
+            //              "x", rpacket->GetBuffer()[27], "s", ",",
+            //              "d", rpacket->GetBuffer()[28], "s", ".",
+            //              "d", rpacket->GetBuffer()[29], "s", ".",
+            //              "d", rpacket->GetBuffer()[30], "s", ".",
+            //              "d", rpacket->GetBuffer()[31], "s", " says who's ",
+            //              "d", rpacket->GetBuffer()[38], "s", ".",
+            //              "d", rpacket->GetBuffer()[39], "s", ".",
+            //              "d", rpacket->GetBuffer()[40], "s", ".",
+            //              "d", rpacket->GetBuffer()[41], "s", "\n");
             // gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
           }
           eth->ReuseRxBuffer(rpacket);
@@ -122,6 +123,8 @@ void setup_arp_reply(NetDev *dev) {
 
 void send_arp_packet(NetDev *dev, uint8_t *ipaddr) {
   {
+    time = stime;
+    rtime = 0;
     static uint8_t target_addr[4];
     memcpy(target_addr, ipaddr, 4);
     cnt = 0;
@@ -172,7 +175,7 @@ void send_arp_packet(NetDev *dev, uint8_t *ipaddr) {
               uint32_t len = sizeof(data)/sizeof(uint8_t);
               NetDev::Packet *tpacket;
               kassert(eth->GetTxPacket(tpacket));
-              memcpy(tpacket->buf, data, len);
+              memcpy(tpacket->GetBuffer(), data, len);
               tpacket->len = len;
               cnt = timer->ReadMainCnt();
               eth->TransmitPacket(tpacket);
@@ -183,8 +186,7 @@ void send_arp_packet(NetDev *dev, uint8_t *ipaddr) {
               task_ctrl->RegisterCallout(make_sptr(callout), 1000);
             }
           }, make_wptr(callout_), dev)));
-    CpuId cpuid(3);
-    task_ctrl->RegisterCallout(callout_, cpuid, 1000);
+    task_ctrl->RegisterCallout(callout_, cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), 1000);
   }
 
   {
@@ -203,7 +205,6 @@ void send_arp_packet(NetDev *dev, uint8_t *ipaddr) {
               task_ctrl->RegisterCallout(make_sptr(callout), 1000*1000*3);
             }
           }, make_wptr(callout_), dev)));
-    CpuId cpuid(1);
-    task_ctrl->RegisterCallout(callout_, cpuid, 1000);
+    task_ctrl->RegisterCallout(callout_, cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), 2000);
   }
 }

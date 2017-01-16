@@ -30,6 +30,8 @@
 #include <tty.h>
 #include <global.h>
 
+bool spinlock_timeout = true;
+
 void SpinLock::Lock() {
   if ((_flag % 2) == 1 && _cpuid == cpu_ctrl->GetCpuId()) {
     assert(_cpuid.IsValid());
@@ -41,7 +43,7 @@ void SpinLock::Lock() {
   }
   bool showed_timeout_warning = false;
   uint64_t t1;
-  if (kTimeout && timer != nullptr && timer->DidSetup()) {
+  if (spinlock_timeout && timer != nullptr && timer->DidSetup()) {
     t1 = timer->GetCntAfterPeriod(timer->ReadMainCnt(), 10 * 1000000); // 10s
   }
   volatile unsigned int flag = GetFlag();
@@ -54,7 +56,7 @@ void SpinLock::Lock() {
       }
       enable_interrupt(iflag);
     }
-    if (kTimeout && !showed_timeout_warning && timer != nullptr && timer->DidSetup() && timer->IsTimePassed(t1)) {
+    if (spinlock_timeout && !showed_timeout_warning && timer != nullptr && timer->DidSetup() && timer->IsTimePassed(t1)) {
       gtty->CprintfRaw("[warning]: unable to take SpinLock for a long time on cpuid %d.\nA deadlock may occur.\n", cpu_ctrl->GetCpuId().GetRawId());
       size_t *rbp;
       asm volatile("movq %%rbp, %0":"=r"(rbp));
