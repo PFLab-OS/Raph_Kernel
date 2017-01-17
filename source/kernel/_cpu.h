@@ -48,7 +48,12 @@ public:
   uint32_t GetApicId();
   bool IsValid();
 private:
-  void CheckIfValid();
+  void CheckIfValid() {
+    if (!IsValid()) {
+      Error();
+    }
+  }
+  void Error();
   int _rawid;
   void Init(int newid) {
     _rawid = newid;

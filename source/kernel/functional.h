@@ -36,45 +36,43 @@ class FunctionalBase {
     kFunctioning,
     kNotFunctioning,
   };
-  FunctionalBase() {
-    Function func;
-    func.Init(Handle, reinterpret_cast<void *>(this));
-    _task.SetFunc(func);
+  FunctionalBase() : _task(new Task) {
+    _task->SetFunc(make_uptr(new Function<FunctionalBase<L> *>(Handle, this)));
   }
   virtual ~FunctionalBase() {
   }
-  void SetFunction(CpuId cpuid, const GenericFunction &func);
+  void SetFunction(CpuId cpuid, uptr<GenericFunction> func);
  protected:
   void WakeupFunction();
   // check whether Functional needs to process function
   virtual bool ShouldFunc() = 0;
  private:
-  static void Handle(void *p);
-  FunctionBase _func;
-  Task _task;
+  static void Handle(FunctionalBase<L> *that);
+  uptr<GenericFunction> _func;
+  sptr<Task> _task;
   CpuId _cpuid;
   L _lock;
   FunctionState _state = FunctionState::kNotFunctioning;
 };
 
 template<class L>
-void FunctionalBase<L>::WakeupFunction() {
-  if (!_func.CanExecute()) {
-    return;
-  }
+inline void FunctionalBase<L>::WakeupFunction() {
   Locker locker(_lock);
   if (_state == FunctionState::kFunctioning) {
     return;
   }
+  if (!_cpuid.IsValid()) {
+    // not initialized
+    return;
+  }
   _state = FunctionState::kFunctioning;
-  task_ctrl->Register(_cpuid, &_task);
+  task_ctrl->Register(_cpuid, _task);
 }
 
 template<class L>
-void FunctionalBase<L>::Handle(void *p) {
-  FunctionalBase<L> *that = reinterpret_cast<FunctionalBase<L> *>(p);
+inline void FunctionalBase<L>::Handle(FunctionalBase<L> *that) {
   if (that->ShouldFunc()) {
-    that->_func.Execute();
+    that->_func->Execute();
   }
   {
     Locker locker(that->_lock);
@@ -83,18 +81,15 @@ void FunctionalBase<L>::Handle(void *p) {
       return;
     }
   }
-  task_ctrl->Register(that->_cpuid, &that->_task);
+  task_ctrl->Register(that->_cpuid, that->_task);
 }
 
 template<class L>
-void FunctionalBase<L>::SetFunction(CpuId cpuid, const GenericFunction &func) {
-  kassert(!_func.CanExecute());
+inline void FunctionalBase<L>::SetFunction(CpuId cpuid, uptr<GenericFunction> func) {
   _cpuid = cpuid;
-  _func.Copy(func);
+  _func = func;
 }
 
 using Functional = FunctionalBase<SpinLock>;
-
-using IntFunctional = FunctionalBase<IntSpinLock>;
 
 #endif // __RAPH_KERNEL_FUNCTIONAL_H__

@@ -38,10 +38,10 @@
 #ifndef _SYS__CALLOUT_H
 #define	_SYS__CALLOUT_H
 
-struct LckCallout;
+struct LckCalloutContainer;
 
 struct callout {
-  struct LckCallout *callout;
+  struct LckCalloutContainer *callout_container;
 };
 
 #endif

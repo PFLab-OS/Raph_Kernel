@@ -5032,15 +5032,12 @@ void lE1000::lE1000BsdEthernet::UpdateLinkStatus() {
   }
 }
 
-void lE1000::lE1000BsdEthernet::PollingHandler(void *arg) {
-  lE1000 *that = reinterpret_cast<lE1000 *>(arg);
+void lE1000::lE1000BsdEthernet::PollingHandler(lE1000 *that) {
   lem_poll(reinterpret_cast<struct adapter *>(that->softc)->ifp);
 }
 
 void lE1000::lE1000BsdEthernet::ChangeHandleMethodToPolling() {
-  Function func;
-  func.Init(PollingHandler, reinterpret_cast<void *>(&GetMasterClass()));
-  _polling.Init(func);
+  _polling.Init(make_uptr(new Function<lE1000 *> (PollingHandler, &GetMasterClass())));
   extern CpuId network_cpu;
   _polling.Register(network_cpu);
   

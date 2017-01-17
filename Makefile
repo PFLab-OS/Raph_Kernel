@@ -26,9 +26,9 @@ default: image
 ###################################
 
 _run:
-	make _qemurun
+	$(MAKE) _qemurun
 	-telnet 127.0.0.1 1234
-	make _qemuend
+	$(MAKE) _qemuend
 
 _qemurun: _image
 	sudo qemu-system-x86_64 -cpu qemu64,+x2apic -smp 8 -machine q35 -monitor telnet:127.0.0.1:1234,server,nowait -vnc 0.0.0.0:0,password -net nic -net bridge,br=br0 -drive id=disk,file=$(IMAGE),if=virtio &
@@ -42,37 +42,38 @@ _qemuend:
 
 _bin:
 	-mkdir $(BUILD_DIR)
-	make -C source
+	cp script $(BUILD_DIR)/script
+	$(MAKE) -C source
 
 _image:
-	make _mount
-	make _bin
+	$(MAKE) _mount
+	$(MAKE) _bin
 	sudo cp memtest86+.bin $(MOUNT_DIR)/boot/memtest86+.bin
 	sudo cp grub.cfg $(MOUNT_DIR)/boot/grub/grub.cfg
 	-sudo rm -rf $(MOUNT_DIR)/core
 	sudo cp -r $(BUILD_DIR) $(MOUNT_DIR)/core
-	make _umount
+	$(MAKE) _umount
 
 _cpimage: _image
 	cp $(IMAGE) /vagrant/
 
 $(IMAGE):
-	make _umount
+	$(MAKE) _umount
 	dd if=/dev/zero of=$(IMAGE) bs=1M count=20
 	parted -s $(IMAGE) mklabel msdos -- mkpart primary 2048s -1
 	sh disk.sh grub-install
-	make mount
+	$(MAKE) _mount
 	sudo cp memtest86+.bin $(MOUNT_DIR)/boot/memtest86+.bin
-	make umount
+	$(MAKE) _umount
 
 _hd: _image
 	@if [ ! -e /dev/sdb ]; then echo "error: insert usb memory!"; exit -1; fi
 	sudo dd if=$(IMAGE) of=/dev/sdb
 
 _disk:
-	make _diskclean
-	make $(IMAGE)
-	make _image
+	$(MAKE) _diskclean
+	$(MAKE) $(IMAGE)
+	$(MAKE) _image
 
 _mount: $(IMAGE)
 	sh disk.sh mount
@@ -85,41 +86,41 @@ _deldisk: _umount
 
 _clean: _deldisk
 	-rm -rf $(BUILD_DIR)
-	make -C source clean
+	$(MAKE) -C source clean
 
 _diskclean: _deldisk _clean
 
 _showerror:
-	make _image 2>&1 | egrep "In function|error:"
+	$(MAKE) _image 2>&1 | egrep "In function|error:"
 
 _numerror:
 	@echo -n "number of error: "
-	@make _image 2>&1 | egrep "error:" | wc -l
+	@$(MAKE) _image 2>&1 | egrep "error:" | wc -l
 
 ###################################
 # for local host
 ###################################
 
 image: .ssh_config
-	@$(SSH_CMD) "cd /vagrant/; make _image"
+	@$(SSH_CMD) "cd /vagrant/; make -j3 _image"
 
 run: .ssh_config
-	@$(SSH_CMD) "cd /vagrant/; make _run"
+	@$(SSH_CMD) "cd /vagrant/; make -j3 _run"
 
 hd: .ssh_config
-	@$(SSH_CMD) "cd /vagrant/; make _hd"
+	@$(SSH_CMD) "cd /vagrant/; make -j3 _hd"
 
 clean: .ssh_config
 	@$(SSH_CMD) "cd /vagrant/; make _clean"
 
 showerror: .ssh_config
-	@$(SSH_CMD) "cd /vagrant/; make _showerror"
+	@$(SSH_CMD) "cd /vagrant/; make -j3 _showerror"
 
 numerror: .ssh_config
-	@$(SSH_CMD) "cd /vagrant/; make _numerror"
+	@$(SSH_CMD) "cd /vagrant/; make -j3 _numerror"
 
 vboxrun: vboxkill .ssh_config
-	@$(SSH_CMD) "cd /vagrant/; make _cpimage"
+	@$(SSH_CMD) "cd /vagrant/; make -j3 _cpimage"
 	-vboxmanage unregistervm RK_Test --delete
 	-rm $(VDI)
 	vboxmanage createvm --name RK_Test --register
@@ -135,7 +136,7 @@ run_pxeserver:
 	cd net; python -m SimpleHTTPServer 8080
 
 pxeimg: .ssh_config
-	@$(SSH_CMD) "cd /vagrant/; make _cpimage"
+	@$(SSH_CMD) "cd /vagrant/; make -j3 _cpimage"
 	gzip $(IMAGEFILE)
 	mv $(IMAGEFILE).gz net/
 

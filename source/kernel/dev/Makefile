@@ -21,17 +21,17 @@ pci.ids.formatted : pci.ids
 	sed 's/\("\|\?\|\\\)/\\\1/g' pci.ids > pci.ids.formatted
 
 nic.o:
-	make -C nic CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
+	@$(MAKE) -C nic CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
 
 disk.o:
-	make -C disk CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
+	@$(MAKE) -C disk CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
 
 fs.o:
-	make -C fs CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
+	@$(MAKE) -C fs CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
 
 clean:
-	make -C nic clean
-	make -C disk clean
-	make -C fs clean
+	$(MAKE) -C nic clean
+	$(MAKE) -C disk clean
+	$(MAKE) -C fs clean
 	-rm -f $(OBJS) $(TEST_OBJS) $(DEPS) *.s *.ii
 	-rm -f pciid_table.cc pci.ids.formatted

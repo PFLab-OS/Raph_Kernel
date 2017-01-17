@@ -33,13 +33,13 @@
 
 typedef void task_fn_t(void *context, int pending);
 
-class Task;
+struct TaskContainer;
 
 struct task {
   u_short	ta_pending;		/* (q) count times queued */
   task_fn_t *ta_func;		/* (c) task handler */
   void	*ta_context;		/* (c) argument for handler */
-  Task *ta_task;
+  TaskContainer *ta_task;
 };
 
 

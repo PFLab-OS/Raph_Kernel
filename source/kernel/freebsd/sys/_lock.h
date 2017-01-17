@@ -31,8 +31,7 @@
 #ifndef _SYS__LOCK_H_
 #define	_SYS__LOCK_H_
 
-class IntSpinLock;
-using SpinLock = IntSpinLock;
+class SpinLock;
 struct lock_object {
   SpinLock *lock;
 };

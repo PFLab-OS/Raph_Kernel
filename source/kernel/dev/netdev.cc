@@ -16,20 +16,19 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
- * Author: Levelfour
+ * Author: Liva
  * 
  */
 
 #include <mem/virtmem.h>
 #include <dev/netdev.h>
-#include <net/pstack.h>
+// #include <net/pstack.h>
+#include <ptr.h>
 #include <global.h>
 
 NetDev::NetDev() {
-  ClassFunction<NetDev> func;
-  func.Init(this, &NetDev::Transmit, nullptr);
   extern CpuId network_cpu;
-  _tx_buffered.SetFunction(network_cpu, func);
+  _tx_buffered.SetFunction(network_cpu, make_uptr(new ClassFunction<NetDev, void *>(this, &NetDev::Transmit, nullptr)));
 }
 
 bool NetDevCtrl::RegisterDevice(NetDev *dev, const char *prefix) {
@@ -75,7 +74,7 @@ NetDevCtrl::NetDevInfo *NetDevCtrl::GetDeviceInfo(const char *name) {
   return nullptr;
 }
 
-auptr<const char *> NetDevCtrl::GetNamesOfAllDevices() {
+uptr<Array<const char *>> NetDevCtrl::GetNamesOfAllDevices() {
   int j = 0;
   for(uint32_t i = 0; i < _current_device_number; i++) {
     if(_dev_table[i].device != nullptr) {
@@ -83,15 +82,14 @@ auptr<const char *> NetDevCtrl::GetNamesOfAllDevices() {
     }
   }
   
-  auptr<const char *> list;
-  list.Init(j);
+  auto list = make_uptr(new Array<const char *>(j));
 
   j = 0;
   for(uint32_t i = 0; i < _current_device_number; i++) {
     NetDev *dev = _dev_table[i].device;
 
     if(dev != nullptr) {
-      list[j] = dev->GetName();
+      (*list)[j] = dev->GetName();
       j++;
     }
   }
@@ -99,12 +97,3 @@ auptr<const char *> NetDevCtrl::GetNamesOfAllDevices() {
   return list;
 }
 
-bool NetDevCtrl::IsLinkUp(const char *name) {
-  NetDevCtrl::NetDevInfo *info = this->GetDeviceInfo(name);
-
-  if (!info) {
-    return false;
-  } else {
-    return info->device->IsLinkUp();
-  }
-}

@@ -41,7 +41,7 @@ public:
     IxGbeBsdEthernet(IxGbe &master) : _master(master) {
     }
     
-    static void PollingHandler(void *arg);
+    static void PollingHandler(IxGbe *that);
     
     virtual void UpdateLinkStatus() override;
     

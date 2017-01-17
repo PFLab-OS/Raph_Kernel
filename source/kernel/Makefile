@@ -1,6 +1,6 @@
 KERNEL = kernel.elf
 
-OBJS = boot/boot.o boot/bootap.o x86_asm.o x86.o main.o multiboot.o apic.o raph_acpi.o gdt.o idt.o int.o freebsd.o dev.o acpica.o mem/virtmem.o shell.o mem/paging.o mem/physmem.o mem/dlmalloc.o mem/kstack.o ../libc/lib.o net.o task.o spinlock.o libglobal.o tty.o queue.o cpu.o membench.o
+OBJS = boot/boot.o boot/bootap.o x86_asm.o x86.o main.o multiboot.o apic.o raph_acpi.o gdt.o idt.o int.o freebsd.o dev.o acpica.o mem/virtmem.o shell.o mem/paging.o mem/physmem.o mem/dlmalloc.o mem/kstack.o ../libc/lib.o task.o spinlock.o libglobal.o tty.o queue.o cpu.o membench.o # net.o
 
 BUILD = ../../build/
 DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))
@@ -27,24 +27,24 @@ $(BUILD)$(KERNEL): $(OBJS) kernel.ld
 	@cat $(BUILD)timestamp
 
 dev.o:
-	make -C dev CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
+	@$(MAKE) -C dev CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
 
 net.o:
-	make -C net CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
+	@$(MAKE) -C net CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
 
 freebsd.o:
-	make -C freebsd CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
+	@$(MAKE) -C freebsd CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
 
 acpica.o:
-	make -C acpica CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)"
+	@$(MAKE) -C acpica CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)"
 
 ../libc/lib.o:
-	make -C ../libc CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
+	@$(MAKE) -C ../libc CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
 
 clean:
-	make -C net clean
-	make -C dev clean
-	make -C freebsd clean
-	make -C acpica clean
-	make -C ../libc clean
+	$(MAKE) -C net clean
+	$(MAKE) -C dev clean
+	$(MAKE) -C freebsd clean
+	$(MAKE) -C acpica clean
+	$(MAKE) -C ../libc clean
 	-rm -f $(OBJS) $(DEPS) *.s *.ii

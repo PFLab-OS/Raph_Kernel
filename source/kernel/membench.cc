@@ -1963,23 +1963,20 @@ static void membench9() {
 }
 
 
-Callout callout[256];
 void register_membench_callout() {
   static int id = 0;
   int cpuid = cpu_ctrl->GetCpuId().GetRawId();
-  new(&callout[cpuid]) Callout;
-  Function oneshot_bench_func;
-  oneshot_bench_func.Init([](void *){
-      int cpuid_ = cpu_ctrl->GetCpuId().GetRawId();
-      if (id != cpuid_) {
-        callout[cpuid_].SetHandler(1000);
-        return;
-      }
-      membench();
-      id++;
-    }, nullptr);
-  callout[cpuid].Init(oneshot_bench_func);
-  callout[cpuid].SetHandler(10);
+  auto callout_ = make_sptr(new Callout);
+  callout_->Init(make_uptr(new Function<wptr<Callout>>([](wptr<Callout> callout){
+          int cpuid_ = cpu_ctrl->GetCpuId().GetRawId();
+          if (id != cpuid_) {
+            task_ctrl->RegisterCallout(make_sptr(callout), 1000);
+            return;
+          }
+          membench();
+          id++;
+        }, make_wptr(callout_))));
+  task_ctrl->RegisterCallout(callout_, 10);
 }
 
 template<bool f, int i, class L, class S>
@@ -2108,38 +2105,35 @@ static void membench10() {
 
 void register_membench2_callout() {
   int cpuid = cpu_ctrl->GetCpuId().GetRawId();
-  new(&callout[cpuid]) Callout;
-  Function oneshot_bench_func;
-  oneshot_bench_func.Init([](void *){
-      if (is_knl()) {
-        // membench5();
-        // membench7();
-        membench10<Sync2Phi>();
-      } else {
-        func102<false, 1, SimpleSpinLockR, SyncE3>();
-        func102<false, 2, SimpleSpinLockR, SyncE3>();
-        func102<false, 3, SimpleSpinLockR, SyncE3>();
-        func102<false, 4, SimpleSpinLockR, SyncE3>();
-        func102<false, 5, SimpleSpinLockR, SyncE3>(); 
-        func102<false, 6, SimpleSpinLockR, SyncE3>(); 
-        func102<false, 7, SimpleSpinLockR, SyncE3>(); 
-        func102<false, 9, SimpleSpinLockR, SyncE3>(); 
-        func102<false, 10, SimpleSpinLockR, SyncE3>(); 
-        func102<false, 11, SimpleSpinLockR, SyncE3>(); 
-        func102<false, 12, SimpleSpinLockR, SyncE3>(); 
-        func102<false, 13, SimpleSpinLockR, SyncE3>(); 
-       // membench9();
-      }
-      if (false) {
-        membench2();
-        membench3();
-        membench4();
-        membench5();
-        membench6();
-        membench8();
-      }
-    }, nullptr);
-  callout[cpuid].Init(oneshot_bench_func);
-  callout[cpuid].SetHandler(10);
+  auto callout_ = make_sptr(new Callout);
+  callout_->Init(make_uptr(new Function<wptr<Callout>>([](wptr<Callout> callout){
+          if (is_knl()) {
+            // membench5();
+            // membench7();
+            membench10<Sync2Phi>();
+          } else {
+            func102<false, 1, SimpleSpinLockR, SyncE3>();
+            func102<false, 2, SimpleSpinLockR, SyncE3>();
+            func102<false, 3, SimpleSpinLockR, SyncE3>();
+            func102<false, 4, SimpleSpinLockR, SyncE3>();
+            func102<false, 5, SimpleSpinLockR, SyncE3>(); 
+            func102<false, 6, SimpleSpinLockR, SyncE3>(); 
+            func102<false, 7, SimpleSpinLockR, SyncE3>(); 
+            func102<false, 9, SimpleSpinLockR, SyncE3>(); 
+            func102<false, 10, SimpleSpinLockR, SyncE3>(); 
+            func102<false, 11, SimpleSpinLockR, SyncE3>(); 
+            func102<false, 12, SimpleSpinLockR, SyncE3>(); 
+            func102<false, 13, SimpleSpinLockR, SyncE3>(); 
+            // membench9();
+          }
+          if (false) {
+            membench2();
+            membench3();
+            membench4();
+            membench5();
+            membench6();
+            membench8();
+          }
+        }, make_wptr(callout_))));
 }
 

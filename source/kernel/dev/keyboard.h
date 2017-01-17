@@ -29,7 +29,7 @@
 
 class Keyboard {
  public:
-  void Setup(const GenericFunction &func);
+  void Setup(uptr<GenericFunction> func);
   bool Read(uint8_t &data) {
     return _buf.Pop(data);
   }
@@ -45,7 +45,7 @@ class Keyboard {
   static const int kBufSize = 100;
   static const char kScanCode[256];
   static const int kDataPort = 0x60;
-  IntFunctionalRingBuffer<uint8_t, kBufSize> _buf;
+  FunctionalRingBuffer<uint8_t, kBufSize> _buf;
 };
 
 #endif // __RAPH_KERNEL_DEV_KEYBOARD_H__

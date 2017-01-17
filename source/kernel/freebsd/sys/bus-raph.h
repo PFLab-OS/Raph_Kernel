@@ -73,9 +73,7 @@ public:
   class IntContainer {
   public:
     IntContainer() {
-      Function func;
-      func.Init(HandleSub, reinterpret_cast<void *>(this));
-      _ctask.SetFunc(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), func);
+      _ctask.SetFunc(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), make_uptr(new Function<IntContainer *>(HandleSub, this)));
     }
     void Handle() {
       if (_filter != nullptr) {
@@ -94,8 +92,7 @@ public:
       _iarg = arg;
     }
   private:
-    static void HandleSub(void *arg) {
-      IntContainer *that = reinterpret_cast<IntContainer *>(arg);
+    static void HandleSub(IntContainer *that) {
       if (that->_ithread != nullptr) {
         (*that->_ithread)(that->_iarg);
       }

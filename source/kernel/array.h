@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2015 Raphine Project
+ * Copyright (c) 2017 Raphine Project
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -20,33 +20,37 @@
  * 
  */
 
-#ifndef __RAPH_KERNEL_MULTIBOOT_H__
-#define __RAPH_KERNEL_MULTIBOOT_H__
+#pragma once
 
+#include <stdint.h>
 #include <raph.h>
-#include <global.h>
-#include <tty.h>
-#include <boot/multiboot2.h>
-#include <mem/physmem.h>
-#include <ptr.h>
-#include <array.h>
 
-extern uint32_t multiboot_info;
-
-class MultibootCtrl {
+// 固定長
+template <class T>
+class Array {
 public:
-  MultibootCtrl() {
+  explicit Array(int len) {
+    _array = new T[len];
+    _len = len;
   }
-  void Setup();
-  void ShowModuleInfo();
-  void ShowBuildTimeStamp();
-  uptr<Array<uint8_t>> LoadFile(const char *str);
-  phys_addr GetPhysMemoryEnd() {
-    return _phys_memory_end;
+  ~Array() {
+    delete[] _array;
+  }
+  T& operator[](int n) {
+    kassert(0 <= n && n < _len);
+    return _array[n];
+  }
+  T& operator=(const T &array) {
+    kassert(false);
+  }
+  T *GetRawPtr() {
+    return _array;
+  }
+  size_t GetLen() {
+    return _len;
   }
 private:
-  PhysAddr _info_addr;
-  phys_addr _phys_memory_end = 0;
+  Array();
+  T *_array;
+  size_t _len;
 };
-
-#endif /* __RAPH_KERNEL_MULTIBOOT_H__ */

@@ -29,7 +29,7 @@
 #include <buf.h>
 #include <dev/keyboard.h>
 
-void Keyboard::Setup(const GenericFunction &func) {
+void Keyboard::Setup(uptr<GenericFunction> func) {
   kassert(apic_ctrl != nullptr);
   kassert(idt != nullptr);
   CpuId cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority);
@@ -45,7 +45,7 @@ void Keyboard::Handler(Regs *reg, void *arg) {
 
 const char Keyboard::kScanCode[256] = {
     '!','!','1','2','3','4','5','6',
-    '7','8','9','0','-','!','!','\t',
+    '7','8','9','0','-','=','\b','\t',
     'q','w','e','r','t','y','u','i',
     'o','p','[',']','\n','!','a','s',
     'd','f','g','h','j','k','l',';',
