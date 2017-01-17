@@ -1452,6 +1452,16 @@ static void membench6() {
 
 }
 
+// SimpleSpinLock　単純
+// McSpinLock1 1階層ロック
+// McSpinLock2 2階層ロック
+// SimpleSpinLockR 単純Spin On Read
+// McSpinLock1R 1階層 Spin On Read
+// McSpinLock2R 2階層 Spin On Read
+
+
+
+
 // 単純
 class SimpleSpinLock {
 public:
@@ -1525,9 +1535,9 @@ private:
 };
 
 // 単純 Spin On Read
-class SimpleSpinLockRead {
+class SimpleSpinLockR {
 public:
-  SimpleSpinLockRead() {
+  SimpleSpinLockR() {
   }
   void Lock() {
     while (true) {
@@ -1548,9 +1558,9 @@ private:
 
 // 1階層 Spin On Read
 template <int kSubStructNum>
-class McSpinLock3 {
+class McSpinLock1R {
 public:
-  McSpinLock3() {
+  McSpinLock1R() {
   }
   void Lock() {
     uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
@@ -1582,9 +1592,9 @@ private:
 };
 
 // 2階層 Spin On Read
-class McSpinLock4 {
+class McSpinLock2R {
 public:
-  McSpinLock4() {
+  McSpinLock2R() {
   }
   void Lock() {
     uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
@@ -1594,6 +1604,47 @@ public:
       if(__sync_bool_compare_and_swap(&_third_flag[apicid / 4], 0, 1)) {
         break;
       }
+    }
+    while(true) {
+      while(_second_flag[apicid / 8] != 0) {
+      }
+      if(__sync_bool_compare_and_swap(&_second_flag[apicid / 8], 0, 1)) {
+        break;
+      }
+    }
+    while (true) {
+      while(_top_flag == 1) {
+      }
+      if (__sync_bool_compare_and_swap(&_top_flag, 0, 1)) {
+        break;
+      }
+    }
+  }
+  void Unlock() {
+    uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
+    // _top_flag = 0;
+    // _second_flag[apicid / 8] = 0;
+    // _third_flag[apicid / 4] = 0;
+    assert(__sync_bool_compare_and_swap(&_top_flag, 1, 0));
+    assert(__sync_bool_compare_and_swap(&_second_flag[apicid / 8], 1, 0));
+    assert(__sync_bool_compare_and_swap(&_third_flag[apicid / 4], 1, 0));
+  }
+private:
+  static const int kSubStructNum = 37;
+  static const int kPhysAvailableCoreNum = 32;
+  volatile unsigned int _top_flag = 0;
+  volatile unsigned int _second_flag[kSubStructNum] = {0};
+  volatile unsigned int _third_flag[kSubStructNum*2] = {0};
+};
+
+// 2階層 Spin On Read
+class McSpinLock2R2 {
+public:
+  McSpinLock2R2() {
+  }
+  void Lock() {
+    uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
+    while(!__sync_bool_compare_and_swap(&_third_flag[apicid / 4], 0, 1)) {
     }
     while(true) {
       while(_second_flag[apicid / 8] != 0) {
@@ -1673,265 +1724,71 @@ public:
     _last = c;
     _lock.Unlock();
   }
-private:
   struct Container {
     Container *next;
     int i[kListEntryNum];
   };
+private:
   L _lock;
   Container _first; // 番兵
   Container *_last;
 };
 
-template <class L>
-using LinkedListFnum = LinkedList<L, 14>;
-
-// リスト
-static void membench7() {
-  if (!is_knl()) {
-    return;
+template <class L, int kListEntryNum>
+class LinkedList2 {
+public:
+  LinkedList2() {
+    for (int j = 0; j < kListEntryNum; j++) {
+      _first.i[j] = 0;
+    }
+    _first.next = nullptr;
+    _last = &_first;
   }
-
-  int cpuid = cpu_ctrl->GetCpuId().GetRawId();
-  // uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
-
-  static LinkedListFnum<SimpleSpinLock> _list;
-  static LinkedListFnum<McSpinLock1<37>> _list2;
-  static LinkedListFnum<McSpinLock2<37>> _list3;
-  static LinkedListFnum<SimpleSpinLockRead> _list_sr;
-  static LinkedListFnum<McSpinLock3<37>> _list4;
-  static LinkedListFnum<McSpinLock4> _list5;
-  LinkedListFnum<SimpleSpinLock> *list = &_list;
-  LinkedListFnum<McSpinLock1<37>> *list2 = &_list2;
-  LinkedListFnum<McSpinLock2<37>> *list3 = &_list3;
-  LinkedListFnum<SimpleSpinLockRead> *list_sr = &_list_sr;
-  LinkedListFnum<McSpinLock3<37>> *list4 = &_list4;
-  LinkedListFnum<McSpinLock4> *list5 = &_list5;
-   
-
-  if (cpuid == 0) {
-    gtty->CprintfRaw("(init)");
+  struct Container {
+    Container *next;
+    int i[kListEntryNum];
+    // char dummy[64 - kListEntryNum * 4 - 8];
+  };
+  int Get() {
+    Container *c = nullptr;
+    _lock.Lock();
+    if (_first.next != nullptr) {
+      c = _first.next;
+      _first.next = c->next;
+      if (_last == c) {
+        _last = &_first;
+      }
+    }
+    _lock.Unlock();
+    int i = 0;
+    if (c != nullptr) {
+      for (int l = 0; l < 1000; l++) {
+        int k = 1;
+        for (int j = 0; j < kListEntryNum; j++) {
+          k *= c->i[j];
+        }
+        i += k;
+      }
+    }
+    return i;
   }
-
-  if (cpuid == 0) {
-    new (list) LinkedListFnum<SimpleSpinLock>;
-    new (list2) LinkedListFnum<McSpinLock1<37>>;
-    new (list3) LinkedListFnum<McSpinLock2<37>>;
-    new (list_sr) LinkedListFnum<SimpleSpinLockRead>;
-    new (list4) LinkedListFnum<McSpinLock3<37>>;
-    new (list5) LinkedListFnum<McSpinLock4>;
-    for (int i = 1; i < 256 * 2000; i++) {
-      list->Push(i);
+  void Push(Container *c, int i) {
+    assert(i != 0);
+    for (int j = 0; j < kListEntryNum; j++) {
+      c->i[j] = i;
     }
-    for (int i = 1; i < 256 * 2000; i++) {
-      list2->Push(i);
-    }
-    for (int i = 1; i < 256 * 2000; i++) {
-      list3->Push(i);
-    }
-    for (int i = 1; i < 256 * 2000; i++) {
-      list_sr->Push(i);
-    }
-    for (int i = 1; i < 256 * 2000; i++) {
-      list4->Push(i);
-    }
-    for (int i = 1; i < 256 * 2000; i++) {
-      list5->Push(i);
-    }
+    c->next = nullptr;
+    _lock.Lock();
+    _last->next = c;
+    _last = c;
+    _lock.Unlock();
   }
+private:
+  L _lock;
+  Container _first; // 番兵
+  Container *_last;
+};
 
-  if (cpuid == 0) {
-    gtty->CprintfRaw("start!>");
-  }
-
-  {
-    {
-      static Sync2Phi sync={0};
-      sync.Do();
-    }
-
-    uint64_t t1;
-    if (cpuid == 0) {
-      t1 = timer->ReadMainCnt();
-    }
-  
-    {
-      static Sync2Phi sync={0};
-      sync.Do();
-    }
-
-    if (cpuid == 0) {
-      gtty->CprintfRaw("<sync %d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
-    }
-  }
-
-  {
-    {
-      static Sync2ReadPhi sync={0};
-      sync.Do();
-    }
-
-    uint64_t t1;
-    if (cpuid == 0) {
-      t1 = timer->ReadMainCnt();
-    }
-  
-    {
-      static Sync2ReadPhi sync={0};
-      sync.Do();
-    }
-
-    if (cpuid == 0) {
-      gtty->CprintfRaw("<syncread %d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
-    }
-  }
-
-
-  {
-    {
-      static Sync2Phi sync={0};
-      sync.Do();
-    }
-
-    uint64_t t1;
-    if (cpuid == 0) {
-      t1 = timer->ReadMainCnt();
-    }
-  
-    while(list->Get() != 0) {
-    }
-
-    {
-      static Sync2Phi sync={0};
-      sync.Do();
-    }
-
-    if (cpuid == 0) {
-      gtty->CprintfRaw("<s %d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
-    }
-  }
-
-  {
-    {
-      static Sync2Phi sync={0};
-      sync.Do();
-    }
-
-    uint64_t t1;
-    if (cpuid == 0) {
-      t1 = timer->ReadMainCnt();
-    }
-  
-    while(list_sr->Get() != 0) {
-    }
-
-    {
-      static Sync2Phi sync={0};
-      sync.Do();
-    }
-
-    if (cpuid == 0) {
-      gtty->CprintfRaw("<sr %d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
-    }
-  }
-
-  {
-    {
-      static Sync2Phi sync={0};
-      sync.Do();
-    }
-
-    uint64_t t1;
-    if (cpuid == 0) {
-      t1 = timer->ReadMainCnt();
-    }
-  
-    while(list2->Get() != 0) {
-    }
-
-    {
-      static Sync2Phi sync={0};
-      sync.Do();
-    }
-
-    if (cpuid == 0) {
-      gtty->CprintfRaw("<1 %d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
-    }
-  }
-
-  {
-    {
-      static Sync2Phi sync={0};
-      sync.Do();
-    }
-
-    uint64_t t1;
-    if (cpuid == 0) {
-      t1 = timer->ReadMainCnt();
-    }
-  
-    while(list3->Get() != 0) {
-    }
-
-    {
-      static Sync2Phi sync={0};
-      sync.Do();
-    }
-
-    if (cpuid == 0) {
-      gtty->CprintfRaw("<2 %d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
-    }
-  }
-
-  {
-    {
-      static Sync2Phi sync={0};
-      sync.Do();
-    }
-
-    uint64_t t1;
-    if (cpuid == 0) {
-      t1 = timer->ReadMainCnt();
-    }
-  
-    while(list4->Get() != 0) {
-    }
-
-    {
-      static Sync2Phi sync={0};
-      sync.Do();
-    }
-
-    if (cpuid == 0) {
-      gtty->CprintfRaw("<1sr %d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
-    }
-  }
-
-
-  {
-    {
-      static Sync2Phi sync={0};
-      sync.Do();
-    }
-
-    uint64_t t1;
-    if (cpuid == 0) {
-      t1 = timer->ReadMainCnt();
-    }
-  
-    while(list5->Get() != 0) {
-    }
-    
-    {
-      static Sync2Phi sync={0};
-      sync.Do();
-    }
-
-    if (cpuid == 0) {
-      gtty->CprintfRaw("<2sr %d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
-    }
-  }
-}
 
 static void membench8() {
   if (!is_knl()) {
@@ -2125,387 +1982,128 @@ void register_membench_callout() {
   callout[cpuid].SetHandler(10);
 }
 
+template<bool f, int i, class L, class S>
+uint64_t func101() {
+  uint64_t time = 0;
+  int cpuid = cpu_ctrl->GetCpuId().GetRawId();
+  
+  // static LinkedList2<L, i> _list;
+  static LinkedList2<L, i> *list;// = &_list;
+  void *ptr;
+  
+  if (cpuid == 0) {
+    if (f) {
+      ptr = reinterpret_cast<void *>(p2v(0x1840000000));
+    } else {
+      ptr = malloc(256 * 2000 * sizeof(typename LinkedList2<L, i>::Container) + 1024);
+    }
+    void *ptr_ = reinterpret_cast<void *>(((reinterpret_cast<size_t>(ptr) + 1023) / 1024) * 1024);
+     list = new LinkedList2<L, i>();
+    for (int j = 1; j < 256 * 2000; j++) {
+      list->Push(reinterpret_cast<typename LinkedList2<L, i>::Container *>(ptr_ + sizeof(typename LinkedList2<L, i>::Container) * j), j);
+    }
+  }
+  {
+    {
+      static S sync={0};
+      sync.Do();
+    }
+
+    uint64_t t1;
+    if (cpuid == 0) {
+      t1 = timer->ReadMainCnt();
+    }
+
+    while(list->Get() != 0) {
+    }
+    
+    {
+      static S sync={0};
+      sync.Do();
+    }
+
+    if (cpuid == 0) {
+      time = ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000;
+      // gtty->CprintfRaw("<%c %d(%d) %d us> ", f ? 'M' : 'C', sizeof(typename LinkedList2<L, i>::Container), i, time);
+      if (!f) {
+        free(ptr);
+      }
+      delete list;
+    }
+  }
+  return time;
+}
+
+template<bool f, int i, class L, class S>
+void func102() {
+  static const int num = 128;
+  uint64_t results[num];
+  for (int j = 0; j < num; j++) {
+    results[j] = func101<f, i, L, S>();
+  }
+  uint64_t avg = 0;
+  for (int j = 0; j < num; j++) {
+    avg += results[j];
+  }
+  avg /= num;
+
+  uint64_t variance = 0;
+  for (int j = 0; j < num; j++) {
+    variance += (results[j] - avg) * (results[j] - avg);
+  }
+  variance /= num;
+  int cpuid = cpu_ctrl->GetCpuId().GetRawId();
+  if (cpuid == 0) {
+    gtty->CprintfRaw("<%c %d(%d) %d(%d) us> ", f ? 'M' : 'C', sizeof(typename LinkedList2<L, i>::Container), i, avg, variance);
+  }
+}
+
+template<class S, bool f, int i>
+void func10() {
+  func102<f, i, SimpleSpinLock, S>();
+  func102<f, i, SimpleSpinLockR, S>();
+  func102<f, i, McSpinLock1<37>, S>();
+  func102<f, i, McSpinLock2<37>, S>();
+  func102<f, i, McSpinLock1R<37>, S>();
+  func102<f, i, McSpinLock2R, S>();
+  func102<f, i, McSpinLock2R2, S>();
+}
+
+template<class S, bool f, int i, int j, int... Num>
+void func10() {
+  func10<S, f, i>();
+  func10<S, f, j, Num...>();
+}
+
 // リスト、要素数可変比較版
+template<class S>
 static void membench10() {
   if (!is_knl()) {
     return;
   }
 
   int cpuid = cpu_ctrl->GetCpuId().GetRawId();
-  // uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
-
-  static LinkedList<McSpinLock4, 3> _list1;
-  static LinkedList<McSpinLock4, 5> _list13;
-  static LinkedList<McSpinLock4, 7> _list14;
-  static LinkedList<McSpinLock4, 10> _list15;
-  static LinkedList<McSpinLock4, 11> _list17;
-  static LinkedList<McSpinLock4, 12> _list18;
-  static LinkedList<McSpinLock4, 13> _list19;
-  static LinkedList<McSpinLock4, 14> _list2;
-  static LinkedList<McSpinLock4, 15> _list3;
-  static LinkedList<McSpinLock4, 20> _list4;
-  static LinkedList<McSpinLock4, 40> _list5;
-  static LinkedList<McSpinLock4, 80> _list6;
-  LinkedList<McSpinLock4, 3> *list1 = &_list1;
-  LinkedList<McSpinLock4, 5> *list13 = &_list13;
-  LinkedList<McSpinLock4, 7> *list14 = &_list14;
-  LinkedList<McSpinLock4, 10> *list15 = &_list15;
-  LinkedList<McSpinLock4, 11> *list17 = &_list17;
-  LinkedList<McSpinLock4, 12> *list18 = &_list18;
-  LinkedList<McSpinLock4, 13> *list19 = &_list19;
-  LinkedList<McSpinLock4, 14> *list2 = &_list2;
-  LinkedList<McSpinLock4, 15> *list3 = &_list3;
-  LinkedList<McSpinLock4, 20> *list4 = &_list4;
-  LinkedList<McSpinLock4, 40> *list5 = &_list5;
-  LinkedList<McSpinLock4, 80> *list6 = &_list6;
-   
-
   if (cpuid == 0) {
-    gtty->CprintfRaw("(init)");
+    gtty->CprintfRaw("start >>>\n");
   }
-
+  // func10<1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50>();
+  func10<S, true, 14>();
   if (cpuid == 0) {
-    new (list1) LinkedList<McSpinLock4, 3>;
-    new (list13) LinkedList<McSpinLock4, 5>;
-    new (list14) LinkedList<McSpinLock4, 7>;
-    new (list15) LinkedList<McSpinLock4, 10>;
-    new (list17) LinkedList<McSpinLock4, 11>;
-    new (list18) LinkedList<McSpinLock4, 12>;
-    new (list19) LinkedList<McSpinLock4, 13>;
-    new (list2) LinkedList<McSpinLock4, 14>;
-    new (list3) LinkedList<McSpinLock4, 15>;
-    new (list4) LinkedList<McSpinLock4, 20>;
-    new (list5) LinkedList<McSpinLock4, 40>;
-    new (list6) LinkedList<McSpinLock4, 80>;
-    for (int i = 1; i < 256 * 2000; i++) {
-      list1->Push(i);
-    }
-    for (int i = 1; i < 256 * 2000; i++) {
-      list13->Push(i);
-    }
-    for (int i = 1; i < 256 * 2000; i++) {
-      list14->Push(i);
-    }
-    for (int i = 1; i < 256 * 2000; i++) {
-      list15->Push(i);
-    }
-    for (int i = 1; i < 256 * 2000; i++) {
-      list17->Push(i);
-    }
-    for (int i = 1; i < 256 * 2000; i++) {
-      list18->Push(i);
-    }
-    for (int i = 1; i < 256 * 2000; i++) {
-      list19->Push(i);
-    }
-    for (int i = 1; i < 256 * 2000; i++) {
-      list2->Push(i);
-    }
-    for (int i = 1; i < 256 * 2000; i++) {
-      list3->Push(i);
-    }
-    for (int i = 1; i < 256 * 2000; i++) {
-      list4->Push(i);
-    }
-    for (int i = 1; i < 256 * 2000; i++) {
-      list5->Push(i);
-    }
-    for (int i = 1; i < 256 * 2000; i++) {
-      list6->Push(i);
-    }
+    gtty->CprintfRaw("\n");
   }
-
+  func10<S, false, 14>();
   if (cpuid == 0) {
-    gtty->CprintfRaw("start!>");
+    gtty->CprintfRaw("\n");
   }
-
-  {
-    {
-      static Sync2Phi sync={0};
-      sync.Do();
-    }
-
-    uint64_t t1;
-    if (cpuid == 0) {
-      t1 = timer->ReadMainCnt();
-    }
-  
-    while(list1->Get() != 0) {
-    }
-    
-    {
-      static Sync2Phi sync={0};
-      sync.Do();
-    }
-
-    if (cpuid == 0) {
-      gtty->CprintfRaw("<3 %d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
-    }
+  func10<S, true, 14>();
+  if (cpuid == 0) {
+    gtty->CprintfRaw("\n");
   }
-
-  {
-    {
-      static Sync2Phi sync={0};
-      sync.Do();
-    }
-
-    uint64_t t1;
-    if (cpuid == 0) {
-      t1 = timer->ReadMainCnt();
-    }
-  
-    while(list13->Get() != 0) {
-    }
-    
-    {
-      static Sync2Phi sync={0};
-      sync.Do();
-    }
-
-    if (cpuid == 0) {
-      gtty->CprintfRaw("<5 %d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
-    }
+  func10<S, false, 14>();
+  if (cpuid == 0) {
+    gtty->CprintfRaw("\n");
   }
-
-    {
-    {
-      static Sync2Phi sync={0};
-      sync.Do();
-    }
-
-    uint64_t t1;
-    if (cpuid == 0) {
-      t1 = timer->ReadMainCnt();
-    }
-  
-    while(list14->Get() != 0) {
-    }
-    
-    {
-      static Sync2Phi sync={0};
-      sync.Do();
-    }
-
-    if (cpuid == 0) {
-      gtty->CprintfRaw("<7 %d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
-    }
-  }
-
-  {
-    {
-      static Sync2Phi sync={0};
-      sync.Do();
-    }
-
-    uint64_t t1;
-    if (cpuid == 0) {
-      t1 = timer->ReadMainCnt();
-    }
-  
-    while(list15->Get() != 0) {
-    }
-    
-    {
-      static Sync2Phi sync={0};
-      sync.Do();
-    }
-
-    if (cpuid == 0) {
-      gtty->CprintfRaw("<10 %d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
-    }
-  }
-
-    {
-    {
-      static Sync2Phi sync={0};
-      sync.Do();
-    }
-
-    uint64_t t1;
-    if (cpuid == 0) {
-      t1 = timer->ReadMainCnt();
-    }
-  
-    while(list17->Get() != 0) {
-    }
-    
-    {
-      static Sync2Phi sync={0};
-      sync.Do();
-    }
-
-    if (cpuid == 0) {
-      gtty->CprintfRaw("<11 %d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
-    }
-  }
-
-      {
-    {
-      static Sync2Phi sync={0};
-      sync.Do();
-    }
-
-    uint64_t t1;
-    if (cpuid == 0) {
-      t1 = timer->ReadMainCnt();
-    }
-  
-    while(list18->Get() != 0) {
-    }
-    
-    {
-      static Sync2Phi sync={0};
-      sync.Do();
-    }
-
-    if (cpuid == 0) {
-      gtty->CprintfRaw("<12 %d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
-    }
-  }
-
-        {
-    {
-      static Sync2Phi sync={0};
-      sync.Do();
-    }
-
-    uint64_t t1;
-    if (cpuid == 0) {
-      t1 = timer->ReadMainCnt();
-    }
-  
-    while(list19->Get() != 0) {
-    }
-    
-    {
-      static Sync2Phi sync={0};
-      sync.Do();
-    }
-
-    if (cpuid == 0) {
-      gtty->CprintfRaw("<13 %d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
-    }
-  }
-
-  {
-    {
-      static Sync2Phi sync={0};
-      sync.Do();
-    }
-
-    uint64_t t1;
-    if (cpuid == 0) {
-      t1 = timer->ReadMainCnt();
-    }
-  
-    while(list2->Get() != 0) {
-    }
-    
-    {
-      static Sync2Phi sync={0};
-      sync.Do();
-    }
-
-    if (cpuid == 0) {
-      gtty->CprintfRaw("<14 %d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
-    }
-  }
-
-  {
-    {
-      static Sync2Phi sync={0};
-      sync.Do();
-    }
-
-    uint64_t t1;
-    if (cpuid == 0) {
-      t1 = timer->ReadMainCnt();
-    }
-  
-    while(list3->Get() != 0) {
-    }
-    
-    {
-      static Sync2Phi sync={0};
-      sync.Do();
-    }
-
-    if (cpuid == 0) {
-      gtty->CprintfRaw("<15 %d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
-    }
-  }
-
-  {
-    {
-      static Sync2Phi sync={0};
-      sync.Do();
-    }
-
-    uint64_t t1;
-    if (cpuid == 0) {
-      t1 = timer->ReadMainCnt();
-    }
-  
-    while(list4->Get() != 0) {
-    }
-    
-    {
-      static Sync2Phi sync={0};
-      sync.Do();
-    }
-
-    if (cpuid == 0) {
-      gtty->CprintfRaw("<20 %d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
-    }
-  }
-
-  {
-    {
-      static Sync2Phi sync={0};
-      sync.Do();
-    }
-
-    uint64_t t1;
-    if (cpuid == 0) {
-      t1 = timer->ReadMainCnt();
-    }
-  
-    while(list5->Get() != 0) {
-    }
-    
-    {
-      static Sync2Phi sync={0};
-      sync.Do();
-    }
-
-    if (cpuid == 0) {
-      gtty->CprintfRaw("<40 %d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
-    }
-  }
-
-  {
-    {
-      static Sync2Phi sync={0};
-      sync.Do();
-    }
-
-    uint64_t t1;
-    if (cpuid == 0) {
-      t1 = timer->ReadMainCnt();
-    }
-  
-    while(list6->Get() != 0) {
-    }
-    
-    {
-      static Sync2Phi sync={0};
-      sync.Do();
-    }
-
-    if (cpuid == 0) {
-      gtty->CprintfRaw("<80 %d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
-    }
-  }
+  // 1,2,3,4,5,6,7,8,9,10,11,12,13,
 }
 
 void register_membench2_callout() {
@@ -2516,9 +2114,21 @@ void register_membench2_callout() {
       if (is_knl()) {
         // membench5();
         // membench7();
-        membench10();
+        membench10<Sync2Phi>();
       } else {
-        membench9();
+        func102<false, 1, SimpleSpinLockR, SyncE3>();
+        func102<false, 2, SimpleSpinLockR, SyncE3>();
+        func102<false, 3, SimpleSpinLockR, SyncE3>();
+        func102<false, 4, SimpleSpinLockR, SyncE3>();
+        func102<false, 5, SimpleSpinLockR, SyncE3>(); 
+        func102<false, 6, SimpleSpinLockR, SyncE3>(); 
+        func102<false, 7, SimpleSpinLockR, SyncE3>(); 
+        func102<false, 9, SimpleSpinLockR, SyncE3>(); 
+        func102<false, 10, SimpleSpinLockR, SyncE3>(); 
+        func102<false, 11, SimpleSpinLockR, SyncE3>(); 
+        func102<false, 12, SimpleSpinLockR, SyncE3>(); 
+        func102<false, 13, SimpleSpinLockR, SyncE3>(); 
+       // membench9();
       }
       if (false) {
         membench2();
@@ -2526,7 +2136,6 @@ void register_membench2_callout() {
         membench4();
         membench5();
         membench6();
-        membench7();
         membench8();
       }
     }, nullptr);
