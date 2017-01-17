@@ -247,6 +247,30 @@ void bench(int argc, const char* argv[]) {
   }
 }
 
+static void setflag(int argc, const char *argv[]) {
+  if (argc == 1) {
+    gtty->Cprintf("invalid argument.\n");
+    return;
+  }
+  if (strcmp(argv[1], "spinlock_timeout") == 0) {
+    if (argc == 2) {
+      gtty->Cprintf("invalid argument.\n");
+      return;
+    }
+    if (strcmp(argv[2], "true") == 0) {
+      SpinLock::_spinlock_timeout = true;
+    } else if (strcmp(argv[2], "false") == 0) {
+      SpinLock::_spinlock_timeout = false;
+    } else {
+      gtty->Cprintf("invalid argument.\n");
+      return;
+    }
+  } else {
+    gtty->Cprintf("invalid argument.\n");
+    return;
+  }
+}
+
 static void show(int argc, const char *argv[]) {
   if (argc == 1) {
     gtty->Cprintf("invalid argument.\n");
@@ -434,6 +458,7 @@ extern "C" int main() {
   shell->Register("ifconfig", ifconfig);
   shell->Register("show", show);
   shell->Register("load", load);
+  shell->Register("setflag", setflag);
 
   if (!do_membench) {
     CpuId beep_cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority);
