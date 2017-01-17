@@ -2188,7 +2188,7 @@ em_xmit(struct tx_ring *txr, BsdEthernet::Packet *packet)
   tx_buffer = &txr->tx_buffers[i];
   ctxd = &txr->tx_base[i];
   seg_len = packet->len;
-  memcpy(reinterpret_cast<void *>(p2v(ctxd->buffer_addr)), packet->buf, seg_len);
+  memcpy(reinterpret_cast<void *>(p2v(ctxd->buffer_addr)), packet->GetBuffer(), seg_len);
   ctxd->lower.data = htole32(adapter->txd_cmd | txd_lower | seg_len);
   ctxd->upper.data = htole32(txd_upper);
   last = i;
@@ -4831,7 +4831,7 @@ em_rxeof(struct rx_ring *rxr, int count, int *done)
 
     BsdEthernet::Packet *packet;
     if (e1000->GetNetInterface()._rx_reserved.Pop(packet)) {
-      memcpy(packet->buf, reinterpret_cast<void *>(p2v(rxr->rx_base[i].buffer_addr)), len);
+      memcpy(packet->GetBuffer(), reinterpret_cast<void *>(p2v(rxr->rx_base[i].buffer_addr)), len);
       packet->len = len;
       if (!e1000->GetNetInterface()._rx_buffered.Push(packet)) {
         kassert(e1000->GetNetInterface()._rx_reserved.Push(packet));
@@ -6339,8 +6339,7 @@ void E1000::E1000BsdEthernet::PollingHandler(E1000 *that) {
 
 void E1000::E1000BsdEthernet::ChangeHandleMethodToPolling() {
   _polling.Init(make_uptr(new Function<E1000 *>(PollingHandler, &GetMasterClass())));
-  extern CpuId network_cpu;
-  _polling.Register(network_cpu);
+  _polling.Register(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kHighPerformance));
 
   struct adapter *adapter = reinterpret_cast<struct adapter *>(GetMasterClass().softc);
   if_t ifp = adapter->ifp;
