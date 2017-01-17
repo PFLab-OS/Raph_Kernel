@@ -12,8 +12,8 @@ default: ../fs.o
 	ld -r $^ -o $@
 
 fat.o:
-	@make -C fat CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
+	@$(MAKE) -C fat CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
 
 clean:
-	make -C fat clean
+	$(MAKE) -C fat clean
 	-rm -f $(OBJS) $(TEST_OBJS) $(DEPS) *.s *.ii

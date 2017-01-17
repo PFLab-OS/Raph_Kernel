@@ -12,8 +12,8 @@ default: ../disk.o
 	ld -r $^ -o $@
 
 ahci.o:
-	@make -C ahci CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
+	@$(MAKE) -C ahci CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
 
 clean:
-	make -C ahci clean
+	$(MAKE) -C ahci clean
 	-rm -f $(OBJS) $(TEST_OBJS) $(DEPS) *.s *.ii
