@@ -1801,7 +1801,7 @@ lem_xmit(struct adapter *adapter, BsdEthernet::Packet *packet)
   tx_buffer = &adapter->tx_buffer_area[i];
   ctxd = &adapter->tx_desc_base[i];
   seg_len = packet->len;
-  memcpy(reinterpret_cast<void *>(p2v(ctxd->buffer_addr)), packet->buf, seg_len);
+  memcpy(reinterpret_cast<void *>(p2v(ctxd->buffer_addr)), packet->GetBuffer(), seg_len);
   e1000->GetNetInterface().ReuseTxBuffer(packet);
   ctxd->lower.data = htole32(
                              adapter->txd_cmd | txd_lower | seg_len);
@@ -3763,7 +3763,7 @@ lem_rxeof(struct adapter *adapter, int count, int *done)
 		if (accept_frame) {
       BsdEthernet::Packet *packet;
       if (e1000->GetNetInterface()._rx_reserved.Pop(packet)) {
-        memcpy(packet->buf, reinterpret_cast<void *>(p2v(adapter->rx_desc_base[i].buffer_addr)), len);
+        memcpy(packet->GetBuffer(), reinterpret_cast<void *>(p2v(adapter->rx_desc_base[i].buffer_addr)), len);
         packet->len = len;
         if (!e1000->GetNetInterface()._rx_buffered.Push(packet)) {
           kassert(e1000->GetNetInterface()._rx_reserved.Push(packet));
@@ -5038,8 +5038,7 @@ void lE1000::lE1000BsdEthernet::PollingHandler(lE1000 *that) {
 
 void lE1000::lE1000BsdEthernet::ChangeHandleMethodToPolling() {
   _polling.Init(make_uptr(new Function<lE1000 *> (PollingHandler, &GetMasterClass())));
-  extern CpuId network_cpu;
-  _polling.Register(network_cpu);
+  _polling.Register(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kHighPerformance));
   
   struct adapter *adapter = reinterpret_cast<struct adapter *>(GetMasterClass().softc);
   if_t ifp = adapter->ifp;

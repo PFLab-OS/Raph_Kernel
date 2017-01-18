@@ -469,7 +469,7 @@ retry:
     seglen = packet->len; // seglen = segs[j].ds_len;
     // segaddr = htole64(segs[j].ds_addr);
     olinfo_status |= seglen << IXGBE_ADVTXD_PAYLEN_SHIFT;
-    memcpy(reinterpret_cast<void *>(p2v(txd->read.buffer_addr)), packet->buf, seglen);
+    memcpy(reinterpret_cast<void *>(p2v(txd->read.buffer_addr)), packet->GetBuffer(), seglen);
 
 	// 	txd->read.buffer_addr = segaddr;
     txd->read.cmd_type_len = htole32(txr->txd_cmd |
@@ -1908,7 +1908,7 @@ ixgbe_rxeof(struct ix_queue *que)
 
         BsdEthernet::Packet *packet;
         if (ixgbe->GetNetInterface()._rx_reserved.Pop(packet)) {
-          memcpy(packet->buf, reinterpret_cast<void *>(p2v(rbuf->addr)), len);
+          memcpy(packet->GetBuffer(), reinterpret_cast<void *>(p2v(rbuf->addr)), len);
           packet->len = len;
           if (!ixgbe->GetNetInterface()._rx_buffered.Push(packet)) {
             kassert(ixgbe->GetNetInterface()._rx_reserved.Push(packet));
