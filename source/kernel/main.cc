@@ -90,7 +90,12 @@ AhciChannel *g_channel = nullptr;
 #include <dev/fs/fat/fat.h>
 FatFs *fatfs;
 
+#ifdef FLAG_MEMBENCH
+static const bool do_membench = true;
+#else
 static const bool do_membench = false;
+#endif
+
 void register_membench2_callout();
 
 void halt(int argc, const char* argv[]) {
