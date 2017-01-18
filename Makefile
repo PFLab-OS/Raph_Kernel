@@ -17,7 +17,7 @@ else
 	VNC = @echo non supported OS; exit 1
 endif
 
-.PHONY: clean disk mount umount showerror numerror vboxrun run_pxeserver pxeimg burn_ipxe burn_ipxe_remote vboxkill vnc
+.PHONY: clean disk mount umount showerror numerror vboxrun run_pxeserver pxeimg burn_ipxe burn_ipxe_remote vboxkill vnc synctime
 
 default: image
 
@@ -154,6 +154,9 @@ vboxkill:
 vnc:
 	@echo info: vnc password is "a"
 	$(VNC)
+
+synctime:
+	@$(SSH_CMD) "sudo service ntp stop; sudo ntpdate ntp.nict.jp; sudo service ntp start"
 
 .ssh_config:
 	vagrant ssh-config > .ssh_config

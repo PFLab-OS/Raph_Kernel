@@ -58,6 +58,7 @@ build/
 *.dSYM/
 *.s
 *.i
+*.ii
 
 # Makefile
 *.d
