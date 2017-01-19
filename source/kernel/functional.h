@@ -34,6 +34,7 @@ class FunctionalBase {
  public:
   enum class FunctionState {
     kFunctioning,
+    kRegistering,
     kNotFunctioning,
   };
   FunctionalBase() : _task(new Task) {
@@ -57,21 +58,27 @@ private:
 
 template<class L>
 inline void FunctionalBase<L>::WakeupFunction() {
-  Locker locker(_lock);
-  if (_state == FunctionState::kFunctioning) {
-    return;
+  {
+    Locker locker(_lock);
+    if (_state != FunctionState::kNotFunctioning) {
+      return;
+    }
+    if (!_cpuid.IsValid()) {
+      // not initialized
+      return;
+    }
+    _state = FunctionState::kRegistering;
   }
-  if (!_cpuid.IsValid()) {
-    // not initialized
-    return;
-  }
-  _state = FunctionState::kFunctioning;
   task_ctrl->Register(_cpuid, _task);
+  {
+    Locker locker(_lock);
+    _state = FunctionState::kFunctioning;
+  }
 }
 
 template<class L>
 inline void FunctionalBase<L>::Handle(FunctionalBase<L> *that) {
-  if (that->ShouldFunc()) {
+  while (that->ShouldFunc()) {
     that->_func->Execute();
   }
   {
@@ -79,9 +86,15 @@ inline void FunctionalBase<L>::Handle(FunctionalBase<L> *that) {
     if (!that->ShouldFunc()) {
       that->_state = FunctionState::kNotFunctioning;
       return;
+    } else {
+      that->_state = FunctionState::kRegistering;
     }
   }
   task_ctrl->Register(that->_cpuid, that->_task);
+  {
+    Locker locker(that->_lock);
+    that->_state = FunctionState::kFunctioning;
+  }
 }
 
 template<class L>
