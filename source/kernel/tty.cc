@@ -28,8 +28,9 @@
 
 void Tty::Init() {
   _cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority);
-  _queue.SetFunction(_cpuid, make_uptr(new Function<Tty *>(Handle, this)));
+  _queue.SetFunction(_cpuid, make_uptr(new ClassFunction<Tty, void *>(this, &Tty::Handle, nullptr)));
   _Init();
+  String::Init(_str_buffer);
 }
 
 void Tty::PrintString(String *str) {
@@ -54,17 +55,40 @@ void Tty::DoString(String *str) {
 }
 
 Tty::String *Tty::String::New() {
-  String *str = reinterpret_cast<String *>(virtmem_ctrl->Alloc(sizeof(String)));
-  new(str) String;
-  str->Init();
+  String *str = new String;
+  str->type = Type::kQueue;
+  str->offset = 0;
+  str->next = nullptr;
   return str;
 }
 
-void Tty::String::Delete() {
-  if (next != nullptr) {
-    next->Delete();
+void Tty::String::Init(StringBuffer &buf) {
+  while(!buf.IsFull()) {
+    String *str = new String;
+    str->type = Type::kBuffered;
+    str->offset = 0;
+    str->next = nullptr;
+    buf.Push(str);
   }
-  virtmem_ctrl->Free(reinterpret_cast<virt_addr>(this));
+}
+
+void Tty::String::Delete(StringBuffer &buf) {
+  if (next != nullptr) {
+    next->Delete(buf);
+  }
+  switch(type) {
+  case Type::kSingle:
+    assert(false);
+    break;
+  case Type::kQueue:
+    delete this;
+    break;
+  case Type::kBuffered:
+    offset = 0;
+    next = nullptr;
+    assert(buf.Push(this));
+    break;
+  }
 }
 
 void Tty::Cvprintf_sub(String *str, const char *fmt, va_list args) {
@@ -108,14 +132,14 @@ void Tty::Cvprintf_sub(String *str, const char *fmt, va_list args) {
         return;
       }
       case 'c': {
-        str->Write(static_cast<char>(va_arg(args, int)));
+        str->Write(static_cast<char>(va_arg(args, int)), _str_buffer);
         break;
       }
       case 's': {
         const char *s = reinterpret_cast<const char *>(va_arg(args, const char *));
         if (accuracy == 0) {
           while(*s) {
-            str->Write(*s);
+            str->Write(*s, _str_buffer);
             s++;
           }
         } else {
@@ -123,7 +147,7 @@ void Tty::Cvprintf_sub(String *str, const char *fmt, va_list args) {
             if (*s == '\0') {
               break;
             }
-            str->Write(*s);
+            str->Write(*s, _str_buffer);
           }
         }
         break;
@@ -143,7 +167,7 @@ void Tty::Cvprintf_sub(String *str, const char *fmt, va_list args) {
             i *= 10;
           }
           unsigned int l = _num / i;
-          str->Write(l + '0');
+          str->Write(l + '0', _str_buffer);
           _num -= l * i;
         }
         break;
@@ -151,7 +175,7 @@ void Tty::Cvprintf_sub(String *str, const char *fmt, va_list args) {
       case 'd': {
         int num = reinterpret_cast<int>(va_arg(args, int));
         if (num < 0) {
-          str->Write('-');
+          str->Write('-', _str_buffer);
         }
         unsigned int _num = (num < 0) ? -num : num;
         unsigned int i = _num;
@@ -166,7 +190,7 @@ void Tty::Cvprintf_sub(String *str, const char *fmt, va_list args) {
             i *= 10;
           }
           unsigned int l = _num / i;
-          str->Write(l + '0');
+          str->Write(l + '0', _str_buffer);
           _num -= l * i;
         }
         break;
@@ -189,9 +213,9 @@ void Tty::Cvprintf_sub(String *str, const char *fmt, va_list args) {
           }
           unsigned int l = _num / i;
           if (l < 10) {
-            str->Write(l + '0');
+            str->Write(l + '0', _str_buffer);
           } else if (l < 16) {
-            str->Write(l - 10 + 'A');
+            str->Write(l - 10 + 'A', _str_buffer);
           }
           _num -= l * i;
         }
@@ -206,7 +230,7 @@ void Tty::Cvprintf_sub(String *str, const char *fmt, va_list args) {
           case 'd': {
             int64_t num = reinterpret_cast<int64_t>(va_arg(args, int64_t));
             if (num < 0) {
-              str->Write('-');
+              str->Write('-', _str_buffer);
             }
             uint64_t _num = (num < 0) ? -num : num;
             uint64_t i = _num;
@@ -221,7 +245,7 @@ void Tty::Cvprintf_sub(String *str, const char *fmt, va_list args) {
                 i *= 10;
               }
               unsigned int l = _num / i;
-              str->Write(l + '0');
+              str->Write(l + '0', _str_buffer);
               _num -= l * i;
             }
             break;
@@ -229,7 +253,7 @@ void Tty::Cvprintf_sub(String *str, const char *fmt, va_list args) {
           case 'u': {
             uint64_t num = reinterpret_cast<uint64_t>(va_arg(args, uint64_t));
             if (num < 0) {
-              str->Write('-');
+              str->Write('-', _str_buffer);
             }
             uint64_t _num = num;
             uint64_t i = _num;
@@ -244,7 +268,7 @@ void Tty::Cvprintf_sub(String *str, const char *fmt, va_list args) {
                 i *= 10;
               }
               unsigned int l = _num / i;
-              str->Write(l + '0');
+              str->Write(l + '0', _str_buffer);
               _num -= l * i;
             }
             break;
@@ -265,40 +289,40 @@ void Tty::Cvprintf_sub(String *str, const char *fmt, va_list args) {
               }
               unsigned int l = _num / i;
               if (l < 10) {
-                str->Write(l + '0');
+                str->Write(l + '0', _str_buffer);
               } else if (l < 16) {
-                str->Write(l - 10 + 'A');
+                str->Write(l - 10 + 'A', _str_buffer);
               }
               _num -= l * i;
             }
             break;
           }
           default: {
-            str->Write('%');
-            str->Write('l');
-            str->Write('l');
-            str->Write(*fmt);
+            str->Write('%', _str_buffer);
+            str->Write('l', _str_buffer);
+            str->Write('l', _str_buffer);
+            str->Write(*fmt, _str_buffer);
           }
           }
           break;
         }
         default: {
-          str->Write('%');
-          str->Write('l');
-          str->Write(*fmt);
+          str->Write('%', _str_buffer);
+          str->Write('l', _str_buffer);
+          str->Write(*fmt, _str_buffer);
         }
         }
         break;
       }
       default: {
-        str->Write('%');
-        str->Write(*fmt);
+        str->Write('%', _str_buffer);
+        str->Write(*fmt, _str_buffer);
       }
       }
       break;
     }
     default: {
-      str->Write(*fmt);
+      str->Write(*fmt, _str_buffer);
     }
     }
     fmt++;
