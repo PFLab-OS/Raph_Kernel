@@ -57,6 +57,9 @@ public:
   virtual void Kill() {
     kernel_panic("Task", "unable to kill normal Task");
   }
+  bool IsRegistered() {
+    return _status == Task::Status::kWaitingInQueue;
+  }
 private:
   uptr<GenericFunction> _func;
   sptr<Task> _next;
@@ -117,6 +120,9 @@ public:
   }
   bool IsPending() {
     return _pending;
+  }
+  bool IsRegistered() {
+    return _task->IsRegistered() || _state == CalloutState::kCalloutQueue || _state == CalloutState::kTaskQueue;
   }
 protected:
   void HandleSub2(sptr<Callout> callout);
