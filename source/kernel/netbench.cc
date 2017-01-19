@@ -187,6 +187,9 @@ void send_arp_packet(NetDev *dev, uint8_t *ipaddr) {
               task_ctrl->RegisterCallout(make_sptr(callout), 1000);
             }
           }, make_wptr(callout_), dev)));
+    if (callout_->IsRegistered()) {
+      task_ctrl->CancelCallout(callout_);
+    }
     task_ctrl->RegisterCallout(callout_, cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), 1000);
   }
 
@@ -206,6 +209,9 @@ void send_arp_packet(NetDev *dev, uint8_t *ipaddr) {
               task_ctrl->RegisterCallout(make_sptr(callout), 1000*1000*3);
             }
           }, make_wptr(callout_), dev)));
+    if (callout_->IsRegistered()) {
+      task_ctrl->CancelCallout(callout_);
+    }
     task_ctrl->RegisterCallout(callout_, cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), 2000);
   }
 }
