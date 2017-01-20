@@ -87,6 +87,9 @@ public:
   Task::Status GetStatus() {
     return _task->GetStatus();
   }
+  sptr<Task> GetTask() {
+    return _task;
+  }
   void Inc();
 private:
   void HandleSub(void *);
