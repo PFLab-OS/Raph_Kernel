@@ -57,6 +57,7 @@ public:
   virtual bool IsLocked() override {
     return ((_flag % 2) == 1);
   }
+  static bool _spinlock_timeout;
 protected:
   bool SetFlag(unsigned int old_flag, unsigned int new_flag) {
     return __sync_bool_compare_and_swap(&_flag, old_flag, new_flag);
@@ -65,7 +66,6 @@ protected:
   CpuId _cpuid;
   size_t _rip[3];
   bool _did_stop_interrupt = false;
-  static const bool kTimeout = true;
 };
 
 // コンストラクタ、デストラクタでlock,unlockができるラッパー
@@ -81,5 +81,27 @@ class Locker {
  private:
   SpinLockInterface &_lock;
 };
+
+// trylockマクロからのみ呼び出す事
+class TryLocker {
+public:
+  TryLocker(SpinLockInterface &lock) : _lock(lock) {
+    _lock.Lock();
+  }
+  ~TryLocker() {
+    _lock.Unlock();
+  }
+  bool Do() {
+    bool flag = _flag;
+    _flag = true;
+    return flag;
+  }
+private:
+  bool _flag = false;
+  SpinLockInterface &_lock;
+};
+
+#define trylock(lock) for (TryLocker locker(lock); locker.Do();)
+
 
 #endif // __RAPH_KERNEL_SPINLOCK_H__

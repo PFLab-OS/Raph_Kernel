@@ -67,6 +67,14 @@ sudo /etc/rc.local
 sudo mkdir /usr/local/etc/qemu
 sudo sh -c 'echo "allow br0" > /usr/local/etc/qemu/bridge.conf'
 
+# setup ntp
+sudo apt-get install ntp
+sudo service ntp stop
+sudo ntpdate ntp.nict.jp
+sed -i -e 's/^server/#server/g' /etc/ntp.conf
+sudo sh -c 'echo "server ntp.nict.jp" >> /etc/ntp.conf'
+sudo service ntp start
+
 sudo sh -c 'date > /etc/bootstrapped'
 
 echo "setup done!"

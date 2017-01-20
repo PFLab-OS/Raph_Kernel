@@ -1,12 +1,18 @@
 KERNEL = kernel.elf
 
-OBJS = boot/boot.o boot/bootap.o x86_asm.o x86.o main.o multiboot.o apic.o raph_acpi.o gdt.o idt.o int.o freebsd.o dev.o acpica.o mem/virtmem.o shell.o mem/paging.o mem/physmem.o mem/dlmalloc.o mem/kstack.o ../libc/lib.o task.o spinlock.o libglobal.o tty.o queue.o cpu.o membench.o # net.o
+OBJS = boot/boot.o boot/bootap.o x86_asm.o x86.o main.o multiboot.o apic.o raph_acpi.o gdt.o idt.o int.o freebsd.o dev.o acpica.o mem/virtmem.o shell.o mem/paging.o mem/physmem.o mem/dlmalloc.o mem/kstack.o ../libc/lib.o task.o spinlock.o libglobal.o tty.o queue.o cpu.o membench.o netbench.o # net.o
 
 BUILD = ../../build/
 DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))
 
+GIT_BRANCH = $(shell git symbolic-ref --short HEAD)
+
+ifeq ($(GIT_BRANCH),xeonphi)
+	FLAGS = -DFLAG_MEMBENCH
+endif
+
 INCLUDE_PATH = -I$(realpath ../libc/) -I$(realpath ./)  -I$(realpath ./freebsd/) -I$(realpath ./acpica/include/)
-RAPHFLAGS = -g -Wall -Werror=return-type -Wshadow -nostdinc -nostdlib -fno-builtin -mcmodel=large -D__KERNEL__ -D_KERNEL -Dbootverbose=0 $(INCLUDE_PATH) -MMD -MP
+RAPHFLAGS = -g -Wall -Werror=return-type -Wshadow -nostdinc -nostdlib -fno-builtin -mcmodel=large -D__KERNEL__ -D_KERNEL -Dbootverbose=0 $(FLAGS) $(INCLUDE_PATH) -MMD -MP
 RAPHCFLAGS = $(RAPHFLAGS) -std=c99
 RAPHCXXFLAGS = $(RAPHFLAGS) -std=c++1y -fno-exceptions -fno-rtti -fno-use-cxa-atexit -fno-threadsafe-statics
 CFLAGS += $(RAPHCFLAGS)

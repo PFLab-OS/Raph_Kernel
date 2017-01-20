@@ -156,8 +156,7 @@ void TaskCtrl::Run() {
 }
 
 void TaskCtrl::Register(CpuId cpuid, sptr<Task> task) {
-  if (!(task->_status == Task::Status::kOutOfQueue ||
-        (task->_status == Task::Status::kRunning && task->_cpuid.GetRawId() == cpuid.GetRawId()))) {
+  if (task->IsRegistered()) {
     kernel_panic("TaskCtrl", "unable to register queued Task.");
   }
   int raw_cpuid = cpuid.GetRawId();

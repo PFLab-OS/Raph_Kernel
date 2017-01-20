@@ -5834,14 +5834,6 @@ void IxGbe::IxGbeBsdEthernet::PollingHandler(IxGbe *that) {
 	struct tx_ring	*txr = adapter->tx_rings;
 	struct ix_queue	*que = adapter->queues;
 
-  static uint64_t time = timer->GetCntAfterPeriod(timer->ReadMainCnt(), 1 * 1000 * 1000); // 1s
-
-  uint64_t t = timer->ReadMainCnt();
-  if (timer->IsGreater(t, time)) {
-    time = timer->GetCntAfterPeriod(t, 1 * 1000 * 1000);
-    ixgbe_handle_link(reinterpret_cast<void*>(adapter), 0);
-  }
-
 	IXGBE_CORE_LOCK(adapter);
 	if ((if_getdrvflags(ifp) & IFF_DRV_RUNNING) == 0) {
 		IXGBE_CORE_UNLOCK(adapter);
@@ -5864,11 +5856,18 @@ void IxGbe::IxGbeBsdEthernet::PollingHandler(IxGbe *that) {
 	IXGBE_TX_UNLOCK(txr);
 }
 
+void IxGbe::IxGbeBsdEthernet::CheckLinkHandler(void *) {
+  UpdateLinkStatus();
+  
+  task_ctrl->RegisterCallout(_link_check_callout, cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), 1000);
+}
+
 void IxGbe::IxGbeBsdEthernet::ChangeHandleMethodToPolling() {
   _polling.Init(make_uptr(new Function<IxGbe *>(PollingHandler, &GetMasterClass())));
-  extern CpuId network_cpu;
-  _polling.Register(network_cpu);
+  _polling.Register(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kHighPerformance));
 
+  task_ctrl->RegisterCallout(_link_check_callout, cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), 1000);
+  
   struct adapter *adapter = reinterpret_cast<struct adapter *>(GetMasterClass().softc);
   if_t ifp = adapter->ifp;
   IXGBE_CORE_LOCK(adapter);
@@ -5879,6 +5878,8 @@ void IxGbe::IxGbeBsdEthernet::ChangeHandleMethodToPolling() {
 
 void IxGbe::IxGbeBsdEthernet::ChangeHandleMethodToInt() {
   _polling.Remove();
+
+  // TODO remove _link_check_callout
 
   struct adapter *adapter = reinterpret_cast<struct adapter *>(GetMasterClass().softc);
   if_t ifp = adapter->ifp;

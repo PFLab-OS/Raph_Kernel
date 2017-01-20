@@ -1,5 +1,4 @@
+setflag spinlock_timeout false
 bench setip ixgbe1 192.168.100.100
 bench setip ixgbe2 192.168.100.101
-wait 3
-ifconfig
 bench snd ixgbe1 192.168.100.101

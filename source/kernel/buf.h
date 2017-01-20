@@ -37,14 +37,14 @@
 // you should allocate struct array to different place and
 // manage this array by RingBuffer. In this case, T must be
 // a pointer to the struct.
-template<class T, int S, class L>
-class RingBufferBase {
+template<class T, int S>
+class RingBuffer {
  public:
-  RingBufferBase() {
+  RingBuffer() {
     _head = 0;
     _tail = 0;
   }
-  virtual ~RingBufferBase() {
+  virtual ~RingBuffer() {
   }
   // 満杯の時は何もせず、falseを返す
   bool Push(T data) {
@@ -85,22 +85,19 @@ class RingBufferBase {
   T _buffer[S + 1];
   int _head;
   int _tail;
-  L _lock;
+  SpinLock _lock;
 };
 
 template<class T, int S>
-  using RingBuffer = RingBufferBase<T, S, SpinLock>;
-
-template<class T, int S, class L>
-  class FunctionalRingBufferBase final : public FunctionalBase<L> {
+  class FunctionalRingBuffer final : public Functional {
  public:
-  FunctionalRingBufferBase() {
+  FunctionalRingBuffer() {
   }
-  ~FunctionalRingBufferBase() {
+  ~FunctionalRingBuffer() {
   }
   bool Push(T data) {
     bool flag = _buf.Push(data);
-    FunctionalBase<L>::WakeupFunction();
+    Functional::WakeupFunction();
     return flag;
   }
   bool Pop(T &data) {
@@ -116,10 +113,7 @@ template<class T, int S, class L>
   virtual bool ShouldFunc() override {
     return !_buf.IsEmpty();
   }
-  RingBufferBase<T, S, L> _buf;
+  RingBuffer<T, S> _buf;
 };
-
-template<class T, int S>
-  using FunctionalRingBuffer = FunctionalRingBufferBase<T, S, SpinLock>;
 
 #endif /* __RAPH_KERNEL_BUF_H__ */

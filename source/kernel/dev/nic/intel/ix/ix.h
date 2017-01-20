@@ -39,6 +39,8 @@ public:
   class IxGbeBsdEthernet : public BsdEthernet {
   public:
     IxGbeBsdEthernet(IxGbe &master) : _master(master) {
+      _link_check_callout = make_sptr(new Callout());
+      _link_check_callout->Init(make_uptr(new ClassFunction<IxGbeBsdEthernet, void *>(this, &IxGbeBsdEthernet::CheckLinkHandler, nullptr)));
     }
     
     static void PollingHandler(IxGbe *that);
@@ -54,8 +56,11 @@ public:
       return _master;
     }
   private:
-    IxGbeBsdEthernet();
     IxGbe &_master;
+    sptr<Callout> _link_check_callout;
+    
+    IxGbeBsdEthernet();
+    void CheckLinkHandler(void *);
   };
 
   IxGbeBsdEthernet &GetNetInterface() {
