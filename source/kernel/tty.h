@@ -30,6 +30,7 @@
 #include <spinlock.h>
 #include <queue.h>
 #include <global.h>
+#include <buf.h>
 
 class Tty {
  public:
@@ -67,15 +68,15 @@ class Tty {
     va_end(args);
   }
   void Cvprintf(const char *fmt, va_list args) {
-    String *str = String::New();
+    String *str = String::Get(_str_buffer);
     Cvprintf_sub(str, fmt, args);
-    str->Exit();
+    str->Exit(_str_buffer);
     DoString(str);
   }
   void CvprintfRaw(const char *fmt, va_list args) {
     String str;
     Cvprintf_sub(&str, fmt, args);
-    str.Exit();
+    str.Exit(_str_buffer);
     Locker locker(_lock);
     PrintString(&str);
   }
@@ -89,11 +90,14 @@ class Tty {
   int _cx = 0;
   int _cy = 0;
  private:
+  class String;
+  using StringBuffer = RingBuffer<String *, 64>;
   class String {
   public:
     enum class Type {
       kSingle,
       kQueue,
+      kBuffered,
     } type;
     String() {
       type = Type::kSingle;
@@ -101,45 +105,54 @@ class Tty {
       next = nullptr;
     } 
     static String *New();
-    void Delete();
-    void Init() {
-      type = Type::kQueue;
-      offset = 0;
-      next = nullptr;
+    static void Init(StringBuffer &buf);
+    static String *Get(StringBuffer &buf) {
+      String *s;
+      if (buf.Pop(s)) {
+        return s;
+      } else {
+        String *s_ = New();
+        return s_;
+      }
     }
-    void Write(const uint8_t c) {
+    void Delete(StringBuffer &buf);
+    void Write(const uint8_t c, StringBuffer &buf) {
       if (offset == length) {
         if (next == nullptr) {
           if (type == Type::kQueue) {
             String *s = New();
             next = s;
-            next->Write(c);
+            next->Write(c, buf);
+          } else if (type == Type::kBuffered) {
+            String *s = Get(buf);
+            next = s;
+            next->Write(c, buf);
           }
         } else {
-          next->Write(c);
+          next->Write(c, buf);
         }
       } else {
         str[offset] = c;
         offset++;
       }
     }
-    void Exit() {
-      Write('\0');
+    void Exit(StringBuffer &buf) {
+      Write('\0', buf);
     }
     static const int length = 100;
     uint8_t str[length];
     int offset;
     String *next;
   };
-  static void Handle(Tty *that){
+  void Handle(void *){
     void *s;
-    while(that->_queue.Pop(s)) {
+    while(_queue.Pop(s)) {
       String *str = reinterpret_cast<String *>(s);
       {
-        Locker locker(that->_lock);
-        that->PrintString(str);
+        Locker locker(_lock);
+        PrintString(str);
       }
-      str->Delete();
+      str->Delete(_str_buffer);
     }
   }
   void Cvprintf_sub(String *str, const char *fmt, va_list args);
@@ -148,6 +161,7 @@ class Tty {
   FunctionalQueue _queue;
   SpinLock _lock;
   CpuId _cpuid;
+  StringBuffer _str_buffer;
 };
 
 #endif // __RAPH_KERNEL_TTY_H__

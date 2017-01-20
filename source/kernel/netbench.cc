@@ -28,7 +28,7 @@
 
 uint64_t cnt = 0;
 int64_t sum = 0;
-static const int stime = 1000;
+static const int stime = 7000;
 int time = stime, rtime = 0;
 
 extern CpuId network_cpu;
@@ -128,6 +128,7 @@ void send_arp_packet(NetDev *dev, uint8_t *ipaddr) {
     static uint8_t target_addr[4];
     memcpy(target_addr, ipaddr, 4);
     cnt = 0;
+    sum = 0;
     auto callout_ = make_sptr(new Callout);
     callout_->Init(make_uptr(new Function2<wptr<Callout>, NetDev *>([](wptr<Callout> callout, NetDev *eth){
             if (!apic_ctrl->IsBootupAll()) {
@@ -186,6 +187,9 @@ void send_arp_packet(NetDev *dev, uint8_t *ipaddr) {
               task_ctrl->RegisterCallout(make_sptr(callout), 1000);
             }
           }, make_wptr(callout_), dev)));
+    if (callout_->IsRegistered()) {
+      task_ctrl->CancelCallout(callout_);
+    }
     task_ctrl->RegisterCallout(callout_, cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), 1000);
   }
 
@@ -205,6 +209,9 @@ void send_arp_packet(NetDev *dev, uint8_t *ipaddr) {
               task_ctrl->RegisterCallout(make_sptr(callout), 1000*1000*3);
             }
           }, make_wptr(callout_), dev)));
+    if (callout_->IsRegistered()) {
+      task_ctrl->CancelCallout(callout_);
+    }
     task_ctrl->RegisterCallout(callout_, cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), 2000);
   }
 }

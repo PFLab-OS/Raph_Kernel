@@ -101,25 +101,25 @@ _numerror:
 # for local host
 ###################################
 
-image: .ssh_config
+image: synctime
 	@$(SSH_CMD) "cd /vagrant/; make -j3 _image"
 
-run: .ssh_config
+run: synctime
 	@$(SSH_CMD) "cd /vagrant/; make -j3 _run"
 
-hd: .ssh_config
+hd: synctime
 	@$(SSH_CMD) "cd /vagrant/; make -j3 _hd"
 
-clean: .ssh_config
+clean: synctime
 	@$(SSH_CMD) "cd /vagrant/; make _clean"
 
-showerror: .ssh_config
+showerror: synctime
 	@$(SSH_CMD) "cd /vagrant/; make -j3 _showerror"
 
-numerror: .ssh_config
+numerror: synctime
 	@$(SSH_CMD) "cd /vagrant/; make -j3 _numerror"
 
-vboxrun: vboxkill .ssh_config
+vboxrun: vboxkill synctime
 	@$(SSH_CMD) "cd /vagrant/; make -j3 _cpimage"
 	-vboxmanage unregistervm RK_Test --delete
 	-rm $(VDI)
@@ -135,16 +135,16 @@ run_pxeserver:
 	@echo info: allow port 8080 in your firewall settings
 	cd net; python -m SimpleHTTPServer 8080
 
-pxeimg: .ssh_config
+pxeimg: synctime
 	@$(SSH_CMD) "cd /vagrant/; make -j3 _cpimage"
 	gzip $(IMAGEFILE)
 	mv $(IMAGEFILE).gz net/
 
-burn_ipxe: .ssh_config
+burn_ipxe: synctime
 	./lan.sh local
 	@$(SSH_CMD) "cd ipxe/src; make bin-x86_64-pcbios/ipxe.usb EMBED=/vagrant/load.cfg; if [ ! -e /dev/sdb ]; then echo 'error: insert usb memory!'; exit -1; fi; sudo dd if=bin-x86_64-pcbios/ipxe.usb of=/dev/sdb"
 
-burn_ipxe_remote: .ssh_config
+burn_ipxe_remote: synctime
 	./lan.sh remote
 	@$(SSH_CMD) "cd ipxe/src; make bin-x86_64-pcbios/ipxe.usb EMBED=/vagrant/load.cfg; if [ ! -e /dev/sdb ]; then echo 'error: insert usb memory!'; exit -1; fi; sudo dd if=bin-x86_64-pcbios/ipxe.usb of=/dev/sdb"
 
@@ -155,8 +155,8 @@ vnc:
 	@echo info: vnc password is "a"
 	$(VNC)
 
-synctime:
-	@$(SSH_CMD) "sudo service ntp stop; sudo ntpdate ntp.nict.jp; sudo service ntp start"
+synctime: .ssh_config
+	@./time.sh
 
 .ssh_config:
 	vagrant ssh-config > .ssh_config

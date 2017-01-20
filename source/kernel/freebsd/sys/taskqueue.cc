@@ -28,9 +28,9 @@
 
 struct TaskContainer {
 public:
-  TaskContainer() : task(new Task) {
+  TaskContainer() : task(new CountableTask) {
   }
-  sptr<Task> task;
+  sptr<CountableTask> task;
 private:
 };
 
@@ -46,19 +46,19 @@ extern "C" {
 
   void _task_init(struct task *t, int priority, task_fn_t *func, void *context) {
     t->ta_task = new TaskContainer();
-    t->ta_task->task->SetFunc(make_uptr(new Function<struct task *>(__taskqueue_handle, t)));
+    t->ta_task->task->SetFunc(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), make_uptr(new Function<struct task *>(__taskqueue_handle, t)));
     t->ta_pending = 0;
     t->ta_func = (func);
     t->ta_context = (context);
   }
 
   int taskqueue_enqueue(struct taskqueue *queue, struct task *task) {
-    task_ctrl->Register(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), task->ta_task->task);
+    task->ta_task->task->Inc();
     return 0;
   }
 
   void taskqueue_drain(struct taskqueue *queue, struct task *task) {
     // TODO have to wait until task was finished
-    task_ctrl->Register(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), task->ta_task->task);
+    task->ta_task->task->Inc();
   }
 }
