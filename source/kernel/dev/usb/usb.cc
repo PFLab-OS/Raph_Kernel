@@ -90,7 +90,7 @@ void DevUsb::LoadCombinedDescriptors() {
       }
       
       request->MakePacketOfGetDescriptorRequest(UsbCtrl::DescriptorType::kConfiguration, 0, sizeof(UsbCtrl::ConfigurationDescriptor));
-      
+
       if (!_controller->SendControlTransfer(request, ptr2virtaddr(&config_desc), sizeof(UsbCtrl::ConfigurationDescriptor), _addr)) {
         break;
       }
@@ -116,7 +116,6 @@ void DevUsb::LoadCombinedDescriptors() {
       if (!UsbCtrl::GetCtrl().AllocDeviceRequest(request)) {
         break;
       }
-      
       request->MakePacketOfGetDescriptorRequest(UsbCtrl::DescriptorType::kConfiguration, 0, config_desc.total_length);
       
       if (!_controller->SendControlTransfer(request, ptr2virtaddr(_combined_desc), config_desc.total_length, _addr)) {

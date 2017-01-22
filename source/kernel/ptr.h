@@ -49,10 +49,14 @@ public:
   }
   uptr &operator=(const uptr &p) {
     delete _obj;
-    
-    _obj = p._obj;
-    uptr *p_ = const_cast<uptr *>(&p);
-    p_->_obj = nullptr;
+
+    if (p._obj != nullptr) {
+      _obj = p._obj;
+      uptr *p_ = const_cast<uptr *>(&p);
+      p_->_obj = nullptr;
+    } else {
+      _obj = nullptr;
+    }
 
     return (*this);
   }
@@ -82,7 +86,7 @@ private:
   template <typename A>
   friend class uptr;
   T *_obj;
-};
+} __attribute__((__packed__));
 
 template<class Array>
 class uptr<Array []> {
@@ -108,10 +112,14 @@ public:
   }
   uptr &operator=(const uptr &p) {
     delete [] _obj;
-    
-    _obj = p._obj;
-    uptr *p_ = const_cast<uptr *>(&p);
-    p_->_obj = nullptr;
+
+    if (p._obj != nullptr) {
+      _obj = p._obj;
+      uptr *p_ = const_cast<uptr *>(&p);
+      p_->_obj = nullptr;
+    } else {
+      _obj = nullptr;
+    }
 
     return (*this);
   }
@@ -142,7 +150,7 @@ private:
   template <class A>
   friend class uptr;
   Array *_obj;
-};
+} __attribute__((__packed__));
 
 template <class T>
 inline uptr<T> make_uptr(T *ptr) {
@@ -168,7 +176,7 @@ private:
   }
   int weak_cnt;
   int shared_cnt;
-};
+} __attribute__((__packed__));
 
 template<class T>
 class wptr;
@@ -250,7 +258,7 @@ public:
     release();
   }
   T *operator&();
-  T *operator*();
+  T &operator*();
   T *operator->() {
     if (_obj == nullptr) {
       assert(false);
@@ -297,7 +305,7 @@ private:
   friend class wptr;
   T *_obj;
   counter_helper *_helper;
-};
+} __attribute__((__packed__));
 
 template<class T>
 class wptr {
@@ -366,7 +374,9 @@ public:
     release();
   }
   T *operator&();
-  T *operator*();
+  T &operator*() {
+    return *_obj;
+  }
   T *operator->() {
     if (_obj == nullptr) {
       assert(false);
@@ -384,6 +394,12 @@ public:
   }
   bool IsNull() {
     return _obj == nullptr;
+  }
+  bool IsObjReleased() {
+    if (_helper == nullptr) {
+      return true;
+    }
+    return _helper->shared_cnt == 0;
   }
 private:
   void release() {
@@ -403,7 +419,7 @@ private:
   friend class sptr;
   T *_obj;
   counter_helper *_helper;
-};
+} __attribute__((__packed__));
 template <class T>
 inline sptr<T> make_sptr(T *ptr) {
   sptr<T> p(ptr);

@@ -222,10 +222,10 @@ public:
     }
     virtual ~Manager() {
     }
-    virtual void HandleInterrupt(void *) = 0;
+    virtual void HandlePolling(void *) = 0;
   };
   virtual bool SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) = 0;
-  virtual uptr<Manager> SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer) = 0;
+  virtual sptr<Manager> SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer) = 0;
 };
 
 // !!! important !!!
@@ -286,7 +286,7 @@ protected:
     DevUsb * const _dev;
     UsbCtrl::EndpointDescriptor * const _ed;
     PollingFunc p;
-    uptr<DevUsbController::Manager> _manager;
+    sptr<DevUsbController::Manager> _manager;
   };
 private:
   DevUsbController * const _controller;

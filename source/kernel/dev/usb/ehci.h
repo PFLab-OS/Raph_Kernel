@@ -30,18 +30,17 @@
 #include <buf.h>
 #include <dev/usb/usb.h>
 #include <timer.h>
-
-// for debug
 #include <tty.h>
-#include <global.h>
+#include <list.h>
 
 class DevEhci final : public DevPci {
 public:
-  DevEhci(uint8_t bus, uint8_t device, uint8_t function) : DevPci(bus, device, function), _controller_dev(this) {
+  DevEhci(uint8_t bus, uint8_t device, uint8_t function) : DevPci(bus, device, function), _int_task(new Task), _controller_dev(this) {
   }
   static DevPci *InitPci(uint8_t bus, uint8_t device, uint8_t function);
   void Init();
 private:
+  sptr<Task> _int_task;
   class DevEhciUsbController : public DevUsbController {
   public:
     DevEhciUsbController(DevEhci *dev_ehci) : _dev_ehci(dev_ehci) {
@@ -51,7 +50,7 @@ private:
     virtual bool SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) override {
       return _dev_ehci->SendControlTransfer(request, data, data_size, device_addr);
     }
-    virtual uptr<DevUsbController::Manager> SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer) override {
+    virtual sptr<DevUsbController::Manager> SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer) override {
       return _dev_ehci->SetupInterruptTransfer(endpt_address, device_addr, interval, direction, max_packetsize, num_td, buffer);
     }
   private:
@@ -64,10 +63,11 @@ private:
     virtual phys_addr GetRepresentativeQueueHead() = 0;
     virtual bool SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) = 0;
     virtual phys_addr GetPeriodicFrameList() = 0;
-    virtual uptr<DevUsbController::Manager> SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer) = 0;
+    virtual sptr<DevUsbController::Manager> SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer) = 0;
     virtual int GetPeriodicFrameListEntryNum() {
       return 1024;
     }
+    virtual void CheckQueuedTdIfCompleted() = 0;
   } *_sub;
   
   class DevEhciSub32 : public DevEhciSub {
@@ -80,7 +80,8 @@ private:
       return v2p(ptr2virtaddr(_periodic_frame_list));
     }
     virtual bool SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) override;
-    virtual uptr<DevUsbController::Manager> SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer) override;
+    virtual sptr<DevUsbController::Manager> SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer) override;
+    virtual void CheckQueuedTdIfCompleted() override;
   private:
     class QueueHead;
 
@@ -101,11 +102,19 @@ private:
     static_assert(sizeof(FrameListElementPointer) == 4, "");
     FrameListElementPointer *_periodic_frame_list;
       
-  
+
+    struct TdContainer {
+      bool interrupt_on_complete;
+      bool data_toggle;
+      UsbCtrl::PacketIdentification pid;
+      int total_bytes;
+      uint8_t *buf;
+    };
     class TransferDescriptor {
     public:
       void Init() {
         _alt_next_td = 1;
+        _func = make_uptr<GenericFunction>();
       }
       void SetNext(TransferDescriptor *next) {
         SetNextSub(v2p(ptr2virtaddr(next)), false);
@@ -114,23 +123,22 @@ private:
         SetNextSub(0, true);
       }
       uint32_t GetToken() {
-        return READ_MEM_VOLATILE(&_token);
+        return _token;
       }
       uint8_t GetStatus() {
-        return READ_MEM_VOLATILE(&_token) & 0xFF;
+        return _token & 0xFF;
       }
       bool IsActiveOfStatus() {
-        return READ_MEM_VOLATILE(&_token) & (1 << 7);
+        return _token & (1 << 7);
       }
       bool IsDataBufferErrorOfStatus() {
-        return READ_MEM_VOLATILE(&_token) & (1 << 5);
+        return _token & (1 << 5);
       }
       virt_addr GetBuffer() {
         return p2v(_buffer_pointer[0]);
       }
-      void ResetToken() {
-        _token &= ~0b11111111;
-        _token |= 1 << 7; // active
+      void SetTokenAndBuffer(TdContainer &container) {
+        SetTokenAndBuffer(container.interrupt_on_complete, container.data_toggle, container.pid, container.total_bytes, ptr2virtaddr(container.buf));
       }
       void SetTokenAndBuffer(bool interrupt_on_complete, bool data_toggle, UsbCtrl::PacketIdentification pid, int total_bytes, virt_addr buf) {
         SetTokenAndBufferSub(interrupt_on_complete, data_toggle, pid, total_bytes);
@@ -156,6 +164,9 @@ private:
           _buffer_pointer[i] = 0;
         }
       }
+      void SetFunc(uptr<GenericFunction> func) {
+        _func = func;
+      }
     private:
       void SetTokenAndBufferSub(bool interrupt_on_complete, bool data_toggle, UsbCtrl::PacketIdentification pid, int total_bytes) {
         _token = 0;
@@ -163,6 +174,7 @@ private:
         assert(total_bytes <= 0x5000);
         _token |= total_bytes << 16;
         _token |= interrupt_on_complete ? (1 << 15) : 0;
+        _token |= 3 << 10;
         _token |= static_cast<uint8_t>(pid) << 8;
         _token |= 1 << 7; // active
       }
@@ -173,9 +185,12 @@ private:
       void SetNextSub(phys_addr next, bool terminate) {
         _next_td = next | (terminate ? (1 << 0) : 0);
       }
-    } __attribute__((__packed__));
-    static_assert(sizeof(TransferDescriptor) == 32, "");
-    RingBuffer<TransferDescriptor *, 128> _td_buf;
+      //  extra info for driver
+      friend DevEhciSub32;
+      uptr<GenericFunction> _func;
+    } __attribute__((__packed__)) __attribute__ ((aligned (32)));
+    RingBuffer<TransferDescriptor *, 64> _td_buf;
+    List<TransferDescriptor *> _queueing_td_buf;
 
     class QueueHead {
     public:
@@ -219,6 +234,9 @@ private:
       }
       void SetNextTd(/* nullptr */) {
         _next_td = 1;
+      }
+      bool IsNextTdNull() {
+        return (_next_td & 1) != 0;
       }
       void SetCharacteristics(int max_packetsize, UsbCtrl::TransferType ttype, bool head, bool data_toggle_control, uint8_t endpoint_num, bool inactivate, uint8_t device_address) {
         _characteristics = 0;
@@ -267,40 +285,43 @@ private:
       uint32_t _alt_next_td;
       uint32_t _token;
       uint32_t _buffer_pointer[5];
-      // for padding & extra info for driver
+      //  extra info for driver
       EndpointSpeed _speed;
-      uint8_t _padding_1;
-      uint8_t _padding_2;
-      uint8_t _padding_3;
-      uint32_t _padding[3];
-    } __attribute__((__packed__));
-    static_assert(sizeof(QueueHead) == 64, "");
+    } __attribute__((__packed__)) __attribute__ ((aligned (32)));
     class EhciManager : public DevUsbController::Manager {
     public:
-      EhciManager(int num_td) : _num_td(num_td), _td_array(new TransferDescriptor*[num_td]) {
+      EhciManager(int num_td) : _num_td(num_td), _td_array(new TransferDescriptor*[num_td]), _container_array(new TdContainer[num_td]) {
         _head = 0;
         _tail = 0;
       }
       virtual ~EhciManager() {
         delete[] _td_array;
+        delete[] _container_array;
       }
-      virtual void HandleInterrupt(void *) override;
-      void CopyTdArray(TransferDescriptor **td_array) {
+      virtual void HandlePolling(void *) override;
+      void CopyInfo(TransferDescriptor **td_array, TdContainer *container_array) {
         for (int i = 0; i < _num_td; i++) {
           _td_array[i] = td_array[i];
+          _container_array[i] = container_array[i];
         }
       }
-      PollingFunc p;
-      QueueHead *interrupt_qh = nullptr;
+      static void HandleInterrupt(wptr<EhciManager> manager, int index) {
+        manager->HandleInterruptSub(index);
+      }
+      void HandleInterruptSub(int index);
+      PollingFunc _p;
+      QueueHead *_interrupt_qh = nullptr;
     private:
       EhciManager();
       int _head;
       int _tail;
       const int _num_td;
       TransferDescriptor **_td_array;
+      TdContainer *_container_array;
     };
     QueueHead *_qh0; // empty
     RingBuffer<QueueHead *, 63> _qh_buf;
+    void HandleCompletedStruct(QueueHead *qh , uptr<Array<TransferDescriptor *>> td_array);
   };
 
   class DevEhciSub64 : public DevEhciSub {
@@ -318,7 +339,10 @@ private:
       assert(false);
       return true;
     }
-    virtual uptr<DevUsbController::Manager> SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer) override {
+    virtual sptr<DevUsbController::Manager> SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer) override {
+      assert(false);
+    }
+    virtual void CheckQueuedTdIfCompleted() override {
       assert(false);
     }
   };
@@ -364,9 +388,21 @@ private:
   uint32_t kOpRegUsbCmdFlagAsynchronousScheduleEnable = 1 << 5;
 
   // see Table2-10. USBSTS USB Status Register Bit Definitions
+  uint32_t kOpRegUsbStsFlagInterrupt = 1 << 0;
   uint32_t kOpRegUsbStsFlagHcHalted = 1 << 12;
   uint32_t kOpRegUsbStsFlagPeriodicSchedule = 1 << 14;
   uint32_t kOpRegUsbStsFlagAsynchronousSchedule = 1 << 15;
+
+  // see Table2-11. USBINTR USB Interrupt Enable Register
+  uint32_t kOpRegUsbIntrFlagInterruptEnable = 1 << 0;
+  uint32_t kOpRegUsbIntrFlagErrorInterruptEnable = 1 << 1;
+  uint32_t kOpRegUsbIntrFlagPortChangeInterruptEnable = 1 << 2;
+  uint32_t kOpRegUsbIntrFlagFrameListRolloverEnable = 1 << 3;
+  uint32_t kOpRegUsbIntrFlagHostSystemErrorEnable = 1 << 4;
+  uint32_t kOpRegUsbIntrFlagAsyncAdvanceEnable = 1 << 5;
+
+  // see Table2-15. CONFIGFLAG Configure Flag Register Bit Definitions
+  uint32_t kOpRegConfigFlag = 1 << 0;
 
   // see Table2-16. PORTSC Port Status and Control
   uint32_t kOpRegPortScFlagCurrentConnectStatus = 1 << 0;
@@ -377,7 +413,7 @@ private:
   bool SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) {
     return _sub->SendControlTransfer(request, data, data_size, device_addr);
   }
-  virtual uptr<DevUsbController::Manager> SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer) {
+  virtual sptr<DevUsbController::Manager> SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer) {
     return _sub->SetupInterruptTransfer(endpt_address, device_addr, interval, direction, max_packetsize, num_td, buffer);
   }
 
@@ -392,8 +428,18 @@ private:
     // then unset reset bit
     _op_reg_base_addr[kOpRegOffsetPortScBase + port] &= ~kOpRegPortScFlagPortReset;
     // wait until end of reset sequence
-    while ((READ_MEM_VOLATILE(&_op_reg_base_addr[kOpRegOffsetPortScBase + port]) & kOpRegPortScFlagPortEnable) == 0) {
+    while ((_op_reg_base_addr[kOpRegOffsetPortScBase + port] & kOpRegPortScFlagPortEnable) == 0) {
+      asm volatile("":::"memory");
     }
+  }
+  void HandlerSub();
+  static void Handler(void *arg) {
+    auto that = reinterpret_cast<DevEhci *>(arg);
+    that->HandlerSub();
+  }
+  void CheckQueuedTdIfCompleted(void *) {
+    _sub->CheckQueuedTdIfCompleted();
+    _op_reg_base_addr[kOpRegOffsetUsbSts] &= ~kOpRegUsbStsFlagInterrupt;
   }
 };
 

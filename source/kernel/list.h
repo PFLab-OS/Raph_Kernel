@@ -24,7 +24,9 @@
 
 #include <raph.h>
 #include <spinlock.h>
+#include <ptr.h>
 
+// deplecated
 template<class T>
 class ObjectList {
 public:
@@ -73,3 +75,146 @@ private:
   SpinLock _lock;
 };
 
+template<class T>
+class List {
+public:
+  class Container {
+  public:
+    T &operator*() {
+      return _obj;
+    }
+    T *operator&() {
+      return &_obj;
+    }
+    T *operator->() {
+      return &_obj;
+    }
+    wptr<Container> GetNext() {
+      Locker locker(_lock);
+      return make_wptr(_next);
+    }
+  private:
+    template<class... Arg>
+    Container(Arg... args) : _obj(args...) {
+    }
+    Container();
+    T _obj;
+    SpinLock _lock;
+    sptr<Container> _next;
+    sptr<Container> _prev;
+    friend List;
+  };
+  List() {
+  }
+  ~List() {
+    auto iter = GetBegin();
+    while(!iter.IsNull()) {
+      iter = Remove(iter);
+    }
+  }
+  template<class... Arg>
+  wptr<Container> PushBack(Arg... args) {
+    auto c = make_sptr(new Container(args...));
+    while(true) {
+      // TODO this lock is conservative. fix it!
+      trylock(_lock) {
+        if (_first.IsNull()) {
+          SetFirst(c);
+          return make_wptr(c);
+        } else {
+          trylock(_last->_lock) {
+            Link(_last, c);
+            if (_last == _first) {
+              _last = c;
+            }
+            return make_wptr(c);
+          }
+        }
+      }
+    }
+  }
+  wptr<Container> Remove(wptr<Container> c) {
+    while(true) {
+      // TODO this lock is conservative. fix it!
+      trylock(_lock) {
+        if (!c->_lock.Trylock()) {
+          break;
+        }
+        auto next = c->_next;
+        auto prev = c->_prev;
+        if (!next.IsNull() && !next->_lock.Trylock()) {
+          break;
+        }
+        if (!prev.IsNull() && !prev->_lock.Trylock()) {
+          break;
+        }
+        if (_first == make_sptr(c)) {
+          if (next.IsNull()) {
+            assert(_last == make_sptr(c));
+            _first = make_sptr<Container>();
+            _last = make_sptr<Container>();
+          } else {
+            _first = c->_next;
+          }
+        } else if (_last == make_sptr(c)) {
+          assert(!prev.IsNull());
+          _last = prev;
+        }
+        RemoveSub(c);
+        if (!next.IsNull()) {
+          next->_lock.Unlock();
+        }
+        if (!prev.IsNull()) {
+          prev->_lock.Unlock();
+        }
+        auto ptr = make_wptr(next);
+        if (!c.IsObjReleased()) {
+          c->_lock.Unlock();
+        }
+        return ptr;
+      }
+    }
+  }
+  wptr<Container> GetBegin() {
+    Locker locker(_lock);
+    return make_wptr(_first);
+  }
+  bool IsEmpty() {
+    Locker locker(_lock);
+    return _first.IsNull();
+  }
+private:
+  void SetFirst(sptr<Container> c) {
+    assert(_first.IsNull());
+    assert(_last.IsNull());
+    _first = c;
+    _last = c;
+  }
+  void Link(sptr<Container> c1, sptr<Container> c2) {
+    auto tmp = c1->_next;
+    c1->_next = c2;
+    c2->_next = tmp;
+    c2->_prev = c1;
+    if (!tmp.IsNull()) {
+      assert(tmp->_prev == c1);
+      tmp->_prev = c2;
+    }
+  }
+  void RemoveSub(wptr<Container> c) {
+    auto next = c->_next;
+    auto prev = c->_prev;
+    c->_next = make_sptr<Container>();
+    c->_prev = make_sptr<Container>();
+    if (!next.IsNull()) {
+      next->_prev = prev;
+    }
+    if (!prev.IsNull()) {
+      prev->_next = next;
+    }
+  }
+  sptr<Container> _first;
+  sptr<Container> _last;
+  SpinLock _lock;
+};
+
+  

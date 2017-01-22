@@ -21,7 +21,6 @@
  */
 
 #include "keyboard.h"
-// RAPH_DEBUG
 #include <tty.h>
 #include <global.h>
 
@@ -48,6 +47,8 @@ void DevUsbKeyboard::InitSub() {
   }
   UsbCtrl::EndpointDescriptor *ed0 = GetEndpointDescriptorInCombinedDescriptors(0);
   assert(ed0->GetMaxPacketSize() == kMaxPacketSize);
+  for (int i = 0; i < kTdNum; i++) {
+    memset(_buffer[i].buf, i, kMaxPacketSize);
+  }
   SetupInterruptTransfer(kTdNum, reinterpret_cast<uint8_t *>(_buffer));
-
 }
