@@ -9,7 +9,7 @@ defalut:
 
 $(MODULE) : $(SRCS) Makefile
 #	g++ -nostdlib -fPIE -static -o $(MODULE) $(SRCS)
-	$(CC) -mcmodel=large -pie -fPIE -static -o $(MODULE) $(SRCS)
+	$(CC) -g0 -mcmodel=large -pie -fPIE -static -o $(MODULE) $(SRCS)
 
 clean:
 	-rm $(MODULE)

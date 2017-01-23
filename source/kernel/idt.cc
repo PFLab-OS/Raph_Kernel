@@ -23,6 +23,7 @@
 #include <idt.h>
 #include <mem/virtmem.h>
 #include <mem/physmem.h>
+#include <mem/paging.h>
 #include <apic.h>
 #include <mem/kstack.h>
 #include <gdt.h>
@@ -175,14 +176,29 @@ void Idt::SetExceptionCallback(CpuId cpuid, int vector, int_callback callback, v
   _callback[raw_cpu_id][vector].arg = arg;
 }
 
+#define PRINT_PAGING_ENTRY(s, v)  gtty->CprintfRaw("\n%s: 0x%llx P:%d R/W: %d U/S: %d", s, v, v&1!=0, v&2!=0, v&4!=0);
+
 void Idt::HandlePageFault(Regs *rs, void *arg) {
   if (gtty != nullptr) {
     uint64_t addr;
     asm volatile("movq %%cr2, %0;":"=r"(addr));
     int cpuid = cpu_ctrl->GetCpuId().GetRawId();
-    gtty->CprintfRaw("\nunexpected page fault occured at cpuid %d!\naddress: %llx rip: %llx rbp: %llx\n", cpuid, addr, rs->rip, rs->rbp);
-    gtty->CprintfRaw("\nrax: %llx rbx:%llx rcx:%llx rdx:%llx\n", rs->rax, rs->rbx, rs->rcx, rs->rdx);
-    gtty->CprintfRaw("\nrsi:%llx r13: %llx cs:%llx ecode:%llx\n", rs->rsi, rs->r13, rs->cs, rs->ecode);
+    const uint64_t ECodePBit = 0x01;	// 0: not present, 1: present
+    const uint64_t ECodeRWBit = 0x02;	// 0: read, 1: write
+    const uint64_t ECodeSUBit = 0x03;	// 0: from privileged mode, 1: from user mode
+    gtty->CprintfRaw("\nUnexpected page fault (INT 0x%x) occured at cpuid %d!", rs->n, cpuid);
+    gtty->CprintfRaw("\nwhile trying %s access on addr: 0x%llx (%spresent)",
+      rs->ecode & ECodeRWBit ? "write" : "read", addr, rs->ecode & ECodePBit ? "" : "not ");
+    gtty->CprintfRaw("\nfrom %s mode", (rs->ecode & ECodeSUBit) ? "user" : "kernel");
+    gtty->CprintfRaw("\nrip: %llx rbp: %llx", rs->rip, rs->rbp);
+    gtty->CprintfRaw("\nrax: %llx rbx:%llx rcx:%llx rdx:%llx", rs->rax, rs->rbx, rs->rcx, rs->rdx);
+    gtty->CprintfRaw("\nrsi:%llx r13: %llx cs:%llx ecode:%llx", rs->rsi, rs->r13, rs->cs, rs->ecode);
+    uint64_t pml4e, pdpte, pde, pte;
+    paging_ctrl->GetTranslationEntries(addr, &pml4e, &pdpte, &pde, &pte);
+    PRINT_PAGING_ENTRY("PML4E", pml4e);
+    PRINT_PAGING_ENTRY("PDPTE", pdpte);
+    PRINT_PAGING_ENTRY("PDE  ", pde);
+    PRINT_PAGING_ENTRY("PTE  ", pte);
   }
   while(true){
     asm volatile("cli;hlt");
