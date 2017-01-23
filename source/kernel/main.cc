@@ -38,11 +38,11 @@
 #include <mem/kstack.h>
 
 #include <dev/hpet.h>
-#include <dev/keyboard.h>
 #include <dev/pci.h>
 #include <dev/usb/usb.h>
 #include <dev/vga.h>
 #include <dev/pciid.h>
+#include <dev/8042.h>
 
 #include <dev/netdev.h>
 // #include <net/arp.h>
@@ -56,7 +56,6 @@ PhysmemCtrl *physmem_ctrl = nullptr;
 VirtmemCtrl *virtmem_ctrl = nullptr;
 Gdt *gdt = nullptr;
 Idt *idt = nullptr;
-Keyboard *keyboard = nullptr;
 Shell *shell = nullptr;
 PciCtrl *pci_ctrl = nullptr;
 NetDevCtrl *netdev_ctrl = nullptr;
@@ -74,7 +73,6 @@ PagingCtrl _paging_ctrl;
 TaskCtrl _task_ctrl;
 Hpet _htimer;
 Vga _vga;
-Keyboard _keyboard;
 Shell _shell;
 AcpicaPciCtrl _acpica_pci_ctrl;
 NetDevCtrl _netdev_ctrl;
@@ -371,8 +369,6 @@ extern "C" int main() {
 
   gtty = new (&_vga) Vga;
 
-  keyboard = new (&_keyboard) Keyboard;
-
   shell = new (&_shell) Shell;
 
   netdev_ctrl = new (&_netdev_ctrl) NetDevCtrl();
@@ -425,7 +421,7 @@ extern "C" int main() {
 
   freebsd_main();
 
-  InitDevices<PciCtrl, Device>();
+  InitDevices<PciCtrl, LegacyKeyboard, Device>();
 
   // 各コアは最低限の初期化ののち、TaskCtrlに制御が移さなければならない
   // 特定のコアで専用の処理をさせたい場合は、TaskCtrlに登録したジョブとして
@@ -436,15 +432,6 @@ extern "C" int main() {
   gtty->Init();
   
   // arp_table->Setup();
-
-  keyboard->Setup(make_uptr(new Function<void *>([](void *){
-          uint8_t data;
-          if(!keyboard->Read(data)){
-            return;
-          }
-          char c = Keyboard::Interpret(data);
-          shell->ReadCh(c);
-        }, nullptr)));
 
   if (cpu_ctrl->GetHowManyCpus() <= 16) {
     gtty->Cprintf("[cpu] info: #%d (apic id: %d) started.\n",
@@ -597,7 +584,13 @@ extern "C" void _checkpoint(const char *func, const int line) {
 
 extern "C" void abort() {
   if (gtty != nullptr) {
+    while(!__sync_bool_compare_and_swap(&error_output_flag, 0, 1)) {
+    }
     gtty->CprintfRaw("system stopped by unexpected error.\n");
+    size_t *rbp;
+    asm volatile("movq %%rbp, %0":"=r"(rbp));
+    show_backtrace(rbp);
+    __sync_bool_compare_and_swap(&error_output_flag, 1, 0);
   }
   while(true){
     asm volatile("cli;hlt");

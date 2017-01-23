@@ -27,8 +27,14 @@
 #include <mem/physmem.h>
 #include <mem/paging.h>
 
+#include "keyboard.h"
+
 UsbCtrl UsbCtrl::_ctrl;
 bool UsbCtrl::_is_initialized = false;
+
+DevUsb *DevUsbController::InitDevices(int addr) {
+  return _InitDevices<DevUsbKeyboard>(addr);
+}
 
 void UsbCtrl::Init() {
   new(&_ctrl) UsbCtrl;
@@ -75,10 +81,6 @@ void DevUsb::LoadDeviceDescriptor() {
 }
 
 void DevUsb::LoadCombinedDescriptors() {
-  // if (_device_desc.config_num != 1) {
-  //   kernel_panic("DevUsb", "Configuration num > 1 is not supported");
-  // }
-  
   UsbCtrl::ConfigurationDescriptor config_desc;
   while(true) {
     UsbCtrl::DeviceRequest *request = nullptr;
@@ -172,25 +174,20 @@ int DevUsb::GetDescriptorNumInCombinedDescriptors(UsbCtrl::DescriptorType type) 
   return num;
 }
 
-void DevUsb::SetupInterruptTransfer(int num_td, uint8_t *buffer) {
+void DevUsb::SetupInterruptTransfer(int num_td, uint8_t *buffer, uptr<GenericFunction<uptr<Array<uint8_t>>>> func) {
   UsbCtrl::EndpointDescriptor *ed0 = GetEndpointDescriptorInCombinedDescriptors(0);
   assert(ed0->GetDirection() == UsbCtrl::PacketIdentification::kIn);
   _interrupt_endpoint = new InterruptEndpoint(this, ed0);
 
-  _interrupt_endpoint->Setup(num_td, buffer);
+  _interrupt_endpoint->Setup(num_td, buffer, func);
 }
 
-void DevUsb::InterruptEndpoint::Setup(int num_td, uint8_t *buffer) {
+void DevUsb::InterruptEndpoint::Setup(int num_td, uint8_t *buffer, uptr<GenericFunction<uptr<Array<uint8_t>>>> func) {
   while(!_obj_reserved.IsFull()) {
     assert(_obj_reserved.Push(make_uptr(new Array<uint8_t>(_ed->GetMaxPacketSize()))));
   }
 
-  // p.Init(make_uptr(new ClassFunction<InterruptEndpoint, void *>(this, &InterruptEndpoint::Handler, nullptr)));
-  // p.Register();
-
-  _manager = _dev->_controller->SetupInterruptTransfer(_ed->GetEndpointNumber(), _dev->_addr, _ed->GetInterval(), _ed->GetDirection(), _ed->GetMaxPacketSize(), num_td, buffer);
+  _manager = _dev->_controller->SetupInterruptTransfer(_ed->GetEndpointNumber(), _dev->_addr, _ed->GetInterval(), _ed->GetDirection(), _ed->GetMaxPacketSize(), num_td, buffer, func);
 }
 
-void DevUsb::InterruptEndpoint::Handler(void *) {
-}
 

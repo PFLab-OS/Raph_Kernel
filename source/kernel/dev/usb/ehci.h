@@ -50,8 +50,8 @@ private:
     virtual bool SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) override {
       return _dev_ehci->SendControlTransfer(request, data, data_size, device_addr);
     }
-    virtual sptr<DevUsbController::Manager> SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer) override {
-      return _dev_ehci->SetupInterruptTransfer(endpt_address, device_addr, interval, direction, max_packetsize, num_td, buffer);
+    virtual sptr<DevUsbController::Manager> SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer, uptr<GenericFunction<uptr<Array<uint8_t>>>> func) override {
+      return _dev_ehci->SetupInterruptTransfer(endpt_address, device_addr, interval, direction, max_packetsize, num_td, buffer, func);
     }
   private:
     DevEhci *const _dev_ehci;
@@ -63,7 +63,7 @@ private:
     virtual phys_addr GetRepresentativeQueueHead() = 0;
     virtual bool SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) = 0;
     virtual phys_addr GetPeriodicFrameList() = 0;
-    virtual sptr<DevUsbController::Manager> SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer) = 0;
+    virtual sptr<DevUsbController::Manager> SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer, uptr<GenericFunction<uptr<Array<uint8_t>>>> func) = 0;
     virtual int GetPeriodicFrameListEntryNum() {
       return 1024;
     }
@@ -80,7 +80,7 @@ private:
       return v2p(ptr2virtaddr(_periodic_frame_list));
     }
     virtual bool SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) override;
-    virtual sptr<DevUsbController::Manager> SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer) override;
+    virtual sptr<DevUsbController::Manager> SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer, uptr<GenericFunction<uptr<Array<uint8_t>>>> func) override;
     virtual void CheckQueuedTdIfCompleted() override;
   private:
     class QueueHead;
@@ -114,7 +114,7 @@ private:
     public:
       void Init() {
         _alt_next_td = 1;
-        _func = make_uptr<GenericFunction>();
+        _func = make_uptr<GenericFunction<>>();
       }
       void SetNext(TransferDescriptor *next) {
         SetNextSub(v2p(ptr2virtaddr(next)), false);
@@ -164,7 +164,7 @@ private:
           _buffer_pointer[i] = 0;
         }
       }
-      void SetFunc(uptr<GenericFunction> func) {
+      void SetFunc(uptr<GenericFunction<>> func) {
         _func = func;
       }
     private:
@@ -187,10 +187,8 @@ private:
       }
       //  extra info for driver
       friend DevEhciSub32;
-      uptr<GenericFunction> _func;
+      uptr<GenericFunction<>> _func;
     } __attribute__((__packed__)) __attribute__ ((aligned (32)));
-    RingBuffer<TransferDescriptor *, 64> _td_buf;
-    List<TransferDescriptor *> _queueing_td_buf;
 
     class QueueHead {
     public:
@@ -290,15 +288,12 @@ private:
     } __attribute__((__packed__)) __attribute__ ((aligned (32)));
     class EhciManager : public DevUsbController::Manager {
     public:
-      EhciManager(int num_td) : _num_td(num_td), _td_array(new TransferDescriptor*[num_td]), _container_array(new TdContainer[num_td]) {
-        _head = 0;
-        _tail = 0;
+      EhciManager(int num_td, QueueHead *qh, uptr<GenericFunction<uptr<Array<uint8_t>>>> func, DevEhciSub32 *master) : _num_td(num_td), _td_array(new TransferDescriptor*[num_td]), _container_array(new TdContainer[num_td]), _interrupt_qh(qh), _func(func), _master(master) {
       }
       virtual ~EhciManager() {
         delete[] _td_array;
         delete[] _container_array;
       }
-      virtual void HandlePolling(void *) override;
       void CopyInfo(TransferDescriptor **td_array, TdContainer *container_array) {
         for (int i = 0; i < _num_td; i++) {
           _td_array[i] = td_array[i];
@@ -309,18 +304,21 @@ private:
         manager->HandleInterruptSub(index);
       }
       void HandleInterruptSub(int index);
-      PollingFunc _p;
-      QueueHead *_interrupt_qh = nullptr;
     private:
       EhciManager();
-      int _head;
-      int _tail;
       const int _num_td;
       TransferDescriptor **_td_array;
       TdContainer *_container_array;
+      QueueHead *_interrupt_qh;
+      uptr<GenericFunction<uptr<Array<uint8_t>>>> _func;
+      DevEhciSub32 * const _master;
     };
+    
     QueueHead *_qh0; // empty
     RingBuffer<QueueHead *, 63> _qh_buf;
+    RingBuffer<TransferDescriptor *, 64> _td_buf;
+    List<TransferDescriptor *> _queueing_td_buf;
+    
     void HandleCompletedStruct(QueueHead *qh , uptr<Array<TransferDescriptor *>> td_array);
   };
 
@@ -339,7 +337,7 @@ private:
       assert(false);
       return true;
     }
-    virtual sptr<DevUsbController::Manager> SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer) override {
+    virtual sptr<DevUsbController::Manager> SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer, uptr<GenericFunction<uptr<Array<uint8_t>>>> func) override {
       assert(false);
     }
     virtual void CheckQueuedTdIfCompleted() override {
@@ -413,8 +411,8 @@ private:
   bool SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) {
     return _sub->SendControlTransfer(request, data, data_size, device_addr);
   }
-  virtual sptr<DevUsbController::Manager> SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer) {
-    return _sub->SetupInterruptTransfer(endpt_address, device_addr, interval, direction, max_packetsize, num_td, buffer);
+  virtual sptr<DevUsbController::Manager> SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer, uptr<GenericFunction<uptr<Array<uint8_t>>>> func) {
+    return _sub->SetupInterruptTransfer(endpt_address, device_addr, interval, direction, max_packetsize, num_td, buffer, func);
   }
 
   void DisablePort(int port) {
@@ -438,8 +436,13 @@ private:
     that->HandlerSub();
   }
   void CheckQueuedTdIfCompleted(void *) {
-    _sub->CheckQueuedTdIfCompleted();
+    // tell controller to acknowledge interrupt
     _op_reg_base_addr[kOpRegOffsetUsbSts] &= ~kOpRegUsbStsFlagInterrupt;
+    asm volatile("":::"memory");
+    // enable new interrupt
+    _op_reg_base_addr[kOpRegOffsetUsbSts] |= kOpRegUsbStsFlagInterrupt;
+    _sub->CheckQueuedTdIfCompleted();
+    // TODO check not only TDs but also all interrupt sources before enable interrupt
   }
 };
 

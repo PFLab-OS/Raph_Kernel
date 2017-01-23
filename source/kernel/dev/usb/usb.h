@@ -214,6 +214,8 @@ private:
   RingBuffer<DeviceRequest *, 512> _dr_buf;
 };
 
+class DevUsb;
+
 class DevUsbController {
 public:
   class Manager {
@@ -222,10 +224,25 @@ public:
     }
     virtual ~Manager() {
     }
-    virtual void HandlePolling(void *) = 0;
   };
   virtual bool SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) = 0;
-  virtual sptr<Manager> SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer) = 0;
+  virtual sptr<Manager> SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer, uptr<GenericFunction<uptr<Array<uint8_t>>>> func) = 0;
+  DevUsb *InitDevices(int addr);
+private:
+  template<class T>
+  DevUsb *_InitDevices(int addr) {
+    return T::InitUsb(this, addr);
+  }
+
+  template<class T1, class T2, class... Rest>
+  DevUsb *_InitDevices(int addr) {
+    DevUsb *dev = T1::InitUsb(this, addr);
+    if (dev == nullptr) {
+      return _InitDevices<T2, Rest...>(addr);
+    } else {
+      return dev;
+    }
+  }
 };
 
 // !!! important !!!
@@ -255,7 +272,7 @@ protected:
     return reinterpret_cast<UsbCtrl::EndpointDescriptor *>(GetDescriptorInCombinedDescriptors(UsbCtrl::DescriptorType::kEndpoint, desc_index));
   }
   int GetDescriptorNumInCombinedDescriptors(UsbCtrl::DescriptorType type);
-  void SetupInterruptTransfer(int num_td, uint8_t *buffer);
+  void SetupInterruptTransfer(int num_td, uint8_t *buffer, uptr<GenericFunction<uptr<Array<uint8_t>>>> func);
   int GetAddr() {
     return _addr;
   }
@@ -278,8 +295,7 @@ protected:
     void ObjReuse(uptr<Array<uint8_t>> obj) {
       _obj_reserved.Push(obj);
     }
-    void Handler(void *);
-    void Setup(int num_td, uint8_t *buffer);
+    void Setup(int num_td, uint8_t *buffer, uptr<GenericFunction<uptr<Array<uint8_t>>>> func);
   private:
     RingBuffer<uptr<Array<uint8_t>>, 32> _obj_reserved;
     RingBuffer<uptr<Array<uint8_t>>, 32> _obj_buffered;

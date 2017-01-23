@@ -50,5 +50,56 @@ void DevUsbKeyboard::InitSub() {
   for (int i = 0; i < kTdNum; i++) {
     memset(_buffer[i].buf, i, kMaxPacketSize);
   }
-  SetupInterruptTransfer(kTdNum, reinterpret_cast<uint8_t *>(_buffer));
+  SetupInterruptTransfer(kTdNum, reinterpret_cast<uint8_t *>(_buffer), make_uptr(new ClassFunction<DevUsbKeyboard, void *, uptr<Array<uint8_t>>>(this, &DevUsbKeyboard::Handle, nullptr)));
+  
+  _dev.Setup();
 }
+
+void DevUsbKeyboard::Handle(void *, uptr<Array<uint8_t>> buf) {
+  gtty->CprintfRaw("%x %x %x %x %x %x %x %x\n", (*buf)[0], (*buf)[1], (*buf)[2], (*buf)[3], (*buf)[4], (*buf)[5], (*buf)[6], (*buf)[7]);
+
+  bool same = true;
+  for (int i = 2; i < 8; i++) {
+    if ((*buf)[i] != _prev_buf[i]) {
+      same = false;
+    }
+  }
+
+  for (int i = 2; i < 8; i++) {
+    int c = (*buf)[i];
+    if (c != 0) {
+      bool exist = false;
+      for (int j = j; j < 8; j++) {
+        if (c == _prev_buf[j]) {
+          exist = true;
+        }
+      }
+      if (same || !exist) {
+        _dev.Push(kScanCode[c]);
+      }
+    }
+  } 
+
+  for (int i = 0; i < 8; i++) {
+    _prev_buf[i] = (*buf)[i];
+  }
+}
+
+const char DevUsbKeyboard::kScanCode[256] = {
+    '!','!','!','!','a','b','c','d',
+    'e','f','g','h','i','j','k','l',
+    'm','n','o','p','q','r','s','t',
+    'u','v','w','x','y','z','1','2',
+    '3','4','5','6','7','8','9','0',
+    '\n','!','\b','\t',' ','-','=','[',
+    ']','\\','!',';','\'','!',',','.',
+    '/','!','!','!','!','!','!','!',
+    '!','!','!','!','!','!','!','!',
+    '!','!','!','!','!','!','!','!',
+    '!','!','!','!','!','!','!','!',
+    '!','!','!','!','!','!','!','!',
+    '!','!','!','!','!','!','!','!',
+    '!','!','!','!','!','!','!','!',
+    '!','!','!','!','!','!','!','!',
+    '!','!','!','!','!','!','!','!',
+};

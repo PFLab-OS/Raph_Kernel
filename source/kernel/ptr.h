@@ -48,12 +48,15 @@ public:
     _obj = obj;
   }
   uptr &operator=(const uptr &p) {
+    *this = const_cast<uptr &>(p);
+    return *this;
+  }
+  uptr &operator=(uptr &p) {
     delete _obj;
 
     if (p._obj != nullptr) {
       _obj = p._obj;
-      uptr *p_ = const_cast<uptr *>(&p);
-      p_->_obj = nullptr;
+      p._obj = nullptr;
     } else {
       _obj = nullptr;
     }
@@ -110,7 +113,8 @@ public:
   explicit uptr(Array *obj) {
     _obj = obj;
   }
-  uptr &operator=(const uptr &p) {
+  uptr &operator=(const uptr &p) = delete;
+  uptr &operator=(uptr &p) {
     delete [] _obj;
 
     if (p._obj != nullptr) {
@@ -238,6 +242,10 @@ public:
     _obj = nullptr;
   }
   sptr &operator=(const sptr &p) {
+    *this = const_cast<sptr &>(p);
+    return *this;
+  }
+  sptr &operator=(sptr &p) {
     release();
     
     if (p._obj == nullptr) {
@@ -267,6 +275,9 @@ public:
   }
   bool operator==(const sptr& rhs) const {
     return _obj == rhs._obj;
+  }
+  bool operator!=(const sptr& rhs) const {
+    return _obj != rhs._obj;
   }
   T *GetRawPtr() {
     if (_obj == nullptr) {
@@ -354,6 +365,10 @@ public:
     }
   }
   wptr &operator=(const wptr &p) {
+    *this = const_cast<wptr &>(p);
+    return *this;
+  }
+  wptr &operator=(wptr &p) {
     release();
     
     if (p._obj == nullptr) {
@@ -385,6 +400,9 @@ public:
   }
   bool operator==(const wptr& rhs) const {
     return _obj == rhs._obj;
+  }
+  bool operator!=(const wptr& rhs) const {
+    return _obj != rhs._obj;
   }
   T *GetRawPtr() {
     if (_obj == nullptr) {

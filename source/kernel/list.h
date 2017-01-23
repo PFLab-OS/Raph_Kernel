@@ -80,6 +80,8 @@ class List {
 public:
   class Container {
   public:
+    ~Container() {
+    }
     T &operator*() {
       return _obj;
     }
@@ -124,9 +126,7 @@ public:
         } else {
           trylock(_last->_lock) {
             Link(_last, c);
-            if (_last == _first) {
-              _last = c;
-            }
+            _last = c;
             return make_wptr(c);
           }
         }
@@ -134,43 +134,43 @@ public:
     }
   }
   wptr<Container> Remove(wptr<Container> c) {
+    auto c_ = make_sptr(c);
     while(true) {
       // TODO this lock is conservative. fix it!
       trylock(_lock) {
-        if (!c->_lock.Trylock()) {
+        if (!c_->_lock.Trylock()) {
           break;
         }
-        auto next = c->_next;
-        auto prev = c->_prev;
+        auto next = c_->_next;
+        auto prev = c_->_prev;
         if (!next.IsNull() && !next->_lock.Trylock()) {
           break;
         }
         if (!prev.IsNull() && !prev->_lock.Trylock()) {
           break;
         }
-        if (_first == make_sptr(c)) {
+        if (_first == c_) {
           if (next.IsNull()) {
-            assert(_last == make_sptr(c));
+            assert(_last == c_);
             _first = make_sptr<Container>();
             _last = make_sptr<Container>();
           } else {
-            _first = c->_next;
+            assert(_last != c_);
+            _first = c_->_next;
           }
         } else if (_last == make_sptr(c)) {
           assert(!prev.IsNull());
           _last = prev;
         }
-        RemoveSub(c);
+        RemoveSub(c_);
+        auto ptr = make_wptr(next);
         if (!next.IsNull()) {
           next->_lock.Unlock();
         }
         if (!prev.IsNull()) {
           prev->_lock.Unlock();
         }
-        auto ptr = make_wptr(next);
-        if (!c.IsObjReleased()) {
-          c->_lock.Unlock();
-        }
+        c_->_lock.Unlock();
         return ptr;
       }
     }
@@ -200,7 +200,7 @@ private:
       tmp->_prev = c2;
     }
   }
-  void RemoveSub(wptr<Container> c) {
+  void RemoveSub(sptr<Container> c) {
     auto next = c->_next;
     auto prev = c->_prev;
     c->_next = make_sptr<Container>();

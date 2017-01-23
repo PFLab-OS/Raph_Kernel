@@ -37,7 +37,7 @@ public:
     TaskThread() {
     }
     void Init();
-    void SetFunc(uptr<GenericFunction> func) {
+    void SetFunc(uptr<GenericFunction<>> func) {
       _func = func;
     }
     ~TaskThread() {
@@ -49,7 +49,7 @@ public:
     virt_addr _stack;
     jmp_buf _buf;
     jmp_buf _return_buf;
-    uptr<GenericFunction> _func;
+    uptr<GenericFunction<>> _func;
   };
   TaskWithStack() {
   }
@@ -58,7 +58,7 @@ public:
   void Init() {
     _tthread.Init();
   }
-  virtual void SetFunc(uptr<GenericFunction> func) override {
+  virtual void SetFunc(uptr<GenericFunction<>> func) override {
     _tthread.SetFunc(func);
   }
   virtual void Execute() override {

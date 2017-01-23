@@ -38,14 +38,14 @@ class Functional {
   }
   virtual ~Functional() {
   }
-  void SetFunction(CpuId cpuid, uptr<GenericFunction> func);
+  void SetFunction(CpuId cpuid, uptr<GenericFunction<>> func);
  protected:
   void WakeupFunction();
   // check whether Functional needs to process function
   virtual bool ShouldFunc() = 0;
 private:
   void Handle(void *);
-  uptr<GenericFunction> _func;
+  uptr<GenericFunction<>> _func;
   sptr<Task> _task;
   CpuId _cpuid;
   SpinLock _lock;
@@ -103,7 +103,7 @@ inline void Functional::Handle(void *) {
   }
 }
 
-inline void Functional::SetFunction(CpuId cpuid, uptr<GenericFunction> func) {
+inline void Functional::SetFunction(CpuId cpuid, uptr<GenericFunction<>> func) {
   _cpuid = cpuid;
   _func = func;
 }

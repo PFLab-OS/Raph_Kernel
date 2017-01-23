@@ -25,7 +25,6 @@
 #include <mem/virtmem.h>
 #include <mem/physmem.h>
 #include <dev/usb/usb.h>
-#include "keyboard.h"
 
 DevPci *DevEhci::InitPci(uint8_t bus, uint8_t device, uint8_t function) {
   DevEhci *dev = new DevEhci(bus, device, function);
@@ -147,8 +146,7 @@ void DevEhci::Init() {
       	}
       }
       int dev = i + 1;
-      // RAPH_DEBUG
-      DevUsbKeyboard::InitUsb(&_controller_dev, dev);
+      _controller_dev.InitDevices(dev);
     }
   }
 }
@@ -157,7 +155,6 @@ void DevEhci::HandlerSub() {
   if ((_op_reg_base_addr[kOpRegOffsetUsbSts] & kOpRegUsbStsFlagInterrupt) == 0) {
     return;
   }
-  _op_reg_base_addr[kOpRegOffsetUsbSts] |= kOpRegUsbStsFlagInterrupt;
 
   task_ctrl->Register(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), _int_task);
 }
@@ -284,7 +281,7 @@ bool DevEhci::DevEhciSub32::SendControlTransfer(UsbCtrl::DeviceRequest *request,
   return success;
 }
 
-sptr<DevUsbController::Manager> DevEhci::DevEhciSub32::SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer) {
+sptr<DevUsbController::Manager> DevEhci::DevEhciSub32::SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer, uptr<GenericFunction<uptr<Array<uint8_t>>>> func) {
   if (interval <= 0) {
     kernel_panic("Ehci", "unknown interval");
   }
@@ -342,7 +339,7 @@ sptr<DevUsbController::Manager> DevEhci::DevEhciSub32::SetupInterruptTransfer(ui
 
   assert(direction != UsbCtrl::PacketIdentification::kSetup);
 
-  auto manager = make_sptr(new DevEhciSub32::EhciManager(num_td));
+  auto manager = make_sptr(new DevEhciSub32::EhciManager(num_td, qh, func, this));
 
   for (int i = 0; i < num_td; i++) {
     td[i]->Init();
@@ -371,10 +368,7 @@ sptr<DevUsbController::Manager> DevEhci::DevEhciSub32::SetupInterruptTransfer(ui
     }
   }
 
-  manager->_interrupt_qh = qh;
   manager->CopyInfo(td, container_array);
-  // manager->_p.Init(make_uptr(new ClassFunction<EhciManager, void *>(manager.GetRawPtr(), &EhciManager::HandlePolling, nullptr)));
-  // manager->_p.Register();
 
   return manager;
 }
@@ -385,15 +379,17 @@ void DevEhci::DevEhciSub32::HandleCompletedStruct(QueueHead *qh , uptr<Array<Tra
   }
   for (size_t i = 0; i < td_array->GetLen(); i++) {
     if ((*td_array)[i] != nullptr) {
-      (*td_array)[i]->_func = make_uptr<GenericFunction>();
+      (*td_array)[i]->_func = make_uptr<GenericFunction<>>();
       assert(_td_buf.Push((*td_array)[i]));
     }
   }
 }
- 
+
 void DevEhci::DevEhciSub32::CheckQueuedTdIfCompleted() {
   auto iter = _queueing_td_buf.GetBegin();
+  int i = 0;
   while (!iter.IsNull()) {
+    i++;
     TransferDescriptor *t = *(*iter);
     if (!t->IsActiveOfStatus()) {
       t->_func->Execute();
@@ -405,52 +401,23 @@ void DevEhci::DevEhciSub32::CheckQueuedTdIfCompleted() {
 }
 
 void DevEhci::DevEhciSub32::EhciManager::HandleInterruptSub(int index) {
-  // RAPH_DEBUG
   size_t len = _container_array[index].total_bytes;
   auto buf = make_uptr(new Array<uint8_t>(len));
   memcpy(buf.GetRawPtr()->GetRawPtr(), _container_array[index].buf, len);
-  gtty->CprintfRaw("%d %x %x %x %x %x %x %x %x\n", index, _container_array[index].buf[0], _container_array[index].buf[1], _container_array[index].buf[2], _container_array[index].buf[3], _container_array[index].buf[4], _container_array[index].buf[5], _container_array[index].buf[6], _container_array[index].buf[7]);
+
+  _func->Execute(buf);
     
   _td_array[index]->SetTokenAndBuffer(_container_array[index]);
+  if (index == _num_td - 1) {
+    _td_array[index]->SetNext();
+  } else {
+    _td_array[index]->SetNext(_td_array[index + 1]);
+  }
 
   if (_interrupt_qh->IsNextTdNull()) {
+    for (int i = 0; i < _num_td; i++) {
+      _master->_queueing_td_buf.PushBack(_td_array[i]);
+    }
     _interrupt_qh->SetNextTd(_td_array[0]);
   }
-}
-
-void DevEhci::DevEhciSub32::EhciManager::HandlePolling(void *) {
-  // scan already buffered (from device) entry
-  while(!_td_array[_tail]->IsActiveOfStatus()) {
-    _tail++;
-    if (_tail == _num_td) {
-      _tail = 0;
-    }
-    if (_head == _tail) {
-      break;
-    }
-  }
-  while(_head != _tail) {
-    if (_td_array[_head]->GetStatus() != 0) {
-      _head++;
-      if (_head == _num_td) {
-        _head = 0;
-      }
-      continue;
-    }
-
-    // RAPH_DEBUG
-    gtty->CprintfRaw("%d %x %x %x %x %x %x %x %x\n", _head, _container_array[_head].buf[0], _container_array[_head].buf[1], _container_array[_head].buf[2], _container_array[_head].buf[3], _container_array[_head].buf[4], _container_array[_head].buf[5], _container_array[_head].buf[6], _container_array[_head].buf[7]);
-    
-    _td_array[_head]->SetTokenAndBuffer(_container_array[_head]);
-
-    if (_interrupt_qh->IsNextTdNull()) {
-      _interrupt_qh->SetNextTd(_td_array[0]);
-    }
-    
-    _head++;
-    if (_head == _num_td) {
-      _head = 0;
-    }
-  }
-  
 }

@@ -22,7 +22,9 @@
 
 #pragma once
 
+#include <ptr.h>
 #include <dev/usb/usb.h>
+#include <dev/keyboard.h>
 
 class DevUsbKeyboard : public DevUsb {
 public:
@@ -33,11 +35,20 @@ public:
   static DevUsb *InitUsb(DevUsbController *controller, int addr);
   virtual void InitSub() override;
 private:
-  DevUsbKeyboard();
+  class KeyboardSub : public Keyboard {
+  public:
+    void Push(char c) {
+      _buf.Push(c);
+    }
+  } _dev;
   static const int kTdNum = 32; // TODO is this ok?
   static const int kMaxPacketSize = 8;
+  static const char kScanCode[256];
+  char _prev_buf[8];
   struct Buffer {
     uint8_t buf[kMaxPacketSize];
   };
   Buffer _buffer[kTdNum];
+  DevUsbKeyboard() = delete;
+  void Handle(void *, uptr<Array<uint8_t>>);
 };
