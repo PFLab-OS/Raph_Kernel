@@ -121,7 +121,6 @@ void DevEhci::Init() {
   }
 
   for (int i = 0; i < n_ports; i++) {
-    gtty->CprintfRaw("(%x)", _op_reg_base_addr[kOpRegOffsetPortScBase + i]);//RAPH_DEBUG
     if ((_op_reg_base_addr[kOpRegOffsetPortScBase + i] & kOpRegPortScFlagCurrentConnectStatus) != 0) {
       ResetPort(i);
       while(true) {
