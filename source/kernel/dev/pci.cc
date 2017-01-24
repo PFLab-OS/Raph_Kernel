@@ -27,6 +27,8 @@
 #include <cpu.h>
 #include "pci.h"
 
+#include <dev/usb/uhci.h>
+#include <dev/usb/ehci.h>
 #include <dev/nic/intel/ix/ix.h>
 #include <dev/nic/intel/em/em.h>
 #include <dev/nic/intel/em/lem.h>
@@ -52,13 +54,13 @@ void PciCtrl::_Init() {
     _base_addr = p2v(_mcfg->list[i].ecam_base);
     for (int j = _mcfg->list[i].pci_bus_start; j <= _mcfg->list[i].pci_bus_end; j++) {
       for (int k = 0; k < 32; k++) {
-        uint16_t vid = ReadReg<uint16_t>(j, k, 0, kVendorIDReg);
-        if (vid == 0xffff) {
-          continue;
-        }
 
         int maxf = ((ReadReg<uint16_t>(j, k, 0, kHeaderTypeReg) & kHeaderTypeRegFlagMultiFunction) != 0) ? 7 : 0;
         for (int l = 0; l <= maxf; l++) {
+          uint16_t vid = ReadReg<uint16_t>(j, k, l, kVendorIDReg);
+          if (vid == 0xffff) {
+            continue;
+          }
           InitPciDevices(j, k, l);
         }
       }
@@ -67,7 +69,7 @@ void PciCtrl::_Init() {
 }
 
 DevPci *PciCtrl::InitPciDevices(uint8_t bus, uint8_t device, uint8_t func) {
-  return _InitPciDevices<IxGbe, E1000, lE1000, /*AhciCtrl,*/ DevPci>(bus, device, func);
+  return _InitPciDevices<IxGbe, E1000, lE1000, DevUhci, DevEhci, /*AhciCtrl,*/ DevPci>(bus, device, func);
 }
 
 uint16_t PciCtrl::FindCapability(uint8_t bus, uint8_t device, uint8_t func, CapabilityId id) {

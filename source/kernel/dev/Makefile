@@ -1,8 +1,8 @@
-OBJS = pci.o nic.o netdev.o disk.o fs.o keyboard.o pciid.o pciid_table.o
+OBJS = pci.o usb.o nic.o netdev.o disk.o fs.o 8042.o keyboard.o pciid.o pciid_table.o
 
 DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))
 
-.PHONY: clean nic.o disk.o fs.o
+.PHONY: clean usb.o nic.o disk.o fs.o
 
 default: ../dev.o
 
@@ -20,6 +20,9 @@ pciid_table.cc: pci.ids.formatted pciid.py
 pci.ids.formatted : pci.ids
 	sed 's/\("\|\?\|\\\)/\\\1/g' pci.ids > pci.ids.formatted
 
+usb.o:
+	$(MAKE) -C usb CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
+
 nic.o:
 	@$(MAKE) -C nic CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
 
@@ -33,5 +36,6 @@ clean:
 	$(MAKE) -C nic clean
 	$(MAKE) -C disk clean
 	$(MAKE) -C fs clean
+	$(MAKE) -C usb clean
 	-rm -f $(OBJS) $(TEST_OBJS) $(DEPS) *.s *.ii
 	-rm -f pciid_table.cc pci.ids.formatted

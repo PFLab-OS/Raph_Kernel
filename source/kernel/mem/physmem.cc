@@ -75,7 +75,7 @@ void PhysmemCtrl::Init() {
   _is_initialized = true;
 }
 
-void PhysmemCtrl::Alloc(PhysAddr &paddr, size_t size) {
+void PhysmemCtrl::AllocSub(PhysAddr &paddr, size_t size, PhysmemCtrl::AllocOption &option) {
   kassert(_is_initialized);
   kassert(size > 0);
   kassert(size % PagingCtrl::kPageSize == 0);

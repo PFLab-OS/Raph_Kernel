@@ -180,7 +180,7 @@ public:
    * @param cpuid specify a core executing the callback.
    * @param func callback function.
    */
-  void SetReceiveCallback(CpuId cpuid, uptr<GenericFunction> func) {
+  void SetReceiveCallback(CpuId cpuid, uptr<GenericFunction<>> func) {
     _rx_buffered.SetFunction(cpuid, func);
   }
 

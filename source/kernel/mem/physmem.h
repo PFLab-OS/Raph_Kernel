@@ -100,6 +100,15 @@ class PhysmemCtrl {
   void Init();
   // Allocate,Free,Reserveでは、ページサイズに拡張したsizeを渡す事
   void Alloc(PhysAddr &paddr, size_t size);
+  // TODO support these functions
+  // void Alloc(PhysAddr &paddr, size_t size, size_t align) {
+  //   AllocOption option = {{align}, nullptr};
+  //   AllocSub(paddr, size, option);
+  // }
+  // void Alloc(PhysAddr &paddr, size_t size, phys_addr start, phys_addr end) {
+  //   AllocOption option = {nullptr, {start, end}};
+  //   AllocSub(paddr, size, option);
+  // }
   void Free(PhysAddr &paddr, size_t size);
   // addrはページサイズにアラインされている事
   void Reserve(phys_addr addr, size_t size) {
@@ -115,6 +124,16 @@ class PhysmemCtrl {
   static const virt_addr kLinearMapOffset = 0xffff800000000000;
   void Show(); // for debug
  private:
+  struct AllocOption {
+    struct Align {
+      size_t val;
+    } *align;
+    struct Region {
+      phys_addr start;
+      phys_addr end;
+    } *region;
+  };
+  void AllocSub(PhysAddr &paddr, size_t size, AllocOption &option);
   struct AllocatedArea {
     phys_addr start_addr;
     phys_addr end_addr;
@@ -128,6 +147,11 @@ class PhysmemCtrl {
   bool _is_initialized = false;
   Srat *_srat = nullptr;
 };
+
+inline void PhysmemCtrl::Alloc(PhysAddr &paddr, size_t size) {
+  AllocOption option = {nullptr, nullptr};
+  AllocSub(paddr, size, option);
+}
 
 template <typename ptr> static inline phys_addr ptr2physaddr(ptr *addr) {
   return reinterpret_cast<phys_addr>(addr);

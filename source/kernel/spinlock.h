@@ -85,23 +85,28 @@ class Locker {
 // trylockマクロからのみ呼び出す事
 class TryLocker {
 public:
-  TryLocker(SpinLockInterface &lock) : _lock(lock) {
-    _lock.Lock();
+  TryLocker(SpinLockInterface &lock) : _flag(lock.Trylock()), _lock(lock) {
   }
   ~TryLocker() {
-    _lock.Unlock();
+    if (_flag) {
+      _lock.Unlock();
+    }
   }
   bool Do() {
-    bool flag = _flag;
-    _flag = true;
-    return flag;
+    return _flag;
+  }
+  void Unlock() {
+    _lock.Unlock();
+    _flag = false; 
   }
 private:
-  bool _flag = false;
+  bool _flag;
   SpinLockInterface &_lock;
 };
 
-#define trylock(lock) for (TryLocker locker(lock); locker.Do();)
+#define trylock__(lock, l) for (TryLocker locker##l(lock); locker##l.Do(); locker##l.Unlock())
+#define trylock_(lock, l) trylock__(lock, l)
+#define trylock(lock) trylock_(lock, __LINE__)
 
 
 #endif // __RAPH_KERNEL_SPINLOCK_H__

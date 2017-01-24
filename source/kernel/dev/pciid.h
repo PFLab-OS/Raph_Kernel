@@ -1,3 +1,7 @@
+#include <stdint.h>
+
+#pragma once
+
 namespace PciData {
   class Base {
   public:
@@ -55,7 +59,7 @@ namespace PciData {
   public:
     Table() = default;
     ~Table();
-    void Search(int, int, int, int);
+    void Search(uint8_t bus, uint8_t device, uint8_t function, const char *search);
     void Init();
   private:
     Vendor *vendor;

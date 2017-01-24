@@ -25,12 +25,18 @@
   
 #include <stddef.h>
 #include <raph.h>
-#include <mem/virtmem.h>
 #include <global.h>
 #include <spinlock.h>
 #include <task.h>
 #include <functional.h>
 
+// The characteristic of RingBuffer is it doesn't allocate memory dynamically.
+//
+// T should be primitive data type(int or pointer).
+// If you want to contain struct (or class) in RingBuffer,
+// you should allocate struct array to different place and
+// manage this array by RingBuffer. In this case, T must be
+// a pointer to the struct.
 template<class T, int S>
 class RingBuffer {
  public:
@@ -43,7 +49,7 @@ class RingBuffer {
   // 満杯の時は何もせず、falseを返す
   bool Push(T data) {
     Locker locker(_lock);
-    int ntail = (_tail + 1) % S;
+    int ntail = (_tail + 1) % (S + 1);
     if (ntail != _head) {
       _buffer[_tail] = data;
       _tail = ntail;
@@ -57,7 +63,7 @@ class RingBuffer {
     Locker locker(_lock);
     if (_head != _tail) {
       data = _buffer[_head];
-      _head = (_head + 1) % S;
+      _head = (_head + 1) % (S + 1);
       return true;
     } else {
       return false;
@@ -65,15 +71,18 @@ class RingBuffer {
   }
   bool IsFull() {
     Locker locker(_lock);
-    int ntail = (_tail + 1) % S;
+    int ntail = (_tail + 1) % (S + 1);
     return (ntail == _head);
   }
   bool IsEmpty() {
     Locker locker(_lock);
     return (_tail == _head);
   }
+  constexpr static int GetBufSize() {
+    return S;
+  }
  private:
-  T _buffer[S];
+  T _buffer[S + 1];
   int _head;
   int _tail;
   SpinLock _lock;

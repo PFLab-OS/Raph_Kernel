@@ -38,10 +38,11 @@
 #include <mem/kstack.h>
 
 #include <dev/hpet.h>
-#include <dev/keyboard.h>
 #include <dev/pci.h>
+#include <dev/usb/usb.h>
 #include <dev/vga.h>
 #include <dev/pciid.h>
+#include <dev/8042.h>
 
 #include <dev/netdev.h>
 // #include <net/arp.h>
@@ -55,7 +56,6 @@ PhysmemCtrl *physmem_ctrl = nullptr;
 VirtmemCtrl *virtmem_ctrl = nullptr;
 Gdt *gdt = nullptr;
 Idt *idt = nullptr;
-Keyboard *keyboard = nullptr;
 Shell *shell = nullptr;
 PciCtrl *pci_ctrl = nullptr;
 NetDevCtrl *netdev_ctrl = nullptr;
@@ -73,7 +73,6 @@ PagingCtrl _paging_ctrl;
 TaskCtrl _task_ctrl;
 Hpet _htimer;
 Vga _vga;
-Keyboard _keyboard;
 Shell _shell;
 AcpicaPciCtrl _acpica_pci_ctrl;
 NetDevCtrl _netdev_ctrl;
@@ -105,15 +104,19 @@ void reset(int argc, const char* argv[]) {
   acpi_ctrl->Reset();
 }
 
-void cpuinfo(int argc, const char* argv[]) {
-  gtty->CprintfRaw("cpu num: %d\n", cpu_ctrl->GetHowManyCpus());
-}
-
 void lspci(int argc, const char* argv[]) {
   MCFG *mcfg = acpi_ctrl->GetMCFG();
   if (mcfg == nullptr) {
     gtty->Cprintf("[Pci] error: could not find MCFG table.\n");
     return;
+  }
+
+  const char *search = nullptr;
+  if (argc > 2) {
+    gtty->Cprintf("[lspci] error: invalid argument\n");
+    return;
+  } else if (argc == 2) {
+    search = argv[1];
   }
 
   PciData::Table table;
@@ -126,14 +129,13 @@ void lspci(int argc, const char* argv[]) {
     }
     for (int j = mcfg->list[i].pci_bus_start; j <= mcfg->list[i].pci_bus_end; j++) {
       for (int k = 0; k < 32; k++) {
-        uint16_t vid = pci_ctrl->ReadReg<uint16_t>(j, k, 0, PciCtrl::kVendorIDReg);
-        if (vid == 0xffff) {
-          continue;
+        int maxf = ((pci_ctrl->ReadReg<uint16_t>(j, k, 0, PciCtrl::kHeaderTypeReg) & PciCtrl::kHeaderTypeRegFlagMultiFunction) != 0) ? 7 : 0;
+        for (int l = 0; l <= maxf; l++) {
+          if (pci_ctrl->ReadReg<uint16_t>(j, k, l, PciCtrl::kVendorIDReg) == 0xffff) {
+            continue;
+          }
+          table.Search(j, k, l, search);
         }
-        uint16_t did = pci_ctrl->ReadReg<uint16_t>(j, k, 0, PciCtrl::kDeviceIDReg);
-        uint16_t svid = pci_ctrl->ReadReg<uint16_t>(j, k, 0, PciCtrl::kSubsystemVendorIdReg);
-        uint16_t ssid = pci_ctrl->ReadReg<uint16_t>(j, k, 0, PciCtrl::kSubsystemIdReg);
-        table.Search(vid, did, svid, ssid);
       }
     }
   }
@@ -542,10 +544,57 @@ static void show(int argc, const char *argv[]) {
       return;
     }
     multiboot_ctrl->ShowModuleInfo();
+  } else if (strcmp(argv[1], "info") == 0) {
+    gtty->Cprintf("[kernel] info: Hardware Information\n");
+    gtty->Cprintf("available cpu thread num: %d\n", cpu_ctrl->GetHowManyCpus());
+    gtty->Cprintf("\n");
+    gtty->Cprintf("[kernel] info: Build Information\n");
+    multiboot_ctrl->ShowBuildTimeStamp();
   } else {
     gtty->Cprintf("invalid argument.\n");
     return;
   }
+}
+
+struct LoadContainer {
+  LoadContainer() = delete;
+  LoadContainer(uptr<Array<uint8_t>> data_) : data(data_) {
+  }
+  uptr<Array<uint8_t>> data;
+  int i = 0;
+};
+
+static void load_script(sptr<LoadContainer> container_) {
+  auto callout_ = make_sptr(new Callout);
+  callout_->Init(make_uptr(new Function2<wptr<Callout>, sptr<LoadContainer>>([](wptr<Callout> callout, sptr<LoadContainer> container){
+          size_t i = container->i;
+          while(container->i < container->data->GetLen()) {
+            if ((*container->data)[container->i] == '\n') {
+              (*container->data)[container->i] = '\0';
+              auto ec = make_uptr(new Shell::ExecContainer(shell));
+              ec = shell->Tokenize(ec, reinterpret_cast<char *>(container->data->GetRawPtr()) + i);
+              container->i++;
+              if (strcmp(ec->argv[0], "wait") != 0) {
+                shell->Execute(ec);
+              } else {
+                if (ec->argc == 2) {
+                  int t = 0;
+                  for(size_t l = 0; l < strlen(ec->argv[1]); l++) {
+                    t = t * 10 + ec->argv[1][l] - '0';
+                  }
+                  task_ctrl->RegisterCallout(make_sptr(callout), t * 1000 * 1000);
+                  return;
+                } else {
+                  gtty->Cprintf("invalid argument.\n");
+                }
+              }
+              task_ctrl->RegisterCallout(make_sptr(callout), 10);
+              return;
+            }
+            container->i++;
+          }
+        }, make_wptr(callout_), container_)));
+  task_ctrl->RegisterCallout(callout_, 10);
 }
 
 static void load(int argc, const char *argv[]) {
@@ -554,43 +603,7 @@ static void load(int argc, const char *argv[]) {
     return;
   }
   if (strcmp(argv[1], "script.sh") == 0) {
-    auto callout_ = make_sptr(new Callout);
-    struct Container {
-      uptr<Array<uint8_t>> data;
-      int i;
-    };
-    auto container_ = make_sptr(new Container);
-    container_->i = 0;
-    container_->data = multiboot_ctrl->LoadFile(argv[1]);
-    callout_->Init(make_uptr(new Function2<wptr<Callout>, sptr<Container>>([](wptr<Callout> callout, sptr<Container> container){
-            size_t i = container->i;
-            while(container->i < container->data->GetLen()) {
-              if ((*container->data)[container->i] == '\n') {
-                (*container->data)[container->i] = '\0';
-                auto ec = make_uptr(new Shell::ExecContainer(shell));
-                ec = shell->Tokenize(ec, reinterpret_cast<char *>(container->data->GetRawPtr()) + i);
-                container->i++;
-                if (strcmp(ec->argv[0], "wait") != 0) {
-                  shell->Execute(ec);
-                } else {
-                  if (ec->argc == 2) {
-                    int t = 0;
-                    for(size_t l = 0; l < strlen(ec->argv[1]); l++) {
-                      t = t * 10 + ec->argv[1][l] - '0';
-                    }
-                    task_ctrl->RegisterCallout(make_sptr(callout), t * 1000 * 1000);
-                    return;
-                  } else {
-                    gtty->Cprintf("invalid argument.\n");
-                  }
-                }
-                task_ctrl->RegisterCallout(make_sptr(callout), 10);
-                return;
-              }
-              container->i++;
-            }
-          }, make_wptr(callout_), container_)));
-    task_ctrl->RegisterCallout(callout_, 10);
+    load_script(make_sptr(new LoadContainer(multiboot_ctrl->LoadFile(argv[1]))));
   } else {
     gtty->Cprintf("invalid argument.\n");
     return;
@@ -624,8 +637,6 @@ extern "C" int main() {
   timer = new (&_htimer) Hpet;
 
   gtty = new (&_vga) Vga;
-
-  keyboard = new (&_keyboard) Keyboard;
 
   shell = new (&_shell) Shell;
 
@@ -670,14 +681,16 @@ extern "C" int main() {
   gdt->SetupProc();
 
   idt->SetupProc();
-
+  
   pci_ctrl = new (&_acpica_pci_ctrl) AcpicaPciCtrl;
 
   acpi_ctrl->SetupAcpica();
 
+  UsbCtrl::Init();
+
   freebsd_main();
 
-  InitDevices<PciCtrl, Device>();
+  InitDevices<PciCtrl, LegacyKeyboard, Device>();
 
   // 各コアは最低限の初期化ののち、TaskCtrlに制御が移さなければならない
   // 特定のコアで専用の処理をさせたい場合は、TaskCtrlに登録したジョブとして
@@ -689,25 +702,9 @@ extern "C" int main() {
   
   // arp_table->Setup();
 
-  keyboard->Setup(make_uptr(new Function<void *>([](void *){
-          uint8_t data;
-          if(!keyboard->Read(data)){
-            return;
-          }
-          char c = Keyboard::Interpret(data);
-          shell->ReadCh(c);
-        }, nullptr)));
-
-  if (cpu_ctrl->GetHowManyCpus() <= 16) {
-    gtty->Cprintf("[cpu] info: #%d (apic id: %d) started.\n",
-                  cpu_ctrl->GetCpuId(),
-                  cpu_ctrl->GetCpuId().GetApicId());
-  }
-
   while (!apic_ctrl->IsBootupAll()) {
   }
   gtty->Cprintf("\n\n[kernel] info: initialization completed\n");
-  multiboot_ctrl->ShowBuildTimeStamp();
 
   auto arp_table = new ArpTable;
   
@@ -716,7 +713,6 @@ extern "C" int main() {
   shell->Register("reset", reset);
   shell->Register("bench", bench);
   shell->Register("lspci", lspci);
-  shell->Register("cpuinfo", cpuinfo);
   shell->Register("ifconfig", ifconfig);
   shell->Register("show", show);
   shell->Register("load", load);
@@ -749,7 +745,9 @@ extern "C" int main() {
   } else {
     register_membench2_callout();
   }
-  
+
+  load_script(make_sptr(new LoadContainer(multiboot_ctrl->LoadFile("init.sh"))));
+
   task_ctrl->Run();
 
   return 0;
@@ -763,16 +761,10 @@ extern "C" int main_of_others() {
   gdt->SetupProc();
   idt->SetupProc();
 
-  if (cpu_ctrl->GetHowManyCpus() <= 16) {
-    gtty->Cprintf("[cpu] info: #%d (apic id: %d) started.\n",
-                  cpu_ctrl->GetCpuId(),
-                  cpu_ctrl->GetCpuId().GetApicId());
-  }
- 
-// ループ性能測定用
-//#define LOOP_BENCHMARK
+  // ループ性能測定用
+  //#define LOOP_BENCHMARK
 #ifdef LOOP_BENCHMARK
-  #define LOOP_BENCHMARK_CPU  4
+#define LOOP_BENCHMARK_CPU  4
   PollingFunc p;
   if (cpu_ctrl->GetCpuId().GetRawId() == LOOP_BENCHMARK_CPU) {
     static int hoge = 0;
@@ -788,7 +780,7 @@ extern "C" int main_of_others() {
 // ワンショット性能測定用
 // #define ONE_SHOT_BENCHMARK
 #ifdef ONE_SHOT_BENCHMARK
-  #define ONE_SHOT_BENCHMARK_CPU  5
+#define ONE_SHOT_BENCHMARK_CPU  5
   if (cpu_ctrl->GetCpuId().GetRawId() == ONE_SHOT_BENCHMARK_CPU) {
     auto callout_ = make_sptr(new Callout);
     callout_->Init(make_uptr(new Function<wptr<Callout>>([](wptr<Callout> callout){
@@ -852,7 +844,13 @@ extern "C" void _checkpoint(const char *func, const int line) {
 
 extern "C" void abort() {
   if (gtty != nullptr) {
+    while(!__sync_bool_compare_and_swap(&error_output_flag, 0, 1)) {
+    }
     gtty->CprintfRaw("system stopped by unexpected error.\n");
+    size_t *rbp;
+    asm volatile("movq %%rbp, %0":"=r"(rbp));
+    show_backtrace(rbp);
+    __sync_bool_compare_and_swap(&error_output_flag, 1, 0);
   }
   while(true){
     asm volatile("cli;hlt");
@@ -864,7 +862,7 @@ extern "C" void _kassert(const char *file, int line, const char *func) {
     while(!__sync_bool_compare_and_swap(&error_output_flag, 0, 1)) {
     }
     gtty->CprintfRaw("assertion failed at %s l.%d (%s) cpuid: %d\n",
-      file, line, func, cpu_ctrl->GetCpuId().GetRawId());
+                     file, line, func, cpu_ctrl->GetCpuId().GetRawId());
     size_t *rbp;
     asm volatile("movq %%rbp, %0":"=r"(rbp));
     show_backtrace(rbp);

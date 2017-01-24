@@ -377,7 +377,7 @@ void Callout::HandleSub2(sptr<Callout> callout) {
   if (timer->IsTimePassed(_time)) {
     _pending = false;
     _state = CalloutState::kHandling;
-    _task->SetFunc(make_uptr<GenericFunction>());
+    _task->SetFunc(make_uptr<GenericFunction<>>());
     _func->Execute();
     if (_state == CalloutState::kHandling) {
       _state = CalloutState::kStopped;
