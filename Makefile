@@ -46,6 +46,7 @@ _qemuend:
 _bin:
 	-mkdir $(BUILD_DIR)
 	cp script $(BUILD_DIR)/script
+	cp init $(BUILD_DIR)/init
 	$(MAKE) -C source
 
 _image:

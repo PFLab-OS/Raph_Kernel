@@ -31,23 +31,11 @@
 
 class DevUhci final : public DevPci {
 public:
-  DevUhci(uint8_t bus, uint8_t device, uint8_t function) : DevPci(bus, device, function), _controller_dev(this) {
+  DevUhci(uint8_t bus, uint8_t device, uint8_t function) : DevPci(bus, device, function) {
   }
   static DevPci *InitPci(uint8_t bus, uint8_t device, uint8_t function);
   void Init();
 private:
-  class DevUhciUsbController : public DevUsbController {
-  public:
-    DevUhciUsbController(DevUhci *dev_uhci) : _dev_uhci(dev_uhci) {
-    }
-    virtual ~DevUhciUsbController() {
-    }
-    virtual bool SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) override {
-      return _dev_uhci->SendControlTransfer(request, data, data_size, device_addr);
-    }
-  private:
-    DevUhci *const _dev_uhci;
-  } _controller_dev;
 
   class QueueHead;
   

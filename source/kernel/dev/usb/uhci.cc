@@ -81,39 +81,15 @@ void DevUhci::Init() {
   if (frame_base_addr.GetAddr() > 0xFFFFFFFF) {
     kernel_panic("DevUhci", "cannot allocate 32bit phys memory");
   }
-
-
-  // debug
-  TransferDescriptor *td0;
-  assert(_td_buf.Pop(td0));
-  QueueHead *qh0;
-  assert(_qh_buf.Pop(qh0));
-
-  td0->SetNext(false);
-  td0->SetStatus(false, false, false, false);
-  td0->SetToken(TransferDescriptor::PacketIdentification::kIn, 127, 0, false, 0);
-  td0->SetBuffer();
-
-  qh0->SetHorizontalNext();
-  qh0->SetVerticalNext(td0);
-
-
-  for (int i = 0; i < 1024; i++) {
-    _frlist->entries[i].Set(qh0);
-  }
   
   uint32_t frame_base_phys_addr = frame_base_addr.GetAddr();
   WriteControllerReg<uint32_t>(kCtrlRegFlBaseAddr, frame_base_phys_addr);
   WriteControllerReg<uint16_t>(kCtrlRegFrNum, 0);
 
-  WriteControllerReg<uint16_t>(kCtrlRegCmd, ReadControllerReg<uint16_t>(kCtrlRegCmd) | 1);
+  // WriteControllerReg<uint16_t>(kCtrlRegCmd, ReadControllerReg<uint16_t>(kCtrlRegCmd) | 1);
 
-  while((ReadControllerReg<uint16_t>(kCtrlRegStatus) & kCtrlRegStatusFlagHalted) != 0) {
-  }
-
-  for (int dev = 0; dev < 128; dev++) {
-    DevUsbKeyboard::InitUsb(&_controller_dev, dev);
-  }
+  // while((ReadControllerReg<uint16_t>(kCtrlRegStatus) & kCtrlRegStatusFlagHalted) != 0) {
+  // }
 }
 
 bool DevUhci::SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) {

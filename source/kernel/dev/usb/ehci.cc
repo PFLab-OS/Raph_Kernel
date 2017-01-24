@@ -121,6 +121,7 @@ void DevEhci::Init() {
   }
 
   for (int i = 0; i < n_ports; i++) {
+    gtty->CprintfRaw("(%x)", _op_reg_base_addr[kOpRegOffsetPortScBase + i]);//RAPH_DEBUG
     if ((_op_reg_base_addr[kOpRegOffsetPortScBase + i] & kOpRegPortScFlagCurrentConnectStatus) != 0) {
       ResetPort(i);
       while(true) {
@@ -159,7 +160,8 @@ void DevEhci::HandlerSub() {
   task_ctrl->Register(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), _int_task);
 }
 
-void DevEhci::DevEhciSub32::Init() {
+template<class QueueHead, class TransferDescriptor>
+void DevEhci::DevEhciSub<QueueHead, TransferDescriptor>::Init() {
   constexpr int td_buf_size = _td_buf.GetBufSize();
   PhysAddr td_buf_paddr;
   static_assert(td_buf_size * sizeof(TransferDescriptor) <= PagingCtrl::kPageSize, "");
@@ -173,7 +175,7 @@ void DevEhci::DevEhciSub32::Init() {
 
   constexpr int qh_buf_size = _qh_buf.GetBufSize();
   PhysAddr qh_buf_paddr;
-  static_assert((qh_buf_size + 1) * sizeof(QueueHead) <= PagingCtrl::kPageSize, "");
+  static_assert(qh_buf_size * sizeof(QueueHead) <= PagingCtrl::kPageSize, "");
   physmem_ctrl->Alloc(qh_buf_paddr, PagingCtrl::kPageSize);
   assert(qh_buf_paddr.GetAddr() <= 0xFFFFFFFF);
   QueueHead *qh_array = addr2ptr<QueueHead>(qh_buf_paddr.GetVirtAddr());
@@ -194,11 +196,8 @@ void DevEhci::DevEhciSub32::Init() {
   }
 }
 
-void DevEhci::DevEhciSub64::Init() {
-  kernel_panic("Ehci", "needs implementation of 64-bit addressing");
-}
-
-bool DevEhci::DevEhciSub32::SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) {
+template<class QueueHead, class TransferDescriptor>
+bool DevEhci::DevEhciSub<QueueHead, TransferDescriptor>::SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) {
   bool success = true;
 
   QueueHead *qh1 = nullptr;
@@ -211,7 +210,7 @@ bool DevEhci::DevEhciSub32::SendControlTransfer(UsbCtrl::DeviceRequest *request,
   // (*td_array)[2] = td3;
 
   // auto td_array = make_uptr(new Array<TransferDescriptor *>(3));
-  // auto func = make_uptr(new ClassFunction2<DevEhci::DevEhciSub32, QueueHead *, uptr<Array<TransferDescriptor *>>>(this, &DevEhci::DevEhciSub32::HandleCompletedStruct, qh1, td_array));
+  // auto func = make_uptr(new ClassFunction2<DevEhci::DevEhciSub, QueueHead *, uptr<Array<TransferDescriptor *>>>(this, &DevEhci::DevEhciSub::HandleCompletedStruct, qh1, td_array));
   //   td3->SetFunc(func);
   //   _queueing_td_buf.PushBack(td3);
 
@@ -281,7 +280,8 @@ bool DevEhci::DevEhciSub32::SendControlTransfer(UsbCtrl::DeviceRequest *request,
   return success;
 }
 
-sptr<DevUsbController::Manager> DevEhci::DevEhciSub32::SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer, uptr<GenericFunction<uptr<Array<uint8_t>>>> func) {
+template<class QueueHead, class TransferDescriptor>
+sptr<DevUsbController::Manager> DevEhci::DevEhciSub<QueueHead, TransferDescriptor>::SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer, uptr<GenericFunction<uptr<Array<uint8_t>>>> func) {
   if (interval <= 0) {
     kernel_panic("Ehci", "unknown interval");
   }
@@ -339,7 +339,7 @@ sptr<DevUsbController::Manager> DevEhci::DevEhciSub32::SetupInterruptTransfer(ui
 
   assert(direction != UsbCtrl::PacketIdentification::kSetup);
 
-  auto manager = make_sptr(new DevEhciSub32::EhciManager(num_td, qh, func, this));
+  auto manager = make_sptr(new DevEhciSub::EhciManager(num_td, qh, func, this));
 
   for (int i = 0; i < num_td; i++) {
     td[i]->Init();
@@ -357,7 +357,7 @@ sptr<DevUsbController::Manager> DevEhci::DevEhciSub32::SetupInterruptTransfer(ui
     };
     container_array[i] = tmp;
     td[i]->SetTokenAndBuffer(container_array[i]);
-    td[i]->SetFunc(make_uptr(new Function2<wptr<DevEhciSub32::EhciManager>, int>(&DevEhciSub32::EhciManager::HandleInterrupt, make_wptr(manager), i)));
+    td[i]->SetFunc(make_uptr(new Function2<wptr<DevEhciSub::EhciManager>, int>(&DevEhciSub::EhciManager::HandleInterrupt, make_wptr(manager), i)));
     _queueing_td_buf.PushBack(td[i]);
     buffer += max_packetsize;
   }
@@ -373,7 +373,8 @@ sptr<DevUsbController::Manager> DevEhci::DevEhciSub32::SetupInterruptTransfer(ui
   return manager;
 }
 
-void DevEhci::DevEhciSub32::HandleCompletedStruct(QueueHead *qh , uptr<Array<TransferDescriptor *>> td_array) {
+template<class QueueHead, class TransferDescriptor>
+void DevEhci::DevEhciSub<QueueHead, TransferDescriptor>::HandleCompletedStruct(QueueHead *qh , uptr<Array<TransferDescriptor *>> td_array) {
   if (qh != nullptr) {
     assert(_qh_buf.Push(qh));
   }
@@ -385,14 +386,15 @@ void DevEhci::DevEhciSub32::HandleCompletedStruct(QueueHead *qh , uptr<Array<Tra
   }
 }
 
-void DevEhci::DevEhciSub32::CheckQueuedTdIfCompleted() {
+template<class QueueHead, class TransferDescriptor>
+void DevEhci::DevEhciSub<QueueHead, TransferDescriptor>::CheckQueuedTdIfCompleted() {
   auto iter = _queueing_td_buf.GetBegin();
   int i = 0;
   while (!iter.IsNull()) {
     i++;
     TransferDescriptor *t = *(*iter);
     if (!t->IsActiveOfStatus()) {
-      t->_func->Execute();
+      t->Execute();
       iter = _queueing_td_buf.Remove(iter);
     } else {
       iter = iter->GetNext();
@@ -400,7 +402,8 @@ void DevEhci::DevEhciSub32::CheckQueuedTdIfCompleted() {
   }
 }
 
-void DevEhci::DevEhciSub32::EhciManager::HandleInterruptSub(int index) {
+template<class QueueHead, class TransferDescriptor>
+void DevEhci::DevEhciSub<QueueHead, TransferDescriptor>::EhciManager::HandleInterruptSub(int index) {
   size_t len = _container_array[index].total_bytes;
   auto buf = make_uptr(new Array<uint8_t>(len));
   memcpy(buf.GetRawPtr()->GetRawPtr(), _container_array[index].buf, len);
