@@ -153,6 +153,23 @@ void ifconfig(int argc, const char* argv[]){
 void setup_arp_reply(NetDev *dev);
 void send_arp_packet(NetDev *dev, uint8_t *ipaddr);
 
+static bool parse_ipaddr(const char *c, uint8_t *addr) {
+  int i = 0;
+  while(true) {
+    if (i != 3 && *c == '.') {
+      i++;
+    } else if (i == 3 && *c == '\0') {
+      return true;
+    } else if (*c >= '0' && *c <= '9') {
+      addr[i] *= 10;
+      addr[i] += *c - '0';
+    } else {
+      return false;
+    }
+    c++;
+  }
+}
+
 void bench(int argc, const char* argv[]) {
 
   if (argc == 1) {
@@ -178,21 +195,9 @@ void bench(int argc, const char* argv[]) {
     NetDev *dev = info->device;
 
     uint8_t addr[4] = {0, 0, 0, 0};
-    int i = 0;
-    const char *c = argv[3];
-    while(true) {
-      if (i != 3 && *c == '.') {
-        i++;
-      } else if (i == 3 && *c == '\0') {
-        break;
-      } else if (*c >= '0' && *c <= '9') {
-        addr[i] *= 10;
-        addr[i] += *c - '0';
-      } else {
-        gtty->Cprintf("invalid ip v4 addr.\n");
-        return;
-      }
-      c++;
+    if (!parse_ipaddr(argv[3], addr)) {
+      gtty->Cprintf("invalid ip v4 addr.\n");
+      return;
     }
 
     send_arp_packet(dev, addr);
@@ -215,24 +220,12 @@ void bench(int argc, const char* argv[]) {
     NetDev *dev = info->device;
 
     uint8_t addr[4] = {0, 0, 0, 0};
-    int i = 0;
-    const char *c = argv[3];
-    while(true) {
-      if (i != 3 && *c == '.') {
-        i++;
-      } else if (i == 3 && *c == '\0') {
-        break;
-      } else if (*c >= '0' && *c <= '9') {
-        addr[i] *= 10;
-        addr[i] += *c - '0';
-      } else {
-        gtty->Cprintf("invalid ip v4 addr.\n");
-        return;
-      }
-      c++;
+    if (!parse_ipaddr(argv[3], addr)) {
+      gtty->Cprintf("invalid ip v4 addr.\n");
+      return;
     }
 
-    dev->AssignIpv4Address(addr[0] << 24 | addr[1] << 16 | addr[2] << 8 | addr[3]);
+    dev->AssignIpv4Address((addr[3] << 24) | (addr[2] << 16) | (addr[1] << 8) | addr[0]);
     
     setup_arp_reply(dev);
   } /* else if (strcmp(argv[1], "qemu") == 0) {
@@ -276,6 +269,268 @@ static void setflag(int argc, const char *argv[]) {
   }
 }
 
+class ArpTable {
+public:
+  void Set(uint32_t ip_addr, uint8_t *hw_addr, NetDev *info) {
+    // auto iter = arp_table.GetBegin();
+    // while(!iter.IsNull()) {
+    //   iter = iter.GetNext();
+    // }
+    // arp_table.PushBack();
+  }
+private:
+  struct ArpEntry {
+    uint32_t ip_addr;
+    uint8_t hw_addr[6];
+    NetDev *info;
+  };
+  List<ArpEntry> arp_table;
+} *arp_table;
+
+static void arp_scan(int argc, const char *argv[]) {
+  dev->SetReceiveCallback(network_cpu, make_uptr(new Function(NextDev *)([](NetDev *eth) {
+          NetDev::Packet *rpacket;
+          if(!eth->ReceivePacket(rpacket)) {
+            return;
+          }
+          uint32_t my_addr_int;
+          assert(eth->GetIpv4Address(my_addr_int));
+          uint8_t my_addr[4];
+          my_addr[0] = (my_addr_int >> 0) & 0xff;
+          my_addr[1] = (my_addr_int >> 8) & 0xff;
+          my_addr[2] = (my_addr_int >> 16) & 0xff;
+          my_addr[3] = (my_addr_int >> 24) & 0xff;
+          // received packet
+          if(rpacket->GetBuffer()[12] == 0x08 && rpacket->GetBuffer()[13] == 0x06 && rpacket->GetBuffer()[21] == 0x02) {
+            // ARP Reply
+            uint32_t target_addr_int = (rpacket->GetBuffer()[31] << 24) | (rpacket->GetBuffer()[30] << 16) | (rpacket->GetBuffer()[29] << 8) | rpacket->GetBuffer()[28];
+            arp_table->Set(target_addr_int, rpacket->GetBuffer() + 22, eth);
+          }
+          if(rpacket->GetBuffer()[12] == 0x08 && rpacket->GetBuffer()[13] == 0x06 && rpacket->GetBuffer()[21] == 0x01 && (memcmp(rpacket->GetBuffer() + 38, my_addr, 4) == 0)) {
+            // ARP Request
+            uint8_t data[] = {
+              0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target MAC Address
+              0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source MAC Address
+              0x08, 0x06, // Type: ARP
+              // ARP Packet
+              0x00, 0x01, // HardwareType: Ethernet
+              0x08, 0x00, // ProtocolType: IPv4
+              0x06, // HardwareLength
+              0x04, // ProtocolLength
+              0x00, 0x02, // Operation: ARP Reply
+              0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source Hardware Address
+              0x00, 0x00, 0x00, 0x00, // Source Protocol Address
+              0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
+              0x00, 0x00, 0x00, 0x00, // Target Protocol Address
+            };
+            memcpy(data, rpacket->GetBuffer() + 6, 6);
+            static_cast<DevEthernet *>(eth)->GetEthAddr(data + 6);
+            memcpy(data + 22, data + 6, 6);
+            memcpy(data + 28, my_addr, 4);
+            memcpy(data + 32, rpacket->GetBuffer() + 22, 6);
+            memcpy(data + 38, rpacket->GetBuffer() + 28, 4);
+
+            uint32_t len = sizeof(data)/sizeof(uint8_t);
+            NetDev::Packet *tpacket;
+            kassert(eth->GetTxPacket(tpacket));
+            memcpy(tpacket->GetBuffer(), data, len);
+            tpacket->len = len;
+            eth->TransmitPacket(tpacket);
+          }
+          eth->ReuseRxBuffer(rpacket);
+        }, dev)));
+  timer->BusyUwait(3 * 1000 * 1000);
+}
+
+static void updsend(int argc, const char *argv[]) {
+  if (argc != 4) {
+    gtty->Cprintf("invalid argument.\n");
+    return;
+  }
+
+  uint8_t target_addr[4] = {0, 0, 0, 0};
+  if (!parse_ipaddr(argv[1], target_addr)) {
+    gtty->Cprintf("invalid ip v4 addr.\n");
+    return;
+  }
+
+  // TODO select interface from target ip addr
+  NetDevCtrl::NetDevInfo *info = netdev_ctrl->GetDeviceInfo("em0");
+  if (info == nullptr) {
+    gtty->Cprintf("no ethernet interface(%s).\n", argv[2]);
+    return;
+  }
+  NetDev *dev = info->device;
+
+  uint32_t my_addr_int;
+  assert(eth->GetIpv4Address(my_addr_int));
+  uint8_t my_addr[4];
+  my_addr[0] = (my_addr_int >> 0) & 0xff;
+  my_addr[1] = (my_addr_int >> 8) & 0xff;
+  my_addr[2] = (my_addr_int >> 16) & 0xff;
+  my_addr[3] = (my_addr_int >> 24) & 0xff;
+  
+  
+  char buf[1518];
+  int offset = 0;
+
+  //
+  // ethernet
+  //
+
+  // target MAC address
+  memcpy(buf + offset, target_mac, 6);
+  offset += 6;
+
+  // source MAC address
+  static_cast<DevEthernet *>(dev)->GetEthAddr(buf + offset);
+  offset += 6;
+
+  // type: IPv4
+  uint8_t type[2] = {0x08, 0x00};
+  memcpy(buf + offset, type, 2);
+  offset += 2;
+
+  //
+  // IPv4
+  //
+
+  int ipv4_offset = offset;
+
+  // version & header length
+  buf[offset] = (0x4 << 8) | 0x5;
+  offset += 1;
+
+  // service type
+  buf[offset] = 0;
+  offset += 1;
+
+  // skip
+  int datagram_length_offset = offset;
+  offset += 2;
+
+  // ID field
+  buf[offset] = rand() & 0xff;
+  buf[offset + 1] = rand() & 0xff;
+  offset += 2;
+
+  // flag & flagment offset
+  uint16_t foffset = 0 | 1 << 15;
+  buf[offset] = foffset >> 8;
+  buf[offset] = foffset;
+  offset += 2;
+
+  // ttl
+  buf[offset] = 0xff;
+  offset += 1;
+
+  // procol number;
+  buf[offset] = 17;
+  offset += 1;
+
+  // skip
+  int checksum_offset = offset;
+  offset += 2;
+
+  // source address
+  memcpy(buf + offset, my_addr, 4);
+  offset += 4;
+
+  // target address
+  memcpy(buf + offset, target_addr, 4);
+  offset += 4;
+
+  // checksum
+  {
+    uint32_t checksum = 0;
+    for (int i = ipv4_offset; i < offset; i += 2) {
+      checksum += (buf[i] << 8) + buf[i + 1];
+      while (checksum >= 0xffff) {
+        assert(checksum <= 0x1ffff);
+        checksum -= 0x10000;
+        checksum += 1;
+      }
+    }
+  
+    buf[checksum_offset] = checksum >> 8;
+    buf[checksum_offset + 1] = checksum;
+  }
+
+  //
+  // udp
+  //
+
+  int udp_offset = offset;
+
+  // source port
+  uint8_t source_port = {0x4, 0xD2}; // 1234
+  memcpy(buf, source_port, 2);
+  offset += 2;
+
+  // target port
+  // TODO analyze from argument
+  uint8_t target_port = {0x4, 0xD2}; // 1234
+  memcpy(buf, target_port, 2);
+  offset += 2;
+
+  // skip
+  int udp_length_offset = offset;
+  offset += 2;
+
+  // skip
+  int udp_checksum_offset = offset;
+  offset += 2;
+
+  // data
+  memcpy(buf + offset, argv[4], strlen(argv[4]) + 1);
+  offset += strlen(argv[4]) + 1;
+  
+  // length
+  size_t udp_length = offset - udp_offset;
+  buf[udp_length_offset] = udp_length >> 8;
+  buf[udp_length_offset + 1] = udp_length;
+
+  // checksum
+  {
+    uint32_t checksum = 0;
+    uint8_t pseudo_header[] = {
+      0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00,
+      0x00, 17, udp_length >> 8, udp_length,
+    };
+    memcpy(pseudo_header + 0, my_addr, 4);
+    memcpy(pseudo_header + 4, target_addr, 4);
+    for (int i = 0; i < 12; i += 2) {
+      checksum += (pseudo_header[i] << 8) + pseudo_header[i + 1];
+      while (checksum >= 0xffff) {
+        assert(checksum <= 0x1ffff);
+        checksum -= 0x10000;
+        checksum += 1;
+      }
+    }
+
+    if ((offset - udp_offset) % 2 == 1) {
+      buf[offset] = 0x0;
+    }
+    for (int i = udp_offset; i < offset; i += 2) {
+      checksum += (buf[i] << 8) + buf[i + 1];
+      while (checksum >= 0xffff) {
+        assert(checksum <= 0x1ffff);
+        checksum -= 0x10000;
+        checksum += 1;
+      }
+    }
+  
+    buf[udp_checksum_offset] = checksum >> 8;
+    buf[udp_checksum_offset + 1] = checksum;
+  }
+
+  // datagram length(IPv4)
+  size_t len = offset - ipv4_offset;
+  buf[datagram_length_offset] = len >> 8;
+  buf[datagram_length_offset + 1] = len;
+}
+  
 static void show(int argc, const char *argv[]) {
   if (argc == 1) {
     gtty->Cprintf("invalid argument.\n");
@@ -454,6 +709,8 @@ extern "C" int main() {
   gtty->Cprintf("\n\n[kernel] info: initialization completed\n");
   multiboot_ctrl->ShowBuildTimeStamp();
 
+  auto arp_table = new ArpTable;
+  
   shell->Setup();
   shell->Register("halt", halt);
   shell->Register("reset", reset);
@@ -464,6 +721,7 @@ extern "C" int main() {
   shell->Register("show", show);
   shell->Register("load", load);
   shell->Register("setflag", setflag);
+  shell->Register("udpsend", udpsend);
 
   if (!do_membench) {
     CpuId beep_cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority);
