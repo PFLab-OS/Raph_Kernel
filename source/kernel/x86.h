@@ -54,7 +54,8 @@ namespace x86 {
     uint8_t display_model = (family_id == 0x06 || family_id == 0x0f) ? ((ex_model_id << 4) + model_id) : model_id;
     return (static_cast<uint16_t>(display_family << 8)) + display_model;
   }
-  
+
+#define READ_MEM_VOLATILE(ptr) (__sync_fetch_and_or(ptr, 0))
 }
 
 #endif // __RAPH_KERNEL_X86_H__

@@ -17,7 +17,7 @@ else
 	VNC = @echo non supported OS; exit 1
 endif
 
-.PHONY: clean disk mount umount showerror numerror vboxrun run_pxeserver pxeimg burn_ipxe burn_ipxe_remote vboxkill vnc synctime
+.PHONY: clean disk run image mount umount debugqemu showerror numerror vboxrun run_pxeserver pxeimg burn_ipxe burn_ipxe_remote vboxkill vnc synctime
 
 default: image
 
@@ -31,11 +31,14 @@ _run:
 	$(MAKE) _qemuend
 
 _qemurun: _image
-	sudo qemu-system-x86_64 -cpu qemu64,+x2apic -smp 8 -machine q35 -monitor telnet:127.0.0.1:1234,server,nowait -vnc 0.0.0.0:0,password -net nic -net bridge,br=br0 -drive id=disk,file=$(IMAGE),if=virtio &
+	sudo qemu-system-x86_64 -cpu qemu64,+x2apic -smp 8 -machine q35 -monitor telnet:127.0.0.1:1234,server,nowait -vnc 0.0.0.0:0,password -net nic -net bridge,br=br0 -drive id=disk,file=$(IMAGE),if=virtio -usb -usbdevice keyboard &
 #	sudo qemu-system-x86_64 -cpu qemu64,+x2apic -smp 8 -machine q35 -monitor telnet:127.0.0.1:1234,server,nowait -vnc 0.0.0.0:0,password -net nic -net bridge,br=br0 -drive id=disk,file=$(IMAGE),if=none -device ahci,id=ahci -device ide-drive,drive=disk,bus=ahci.0 &
 #	sudo qemu-system-x86_64 -smp 8 -machine q35 -monitor telnet:127.0.0.1:1234,server,nowait -vnc 0.0.0.0:0,password -net nic -net bridge,br=br0 -drive file=$(IMAGE),if=virtio &
 	sleep 0.2s
 	echo "set_password vnc a" | netcat 127.0.0.1 1234
+
+_debugqemu:
+	sudo gdb -x ./.gdbinit -p `ps aux | grep qemu | sed -n 2P | awk '{ print $$2 }'`
 
 _qemuend:
 	-sudo pkill -KILL qemu
@@ -43,6 +46,7 @@ _qemuend:
 _bin:
 	-mkdir $(BUILD_DIR)
 	cp script $(BUILD_DIR)/script
+	cp init $(BUILD_DIR)/init
 	$(MAKE) -C source
 
 _image:
@@ -106,6 +110,9 @@ image: synctime
 
 run: synctime
 	@$(SSH_CMD) "cd /vagrant/; make -j3 _run"
+
+debugqemu: synctime
+	@$(SSH_CMD) "cd /vagrant/; make _debugqemu"
 
 hd: synctime
 	@$(SSH_CMD) "cd /vagrant/; make -j3 _hd"

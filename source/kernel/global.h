@@ -33,29 +33,21 @@ class PagingCtrl;
 class PhysmemCtrl;
 class Gdt;
 class Idt;
-
-class Keyboard;
-
 class PciCtrl;
-
 class NetDevCtrl;
-
 class BsdDevPciCtrl;
+class ApicCtrl;
+class Shell;
 
 extern AcpiCtrl *acpi_ctrl;
-
-class ApicCtrl;
 extern ApicCtrl *apic_ctrl;
-
 extern MultibootCtrl *multiboot_ctrl;
 extern PagingCtrl *paging_ctrl;
 extern PhysmemCtrl *physmem_ctrl;
 extern Gdt *gdt;
 extern Idt *idt;
-
-extern Keyboard *keyboard;
-
 extern PciCtrl *pci_ctrl;
+extern Shell *shell;
 
 /*
  * Network Controllers

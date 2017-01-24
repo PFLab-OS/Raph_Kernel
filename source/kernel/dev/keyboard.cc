@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2016 Raphine Project
+ * Copyright (c) 2017 Raphine Project
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -16,48 +16,26 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
- * Author: Yuchiki
+ * Author: Liva
  * 
  */
 
-#include <stdint.h>
-#include <cpu.h>
-
+#include "keyboard.h"
+#include <ptr.h>
+#include <function.h>
+#include <shell.h>
 #include <global.h>
-#include <apic.h>
-#include <idt.h>
-#include <buf.h>
-#include <dev/keyboard.h>
 
-void Keyboard::Setup(uptr<GenericFunction> func) {
-  kassert(apic_ctrl != nullptr);
-  kassert(idt != nullptr);
+void Keyboard::Setup() {
   CpuId cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority);
-  int vector = idt->SetIntCallback(cpuid, Keyboard::Handler, nullptr);
-  apic_ctrl->SetupIoInt(ApicCtrl::kIrqKeyboard, cpuid.GetApicId(), vector);
-  _buf.SetFunction(cpuid, func);
+  _buf.SetFunction(cpuid, make_uptr(new ClassFunction<Keyboard, void *>(this, &Keyboard::Handle, nullptr)));
+  SetupSub();
 }
 
-void Keyboard::Handler(Regs *reg, void *arg) {
-  uint8_t data = inb(kDataPort);
-  if (data < (1 << 7)) keyboard->Write(data);
+void Keyboard::Handle(void *) {
+  char data;
+  if(!_buf.Pop(data)){
+    return;
+  }
+  shell->ReadCh(data);
 }
-
-const char Keyboard::kScanCode[256] = {
-    '!','!','1','2','3','4','5','6',
-    '7','8','9','0','-','=','\b','\t',
-    'q','w','e','r','t','y','u','i',
-    'o','p','[',']','\n','!','a','s',
-    'd','f','g','h','j','k','l',';',
-    '"','^','!','\\','z','x','c','v',
-    'b','n','m',',','.','/','!','!',
-    '!',' ','!','!','!','!','!','!',
-    '!','!','!','!','!','!','!','!',
-    '!','!','!','!','!','!','!','!',
-    '!','!','!','!','!','!','!','!',
-    '!','!','!','!','!','!','!','!',
-    '!','!','!','!','!','!','!','!',
-    '!','!','!','!','!','!','!','!',
-    '!','!','!','!','!','!','!','!',
-    '!','!','!','!','!','!','!','!',
-};

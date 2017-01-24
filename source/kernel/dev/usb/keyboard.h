@@ -22,16 +22,33 @@
 
 #pragma once
 
-#include <buf.h>
-#include <dev/device.h>
+#include <ptr.h>
+#include <dev/usb/usb.h>
+#include <dev/keyboard.h>
 
-class Keyboard : public Device {
+class DevUsbKeyboard : public DevUsb {
 public:
-  void Setup();
-protected:
-  static const int kBufSize = 100;
-  FunctionalRingBuffer<char, kBufSize> _buf;
-  virtual void SetupSub() {
+  DevUsbKeyboard(DevUsbController *controller, int addr) : DevUsb(controller, addr) {
   }
-  void Handle(void *);
+  virtual ~DevUsbKeyboard() {
+  }
+  static DevUsb *InitUsb(DevUsbController *controller, int addr);
+  virtual void InitSub() override;
+private:
+  class KeyboardSub : public Keyboard {
+  public:
+    void Push(char c) {
+      _buf.Push(c);
+    }
+  } _dev;
+  static const int kTdNum = 32; // TODO is this ok?
+  static const int kMaxPacketSize = 8;
+  static const char kScanCode[256];
+  char _prev_buf[8];
+  struct Buffer {
+    uint8_t buf[kMaxPacketSize];
+  };
+  Buffer _buffer[kTdNum];
+  DevUsbKeyboard() = delete;
+  void Handle(void *, uptr<Array<uint8_t>>);
 };

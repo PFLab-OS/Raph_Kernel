@@ -37,6 +37,12 @@ class Polling {
   Polling() : _task(new Task) {
     _task->SetFunc(make_uptr(new ClassFunction<Polling, void *>(this, &Polling::HandleSub, nullptr)));
   }
+  ~Polling() {
+    if (_state == PollingState::kPolling) {
+      // TODO implementation
+      kernel_panic("Polling", "unexpectedly deleted");
+    }
+  }
   void RegisterPolling(CpuId cpuid) {
     if (_state == PollingState::kPolling) {
       return;
@@ -77,14 +83,14 @@ class PollingFunc : public Polling {
   void Remove() {
     this->RemovePolling();
   }
-  void Init(uptr<GenericFunction> func) {
+  void Init(uptr<GenericFunction<>> func) {
     _func = func;
   }
  private:
   virtual void Handle() override {
     _func->Execute();
   }
-  uptr<GenericFunction> _func;
+  uptr<GenericFunction<>> _func;
 };
 
 #endif /* __RAPH_KERNEL_DEV_POLLING_H__ */

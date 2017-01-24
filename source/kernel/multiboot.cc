@@ -138,9 +138,9 @@ void MultibootCtrl::ShowBuildTimeStamp() {
   }
   str[len] = '\0';
   if (info == nullptr) {
-    gtty->Cprintf("[kernel] warning: No build information\n");
+    gtty->Cprintf("No build information\n");
   } else {
-    gtty->Cprintf("[kernel] info: Build Information as follows\n%s\n", str);
+    gtty->Cprintf("%s\n", str);
   }
 }
 
