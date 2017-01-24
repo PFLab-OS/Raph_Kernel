@@ -1,3 +1,7 @@
+#include <stdint.h>
+
+#pragma once
+
 namespace PciData {
   class Base {
   public:
