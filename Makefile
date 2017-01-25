@@ -19,7 +19,7 @@ endif
 
 ifdef INIT
 	REMOTE_COMMAND += export INIT=$(INIT); 
-	INIT_FILE = init.$(INIT)
+	INIT_FILE = init_$(INIT)
 else
 	INIT_FILE = init
 endif
