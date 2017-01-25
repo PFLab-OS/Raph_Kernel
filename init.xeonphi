@@ -1,0 +1,7 @@
+show info
+beep
+setip ixgbe0 192.168.12.60
+wait 7
+arp_scan
+wait 3
+udpsend 192.168.12.35 1234 hogehoge

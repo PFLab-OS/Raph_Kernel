@@ -80,7 +80,7 @@ class Tty {
     Locker locker(_lock);
     PrintString(&str);
   }
-  virtual void PrintShell(char *str) = 0;
+  virtual void PrintShell(const char *str) = 0;
   virtual void SetColor(Color) = 0;
   virtual void ResetColor() = 0;
  protected:
