@@ -1668,50 +1668,6 @@ private:
   volatile unsigned int _third_flag[kSubStructNum*2] = {0};
 };
 
-// 2階層 Spin On Read
-class McSpinLock2R2 {
-public:
-  McSpinLock2R2() {
-  }
-  bool TryLock() {
-    assert(false);
-  }
-  void Lock() {
-    uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
-    while(!__sync_bool_compare_and_swap(&_third_flag[apicid / 4], 0, 1)) {
-    }
-    while(true) {
-      while(_second_flag[apicid / 8] != 0) {
-      }
-      if(__sync_bool_compare_and_swap(&_second_flag[apicid / 8], 0, 1)) {
-        break;
-      }
-    }
-    while (true) {
-      while(_top_flag == 1) {
-      }
-      if (__sync_bool_compare_and_swap(&_top_flag, 0, 1)) {
-        break;
-      }
-    }
-  }
-  void Unlock() {
-    uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
-    // _top_flag = 0;
-    // _second_flag[apicid / 8] = 0;
-    // _third_flag[apicid / 4] = 0;
-    assert(__sync_bool_compare_and_swap(&_top_flag, 1, 0));
-    assert(__sync_bool_compare_and_swap(&_second_flag[apicid / 8], 1, 0));
-    assert(__sync_bool_compare_and_swap(&_third_flag[apicid / 4], 1, 0));
-  }
-private:
-  static const int kSubStructNum = 37;
-  static const int kPhysAvailableCoreNum = 32;
-  volatile unsigned int _top_flag = 0;
-  volatile unsigned int _second_flag[kSubStructNum] = {0};
-  volatile unsigned int _third_flag[kSubStructNum*2] = {0};
-};
-
 template <class L, int kListEntryNum>
 class LinkedList {
 public:
@@ -1901,8 +1857,8 @@ public:
     _lock.Unlock();
   }
 private:
-  SimpleSpinLockR _lock;
-  LinkedList2<SimpleSpinLockR, kListEntryNum> _list[37];
+  SimpleSpinLock _lock;
+  LinkedList2<SimpleSpinLock, kListEntryNum> _list[37];
   Container<kListEntryNum> _first; // 番兵
   Container<kListEntryNum> *_last;
 };
@@ -2189,8 +2145,7 @@ void func10() {
   // func102<f, i, S, LinkedList2<McSpinLock1<37>, i>>();
   // func102<f, i, S, LinkedList2<McSpinLock2<37>, i>>();
   // func102<f, i, S, LinkedList2<McSpinLock1R<37>, i>>();
-  // func102<f, i, S, LinkedList2<McSpinLock2R, i>>();
-  func102<f, i, S, LinkedList2<McSpinLock2R2, i>>();
+  func102<f, i, S, LinkedList2<McSpinLock2R, i>>();
 }
 
 template<template<int>class List, class S, bool f, int i, int j, int... Num>
@@ -2210,8 +2165,8 @@ static void membench10() {
   if (cpuid == 0) {
     gtty->CprintfRaw("start >>>\n");
   }
-  func10<List, S, true, 260, 261, 262, 263, 264, 265, 266, 267, 268, 269, 270, 271, 272, 273, 274, 275, 276, 277, 278, 279, 280>(); 
-  // func10<List, S, false, 100, 120, 140, 160, 180, 200, 220, 240, 260, 280, 300>(); 
+  // func10<List, S, true, 260, 261, 262, 263, 264, 265, 266, 267, 268, 269, 270, 271, 272, 273, 274, 275, 276, 277, 278, 279, 280>(); 
+  func10<List, S, false, 100, 120, 140, 160, 180, 200, 220, 240, 260, 280, 300>(); 
 }
 
 template<int i>
@@ -2252,7 +2207,7 @@ void register_membench2_callout() {
               membench9();
             }
           }, make_wptr(callout_))));
-    task_ctrl->RegisterCallout(callout_, cpuid, 10);
+    task_ctrl->RegisterCallout(callout_, cpuid, 1000*1000);
   }
 }
 

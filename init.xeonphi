@@ -1,5 +1,4 @@
 show info
-beep
 setip ixgbe0 192.168.12.60
 wait 7
 arp_scan
