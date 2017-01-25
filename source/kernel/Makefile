@@ -7,9 +7,7 @@ DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))
 
 GIT_BRANCH = $(shell git symbolic-ref --short HEAD)
 
-ifeq ($(GIT_BRANCH),xeonphi)
-	FLAGS = -DFLAG_MEMBENCH
-endif
+FLAGS = 
 
 INCLUDE_PATH = -I$(realpath ../libc/) -I$(realpath ./)  -I$(realpath ./freebsd/) -I$(realpath ./acpica/include/)
 RAPHFLAGS = -g -Wall -Werror=return-type -Wshadow -nostdinc -nostdlib -fno-builtin -mcmodel=large -D__KERNEL__ -D_KERNEL -Dbootverbose=0 $(FLAGS) $(INCLUDE_PATH) -MMD -MP

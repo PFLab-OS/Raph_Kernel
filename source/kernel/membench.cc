@@ -2230,26 +2230,29 @@ struct func103<300> {
 };
 
 void register_membench2_callout() {
-  auto callout_ = make_sptr(new Callout);
-  callout_->Init(make_uptr(new Function<wptr<Callout>>([](wptr<Callout> callout){
-          if (is_knl()) {
-            // membench5();
-            // membench7();
-            membench10<LinkedList3, SyncLow>();
-          } else {
-            func103<10>::func(); 
-            // membench9();
-          }
-          if (false) {
-            membench2();
-            membench3();
-            membench4();
-            membench5();
-            membench6();
-            membench8();
-            membench9();
-          }
-        }, make_wptr(callout_))));
-  task_ctrl->RegisterCallout(callout_, 10);
+  for (int i = 0; i < cpu_ctrl->GetHowManyCpus(); i++) {
+    CpuId cpuid(i);
+    auto callout_ = make_sptr(new Callout);
+    callout_->Init(make_uptr(new Function<wptr<Callout>>([](wptr<Callout> callout){
+            if (is_knl()) {
+              // membench5();
+              // membench7();
+              membench10<LinkedList3, SyncLow>();
+            } else {
+              func103<10>::func(); 
+              // membench9();
+            }
+            if (false) {
+              membench2();
+              membench3();
+              membench4();
+              membench5();
+              membench6();
+              membench8();
+              membench9();
+            }
+          }, make_wptr(callout_))));
+    task_ctrl->RegisterCallout(callout_, cpuid, 10);
+  }
 }
 

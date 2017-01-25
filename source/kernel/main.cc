@@ -89,23 +89,17 @@ AhciChannel *g_channel = nullptr;
 #include <dev/fs/fat/fat.h>
 FatFs *fatfs;
 
-#ifdef FLAG_MEMBENCH
-static const bool do_membench = true;
-#else
-static const bool do_membench = false;
-#endif
-
 void register_membench2_callout();
 
-void halt(int argc, const char* argv[]) {
+static void halt(int argc, const char* argv[]) {
   acpi_ctrl->Shutdown();
 }
 
-void reset(int argc, const char* argv[]) {
+static void reset(int argc, const char* argv[]) {
   acpi_ctrl->Reset();
 }
 
-void lspci(int argc, const char* argv[]) {
+static void lspci(int argc, const char* argv[]) {
   MCFG *mcfg = acpi_ctrl->GetMCFG();
   if (mcfg == nullptr) {
     gtty->Cprintf("[Pci] error: could not find MCFG table.\n");
@@ -180,7 +174,7 @@ static void setip(int argc, const char* argv[]) {
   dev->AssignIpv4Address((addr[3] << 24) | (addr[2] << 16) | (addr[1] << 8) | addr[0]);
 }
 
-void ifconfig(int argc, const char* argv[]){
+static void ifconfig(int argc, const char* argv[]){
   uptr<Array<const char *>> list = netdev_ctrl->GetNamesOfAllDevices();
   gtty->CprintfRaw("\n");
   for (size_t l = 0; l < list->GetLen(); l++) {
@@ -194,7 +188,7 @@ void ifconfig(int argc, const char* argv[]){
 void setup_arp_reply(NetDev *dev);
 void send_arp_packet(NetDev *dev, uint8_t *ipaddr);
 
-void bench(int argc, const char* argv[]) {
+static void bench(int argc, const char* argv[]) {
 
   if (argc == 1) {
     gtty->Cprintf("invalid argument.\n");
@@ -756,6 +750,10 @@ static void beep(int argc, const char *argv[]) {
   task_ctrl->RegisterCallout(callout_, beep_cpuid, 1);
 }
 
+static void membench(int argc, const char *argv[]) {
+  register_membench2_callout();
+}
+
 void freebsd_main();
 
 extern "C" int main() {
@@ -867,10 +865,7 @@ extern "C" int main() {
   shell->Register("setflag", setflag);
   shell->Register("udpsend", udpsend);
   shell->Register("arp_scan", arp_scan);
-
-  if (do_membench) {
-    register_membench2_callout();
-  }
+  shell->Register("membench", membench);
 
   load_script(make_sptr(new LoadContainer(multiboot_ctrl->LoadFile("init.sh"))));
 
@@ -922,9 +917,6 @@ extern "C" int main_of_others() {
     task_ctrl->RegisterCallout(callout_, 10);
   }
 #endif
-  if (do_membench) {
-    register_membench2_callout();
-  }
 
   task_ctrl->Run();
   return 0;
