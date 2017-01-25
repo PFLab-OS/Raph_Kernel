@@ -170,10 +170,10 @@ void send_arp_packet(NetDev *dev, uint8_t *ipaddr) {
               memcpy(data + 22, data + 6, 6);
               uint32_t my_addr;
               assert(eth->GetIpv4Address(my_addr));
-              data[28] = (my_addr >> 24) & 0xff;
-              data[29] = (my_addr >> 16) & 0xff;
-              data[30] = (my_addr >> 8) & 0xff;
-              data[31] = (my_addr >> 0) & 0xff;
+              data[28] = (my_addr >> 0) & 0xff;
+              data[29] = (my_addr >> 8) & 0xff;
+              data[30] = (my_addr >> 16) & 0xff;
+              data[31] = (my_addr >> 24) & 0xff;
               memcpy(data + 38, target_addr, 4);
               uint32_t len = sizeof(data)/sizeof(uint8_t);
               NetDev::Packet *tpacket;

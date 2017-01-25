@@ -56,7 +56,7 @@ class Shell {
  private:
   void Exec(const char *name, int argc, const char **argv);
 
-  static const int kBufSize = 10;
+  static const int kBufSize = 20;
   static const int kNameSize = 10;
   int _next_buf = 0;
   struct NameFuncMapping {
@@ -65,8 +65,8 @@ class Shell {
   } _name_func_mapping[kBufSize];
   class Liner { //convert char inputs to a line input
   public:
-    void Setup(Shell *shell) {
-      _shell = shell;
+    void Setup(Shell *s) {
+      _shell = s;
       Reset();
     }
     void ReadCh(char c);

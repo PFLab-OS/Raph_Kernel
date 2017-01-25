@@ -77,7 +77,7 @@ class Vga : public Tty {
     }
     Scroll();
   }
-  virtual void PrintShell(char *str) override {
+  virtual void PrintShell(const char *str) override {
     _vga_addr[((_y - 1) * _x) * 2] = '>';
     _vga_addr[((_y - 1) * _x) * 2 + 1] = 0xF0;
     size_t len = strlen(str);

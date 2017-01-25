@@ -17,6 +17,13 @@ else
 	VNC = @echo non supported OS; exit 1
 endif
 
+ifdef INIT
+	REMOTE_COMMAND += export INIT=$(INIT); 
+	INIT_FILE = init.$(INIT)
+else
+	INIT_FILE = init
+endif
+
 .PHONY: clean disk run image mount umount debugqemu showerror numerror vboxrun run_pxeserver pxeimg burn_ipxe burn_ipxe_remote vboxkill vnc synctime
 
 default: image
@@ -46,7 +53,7 @@ _qemuend:
 _bin:
 	-mkdir $(BUILD_DIR)
 	cp script $(BUILD_DIR)/script
-	cp init $(BUILD_DIR)/init
+	cp $(INIT_FILE) $(BUILD_DIR)/init
 	$(MAKE) -C source
 
 _image:
@@ -106,28 +113,28 @@ _numerror:
 ###################################
 
 image: synctime
-	@$(SSH_CMD) "cd /vagrant/; make -j3 _image"
+	@$(SSH_CMD) "$(REMOTE_COMMAND) cd /vagrant/; make -j3 _image"
 
 run: synctime
-	@$(SSH_CMD) "cd /vagrant/; make -j3 _run"
+	@$(SSH_CMD) "$(REMOTE_COMMAND) cd /vagrant/; make -j3 _run"
 
 debugqemu: synctime
-	@$(SSH_CMD) "cd /vagrant/; make _debugqemu"
+	@$(SSH_CMD) "$(REMOTE_COMMAND) cd /vagrant/; make _debugqemu"
 
 hd: synctime
-	@$(SSH_CMD) "cd /vagrant/; make -j3 _hd"
+	@$(SSH_CMD) "$(REMOTE_COMMAND) cd /vagrant/; make -j3 _hd"
 
 clean: synctime
-	@$(SSH_CMD) "cd /vagrant/; make _clean"
+	@$(SSH_CMD) "$(REMOTE_COMMAND) cd /vagrant/; make _clean"
 
 showerror: synctime
-	@$(SSH_CMD) "cd /vagrant/; make -j3 _showerror"
+	@$(SSH_CMD) "$(REMOTE_COMMAND) cd /vagrant/; make -j3 _showerror"
 
 numerror: synctime
-	@$(SSH_CMD) "cd /vagrant/; make -j3 _numerror"
+	@$(SSH_CMD) "$(REMOTE_COMMAND) cd /vagrant/; make -j3 _numerror"
 
 vboxrun: vboxkill synctime
-	@$(SSH_CMD) "cd /vagrant/; make -j3 _cpimage"
+	@$(SSH_CMD) "$(REMOTE_COMMAND) cd /vagrant/; make -j3 _cpimage"
 	-vboxmanage unregistervm RK_Test --delete
 	-rm $(VDI)
 	vboxmanage createvm --name RK_Test --register
@@ -143,7 +150,7 @@ run_pxeserver:
 	cd net; python -m SimpleHTTPServer 8080
 
 pxeimg: synctime
-	@$(SSH_CMD) "cd /vagrant/; make -j3 _cpimage"
+	@$(SSH_CMD) "$(REMOTE_COMMAND) cd /vagrant/; make -j3 _cpimage"
 	gzip $(IMAGEFILE)
 	mv $(IMAGEFILE).gz net/
 
