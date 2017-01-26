@@ -59,6 +59,8 @@ void DevUhci::Init() {
     kassert(_qh_buf.Push(&qh_array[i]));
   }
 
+  // legacy support
+  WriteReg<uint16_t>(0xC0, 0x2000);
   
   _base_addr = ReadReg<uint32_t>(kBaseAddressReg);
   if ((_base_addr & 1) == 0) {
@@ -86,10 +88,17 @@ void DevUhci::Init() {
   WriteControllerReg<uint32_t>(kCtrlRegFlBaseAddr, frame_base_phys_addr);
   WriteControllerReg<uint16_t>(kCtrlRegFrNum, 0);
 
-  // WriteControllerReg<uint16_t>(kCtrlRegCmd, ReadControllerReg<uint16_t>(kCtrlRegCmd) | 1);
+  WriteControllerReg<uint16_t>(kCtrlRegCmd, ReadControllerReg<uint16_t>(kCtrlRegCmd) | 1);
 
-  // while((ReadControllerReg<uint16_t>(kCtrlRegStatus) & kCtrlRegStatusFlagHalted) != 0) {
-  // }
+  while((ReadControllerReg<uint16_t>(kCtrlRegStatus) & kCtrlRegStatusFlagHalted) != 0) {
+  }
+
+  if ((ReadControllerReg<uint16_t>(kCtrlRegPort1) & 1) != 0) {
+    // TODO need implementation
+  }
+  if ((ReadControllerReg<uint16_t>(kCtrlRegPort2) & 1) != 0) {
+    // TODO need implementation
+  }
 }
 
 bool DevUhci::SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) {

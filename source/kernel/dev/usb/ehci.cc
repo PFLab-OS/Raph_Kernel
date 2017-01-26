@@ -120,6 +120,29 @@ void DevEhci::Init() {
     asm volatile("":::"memory");
   }
 
+  // acquire os semaphore
+  uint8_t eecp = (ReadCapabilityRegHccParams() >> 8) & 0xff;
+  uint32_t eec;
+  for(; eecp !=0; eecp = (eec >> 8) & 0xff) {
+    eec = ReadReg<uint32_t>(eecp);
+    if ((eec & 0xff) != 0x1) {
+      continue;
+    }
+    if ((eec & (1 << 16)) == 0) {
+      continue;
+    }
+    WriteReg<uint32_t>(eecp, eec & (1 << 24));
+    while(true) {
+      eec = ReadReg<uint32_t>(eecp);
+      if ((eec & 0xff) != 0x1) {
+        break;
+      }
+      if ((eec & (1 << 16)) == 0) {
+        break;
+      }
+    }
+  }
+  
   for (int i = 0; i < n_ports; i++) {
     if ((_op_reg_base_addr[kOpRegOffsetPortScBase + i] & kOpRegPortScFlagCurrentConnectStatus) != 0) {
       ResetPort(i);
