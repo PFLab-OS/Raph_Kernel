@@ -677,12 +677,14 @@ static void load_script(sptr<LoadContainer> container_) {
   auto callout_ = make_sptr(new Callout);
   callout_->Init(make_uptr(new Function2<wptr<Callout>, sptr<LoadContainer>>([](wptr<Callout> callout, sptr<LoadContainer> container){
           size_t i = container->i;
-          while(container->i < container->data->GetLen()) {
-            if ((*container->data)[container->i] == '\n') {
-              (*container->data)[container->i] = '\0';
+          while(container->i <= container->data->GetLen()) {
+            if (container->i == container->data->GetLen() || (*container->data)[container->i] == '\n' || (*container->data)[container->i] == '\0') {
+              char buffer[container->i - i + 1];
+              buffer[container->i - i] = '\0';
+              memcpy(buffer, reinterpret_cast<char *>(container->data->GetRawPtr()) + i, container->i - i);
               auto ec = make_uptr(new Shell::ExecContainer(shell));
-              ec = shell->Tokenize(ec, reinterpret_cast<char *>(container->data->GetRawPtr()) + i);
-              container->i++;
+              ec = shell->Tokenize(ec, buffer);
+              int timeout = 10;
               if (strcmp(ec->argv[0], "wait") != 0) {
                 shell->Execute(ec);
               } else {
@@ -697,14 +699,19 @@ static void load_script(sptr<LoadContainer> container_) {
                     }
                     t = t * 10 + ec->argv[1][l] - '0';
                   }
-                  task_ctrl->RegisterCallout(make_sptr(callout), t * 1000 * 1000);
-                  return;
+                  timeout = t * 1000 * 1000;
                 } else {
                   gtty->Cprintf("invalid argument.\n");
                 }
               }
-              task_ctrl->RegisterCallout(make_sptr(callout), 10);
+              if (container->i < container->data->GetLen()) {
+                container->i++;
+                task_ctrl->RegisterCallout(make_sptr(callout), timeout);
+              }
               return;
+            }
+            if ((*container->data)[container->i] == '\0') {
+              break;
             }
             container->i++;
           }
