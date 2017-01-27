@@ -21,7 +21,8 @@ ifdef INIT
 	REMOTE_COMMAND += export INIT=$(INIT); 
 	INIT_FILE = init_$(INIT)
 else
-	INIT_FILE = init
+	BRANCH_INIT_FILE = init_$(shell git rev-parse --abbrev-ref HEAD)
+	INIT_FILE = $(if $(shell ls | grep $(BRANCH_INIT_FILE)),$(BRANCH_INIT_FILE),init)
 endif
 
 .PHONY: clean disk run image mount umount debugqemu showerror numerror vboxrun run_pxeserver pxeimg burn_ipxe burn_ipxe_remote vboxkill vnc synctime
