@@ -156,7 +156,9 @@ void DevEhci::HandlerSub() {
     return;
   }
 
-  task_ctrl->Register(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), _int_task);
+  if (!_int_task->IsRegistered()) {
+    task_ctrl->Register(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), _int_task);
+  }
 }
 
 template<class QueueHead, class TransferDescriptor>
