@@ -441,7 +441,7 @@ static void arp_scan(int argc, const char *argv[]) {
   task_ctrl->RegisterCallout(callout_, cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), 3*1000*1000);
 }
 
-static void udpsend(int argc, const char *argv[]) {
+void udpsend(int argc, const char *argv[]) {
   if (argc != 4) {
     gtty->Cprintf("invalid argument.\n");
     return;
@@ -727,7 +727,6 @@ static void load_script(sptr<LoadContainer> container_) {
                 }
               } else if (strcmp(ec->argv[0], "wait_until_linkup") == 0) {
                 gtty->Cprintf("> %s\n", buffer);
-                const char *argv[] = {"wait_until_wakeup", ec->argv[1]};
                 wait_until_linkup(make_sptr(callout), ec->argc, ec->argv);
                 return;
               } else {

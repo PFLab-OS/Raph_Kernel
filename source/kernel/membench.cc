@@ -29,6 +29,8 @@
 #include <global.h>
 #include <mem/physmem.h>
 
+void udpsend(int argc, const char *argv[]);
+
 static bool is_knl() {
   return x86::get_display_family_model() == 0x0657;
 }
@@ -2134,6 +2136,11 @@ void func102() {
   int cpuid = cpu_ctrl->GetCpuId().GetRawId();
   if (cpuid == 0) {
     gtty->CprintfRaw("<%c %d(%d) %lld(%lld) us> ", f ? 'M' : 'C', sizeof(Container<i>), i, avg, variance);
+    StringTty tty(100);
+    tty.CprintfRaw("%c\t%d\t%d\n", f ? 'M' : 'C', i, avg);
+    int argc = 4;
+    const char *argv[] = {"udpsend", "192.168.12.35", "1234", tty.GetRawPtr()};
+    udpsend(argc, argv);
   }
 }
 

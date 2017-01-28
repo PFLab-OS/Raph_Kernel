@@ -32,26 +32,8 @@
 // enable to blocking operation
 class TaskWithStack : public Task {
 public:
-  class TaskThread {
-  public:
-    TaskThread() {
-    }
-    void Init();
-    void SetFunc(uptr<GenericFunction<>> func) {
-      _func = func;
-    }
-    ~TaskThread() {
-    }
-    void InitBuffer();
-    void Wait();
-    void SwitchTo();
-  private:  
-    virt_addr _stack;
-    jmp_buf _buf;
-    jmp_buf _return_buf;
-    uptr<GenericFunction<>> _func;
-  };
-  TaskWithStack() {
+  TaskWithStack() = delete;
+  TaskWithStack(CpuId cpuid) : _tthread(cpuid) {
   }
   virtual ~TaskWithStack() {
   }
@@ -70,6 +52,32 @@ public:
   virtual void Kill() override {
     kernel_panic("TaskWithStack", "not implemented");
   }
+  class TaskThread {
+  public:
+    TaskThread() = delete;
+    TaskThread(CpuId cpuid) : _cpuid(cpuid) {
+      assert(cpuid.IsValid());
+    }
+    void Init();
+    void SetFunc(uptr<GenericFunction<>> func) {
+      _func = func;
+    }
+    ~TaskThread() {
+    }
+    void InitBuffer();
+    void Wait();
+    void SwitchTo();
+  private:  
+    virt_addr _stack;
+    jmp_buf _buf;
+    jmp_buf _return_buf;
+    uptr<GenericFunction<>> _func;
+    CpuId _cpuid;
+    enum State {
+      kRunning,
+      kWaiting,
+    } _state = State::kWaiting;
+  };
 private:
   TaskThread _tthread;
 };

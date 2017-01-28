@@ -231,7 +231,7 @@ extern "C" {
 }
 
 void TaskWithStack::TaskThread::Init() {
-  _stack = KernelStackCtrl::GetCtrl().AllocThreadStack(cpu_ctrl->GetCpuId());
+  _stack = KernelStackCtrl::GetCtrl().AllocThreadStack(_cpuid);
   if (setjmp(_return_buf) == 0) {
     asm volatile("movq %0, %%rsp;"
                  "call initialize_TaskThread;"
@@ -246,23 +246,25 @@ void TaskWithStack::TaskThread::InitBuffer() {
     // return back to TaskThread::Init()
   } else {
     // call from TaskThread::SwitchTo()
-    while(true) {
-      _func->Execute();
-      Wait();
-    }
+    assert(_cpuid == cpu_ctrl->GetCpuId());
+    _func->Execute();
+    longjmp(_return_buf, 1);
   }
   kernel_panic("TaskThread", "unexpectedly ended.");
 }
 
 void TaskWithStack::TaskThread::Wait() {
   if (setjmp(_buf) == 0) {
+    _state = State::kWaiting;
     longjmp(_return_buf, 1);
   }
+  assert(_cpuid == cpu_ctrl->GetCpuId());
 }
 
 void TaskWithStack::TaskThread::SwitchTo() {
-  // TODO have to set current cpuid
-  kassert(false);
+  assert(_cpuid == cpu_ctrl->GetCpuId());
+  assert(_state == State::kWaiting);
+  _state = State::kRunning;
   if (setjmp(_return_buf) == 0) {
     longjmp(_buf, 1);
   }
