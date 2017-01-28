@@ -164,4 +164,36 @@ class Tty {
   StringBuffer _str_buffer;
 };
 
+class StringTty : public Tty {
+public:
+  StringTty() = delete;
+  StringTty(int buffer_size) : _buffer_size(buffer_size) {
+    _offset = 0;
+    _buf = new char[buffer_size];
+  }
+  ~StringTty() {
+    delete[] _buf;
+  }
+  char *GetRawPtr() {
+    return _buf;
+  }
+private:
+  virtual void PrintShell(const char *str) override {
+    kassert(false);
+  }
+  virtual void SetColor(Color) override {
+  }
+  virtual void ResetColor() override {
+  }
+  virtual void Write(uint8_t c) {
+    assert(_offset + 1 < _buffer_size);
+    _buf[_offset] = c;
+    _buf[_offset + 1] = '\0';
+    _offset++;
+  }
+  char *_buf;
+  int _offset;
+  const int _buffer_size;
+};
+
 #endif // __RAPH_KERNEL_TTY_H__
