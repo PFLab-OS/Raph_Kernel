@@ -704,33 +704,34 @@ static void load_script(sptr<LoadContainer> container_) {
           while(container->i <= container->data->GetLen()) {
             if (container->i == container->data->GetLen() || (*container->data)[container->i] == '\n' || (*container->data)[container->i] == '\0') {
               char buffer[container->i - i + 1];
-              buffer[container->i - i] = '\0';
               memcpy(buffer, reinterpret_cast<char *>(container->data->GetRawPtr()) + i, container->i - i);
+              buffer[container->i - i] = '\0';
               auto ec = make_uptr(new Shell::ExecContainer(shell));
               ec = shell->Tokenize(ec, buffer);
               int timeout = 10;
-              if (strcmp(ec->argv[0], "wait") == 0) {
+              if (strlen(buffer) != 0) {
                 gtty->Cprintf("> %s\n", buffer);
-                if (ec->argc == 2) {
-                  int t = 0;
-                  for(size_t l = 0; l < strlen(ec->argv[1]); l++) {
-                    if ('0' > ec->argv[1][l] || ec->argv[1][l] > '9') {
-                      gtty->Cprintf("invalid argument.\n");
-                      t = 0;
-                      break;
+                if (strcmp(ec->argv[0], "wait") == 0) {
+                  if (ec->argc == 2) {
+                    int t = 0;
+                    for(size_t l = 0; l < strlen(ec->argv[1]); l++) {
+                      if ('0' > ec->argv[1][l] || ec->argv[1][l] > '9') {
+                        gtty->Cprintf("invalid argument.\n");
+                        t = 0;
+                        break;
+                      }
+                      t = t * 10 + ec->argv[1][l] - '0';
                     }
-                    t = t * 10 + ec->argv[1][l] - '0';
+                    timeout = t * 1000 * 1000;
+                  } else {
+                    gtty->Cprintf("invalid argument.\n");
                   }
-                  timeout = t * 1000 * 1000;
+                } else if (strcmp(ec->argv[0], "wait_until_linkup") == 0) {
+                  wait_until_linkup(make_sptr(callout), ec->argc, ec->argv);
+                  return;
                 } else {
-                  gtty->Cprintf("invalid argument.\n");
+                  shell->Execute(ec);
                 }
-              } else if (strcmp(ec->argv[0], "wait_until_linkup") == 0) {
-                gtty->Cprintf("> %s\n", buffer);
-                wait_until_linkup(make_sptr(callout), ec->argc, ec->argv);
-                return;
-              } else {
-                shell->Execute(ec);
               }
               if (container->i < container->data->GetLen()) {
                 container->i++;

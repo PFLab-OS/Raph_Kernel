@@ -94,7 +94,6 @@ public:
   void Setup();
   void Register(CpuId cpuid, sptr<Task> task);
   void Remove(sptr<Task> task);
-  void Wait();
   void Run();
   TaskQueueState GetState(CpuId cpuid) {
     if (_task_struct == nullptr) {
@@ -102,6 +101,7 @@ public:
     }
     return _task_struct[cpuid.GetRawId()].state;
   }
+  void RegisterCallout2(sptr<Callout> task, int us);
   void RegisterCallout(sptr<Callout> task, int us) {
     RegisterCallout(task, cpu_ctrl->GetCpuId(), us);
   }
