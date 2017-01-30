@@ -188,6 +188,15 @@ struct SyncLow {
   }
 };
 
+struct Sync2Low {
+  int top_level_lock1;
+  int top_level_lock2;
+  int top_level_lock3;
+  void Do(int tnum) {
+    sync2_read(tnum, top_level_lock1, top_level_lock2, top_level_lock3);
+  }
+};
+
 // 1階層
 template<int kSubStructNum, int kPhysAvailableCoreNum, int kGroupCoreNum>
 struct Sync {
