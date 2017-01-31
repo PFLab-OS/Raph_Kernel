@@ -119,6 +119,33 @@ private:
   uint64_t _cnt = 0;
 };
 
+class AndersonSpinLock {
+public:
+  AndersonSpinLock() {
+    _flag[0] = 1;
+    for (int i = 1; i < 256; i++) {
+      _flag[i] = 0;
+    }
+  }
+  bool TryLock() {
+    assert(false);
+  }
+  void Lock() {
+    uint64_t cur = __sync_fetch_and_add(&_last, 1) % 256;
+    while (_flag[cur] == 0) {
+    }
+    _flag[cur] = 0;
+    _cur = cur;
+  }
+  void Unlock() {
+    _flag[(_cur + 1) % 256] = 1;
+  }
+private:
+  int _flag[256];
+  uint64_t _last = 0;
+  uint64_t _cur = 0;
+};
+
 class McsSpinLock {
 public:
   McsSpinLock() {
@@ -129,7 +156,7 @@ public:
   void Lock() {
     auto qnode = &_node[cpu_ctrl->GetCpuId().GetApicId()];
     qnode->_next = nullptr;
-    auto pred = xchg(&_tail, qnode);
+    auto pred = __atomic_exchange_n(&_tail, qnode, __ATOMIC_RELAXED);
     if (pred != nullptr) {
       qnode->_spin = 1;
       pred->_next = qnode;
@@ -157,28 +184,12 @@ private:
     QueueNode *_next;
     int _spin;
   } *_tail = nullptr;
-  QueueNode *xchg(QueueNode **addr, QueueNode *newval)
-  {   
-    QueueNode *result = newval;
-
-    asm volatile("lock xchgq %0, %1"
-                 :"+r"(result), "+m"(*addr)
-                 ::"memory","cc");
-    return result;
-  }
   QueueNode _node[37 * 8];
 };
 
 class McsSpinLock2 {
 public:
-  struct QueueNode {
-    QueueNode() {
-      _next = nullptr;
-      _spin = 0;
-    }
-    QueueNode *_next;
-    int _spin;
-  };
+  struct QueueNode;
   McsSpinLock2() {
   }
   bool TryLock() {
@@ -187,7 +198,7 @@ public:
   QueueNode *Lock() {
     auto qnode = &_node[cpu_ctrl->GetCpuId().GetApicId()];
     qnode->_next = nullptr;
-    auto pred = xchg(&_tail, qnode);
+    auto pred = __atomic_exchange_n(&_tail, qnode, __ATOMIC_RELAXED);
     if (pred != nullptr) {
       qnode->_spin = 1;
       pred->_next = qnode;
@@ -207,16 +218,14 @@ public:
     qnode->_next->_spin = 0;
   }
 private:
-  QueueNode *_tail = nullptr;
-  QueueNode *xchg(QueueNode **addr, QueueNode *newval)
-  {   
-    QueueNode *result = newval;
-
-    asm volatile("lock xchgq %0, %1"
-                 :"+r"(result), "+m"(*addr)
-                 ::"memory","cc");
-    return result;
-  }
+  struct QueueNode {
+    QueueNode() {
+      _next = nullptr;
+      _spin = 0;
+    }
+    QueueNode *_next;
+    int _spin;
+  } *_tail = nullptr;
   QueueNode _node[37 * 8];
 };
 
@@ -442,7 +451,7 @@ public:
     if (prev == 0) {
       _top_lock.Lock();
       _second_lock[apicid / 8].Lock();
-      _state2[apicid / 8] = xchg(&_state1[apicid / 8], 100) - 1;
+      _state2[apicid / 8] = __atomic_exchange_n(&_state1[apicid / 8], 100, __ATOMIC_RELAXED) - 1;
     } else {
       while(*state1 != 100) {
       }
@@ -464,15 +473,6 @@ private:
   L2 _second_lock[kSubStructNum];
   int _state1[kSubStructNum] = {0};
   int _state2[kSubStructNum] = {0};
-  int xchg(int *addr, int newval)
-  {   
-    int result = newval;
-
-    asm volatile("lock xchgl %0, %1"
-                 :"+r"(result), "+m"(*addr)
-                 ::"memory","cc");
-    return result;
-  }
 };
 
 
@@ -551,15 +551,6 @@ private:
   static const int kSubStructNum = 37 * 2;
   L1 _top_lock;
   int _state1[kSubStructNum*2];
-  int xchg(int *addr, int newval)
-  {   
-    int result = newval;
-
-    asm volatile("lock xchgl %0, %1"
-                 :"+r"(result), "+m"(*addr)
-                 ::"memory","cc");
-    return result;
-  }
 };
 
 template<class L1>
@@ -638,15 +629,6 @@ private:
   static const int kSubStructNum = 37 * 2;
   L1 _top_lock;
   int _state1[kSubStructNum*2];
-  int xchg(int *addr, int newval)
-  {   
-    int result = newval;
-
-    asm volatile("lock xchgl %0, %1"
-                 :"+r"(result), "+m"(*addr)
-                 ::"memory","cc");
-    return result;
-  }
 };
 
 class ExpSpinLock8 {
@@ -674,7 +656,7 @@ public:
       }
     }
 
-    if (__sync_bool_compare_and_swap(&_lock_cnt[tileid], *flag, *flag)) {
+    if (__atomic_load_n(&_lock_cnt[tileid], __ATOMIC_RELAXED) == *flag) {
       _qnode[tileid] = _top_lock.Lock();
     }
   }
@@ -685,9 +667,9 @@ public:
     uint64_t *cnt = &_cnt[tileid];
 
     uint64_t tmp = *flag + 1;
-    if (__sync_bool_compare_and_swap(cnt, tmp, tmp)) {
+    if (*cnt == tmp) {
       _top_lock.Unlock(_qnode[tileid]);
-      xchg(&_lock_cnt[tileid], tmp);
+      __atomic_store_n(&_lock_cnt[tileid], tmp, __ATOMIC_RELAXED);
     }
     __sync_fetch_and_add(flag, 1);
   }
@@ -698,15 +680,6 @@ private:
   uint64_t _flag[kSubStructNum];
   uint64_t _lock_cnt[kSubStructNum];
   McsSpinLock2::QueueNode *_qnode[kSubStructNum];
-  uint64_t xchg(uint64_t *addr, uint64_t newval)
-  {   
-    uint64_t result = newval;
-
-    asm volatile("lock xchgq %0, %1"
-                 :"+r"(result), "+m"(*addr)
-                 ::"memory","cc");
-    return result;
-  }
 };
 
 class ExpSpinLock82 {
@@ -734,7 +707,7 @@ public:
       }
     }
 
-    if (__sync_bool_compare_and_swap(&_lock_cnt[tileid], *flag, *flag)) {
+    if (__atomic_load_n(&_lock_cnt[tileid], __ATOMIC_RELAXED) == *flag) {
       _qnode[tileid] = _top_lock.Lock();
     }
   }
@@ -745,10 +718,9 @@ public:
     uint64_t *cnt = &_cnt[tileid];
 
     uint64_t tmp = *flag + 1;
-    if (_lock_cnt[tileid] + 1000 == tmp || __sync_bool_compare_and_swap(cnt, tmp, tmp)) {
-    // if (__sync_bool_compare_and_swap(&_unlock_cnt[tileid], *flag, *flag)) {
+    if (_lock_cnt[tileid] + 1000 == tmp || *cnt == tmp) {
       _top_lock.Unlock(_qnode[tileid]);
-      xchg(&_lock_cnt[tileid], tmp);
+      __atomic_store_n(&_lock_cnt[tileid], tmp, __ATOMIC_RELAXED);
     }
     __sync_fetch_and_add(flag, 1);
   }
@@ -759,13 +731,4 @@ private:
   uint64_t _flag[kSubStructNum];
   uint64_t _lock_cnt[kSubStructNum];
   McsSpinLock2::QueueNode *_qnode[kSubStructNum];
-  uint64_t xchg(uint64_t *addr, uint64_t newval)
-  {   
-    uint64_t result = newval;
-
-    asm volatile("lock xchgq %0, %1"
-                 :"+r"(result), "+m"(*addr)
-                 ::"memory","cc");
-    return result;
-  }
 };

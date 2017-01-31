@@ -201,15 +201,9 @@ void func107(sptr<TaskWithStack> task) {
           if (flag != cpu_ctrl->GetHowManyCpus()) {
             task_ctrl->Register(cpu_ctrl->GetCpuId(), ltask);
           } else {
-            for (int cpunum = 1; cpunum <= 8; cpunum++) {
+            for (int cpunum = 1; cpunum <= 256; cpunum++) {
               func107_sub<S, L>(cpunum, i);
             }
-            for (int cpunum = 16; cpunum <= 256; cpunum+=16) {
-              func107_sub<S, L>(cpunum, i);
-            }
-            // func107_sub<S, L>(8, i);
-            // func107_sub<S, L>(128, i);
-            // func107_sub<S, L>(256, i);
             task_->Execute();
           }
         }, ltask_, task)));
@@ -224,6 +218,7 @@ void func10(sptr<TaskWithStack> task) {
   func107<i, S, McsSpinLock>(task);
   func107<i, S, TtsSpinLock>(task);
   func107<i, S, TicketSpinLock>(task);
+  func107<i, S, AndersonSpinLock>(task);
   func107<i, S, SimpleSpinLockR>(task);
   // func107<i, S, ExpSpinLock7M>(task);
   // func107<i, S, ExpSpinLock7MF>(task);
@@ -243,7 +238,7 @@ static void membench10(sptr<TaskWithStack> task) {
   if (cpuid == 0) {
     gtty->CprintfRaw("start >>>\n");
   }
-  func10<S, 10, 20, 40, 80, 160, 320, 640>(task); 
+  func10<S, 1>(task); 
 }
 
 void register_membench2_callout() {

@@ -51,13 +51,14 @@ Pair func107(int cpunum, int i) {
   volatile int apicid = cpu_ctrl->GetCpuId().GetApicId();
   
   static L *lock;
-  static const int kInitCnt = 300;
-  static volatile int cnt = kInitCnt;
+  static const uint64_t kInitCnt = 30000;
+  static volatile uint64_t cnt = kInitCnt;
   static int *buf1 = reinterpret_cast<int *>(p2v(0x1840000000));
   int *buf2 = new int[i];
   int *buf3 = new int[i];
   int *buf4 = new int[i];
   static uint64_t f_array[256];
+  static uint64_t v_array[256];
   int cpunum_ = 0;
   bool eflag;
   for (int apicid_ = 0; apicid_ <= apicid; apicid_++) {
@@ -76,6 +77,7 @@ Pair func107(int cpunum, int i) {
       }
       for (int x = 0; x < 256; x++) {
         f_array[x] = 0;
+        v_array[x] = 0;
       }
     }
   }
@@ -101,18 +103,19 @@ Pair func107(int cpunum, int i) {
       if (cnt > 0) {
         cnt--;
         f_array[cpunum_ - 1]++;
-        // memcpy(buf2, buf1 + i * cnt, i);
+        v_array[cpunum_ - 1]++;
+        memcpy(buf2, buf1 + i * cnt, i);
       } else {
         flag = false;
       }
       lock->Unlock();
-      // for (int x = 0; x < i; x++) {
-      //   int tmp = 1;
-      //   for (int y = 0; y < i; y++) {
-      //     tmp *= buf2[y];
-      //   }
-      //   buf4[x] += tmp + buf3[x];
-      // }
+      for (int x = 0; x < i; x++) {
+        int tmp = 1;
+        for (int y = 0; y < i; y++) {
+          tmp *= buf2[y];
+        }
+        buf4[x] += tmp + buf3[x];
+      }
       if (!flag) {
         break;
       }
@@ -130,9 +133,12 @@ Pair func107(int cpunum, int i) {
         apic_ctrl->SendIpi(cpuid_.GetApicId());
       }
       uint64_t f_avg = 0;
+      uint64_t varidation = 0;
       for (int x = 0; x < cpunum; x++) {
         f_avg += f_array[x];
+        varidation += v_array[x];
       }
+      assert(varidation == kInitCnt);
       f_avg /= cpunum;
       for (int x = 0; x < cpunum; x++) {
         f_variance += (f_array[x] - f_avg) * (f_array[x] - f_avg);
@@ -201,9 +207,15 @@ void func107(sptr<TaskWithStack> task) {
           if (flag != cpu_ctrl->GetHowManyCpus()) {
             task_ctrl->Register(cpu_ctrl->GetCpuId(), ltask);
           } else {
-            for (int cpunum = 1; cpunum <= 256; cpunum++) {
-              func107_sub<S, L>(cpunum, i);
-            }
+            // for (int cpunum = 1; cpunum <= 8; cpunum++) {
+            //   func107_sub<S, L>(cpunum, i);
+            // }
+            // for (int cpunum = 16; cpunum <= 256; cpunum+=16) {
+            //   func107_sub<S, L>(cpunum, i);
+            // }
+            func107_sub<S, L>(8, i);
+            func107_sub<S, L>(128, i);
+            func107_sub<S, L>(256, i);
             task_->Execute();
           }
         }, ltask_, task)));
@@ -212,17 +224,14 @@ void func107(sptr<TaskWithStack> task) {
   task->Wait();
 } 
 
-// 同期だけのコストの計測
 template<class S, int i>
 void func10(sptr<TaskWithStack> task) {
   func107<i, S, McsSpinLock>(task);
-  func107<i, S, TtsSpinLock>(task);
-  func107<i, S, TicketSpinLock>(task);
-  func107<i, S, AndersonSpinLock>(task);
-  func107<i, S, SimpleSpinLockR>(task);
-  // func107<i, S, ExpSpinLock7M>(task);
-  // func107<i, S, ExpSpinLock7MF>(task);
-  // func107<i, S, ExpSpinLock7MF2>(task);
+  // func107<i, S, TtsSpinLock>(task);
+  // func107<i, S, TicketSpinLock>(task);
+  // func107<i, S, SimpleSpinLockR>(task);
+  func107<i, S, ExpSpinLock8>(task);
+  func107<i, S, ExpSpinLock82>(task);
 }
 
 template<class S, int i, int j, int... Num>
@@ -238,7 +247,7 @@ static void membench10(sptr<TaskWithStack> task) {
   if (cpuid == 0) {
     gtty->CprintfRaw("start >>>\n");
   }
-  func10<S, 1>(task); 
+  func10<S, 10, 20, 40, 80, 160, 320, 640>(task); 
 }
 
 void register_membench2_callout() {
