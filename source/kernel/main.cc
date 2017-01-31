@@ -961,8 +961,7 @@ extern "C" int main_of_others() {
 static int error_output_flag = 0;
 
 void show_backtrace(size_t *rbp) {
-  //RAPH_DEBUG
-    for (int i = 0; i < 7; i++) {
+    for (int i = 0; i < 3; i++) {
       gtty->CprintfRaw("backtrace(%d): rip:%llx,\n", i, rbp[1]);
       rbp = reinterpret_cast<size_t *>(rbp[0]);
     }
