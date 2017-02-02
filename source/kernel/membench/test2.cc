@@ -33,62 +33,71 @@
 #include "spinlock.h"
 #include "list.h"
 
-void udpsend(int argc, const char *argv[]);
-
 static bool is_knl() {
   return x86::get_display_family_model() == 0x0657;
 }
+
+void udpsend(int argc, const char *argv[]);
 
 struct Pair {
   uint64_t time;
   uint64_t fairness;
 };
 
-template<class S, class L>
-Pair func107(int cpunum, int i) {
+static SyncLow sync_1={0};
+static Sync2Low sync_2={0};
+static Sync2Low sync_3={0};
+static SyncLow sync_4={0};
+
+template<class L>
+static Pair func107(bool mode, int cpunum, int i) {
   uint64_t time = 0;
   uint64_t f_variance = 0;
   volatile int apicid = cpu_ctrl->GetCpuId().GetApicId();
   
   static L *lock;
-  static const int kInitCnt = 300;
+  static const int kInitCnt = 30000;
   static volatile int cnt = kInitCnt;
-  static int *buf1 = reinterpret_cast<int *>(p2v(0x1840000000));
-  int *buf2 = new int[i];
-  int *buf3 = new int[i];
-  int *buf4 = new int[i];
   static uint64_t f_array[256];
   int cpunum_ = 0;
   bool eflag;
-  for (int apicid_ = 0; apicid_ <= apicid; apicid_++) {
-    if (apic_ctrl->GetCpuIdFromApicId(apicid_) != -1) {
-      cpunum_++;
+  if (mode) {
+    kassert(cpunum <= 32);
+    if (apicid % 8 != 0) {
+      cpunum_ = -1;
+    } else {
+      for (int apicid_ = 0; apicid_ <= apicid; apicid_+=8) {
+        if (apic_ctrl->GetCpuIdFromApicId(apicid_) != -1) {
+          cpunum_++;
+        }
+      }
+    }
+  } else {
+    for (int apicid_ = 0; apicid_ <= apicid; apicid_++) {
+      if (apic_ctrl->GetCpuIdFromApicId(apicid_) != -1) {
+        cpunum_++;
+      }
     }
   }
-  eflag = cpunum_ <= cpunum;
+  if (cpunum_ < 0) {
+    eflag = false;
+  } else {
+    eflag = cpunum_ <= cpunum;
+  }
   
 
   {
     if (apicid == 0) {
       lock = new L;
-      for (int x = 0; x < i; x++) {
-        buf1[x] = rand();
-      }
       for (int x = 0; x < 256; x++) {
         f_array[x] = 0;
       }
     }
   }
 
-  {
-    static SyncLow sync={0};
-    sync.Do();
-  }
+  sync_1.Do();
   if (eflag) {
-    {
-      static Sync2Low sync={0};
-      sync.Do(cpunum);
-    }
+    sync_2.Do(cpunum);
 
     uint64_t t1;
     if (apicid == 0) {
@@ -97,31 +106,21 @@ Pair func107(int cpunum, int i) {
 
     while(true) {
       bool flag = true;
-      lock->Lock();
+      lock->Lock(apicid);
       if (cnt > 0) {
         cnt--;
         f_array[cpunum_ - 1]++;
-        // memcpy(buf2, buf1 + i * cnt, i);
       } else {
         flag = false;
       }
-      lock->Unlock();
-      // for (int x = 0; x < i; x++) {
-      //   int tmp = 1;
-      //   for (int y = 0; y < i; y++) {
-      //     tmp *= buf2[y];
-      //   }
-      //   buf4[x] += tmp + buf3[x];
-      // }
+      lock->Unlock(apicid);
       if (!flag) {
         break;
       }
     }
+    lock->Release(apicid);
     
-    {
-      static Sync2Low sync={0};
-      sync.Do(cpunum);
-    }
+    sync_3.Do(cpunum);
 
     if (apicid == 0) {
       time = ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000;
@@ -141,28 +140,22 @@ Pair func107(int cpunum, int i) {
       delete lock;
       cnt = kInitCnt;
     }
-    delete buf2;
-    delete buf3;
-    delete buf4;
   } else {
     asm volatile("hlt");
   }
   
-  {
-    static SyncLow sync={0};
-    sync.Do();
-  }
+  sync_4.Do();
   Pair pair = { time: time, fairness: f_variance };
   return pair;
 }
 
-template<class S, class L>
-void func107_sub(int cpunum, int i) {
+template<class L>
+static void func107_sub(bool mode, int cpunum, int i) {
   static const int num = 20;
   Pair results[num];
-  func107<S, L>(cpunum, i);
+  func107<L>(mode, cpunum, i);
   for (int j = 0; j < num; j++) {
-    results[j] = func107<S, L>(cpunum, i);
+    results[j] = func107<L>(mode, cpunum, i);
   }
   Pair avg = { time: 0, fairness: 0 };
   for (int j = 0; j < num; j++) {
@@ -188,8 +181,8 @@ void func107_sub(int cpunum, int i) {
   }
 }
 
-template<int i, class S, class L>
-void func107(sptr<TaskWithStack> task) {
+template<bool mode, int i, class L>
+static void func107(sptr<TaskWithStack> task) {
   static int flag = 0;
   int tmp = flag;
   while(!__sync_bool_compare_and_swap(&flag, tmp, tmp + 1)) {
@@ -201,8 +194,30 @@ void func107(sptr<TaskWithStack> task) {
           if (flag != cpu_ctrl->GetHowManyCpus()) {
             task_ctrl->Register(cpu_ctrl->GetCpuId(), ltask);
           } else {
-            for (int cpunum = 1; cpunum <= 256; cpunum++) {
-              func107_sub<S, L>(cpunum, i);
+            if (mode) {
+              if (is_knl()) {
+                for (int cpunum = 1; cpunum <= 32; cpunum++) {
+                  func107_sub<L>(mode, cpunum, i);
+                }
+              }
+            } else {
+              if (is_knl()) {
+                for (int cpunum = 1; cpunum <= 256; cpunum++) {
+                  func107_sub<L>(mode, cpunum, i);
+                }
+              } else {
+                for (int cpunum = 1; cpunum <= 8; cpunum++) {
+                  func107_sub<L>(mode, cpunum, i);
+                }
+              }
+            }
+            int apicid = cpu_ctrl->GetCpuId().GetApicId();
+            if (apicid == 0) {
+              StringTty tty(4);
+              tty.CprintfRaw("\n");
+              int argc = 4;
+              const char *argv[] = {"udpsend", "192.168.12.35", "1234", tty.GetRawPtr()};
+              udpsend(argc, argv);
             }
             task_->Execute();
           }
@@ -212,49 +227,68 @@ void func107(sptr<TaskWithStack> task) {
   task->Wait();
 } 
 
-// 同期だけのコストの計測
-template<class S, int i>
-void func10(sptr<TaskWithStack> task) {
-  func107<i, S, McsSpinLock>(task);
-  func107<i, S, TtsSpinLock>(task);
-  func107<i, S, TicketSpinLock>(task);
-  func107<i, S, AndersonSpinLock>(task);
-  func107<i, S, SimpleSpinLockR>(task);
-  // func107<i, S, ExpSpinLock7M>(task);
-  // func107<i, S, ExpSpinLock7MF>(task);
-  // func107<i, S, ExpSpinLock7MF2>(task);
+template<bool mode, int i>
+static void func106(sptr<TaskWithStack> task) {
 }
 
-template<class S, int i, int j, int... Num>
-void func10(sptr<TaskWithStack> task) {
-  func10<S, i>(task);
-  func10<S, j, Num...>(task);
+template<bool mode, int i, class L, class... Locks>
+static void func106(sptr<TaskWithStack> task) {
+  func107<mode, i, L>(task);
+  func106<mode, i, Locks...>(task);
+}
+
+// 同期だけのコストの計測
+template<bool mode, int i>
+static void func10(sptr<TaskWithStack> task) {
+  func106<mode, i,
+          McsSpinLock,
+          TtsSpinLock,
+          TicketSpinLock,
+          AndersonSpinLock<1>,
+          ClhSpinLock,
+          AndersonSpinLock<16>,
+          SimpleSpinLockR,
+          ExpSpinLock9<AndersonSpinLock<16>, AndersonSpinLock<16>>,
+          ExpSpinLock9<TtsSpinLock, AndersonSpinLock<16>>,
+          ExpSpinLock9_1_0<AndersonSpinLock<16>>,
+          ExpSpinLock9<AndersonSpinLock<16>, ClhSpinLock>,
+          ExpSpinLock10<AndersonSpinLock<16>, AndersonSpinLock<16>>,
+          ExpSpinLock10<TtsSpinLock, AndersonSpinLock<16>>,
+          ExpSpinLock10_1_0<AndersonSpinLock<16>>,
+          ExpSpinLock10<AndersonSpinLock<16>, ClhSpinLock>
+          >(task);
+}
+
+template<bool mode, int i, int j, int... Num>
+static void func10(sptr<TaskWithStack> task) {
+  func10<mode, i>(task);
+  func10<mode, j, Num...>(task);
 }
 
 // リスト、要素数可変比較版
-template<class S>
-static void membench10(sptr<TaskWithStack> task) {
+void membench2(sptr<TaskWithStack> task) {
   int cpuid = cpu_ctrl->GetCpuId().GetRawId();
   if (cpuid == 0) {
     gtty->CprintfRaw("start >>>\n");
   }
-  func10<S, 1>(task); 
-}
-
-void register_membench2_callout() {
-  for (int i = 0; i < cpu_ctrl->GetHowManyCpus(); i++) {
-    CpuId cpuid(i);
-    
-    auto task_ = make_sptr(new TaskWithStack(cpuid));
-    task_->Init();
-    task_->SetFunc(make_uptr(new Function<sptr<TaskWithStack>>([](sptr<TaskWithStack> task){
-            if (is_knl()) {
-              membench10<SyncLow>(task);
-            } else {
-              membench10<SyncLow>(task);
-            }
-          }, task_)));
-    task_ctrl->Register(cpuid, task_);
+  if (cpuid == 0) {
+    StringTty tty(10);
+    tty.CprintfRaw("# all\n");
+    int argc = 4;
+    const char *argv[] = {"udpsend", "192.168.12.35", "1234", tty.GetRawPtr()};
+    udpsend(argc, argv);
+  }
+  func10<false, 1>(task); 
+  if (cpuid == 0) {
+    StringTty tty(10);
+    tty.CprintfRaw("# tile\n");
+    int argc = 4;
+    const char *argv[] = {"udpsend", "192.168.12.35", "1234", tty.GetRawPtr()};
+    udpsend(argc, argv);
+  }
+  func10<true, 1>(task); 
+  if (cpuid == 0) {
+    gtty->CprintfRaw("<<< end\n");
   }
 }
 

@@ -35,17 +35,18 @@
 
 void udpsend(int argc, const char *argv[]);
 
-static bool is_knl() {
-  return x86::get_display_family_model() == 0x0657;
-}
-
 struct Pair {
   uint64_t time;
   uint64_t fairness;
 };
 
-template<class S, class L>
-Pair func107(int cpunum, int i) {
+static SyncLow sync_1={0};
+static Sync2Low sync_2={0};
+static Sync2Low sync_3={0};
+static SyncLow sync_4={0};
+
+template<class L>
+static Pair func107(int cpunum, int i) {
   uint64_t time = 0;
   uint64_t f_variance = 0;
   volatile int apicid = cpu_ctrl->GetCpuId().GetApicId();
@@ -72,8 +73,8 @@ Pair func107(int cpunum, int i) {
   {
     if (apicid == 0) {
       lock = new L;
-      for (int x = 0; x < i; x++) {
-        buf1[x] = rand();
+      for (int x = 0; x < i * cnt; x++) {
+        buf1[x] = rand() % 256;
       }
       for (int x = 0; x < 256; x++) {
         f_array[x] = 0;
@@ -82,15 +83,9 @@ Pair func107(int cpunum, int i) {
     }
   }
 
-  {
-    static SyncLow sync={0};
-    sync.Do();
-  }
+  sync_1.Do();
   if (eflag) {
-    {
-      static Sync2Low sync={0};
-      sync.Do(cpunum);
-    }
+    sync_2.Do(cpunum);
 
     uint64_t t1;
     if (apicid == 0) {
@@ -99,7 +94,7 @@ Pair func107(int cpunum, int i) {
 
     while(true) {
       bool flag = true;
-      lock->Lock();
+      lock->Lock(apicid);
       if (cnt > 0) {
         cnt--;
         f_array[cpunum_ - 1]++;
@@ -108,7 +103,7 @@ Pair func107(int cpunum, int i) {
       } else {
         flag = false;
       }
-      lock->Unlock();
+      lock->Unlock(apicid);
       for (int x = 0; x < i; x++) {
         int tmp = 1;
         for (int y = 0; y < i; y++) {
@@ -120,11 +115,10 @@ Pair func107(int cpunum, int i) {
         break;
       }
     }
+
+    lock->Release(apicid);
     
-    {
-      static Sync2Low sync={0};
-      sync.Do(cpunum);
-    }
+    sync_3.Do(cpunum);
 
     if (apicid == 0) {
       time = ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000;
@@ -154,21 +148,18 @@ Pair func107(int cpunum, int i) {
     asm volatile("hlt");
   }
   
-  {
-    static SyncLow sync={0};
-    sync.Do();
-  }
+  sync_4.Do();
   Pair pair = { time: time, fairness: f_variance };
   return pair;
 }
 
-template<class S, class L>
-void func107_sub(int cpunum, int i) {
-  static const int num = 20;
+template<class L>
+static void func107_sub(int cpunum, int i) {
+  static const int num = 1;
   Pair results[num];
-  func107<S, L>(cpunum, i);
+  func107<L>(cpunum, i);
   for (int j = 0; j < num; j++) {
-    results[j] = func107<S, L>(cpunum, i);
+    results[j] = func107<L>(cpunum, i);
   }
   Pair avg = { time: 0, fairness: 0 };
   for (int j = 0; j < num; j++) {
@@ -194,8 +185,8 @@ void func107_sub(int cpunum, int i) {
   }
 }
 
-template<int i, class S, class L>
-void func107(sptr<TaskWithStack> task) {
+template<int i, class L>
+static void func107(sptr<TaskWithStack> task) {
   static int flag = 0;
   int tmp = flag;
   while(!__sync_bool_compare_and_swap(&flag, tmp, tmp + 1)) {
@@ -207,15 +198,17 @@ void func107(sptr<TaskWithStack> task) {
           if (flag != cpu_ctrl->GetHowManyCpus()) {
             task_ctrl->Register(cpu_ctrl->GetCpuId(), ltask);
           } else {
-            // for (int cpunum = 1; cpunum <= 8; cpunum++) {
-            //   func107_sub<S, L>(cpunum, i);
-            // }
-            // for (int cpunum = 16; cpunum <= 256; cpunum+=16) {
-            //   func107_sub<S, L>(cpunum, i);
-            // }
-            func107_sub<S, L>(8, i);
-            func107_sub<S, L>(128, i);
-            func107_sub<S, L>(256, i);
+            for (int cpunum = 1; cpunum <= 256; cpunum++) {
+              func107_sub<L>(cpunum, i);
+            }
+            int apicid = cpu_ctrl->GetCpuId().GetApicId();
+            if (apicid == 0) {
+              StringTty tty(4);
+              tty.CprintfRaw("\n");
+              int argc = 4;
+              const char *argv[] = {"udpsend", "192.168.12.35", "1234", tty.GetRawPtr()};
+              udpsend(argc, argv);
+            }
             task_->Execute();
           }
         }, ltask_, task)));
@@ -224,46 +217,49 @@ void func107(sptr<TaskWithStack> task) {
   task->Wait();
 } 
 
-template<class S, int i>
-void func10(sptr<TaskWithStack> task) {
-  func107<i, S, McsSpinLock>(task);
-  // func107<i, S, TtsSpinLock>(task);
-  // func107<i, S, TicketSpinLock>(task);
-  // func107<i, S, SimpleSpinLockR>(task);
-  func107<i, S, ExpSpinLock8>(task);
-  func107<i, S, ExpSpinLock82>(task);
+template<int i>
+static void func106(sptr<TaskWithStack> task) {
 }
 
-template<class S, int i, int j, int... Num>
-void func10(sptr<TaskWithStack> task) {
-  func10<S, i>(task);
-  func10<S, j, Num...>(task);
+template<int i, class L, class... Locks>
+static void func106(sptr<TaskWithStack> task) {
+  func107<i, L>(task);
+  func106<i, Locks...>(task);
+}
+
+template<int i>
+static void func10(sptr<TaskWithStack> task) {
+  func106<i,
+          McsSpinLock,
+          TtsSpinLock,
+          TicketSpinLock,
+          AndersonSpinLock<1>,
+          ClhSpinLock,
+          AndersonSpinLock<16>,
+          SimpleSpinLockR,
+          ExpSpinLock9<AndersonSpinLock<16>, AndersonSpinLock<16>>,
+          ExpSpinLock9<TtsSpinLock, AndersonSpinLock<16>>,
+          ExpSpinLock9_1_0<AndersonSpinLock<16>>,
+          ExpSpinLock9<AndersonSpinLock<16>, ClhSpinLock>,
+          ExpSpinLock10<AndersonSpinLock<16>, AndersonSpinLock<16>>,
+          ExpSpinLock10<TtsSpinLock, AndersonSpinLock<16>>,
+          ExpSpinLock10_1_0<AndersonSpinLock<16>>,
+          ExpSpinLock10<AndersonSpinLock<16>, ClhSpinLock>
+          >(task);
+}
+
+template<int i, int j, int... Num>
+static void func10(sptr<TaskWithStack> task) {
+  func10<i>(task);
+  func10<j, Num...>(task);
 }
 
 // リスト、要素数可変比較版
-template<class S>
-static void membench10(sptr<TaskWithStack> task) {
+void membench3(sptr<TaskWithStack> task) {
   int cpuid = cpu_ctrl->GetCpuId().GetRawId();
   if (cpuid == 0) {
     gtty->CprintfRaw("start >>>\n");
   }
-  func10<S, 10, 20, 40, 80, 160, 320, 640>(task); 
-}
-
-void register_membench2_callout() {
-  for (int i = 0; i < cpu_ctrl->GetHowManyCpus(); i++) {
-    CpuId cpuid(i);
-    
-    auto task_ = make_sptr(new TaskWithStack(cpuid));
-    task_->Init();
-    task_->SetFunc(make_uptr(new Function<sptr<TaskWithStack>>([](sptr<TaskWithStack> task){
-            if (is_knl()) {
-              membench10<SyncLow>(task);
-            } else {
-              membench10<SyncLow>(task);
-            }
-          }, task_)));
-    task_ctrl->Register(cpuid, task_);
-  }
+  func10<10, 20, 40, 80, 160>(task); 
 }
 

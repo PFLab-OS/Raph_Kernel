@@ -50,6 +50,8 @@ public:
     // _flag = 0;
     assert(__sync_bool_compare_and_swap(&_flag, 1, 0));
   }
+  void Release(uint32_t apicid) {
+  }
 private:
   volatile unsigned int _flag = 0;
 };
@@ -75,7 +77,7 @@ void spin_lock_tts_b(T &flag) {
 
 template<class T>
 void unlock(T &flag) {
-  assert(__sync_bool_compare_and_swap(&flag, 1, 0));
+  assert(__sync_lock_test_and_set(&flag, 0) == 1);
 }
 
 class TtsSpinLock {
@@ -85,12 +87,13 @@ public:
   bool TryLock() {
     assert(false);
   }
-  void Lock() {
+  void Lock(uint32_t apicid) {
     spin_lock_tts_b(_flag);
   }
-  void Unlock() {
-    // _flag = 0;
-    assert(__sync_bool_compare_and_swap(&_flag, 1, 0));
+  void Unlock(uint32_t apicid) {
+    unlock(_flag);
+  }
+  void Release(uint32_t apicid) {
   }
 private:
   volatile unsigned int _flag = 0;
@@ -103,7 +106,7 @@ public:
   bool TryLock() {
     assert(false);
   }
-  void Lock() {
+  void Lock(uint32_t apicid) {
     uint64_t x = __sync_fetch_and_add(&_cnt, 1);
     while(_flag != x) {
       for (uint64_t j = 0; j < ((x < _flag) ? ((0xffffffffffffffff - _flag) + x): (x - _flag)); j++) {
@@ -111,37 +114,80 @@ public:
       }
     }
   }
-  void Unlock() {
+  void Unlock(uint32_t apicid) {
     __sync_fetch_and_add(&_flag, 1);
+  }
+  void Release(uint32_t apicid) {
   }
 private:
   uint64_t _flag = 0;
   uint64_t _cnt = 0;
 };
 
+class ClhSpinLock {
+public:
+  ClhSpinLock() {
+    _tail = &_tmp;
+    for (int i = 0; i < 37 * 8; i++) {
+      _node[i] = &_nodes[i];
+    }
+  }
+  void Lock(uint32_t apicid) {
+    auto qnode = _node[apicid];
+    qnode->locked = true;
+    _pred[apicid] = __sync_lock_test_and_set(&_tail, qnode);
+    while(_pred[apicid]->locked == true) {
+    }
+  }
+  void Unlock(uint32_t apicid) {
+    _node[apicid]->locked = false;
+    _node[apicid] = _pred[apicid];
+  }
+  void Release(uint32_t apicid) {
+  }
+  bool IsNoOneWaiting(uint32_t apicid) {
+    return _tail == _node[apicid];
+  }
+private:
+  struct QueueNode {
+    int locked = false;
+  } __attribute__ ((aligned (64)));
+  QueueNode *_tail;
+  QueueNode _tmp;
+  QueueNode _nodes[37*8];
+  QueueNode *_node[37*8];
+  QueueNode *_pred[37*8];
+};
+
+template<int size>
 class AndersonSpinLock {
 public:
   AndersonSpinLock() {
     _flag[0] = 1;
     for (int i = 1; i < 256; i++) {
-      _flag[i] = 0;
+      _flag[i*size] = 0;
     }
   }
   bool TryLock() {
     assert(false);
   }
-  void Lock() {
+  void Lock(uint32_t apicid) {
     uint64_t cur = __sync_fetch_and_add(&_last, 1) % 256;
-    while (_flag[cur] == 0) {
+    while (_flag[cur*size] == 0) {
     }
-    _flag[cur] = 0;
+    _flag[cur*size] = 0;
     _cur = cur;
   }
-  void Unlock() {
-    _flag[(_cur + 1) % 256] = 1;
+  void Unlock(uint32_t apicid) {
+    _flag[((_cur + 1) % 256) * size] = 1;
+  }
+  bool IsNoOneWaiting(uint32_t apicid) {
+    return (_cur + 1) % 256 == _last;
+  }
+  void Release(uint32_t apicid) {
   }
 private:
-  int _flag[256];
+  int _flag[256*size];
   uint64_t _last = 0;
   uint64_t _cur = 0;
 };
@@ -153,10 +199,10 @@ public:
   bool TryLock() {
     assert(false);
   }
-  void Lock() {
-    auto qnode = &_node[cpu_ctrl->GetCpuId().GetApicId()];
+  void Lock(uint32_t apicid) {
+    auto qnode = &_node[apicid];
     qnode->_next = nullptr;
-    auto pred = __atomic_exchange_n(&_tail, qnode, __ATOMIC_RELAXED);
+    auto pred = __sync_lock_test_and_set(&_tail, qnode);
     if (pred != nullptr) {
       qnode->_spin = 1;
       pred->_next = qnode;
@@ -164,8 +210,8 @@ public:
       }
     }
   }
-  void Unlock() {
-    auto qnode = &_node[cpu_ctrl->GetCpuId().GetApicId()];
+  void Unlock(uint32_t apicid) {
+    auto qnode = &_node[apicid];
     if (qnode->_next == nullptr) {
       if (__sync_bool_compare_and_swap(&_tail, qnode, nullptr)) {
         return;
@@ -175,6 +221,8 @@ public:
     }
     qnode->_next->_spin = 0;
   }
+  void Release(uint32_t apicid) {
+  }
 private:
   struct QueueNode {
     QueueNode() {
@@ -183,22 +231,22 @@ private:
     }
     QueueNode *_next;
     int _spin;
-  } *_tail = nullptr;
+  } __attribute__ ((aligned (64))) *_tail = nullptr;
   QueueNode _node[37 * 8];
 };
 
 class McsSpinLock2 {
 public:
-  struct QueueNode;
   McsSpinLock2() {
   }
+  struct QueueNode;
   bool TryLock() {
     assert(false);
   }
-  QueueNode *Lock() {
-    auto qnode = &_node[cpu_ctrl->GetCpuId().GetApicId()];
+  QueueNode *Lock(uint32_t apicid) {
+    auto qnode = &_node[apicid];
     qnode->_next = nullptr;
-    auto pred = __atomic_exchange_n(&_tail, qnode, __ATOMIC_RELAXED);
+    auto pred = __sync_lock_test_and_set(&_tail, qnode);
     if (pred != nullptr) {
       qnode->_spin = 1;
       pred->_next = qnode;
@@ -207,7 +255,7 @@ public:
     }
     return qnode;
   }
-  void Unlock(QueueNode *qnode) {
+  void Unlock(uint32_t apicid, QueueNode *qnode) {
     if (qnode->_next == nullptr) {
       if (__sync_bool_compare_and_swap(&_tail, qnode, nullptr)) {
         return;
@@ -217,6 +265,8 @@ public:
     }
     qnode->_next->_spin = 0;
   }
+  void Release(uint32_t apicid) {
+  }
 private:
   struct QueueNode {
     QueueNode() {
@@ -225,69 +275,8 @@ private:
     }
     QueueNode *_next;
     int _spin;
-  } *_tail = nullptr;
+  } __attribute__ ((aligned (64))) *_tail = nullptr;
   QueueNode _node[37 * 8];
-};
-
-// 1階層ロック
-template <int kSubStructNum>
-class McSpinLock1 {
-public:
-  McSpinLock1() {
-  }
-  bool TryLock() {
-    assert(false);
-  }
-  void Lock() {
-    uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
-    while(!__sync_bool_compare_and_swap(&_second_flag[apicid / 8], 0, 1)) {
-    }
-    while(!__sync_bool_compare_and_swap(&_top_flag, 0, 1)) {
-    }
-  }
-  void Unlock() {
-    uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
-    // _top_flag = 0;
-    // _second_flag[apicid / 8] = 0;
-    assert(__sync_bool_compare_and_swap(&_top_flag, 1, 0));
-    assert(__sync_bool_compare_and_swap(&_second_flag[apicid / 8], 1, 0));
-  }
-private:
-  volatile unsigned int _top_flag = 0;
-  volatile unsigned int _second_flag[kSubStructNum] = {0};
-};
-
-// 2階層ロック
-template <int kSubStructNum>
-class McSpinLock2 {
-public:
-  McSpinLock2() {
-  }
-  bool TryLock() {
-    assert(false);
-  }
-  void Lock() {
-    uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
-    while(!__sync_bool_compare_and_swap(&_third_flag[apicid / 4], 0, 1)) {
-    }
-    while(!__sync_bool_compare_and_swap(&_second_flag[apicid / 8], 0, 1)) {
-    }
-    while(!__sync_bool_compare_and_swap(&_top_flag, 0, 1)) {
-    }
-  }
-  void Unlock() {
-    uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
-    // _top_flag = 0;
-    // _second_flag[apicid / 8] = 0;
-    // _third_flag[apicid / 4] = 0;
-    assert(__sync_bool_compare_and_swap(&_top_flag, 1, 0));
-    assert(__sync_bool_compare_and_swap(&_second_flag[apicid / 8], 1, 0));
-    assert(__sync_bool_compare_and_swap(&_third_flag[apicid / 4], 1, 0));
-  }
-private:
-  volatile unsigned int _top_flag = 0;
-  volatile unsigned int _second_flag[kSubStructNum] = {0};
-  volatile unsigned int _third_flag[kSubStructNum*2] = {0};
 };
 
 // 単純 Spin On Read
@@ -301,7 +290,7 @@ public:
     }
     return __sync_bool_compare_and_swap(&_flag, 0, 1);
   }
-  void Lock() {
+  void Lock(uint32_t apicid) {
     while (true) {
       while(_flag == 1) {
       }
@@ -310,425 +299,198 @@ public:
       }
     }
   }
-  void Unlock() {
+  void Unlock(uint32_t apicid) {
     // _flag = 0;
     assert(__sync_bool_compare_and_swap(&_flag, 1, 0));
+  }
+  void Release(uint32_t apicid) {
   }
 private:
   volatile unsigned int _flag = 0;
 };
 
-// 1階層 Spin On Read
-template <int kSubStructNum>
-class McSpinLock1R {
-public:
-  McSpinLock1R() {
-  }
-  bool TryLock() {
-    assert(false);
-  }
-  void Lock() {
-    uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
-    while(true) {
-      while(_second_flag[apicid / 8] == 1) {
-      }
-      if(__sync_bool_compare_and_swap(&_second_flag[apicid / 8], 0, 1)) {
-        break;
-      }
-    }
-    while (true) {
-      while(_top_flag == 1) {
-      }
-      if (__sync_bool_compare_and_swap(&_top_flag, 0, 1)) {
-        break;
-      }
-    }
-  }
-  void Unlock() {
-    uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
-    // _top_flag = 0;
-    // _second_flag[apicid / 8] = 0;
-    assert(__sync_bool_compare_and_swap(&_top_flag, 1, 0));
-    assert(__sync_bool_compare_and_swap(&_second_flag[apicid / 8], 1, 0));
-  }
-private:
-  volatile unsigned int _top_flag = 0;
-  volatile unsigned int _second_flag[kSubStructNum] = {0};
-};
-
-// 2階層 Spin On Read
-class McSpinLock2R {
-public:
-  McSpinLock2R() {
-  }
-  bool TryLock() {
-    assert(false);
-  }
-  void Lock() {
-    uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
-    while(true) {
-      while(_third_flag[apicid / 4] == 1) {
-      }
-      if(__sync_bool_compare_and_swap(&_third_flag[apicid / 4], 0, 1)) {
-        break;
-      }
-    }
-    while(true) {
-      while(_second_flag[apicid / 8] != 0) {
-      }
-      if(__sync_bool_compare_and_swap(&_second_flag[apicid / 8], 0, 1)) {
-        break;
-      }
-    }
-    while (true) {
-      while(_top_flag == 1) {
-      }
-      if (__sync_bool_compare_and_swap(&_top_flag, 0, 1)) {
-        break;
-      }
-    }
-  }
-  void Unlock() {
-    uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
-    // _top_flag = 0;
-    // _second_flag[apicid / 8] = 0;
-    // _third_flag[apicid / 4] = 0;
-    assert(__sync_bool_compare_and_swap(&_top_flag, 1, 0));
-    assert(__sync_bool_compare_and_swap(&_second_flag[apicid / 8], 1, 0));
-    assert(__sync_bool_compare_and_swap(&_third_flag[apicid / 4], 1, 0));
-  }
-private:
-  static const int kSubStructNum = 37;
-  static const int kPhysAvailableCoreNum = 32;
-  volatile unsigned int _top_flag = 0;
-  volatile unsigned int _second_flag[kSubStructNum] = {0};
-  volatile unsigned int _third_flag[kSubStructNum*2] = {0};
-};
-
 template<class L1, class L2>
-class ExpSpinLock1 {
+class ExpSpinLock9 {
 public:
-  ExpSpinLock1() {
+  ExpSpinLock9() {
   }
   bool TryLock() {
     assert(false);
   }
-  void Lock() {
-    uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
-    _second_lock[apicid / 8].Lock();
-    _top_lock.Lock();
-  }
-  void Unlock() {
-    uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
-    _top_lock.Unlock();
-    _second_lock[apicid / 8].Unlock();
-  }
-private:
-  static const int kSubStructNum = 37;
-  L1 _top_lock;
-  L2 _second_lock[kSubStructNum];
-};
-
-template<class L1, class L2>
-class ExpSpinLock2 {
-public:
-  ExpSpinLock2() {
-  }
-  bool TryLock() {
-    assert(false);
-  }
-  void Lock() {
-    uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
-    int *state1 = &_state1[apicid / 8];
-    int prev;
-    while (true) {
-      int tmp = *state1;
-      if (tmp < 100 && __sync_bool_compare_and_swap(state1, tmp, tmp + 1)) {
-        prev = tmp;
-        break;
-      }
-    }
-    if (prev == 0) {
-      _top_lock.Lock();
-      _second_lock[apicid / 8].Lock();
-      _state2[apicid / 8] = __atomic_exchange_n(&_state1[apicid / 8], 100, __ATOMIC_RELAXED) - 1;
-    } else {
-      while(*state1 != 100) {
-      }
-      _second_lock[apicid / 8].Lock();
-      _state2[apicid / 8]--;
+  void Lock(uint32_t apicid) {
+    uint32_t tileid = apicid / 8;
+    _second_lock[tileid].Lock(apicid);
+    if (_top_locked[tileid].i == 0) {
+      _top_lock.Lock(apicid);
+      _top_locked[tileid].i = 1;
     }
   }
-  void Unlock() {
-    uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
-    if (_state2[apicid / 8] == 0) {
-      _top_lock.Unlock();
-      _state1[apicid / 8] = 0;
+  void Unlock(uint32_t apicid) {
+    uint32_t tileid = apicid / 8;
+
+    if (_second_lock[tileid].IsNoOneWaiting(apicid)) {
+      _top_lock.Unlock(apicid);
+      _top_locked[tileid].i = 0;
     }
-    _second_lock[apicid / 8].Unlock();
+    _second_lock[tileid].Unlock(apicid);
   }
-private:
-  static const int kSubStructNum = 37;
-  L1 _top_lock;
-  L2 _second_lock[kSubStructNum];
-  int _state1[kSubStructNum] = {0};
-  int _state2[kSubStructNum] = {0};
-};
-
-
-template<class L1>
-class ExpSpinLock4 {
-public:
-  ExpSpinLock4() {
-    for (int i = 0; i < kSubStructNum * 2; i++) {
-      _state1[i] = -1;
-    }
-  }
-  bool TryLock() {
-    assert(false);
-  }
-  void Lock() {
-    uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
-    int *state1 = &_state1[apicid / 4];
-
-    uint8_t delay1 = 1;
+  void Release(uint32_t apicid) {
+    uint32_t tileid = apicid / 8;
     
-    int state = *state1;
-
-    while(true) {
-      if (state == -1) {
-        if (__sync_bool_compare_and_swap(state1, -1, 0)) {
-          state = 0;
-          _top_lock.Lock();
-          state = __sync_fetch_and_add(state1, 100);
-          state += 100;
-          while(true) {
-            if (state == 100) {
-              *state1 = 200;
-              return;
-            }
-            for (int j = 0; j < state - 100; j++) {
-              asm volatile("pause;");
-            }
-            state = *state1;
-          }
-        }
-      } else if (state >= 0 && state < 100) {
-        if (__sync_bool_compare_and_swap(state1, state, state + 1)) {
-          uint8_t delay2 = 1;
-          while(true) {
-            state = *state1;
-            if (state >= 100 && state < 200 && __sync_bool_compare_and_swap(state1, state, state + 100)) {
-              assert(state != 100);
-              return;
-            }
-            for (int j = 0; j < delay2; j++) {
-              asm volatile("pause;");
-            }
-            delay2 *= 2;
-          }
-        }
-      } else {
-        for (int j = 0; j < delay1; j++) {
-          asm volatile("pause;");
-        }
-        delay1 *= 2;
-      }
-      state = *state1;
+    _second_lock[tileid].Lock(apicid);
+    if (_top_locked[tileid].i == 1) {
+      _top_lock.Unlock(apicid);
+      _top_locked[tileid].i = 0;
     }
-  }
-  void Unlock() {
-    uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
-    int *state1 = &_state1[apicid / 4];
-    if (*state1 == 200) {
-      _top_lock.Unlock();
-      *state1 = -1;
-    } else {
-      __sync_fetch_and_sub(state1, 101);
-    }
+    _second_lock[tileid].Unlock(apicid);
   }
 private:
-  static const int kSubStructNum = 37 * 2;
+  static const int kSubStructNum = 37;
   L1 _top_lock;
-  int _state1[kSubStructNum*2];
+  L2 _second_lock[kSubStructNum];
+  struct Status {
+    int i = 0;
+  } __attribute__ ((aligned (64)));
+  Status _top_locked[kSubStructNum];
 };
 
-template<class L1>
-class ExpSpinLock5 {
+template<class L2>
+class ExpSpinLock9_1_0 {
 public:
-  ExpSpinLock5() {
-    for (int i = 0; i < kSubStructNum * 2; i++) {
-      _state1[i] = -1;
-    }
+  ExpSpinLock9_1_0() {
   }
   bool TryLock() {
     assert(false);
   }
-  void Lock() {
-    uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
-    int *state1 = &_state1[apicid / 4];
-
-    int state = *state1;
-
-    uint8_t delay1 = 1;
-    while(true) {
-      if (state == -1) {
-        if (__sync_bool_compare_and_swap(state1, -1, 0)) {
-          state = 0;
-          _top_lock.Lock();
-          state = __sync_fetch_and_add(state1, 100);
-          state += 100;
-          while(true) {
-            if (state == 100) {
-              *state1 = 200;
-              return;
-            }
-            for (int j = 0; j < state - 100; j++) {
-              asm volatile("pause;");
-            }
-            state = *state1;
-          }
-        }
-      } else if (state >= 0 && state < 100) {
-        if (__sync_bool_compare_and_swap(state1, state, state + 1)) {
-          uint8_t delay2 = 1;
-          while(true) {
-            state = *state1;
-            if (state >= 100 && state < 200 && __sync_bool_compare_and_swap(state1, state, state + 100)) {
-              assert(state != 100);
-              return;
-            }
-            if (state < 100) {
-              for (int j = 0; j < delay2; j++) {
-                asm volatile("pause;");
-              }
-              delay2 *= 2;
-            }
-          }
-        }
-      } else {
-        for (int j = 0; j < delay1; j++) {
-          asm volatile("pause;");
-        }
-        delay1 *= 2;
-      }
-      state = *state1;
-    }
-  }
-  void Unlock() {
-    uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
-    int *state1 = &_state1[apicid / 4];
-    if (*state1 == 200) {
-      _top_lock.Unlock();
-      *state1 = -1;
-    } else {
-      __sync_fetch_and_sub(state1, 101);
-    }
-  }
-private:
-  static const int kSubStructNum = 37 * 2;
-  L1 _top_lock;
-  int _state1[kSubStructNum*2];
-};
-
-class ExpSpinLock8 {
-public:
-  ExpSpinLock8() {
-    for (int i = 0; i < kSubStructNum; i++) {
-      _cnt[i] = 0;
-      _flag[i] = 0;
-      _lock_cnt[i] = 0;
-    }
-  }
-  bool TryLock() {
-    assert(false);
-  }
-  void Lock() {
-    uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
+  void Lock(uint32_t apicid) {
     uint32_t tileid = apicid / 8;
-    uint64_t *cnt = &_cnt[tileid];
-    uint64_t *flag = &_flag[tileid];
-
-    uint64_t x = __sync_fetch_and_add(cnt, 1);
-    while(*flag != x) {
-      for (uint64_t j = 0; j < ((x < *flag) ? ((0xffffffffffffffff - *flag) + x): (x - *flag)); j++) {
-        asm volatile("pause;");
-      }
-    }
-
-    if (__atomic_load_n(&_lock_cnt[tileid], __ATOMIC_RELAXED) == *flag) {
-      _qnode[tileid] = _top_lock.Lock();
+    _second_lock[tileid].Lock(apicid);
+    if (_top_locked[tileid].i == 0) {
+      _top_locked[tileid].qnode = _top_lock.Lock(apicid);
+      _top_locked[tileid].i = 1;
     }
   }
-  void Unlock() {
-    uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
+  void Unlock(uint32_t apicid) {
     uint32_t tileid = apicid / 8;
-    uint64_t *flag = &_flag[tileid];
-    uint64_t *cnt = &_cnt[tileid];
 
-    uint64_t tmp = *flag + 1;
-    if (*cnt == tmp) {
-      _top_lock.Unlock(_qnode[tileid]);
-      __atomic_store_n(&_lock_cnt[tileid], tmp, __ATOMIC_RELAXED);
+    if (_second_lock[tileid].IsNoOneWaiting(apicid)) {
+      _top_lock.Unlock(apicid, _top_locked[tileid].qnode);
+      _top_locked[tileid].i = 0;
     }
-    __sync_fetch_and_add(flag, 1);
+    _second_lock[tileid].Unlock(apicid);
+  }
+  void Release(uint32_t apicid) {
+    uint32_t tileid = apicid / 8;
+    
+    _second_lock[tileid].Lock(apicid);
+    if (_top_locked[tileid].i == 1) {
+      _top_lock.Unlock(apicid, _top_locked[tileid].qnode);
+      _top_locked[tileid].i = 0;
+    }
+    _second_lock[tileid].Unlock(apicid);
   }
 private:
   static const int kSubStructNum = 37;
   McsSpinLock2 _top_lock;
-  uint64_t _cnt[kSubStructNum];
-  uint64_t _flag[kSubStructNum];
-  uint64_t _lock_cnt[kSubStructNum];
-  McsSpinLock2::QueueNode *_qnode[kSubStructNum];
+  L2 _second_lock[kSubStructNum];
+  struct Status {
+    int i = 0;
+    McsSpinLock2::QueueNode *qnode;
+  } __attribute__ ((aligned (64)));
+  Status _top_locked[kSubStructNum];
 };
 
-class ExpSpinLock82 {
+template<class L1, class L2>
+class ExpSpinLock10 {
 public:
-  ExpSpinLock82() {
-    for (int i = 0; i < kSubStructNum; i++) {
-      _cnt[i] = 0;
-      _flag[i] = 0;
-      _lock_cnt[i] = 0;
-    }
+  ExpSpinLock10() {
   }
   bool TryLock() {
     assert(false);
   }
-  void Lock() {
-    uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
+  void Lock(uint32_t apicid) {
     uint32_t tileid = apicid / 8;
-    uint64_t *cnt = &_cnt[tileid];
-    uint64_t *flag = &_flag[tileid];
-
-    uint64_t x = __sync_fetch_and_add(cnt, 1);
-    while(*flag != x) {
-      for (uint64_t j = 0; j < ((x < *flag) ? ((0xffffffffffffffff - *flag) + x): (x - *flag)); j++) {
-        asm volatile("pause;");
-      }
-    }
-
-    if (__atomic_load_n(&_lock_cnt[tileid], __ATOMIC_RELAXED) == *flag) {
-      _qnode[tileid] = _top_lock.Lock();
+    _second_lock[tileid].Lock(apicid);
+    if (_top_locked[tileid].i == 0) {
+      _top_lock.Lock(apicid);
+      _top_locked[tileid].i = kMax;
     }
   }
-  void Unlock() {
-    uint32_t apicid = cpu_ctrl->GetCpuId().GetApicId();
+  void Unlock(uint32_t apicid) {
     uint32_t tileid = apicid / 8;
-    uint64_t *flag = &_flag[tileid];
-    uint64_t *cnt = &_cnt[tileid];
 
-    uint64_t tmp = *flag + 1;
-    if (_lock_cnt[tileid] + 1000 == tmp || *cnt == tmp) {
-      _top_lock.Unlock(_qnode[tileid]);
-      __atomic_store_n(&_lock_cnt[tileid], tmp, __ATOMIC_RELAXED);
+    _top_locked[tileid].i--;
+    if (_top_locked[tileid].i == 0 || _second_lock[tileid].IsNoOneWaiting(apicid)) {
+      _top_lock.Unlock(apicid);
+      _top_locked[tileid].i = 0;
     }
-    __sync_fetch_and_add(flag, 1);
+    _second_lock[tileid].Unlock(apicid);
+  }
+  void Release(uint32_t apicid) {
+    uint32_t tileid = apicid / 8;
+    
+    _second_lock[tileid].Lock(apicid);
+    if (_top_locked[tileid].i > 0) {
+      _top_lock.Unlock(apicid);
+      _top_locked[tileid].i = 0;
+    }
+    _second_lock[tileid].Unlock(apicid);
+  }
+private:
+  static const int kSubStructNum = 37;
+  L1 _top_lock;
+  L2 _second_lock[kSubStructNum];
+  static const int kMax = 300;
+  struct Status {
+    int i = 0;
+  } __attribute__ ((aligned (64)));
+  Status _top_locked[kSubStructNum];
+};
+
+template<class L2>
+class ExpSpinLock10_1_0 {
+public:
+  ExpSpinLock10_1_0() {
+  }
+  bool TryLock() {
+    assert(false);
+  }
+  void Lock(uint32_t apicid) {
+    uint32_t tileid = apicid / 8;
+    _second_lock[tileid].Lock(apicid);
+    if (_top_locked[tileid].i == 0) {
+      _top_locked[tileid].qnode = _top_lock.Lock(apicid);
+      _top_locked[tileid].i = kMax;
+    }
+  }
+  void Unlock(uint32_t apicid) {
+    uint32_t tileid = apicid / 8;
+
+    _top_locked[tileid].i--;
+    if (_top_locked[tileid].i == 0 || _second_lock[tileid].IsNoOneWaiting(apicid)) {
+      _top_lock.Unlock(apicid, _top_locked[tileid].qnode);
+      _top_locked[tileid].i = 0;
+    }
+    _second_lock[tileid].Unlock(apicid);
+  }
+  void Release(uint32_t apicid) {
+    uint32_t tileid = apicid / 8;
+    
+    _second_lock[tileid].Lock(apicid);
+    if (_top_locked[tileid].i > 0) {
+      _top_lock.Unlock(apicid, _top_locked[tileid].qnode);
+      _top_locked[tileid].i = 0;
+    }
+    _second_lock[tileid].Unlock(apicid);
   }
 private:
   static const int kSubStructNum = 37;
   McsSpinLock2 _top_lock;
-  uint64_t _cnt[kSubStructNum];
-  uint64_t _flag[kSubStructNum];
-  uint64_t _lock_cnt[kSubStructNum];
-  McsSpinLock2::QueueNode *_qnode[kSubStructNum];
+  L2 _second_lock[kSubStructNum];
+  static const int kMax = 300;
+  struct Status {
+    int i = 0;
+    McsSpinLock2::QueueNode *qnode;
+  } __attribute__ ((aligned (64)));
+  Status _top_locked[kSubStructNum];
 };
