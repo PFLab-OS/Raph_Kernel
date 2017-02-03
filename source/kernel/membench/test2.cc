@@ -244,18 +244,18 @@ static void func10(sptr<TaskWithStack> task) {
           McsSpinLock,
           TtsSpinLock,
           TicketSpinLock,
-          AndersonSpinLock<1>,
+          AndersonSpinLock<1, 256>,
           ClhSpinLock,
-          AndersonSpinLock<16>,
+          AndersonSpinLock<16, 256>,
           SimpleSpinLockR,
-          ExpSpinLock9<AndersonSpinLock<16>, AndersonSpinLock<16>>,
-          ExpSpinLock9<TtsSpinLock, AndersonSpinLock<16>>,
-          ExpSpinLock9_1_0<AndersonSpinLock<16>>,
-          ExpSpinLock9<AndersonSpinLock<16>, ClhSpinLock>,
-          ExpSpinLock10<AndersonSpinLock<16>, AndersonSpinLock<16>>,
-          ExpSpinLock10<TtsSpinLock, AndersonSpinLock<16>>,
-          ExpSpinLock10_1_0<AndersonSpinLock<16>>,
-          ExpSpinLock10<AndersonSpinLock<16>, ClhSpinLock>
+          ExpSpinLock9<AndersonSpinLock<16, 32>, AndersonSpinLock<16, 8>>,
+          ExpSpinLock9<TtsSpinLock, AndersonSpinLock<16, 8>>,
+          ExpSpinLock9_1_0<AndersonSpinLock<16, 8>>,
+          ExpSpinLock9<AndersonSpinLock<16, 32>, ClhSpinLock>,
+          ExpSpinLock10<AndersonSpinLock<16, 32>, AndersonSpinLock<16, 8>>,
+          ExpSpinLock10<TtsSpinLock, AndersonSpinLock<16, 8>>,
+          ExpSpinLock10_1_0<AndersonSpinLock<16, 8>>,
+          ExpSpinLock10<AndersonSpinLock<16, 32>, ClhSpinLock>
           >(task);
 }
 

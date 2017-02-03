@@ -95,6 +95,9 @@ public:
   }
   void Release(uint32_t apicid) {
   }
+  bool IsNoOneWaiting(uint32_t apicid) {
+    return false;
+  }
 private:
   volatile unsigned int _flag = 0;
 };
@@ -159,35 +162,35 @@ private:
   QueueNode *_pred[37*8];
 };
 
-template<int size>
+template<int align, int arraysize>
 class AndersonSpinLock {
 public:
   AndersonSpinLock() {
     _flag[0] = 1;
-    for (int i = 1; i < 256; i++) {
-      _flag[i*size] = 0;
+    for (int i = 1; i < arraysize; i++) {
+      _flag[i*align] = 0;
     }
   }
   bool TryLock() {
     assert(false);
   }
   void Lock(uint32_t apicid) {
-    uint64_t cur = __sync_fetch_and_add(&_last, 1) % 256;
-    while (_flag[cur*size] == 0) {
+    uint64_t cur = __sync_fetch_and_add(&_last, 1) % arraysize;
+    while (_flag[cur*align] == 0) {
     }
-    _flag[cur*size] = 0;
+    _flag[cur*align] = 0;
     _cur = cur;
   }
   void Unlock(uint32_t apicid) {
-    _flag[((_cur + 1) % 256) * size] = 1;
+    _flag[((_cur + 1) % arraysize) * align] = 1;
   }
   bool IsNoOneWaiting(uint32_t apicid) {
-    return (_cur + 1) % 256 == _last;
+    return (_cur + 1) % arraysize == _last % arraysize;
   }
   void Release(uint32_t apicid) {
   }
-private:
-  int _flag[256*size];
+ private:
+  int _flag[arraysize*align];
   uint64_t _last = 0;
   uint64_t _cur = 0;
 };
@@ -266,6 +269,9 @@ public:
     qnode->_next->_spin = 0;
   }
   void Release(uint32_t apicid) {
+  }
+  bool IsNoOneWaiting(uint32_t apicid) {
+    return _tail == nullptr;
   }
 private:
   struct QueueNode {
@@ -420,7 +426,9 @@ public:
     uint32_t tileid = apicid / 8;
 
     _top_locked[tileid].i--;
-    if (_top_locked[tileid].i == 0 || _second_lock[tileid].IsNoOneWaiting(apicid)) {
+    if (_top_locked[tileid].i == 0 && !_second_lock[tileid].IsNoOneWaiting(apicid) && _top_lock.IsNoOneWaiting(apicid)) {
+      _top_locked[tileid].i = kMax;
+    } else if (_top_locked[tileid].i == 0 || _second_lock[tileid].IsNoOneWaiting(apicid)) {
       _top_lock.Unlock(apicid);
       _top_locked[tileid].i = 0;
     }
@@ -467,7 +475,9 @@ public:
     uint32_t tileid = apicid / 8;
 
     _top_locked[tileid].i--;
-    if (_top_locked[tileid].i == 0 || _second_lock[tileid].IsNoOneWaiting(apicid)) {
+    if (_top_locked[tileid].i == 0 && !_second_lock[tileid].IsNoOneWaiting(apicid) && _top_lock.IsNoOneWaiting(apicid)) {
+      _top_locked[tileid].i = kMax;
+    } else if (_top_locked[tileid].i == 0 || _second_lock[tileid].IsNoOneWaiting(apicid)) {
       _top_lock.Unlock(apicid, _top_locked[tileid].qnode);
       _top_locked[tileid].i = 0;
     }
