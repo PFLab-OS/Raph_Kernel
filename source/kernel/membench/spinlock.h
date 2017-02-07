@@ -50,8 +50,6 @@ public:
     // _flag = 0;
     assert(__sync_bool_compare_and_swap(&_flag, 1, 0));
   }
-  void Release(uint32_t apicid) {
-  }
 private:
   volatile unsigned int _flag = 0;
 };
@@ -93,8 +91,6 @@ public:
   void Unlock(uint32_t apicid) {
     unlock(_flag);
   }
-  void Release(uint32_t apicid) {
-  }
   bool IsNoOneWaiting(uint32_t apicid) {
     return false;
   }
@@ -120,8 +116,6 @@ public:
   void Unlock(uint32_t apicid) {
     __sync_fetch_and_add(&_flag, 1);
   }
-  void Release(uint32_t apicid) {
-  }
 private:
   uint64_t _flag = 0;
   uint64_t _cnt = 0;
@@ -145,8 +139,6 @@ public:
   void Unlock(uint32_t apicid) {
     _node[apicid]->locked = false;
     _node[apicid] = _pred[apicid];
-  }
-  void Release(uint32_t apicid) {
   }
   bool IsNoOneWaiting(uint32_t apicid) {
     return _tail == _node[apicid];
@@ -187,8 +179,6 @@ public:
   bool IsNoOneWaiting(uint32_t apicid) {
     return (_cur + 1) % arraysize == _last % arraysize;
   }
-  void Release(uint32_t apicid) {
-  }
  private:
   int _flag[arraysize*align];
   uint64_t _last = 0;
@@ -224,54 +214,9 @@ public:
     }
     qnode->_next->_spin = 0;
   }
-  void Release(uint32_t apicid) {
-  }
-private:
-  struct QueueNode {
-    QueueNode() {
-      _next = nullptr;
-      _spin = 0;
-    }
-    QueueNode *_next;
-    int _spin;
-  } __attribute__ ((aligned (64))) *_tail = nullptr;
-  QueueNode _node[37 * 8];
-};
-
-class McsSpinLock2 {
-public:
-  McsSpinLock2() {
-  }
-  struct QueueNode;
-  bool TryLock() {
-    assert(false);
-  }
-  QueueNode *Lock(uint32_t apicid) {
-    auto qnode = &_node[apicid];
-    qnode->_next = nullptr;
-    auto pred = __sync_lock_test_and_set(&_tail, qnode);
-    if (pred != nullptr) {
-      qnode->_spin = 1;
-      pred->_next = qnode;
-      while(qnode->_spin == 1) {
-      }
-    }
-    return qnode;
-  }
-  void Unlock(uint32_t apicid, QueueNode *qnode) {
-    if (qnode->_next == nullptr) {
-      if (__sync_bool_compare_and_swap(&_tail, qnode, nullptr)) {
-        return;
-      }
-      while(qnode->_next == nullptr) {
-      }
-    }
-    qnode->_next->_spin = 0;
-  }
-  void Release(uint32_t apicid) {
-  }
   bool IsNoOneWaiting(uint32_t apicid) {
-    return _tail == nullptr;
+    auto qnode = &_node[apicid];
+    return qnode->_next == nullptr;
   }
 private:
   struct QueueNode {
@@ -309,101 +254,8 @@ public:
     // _flag = 0;
     assert(__sync_bool_compare_and_swap(&_flag, 1, 0));
   }
-  void Release(uint32_t apicid) {
-  }
 private:
   volatile unsigned int _flag = 0;
-};
-
-template<class L1, class L2>
-class ExpSpinLock9 {
-public:
-  ExpSpinLock9() {
-  }
-  bool TryLock() {
-    assert(false);
-  }
-  void Lock(uint32_t apicid) {
-    uint32_t tileid = apicid / 8;
-    _second_lock[tileid].Lock(apicid);
-    if (_top_locked[tileid].i == 0) {
-      _top_lock.Lock(apicid);
-      _top_locked[tileid].i = 1;
-    }
-  }
-  void Unlock(uint32_t apicid) {
-    uint32_t tileid = apicid / 8;
-
-    if (_second_lock[tileid].IsNoOneWaiting(apicid)) {
-      _top_lock.Unlock(apicid);
-      _top_locked[tileid].i = 0;
-    }
-    _second_lock[tileid].Unlock(apicid);
-  }
-  void Release(uint32_t apicid) {
-    uint32_t tileid = apicid / 8;
-    
-    _second_lock[tileid].Lock(apicid);
-    if (_top_locked[tileid].i == 1) {
-      _top_lock.Unlock(apicid);
-      _top_locked[tileid].i = 0;
-    }
-    _second_lock[tileid].Unlock(apicid);
-  }
-private:
-  static const int kSubStructNum = 37;
-  L1 _top_lock;
-  L2 _second_lock[kSubStructNum];
-  struct Status {
-    int i = 0;
-  } __attribute__ ((aligned (64)));
-  Status _top_locked[kSubStructNum];
-};
-
-template<class L2>
-class ExpSpinLock9_1_0 {
-public:
-  ExpSpinLock9_1_0() {
-  }
-  bool TryLock() {
-    assert(false);
-  }
-  void Lock(uint32_t apicid) {
-    uint32_t tileid = apicid / 8;
-    _second_lock[tileid].Lock(apicid);
-    if (_top_locked[tileid].i == 0) {
-      _top_locked[tileid].qnode = _top_lock.Lock(apicid);
-      _top_locked[tileid].i = 1;
-    }
-  }
-  void Unlock(uint32_t apicid) {
-    uint32_t tileid = apicid / 8;
-
-    if (_second_lock[tileid].IsNoOneWaiting(apicid)) {
-      _top_lock.Unlock(apicid, _top_locked[tileid].qnode);
-      _top_locked[tileid].i = 0;
-    }
-    _second_lock[tileid].Unlock(apicid);
-  }
-  void Release(uint32_t apicid) {
-    uint32_t tileid = apicid / 8;
-    
-    _second_lock[tileid].Lock(apicid);
-    if (_top_locked[tileid].i == 1) {
-      _top_lock.Unlock(apicid, _top_locked[tileid].qnode);
-      _top_locked[tileid].i = 0;
-    }
-    _second_lock[tileid].Unlock(apicid);
-  }
-private:
-  static const int kSubStructNum = 37;
-  McsSpinLock2 _top_lock;
-  L2 _second_lock[kSubStructNum];
-  struct Status {
-    int i = 0;
-    McsSpinLock2::QueueNode *qnode;
-  } __attribute__ ((aligned (64)));
-  Status _top_locked[kSubStructNum];
 };
 
 template<class L1, class L2>
@@ -416,33 +268,26 @@ public:
   }
   void Lock(uint32_t apicid) {
     uint32_t tileid = apicid / 8;
-    _second_lock[tileid].Lock(apicid);
+    uint32_t threadid = apicid % 8;
+
+    _second_lock[tileid].Lock(threadid);
     if (_top_locked[tileid].i == 0) {
-      _top_lock.Lock(apicid);
+      _top_lock.Lock(tileid);
       _top_locked[tileid].i = kMax;
     }
   }
   void Unlock(uint32_t apicid) {
     uint32_t tileid = apicid / 8;
+    uint32_t threadid = apicid % 8;
 
     _top_locked[tileid].i--;
-    if (_top_locked[tileid].i == 0 && !_second_lock[tileid].IsNoOneWaiting(apicid) && _top_lock.IsNoOneWaiting(apicid)) {
+    if (_top_locked[tileid].i == 0 && !_second_lock[tileid].IsNoOneWaiting(threadid) && _top_lock.IsNoOneWaiting(tileid)) {
       _top_locked[tileid].i = kMax;
-    } else if (_top_locked[tileid].i == 0 || _second_lock[tileid].IsNoOneWaiting(apicid)) {
-      _top_lock.Unlock(apicid);
+    } else if (_top_locked[tileid].i == 0 || _second_lock[tileid].IsNoOneWaiting(threadid)) {
+      _top_lock.Unlock(tileid);
       _top_locked[tileid].i = 0;
     }
-    _second_lock[tileid].Unlock(apicid);
-  }
-  void Release(uint32_t apicid) {
-    uint32_t tileid = apicid / 8;
-    
-    _second_lock[tileid].Lock(apicid);
-    if (_top_locked[tileid].i > 0) {
-      _top_lock.Unlock(apicid);
-      _top_locked[tileid].i = 0;
-    }
-    _second_lock[tileid].Unlock(apicid);
+    _second_lock[tileid].Unlock(threadid);
   }
 private:
   static const int kSubStructNum = 37;
@@ -455,52 +300,3 @@ private:
   Status _top_locked[kSubStructNum];
 };
 
-template<class L2>
-class ExpSpinLock10_1_0 {
-public:
-  ExpSpinLock10_1_0() {
-  }
-  bool TryLock() {
-    assert(false);
-  }
-  void Lock(uint32_t apicid) {
-    uint32_t tileid = apicid / 8;
-    _second_lock[tileid].Lock(apicid);
-    if (_top_locked[tileid].i == 0) {
-      _top_locked[tileid].qnode = _top_lock.Lock(apicid);
-      _top_locked[tileid].i = kMax;
-    }
-  }
-  void Unlock(uint32_t apicid) {
-    uint32_t tileid = apicid / 8;
-
-    _top_locked[tileid].i--;
-    if (_top_locked[tileid].i == 0 && !_second_lock[tileid].IsNoOneWaiting(apicid) && _top_lock.IsNoOneWaiting(apicid)) {
-      _top_locked[tileid].i = kMax;
-    } else if (_top_locked[tileid].i == 0 || _second_lock[tileid].IsNoOneWaiting(apicid)) {
-      _top_lock.Unlock(apicid, _top_locked[tileid].qnode);
-      _top_locked[tileid].i = 0;
-    }
-    _second_lock[tileid].Unlock(apicid);
-  }
-  void Release(uint32_t apicid) {
-    uint32_t tileid = apicid / 8;
-    
-    _second_lock[tileid].Lock(apicid);
-    if (_top_locked[tileid].i > 0) {
-      _top_lock.Unlock(apicid, _top_locked[tileid].qnode);
-      _top_locked[tileid].i = 0;
-    }
-    _second_lock[tileid].Unlock(apicid);
-  }
-private:
-  static const int kSubStructNum = 37;
-  McsSpinLock2 _top_lock;
-  L2 _second_lock[kSubStructNum];
-  static const int kMax = 300;
-  struct Status {
-    int i = 0;
-    McsSpinLock2::QueueNode *qnode;
-  } __attribute__ ((aligned (64)));
-  Status _top_locked[kSubStructNum];
-};

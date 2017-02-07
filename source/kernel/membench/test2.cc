@@ -118,7 +118,6 @@ static Pair func107(bool mode, int cpunum, int i) {
         break;
       }
     }
-    lock->Release(apicid);
     
     sync_3.Do(cpunum);
 
@@ -172,7 +171,7 @@ static void func107_sub(bool mode, int cpunum, int i) {
   variance /= num;
   int apicid = cpu_ctrl->GetCpuId().GetApicId();
   if (apicid == 0) {
-    gtty->CprintfRaw("<%d %lld(%lld) us> ", i, avg, variance);
+    gtty->CprintfRaw("<%d %d %lld(%lld) us> ", i, cpunum, avg, variance);
     StringTty tty(200);
     tty.CprintfRaw("%d\t%d\t%d\t%d\n", i, cpunum, avg.time, avg.fairness);
     int argc = 4;
@@ -181,13 +180,12 @@ static void func107_sub(bool mode, int cpunum, int i) {
   }
 }
 
+static SyncLow sync_5={0};
+
 template<bool mode, int i, class L>
 static void func107(sptr<TaskWithStack> task) {
   static int flag = 0;
-  int tmp = flag;
-  while(!__sync_bool_compare_and_swap(&flag, tmp, tmp + 1)) {
-    tmp = flag;
-  }
+  __sync_fetch_and_add(&flag, 1);
 
   auto ltask_ = make_sptr(new Task);
   ltask_->SetFunc(make_uptr(new Function2<sptr<Task>, sptr<TaskWithStack>>([](sptr<Task> ltask, sptr<TaskWithStack> task_) {
@@ -202,7 +200,7 @@ static void func107(sptr<TaskWithStack> task) {
               }
             } else {
               if (is_knl()) {
-                for (int cpunum = 1; cpunum <= 256; cpunum++) {
+                for (int cpunum = 1; cpunum <= 8; cpunum++) {
                   func107_sub<L>(mode, cpunum, i);
                 }
               } else {
@@ -218,7 +216,9 @@ static void func107(sptr<TaskWithStack> task) {
               int argc = 4;
               const char *argv[] = {"udpsend", "192.168.12.35", "1234", tty.GetRawPtr()};
               udpsend(argc, argv);
+              flag = 0;
             }
+            sync_5.Do();
             task_->Execute();
           }
         }, ltask_, task)));
@@ -248,14 +248,17 @@ static void func10(sptr<TaskWithStack> task) {
           ClhSpinLock,
           AndersonSpinLock<16, 256>,
           SimpleSpinLockR,
-          ExpSpinLock9<AndersonSpinLock<16, 32>, AndersonSpinLock<16, 8>>,
-          ExpSpinLock9<TtsSpinLock, AndersonSpinLock<16, 8>>,
-          ExpSpinLock9_1_0<AndersonSpinLock<16, 8>>,
-          ExpSpinLock9<AndersonSpinLock<16, 32>, ClhSpinLock>,
+          ExpSpinLock10<TtsSpinLock, ClhSpinLock>,
+          ExpSpinLock10<ClhSpinLock, AndersonSpinLock<16, 8>>,
+          ExpSpinLock10<ClhSpinLock, ClhSpinLock>,
+          ExpSpinLock10<ClhSpinLock, McsSpinLock>,
           ExpSpinLock10<AndersonSpinLock<16, 32>, AndersonSpinLock<16, 8>>,
-          ExpSpinLock10<TtsSpinLock, AndersonSpinLock<16, 8>>,
-          ExpSpinLock10_1_0<AndersonSpinLock<16, 8>>,
-          ExpSpinLock10<AndersonSpinLock<16, 32>, ClhSpinLock>
+          ExpSpinLock10<AndersonSpinLock<16, 32>, ClhSpinLock>,
+          ExpSpinLock10<AndersonSpinLock<16, 32>, McsSpinLock>,
+          ExpSpinLock10<McsSpinLock, AndersonSpinLock<16, 8>>,
+          ExpSpinLock10<McsSpinLock, ClhSpinLock>,
+          ExpSpinLock10<McsSpinLock, McsSpinLock>,
+          AndersonSpinLock<16, 8>
           >(task);
 }
 
@@ -286,7 +289,7 @@ void membench2(sptr<TaskWithStack> task) {
     const char *argv[] = {"udpsend", "192.168.12.35", "1234", tty.GetRawPtr()};
     udpsend(argc, argv);
   }
-  func10<true, 1>(task); 
+  // func10<true, 1>(task); 
   if (cpuid == 0) {
     gtty->CprintfRaw("<<< end\n");
   }

@@ -151,12 +151,12 @@ static Pair func107(int cpunum, int i) {
       delete[] buf1;
       cnt = 0;
     }
-    delete[] buf2;
-    delete[] buf3;
-    delete[] buf4;
   } else {
     asm volatile("hlt");
   }
+  delete[] buf2;
+  delete[] buf3;
+  delete[] buf4;
   
   sync_4.Do();
   Pair pair = { time: time, fairness: f_variance };
@@ -253,14 +253,16 @@ static void func10(sptr<TaskWithStack> task) {
           ClhSpinLock,
           AndersonSpinLock<16, 256>,
           SimpleSpinLockR,
-          ExpSpinLock9<AndersonSpinLock<16, 32>, AndersonSpinLock<16, 8>>,
-          ExpSpinLock9<TtsSpinLock, AndersonSpinLock<16, 8>>,
-          ExpSpinLock9_1_0<AndersonSpinLock<16, 8>>,
-          ExpSpinLock9<AndersonSpinLock<16, 32>, ClhSpinLock>,
+          ExpSpinLock10<TtsSpinLock, ClhSpinLock>,
+          ExpSpinLock10<ClhSpinLock, ClhSpinLock>,
+          ExpSpinLock10<ClhSpinLock, AndersonSpinLock<16, 8>>,
+          ExpSpinLock10<ClhSpinLock, McsSpinLock>,
           ExpSpinLock10<AndersonSpinLock<16, 32>, AndersonSpinLock<16, 8>>,
-          ExpSpinLock10<TtsSpinLock, AndersonSpinLock<16, 8>>,
-          ExpSpinLock10_1_0<AndersonSpinLock<16, 32>>,
-          ExpSpinLock10<AndersonSpinLock<16, 32>, ClhSpinLock>
+          ExpSpinLock10<AndersonSpinLock<16, 32>, ClhSpinLock>,
+          ExpSpinLock10<AndersonSpinLock<16, 32>, McsSpinLock>,
+          ExpSpinLock10<McsSpinLock, ClhSpinLock>,
+          ExpSpinLock10<McsSpinLock, AndersonSpinLock<16, 8>>,
+          ExpSpinLock10<McsSpinLock, McsSpinLock>
           >(task);
 }
 
