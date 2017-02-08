@@ -44,7 +44,7 @@ public:
     lE1000BsdEthernet(lE1000 &master) : _master(master) {
     }
     
-    static void PollingHandler(void *arg);
+    static void PollingHandler(lE1000 *that);
     
     virtual void UpdateLinkStatus() override;
     

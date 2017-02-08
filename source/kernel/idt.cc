@@ -32,7 +32,7 @@
 
 namespace C {
 extern "C" void handle_int(Regs *rs) {
-  //TODO 例外処理中のフラグを立て、IntSpinLock内では弾く
+  //TODO 例外処理中のフラグを立て、SpinLock内では弾く
   bool iflag = disable_interrupt();
   int cpuid = cpu_ctrl->GetCpuId().GetRawId();
   idt->_handling_cnt[cpuid]++;
@@ -199,6 +199,7 @@ void Idt::HandlePageFault(Regs *rs, void *arg) {
     PRINT_PAGING_ENTRY("PDPTE", pdpte);
     PRINT_PAGING_ENTRY("PDE  ", pde);
     PRINT_PAGING_ENTRY("PTE  ", pte);
+    show_backtrace(reinterpret_cast<size_t *>(rs->rbp));
   }
   while(true){
     asm volatile("cli;hlt");

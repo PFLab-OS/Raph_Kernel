@@ -33,6 +33,8 @@
 #ifndef _SYS_LIBKERN_H_
 #define	_SYS_LIBKERN_H_
 
+#include <stdlib.h>
+
 #include <sys/cdefs.h>
 #include <sys/types.h>
 #ifdef _KERNEL
@@ -51,5 +53,12 @@ static __inline u_quad_t uqmax(u_quad_t a, u_quad_t b) { return (a > b ? a : b);
 static __inline u_quad_t uqmin(u_quad_t a, u_quad_t b) { return (a < b ? a : b); }
 static __inline u_long ulmax(u_long a, u_long b) { return (a > b ? a : b); }
 static __inline u_long ulmin(u_long a, u_long b) { return (a < b ? a : b); }
+
+static __inline void arc4rand(void *ptr, u_int length, int reseed) {
+  uint8_t *buf = reinterpret_cast<uint8_t *>(ptr);
+  for (u_int i = 0; i < length; i++) {
+    buf[i] = rand() % 0xff;
+  }
+}
 
 #endif /* !_SYS_LIBKERN_H_ */

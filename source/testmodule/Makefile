@@ -4,7 +4,7 @@ SRCS = testmodule.cc
 CC = /usr/local/musl/bin/musl-gcc
 
 defalut:
-	make $(MODULE)
+	$(MAKE) $(MODULE)
 	cp $(MODULE) ../../build/$(MODULE).elf
 
 $(MODULE) : $(SRCS) Makefile

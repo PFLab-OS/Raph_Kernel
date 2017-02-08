@@ -31,13 +31,6 @@
 #include <cpu.h>
 
 void readElf(const void *p);
-void readElfTest(struct multiboot_tag_module *module)
-{
-  gtty->CprintfRaw("read elf module from %x to %x\n", module->mod_start, module->mod_end);
-  uint8_t *p_begin = reinterpret_cast<uint8_t *>(p2v(module->mod_start));
-  //
-  readElf(p_begin);
-}
 
 #define IS_ELF(ehdr)    (ehdr->e_ident[0] == ELFMAG0 && ehdr->e_ident[1] == ELFMAG1 && ehdr->e_ident[2] == ELFMAG2 && ehdr->e_ident[3] == ELFMAG3)
 #define IS_ELF64(ehdr)  (ehdr->e_ident[EI_CLASS] == ELFCLASS64)

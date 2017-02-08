@@ -26,39 +26,55 @@
 #ifndef __RAPH_KERNEL_SHELL_H__
 #define __RAPH_KERNEL_SHELL_H__
 
+#include <ptr.h>
+
 class Shell {
  public:
   void Setup();
   void Register(const char *name, void (*func)(int argc, const char *argv[]));
   void ReadCh(char c);
 
+  static const int kCommandSize = 100;
+  static const int kArgumentMax = 10;
+  struct ExecContainer {
+    char name[kCommandSize];
+    int argc;
+    const char *argv[kArgumentMax + 1];
+    Shell *shell;
+    Callout *c;
+    ExecContainer(Shell *shell_) {
+      argc = 0;
+      shell = shell_;
+    }
+  private:
+    ExecContainer();
+  };
+  uptr<ExecContainer> Tokenize(uptr<ExecContainer> ec, char *command) {
+    return _liner.Tokenize(ec, command);
+  }
+  void Execute(uptr<ExecContainer> ec);
  private:
-  void Exec(const char *name, int argc, const char* argv[]);
+  void Exec(const char *name, int argc, const char **argv);
 
-  static const int kBufSize = 10;
+  static const int kBufSize = 20;
   static const int kNameSize = 10;
   int _next_buf = 0;
   struct NameFuncMapping {
-
     char name[kNameSize];
     void (*func)(int argc, const char *argv[]);
   } _name_func_mapping[kBufSize];
   class Liner { //convert char inputs to a line input
   public:
-    void Setup(Shell *shell) {
-      _shell = shell;
+    void Setup(Shell *s) {
+      _shell = s;
       Reset();
     }
     void ReadCh(char c);
+    static uptr<ExecContainer> Tokenize(uptr<ExecContainer> ec, char *command);
   private:
-    void Tokenize();
     void Reset();
-    static const int kCommandSize = 100;
-    static const int kArgumentMax = 10;
     char _command[kCommandSize] = "";
-    char *_arguments[kArgumentMax + 1];
     int _next_command = 0;
-    int _argc = 0;
     Shell *_shell;
   } _liner;
 };

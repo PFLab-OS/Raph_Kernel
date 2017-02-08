@@ -20,14 +20,14 @@
  * 
  */
 
-#ifndef __RAPH_LIB__TASK_H__
-#define __RAPH_LIB__TASK_H__
+#pragma once
 
 #include <raph.h>
 #include <global.h>
 #include <function.h>
 #include <spinlock.h>
 #include <timer.h>
+#include <ptr.h>
 
 class Task {
 public:
@@ -42,14 +42,14 @@ public:
   virtual ~Task() {
     kassert(_status == Status::kOutOfQueue);
   }
-  virtual void SetFunc(const GenericFunction &func) {
-    _func.Copy(func);
+  virtual void SetFunc(uptr<GenericFunction<>> func) {
+    _func = func;
   }
   Status GetStatus() {
     return _status;
   }
   virtual void Execute() {
-    _func.Execute();
+    _func->Execute();
   }
   virtual void Wait() {
     kernel_panic("Task", "unable to use blocking operation(use TaskWithStack instead)");
@@ -57,10 +57,13 @@ public:
   virtual void Kill() {
     kernel_panic("Task", "unable to kill normal Task");
   }
+  bool IsRegistered() {
+    return _status == Task::Status::kWaitingInQueue;
+  }
 private:
-  FunctionBase _func;
-  Task *_next;
-  Task *_prev;
+  uptr<GenericFunction<>> _func;
+  sptr<Task> _next;
+  sptr<Task> _prev;
   CpuId _cpuid;
   Status _status = Status::kOutOfQueue;
   friend TaskCtrl;  // TODO should be removed
@@ -71,27 +74,28 @@ private:
 // ただし、一定時間後に立ち上げる事や割り当てcpuidを変える事はできない
 class CountableTask {
 public:
-  CountableTask() {
+  CountableTask() : _task(new Task) {
     _cnt = 0;
-    ClassFunction<CountableTask> func;
-    func.Init(this, &CountableTask::HandleSub, nullptr);
-    _task.SetFunc(func);
+    _task->SetFunc(make_uptr(new ClassFunction<CountableTask, void *>(this, &CountableTask::HandleSub, nullptr)));
   }
   virtual ~CountableTask() {
   }
-  void SetFunc(CpuId cpuid, const GenericFunction &func) {
+  void SetFunc(CpuId cpuid, uptr<GenericFunction<>> func) {
     _cpuid = cpuid;
-    _func.Copy(func);
+    _func = func;
   }
   Task::Status GetStatus() {
-    return _task.GetStatus();
+    return _task->GetStatus();
+  }
+  sptr<Task> GetTask() {
+    return _task;
   }
   void Inc();
 private:
   void HandleSub(void *);
-  Task _task;
-  IntSpinLock _lock;
-  FunctionBase _func;
+  sptr<Task> _task;
+  SpinLock _lock;
+  uptr<GenericFunction<>> _func;
   int _cnt;
   CpuId _cpuid;
 };
@@ -107,87 +111,59 @@ public:
     kHandling,
     kStopped,
   };
-  Callout() {
-    ClassFunction<Callout> func;
-    func.Init(this, &Callout::HandleSub, nullptr);
-    _task.SetFunc(func);
+  Callout() : _task(new Task) {
   }
   virtual ~Callout() {
   }
-  void Init(const GenericFunction &func) {
-    _func.Copy(func);
+  void Init(uptr<GenericFunction<>> func) {
+    _func = func;
   }
   volatile bool IsHandling() {
     return (_state == CalloutState::kHandling);
   }
-  volatile bool CanExecute() {
-    return _func.CanExecute();
-  }
-  void SetHandler(int us);
-  void SetHandler(CpuId cpuid, int us);
-  void Cancel();
   bool IsPending() {
     return _pending;
   }
+  bool IsRegistered() {
+    return _task->IsRegistered() || _state == CalloutState::kCalloutQueue || _state == CalloutState::kTaskQueue;
+  }
+protected:
+  void HandleSub2(sptr<Callout> callout);
 private:
-  void HandleSub(void *);
-  CpuId _cpuid;
-  Task _task;
-  uint64_t _time;
-  Callout *_next;
-  FunctionBase _func;
-  IntSpinLock _lock;
-  bool _pending = false;
   friend TaskCtrl;
+  void SetHandler(sptr<Callout> callout, CpuId cpuid, int us);
+  void Cancel();
+  virtual void HandleSub(sptr<Callout> callout) {
+    HandleSub2(callout);
+  }
+  CpuId _cpuid;
+  sptr<Task> _task;
+  uint64_t _time;
+  sptr<Callout> _next;
+  uptr<GenericFunction<>> _func;
+  SpinLock _lock;
+  bool _pending = false;
   CalloutState _state = CalloutState::kStopped;
 };
 
-class LckCallout {
+class LckCallout : public Callout {
  public:
   LckCallout() {
-    ClassFunction<LckCallout> func;
-    func.Init(this, &LckCallout::HandleSub, nullptr);
-    callout.Init(func);
   }
   virtual ~LckCallout() {
-  }
-  void Init(const GenericFunction &func) {
-    _func.Copy(func);
   }
   void SetLock(SpinLock *lock) {
     _lock = lock;
   }
-  volatile bool IsHandling() {
-    return callout.IsHandling();
-  }
-  volatile bool CanExecute() {
-    return callout.CanExecute();
-  }
-  void SetHandler(int us) {
-    callout.SetHandler(us);
-  }
-  void SetHandler(CpuId cpuid, int us) {
-    callout.SetHandler(cpuid, us);
-  }
-  void Cancel() {
-    callout.Cancel();
-  }
-  bool IsPending() {
-    return callout.IsPending();
-  }
  private:
-  void HandleSub(void *) {
+  virtual void HandleSub(sptr<Callout> callout) {
     if (_lock != nullptr) {
       _lock->Lock();
     }
-    _func.Execute();
+    HandleSub2(callout);
     if (_lock != nullptr) {
       _lock->Unlock();
     }
   }
   SpinLock *_lock = nullptr;
-  Callout callout;
-  FunctionBase _func;
 };
-
-#endif /* __RAPH_LIB__TASK_H__ */

@@ -55,13 +55,13 @@ extern "C" {
 
 #undef kassert
   
-  void _kassert(const char *file, int line, const char *func)  __attribute__((noreturn));
+  [[noreturn]] void _kassert(const char *file, int line, const char *func);
 #define kassert(flag) if (!(flag)) { while(gtty == nullptr) { asm volatile("cli; nop; hlt;"); } _kassert(__FILE__, __LINE__, __func__); }
 
 
 #define MASK(val, ebit, sbit) ((val) & (((1 << ((ebit) - (sbit) + 1)) - 1) << (sbit)))
   
-  void _kernel_panic(const char *class_name, const char *err_str);
+  [[noreturn]] void _kernel_panic(const char *class_name, const char *err_str);
 #define kernel_panic(...) do{ while(gtty == nullptr) { asm volatile("cli; nop; hlt;"); } _kernel_panic(__VA_ARGS__); }while(true)
 
   void checkpoint(int id, const char *str);

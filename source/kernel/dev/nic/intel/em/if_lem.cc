@@ -72,13 +72,13 @@
 
 // #include <net/bpf.h>
 // #include <net/ethernet.h>
-// #include <net/if.h>
-// #include <net/if_var.h>
+#include <net/if.h>
+#include <net/if_var.h>
 // #include <net/if_arp.h>
 // #include <net/if_dl.h>
-// #include <net/if_media.h>
+#include <net/if_media.h>
 
-// #include <net/if_types.h>
+#include <net/if_types.h>
 // #include <net/if_vlan_var.h>
 
 // #include <netinet/in_systm.h>
@@ -1801,7 +1801,7 @@ lem_xmit(struct adapter *adapter, BsdEthernet::Packet *packet)
   tx_buffer = &adapter->tx_buffer_area[i];
   ctxd = &adapter->tx_desc_base[i];
   seg_len = packet->len;
-  memcpy(reinterpret_cast<void *>(p2v(ctxd->buffer_addr)), packet->buf, seg_len);
+  memcpy(reinterpret_cast<void *>(p2v(ctxd->buffer_addr)), packet->GetBuffer(), seg_len);
   e1000->GetNetInterface().ReuseTxBuffer(packet);
   ctxd->lower.data = htole32(
                              adapter->txd_cmd | txd_lower | seg_len);
@@ -3763,7 +3763,7 @@ lem_rxeof(struct adapter *adapter, int count, int *done)
 		if (accept_frame) {
       BsdEthernet::Packet *packet;
       if (e1000->GetNetInterface()._rx_reserved.Pop(packet)) {
-        memcpy(packet->buf, reinterpret_cast<void *>(p2v(adapter->rx_desc_base[i].buffer_addr)), len);
+        memcpy(packet->GetBuffer(), reinterpret_cast<void *>(p2v(adapter->rx_desc_base[i].buffer_addr)), len);
         packet->len = len;
         if (!e1000->GetNetInterface()._rx_buffered.Push(packet)) {
           kassert(e1000->GetNetInterface()._rx_reserved.Push(packet));
@@ -4997,7 +4997,7 @@ int lE1000::DevMethodBusProbe() {
 int lE1000::DevMethodBusAttach() {
   int rval = lem_attach(this);
   lem_init(reinterpret_cast<struct adapter *>(softc));
-  _bsd_eth.SetupNetInterface();
+  _bsd_eth.SetupNetInterface("lem");
   // _bsd_eth.SetHandleMethod(lE1000BsdEthernet::HandleMethod::kPolling);
   return rval;
 }
@@ -5032,17 +5032,13 @@ void lE1000::lE1000BsdEthernet::UpdateLinkStatus() {
   }
 }
 
-void lE1000::lE1000BsdEthernet::PollingHandler(void *arg) {
-  lE1000 *that = reinterpret_cast<lE1000 *>(arg);
+void lE1000::lE1000BsdEthernet::PollingHandler(lE1000 *that) {
   lem_poll(reinterpret_cast<struct adapter *>(that->softc)->ifp);
 }
 
 void lE1000::lE1000BsdEthernet::ChangeHandleMethodToPolling() {
-  Function func;
-  func.Init(PollingHandler, reinterpret_cast<void *>(&GetMasterClass()));
-  _polling.Init(func);
-  extern CpuId network_cpu;
-  _polling.Register(network_cpu);
+  _polling.Init(make_uptr(new Function<lE1000 *> (PollingHandler, &GetMasterClass())));
+  _polling.Register(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kHighPerformance));
   
   struct adapter *adapter = reinterpret_cast<struct adapter *>(GetMasterClass().softc);
   if_t ifp = adapter->ifp;

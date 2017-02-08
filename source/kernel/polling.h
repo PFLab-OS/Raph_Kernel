@@ -34,10 +34,14 @@ class Polling {
     kPolling,
     kStopped,
   };
-  Polling() {
-    ClassFunction<Polling> func;
-    func.Init(this, &Polling::HandleSub, nullptr);
-    _task.SetFunc(func);
+  Polling() : _task(new Task) {
+    _task->SetFunc(make_uptr(new ClassFunction<Polling, void *>(this, &Polling::HandleSub, nullptr)));
+  }
+  ~Polling() {
+    if (_state == PollingState::kPolling) {
+      // TODO implementation
+      kernel_panic("Polling", "unexpectedly deleted");
+    }
   }
   void RegisterPolling(CpuId cpuid) {
     if (_state == PollingState::kPolling) {
@@ -45,7 +49,7 @@ class Polling {
     }
     _cpuid = cpuid;
     _state = PollingState::kPolling;
-    task_ctrl->Register(_cpuid, &_task);
+    task_ctrl->Register(_cpuid, _task);
   }
   void RemovePolling() {
     if (_state == PollingState::kStopped) {
@@ -58,14 +62,14 @@ class Polling {
   void HandleSub(void *) {
     if (_state == PollingState::kPolling) {
       Handle();
-      task_ctrl->Register(_cpuid, &_task);
+      task_ctrl->Register(_cpuid, _task);
     } else {
       RemovePolling();
     }
   }
   PollingState _state = PollingState::kStopped;
   CpuId _cpuid;
-  Task _task;
+  sptr<Task> _task;
 };
 
 class PollingFunc : public Polling {
@@ -79,14 +83,14 @@ class PollingFunc : public Polling {
   void Remove() {
     this->RemovePolling();
   }
-  void Init(const GenericFunction &func) {
-    _func.Copy(func);
+  void Init(uptr<GenericFunction<>> func) {
+    _func = func;
   }
  private:
   virtual void Handle() override {
-    _func.Execute();
+    _func->Execute();
   }
-  FunctionBase _func;
+  uptr<GenericFunction<>> _func;
 };
 
 #endif /* __RAPH_KERNEL_DEV_POLLING_H__ */

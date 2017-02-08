@@ -22,6 +22,7 @@ disk.vdi
 net/disk.img.gz
 .vagrant
 .ssh_config
+build/
 
 # Object files
 *.o
@@ -58,6 +59,7 @@ net/disk.img.gz
 *.dSYM/
 *.s
 *.i
+*.ii
 
 # Makefile
 *.d

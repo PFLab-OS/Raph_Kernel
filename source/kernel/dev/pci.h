@@ -219,7 +219,7 @@ private:
     IntHandler *inthandler;
     IrqContainer *next;
   } *_irq_container;
-  IntSpinLock _irq_container_lock;
+  SpinLock _irq_container_lock;
   static void LegacyIntHandler(Regs *rs, void *arg) {
     PciCtrl *that = reinterpret_cast<PciCtrl *>(arg);
     Locker locker(that->_irq_container_lock);
@@ -246,7 +246,7 @@ private:
 };
 
 // !!! important !!!
-// 派生クラスはstatic void InitPci(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bool mf); を作成する事
+// 派生クラスはstatic DevPci *InitPci(uint8_t bus, uint8_t device); を作成する事
 class DevPci : public Device {
 public:
   DevPci(uint8_t bus, uint8_t device, uint8_t function) : _bus(bus), _device(device), _function(function) {

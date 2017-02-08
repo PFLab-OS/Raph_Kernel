@@ -1,7 +1,7 @@
 default:
-	make -C kernel
-	make -C testmodule
+	$(MAKE) -C kernel
+	$(MAKE) -C testmodule
 
 clean:
-	make -C kernel clean
-	make -C testmodule clean
+	$(MAKE) -C kernel clean
+	$(MAKE) -C testmodule clean

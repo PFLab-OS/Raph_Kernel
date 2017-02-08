@@ -24,6 +24,7 @@
 #define __RAPH_KERNEL_SPINLOCK_H__
 
 #include <stdint.h>
+#include <stdlib.h>
 #include <_cpu.h>
 
 class SpinLockInterface {
@@ -40,10 +41,10 @@ public:
 
 
 // 割り込みハンドラ内でも使えるSpinLock
-class IntSpinLock : public SpinLockInterface {
+class SpinLock : public SpinLockInterface {
 public:
-  IntSpinLock() {}
-  virtual ~IntSpinLock() {}
+  SpinLock() {}
+  virtual ~SpinLock() {}
   virtual volatile unsigned int GetFlag() override {
     return _flag;
   }
@@ -56,17 +57,16 @@ public:
   virtual bool IsLocked() override {
     return ((_flag % 2) == 1);
   }
+  static bool _spinlock_timeout;
 protected:
   bool SetFlag(unsigned int old_flag, unsigned int new_flag) {
     return __sync_bool_compare_and_swap(&_flag, old_flag, new_flag);
   }
   volatile unsigned int _flag = 0;
   CpuId _cpuid;
+  size_t _rip[3];
   bool _did_stop_interrupt = false;
-  static const bool kTimeout = true;
 };
-
-using SpinLock = IntSpinLock;
 
 // コンストラクタ、デストラクタでlock,unlockができるラッパー
 // 関数からreturnする際に必ずunlockできるので、unlock忘れを防止する
@@ -81,5 +81,32 @@ class Locker {
  private:
   SpinLockInterface &_lock;
 };
+
+// trylockマクロからのみ呼び出す事
+class TryLocker {
+public:
+  TryLocker(SpinLockInterface &lock) : _flag(lock.Trylock()), _lock(lock) {
+  }
+  ~TryLocker() {
+    if (_flag) {
+      _lock.Unlock();
+    }
+  }
+  bool Do() {
+    return _flag;
+  }
+  void Unlock() {
+    _lock.Unlock();
+    _flag = false; 
+  }
+private:
+  bool _flag;
+  SpinLockInterface &_lock;
+};
+
+#define trylock__(lock, l) for (TryLocker locker##l(lock); locker##l.Do(); locker##l.Unlock())
+#define trylock_(lock, l) trylock__(lock, l)
+#define trylock(lock) trylock_(lock, __LINE__)
+
 
 #endif // __RAPH_KERNEL_SPINLOCK_H__

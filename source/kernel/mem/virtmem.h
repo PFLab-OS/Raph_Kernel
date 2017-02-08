@@ -33,6 +33,10 @@ template <typename ptr> inline virt_addr ptr2virtaddr(ptr *addr) {
   return reinterpret_cast<virt_addr>(addr);
 }
 
+template <typename ptr> inline ptr *addr2ptr(virt_addr addr) {
+  return reinterpret_cast<ptr *>(addr);
+}
+
 class VirtmemCtrl final {
 public:
   VirtmemCtrl();
@@ -57,6 +61,9 @@ public:
     void Delete(T *c) __attribute__((deprecated));
 
   virt_addr Sbrk(int64_t increment);
+  virt_addr GetHeapEnd() {
+    return _brk_end;
+  }
 private:
   virt_addr _heap_allocated_end;
   virt_addr _brk_end;

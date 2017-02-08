@@ -23,6 +23,8 @@
 #ifndef __RAPH_LIB_ARPA_INET_H__
 #define __RAPH_LIB_ARPA_INET_H__
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
