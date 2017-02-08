@@ -192,7 +192,7 @@ void Idt::HandlePageFault(Regs *rs, void *arg) {
     gtty->CprintfRaw("\nfrom %s mode", (rs->ecode & ECodeSUBit) ? "user" : "kernel");
     gtty->CprintfRaw("\nrip: %llx rbp: %llx", rs->rip, rs->rbp);
     gtty->CprintfRaw("\nrax: %llx rbx:%llx rcx:%llx rdx:%llx", rs->rax, rs->rbx, rs->rcx, rs->rdx);
-    gtty->CprintfRaw("\nrsi:%llx r13: %llx cs:%llx ecode:%llx", rs->rsi, rs->r13, rs->cs, rs->ecode);
+    gtty->CprintfRaw("\nrsi:%llx r13: %llx cs:%x ss:%x ecode:%llx", rs->rsi, rs->r13, rs->cs, rs->ss, rs->ecode);
     uint64_t pml4e, pdpte, pde, pte;
     paging_ctrl->GetTranslationEntries(addr, &pml4e, &pdpte, &pde, &pte);
     PRINT_PAGING_ENTRY("PML4E", pml4e);

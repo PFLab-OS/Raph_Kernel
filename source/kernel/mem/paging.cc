@@ -180,7 +180,7 @@ bool PagingCtrl::Map4KPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr
   PageTable *pt = reinterpret_cast<PageTable *>(p2v(GetPDEMaskedAddr(entry)));
   entry = pt->entry[GetPTIndex(vaddr)];
   if ((entry & PTE_PRESENT_BIT) == 0) {
-    pt->entry[GetPTIndex(vaddr)] = paddr.GetAddr() | page_flag | PTE_PRESENT_BIT | PTE_USER_BIT;
+    pt->entry[GetPTIndex(vaddr)] = paddr.GetAddr() | page_flag | PTE_PRESENT_BIT;
     return true;
   } else {
     return false;

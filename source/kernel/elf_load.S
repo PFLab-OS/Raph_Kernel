@@ -23,18 +23,23 @@
 .code64
 .balign 4
 .text
-  
+
+  #define ASM_FILE
+  #include <gdt.h>
+
 .globl execute_elf_binary  
 execute_elf_binary:
-  pushq %rbp
-  movq %rsp, %rbp
-  subq $64, %rsp
-  movq $1, (%rsp)
-  movq %rsi, 8(%rsp)
-  movq $0, 16(%rsp)
-  movq $0, 24(%rsp)
+  mov $USER_DS, %edx
+  mov %dx, %ds
+  mov %dx, %es
+  mov %dx, %fs
+  mov %dx, %gs
   movq $0, %rdx
-  jmp  *%rdi
+  pushq $USER_DS
+  pushq %rsi
+  pushq $USER_CS
+  pushq %rdi
+  lretq
   addq $64, %rsp
   popq %rbp
   ret

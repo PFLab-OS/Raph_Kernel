@@ -29,33 +29,38 @@
 #include <mem/kstack.h>
 
 void Gdt::SetupProc() {
-  // setup 64bit TSS
+  // re-setup GDT & setup 64bit TSS
   PhysAddr paddr;
-  size_t gdt_size = sizeof(uint64_t) * 6;
+  size_t gdt_size = sizeof(uint64_t) * kGdtEntryNum;
   physmem_ctrl->Alloc(paddr, PagingCtrl::RoundUpAddrOnPageBoundary(gdt_size + sizeof(Tss)));
   uint32_t *gdt_desc = reinterpret_cast<uint32_t *>(paddr.GetVirtAddr());
   virt_addr tss_vaddr = paddr.GetVirtAddr() + gdt_size;
 
-  for (int i = 0; i < 12; i++) {
+  for (int i = 0; i < kGdtEntryNum * 2; i++) {
     gdt_desc[i] = 0;
   }
 
-  gdt_desc[4] = 0x00000000;
-  gdt_desc[5] = 0x00209a00;
-  gdt_desc[6] = 0x00000000;
-  gdt_desc[7] = 0x00009200;
+  gdt_desc[(KERNEL_CS / sizeof(uint32_t))] =     0x00000000;
+  gdt_desc[(KERNEL_CS / sizeof(uint32_t)) + 1] = 0x00209a00;
+  gdt_desc[(KERNEL_DS / sizeof(uint32_t))] =     0x00000000;
+  gdt_desc[(KERNEL_DS / sizeof(uint32_t)) + 1] = 0x00009200;
+  gdt_desc[(USER_DS / sizeof(uint32_t))] =       0x00000000;
+  gdt_desc[(USER_DS / sizeof(uint32_t)) + 1] =   0x0000F200;
+  gdt_desc[(USER_CS / sizeof(uint32_t))] =       0x00000000;
+  gdt_desc[(USER_CS / sizeof(uint32_t)) + 1] =   0x0020FA00;
 
-  gdt_desc[8] =
+  gdt_desc[(TSS / sizeof(uint32_t))] =
     MASK((sizeof(Tss) - 1), 15, 0) |
     (MASK(tss_vaddr, 16, 0) << 16);
-  gdt_desc[9] =
+  gdt_desc[(TSS / sizeof(uint32_t)) + 1] =
     (MASK(tss_vaddr, 23, 16) >> 16) |
     (9 << 8) |
     (3 << 13) |
     (1 << 15) |
     MASK((sizeof(Tss) - 1), 19, 16) |
     MASK(tss_vaddr, 31, 24);
-  gdt_desc[10] = tss_vaddr >> 32;
+  gdt_desc[(TSS / sizeof(uint32_t)) + 2] = tss_vaddr >> 32;
+  gdt_desc[(TSS / sizeof(uint32_t)) + 3] = 0;
 
   Tss *tss = reinterpret_cast<Tss *>(tss_vaddr);
   CpuId cpuid = cpu_ctrl->GetCpuId();
@@ -94,6 +99,6 @@ void Gdt::SetupProc() {
 
   tss->iomap = sizeof(Tss);  // no I/O permission map
 
-  x86::lgdt(gdt_desc, 6);
+  x86::lgdt(gdt_desc, kGdtEntryNum);
   asm volatile("ltr %0;"::"r"((uint16_t)TSS));
 }

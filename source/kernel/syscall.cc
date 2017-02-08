@@ -49,8 +49,8 @@ void SystemCallCtrl::init()
   efer |= bit_efer_SCE;
   wrmsr(kIA32EFER, efer);
   // set vLSTAR
-  wrmsr(kIA32STAR, (uint64_t)KERNEL_CS << 47);
-  wrmsr(kIA32LSTAR, (uint64_t)syscall_handler);
+  wrmsr(kIA32STAR, (static_cast<uint64_t>(KERNEL_CS) << 32) | ((static_cast<uint64_t>(USER_DS) - 8) << 48));
+  wrmsr(kIA32LSTAR, reinterpret_cast<uint64_t>(syscall_handler));
 }
 
 int64_t SystemCallCtrl::handler(int64_t rdi, int64_t rsi, int64_t rdx, int64_t rcx, int64_t r8, int64_t r9)

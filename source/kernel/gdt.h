@@ -25,7 +25,9 @@
 
 #define KERNEL_CS (0x10)
 #define KERNEL_DS (0x18)
-#define TSS       (0x20)
+#define USER_DS   (0x23)
+#define USER_CS   (0x2B)
+#define TSS       (0x30)
 
 #ifndef ASM_FILE
 
@@ -68,6 +70,7 @@ class Gdt {
     uint16_t reserved6;
     uint16_t iomap;
   } __attribute__((packed));
+  static const int kGdtEntryNum = 8;
 };
 
 #endif // ! ASM_FILE

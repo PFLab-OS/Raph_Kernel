@@ -23,10 +23,12 @@
 #include <tty.h>
 #include <elf.h>
 #include <mem/physmem.h>
+#include <mem/kstack.h>
 #include <string.h>
 #include <stdlib.h>
 #include <x86.h>
 #include <syscall.h>
+#include <cpu.h>
 
 void readElf(const void *p);
 void readElfTest(struct multiboot_tag_module *module)
@@ -43,7 +45,7 @@ void readElfTest(struct multiboot_tag_module *module)
 #define IS_OSABI_GNU(ehdr)   (ehdr->e_ident[EI_OSABI] == ELFOSABI_GNU)
 
 using FType = int (*)(int, char*[]);
-extern "C" int execute_elf_binary(FType f, const char *str);
+extern "C" int execute_elf_binary(FType f, uint64_t *stack_addr);
 
 void readElf(const void *p)
 {
@@ -109,8 +111,41 @@ void readElf(const void *p)
   // 実行
   FType f = reinterpret_cast<FType>(membuffer + ehdr->e_entry);
  
-  const char *str = "123";
-  int64_t rval = execute_elf_binary(f, str);
+  // TODO : 現在のカーネルスタックが破棄されるので、なんとかする
+  uint64_t *stack_addr = reinterpret_cast<uint64_t *>(KernelStackCtrl::GetCtrl().AllocThreadStack(cpu_ctrl->GetCpuId()));
+
+  int argc = 1;
+  const char *str[1] = {"123"};
+  size_t arg_buf_size = 0;
+  for (int i = 0; i < argc; i++) {
+    arg_buf_size += strlen(str[i]) + 1;
+  }
+  stack_addr -= (arg_buf_size + 7) / 8;
+  char *arg_ptr = reinterpret_cast<char *>(stack_addr);
+  // null auxiliary vector entry
+  stack_addr--;
+  *stack_addr = 0;
+
+  stack_addr--;
+  *stack_addr = 0;
+
+  // no environment pointers
+  
+  stack_addr--;
+  *stack_addr = 0;
+
+  // argument pointers
+  stack_addr -= argc;
+  for (int i = 0; i < argc; i++) {
+    strcpy(arg_ptr, str[i]);
+    stack_addr[i] = reinterpret_cast<uint64_t>(arg_ptr);
+    arg_ptr += strlen(str[i]) + 1;
+  }
+  
+  stack_addr--;
+  *stack_addr = argc;
+  
+  int64_t rval = execute_elf_binary(f, stack_addr);
 
   gtty->CprintfRaw("return value: %d\n", rval); 
   gtty->CprintfRaw("%s Returned.\n", str);

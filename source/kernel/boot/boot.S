@@ -116,43 +116,43 @@ setup_paging:
   // setup pml4 table
   lea (0x0)(%ebx), %edi
   lea 0x1000(%ebx), %eax
-  or  $(PML4E_PRESENT_BIT | PML4E_WRITE_BIT), %eax
+  or  $(PML4E_PRESENT_BIT | PML4E_WRITE_BIT | PML4E_USER_BIT), %eax
   mov %eax, (%edi)
   lea (0x0 + 256 * 8)(%ebx), %edi
   lea 0x1000(%ebx), %eax
-  or  $(PML4E_PRESENT_BIT | PML4E_WRITE_BIT), %eax
+  or  $(PML4E_PRESENT_BIT | PML4E_WRITE_BIT | PML4E_USER_BIT), %eax
   mov %eax, (%edi)
   lea (0x0 + 511 * 8)(%ebx), %edi
   lea 0x2000(%ebx), %eax
-  or  $(PML4E_PRESENT_BIT | PML4E_WRITE_BIT), %eax
+  or  $(PML4E_PRESENT_BIT | PML4E_WRITE_BIT | PML4E_USER_BIT), %eax
   mov %eax, (%edi)
 
   // setup pdpt1
   lea (0x1000)(%ebx), %edi
   lea 0x3000(%ebx), %eax
-  or  $(PDPTE_PRESENT_BIT | PDPTE_WRITE_BIT), %eax
+  or  $(PDPTE_PRESENT_BIT | PDPTE_WRITE_BIT | PDPTE_USER_BIT), %eax
   mov %eax, (%edi)
   lea (0x1000 + 1 * 8)(%ebx), %edi
   lea 0x4000(%ebx), %eax
-  or  $(PDPTE_PRESENT_BIT | PDPTE_WRITE_BIT), %eax
+  or  $(PDPTE_PRESENT_BIT | PDPTE_WRITE_BIT | PDPTE_USER_BIT), %eax
   mov %eax, (%edi)
   lea (0x1000 + 2 * 8)(%ebx), %edi
   lea 0x5000(%ebx), %eax
-  or  $(PDPTE_PRESENT_BIT | PDPTE_WRITE_BIT), %eax
+  or  $(PDPTE_PRESENT_BIT | PDPTE_WRITE_BIT | PDPTE_USER_BIT), %eax
   mov %eax, (%edi)
   lea (0x1000 + 3 * 8)(%ebx), %edi
   lea 0x6000(%ebx), %eax
-  or  $(PDPTE_PRESENT_BIT | PDPTE_WRITE_BIT), %eax
+  or  $(PDPTE_PRESENT_BIT | PDPTE_WRITE_BIT | PDPTE_USER_BIT), %eax
   mov %eax, (%edi)
   
   // setup pdpt2
   lea (0x2000 + 510 * 8)(%ebx), %edi
   lea 0x7000(%ebx), %eax
-  or  $(PDPTE_PRESENT_BIT | PDPTE_WRITE_BIT), %eax
+  or  $(PDPTE_PRESENT_BIT | PDPTE_WRITE_BIT | PDPTE_USER_BIT), %eax
   mov %eax, (%edi)
   lea (0x2000 + 511 * 8)(%ebx), %edi
   lea 0x8000(%ebx), %eax
-  or  $(PDPTE_PRESENT_BIT | PDPTE_WRITE_BIT), %eax
+  or  $(PDPTE_PRESENT_BIT | PDPTE_WRITE_BIT | PDPTE_USER_BIT), %eax
   mov %eax, (%edi)
 
   // setup pd1
@@ -179,27 +179,27 @@ setup_paging:
   // allocate kernel heap memory  
   lea 0x7000(%ebx), %edi
   mov $0, %eax
-  or  $(PDE_PRESENT_BIT | PDE_WRITE_BIT | PDE_2MPAGE_BIT | PDE_GLOBAL_BIT), %eax
+  or  $(PDE_PRESENT_BIT | PDE_WRITE_BIT | PDE_2MPAGE_BIT | PDE_GLOBAL_BIT | PDE_USER_BIT), %eax
   mov %eax, (%edi)
   lea (0x7000 + 1 * 8)(%ebx), %edi
   mov $0x200000, %eax
-  or  $(PDE_PRESENT_BIT | PDE_WRITE_BIT | PDE_2MPAGE_BIT | PDE_GLOBAL_BIT), %eax
+  or  $(PDE_PRESENT_BIT | PDE_WRITE_BIT | PDE_2MPAGE_BIT | PDE_GLOBAL_BIT | PDE_USER_BIT), %eax
   mov %eax, (%edi)
   lea (0x7000 + 2 * 8)(%ebx), %edi
   mov $0x400000, %eax
-  or  $(PDE_PRESENT_BIT | PDE_WRITE_BIT | PDE_2MPAGE_BIT | PDE_GLOBAL_BIT), %eax
+  or  $(PDE_PRESENT_BIT | PDE_WRITE_BIT | PDE_2MPAGE_BIT | PDE_GLOBAL_BIT | PDE_USER_BIT), %eax
   mov %eax, (%edi)
 
   // setup pd6
   lea (0x8000 + 511 * 8)(%ebx), %edi
   lea 0x9000(%ebx), %eax
-  or  $(PDE_PRESENT_BIT | PDE_WRITE_BIT), %eax
+  or  $(PDE_PRESENT_BIT | PDE_WRITE_BIT | PDE_USER_BIT), %eax
   mov %eax, (%edi)
 
   // setup pt1
   lea (0x9000 + 510 * 8)(%ebx), %edi
   movl $initial_stack_buffer, %eax
-  or  $(PTE_PRESENT_BIT | PTE_WRITE_BIT | PTE_GLOBAL_BIT), %eax
+  or  $(PTE_PRESENT_BIT | PTE_WRITE_BIT | PTE_GLOBAL_BIT | PTE_USER_BIT), %eax
   mov %eax, (%edi)
 
   // set PAE&PGE bit
@@ -224,7 +224,7 @@ switchto_longmode:
 setup_1G_table:
   mov $0, %ecx
 setup_1G_table_loop:
-  or  $(PDE_PRESENT_BIT | PDE_WRITE_BIT | PDE_2MPAGE_BIT | PDE_GLOBAL_BIT), %eax
+  or  $(PDE_PRESENT_BIT | PDE_WRITE_BIT | PDE_2MPAGE_BIT | PDE_GLOBAL_BIT | PDE_USER_BIT), %eax
   mov %eax, (%edi)
   inc %ecx
   cmp $512, %ecx
