@@ -24,15 +24,7 @@
 
 #include <stdint.h>
 
-// SimpleSpinLock　単純
-// McSpinLock1 1階層ロック
-// McSpinLock2 2階層ロック
-// SimpleSpinLockR 単純Spin On Read
-// McSpinLock1R 1階層 Spin On Read
-// McSpinLock2R 2階層 Spin On Read
-
-
-
+static const int kFastMeasurement = true;
 
 // 単純
 class SimpleSpinLock {
@@ -189,8 +181,10 @@ class McsSpinLock {
 public:
   McsSpinLock() {
   }
-  bool TryLock() {
-    assert(false);
+  bool TryLock(uint32_t apicid) {
+    auto qnode = &_node[apicid];
+    qnode->_next = nullptr;
+    return __sync_bool_compare_and_swap(&_tail, nullptr, qnode);
   }
   void Lock(uint32_t apicid) {
     auto qnode = &_node[apicid];
@@ -270,9 +264,9 @@ public:
     uint32_t tileid = apicid / 8;
     uint32_t threadid = apicid % 8;
 
-    _second_lock[tileid].Lock(threadid);
+    _second_lock[tileid].l.Lock(threadid);
     if (_top_locked[tileid].i == 0) {
-      _top_lock.Lock(tileid);
+      _top_lock.l.Lock(tileid);
       _top_locked[tileid].i = kMax;
     }
   }
@@ -281,18 +275,24 @@ public:
     uint32_t threadid = apicid % 8;
 
     _top_locked[tileid].i--;
-    if (_top_locked[tileid].i == 0 && !_second_lock[tileid].IsNoOneWaiting(threadid) && _top_lock.IsNoOneWaiting(tileid)) {
+    if (_top_locked[tileid].i == 0 && !_second_lock[tileid].l.IsNoOneWaiting(threadid) && _top_lock.l.IsNoOneWaiting(tileid)) {
       _top_locked[tileid].i = kMax;
-    } else if (_top_locked[tileid].i == 0 || _second_lock[tileid].IsNoOneWaiting(threadid)) {
-      _top_lock.Unlock(tileid);
+    } else if (_top_locked[tileid].i == 0 || _second_lock[tileid].l.IsNoOneWaiting(threadid)) {
+      _top_lock.l.Unlock(tileid);
       _top_locked[tileid].i = 0;
     }
-    _second_lock[tileid].Unlock(threadid);
+    _second_lock[tileid].l.Unlock(threadid);
   }
 private:
   static const int kSubStructNum = 37;
-  L1 _top_lock;
-  L2 _second_lock[kSubStructNum];
+  struct TopLock {
+    L1 l;
+  } __attribute__ ((aligned (64)));
+  TopLock _top_lock;
+  struct SecondLock {
+    L2 l;
+  } __attribute__ ((aligned (64)));
+  SecondLock _second_lock[kSubStructNum];
   static const int kMax = 300;
   struct Status {
     int i = 0;

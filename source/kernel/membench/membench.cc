@@ -36,9 +36,9 @@ void register_membench2_callout() {
     auto task_ = make_sptr(new TaskWithStack(cpuid));
     task_->Init();
     task_->SetFunc(make_uptr(new Function<sptr<TaskWithStack>>([](sptr<TaskWithStack> task){
-            membench4(task);
-            // membench2(task);
-            // membench3(task);
+            // membench4(task);
+            membench2(task);
+            membench3(task);
           }, task_)));
     task_ctrl->Register(cpuid, task_);
   }

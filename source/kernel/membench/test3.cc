@@ -109,9 +109,10 @@ static Pair func107(int cpunum, int i) {
         flag = false;
       }
       lock->Unlock(apicid);
-      for (int x = 0; x < i; x++) {
+      int iter = i;
+      for (int x = 0; x < iter; x++) {
         int tmp = 1;
-        for (int y = 0; y < i; y++) {
+        for (int y = 0; y < iter; y++) {
           tmp *= buf2[y];
         }
         buf4[x] += tmp + buf3[x];
@@ -121,8 +122,6 @@ static Pair func107(int cpunum, int i) {
       }
     }
 
-    // lock->Release(apicid);
-    
     sync_3.Do(cpunum);
 
     if (apicid == 0) {
@@ -209,8 +208,14 @@ static void func107(sptr<TaskWithStack> task) {
             task_ctrl->Register(cpu_ctrl->GetCpuId(), ltask);
           } else {
             if (is_knl()) {
-              for (int cpunum = 1; cpunum <= 256; cpunum++) {
-                func107_sub<L>(cpunum, i);
+              if (kFastMeasurement) {
+                for (int cpunum = 1; cpunum <= 256; cpunum*=2) {
+                  func107_sub<L>(cpunum, i);
+                }
+              } else {
+                for (int cpunum = 1; cpunum <= 256; cpunum++) {
+                  func107_sub<L>(cpunum, i);
+                }
               }
             } else {
               for (int cpunum = 1; cpunum <= 8; cpunum++) {
@@ -245,6 +250,14 @@ static void func106(sptr<TaskWithStack> task) {
 
 template<int i>
 static void func10(sptr<TaskWithStack> task) {
+  int cpuid = cpu_ctrl->GetCpuId().GetRawId();
+  if (cpuid == 0) {
+    StringTty tty(10);
+    tty.CprintfRaw("# %d\n", i);
+    int argc = 4;
+    const char *argv[] = {"udpsend", "192.168.12.35", "1234", tty.GetRawPtr()};
+    udpsend(argc, argv);
+  }
   func106<i,
           McsSpinLock,
           TtsSpinLock,
@@ -268,19 +281,10 @@ static void func10(sptr<TaskWithStack> task) {
 
 template<int i, int j, int... Num>
 static void func10(sptr<TaskWithStack> task) {
-  int cpuid = cpu_ctrl->GetCpuId().GetRawId();
-  if (cpuid == 0) {
-    StringTty tty(10);
-    tty.CprintfRaw("# %d\n", i);
-    int argc = 4;
-    const char *argv[] = {"udpsend", "192.168.12.35", "1234", tty.GetRawPtr()};
-    udpsend(argc, argv);
-  }
   func10<i>(task);
   func10<j, Num...>(task);
 }
 
-// リスト、要素数可変比較版
 void membench3(sptr<TaskWithStack> task) {
   int cpuid = cpu_ctrl->GetCpuId().GetRawId();
   if (cpuid == 0) {
