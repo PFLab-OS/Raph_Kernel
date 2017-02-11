@@ -32,26 +32,8 @@
 // enable to blocking operation
 class TaskWithStack : public Task {
 public:
-  class TaskThread {
-  public:
-    TaskThread() {
-    }
-    void Init();
-    void SetFunc(uptr<GenericFunction<>> func) {
-      _func = func;
-    }
-    ~TaskThread() {
-    }
-    void InitBuffer();
-    void Wait();
-    void SwitchTo();
-  private:  
-    virt_addr _stack;
-    jmp_buf _buf;
-    jmp_buf _return_buf;
-    uptr<GenericFunction<>> _func;
-  };
-  TaskWithStack() {
+  TaskWithStack() = delete;
+  TaskWithStack(CpuId cpuid) : _tthread(cpuid) {
   }
   virtual ~TaskWithStack() {
   }
@@ -70,6 +52,32 @@ public:
   virtual void Kill() override {
     kernel_panic("TaskWithStack", "not implemented");
   }
+  class TaskThread {
+  public:
+    TaskThread() = delete;
+    TaskThread(CpuId cpuid) : _cpuid(cpuid) {
+      assert(cpuid.IsValid());
+    }
+    void Init();
+    void SetFunc(uptr<GenericFunction<>> func) {
+      _func = func;
+    }
+    ~TaskThread() {
+    }
+    void InitBuffer();
+    void Wait();
+    void SwitchTo();
+  private:  
+    virt_addr _stack;
+    jmp_buf _buf;
+    jmp_buf _return_buf;
+    uptr<GenericFunction<>> _func;
+    CpuId _cpuid;
+    enum State {
+      kRunning,
+      kWaiting,
+    } _state = State::kWaiting;
+  };
 private:
   TaskThread _tthread;
 };
@@ -86,7 +94,6 @@ public:
   void Setup();
   void Register(CpuId cpuid, sptr<Task> task);
   void Remove(sptr<Task> task);
-  void Wait();
   void Run();
   TaskQueueState GetState(CpuId cpuid) {
     if (_task_struct == nullptr) {
@@ -94,6 +101,7 @@ public:
     }
     return _task_struct[cpuid.GetRawId()].state;
   }
+  void RegisterCallout2(sptr<Callout> task, int us);
   void RegisterCallout(sptr<Callout> task, int us) {
     RegisterCallout(task, cpu_ctrl->GetCpuId(), us);
   }

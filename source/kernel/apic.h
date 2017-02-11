@@ -192,7 +192,7 @@ private:
           return n;
         }
       }
-      return 0;
+      return -1;
     }
     uint32_t GetApicIdFromCpuId(CpuId cpuid) {
       int raw_cpuid = cpuid.GetRawId();
