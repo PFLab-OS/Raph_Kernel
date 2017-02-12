@@ -28,6 +28,7 @@
 #include <tty.h>
 #include <global.h>
 #include <mem/physmem.h>
+#include <mem/paging.h>
 
 #include "sync.h"
 #include "spinlock.h"
@@ -64,6 +65,7 @@ static Pair func107(int cpunum, int i) {
   int *buf4 = new int[i];
   static uint64_t f_array[256];
   static uint64_t v_array[256];
+  PhysAddr paddr;  
   int cpunum_ = 0;
   bool eflag;
   for (int apicid_ = 0; apicid_ <= apicid; apicid_++) {
@@ -76,7 +78,8 @@ static Pair func107(int cpunum, int i) {
 
   {
     if (apicid == 0) {
-      lock = new L;
+      physmem_ctrl->Alloc(paddr, PagingCtrl::ConvertNumToPageSize(sizeof(L)));
+      lock = reinterpret_cast<L *>(paddr.GetVirtAddr());
       buf1 = new int[i * kMax];
       for (int x = 0; x < i * cnt; x++) {
         buf1[x] = rand() % 256;
@@ -146,7 +149,7 @@ static Pair func107(int cpunum, int i) {
         f_variance += (f_array[x] - f_avg) * (f_array[x] - f_avg);
       }
       f_variance /= cpunum;
-      delete lock;
+      physmem_ctrl->Free(paddr, PagingCtrl::ConvertNumToPageSize(sizeof(L)));
       delete[] buf1;
       cnt = 0;
     }
@@ -187,7 +190,7 @@ static void func107_sub(int cpunum, int i) {
   if (apicid == 0) {
     gtty->CprintfRaw("<%d %lld(%lld) us> ", i, avg, variance);
     StringTty tty(200);
-    tty.CprintfRaw("%d\t%d\t%d\t%d\n", i, cpunum, avg.time, avg.fairness);
+    tty.CprintfRaw("%d\t%d\t%d\t%d\t%d\n", i, cpunum, avg.time, avg.fairness, variance);
     int argc = 4;
     const char *argv[] = {"udpsend", "192.168.12.35", "1234", tty.GetRawPtr()};
     udpsend(argc, argv);
@@ -259,23 +262,23 @@ static void func10(sptr<TaskWithStack> task) {
     udpsend(argc, argv);
   }
   func106<i,
-          McsSpinLock,
+          McsSpinLock<64>,
           TtsSpinLock,
           TicketSpinLock,
           AndersonSpinLock<1, 256>,
           ClhSpinLock,
-          AndersonSpinLock<16, 256>,
+          AndersonSpinLock<64, 256>,
           SimpleSpinLockR,
           ExpSpinLock10<TtsSpinLock, ClhSpinLock>,
           ExpSpinLock10<ClhSpinLock, ClhSpinLock>,
-          ExpSpinLock10<ClhSpinLock, AndersonSpinLock<16, 8>>,
-          ExpSpinLock10<ClhSpinLock, McsSpinLock>,
-          ExpSpinLock10<AndersonSpinLock<16, 32>, AndersonSpinLock<16, 8>>,
-          ExpSpinLock10<AndersonSpinLock<16, 32>, ClhSpinLock>,
-          ExpSpinLock10<AndersonSpinLock<16, 32>, McsSpinLock>,
-          ExpSpinLock10<McsSpinLock, ClhSpinLock>,
-          ExpSpinLock10<McsSpinLock, AndersonSpinLock<16, 8>>,
-          ExpSpinLock10<McsSpinLock, McsSpinLock>
+          ExpSpinLock10<ClhSpinLock, AndersonSpinLock<64, 8>>,
+          ExpSpinLock10<ClhSpinLock, McsSpinLock<64>>,
+          ExpSpinLock10<AndersonSpinLock<64, 32>, AndersonSpinLock<64, 8>>,
+          ExpSpinLock10<AndersonSpinLock<64, 32>, ClhSpinLock>,
+          ExpSpinLock10<AndersonSpinLock<64, 32>, McsSpinLock<64>>,
+          ExpSpinLock10<McsSpinLock<64>, ClhSpinLock>,
+          ExpSpinLock10<McsSpinLock<64>, AndersonSpinLock<64, 8>>,
+          ExpSpinLock10<McsSpinLock<64>, McsSpinLock<64>>
           >(task);
 }
 

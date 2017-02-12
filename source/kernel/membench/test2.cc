@@ -27,6 +27,7 @@
 #include <measure.h>
 #include <tty.h>
 #include <global.h>
+#include <mem/paging.h>
 #include <mem/physmem.h>
 
 #include "sync.h"
@@ -56,9 +57,10 @@ static Pair func107(bool mode, int cpunum, int i) {
   volatile int apicid = cpu_ctrl->GetCpuId().GetApicId();
   
   static L *lock;
-  static const int kInitCnt = 30000;
+  static const int kInitCnt = 90000;
   static volatile int cnt = kInitCnt;
   static uint64_t f_array[256];
+  PhysAddr paddr;
   int cpunum_ = 0;
   bool eflag;
   if (mode) {
@@ -88,7 +90,9 @@ static Pair func107(bool mode, int cpunum, int i) {
 
   {
     if (apicid == 0) {
-      lock = new L;
+      assert(eflag);
+      physmem_ctrl->Alloc(paddr, PagingCtrl::ConvertNumToPageSize(sizeof(L)));
+      lock = reinterpret_cast<L *>(paddr.GetVirtAddr());
       for (int x = 0; x < 256; x++) {
         f_array[x] = 0;
       }
@@ -136,7 +140,7 @@ static Pair func107(bool mode, int cpunum, int i) {
         f_variance += (f_array[x] - f_avg) * (f_array[x] - f_avg);
       }
       f_variance /= cpunum;
-      delete lock;
+      physmem_ctrl->Free(paddr, PagingCtrl::ConvertNumToPageSize(sizeof(L)));
       cnt = kInitCnt;
     }
   } else {
@@ -173,7 +177,7 @@ static void func107_sub(bool mode, int cpunum, int i) {
   if (apicid == 0) {
     gtty->CprintfRaw("<%d %d %lld(%lld) us> ", i, cpunum, avg, variance);
     StringTty tty(200);
-    tty.CprintfRaw("%d\t%d\t%d\t%d\n", i, cpunum, avg.time, avg.fairness);
+    tty.CprintfRaw("%d\t%d\t%d\t%d\t%d\n", i, cpunum, avg.time, avg.fairness, variance);
     int argc = 4;
     const char *argv[] = {"udpsend", "192.168.12.35", "1234", tty.GetRawPtr()};
     udpsend(argc, argv);
@@ -194,8 +198,14 @@ static void func107(sptr<TaskWithStack> task) {
           } else {
             if (mode) {
               if (is_knl()) {
-                for (int cpunum = 1; cpunum <= 32; cpunum++) {
-                  func107_sub<L>(mode, cpunum, i);
+                if (kFastMeasurement) {
+                  for (int cpunum = 1; cpunum <= 32; cpunum*=2) {
+                    func107_sub<L>(mode, cpunum, i);
+                  }
+                } else {
+                  for (int cpunum = 1; cpunum <= 32; cpunum++) {
+                    func107_sub<L>(mode, cpunum, i);
+                  }
                 }
               }
             } else {
@@ -247,23 +257,23 @@ static void func106(sptr<TaskWithStack> task) {
 template<bool mode, int i>
 static void func10(sptr<TaskWithStack> task) {
   func106<mode, i,
-          McsSpinLock,
+          McsSpinLock<64>,
           TtsSpinLock,
           TicketSpinLock,
           AndersonSpinLock<1, 256>,
           ClhSpinLock,
-          AndersonSpinLock<16, 256>,
+          AndersonSpinLock<64, 256>,
           SimpleSpinLockR,
           ExpSpinLock10<TtsSpinLock, ClhSpinLock>,
-          ExpSpinLock10<ClhSpinLock, AndersonSpinLock<16, 8>>,
+          ExpSpinLock10<ClhSpinLock, AndersonSpinLock<64, 8>>,
           ExpSpinLock10<ClhSpinLock, ClhSpinLock>,
-          ExpSpinLock10<ClhSpinLock, McsSpinLock>,
-          ExpSpinLock10<AndersonSpinLock<16, 32>, AndersonSpinLock<16, 8>>,
-          ExpSpinLock10<AndersonSpinLock<16, 32>, ClhSpinLock>,
-          ExpSpinLock10<AndersonSpinLock<16, 32>, McsSpinLock>,
-          ExpSpinLock10<McsSpinLock, AndersonSpinLock<16, 8>>,
-          ExpSpinLock10<McsSpinLock, ClhSpinLock>,
-          ExpSpinLock10<McsSpinLock, McsSpinLock>
+          ExpSpinLock10<ClhSpinLock, McsSpinLock<64>>,
+          ExpSpinLock10<AndersonSpinLock<64, 32>, AndersonSpinLock<64, 8>>,
+          ExpSpinLock10<AndersonSpinLock<64, 32>, ClhSpinLock>,
+          ExpSpinLock10<AndersonSpinLock<64, 32>, McsSpinLock<64>>,
+          ExpSpinLock10<McsSpinLock<64>, AndersonSpinLock<64, 8>>,
+          ExpSpinLock10<McsSpinLock<64>, ClhSpinLock>,
+          ExpSpinLock10<McsSpinLock<64>, McsSpinLock<64>>
           >(task);
 }
 
@@ -285,7 +295,7 @@ void membench2(sptr<TaskWithStack> task) {
     const char *argv[] = {"udpsend", "192.168.12.35", "1234", tty.GetRawPtr()};
     udpsend(argc, argv);
   }
-  func10<false, 1>(task); 
+  func10<false, 1>(task);
   if (cpuid == 0) {
     StringTty tty(10);
     tty.CprintfRaw("# tile\n");

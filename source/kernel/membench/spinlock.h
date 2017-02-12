@@ -24,7 +24,17 @@
 
 #include <stdint.h>
 
-static const int kFastMeasurement = true;
+static const int kFastMeasurement = false;
+
+template<class T>
+static inline void check_align(T *ptr) {
+  assert(reinterpret_cast<size_t>(ptr) % 64 == 0);
+}
+
+template<class T>
+static inline void check_type_align() {
+  assert(sizeof(T) % 64 == 0);
+}
 
 // 単純
 class SimpleSpinLock {
@@ -44,7 +54,7 @@ public:
   }
 private:
   volatile unsigned int _flag = 0;
-};
+} __attribute__ ((aligned (64)));
 
 template<class T>
 void spin_lock_tts(T &flag) {
@@ -88,11 +98,13 @@ public:
   }
 private:
   volatile unsigned int _flag = 0;
-};
+} __attribute__ ((aligned (64)));
 
 class TicketSpinLock {
 public:
   TicketSpinLock() {
+    check_align(&_flag);
+    check_align(&_cnt);
   }
   bool TryLock() {
     assert(false);
@@ -109,16 +121,24 @@ public:
     __sync_fetch_and_add(&_flag, 1);
   }
 private:
-  uint64_t _flag = 0;
-  uint64_t _cnt = 0;
-};
+  uint64_t _flag __attribute__ ((aligned (64))) = 0;
+  uint64_t _cnt __attribute__ ((aligned (64))) = 0;
+} __attribute__ ((aligned (64)));
 
 class ClhSpinLock {
 public:
   ClhSpinLock() {
+    check_type_align<QueueNode>();
+    check_align(_tail);
+    check_align(&_tmp);
+    check_align(_nodes);
+    check_align(_node);
+    check_align(_pred);
     _tail = &_tmp;
+    assert(_tail->locked == false);
     for (int i = 0; i < 37 * 8; i++) {
       _node[i] = &_nodes[i];
+      _pred[i] = nullptr;
     }
   }
   void Lock(uint32_t apicid) {
@@ -144,15 +164,21 @@ private:
   QueueNode _nodes[37*8];
   QueueNode *_node[37*8];
   QueueNode *_pred[37*8];
-};
+} __attribute__ ((aligned (64)));
 
 template<int align, int arraysize>
 class AndersonSpinLock {
 public:
   AndersonSpinLock() {
-    _flag[0] = 1;
+    if (align == 64) {
+      check_type_align<Flag>();
+      check_align(_flag); 
+      check_align(&_last);
+      check_align(&_cur);
+    }
+   _flag[0].i = 1;
     for (int i = 1; i < arraysize; i++) {
-      _flag[i*align] = 0;
+      _flag[i].i = 0;
     }
   }
   bool TryLock() {
@@ -160,26 +186,34 @@ public:
   }
   void Lock(uint32_t apicid) {
     uint64_t cur = __sync_fetch_and_add(&_last, 1) % arraysize;
-    while (_flag[cur*align] == 0) {
+    while (_flag[cur].i == 0) {
     }
-    _flag[cur*align] = 0;
+    _flag[cur].i = 0;
     _cur = cur;
   }
   void Unlock(uint32_t apicid) {
-    _flag[((_cur + 1) % arraysize) * align] = 1;
+    _flag[(_cur + 1) % arraysize].i = 1;
   }
   bool IsNoOneWaiting(uint32_t apicid) {
     return (_cur + 1) % arraysize == _last % arraysize;
   }
  private:
-  int _flag[arraysize*align];
-  uint64_t _last = 0;
-  uint64_t _cur = 0;
-};
+  struct Flag {
+    int i;
+  } __attribute__ ((aligned (align)));
+  Flag _flag[arraysize];
+  uint64_t _last __attribute__ ((aligned (align))) = 0;
+  uint64_t _cur __attribute__ ((aligned (align))) = 0;
+} __attribute__ ((aligned (64)));
 
+template<int align>
 class McsSpinLock {
 public:
   McsSpinLock() {
+    if (align == 64) {
+      check_align(_node);
+      check_type_align<QueueNode>();
+    }
   }
   bool TryLock(uint32_t apicid) {
     auto qnode = &_node[apicid];
@@ -220,9 +254,10 @@ private:
     }
     QueueNode *_next;
     int _spin;
-  } __attribute__ ((aligned (64))) *_tail = nullptr;
+  } __attribute__ ((aligned (align)));
+  QueueNode *_tail = nullptr;
   QueueNode _node[37 * 8];
-};
+} __attribute__ ((aligned (64)));
 
 // 単純 Spin On Read
 class SimpleSpinLockR {
@@ -250,12 +285,17 @@ public:
   }
 private:
   volatile unsigned int _flag = 0;
-};
+} __attribute__ ((aligned (64)));
 
 template<class L1, class L2>
 class ExpSpinLock10 {
 public:
   ExpSpinLock10() {
+    check_align(&_top_lock);
+    check_align(_second_lock);
+    check_type_align<L2>();
+    check_align(_top_locked);
+    check_type_align<Status>();
   }
   bool TryLock() {
     assert(false);
@@ -264,9 +304,9 @@ public:
     uint32_t tileid = apicid / 8;
     uint32_t threadid = apicid % 8;
 
-    _second_lock[tileid].l.Lock(threadid);
+    _second_lock[tileid].Lock(threadid);
     if (_top_locked[tileid].i == 0) {
-      _top_lock.l.Lock(tileid);
+      _top_lock.Lock(tileid);
       _top_locked[tileid].i = kMax;
     }
   }
@@ -275,28 +315,22 @@ public:
     uint32_t threadid = apicid % 8;
 
     _top_locked[tileid].i--;
-    if (_top_locked[tileid].i == 0 && !_second_lock[tileid].l.IsNoOneWaiting(threadid) && _top_lock.l.IsNoOneWaiting(tileid)) {
+    if (_top_locked[tileid].i == 0 && !_second_lock[tileid].IsNoOneWaiting(threadid) && _top_lock.IsNoOneWaiting(tileid)) {
       _top_locked[tileid].i = kMax;
-    } else if (_top_locked[tileid].i == 0 || _second_lock[tileid].l.IsNoOneWaiting(threadid)) {
-      _top_lock.l.Unlock(tileid);
+    } else if (_top_locked[tileid].i == 0 || _second_lock[tileid].IsNoOneWaiting(threadid)) {
+      _top_lock.Unlock(tileid);
       _top_locked[tileid].i = 0;
     }
-    _second_lock[tileid].l.Unlock(threadid);
+    _second_lock[tileid].Unlock(threadid);
   }
 private:
   static const int kSubStructNum = 37;
-  struct TopLock {
-    L1 l;
-  } __attribute__ ((aligned (64)));
-  TopLock _top_lock;
-  struct SecondLock {
-    L2 l;
-  } __attribute__ ((aligned (64)));
-  SecondLock _second_lock[kSubStructNum];
-  static const int kMax = 300;
+  L1 _top_lock;
+  L2 _second_lock[kSubStructNum];
+  static const int kMax = 6000;
   struct Status {
     int i = 0;
   } __attribute__ ((aligned (64)));
   Status _top_locked[kSubStructNum];
-};
+} __attribute__ ((aligned (64)));
 
