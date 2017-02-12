@@ -32,7 +32,7 @@
 
 #include "sync.h"
 #include "spinlock.h"
-#include "list.h"
+#include "cache.h"
 
 static bool is_knl() {
   return x86::get_display_family_model() == 0x0657;
@@ -60,6 +60,7 @@ static Pair func107(bool mode, int cpunum, int i) {
   static const int kInitCnt = 90000;
   static volatile int cnt = kInitCnt;
   static uint64_t f_array[256];
+  static uint64_t monitor[37 * 8];
   PhysAddr paddr;
   int cpunum_ = 0;
   bool eflag;
@@ -93,13 +94,24 @@ static Pair func107(bool mode, int cpunum, int i) {
       assert(eflag);
       physmem_ctrl->Alloc(paddr, PagingCtrl::ConvertNumToPageSize(sizeof(L)));
       lock = reinterpret_cast<L *>(paddr.GetVirtAddr());
+      new(lock) L;
       for (int x = 0; x < 256; x++) {
         f_array[x] = 0;
       }
+    } else {
+      monitor[apicid] = 0;
     }
   }
 
+  if (apicid == 0) {
+    // gtty->CprintfRaw("1");
+  }
   sync_1.Do();
+  if (apicid == 0) {
+    // gtty->CprintfRaw("2");
+  }
+  cache_ctrl->Clear(lock, sizeof(L));
+  cache_ctrl->Clear(f_array, sizeof(uint64_t) * 256);
   if (eflag) {
     sync_2.Do(cpunum);
 
@@ -126,11 +138,8 @@ static Pair func107(bool mode, int cpunum, int i) {
     sync_3.Do(cpunum);
 
     if (apicid == 0) {
+      // gtty->CprintfRaw("3");
       time = ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000;
-      for (int j = 1; j < cpu_ctrl->GetHowManyCpus(); j++) {
-        CpuId cpuid_(j);
-        apic_ctrl->SendIpi(cpuid_.GetApicId());
-      }
       uint64_t f_avg = 0;
       for (int x = 0; x < cpunum; x++) {
         f_avg += f_array[x];
@@ -142,18 +151,42 @@ static Pair func107(bool mode, int cpunum, int i) {
       f_variance /= cpunum;
       physmem_ctrl->Free(paddr, PagingCtrl::ConvertNumToPageSize(sizeof(L)));
       cnt = kInitCnt;
+      for (int j = 1; j < 37 * 8; j++) {
+        if (apic_ctrl->GetCpuIdFromApicId(j) == -1) {
+          continue;
+        }
+        uint64_t tmp = monitor[j];
+        while(tmp == 0 || tmp == 1) {
+          __sync_bool_compare_and_swap(&monitor[j], tmp, 1);
+          tmp = monitor[j];
+        }
+      }
     }
-  } else {
-    asm volatile("hlt");
+  }
+  if (apicid != 0) {
+    uint64_t *monitor_addr = &monitor[apicid];
+    while(true) {
+      asm volatile("monitor;"::"a"(monitor_addr), "c"(0), "d"(0));
+      asm volatile("mwait;"::"a"(0), "c"(0));
+      if (*monitor_addr == 1) {
+        __sync_lock_test_and_set(monitor_addr, 2);
+        break;
+      }
+    }
   }
   
   sync_4.Do();
+  if (apicid == 0) {
+    // gtty->CprintfRaw("4");
+  }
   Pair pair = { time: time, fairness: f_variance };
   return pair;
 }
 
 template<class L>
 static void func107_sub(bool mode, int cpunum, int i) {
+  int apicid = cpu_ctrl->GetCpuId().GetApicId();
+
   static const int num = 20;
   Pair results[num];
   func107<L>(mode, cpunum, i);
@@ -173,7 +206,6 @@ static void func107_sub(bool mode, int cpunum, int i) {
     variance += (results[j].time - avg.time) * (results[j].time - avg.time);
   }
   variance /= num;
-  int apicid = cpu_ctrl->GetCpuId().GetApicId();
   if (apicid == 0) {
     gtty->CprintfRaw("<%d %d %lld(%lld) us> ", i, cpunum, avg, variance);
     StringTty tty(200);
@@ -254,7 +286,7 @@ static void func106(sptr<TaskWithStack> task) {
 }
 
 // 同期だけのコストの計測
-template<bool mode, int i>
+template<bool mode, int kMax, int i>
 static void func10(sptr<TaskWithStack> task) {
   func106<mode, i,
           McsSpinLock<64>,
@@ -264,23 +296,27 @@ static void func10(sptr<TaskWithStack> task) {
           ClhSpinLock,
           AndersonSpinLock<64, 256>,
           SimpleSpinLockR,
-          ExpSpinLock10<TtsSpinLock, ClhSpinLock>,
-          ExpSpinLock10<ClhSpinLock, AndersonSpinLock<64, 8>>,
-          ExpSpinLock10<ClhSpinLock, ClhSpinLock>,
-          ExpSpinLock10<ClhSpinLock, McsSpinLock<64>>,
-          ExpSpinLock10<AndersonSpinLock<64, 32>, AndersonSpinLock<64, 8>>,
-          ExpSpinLock10<AndersonSpinLock<64, 32>, ClhSpinLock>,
-          ExpSpinLock10<AndersonSpinLock<64, 32>, McsSpinLock<64>>,
-          ExpSpinLock10<McsSpinLock<64>, AndersonSpinLock<64, 8>>,
-          ExpSpinLock10<McsSpinLock<64>, ClhSpinLock>,
-          ExpSpinLock10<McsSpinLock<64>, McsSpinLock<64>>
+          HClhSpinLock,
+          ExpSpinLock10<TtsSpinLock, ClhSpinLock, kMax>,
+          ExpSpinLock10<ClhSpinLock, AndersonSpinLock<64, 256>, kMax>,
+          ExpSpinLock10<ClhSpinLock, ClhSpinLock, kMax>,
+          ExpSpinLock10<ClhSpinLock, McsSpinLock<64>, kMax>,
+          ExpSpinLock10<ClhSpinLock, TicketSpinLock, kMax>,
+          ExpSpinLock10<AndersonSpinLock<64, 256>, AndersonSpinLock<64, 256>, kMax>,
+          ExpSpinLock10<AndersonSpinLock<64, 256>, ClhSpinLock, kMax>,
+          ExpSpinLock10<AndersonSpinLock<64, 256>, McsSpinLock<64>, kMax>,
+          ExpSpinLock10<AndersonSpinLock<64, 256>, TicketSpinLock, kMax>,
+          ExpSpinLock10<McsSpinLock<64>, AndersonSpinLock<64, 256>, kMax>,
+          ExpSpinLock10<McsSpinLock<64>, ClhSpinLock, kMax>,
+          ExpSpinLock10<McsSpinLock<64>, McsSpinLock<64>, kMax>,
+          ExpSpinLock10<McsSpinLock<64>, TicketSpinLock, kMax>
           >(task);
 }
 
-template<bool mode, int i, int j, int... Num>
+template<bool mode, int kMax, int i, int j, int... Num>
 static void func10(sptr<TaskWithStack> task) {
-  func10<mode, i>(task);
-  func10<mode, j, Num...>(task);
+  func10<mode, kMax, i>(task);
+  func10<mode, kMax, j, Num...>(task);
 }
 
 void membench2(sptr<TaskWithStack> task) {
@@ -295,7 +331,7 @@ void membench2(sptr<TaskWithStack> task) {
     const char *argv[] = {"udpsend", "192.168.12.35", "1234", tty.GetRawPtr()};
     udpsend(argc, argv);
   }
-  func10<false, 1>(task);
+  func10<false, 100, 1>(task);
   if (cpuid == 0) {
     StringTty tty(10);
     tty.CprintfRaw("# tile\n");
@@ -303,7 +339,7 @@ void membench2(sptr<TaskWithStack> task) {
     const char *argv[] = {"udpsend", "192.168.12.35", "1234", tty.GetRawPtr()};
     udpsend(argc, argv);
   }
-  func10<true, 1>(task); 
+  func10<true, 100, 1>(task); 
   if (cpuid == 0) {
     gtty->CprintfRaw("<<< end\n");
   }

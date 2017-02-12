@@ -24,12 +24,9 @@
 
 #include <stdint.h>
 
-static const int kFastMeasurement = false;
+static const int kFastMeasurement = true;
 
-template<class T>
-static inline void check_align(T *ptr) {
-  assert(reinterpret_cast<size_t>(ptr) % 64 == 0);
-}
+#define check_align(ptr) assert(reinterpret_cast<size_t>(ptr) % 64 == 0)
 
 template<class T>
 static inline void check_type_align() {
@@ -103,6 +100,7 @@ private:
 class TicketSpinLock {
 public:
   TicketSpinLock() {
+    check_align(this);
     check_align(&_flag);
     check_align(&_cnt);
   }
@@ -120,6 +118,9 @@ public:
   void Unlock(uint32_t apicid) {
     __sync_fetch_and_add(&_flag, 1);
   }
+  bool IsNoOneWaiting(uint32_t apicid) {
+    return _flag + 1 == _cnt;
+  }
 private:
   uint64_t _flag __attribute__ ((aligned (64))) = 0;
   uint64_t _cnt __attribute__ ((aligned (64))) = 0;
@@ -128,8 +129,9 @@ private:
 class ClhSpinLock {
 public:
   ClhSpinLock() {
+    check_align(this);
     check_type_align<QueueNode>();
-    check_align(_tail);
+    check_align(&_tail);
     check_align(&_tmp);
     check_align(_nodes);
     check_align(_node);
@@ -166,16 +168,91 @@ private:
   QueueNode *_pred[37*8];
 } __attribute__ ((aligned (64)));
 
+class HClhSpinLock {
+public:
+  HClhSpinLock() {
+    check_align(this);
+    check_type_align<QueueNode>();
+    check_align(_nodes);
+    check_align(_node);
+    check_align(_pred);
+    check_align(_local_tmp);
+    check_align(&_global_tmp);
+    check_align(_local_queue);
+    check_align(&_global_queue);
+    for (int i = 0; i < 37 * 8; i++) {
+      _node[i] = &_nodes[i];
+      _pred[i] = nullptr;
+    }
+    _global_queue = &_global_tmp;
+    for (int i = 0; i < 37; i++) {
+      _local_tmp[i].tail_when_spliced = true;
+      _local_queue[i] = &_local_tmp[i];
+    }
+  }
+  void Lock(uint32_t apicid) {
+    uint32_t tileid = apicid / 8;
+    auto qnode = _node[apicid];
+    qnode->locked = true;
+    qnode->tail_when_spliced = false;
+    
+    do {
+      _pred[apicid] = _local_queue[tileid];
+    } while(!__sync_bool_compare_and_swap(&_local_queue[tileid], _pred[apicid], qnode));
+
+    while(true) {
+      if (_pred[apicid]->tail_when_spliced == true) {
+        break;
+      }
+      if (_pred[apicid]->locked == false) {
+        return;
+      }
+    }
+
+    for (int i = 0; i < 10; i++) {
+      asm volatile("pause");
+    }
+
+    QueueNode *local_tail;
+    do {
+      _pred[apicid] = _global_queue;
+      local_tail = _local_queue[tileid];
+    } while(!__sync_bool_compare_and_swap(&_global_queue, _pred[apicid], local_tail));
+
+    local_tail->tail_when_spliced = true;
+
+    while(_pred[apicid]->locked == true) {
+    }
+  }
+  void Unlock(uint32_t apicid) {
+    _node[apicid]->locked = false;
+    _node[apicid] = _pred[apicid];
+  }
+private:
+  struct QueueNode {
+    int locked = false;
+    bool tail_when_spliced = false;
+  } __attribute__ ((aligned (64)));
+  QueueNode _nodes[37*8];
+  QueueNode *_node[37*8];
+  QueueNode *_pred[37*8];
+  QueueNode _local_tmp[37];
+  QueueNode _global_tmp;
+  QueueNode __attribute__ ((aligned (64))) *_local_queue[37];
+  QueueNode *__attribute__ ((aligned (64))) _global_queue;
+} __attribute__ ((aligned (64)));
+
 template<int align, int arraysize>
 class AndersonSpinLock {
 public:
   AndersonSpinLock() {
+    check_align(this);
     if (align == 64) {
       check_type_align<Flag>();
       check_align(_flag); 
-      check_align(&_last);
-      check_align(&_cur);
     }
+    check_align(&_last);
+    check_align(&_cur);
    _flag[0].i = 1;
     for (int i = 1; i < arraysize; i++) {
       _flag[i].i = 0;
@@ -201,19 +278,21 @@ public:
   struct Flag {
     int i;
   } __attribute__ ((aligned (align)));
+  uint64_t _last __attribute__ ((aligned (64))) = 0;
+  uint64_t _cur __attribute__ ((aligned (64))) = 0;
   Flag _flag[arraysize];
-  uint64_t _last __attribute__ ((aligned (align))) = 0;
-  uint64_t _cur __attribute__ ((aligned (align))) = 0;
 } __attribute__ ((aligned (64)));
 
 template<int align>
 class McsSpinLock {
 public:
   McsSpinLock() {
+    check_align(this);
     if (align == 64) {
-      check_align(_node);
       check_type_align<QueueNode>();
     }
+    check_align(_node);
+    check_align(&_tail);
   }
   bool TryLock(uint32_t apicid) {
     auto qnode = &_node[apicid];
@@ -255,7 +334,7 @@ private:
     QueueNode *_next;
     int _spin;
   } __attribute__ ((aligned (align)));
-  QueueNode *_tail = nullptr;
+  QueueNode *__attribute__ ((aligned (64))) _tail = nullptr;
   QueueNode _node[37 * 8];
 } __attribute__ ((aligned (64)));
 
@@ -263,6 +342,8 @@ private:
 class SimpleSpinLockR {
 public:
   SimpleSpinLockR() {
+    check_align(this);
+    check_align(&_flag);
   }
   bool TryLock() {
     if (_flag == 1) {
@@ -287,10 +368,11 @@ private:
   volatile unsigned int _flag = 0;
 } __attribute__ ((aligned (64)));
 
-template<class L1, class L2>
+template<class L1, class L2, int kMax>
 class ExpSpinLock10 {
 public:
   ExpSpinLock10() {
+    check_align(this);
     check_align(&_top_lock);
     check_align(_second_lock);
     check_type_align<L2>();
@@ -327,10 +409,8 @@ private:
   static const int kSubStructNum = 37;
   L1 _top_lock;
   L2 _second_lock[kSubStructNum];
-  static const int kMax = 6000;
   struct Status {
     int i = 0;
   } __attribute__ ((aligned (64)));
   Status _top_locked[kSubStructNum];
 } __attribute__ ((aligned (64)));
-
