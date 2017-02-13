@@ -23,6 +23,8 @@
 #pragma once
 
 #include <stdint.h>
+#include <global.h>
+#include <tty.h>
 
 static const int kFastMeasurement = true;
 
@@ -145,13 +147,13 @@ public:
   }
   void Lock(uint32_t apicid) {
     auto qnode = _node[apicid];
-    qnode->locked = true;
+    qnode->locked = 1;
     _pred[apicid] = __sync_lock_test_and_set(&_tail, qnode);
-    while(_pred[apicid]->locked == true) {
+    while(_pred[apicid]->locked == 1) {
     }
   }
   void Unlock(uint32_t apicid) {
-    _node[apicid]->locked = false;
+    _node[apicid]->locked = 0;
     _node[apicid] = _pred[apicid];
   }
   bool IsNoOneWaiting(uint32_t apicid) {
@@ -159,7 +161,7 @@ public:
   }
 private:
   struct QueueNode {
-    int locked = false;
+    int locked = 0;
   } __attribute__ ((aligned (64)));
   QueueNode *_tail;
   QueueNode _tmp;
@@ -176,7 +178,6 @@ public:
     check_align(_nodes);
     check_align(_node);
     check_align(_pred);
-    check_align(_local_tmp);
     check_align(&_global_tmp);
     check_align(_local_queue);
     check_align(&_global_queue);
@@ -184,28 +185,34 @@ public:
       _node[i] = &_nodes[i];
       _pred[i] = nullptr;
     }
+    _global_tmp.tail_when_spliced = 1;
     _global_queue = &_global_tmp;
     for (int i = 0; i < 37; i++) {
-      _local_tmp[i].tail_when_spliced = true;
-      _local_queue[i] = &_local_tmp[i];
+      _local_queue[i] = nullptr;
     }
   }
   void Lock(uint32_t apicid) {
     uint32_t tileid = apicid / 8;
     auto qnode = _node[apicid];
-    qnode->locked = true;
-    qnode->tail_when_spliced = false;
+    qnode->tileid = tileid;
+    qnode->locked = 1;
+    qnode->tail_when_spliced = 0;
     
     do {
       _pred[apicid] = _local_queue[tileid];
     } while(!__sync_bool_compare_and_swap(&_local_queue[tileid], _pred[apicid], qnode));
 
-    while(true) {
-      if (_pred[apicid]->tail_when_spliced == true) {
-        break;
-      }
-      if (_pred[apicid]->locked == false) {
-        return;
+    if (_pred[apicid] != nullptr) {
+      while(true) {
+        if (_pred[apicid]->tileid != tileid) {
+          break;
+        }
+        if (_pred[apicid]->tail_when_spliced == 1) {
+          break;
+        }
+        if (_pred[apicid]->tileid == tileid && _pred[apicid]->locked == 0 && _pred[apicid]->tail_when_spliced == 0) {
+          return;
+        }
       }
     }
 
@@ -218,25 +225,25 @@ public:
       _pred[apicid] = _global_queue;
       local_tail = _local_queue[tileid];
     } while(!__sync_bool_compare_and_swap(&_global_queue, _pred[apicid], local_tail));
+    
+    local_tail->tail_when_spliced = 1;
 
-    local_tail->tail_when_spliced = true;
-
-    while(_pred[apicid]->locked == true) {
+    while(_pred[apicid]->locked == 1) {
     }
   }
   void Unlock(uint32_t apicid) {
-    _node[apicid]->locked = false;
+    _node[apicid]->locked = 0;
     _node[apicid] = _pred[apicid];
   }
 private:
   struct QueueNode {
-    int locked = false;
-    bool tail_when_spliced = false;
+    int locked = 0;
+    int tail_when_spliced = 0;
+    uint32_t tileid = 0xFFFFFFFF;
   } __attribute__ ((aligned (64)));
   QueueNode _nodes[37*8];
   QueueNode *_node[37*8];
   QueueNode *_pred[37*8];
-  QueueNode _local_tmp[37];
   QueueNode _global_tmp;
   QueueNode __attribute__ ((aligned (64))) *_local_queue[37];
   QueueNode *__attribute__ ((aligned (64))) _global_queue;

@@ -285,29 +285,27 @@ static void func10(sptr<TaskWithStack> task) {
     const char *argv[] = {"udpsend", "192.168.12.35", "1234", tty.GetRawPtr()};
     udpsend(argc, argv);
   }
-  func106<i,
-          McsSpinLock<64>,
-          TtsSpinLock,
-          TicketSpinLock,
-          AndersonSpinLock<1, 256>,
-          ClhSpinLock,
-          AndersonSpinLock<64, 256>,
-          SimpleSpinLockR, 
-          HClhSpinLock,
-          ExpSpinLock10<TtsSpinLock, ClhSpinLock, kMax>,
-          ExpSpinLock10<ClhSpinLock, AndersonSpinLock<64, 256>, kMax>,
-          ExpSpinLock10<ClhSpinLock, ClhSpinLock, kMax>,
-          ExpSpinLock10<ClhSpinLock, McsSpinLock<64>, kMax>,
-          ExpSpinLock10<ClhSpinLock, TicketSpinLock, kMax>,
-          ExpSpinLock10<AndersonSpinLock<64, 256>, AndersonSpinLock<64, 256>, kMax>,
-          ExpSpinLock10<AndersonSpinLock<64, 256>, ClhSpinLock, kMax>,
-          ExpSpinLock10<AndersonSpinLock<64, 256>, McsSpinLock<64>, kMax>,
-          ExpSpinLock10<AndersonSpinLock<64, 256>, TicketSpinLock, kMax>,
-          ExpSpinLock10<McsSpinLock<64>, AndersonSpinLock<64, 256>, kMax>,
-          ExpSpinLock10<McsSpinLock<64>, ClhSpinLock, kMax>,
-          ExpSpinLock10<McsSpinLock<64>, McsSpinLock<64>, kMax>,
-          ExpSpinLock10<McsSpinLock<64>, TicketSpinLock, kMax>
-          >(task);
+  func106<i, McsSpinLock<64>>(task);
+  func106<i, TtsSpinLock>(task);
+  func106<i, TicketSpinLock>(task);
+  func106<i, AndersonSpinLock<1, 256>>(task);
+  func106<i, ClhSpinLock>(task);
+  func106<i, AndersonSpinLock<64, 256>>(task);
+  func106<i, SimpleSpinLockR>(task);
+  func106<i, HClhSpinLock>(task);
+  func106<i, ExpSpinLock10<TtsSpinLock, ClhSpinLock, kMax>>(task);
+  func106<i, ExpSpinLock10<ClhSpinLock, AndersonSpinLock<64, 256>, kMax>>(task);
+  func106<i, ExpSpinLock10<ClhSpinLock, ClhSpinLock, kMax>>(task);
+  func106<i, ExpSpinLock10<ClhSpinLock, McsSpinLock<64>, kMax>>(task);
+  func106<i, ExpSpinLock10<ClhSpinLock, TicketSpinLock, kMax>>(task);
+  func106<i, ExpSpinLock10<AndersonSpinLock<64, 256>, AndersonSpinLock<64, 256>, kMax>>(task);
+  func106<i, ExpSpinLock10<AndersonSpinLock<64, 256>, ClhSpinLock, kMax>>(task);
+  func106<i, ExpSpinLock10<AndersonSpinLock<64, 256>, McsSpinLock<64>, kMax>>(task);
+  func106<i, ExpSpinLock10<AndersonSpinLock<64, 256>, TicketSpinLock, kMax>>(task);
+  func106<i, ExpSpinLock10<McsSpinLock<64>, AndersonSpinLock<64, 256>, kMax>>(task);
+  func106<i, ExpSpinLock10<McsSpinLock<64>, ClhSpinLock, kMax>>(task);
+  func106<i, ExpSpinLock10<McsSpinLock<64>, McsSpinLock<64>, kMax>>(task);
+  func106<i, ExpSpinLock10<McsSpinLock<64>, TicketSpinLock, kMax>>(task);
 }
 
 template<int kMax, int i, int j, int... Num>
