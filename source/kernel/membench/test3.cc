@@ -236,7 +236,10 @@ static void func107(sptr<TaskWithStack> task) {
           } else {
             if (is_knl()) {
               if (kFastMeasurement) {
-                for (int cpunum = 1; cpunum <= 256; cpunum*=2) {
+                for (int cpunum = 1; cpunum <= 7; cpunum++) {
+                  func107_sub<L>(cpunum, i);
+                }
+                for (int cpunum = 8; cpunum <= 256; cpunum*=2) {
                   func107_sub<L>(cpunum, i);
                 }
               } else {
