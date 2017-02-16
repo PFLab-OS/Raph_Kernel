@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2015 Raphine Project
+ * Copyright (c) 2017 Raphine Project
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -23,11 +23,15 @@
 #include <raph.h>
 #include <task.h>
 #include <cpu.h>
+#include "cache.h"
 #include <global.h>
 
 void membench4(sptr<TaskWithStack> task);
 void membench2(sptr<TaskWithStack> task);
 void membench3(sptr<TaskWithStack> task);
+void membench5(sptr<TaskWithStack> task);
+
+CacheCtrl *cache_ctrl;
 
 void register_membench2_callout() {
   for (int i = 0; i < cpu_ctrl->GetHowManyCpus(); i++) {
@@ -36,9 +40,15 @@ void register_membench2_callout() {
     auto task_ = make_sptr(new TaskWithStack(cpuid));
     task_->Init();
     task_->SetFunc(make_uptr(new Function<sptr<TaskWithStack>>([](sptr<TaskWithStack> task){
-            membench4(task);
-            // membench2(task);
-            // membench3(task);
+            int raw_cpuid = cpu_ctrl->GetCpuId().GetRawId();
+            if (raw_cpuid == 0) {
+              cache_ctrl = new CacheCtrl;
+              cache_ctrl->Init();
+            }
+            // membench4(task);
+            membench2(task);
+            membench3(task);
+            //membench5(task);
           }, task_)));
     task_ctrl->Register(cpuid, task_);
   }

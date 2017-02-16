@@ -28,10 +28,11 @@
 #include <tty.h>
 #include <global.h>
 #include <mem/physmem.h>
+#include <mem/paging.h>
 
 #include "sync.h"
 #include "spinlock.h"
-#include "list.h"
+#include "cache.h"
 
 static bool is_knl() {
   return x86::get_display_family_model() == 0x0657;
@@ -56,14 +57,16 @@ static Pair func107(int cpunum, int i) {
   volatile int apicid = cpu_ctrl->GetCpuId().GetApicId();
   
   static L *lock;
-  static const uint64_t kMax = 3000;
+  static const uint64_t kMax = 9000;
   static volatile uint64_t cnt = 0;
   static int *buf1;
   int *buf2 = new int[i];
   int *buf3 = new int[i];
   int *buf4 = new int[i];
   static uint64_t f_array[256];
+  static uint64_t monitor[37 * 8];
   static uint64_t v_array[256];
+  PhysAddr paddr;  
   int cpunum_ = 0;
   bool eflag;
   for (int apicid_ = 0; apicid_ <= apicid; apicid_++) {
@@ -76,7 +79,9 @@ static Pair func107(int cpunum, int i) {
 
   {
     if (apicid == 0) {
-      lock = new L;
+      physmem_ctrl->Alloc(paddr, PagingCtrl::ConvertNumToPageSize(sizeof(L)));
+      lock = reinterpret_cast<L *>(paddr.GetVirtAddr());
+      new(lock) L;
       buf1 = new int[i * kMax];
       for (int x = 0; x < i * cnt; x++) {
         buf1[x] = rand() % 256;
@@ -85,10 +90,17 @@ static Pair func107(int cpunum, int i) {
         f_array[x] = 0;
         v_array[x] = 0;
       }
+    } else {
+      monitor[apicid] = 0;
     }
   }
 
   sync_1.Do();
+  cache_ctrl->Clear(lock, sizeof(L));
+  cache_ctrl->Clear(buf1, sizeof(int) * i * kMax);
+  cache_ctrl->Clear(buf2, sizeof(int) * i);
+  cache_ctrl->Clear(buf3, sizeof(int) * i);
+  cache_ctrl->Clear(buf4, sizeof(int) * i);
   if (eflag) {
     sync_2.Do(cpunum);
 
@@ -109,9 +121,10 @@ static Pair func107(int cpunum, int i) {
         flag = false;
       }
       lock->Unlock(apicid);
-      for (int x = 0; x < i; x++) {
+      int iter = i;
+      for (int x = 0; x < iter; x++) {
         int tmp = 1;
-        for (int y = 0; y < i; y++) {
+        for (int y = 0; y < iter; y++) {
           tmp *= buf2[y];
         }
         buf4[x] += tmp + buf3[x];
@@ -121,16 +134,10 @@ static Pair func107(int cpunum, int i) {
       }
     }
 
-    // lock->Release(apicid);
-    
     sync_3.Do(cpunum);
 
     if (apicid == 0) {
       time = ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000;
-      for (int j = 1; j < cpu_ctrl->GetHowManyCpus(); j++) {
-        CpuId cpuid_(j);
-        apic_ctrl->SendIpi(cpuid_.GetApicId());
-      }
       uint64_t f_avg = 0;
       uint64_t varidation = 0;
       for (int x = 0; x < cpunum; x++) {
@@ -147,12 +154,31 @@ static Pair func107(int cpunum, int i) {
         f_variance += (f_array[x] - f_avg) * (f_array[x] - f_avg);
       }
       f_variance /= cpunum;
-      delete lock;
+      physmem_ctrl->Free(paddr, PagingCtrl::ConvertNumToPageSize(sizeof(L)));
       delete[] buf1;
       cnt = 0;
+      for (int j = 1; j < 37 * 8; j++) {
+        if (apic_ctrl->GetCpuIdFromApicId(j) == -1) {
+          continue;
+        }
+        uint64_t tmp = monitor[j];
+        while(tmp == 0 || tmp == 1) {
+          __sync_bool_compare_and_swap(&monitor[j], tmp, 1);
+          tmp = monitor[j];
+        }
+      }
     }
-  } else {
-    asm volatile("hlt");
+  }
+  if (apicid != 0) {
+    uint64_t *monitor_addr = &monitor[apicid];
+    while(true) {
+      asm volatile("monitor;"::"a"(monitor_addr), "c"(0), "d"(0));
+      asm volatile("mwait;"::"a"(0), "c"(0));
+      if (*monitor_addr == 1) {
+        __sync_lock_test_and_set(monitor_addr, 2);
+        break;
+      }
+    }
   }
   delete[] buf2;
   delete[] buf3;
@@ -188,7 +214,7 @@ static void func107_sub(int cpunum, int i) {
   if (apicid == 0) {
     gtty->CprintfRaw("<%d %lld(%lld) us> ", i, avg, variance);
     StringTty tty(200);
-    tty.CprintfRaw("%d\t%d\t%d\t%d\n", i, cpunum, avg.time, avg.fairness);
+    tty.CprintfRaw("%d\t%d\t%d\t%d\t%d\n", i, cpunum, avg.time, avg.fairness, variance);
     int argc = 4;
     const char *argv[] = {"udpsend", "192.168.12.35", "1234", tty.GetRawPtr()};
     udpsend(argc, argv);
@@ -209,8 +235,17 @@ static void func107(sptr<TaskWithStack> task) {
             task_ctrl->Register(cpu_ctrl->GetCpuId(), ltask);
           } else {
             if (is_knl()) {
-              for (int cpunum = 1; cpunum <= 256; cpunum++) {
-                func107_sub<L>(cpunum, i);
+              if (kFastMeasurement) {
+                for (int cpunum = 1; cpunum <= 7; cpunum++) {
+                  func107_sub<L>(cpunum, i);
+                }
+                for (int cpunum = 8; cpunum <= 256; cpunum*=2) {
+                  func107_sub<L>(cpunum, i);
+                }
+              } else {
+                for (int cpunum = 1; cpunum <= 256; cpunum++) {
+                  func107_sub<L>(cpunum, i);
+                }
               }
             } else {
               for (int cpunum = 1; cpunum <= 8; cpunum++) {
@@ -243,30 +278,7 @@ static void func106(sptr<TaskWithStack> task) {
   func106<i, Locks...>(task);
 }
 
-template<int i>
-static void func10(sptr<TaskWithStack> task) {
-  func106<i,
-          McsSpinLock,
-          TtsSpinLock,
-          TicketSpinLock,
-          AndersonSpinLock<1, 256>,
-          ClhSpinLock,
-          AndersonSpinLock<16, 256>,
-          SimpleSpinLockR,
-          ExpSpinLock10<TtsSpinLock, ClhSpinLock>,
-          ExpSpinLock10<ClhSpinLock, ClhSpinLock>,
-          ExpSpinLock10<ClhSpinLock, AndersonSpinLock<16, 8>>,
-          ExpSpinLock10<ClhSpinLock, McsSpinLock>,
-          ExpSpinLock10<AndersonSpinLock<16, 32>, AndersonSpinLock<16, 8>>,
-          ExpSpinLock10<AndersonSpinLock<16, 32>, ClhSpinLock>,
-          ExpSpinLock10<AndersonSpinLock<16, 32>, McsSpinLock>,
-          ExpSpinLock10<McsSpinLock, ClhSpinLock>,
-          ExpSpinLock10<McsSpinLock, AndersonSpinLock<16, 8>>,
-          ExpSpinLock10<McsSpinLock, McsSpinLock>
-          >(task);
-}
-
-template<int i, int j, int... Num>
+template<int kMax, int i>
 static void func10(sptr<TaskWithStack> task) {
   int cpuid = cpu_ctrl->GetCpuId().GetRawId();
   if (cpuid == 0) {
@@ -276,16 +288,43 @@ static void func10(sptr<TaskWithStack> task) {
     const char *argv[] = {"udpsend", "192.168.12.35", "1234", tty.GetRawPtr()};
     udpsend(argc, argv);
   }
-  func10<i>(task);
-  func10<j, Num...>(task);
+  func106<i, McsSpinLock<64>>(task);
+  func106<i, TtsSpinLock>(task);
+  func106<i, TicketSpinLock>(task);
+  func106<i, AndersonSpinLock<1, 256>>(task);
+  func106<i, ClhSpinLock>(task);
+  func106<i, AndersonSpinLock<64, 256>>(task);
+  func106<i, SimpleSpinLockR>(task);
+  func106<i, HClhSpinLock>(task);
+  func106<i, ExpSpinLock10<TtsSpinLock, ClhSpinLock, kMax>>(task);
+  func106<i, ExpSpinLock10<ClhSpinLock, AndersonSpinLock<64, 256>, kMax>>(task);
+  func106<i, ExpSpinLock10<ClhSpinLock, ClhSpinLock, kMax>>(task);
+  func106<i, ExpSpinLock10<ClhSpinLock, McsSpinLock<64>, kMax>>(task);
+  func106<i, ExpSpinLock10<ClhSpinLock, TicketSpinLock, kMax>>(task);
+  func106<i, ExpSpinLock10<AndersonSpinLock<64, 256>, AndersonSpinLock<64, 256>, kMax>>(task);
+  func106<i, ExpSpinLock10<AndersonSpinLock<64, 256>, ClhSpinLock, kMax>>(task);
+  func106<i, ExpSpinLock10<AndersonSpinLock<64, 256>, McsSpinLock<64>, kMax>>(task);
+  func106<i, ExpSpinLock10<AndersonSpinLock<64, 256>, TicketSpinLock, kMax>>(task);
+  func106<i, ExpSpinLock10<McsSpinLock<64>, AndersonSpinLock<64, 256>, kMax>>(task);
+  func106<i, ExpSpinLock10<McsSpinLock<64>, ClhSpinLock, kMax>>(task);
+  func106<i, ExpSpinLock10<McsSpinLock<64>, McsSpinLock<64>, kMax>>(task);
+  func106<i, ExpSpinLock10<McsSpinLock<64>, TicketSpinLock, kMax>>(task);
 }
 
-// リスト、要素数可変比較版
+template<int kMax, int i, int j, int... Num>
+static void func10(sptr<TaskWithStack> task) {
+  func10<kMax, i>(task);
+  func10<kMax, j, Num...>(task);
+}
+
 void membench3(sptr<TaskWithStack> task) {
   int cpuid = cpu_ctrl->GetCpuId().GetRawId();
   if (cpuid == 0) {
     gtty->CprintfRaw("start >>>\n");
   }
-  func10<10, 20, 40, 80>(task); 
+  func10<100, 10, 20, 40, 80>(task); 
+  if (cpuid == 0) {
+    gtty->CprintfRaw("<<< end\n");
+  }
 }
 

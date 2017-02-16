@@ -761,7 +761,7 @@ static void load(int argc, const char *argv[]) {
   }
 }
 
-static void beep(int argc, const char *argv[]) {
+void beep(int argc, const char *argv[]) {
   CpuId beep_cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority);
   auto callout_ = make_sptr(new Callout);
   callout_->Init(make_uptr(new Function<wptr<Callout>>([](wptr<Callout> callout) {
