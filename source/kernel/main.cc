@@ -34,16 +34,19 @@
 #include <timer.h>
 #include <tty.h>
 #include <shell.h>
+#include <measure.h>
 #include <mem/kstack.h>
 
 #include <dev/hpet.h>
-#include <dev/keyboard.h>
 #include <dev/pci.h>
+#include <dev/usb/usb.h>
 #include <dev/vga.h>
 #include <dev/pciid.h>
+#include <dev/8042.h>
 
+#include <dev/netdev.h>
 #include <dev/eth.h>
-#include <net/arp.h>
+// #include <net/arp.h>
 #include <arpa/inet.h>
 
 AcpiCtrl *acpi_ctrl = nullptr;
@@ -54,11 +57,10 @@ PhysmemCtrl *physmem_ctrl = nullptr;
 VirtmemCtrl *virtmem_ctrl = nullptr;
 Gdt *gdt = nullptr;
 Idt *idt = nullptr;
-Keyboard *keyboard = nullptr;
 Shell *shell = nullptr;
 PciCtrl *pci_ctrl = nullptr;
 NetDevCtrl *netdev_ctrl = nullptr;
-ArpTable *arp_table = nullptr;
+// ArpTable *arp_table = nullptr;
 
 MultibootCtrl _multiboot_ctrl;
 AcpiCtrl _acpi_ctrl;
@@ -72,55 +74,44 @@ PagingCtrl _paging_ctrl;
 TaskCtrl _task_ctrl;
 Hpet _htimer;
 Vga _vga;
-Keyboard _keyboard;
 Shell _shell;
 AcpicaPciCtrl _acpica_pci_ctrl;
 NetDevCtrl _netdev_ctrl;
-ArpTable _arp_table;
+// ArpTable _arp_table;
 
 CpuId network_cpu;
 CpuId pstack_cpu;
 
 static uint32_t rnd_next = 1;
 
-uint64_t cnt;
-int64_t sum;
-static const int stime = 3000;
-int time, rtime;
-
 #include <dev/disk/ahci/ahci-raph.h>
 AhciChannel *g_channel = nullptr;
 #include <dev/fs/fat/fat.h>
 FatFs *fatfs;
 
-Callout tt1;
-Callout tt2;
-Callout tt3;
-Callout tt4;
+void register_membench2_callout();
 
-uint8_t ip1[] = {0, 0, 0, 0};
-uint8_t ip2[] = {0, 0, 0, 0};
-enum class BenchState {
-  kIdle,
-  kSnd,
-  kRcv,
-  kQemu,
-};
-BenchState bstate = BenchState::kIdle;
-
-void halt(int argc, const char* argv[]) {
+static void halt(int argc, const char* argv[]) {
   acpi_ctrl->Shutdown();
 }
 
-void reset(int argc, const char* argv[]) {
+static void reset(int argc, const char* argv[]) {
   acpi_ctrl->Reset();
 }
 
-void lspci(int argc, const char* argv[]){
+static void lspci(int argc, const char* argv[]) {
   MCFG *mcfg = acpi_ctrl->GetMCFG();
   if (mcfg == nullptr) {
     gtty->Cprintf("[Pci] error: could not find MCFG table.\n");
     return;
+  }
+
+  const char *search = nullptr;
+  if (argc > 2) {
+    gtty->Cprintf("[lspci] error: invalid argument\n");
+    return;
+  } else if (argc == 2) {
+    search = argv[1];
   }
 
   PciData::Table table;
@@ -133,147 +124,673 @@ void lspci(int argc, const char* argv[]){
     }
     for (int j = mcfg->list[i].pci_bus_start; j <= mcfg->list[i].pci_bus_end; j++) {
       for (int k = 0; k < 32; k++) {
-        uint16_t vid = pci_ctrl->ReadReg<uint16_t>(j, k, 0, PciCtrl::kVendorIDReg);
-        if (vid == 0xffff) {
-          continue;
+        int maxf = ((pci_ctrl->ReadReg<uint16_t>(j, k, 0, PciCtrl::kHeaderTypeReg) & PciCtrl::kHeaderTypeRegFlagMultiFunction) != 0) ? 7 : 0;
+        for (int l = 0; l <= maxf; l++) {
+          if (pci_ctrl->ReadReg<uint16_t>(j, k, l, PciCtrl::kVendorIDReg) == 0xffff) {
+            continue;
+          }
+          table.Search(j, k, l, search);
         }
-	uint16_t did = pci_ctrl->ReadReg<uint16_t>(j, k, 0, PciCtrl::kDeviceIDReg);
-	uint16_t svid = pci_ctrl->ReadReg<uint16_t>(j, k, 0, PciCtrl::kSubsystemVendorIdReg);
-	uint16_t ssid = pci_ctrl->ReadReg<uint16_t>(j, k, 0, PciCtrl::kSubsystemIdReg);
-	table.Search(vid, did, svid, ssid);
       }
     }
   }
 }
 
-void bench(int argc, const char* argv[]) {
-  if (argc != 2) {
+static bool parse_ipaddr(const char *c, uint8_t *addr) {
+  int i = 0;
+  while(true) {
+    if (i != 3 && *c == '.') {
+      i++;
+    } else if (i == 3 && *c == '\0') {
+      return true;
+    } else if (*c >= '0' && *c <= '9') {
+      addr[i] *= 10;
+      addr[i] += *c - '0';
+    } else {
+      return false;
+    }
+    c++;
+  }
+}
+
+static void setip(int argc, const char* argv[]) {
+  if (argc != 3) {
+    gtty->Cprintf("invalid argument\n");
+    return;
+  }
+  NetDevCtrl::NetDevInfo *info = netdev_ctrl->GetDeviceInfo(argv[1]);
+  if (info == nullptr) {
+    gtty->Cprintf("no ethernet interface(%s).\n", argv[1]);
+    return;
+  }
+  NetDev *dev = info->device;
+
+  uint8_t addr[4] = {0, 0, 0, 0};
+  if (!parse_ipaddr(argv[2], addr)) {
+    gtty->Cprintf("invalid ip v4 addr.\n");
+    return;
+  }
+
+  dev->AssignIpv4Address((addr[3] << 24) | (addr[2] << 16) | (addr[1] << 8) | addr[0]);
+}
+
+static void ifconfig(int argc, const char* argv[]){
+  uptr<Array<const char *>> list = netdev_ctrl->GetNamesOfAllDevices();
+  gtty->CprintfRaw("\n");
+  for (size_t l = 0; l < list->GetLen(); l++) {
+    gtty->CprintfRaw("%s", (*list)[l]);
+    NetDev *dev = netdev_ctrl->GetDeviceInfo((*list)[l])->device;
+    dev->UpdateLinkStatus();
+    gtty->CprintfRaw("  link: %s\n", dev->IsLinkUp() ? "up" : "down");
+  }
+}
+
+void setup_arp_reply(NetDev *dev);
+void send_arp_packet(NetDev *dev, uint8_t *ipaddr);
+
+static void bench(int argc, const char* argv[]) {
+
+  if (argc == 1) {
     gtty->Cprintf("invalid argument.\n");
     return;
   }
-  if (!netdev_ctrl->Exists("en0")) {
-    gtty->Cprintf("no ethernet interface.\n");
-    return;
-  }
   if (strcmp(argv[1], "snd") == 0) {
-    uint8_t ip1_[] = {192, 168, 100, 100};
-    uint8_t ip2_[] = {192, 168, 100, 104};
-    memcpy(ip1, ip1_, 4);
-    memcpy(ip2, ip2_, 4);
-    bstate = BenchState::kSnd;
-  } else if (strcmp(argv[1], "rcv") == 0) {
-    uint8_t ip1_[] = {192, 168, 100, 104};
-    uint8_t ip2_[] = {192, 168, 100, 100};
-    memcpy(ip1, ip1_, 4);
-    memcpy(ip2, ip2_, 4);
-    bstate = BenchState::kRcv;
-  } else if (strcmp(argv[1], "qemu") == 0) {
+    if (argc == 2) {
+      gtty->Cprintf("specify ethernet interface.\n");
+      return;
+    } else if (argc == 3) {
+      gtty->Cprintf("specify ip v4 addr.\n");
+      return;
+    } else if (argc != 4) {
+      gtty->Cprintf("invalid arguments\n");
+      return;
+    }
+    NetDevCtrl::NetDevInfo *info = netdev_ctrl->GetDeviceInfo(argv[2]);
+    if (info == nullptr) {
+      gtty->Cprintf("no ethernet interface(%s).\n", argv[2]);
+      return;
+    }
+    NetDev *dev = info->device;
+
+    uint8_t addr[4] = {0, 0, 0, 0};
+    if (!parse_ipaddr(argv[3], addr)) {
+      gtty->Cprintf("invalid ip v4 addr.\n");
+      return;
+    }
+
+    send_arp_packet(dev, addr);
+  } else if (strcmp(argv[1], "set_reply") == 0) {
+    if (argc == 2) {
+      gtty->Cprintf("specify ethernet interface.\n");
+      return;
+    }
+    NetDevCtrl::NetDevInfo *info = netdev_ctrl->GetDeviceInfo(argv[2]);
+    if (info == nullptr) {
+      gtty->Cprintf("no ethernet interface(%s).\n", argv[2]);
+      return;
+    }
+    setup_arp_reply(info->device);
+  } /* else if (strcmp(argv[1], "qemu") == 0) {
     uint8_t ip1_[] = {10, 0, 2, 9};
     uint8_t ip2_[] = {10, 0, 2, 15};
     memcpy(ip1, ip1_, 4);
     memcpy(ip2, ip2_, 4);
-    bstate = BenchState::kQemu;
+    sdevice = (argc == 2) ? "eth0" : argv[2];
+    rdevice = (argc == 2) ? "eth0" : argv[2];
+    if (!netdev_ctrl->Exists(rdevice)) {
+      gtty->Cprintf("no ethernet interface(%s).\n", rdevice);
+      return;
+    }
+    } */ else {
+    gtty->Cprintf("invalid argument.\n");
+    return;
+  }
+}
+
+static void setflag(int argc, const char *argv[]) {
+  if (argc == 1) {
+    gtty->Cprintf("invalid argument.\n");
+    return;
+  }
+  if (strcmp(argv[1], "spinlock_timeout") == 0) {
+    if (argc == 2) {
+      gtty->Cprintf("invalid argument.\n");
+      return;
+    }
+    if (strcmp(argv[2], "true") == 0) {
+      SpinLock::_spinlock_timeout = true;
+    } else if (strcmp(argv[2], "false") == 0) {
+      SpinLock::_spinlock_timeout = false;
+    } else {
+      gtty->Cprintf("invalid argument.\n");
+      return;
+    }
   } else {
     gtty->Cprintf("invalid argument.\n");
     return;
   }
+}
 
-  netdev_ctrl->AssignIpv4Address("en0", inet_atoi(ip1));
-
-  {
-    static ArpSocket socket;
-    socket.AssignNetworkDevice("en0");
-
-    if(socket.Open() < 0) {
-      gtty->Cprintf("[error] failed to open socket\n");
+class ArpTable {
+public:
+  void Set(uint32_t ip_addr, uint8_t *hw_addr, NetDev *dev) {
+    auto iter = arp_table.GetBegin();
+    while(!iter.IsNull()) {
+      if ((*iter)->ip_addr == ip_addr) {
+        memcpy((*iter)->hw_addr, hw_addr, 6);
+        (*iter)->dev = dev;
+        return;
+      }
+      iter = iter->GetNext();
     }
-    cnt = 0;
-    new(&tt2) Callout;
-    Function func;
-    func.Init([](void *){
-        if (!apic_ctrl->IsBootupAll()) {
-          tt2.SetHandler(1000);
-          return;
-        }
-        if (!netdev_ctrl->IsLinkUp("en0")) {
-          tt2.SetHandler(1000);
-          return;
-        }
-        if (bstate != BenchState::kRcv) {
-          if (cnt != 0) {
-            tt2.SetHandler(1000);
-            return;
-          }
-          for(int k = 0; k < 1; k++) {
-            if (time == 0) {
-              break;
+    arp_table.PushBack(ip_addr, hw_addr, dev);
+  }
+  NetDev *Search(uint32_t ip_addr, uint8_t *hw_addr) {
+    auto iter = arp_table.GetBegin();
+    while(!iter.IsNull()) {
+      if ((*iter)->ip_addr == ip_addr) {
+        memcpy(hw_addr, (*iter)->hw_addr, 6);
+        return (*iter)->dev;
+      }
+      iter = iter->GetNext();
+    }
+    return nullptr;
+  }
+private:
+  struct ArpEntry {
+    ArpEntry(uint32_t ip_addr_, uint8_t *hw_addr_, NetDev *dev_) {
+      ip_addr = ip_addr_;
+      memcpy(hw_addr, hw_addr_, 6);
+      dev = dev_;
+    }
+    uint32_t ip_addr;
+    uint8_t hw_addr[6];
+    NetDev *dev;
+  };
+  List<ArpEntry> arp_table;
+} *arp_table;
+
+static void arp_scan(int argc, const char *argv[]) {
+  auto devices = netdev_ctrl->GetNamesOfAllDevices();
+  for (size_t i = 0; i < devices->GetLen(); i++) {
+    auto dev = netdev_ctrl->GetDeviceInfo((*devices)[i])->device;
+    if (dev->GetStatus() != NetDev::LinkStatus::kUp) {
+      gtty->Cprintf("skip %s (Link Down)\n", (*devices)[i]);
+      continue;
+    }
+    uint32_t my_addr_int_;
+    if (!dev->GetIpv4Address(my_addr_int_) || my_addr_int_ == 0) {
+      gtty->Cprintf("skip %s (no IP)\n", (*devices)[i]);
+      continue;
+    }
+    gtty->Cprintf("ARP scan with %s\n", (*devices)[i]);
+    dev->SetReceiveCallback(network_cpu, make_uptr(new Function<NetDev *>([](NetDev *eth) {
+            NetDev::Packet *rpacket;
+            if(!eth->ReceivePacket(rpacket)) {
+              return;
             }
-            cnt = timer->ReadMainCnt();
-            if(socket.Request(inet_atoi(ip2)) < 0) {
-              gtty->Cprintf("[arp] failed to transmit request\n");
+            uint32_t my_addr_int;
+            assert(eth->GetIpv4Address(my_addr_int));
+            uint8_t my_addr[4];
+            my_addr[0] = (my_addr_int >> 0) & 0xff;
+            my_addr[1] = (my_addr_int >> 8) & 0xff;
+            my_addr[2] = (my_addr_int >> 16) & 0xff;
+            my_addr[3] = (my_addr_int >> 24) & 0xff;
+            // received packet
+            if(rpacket->GetBuffer()[12] == 0x08 && rpacket->GetBuffer()[13] == 0x06 && rpacket->GetBuffer()[21] == 0x02) {
+              // ARP Reply
+              uint32_t target_addr_int = (rpacket->GetBuffer()[31] << 24) | (rpacket->GetBuffer()[30] << 16) | (rpacket->GetBuffer()[29] << 8) | rpacket->GetBuffer()[28];
+              arp_table->Set(target_addr_int, rpacket->GetBuffer() + 22, eth);
             }
-            time--;
+            if(rpacket->GetBuffer()[12] == 0x08 && rpacket->GetBuffer()[13] == 0x06 && rpacket->GetBuffer()[21] == 0x01 && (memcmp(rpacket->GetBuffer() + 38, my_addr, 4) == 0)) {
+              // ARP Request
+              uint8_t data[] = {
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target MAC Address
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source MAC Address
+                0x08, 0x06, // Type: ARP
+                // ARP Packet
+                0x00, 0x01, // HardwareType: Ethernet
+                0x08, 0x00, // ProtocolType: IPv4
+                0x06, // HardwareLength
+                0x04, // ProtocolLength
+                0x00, 0x02, // Operation: ARP Reply
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source Hardware Address
+                0x00, 0x00, 0x00, 0x00, // Source Protocol Address
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
+                0x00, 0x00, 0x00, 0x00, // Target Protocol Address
+              };
+              memcpy(data, rpacket->GetBuffer() + 6, 6);
+              static_cast<DevEthernet *>(eth)->GetEthAddr(data + 6);
+              memcpy(data + 22, data + 6, 6);
+              memcpy(data + 28, my_addr, 4);
+              memcpy(data + 32, rpacket->GetBuffer() + 22, 6);
+              memcpy(data + 38, rpacket->GetBuffer() + 28, 4);
+
+              uint32_t len = sizeof(data)/sizeof(uint8_t);
+              NetDev::Packet *tpacket;
+              kassert(eth->GetTxPacket(tpacket));
+              memcpy(tpacket->GetBuffer(), data, len);
+              tpacket->len = len;
+              eth->TransmitPacket(tpacket);
+            }
+            eth->ReuseRxBuffer(rpacket);
+          }, dev)));
+    for (int j = 1; j < 255; j++) {
+      uint32_t my_addr_int;
+      assert(dev->GetIpv4Address(my_addr_int));
+      auto callout_ = make_sptr(new Callout);
+      struct Container {
+        wptr<Callout> callout;
+        NetDev *eth;
+        uint8_t target_addr[4];
+      };
+      auto container_ = make_uptr(new Container);
+      container_->callout = make_wptr(callout_);
+      container_->eth = dev;
+      container_->target_addr[0] = (my_addr_int >> 0) & 0xff;
+      container_->target_addr[1] = (my_addr_int >> 8) & 0xff;
+      container_->target_addr[2] = (my_addr_int >> 16) & 0xff;
+      container_->target_addr[3] = j;
+      callout_->Init(make_uptr(new Function<uptr<Container>>([](uptr<Container> container){
+              uint8_t data[] = {
+                0xff, 0xff, 0xff, 0xff, 0xff, 0xff, // Target MAC Address
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source MAC Address
+                0x08, 0x06, // Type: ARP
+                // ARP Packet
+                0x00, 0x01, // HardwareType: Ethernet
+                0x08, 0x00, // ProtocolType: IPv4
+                0x06, // HardwareLength
+                0x04, // ProtocolLength
+                0x00, 0x01, // Operation: ARP Request
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source Hardware Address
+                0x00, 0x00, 0x00, 0x00, // Source Protocol Address
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
+                // Target Protocol Address
+                0x00, 0x00, 0x00, 0x00
+              };
+              static_cast<DevEthernet *>(container->eth)->GetEthAddr(data + 6);
+              memcpy(data + 22, data + 6, 6);
+              uint32_t my_addr;
+              assert(container->eth->GetIpv4Address(my_addr));
+              data[28] = (my_addr >> 0) & 0xff;
+              data[29] = (my_addr >> 8) & 0xff;
+              data[30] = (my_addr >> 16) & 0xff;
+              data[31] = (my_addr >> 24) & 0xff;
+              memcpy(data + 38, container->target_addr, 4);
+              uint32_t len = sizeof(data)/sizeof(uint8_t);
+              NetDev::Packet *tpacket;
+              kassert(container->eth->GetTxPacket(tpacket));
+              memcpy(tpacket->GetBuffer(), data, len);
+              tpacket->len = len;
+              container->eth->TransmitPacket(tpacket);
+            }, container_)));
+      if (callout_->IsRegistered()) {
+        task_ctrl->CancelCallout(callout_);
+      }
+      task_ctrl->RegisterCallout(callout_, cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), 1000);
+    }
+  }
+  auto callout_ = make_sptr(new Callout);
+  callout_->Init(make_uptr(new Function<void *>([](void *){
+          auto devices_ = netdev_ctrl->GetNamesOfAllDevices();
+          for (size_t i = 0; i < devices_->GetLen(); i++) {
+            auto dev = netdev_ctrl->GetDeviceInfo((*devices_)[i])->device;
+            dev->SetReceiveCallback(network_cpu, make_uptr(new GenericFunction<>()));
           }
-          if (time != 0) {
-            tt2.SetHandler(1000);
-          }
-        } else {
-          gtty->Cprintf("[debug] info: Link is Up\n");
-        }
-      }, nullptr);
-    tt2.Init(func);
-    CpuId cpuid(3);
-    tt2.SetHandler(cpuid, 10);
+        }, nullptr)));
+  task_ctrl->RegisterCallout(callout_, cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), 3*1000*1000);
+}
+
+void udpsend(int argc, const char *argv[]) {
+  if (argc != 4) {
+    gtty->Cprintf("invalid argument.\n");
+    return;
   }
 
-  if (bstate != BenchState::kRcv) {
-    new(&tt3) Callout;
-    Function func;
-    func.Init([](void *){
-        if (rtime > 0) {
-          gtty->Cprintf("ARP Reply average latency: %d us [%d / %d]\n", sum / rtime, rtime, stime);
-        } else {
-          if (netdev_ctrl->IsLinkUp("en0")) {
-            gtty->Cprintf("Link is Up, but no ARP Reply\n");
-          } else {
-            gtty->Cprintf("Link is Down, please wait...\n");
-          }
-        }
-        if (rtime != stime) {
-          tt3.SetHandler(1000*1000*3);
-        }
-      }, nullptr);
-    tt3.Init(func);
-    CpuId cpuid(6);
-    tt3.SetHandler(cpuid, 1000*1000*3);
+  uint8_t target_addr[4] = {0, 0, 0, 0};
+  if (!parse_ipaddr(argv[1], target_addr)) {
+    gtty->Cprintf("invalid ip v4 addr.\n");
+    return;
+  }
+  uint32_t target_addr_int = (target_addr[3] << 24) | (target_addr[2] << 16) | (target_addr[1] << 8) | target_addr[0];
+  
+  uint8_t target_mac[6];
+  NetDev *dev = arp_table->Search(target_addr_int, target_mac);
+  if (dev == nullptr) {
+    gtty->Cprintf("cannot solve mac address from ARP Table.\n");
+    return;
   }
 
-  static ArpSocket socket;
-  socket.AssignNetworkDevice("en0");
+  uint32_t my_addr_int;
+  assert(dev->GetIpv4Address(my_addr_int));
+  uint8_t my_addr[4];
+  my_addr[0] = (my_addr_int >> 0) & 0xff;
+  my_addr[1] = (my_addr_int >> 8) & 0xff;
+  my_addr[2] = (my_addr_int >> 16) & 0xff;
+  my_addr[3] = (my_addr_int >> 24) & 0xff;
+  
+  
+  uint8_t buf[1518];
+  int offset = 0;
 
-  if(socket.Open() < 0) {
-    gtty->Cprintf("[error] failed to open socket\n");
+  //
+  // ethernet
+  //
+
+  // target MAC address
+  memcpy(buf + offset, target_mac, 6);
+  offset += 6;
+
+  // source MAC address
+  static_cast<DevEthernet *>(dev)->GetEthAddr(buf + offset);
+  offset += 6;
+
+  // type: IPv4
+  uint8_t type[2] = {0x08, 0x00};
+  memcpy(buf + offset, type, 2);
+  offset += 2;
+
+  //
+  // IPv4
+  //
+
+  int ipv4_header_start = offset;
+
+  // version & header length
+  buf[offset] = (0x4 << 4) | 0x5;
+  offset += 1;
+
+  // service type
+  buf[offset] = 0;
+  offset += 1;
+
+  // skip
+  int datagram_length_offset = offset;
+  offset += 2;
+
+  // ID field
+  buf[offset] = rand() & 0xff;
+  buf[offset + 1] = rand() & 0xff;
+  offset += 2;
+
+  // flag & flagment offset
+  uint16_t foffset = 0 | (1 << 15);
+  buf[offset] = foffset >> 8;
+  buf[offset + 1] = foffset;
+  offset += 2;
+
+  // ttl
+  buf[offset] = 0xff;
+  offset += 1;
+
+  // procol number;
+  buf[offset] = 17;
+  offset += 1;
+
+  // skip
+  int checksum_offset = offset;
+  buf[offset] = 0;
+  buf[offset + 1] = 0;
+  offset += 2;
+
+  // source address
+  memcpy(buf + offset, my_addr, 4);
+  offset += 4;
+
+  // target address
+  memcpy(buf + offset, target_addr, 4);
+  offset += 4;
+
+  int ipv4_header_end = offset;
+
+  //
+  // udp
+  //
+
+  int udp_header_start = offset;
+
+  // source port
+  uint8_t source_port[] = {0x4, 0xD2}; // 1234
+  memcpy(buf + offset, source_port, 2);
+  offset += 2;
+
+  // target port
+  // TODO analyze from argument
+  uint8_t target_port[] = {0x4, 0xD2}; // 1234
+  memcpy(buf + offset, target_port, 2);
+  offset += 2;
+
+  // skip
+  int udp_length_offset = offset;
+  offset += 2;
+
+  // skip
+  int udp_checksum_offset = offset;
+  buf[offset] = 0;
+  buf[offset + 1] = 0;
+  offset += 2;
+
+  // data
+  memcpy(buf + offset, argv[3], strlen(argv[3]) + 1);
+  offset += strlen(argv[3]) + 1;
+  
+  // length
+  size_t udp_length = offset - udp_header_start;
+  buf[udp_length_offset] = udp_length >> 8;
+  buf[udp_length_offset + 1] = udp_length;
+
+  // checksum
+  {
+    uint32_t checksum = 0;
+    uint8_t pseudo_header[] = {
+      0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00,
+      0x00, 17, 0x00, 0x00,
+    };
+    memcpy(pseudo_header + 0, my_addr, 4);
+    memcpy(pseudo_header + 4, target_addr, 4);
+    pseudo_header[10] = udp_length >> 8;
+    pseudo_header[11] = udp_length;
+    for (int i = 0; i < 12; i += 2) {
+      checksum += (pseudo_header[i] << 8) + pseudo_header[i + 1];
+    }
+
+    if ((offset - udp_header_start) % 2 == 1) {
+      buf[offset] = 0x0;
+    }
+    for (int i = udp_header_start; i < offset; i += 2) {
+      checksum += (buf[i] << 8) + buf[i + 1];
+    }
+
+    while(checksum > 0xffff) {
+      checksum = (checksum >> 16) + (checksum & 0xffff);
+    }
+    checksum = ~checksum;
+  
+    buf[udp_checksum_offset] = checksum >> 8;
+    buf[udp_checksum_offset + 1] = checksum;
+  }
+
+  // datagram length(IPv4)
+  size_t len = offset - ipv4_header_start;
+  buf[datagram_length_offset] = len >> 8;
+  buf[datagram_length_offset + 1] = len;
+
+  // checksum
+  {
+    uint32_t checksum = 0;
+    for (int i = ipv4_header_start; i < ipv4_header_end; i += 2) {
+      checksum += (buf[i] << 8) + buf[i + 1];
+    }
+
+    while(checksum > 0xffff) {
+      checksum = (checksum >> 16) + (checksum & 0xffff);
+    }
+    checksum = ~checksum;
+
+    buf[checksum_offset] = checksum >> 8;
+    buf[checksum_offset + 1] = checksum;
+  }
+  
+  assert(offset < 1518);
+
+  NetDev::Packet *tpacket;
+  kassert(dev->GetTxPacket(tpacket));
+  memcpy(tpacket->GetBuffer(), buf, offset);
+  tpacket->len = offset;
+  
+  dev->TransmitPacket(tpacket);
+}
+  
+static void show(int argc, const char *argv[]) {
+  if (argc == 1) {
+    gtty->Cprintf("invalid argument.\n");
+    return;
+  }
+  if (strcmp(argv[1], "module") == 0) {
+    if (argc != 2) {
+      gtty->Cprintf("invalid argument.\n");
+      return;
+    }
+    multiboot_ctrl->ShowModuleInfo();
+  } else if (strcmp(argv[1], "info") == 0) {
+    gtty->Cprintf("[kernel] info: Hardware Information\n");
+    gtty->Cprintf("available cpu thread num: %d\n", cpu_ctrl->GetHowManyCpus());
+    gtty->Cprintf("\n");
+    gtty->Cprintf("[kernel] info: Build Information\n");
+    multiboot_ctrl->ShowBuildTimeStamp();
   } else {
-    Function func;
-    func.Init([](void *){
-        uint32_t ipaddr;
-        uint16_t op;
-        
-        if (socket.Read(op, ipaddr) >= 0) {
-          if(op == ArpSocket::kOpReply) {
-            uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;
-            cnt = 0;
-            sum += l;
-            rtime++;
-          } else if(op == ArpSocket::kOpRequest) {
-            socket.Reply(ipaddr);
-          }
-        }
-      }, nullptr);
-    CpuId cpuid(2);
-    socket.SetReceiveCallback(cpuid, func);
+    gtty->Cprintf("invalid argument.\n");
+    return;
   }
 }
+
+struct LoadContainer {
+  LoadContainer() = delete;
+  LoadContainer(uptr<Array<uint8_t>> data_) : data(data_) {
+  }
+  uptr<Array<uint8_t>> data;
+  int i = 0;
+};
+
+static void wait_until_linkup(sptr<Callout> sh_task, int argc, const char *argv[]) {
+  if (argc != 2) {
+    gtty->Cprintf("invalid argument.\n");
+    task_ctrl->RegisterCallout(sh_task, 10);
+    return;
+  }
+  NetDevCtrl::NetDevInfo *info = netdev_ctrl->GetDeviceInfo(argv[1]);
+  if (info == nullptr) {
+    gtty->Cprintf("no such device.\n");
+    task_ctrl->RegisterCallout(sh_task, 10);
+    return;
+  }
+  NetDev *dev_ = info->device;
+  auto callout_ = make_sptr(new Callout);
+  callout_->Init(make_uptr(new Function3<wptr<Callout>, sptr<Callout>, NetDev *>([](wptr<Callout> callout, sptr<Callout> sh_task_, NetDev *dev){
+          if (dev->IsLinkUp()) {
+            task_ctrl->RegisterCallout(sh_task_, 10);
+          } else {
+            task_ctrl->RegisterCallout(make_sptr(callout), 1000 * 1000);
+          }
+        }, make_wptr(callout_), sh_task, dev_)));
+  task_ctrl->RegisterCallout(callout_, 10);
+}
+
+static void load_script(sptr<LoadContainer> container_) {
+  auto callout_ = make_sptr(new Callout);
+  callout_->Init(make_uptr(new Function2<wptr<Callout>, sptr<LoadContainer>>([](wptr<Callout> callout, sptr<LoadContainer> container){
+          size_t i = container->i;
+          while(container->i <= container->data->GetLen()) {
+            if (container->i == container->data->GetLen() || (*container->data)[container->i] == '\n' || (*container->data)[container->i] == '\0') {
+              char buffer[container->i - i + 1];
+              memcpy(buffer, reinterpret_cast<char *>(container->data->GetRawPtr()) + i, container->i - i);
+              buffer[container->i - i] = '\0';
+              auto ec = make_uptr(new Shell::ExecContainer(shell));
+              ec = shell->Tokenize(ec, buffer);
+              int timeout = 10;
+              if (strlen(buffer) != 0) {
+                gtty->Cprintf("> %s\n", buffer);
+                if (strcmp(ec->argv[0], "wait") == 0) {
+                  if (ec->argc == 2) {
+                    int t = 0;
+                    for(size_t l = 0; l < strlen(ec->argv[1]); l++) {
+                      if ('0' > ec->argv[1][l] || ec->argv[1][l] > '9') {
+                        gtty->Cprintf("invalid argument.\n");
+                        t = 0;
+                        break;
+                      }
+                      t = t * 10 + ec->argv[1][l] - '0';
+                    }
+                    timeout = t * 1000 * 1000;
+                  } else {
+                    gtty->Cprintf("invalid argument.\n");
+                  }
+                } else if (strcmp(ec->argv[0], "wait_until_linkup") == 0) {
+                  wait_until_linkup(make_sptr(callout), ec->argc, ec->argv);
+                  return;
+                } else {
+                  shell->Execute(ec);
+                }
+              }
+              if (container->i < container->data->GetLen()) {
+                container->i++;
+                task_ctrl->RegisterCallout(make_sptr(callout), timeout);
+              }
+              return;
+            }
+            if ((*container->data)[container->i] == '\0') {
+              break;
+            }
+            container->i++;
+          }
+        }, make_wptr(callout_), container_)));
+  task_ctrl->RegisterCallout(callout_, 10);
+}
+
+static void load(int argc, const char *argv[]) {
+  if (argc != 2) {
+    gtty->Cprintf("invalid argument.\n");
+    return;
+  }
+  if (strcmp(argv[1], "script.sh") == 0) {
+    load_script(make_sptr(new LoadContainer(multiboot_ctrl->LoadFile(argv[1]))));
+  } else {
+    gtty->Cprintf("invalid argument.\n");
+    return;
+  }
+}
+
+void beep(int argc, const char *argv[]) {
+  CpuId beep_cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority);
+  auto callout_ = make_sptr(new Callout);
+  callout_->Init(make_uptr(new Function<wptr<Callout>>([](wptr<Callout> callout) {
+          static int i = 0;
+          if(i < 6) {
+            uint16_t sound[6] = {905, 761, 452, 570, 508, 380};
+            uint8_t a = 0xb6;
+            outb(0x43, a);
+            uint8_t l = sound[i] & 0x00FF;
+            outb(0x42, l);
+            uint8_t h = (sound[i] >> 8) & 0x00FF;
+            outb(0x42, h);
+            uint8_t on = inb(0x61);
+            outb(0x61, (on | 0x03) & 0x0f);
+            i++;
+            task_ctrl->RegisterCallout(make_sptr(callout), 110000);
+          } else {
+            uint8_t off = inb(0x61);
+            outb(0x61, off & 0xd);
+          }
+        }, make_wptr(callout_))));
+  task_ctrl->RegisterCallout(callout_, beep_cpuid, 1);
+}
+
+static void membench(int argc, const char *argv[]) {
+  register_membench2_callout();
+}
+
+void freebsd_main();
 
 extern "C" int main() {
 
@@ -301,13 +818,13 @@ extern "C" int main() {
 
   gtty = new (&_vga) Vga;
 
-  keyboard = new (&_keyboard) Keyboard;
-
   shell = new (&_shell) Shell;
 
   netdev_ctrl = new (&_netdev_ctrl) NetDevCtrl();
 
-  arp_table = new (&_arp_table) ArpTable();
+  // arp_table = new (&_arp_table) ArpTable();
+
+  physmem_ctrl->Init();
 
   multiboot_ctrl->Setup();
 
@@ -328,11 +845,10 @@ extern "C" int main() {
   apic_ctrl->Setup();
 
   cpu_ctrl->Init();
+  
+  network_cpu = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kHighPerformance);
 
-  CpuId network_cpu = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kHighPerformance);
-;
-  CpuId pstack_cpu = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kHighPerformance);
-;
+  pstack_cpu = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kHighPerformance);
 
   rnd_next = timer->ReadMainCnt();
 
@@ -345,12 +861,16 @@ extern "C" int main() {
   gdt->SetupProc();
 
   idt->SetupProc();
-
+  
   pci_ctrl = new (&_acpica_pci_ctrl) AcpicaPciCtrl;
 
   acpi_ctrl->SetupAcpica();
 
-  InitDevices<PciCtrl, Device>();
+  UsbCtrl::Init();
+
+  freebsd_main();
+
+  InitDevices<PciCtrl, LegacyKeyboard, Device>();
 
   // 各コアは最低限の初期化ののち、TaskCtrlに制御が移さなければならない
   // 特定のコアで専用の処理をさせたい場合は、TaskCtrlに登録したジョブとして
@@ -360,36 +880,30 @@ extern "C" int main() {
 
   gtty->Init();
   
-  arp_table->Setup();
+  // arp_table->Setup();
 
-  Function kbd_func;
-  kbd_func.Init([](void *){
-      uint8_t data;
-      if(!keyboard->Read(data)){
-        return;
-      }
-      char c = Keyboard::Interpret(data);
-      gtty->Cprintf("%c", c);
-      shell->ReadCh(c);
-    }, nullptr);
-  keyboard->Setup(kbd_func);
-
-  cnt = 0;
-  sum = 0;
-  time = stime;
-  rtime = 0;
-
-  gtty->Cprintf("[cpu] info: #%d (apic id: %d) started.\n",
-                cpu_ctrl->GetCpuId(),
-                cpu_ctrl->GetCpuId().GetApicId());
-
+  while (!apic_ctrl->IsBootupAll()) {
+  }
   gtty->Cprintf("\n\n[kernel] info: initialization completed\n");
 
+  arp_table = new ArpTable;
+  
   shell->Setup();
   shell->Register("halt", halt);
   shell->Register("reset", reset);
   shell->Register("bench", bench);
+  shell->Register("beep", beep);
   shell->Register("lspci", lspci);
+  shell->Register("ifconfig", ifconfig);
+  shell->Register("setip", setip);
+  shell->Register("show", show);
+  shell->Register("load", load);
+  shell->Register("setflag", setflag);
+  shell->Register("udpsend", udpsend);
+  shell->Register("arp_scan", arp_scan);
+  shell->Register("membench", membench);
+
+  load_script(make_sptr(new LoadContainer(multiboot_ctrl->LoadFile("init.sh"))));
 
   task_ctrl->Run();
 
@@ -404,77 +918,59 @@ extern "C" int main_of_others() {
   gdt->SetupProc();
   idt->SetupProc();
 
-  gtty->Cprintf("[cpu] info: #%d (apic id: %d) started.\n",
-  cpu_ctrl->GetCpuId(),
-  cpu_ctrl->GetCpuId().GetApicId());
- 
-// ループ性能測定用
-//#define LOOP_BENCHMARK
+  // ループ性能測定用
+  //#define LOOP_BENCHMARK
 #ifdef LOOP_BENCHMARK
-  #define LOOP_BENCHMARK_CPU  4
+#define LOOP_BENCHMARK_CPU  4
   PollingFunc p;
   if (cpu_ctrl->GetCpuId().GetRawId() == LOOP_BENCHMARK_CPU) {
-    Function f;
     static int hoge = 0;
-    f.Init([](void *){
-      int hoge2 = timer->GetUsecFromCnt(timer->ReadMainCnt()) - hoge;
-      gtty->Cprintf("%d ", hoge2);
-      hoge = timer->GetUsecFromCnt(timer->ReadMainCnt());
-    }, nullptr);
-    p.Init(f);
+    p.Init(make_uptr(new Function<void *>([](void *){
+            int hoge2 = timer->GetUsecFromCnt(timer->ReadMainCnt()) - hoge;
+            gtty->Cprintf("%d ", hoge2);
+            hoge = timer->GetUsecFromCnt(timer->ReadMainCnt());
+          }, nullptr)));
     p.Register();
   }
 #endif
   
 // ワンショット性能測定用
-#define ONE_SHOT_BENCHMARK
+// #define ONE_SHOT_BENCHMARK
 #ifdef ONE_SHOT_BENCHMARK
-  #define ONE_SHOT_BENCHMARK_CPU  5
+#define ONE_SHOT_BENCHMARK_CPU  5
   if (cpu_ctrl->GetCpuId().GetRawId() == ONE_SHOT_BENCHMARK_CPU) {
-    new(&tt1) Callout;
-    Function oneshot_bench_func;
-    oneshot_bench_func.Init([](void *){
-        if (!apic_ctrl->IsBootupAll()) {
-          tt1.SetHandler(1000);
-          return;
-        }
-        // kassert(g_channel != nullptr);
-        // FatFs *fatfs = new FatFs();
-        // kassert(fatfs->Mount());
-        //        g_channel->Read(0, 1);
-      }, nullptr);
-    tt1.Init(oneshot_bench_func);
-    tt1.SetHandler(10);
+    auto callout_ = make_sptr(new Callout);
+    callout_->Init(make_uptr(new Function<wptr<Callout>>([](wptr<Callout> callout){
+            if (!apic_ctrl->IsBootupAll()) {
+              task_ctrl->RegisterCallout(make_sptr(callout), 1000);
+              return;
+            }
+            // kassert(g_channel != nullptr);
+            // FatFs *fatfs = new FatFs();
+            // kassert(fatfs->Mount());
+            //        g_channel->Read(0, 1);
+          }, make_wptr(callout_))));
+    task_ctrl->RegisterCallout(callout_, 10);
   }
 #endif
-
-  if (cpu_ctrl->GetCpuId().GetRawId() == cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kGeneralPurpose).GetRawId()) {
-    uint16_t sound = 2712;
-    uint8_t a = 0xb6;
-    outb(0x43, a);
-    uint8_t l = sound & 0x00FF;
-    outb(0x42, l);
-    uint8_t h = (sound >> 8) & 0x00FF;
-    outb(0x42, h);
-    uint8_t on = inb(0x61);
-    outb(0x61, (on | 0x03) & 0x0f);
-
-    new(&tt4) Callout;
-    Function beep_off;
-    beep_off.Init([](void *){
-	uint8_t off = inb(0x61);
-	outb(0x61, off & 0xd);
-      }, nullptr);
-    tt4.Init(beep_off);
-    tt4.SetHandler(1000000);
-  }
 
   task_ctrl->Run();
   return 0;
 }
 
+static int error_output_flag = 0;
+
+void show_backtrace(size_t *rbp) {
+    for (int i = 0; i < 3; i++) {
+      gtty->CprintfRaw("backtrace(%d): rip:%llx,\n", i, rbp[1]);
+      rbp = reinterpret_cast<size_t *>(rbp[0]);
+    }
+}
+
 extern "C" void _kernel_panic(const char *class_name, const char *err_str) {
   if (gtty != nullptr) {
+    while(!__sync_bool_compare_and_swap(&error_output_flag, 0, 1)) {
+    }
     gtty->CprintfRaw("\n!!!! Kernel Panic !!!!\n");
     gtty->CprintfRaw("[%s] error: %s\n",class_name, err_str);
     gtty->CprintfRaw("\n"); 
@@ -482,10 +978,8 @@ extern "C" void _kernel_panic(const char *class_name, const char *err_str) {
     gtty->CprintfRaw("cpuid: %d\n", cpu_ctrl->GetCpuId().GetRawId());
     size_t *rbp;
     asm volatile("movq %%rbp, %0":"=r"(rbp));
-    for (int i = 0; i < 3; i++) {
-      gtty->CprintfRaw("backtrace(%d): rip:%llx,\n", i, rbp[1]);
-      rbp = reinterpret_cast<size_t *>(rbp[0]);
-    }
+    show_backtrace(rbp);
+    __sync_bool_compare_and_swap(&error_output_flag, 1, 0);
   }
   while(true) {
     asm volatile("cli;hlt;");
@@ -504,7 +998,13 @@ extern "C" void _checkpoint(const char *func, const int line) {
 
 extern "C" void abort() {
   if (gtty != nullptr) {
+    while(!__sync_bool_compare_and_swap(&error_output_flag, 0, 1)) {
+    }
     gtty->CprintfRaw("system stopped by unexpected error.\n");
+    size_t *rbp;
+    asm volatile("movq %%rbp, %0":"=r"(rbp));
+    show_backtrace(rbp);
+    __sync_bool_compare_and_swap(&error_output_flag, 1, 0);
   }
   while(true){
     asm volatile("cli;hlt");
@@ -513,14 +1013,14 @@ extern "C" void abort() {
 
 extern "C" void _kassert(const char *file, int line, const char *func) {
   if (gtty != nullptr) {
+    while(!__sync_bool_compare_and_swap(&error_output_flag, 0, 1)) {
+    }
     gtty->CprintfRaw("assertion failed at %s l.%d (%s) cpuid: %d\n",
-      file, line, func, cpu_ctrl->GetCpuId().GetRawId());
+                     file, line, func, cpu_ctrl->GetCpuId().GetRawId());
     size_t *rbp;
     asm volatile("movq %%rbp, %0":"=r"(rbp));
-    for (int i = 0; i < 3; i++) {
-      gtty->CprintfRaw("backtrace(%d): rip:%llx,\n", i, rbp[1]);
-      rbp = reinterpret_cast<size_t *>(rbp[0]);
-    }
+    show_backtrace(rbp);
+    __sync_bool_compare_and_swap(&error_output_flag, 1, 0);
   }
   while(true){
     asm volatile("cli;hlt");

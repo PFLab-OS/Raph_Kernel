@@ -1,0 +1,8 @@
+show info
+setip ixgbe0 192.168.12.60
+wait_until_linkup ixgbe0
+arp_scan
+beep
+wait 3
+membench
+

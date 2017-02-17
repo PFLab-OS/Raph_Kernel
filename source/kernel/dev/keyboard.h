@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2016 Raphine Project
+ * Copyright (c) 2017 Raphine Project
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -16,36 +16,22 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
- * Author: Yuchiki, LEDiA
+ * Author: Liva
  * 
  */
 
-#ifndef __RAPH_KERNEL_DEV_KEYBOARD_H__
-#define __RAPH_KERNEL_DEV_KEYBOARD_H__
+#pragma once
 
-#include <global.h>
-#include <apic.h>
 #include <buf.h>
+#include <dev/device.h>
 
-class Keyboard {
- public:
-  void Setup(const GenericFunction &func);
-  bool Read(uint8_t &data) {
-    return _buf.Pop(data);
-  }
-  static char Interpret(const uint8_t &code) {
-    return kScanCode[code];
-  }
-
- private:
-  void Write(uint8_t &code) {
-    _buf.Push(code);
-  }
-  static void Handler (Regs *reg, void *arg);
+class Keyboard : public Device {
+public:
+  void Setup();
+protected:
   static const int kBufSize = 100;
-  static const char kScanCode[256];
-  static const int kDataPort = 0x60;
-  IntFunctionalRingBuffer<uint8_t, kBufSize> _buf;
+  FunctionalRingBuffer<char, kBufSize> _buf;
+  virtual void SetupSub() {
+  }
+  void Handle(void *);
 };
-
-#endif // __RAPH_KERNEL_DEV_KEYBOARD_H__

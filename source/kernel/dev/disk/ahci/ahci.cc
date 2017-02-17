@@ -61,9 +61,9 @@ static void ahci_intr(void *data);
 static void ahci_intr_one(void *data);
 static void ahci_intr_one_edge(void *data);
 static int ahci_ch_init(device_t dev);
-static int ahci_ch_deinit(device_t dev);
-static int ahci_ch_suspend(device_t dev);
-static int ahci_ch_resume(device_t dev);
+// static int ahci_ch_deinit(device_t dev);
+// static int ahci_ch_suspend(device_t dev);
+// static int ahci_ch_resume(device_t dev);
 static void ahci_ch_pm(void *arg);
 static void ahci_ch_intr(void *arg);
 static void ahci_ch_intr_direct(void *arg);
@@ -78,13 +78,13 @@ static void ahci_dmainit(device_t dev);
 static void ahci_dmasetupc_cb(void *xsc, bus_dma_segment_t *segs, int nsegs, int error);
 static void ahci_dmafini(device_t dev);
 static void ahci_slotsalloc(device_t dev);
-static void ahci_slotsfree(device_t dev);
+// static void ahci_slotsfree(device_t dev);
 static void ahci_reset(struct ahci_channel *ch);
 static void ahci_start(struct ahci_channel *ch, int fbs);
 static void ahci_stop(struct ahci_channel *ch);
 static void ahci_clo(struct ahci_channel *ch);
 static void ahci_start_fr(struct ahci_channel *ch);
-static void ahci_stop_fr(struct ahci_channel *ch);
+// static void ahci_stop_fr(struct ahci_channel *ch);
 
 static int ahci_sata_connect(struct ahci_channel *ch);
 static int ahci_sata_phy_reset(struct ahci_channel *ch);
@@ -95,7 +95,7 @@ static void ahci_process_read_log(struct ahci_channel *ch, PacketAtaio *ataio);
 static void ahci_process_request_sense(struct ahci_channel *ch, PacketAtaio *ataio);
 
 static void ahciaction(struct ahci_channel *ch, PacketAtaio *ataio);
-static void ahcipoll(struct cam_sim *sim);
+// static void ahcipoll(struct cam_sim *sim);
 
 // static MALLOC_DEFINE(M_AHCI, "AHCI driver", "AHCI driver data buffers");
 
@@ -795,9 +795,9 @@ ahci_ch_attach(device_t dev)
 	mtx_unlock(&ch->mtx);
  	return (0);
 
-err3:
+// err3:
 	// xpt_bus_deregister(cam_sim_path(ch->sim));
-err2:
+// err2:
 	// cam_sim_free(ch->sim, /*free_devq*/TRUE);
 err1:
 	bus_release_resource(dev, SYS_RES_IRQ, ATA_IRQ_RID, ch->r_irq);
@@ -1139,7 +1139,7 @@ ahci_cpd_check_events(struct ahci_channel *ch)
 static void
 ahci_notify_events(struct ahci_channel *ch, u_int32_t status)
 {
-	struct cam_path *dpath;
+	// struct cam_path *dpath;
 	int i;
 
 	if (ch->caps & AHCI_CAP_SSNTF)
@@ -1194,7 +1194,7 @@ static void
 ahci_ch_intr_direct(void *arg)
 {
 	struct ahci_channel *ch = (struct ahci_channel *)arg;
-  struct ccb_hdr *ccb_h;
+  // struct ccb_hdr *ccb_h;
 	uint32_t istatus;
   // STAILQ_HEAD(, ccb_hdr) tmp_doneq = STAILQ_HEAD_INITIALIZER(tmp_doneq);
   Queue2<PacketAtaio *> tmp_doneq;
@@ -2067,7 +2067,7 @@ ahci_issue_recovery(struct ahci_channel *ch)
   ataio = PacketAtaio::XptAlloc();
 	if (ataio == NULL) {
 		device_printf(ch->dev, "Unable to allocate recovery command\n");
-completeall:
+// completeall:
 		/* We can't do anything -- complete held commands. */
 		for (i = 0; i < ch->numslots; i++) {
 			if (ch->hold[i] == NULL)
@@ -2872,9 +2872,7 @@ ahciaction(struct ahci_channel *ch, PacketAtaio *ataio)
 AhciChannel *AhciChannel::Init(AhciCtrl *ctrl) {
   AhciChannel *channel = new AhciChannel(ctrl);
   channel->InitBsdDevice(channel, sizeof(struct ahci_channel));
-  ClassFunction<AhciChannel> func;
-  func.Init(channel, &AhciChannel::Handle, nullptr);
-  channel->devq.SetFunction(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), func);
+  channel->devq.SetFunction(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), make_uptr(new ClassFunction<AhciChannel, void *>(channel, &AhciChannel::Handle, nullptr)));
   return channel;
 }
 
@@ -2910,7 +2908,7 @@ void AhciChannel::Handle(void *) {
   ahciaction(ch, packet);
 }
 
-PacketAtaio *AhciChannel::MakePacket(uint32_t lba, uint8_t count, auptr<uint8_t> ptr, uint32_t flags, uint8_t cmd_flags, uint8_t command) {
+PacketAtaio *AhciChannel::MakePacket(uint32_t lba, uint8_t count, uptr<Array<uint8_t>> ptr, uint32_t flags, uint8_t cmd_flags, uint8_t command) {
   PacketAtaio *ataio = PacketAtaio::XptAlloc();
   ataio->target_id = 0;
   ataio->target_lun = 0;
@@ -2928,32 +2926,30 @@ PacketAtaio *AhciChannel::MakePacket(uint32_t lba, uint8_t count, auptr<uint8_t>
   ataio->cmd.lba_high = lba >> 16;
   ataio->cmd.device = ATA_DEV_LBA | ((lba >> 24) & 0x0f);
   ataio->cmd.sector_count = count;
-  ataio->dxfer_len = ptr.GetLen();
+  ataio->dxfer_len = ptr->GetLen();
   ataio->data_ptr = nullptr;
   ataio->ptr = ptr;
   return ataio;
 }
 
 void AhciChannel::Identify() {
-  auptr<uint8_t> ptr;
-  ptr.Init(sizeof(struct ata_params));
+  auto ptr = make_uptr(new Array<uint8_t>(sizeof(struct ata_params)));
   PacketAtaio *ataio = MakePacket(0, 0, ptr, CAM_DIR_IN, 0, ATA_ATA_IDENTIFY);
   devq.Push(ataio);
 }
 
 void AhciChannel::Read(int lba, int count) {
-  auptr<uint8_t> ptr;
-  ptr.Init(GetLogicalSectorSize() * count);
+  auto ptr = make_uptr(new Array<uint8_t>(GetLogicalSectorSize() * count));
   PacketAtaio *ataio = MakePacket(lba, count, ptr, CAM_DIR_IN, CAM_ATAIO_DMA, ATA_READ_DMA);
   devq.Push(ataio);
 }
 
-void AhciChannel::Write(int lba, auptr<uint8_t> ptr) {
-  kassert(ptr.GetLen() % GetLogicalSectorSize() == 0);
-  int count = ptr.GetLen() / GetLogicalSectorSize();
+void AhciChannel::Write(int lba, uptr<Array<uint8_t>> ptr) {
+  kassert(ptr->GetLen() % GetLogicalSectorSize() == 0);
+  int count = ptr->GetLen() / GetLogicalSectorSize();
   uint8_t c = 0;
   for(int i = 0; i < GetLogicalSectorSize(); i++) {
-    ptr[i] = c;
+    (*ptr)[i] = c;
     c++;
   }
   PacketAtaio *ataio = MakePacket(lba, count, ptr, CAM_DIR_OUT, CAM_ATAIO_DMA, ATA_WRITE_DMA);

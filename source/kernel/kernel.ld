@@ -83,6 +83,6 @@ SECTIONS{
   }
   bss_end_addr = .;
 
-  kHeapEndAddr   = 0xffffffff90000000;
+  kHeapEndAddr   = 0xfffffffff0000000;
   kKernelEndAddr = 0xffffffffffffffff;
 }

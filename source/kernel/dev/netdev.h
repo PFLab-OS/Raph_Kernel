@@ -31,6 +31,8 @@
 #include <polling.h>
 #include <freebsd/sys/param.h>
 #include <_cpu.h>
+#include <ptr.h>
+#include <array.h>
 
 class ProtocolStack;
 class DevEthernet;
@@ -45,11 +47,6 @@ public:
   /**
    * Network packet structure.
    *
-   * The body of data is corresponding to Packet::buf, which cannot be
-   * accessed directly, instead use a pointer Packet::buf to access it.
-   * If you dynamically allocate packets, DO NOT forget to call constructer,
-   * in which Packet::buf is aligned to Packet::data.
-   *
    * In protocol stack layers, Packet::buf will be incremented in order to
    * represent each layer packet. For example, in IP layer, which is
    * L3 protocol, Packet::buf will be incremented by 14, which is the length
@@ -57,12 +54,13 @@ public:
    */
   struct Packet {
   public:
-    Packet() : buf(data) {}
+    Packet() {}
     size_t len;
-    uint8_t *buf;
+    uint8_t *GetBuffer() {
+      return _data;
+    }
   private:
-    friend NetDev;
-    uint8_t data[MCLBYTES];  // only accessed via buf
+    uint8_t _data[MCLBYTES];  // only accessed via buf
   };
 
   enum class LinkStatus {
@@ -116,7 +114,6 @@ public:
    * @param packet a packet will be freed.
    */
   void ReuseRxBuffer(Packet *packet) {
-    packet->buf = packet->data;
     kassert(_rx_reserved.Push(packet));
   }
 
@@ -143,7 +140,6 @@ public:
   bool GetTxPacket(Packet *&packet) {
     if (_tx_reserved.Pop(packet)) {
       packet->len = MCLBYTES;
-      packet->buf = packet->data;
       return true;
     } else {
       return false;
@@ -184,7 +180,7 @@ public:
    * @param cpuid specify a core executing the callback.
    * @param func callback function.
    */
-  void SetReceiveCallback(CpuId cpuid, const GenericFunction &func) {
+  void SetReceiveCallback(CpuId cpuid, uptr<GenericFunction<>> func) {
     _rx_buffered.SetFunction(cpuid, func);
   }
 
@@ -195,7 +191,6 @@ public:
     while(!_tx_reserved.IsFull()) {
       Packet *packet_addr = reinterpret_cast<Packet *>(virtmem_ctrl->Alloc(sizeof(Packet)));
       Packet *packet = new(packet_addr) Packet();
-      packet->buf = packet->data;
       kassert(_tx_reserved.Push(packet));
     }
   }
@@ -207,7 +202,6 @@ public:
     while(!_rx_reserved.IsFull()) {
       Packet *packet_addr = reinterpret_cast<Packet *>(virtmem_ctrl->Alloc(sizeof(Packet)));
       Packet *packet = new(packet_addr) Packet();
-      packet->buf = packet->data;
       kassert(_rx_reserved.Push(packet));
     }
   }
@@ -284,8 +278,17 @@ public:
    * Set up the network interface. Usually you must register this interface
    * to network device controller (NetDevCtrl).
    * Other initialization can be done in this method.
+   *
+   * @param prefix name of interface
    */
-  virtual void SetupNetInterface() = 0;
+  virtual void SetupNetInterface(const char *prefix) = 0;
+
+  /**
+   * Simplified method of SetupNetInterface(const char *)
+   */
+  void SetupNetInterface() {
+    SetupNetInterface("eth");
+  }
 
   /**
    * Set protocol stack to this device.
@@ -367,7 +370,14 @@ public:
    * @return netdev_info the pair of network device and corresponding protocol stack.
    */
   NetDevInfo *GetDeviceInfo(const char *name);
-
+  
+  /**
+   * Get names list of all network devices
+   *
+   * @return unique pointer to the list
+   */
+  uptr<Array<const char *>> GetNamesOfAllDevices();
+  
   /**
    * Check if the specified network device exists or not.
    *
@@ -376,52 +386,6 @@ public:
    */
   bool Exists(const char *name) {
     return GetDeviceInfo(name) != nullptr;
-  }
-
-  /**
-   * Check if link of the network device is up or not.
-   *
-   * NOTE: even if this method returns false, it does not directly mean
-   * link is down, because the interface possibly does not exist.
-   * You must use NetDevCtrl::Exists to check if exists.
-   *
-   * @param name interface name.
-   * @return if link is up.
-   */
-  bool IsLinkUp(const char *name);
-
-  /**
-   * Assign IPv4 address to the specified network device.
-   *
-   * @param name interface name.
-   * @param addr IPv4 address.
-   * @return if the specified device supports IPv4 or not.
-   */
-  bool AssignIpv4Address(const char *name, uint32_t addr) {
-    NetDevInfo *info = this->GetDeviceInfo(name);
-
-    if (!info) {
-      return false;
-    } else {
-      return info->device->AssignIpv4Address(addr);
-    }
-  }
-
-  /**
-   * Get IPv4 address of the specified network device.
-   *
-   * @param name interface name.
-   * @param addr buffer to return.
-   * @return if the specified device supports IPv4 or not.
-   */
-  bool GetIpv4Address(const char *name, uint32_t &addr) {
-    NetDevInfo *info = this->GetDeviceInfo(name);
-
-    if (!info) {
-      return false;
-    } else {
-      return info->device->GetIpv4Address(addr);
-    }
   }
 
   /** maximum length of interface names */

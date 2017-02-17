@@ -16,20 +16,19 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
- * Author: Levelfour
+ * Author: Liva
  * 
  */
 
 #include <mem/virtmem.h>
 #include <dev/netdev.h>
-#include <net/pstack.h>
+// #include <net/pstack.h>
+#include <ptr.h>
 #include <global.h>
 
 NetDev::NetDev() {
-  ClassFunction<NetDev> func;
-  func.Init(this, &NetDev::Transmit, nullptr);
   extern CpuId network_cpu;
-  _tx_buffered.SetFunction(network_cpu, func);
+  _tx_buffered.SetFunction(network_cpu, make_uptr(new ClassFunction<NetDev, void *>(this, &NetDev::Transmit, nullptr)));
 }
 
 bool NetDevCtrl::RegisterDevice(NetDev *dev, const char *prefix) {
@@ -38,6 +37,7 @@ bool NetDevCtrl::RegisterDevice(NetDev *dev, const char *prefix) {
     char name[kNetworkInterfaceNameLen];
     strncpy(name, prefix, strlen(prefix));
     name[strlen(prefix)] = _current_device_number + '0';
+    name[strlen(prefix) + 1] = '\0';
 
     // succeed to register
     dev->SetName(name);
@@ -45,13 +45,13 @@ bool NetDevCtrl::RegisterDevice(NetDev *dev, const char *prefix) {
     _dev_table[_current_device_number].device = dev;
 
     // allocate protocol stack
-    ProtocolStack *addr = reinterpret_cast<ProtocolStack*>(virtmem_ctrl->Alloc(sizeof(ProtocolStack)));
-    ProtocolStack *ptcl_stack = new(addr) ProtocolStack();
-    ptcl_stack->Setup();
+    // ProtocolStack *addr = reinterpret_cast<ProtocolStack*>(virtmem_ctrl->Alloc(sizeof(ProtocolStack)));
+    // ProtocolStack *ptcl_stack = new(addr) ProtocolStack();
+    // ptcl_stack->Setup();
 
-    _dev_table[_current_device_number].ptcl_stack = ptcl_stack;
-    dev->SetProtocolStack(ptcl_stack);
-    ptcl_stack->SetDevice(dev);
+    // _dev_table[_current_device_number].ptcl_stack = ptcl_stack;
+    // dev->SetProtocolStack(ptcl_stack);
+    // ptcl_stack->SetDevice(dev);
 
     _current_device_number += 1;
 
@@ -74,12 +74,26 @@ NetDevCtrl::NetDevInfo *NetDevCtrl::GetDeviceInfo(const char *name) {
   return nullptr;
 }
 
-bool NetDevCtrl::IsLinkUp(const char *name) {
-  NetDevCtrl::NetDevInfo *info = this->GetDeviceInfo(name);
-
-  if (!info) {
-    return false;
-  } else {
-    return info->device->IsLinkUp();
+uptr<Array<const char *>> NetDevCtrl::GetNamesOfAllDevices() {
+  int j = 0;
+  for(uint32_t i = 0; i < _current_device_number; i++) {
+    if(_dev_table[i].device != nullptr) {
+      j++;
+    }
   }
+  
+  auto list = make_uptr(new Array<const char *>(j));
+
+  j = 0;
+  for(uint32_t i = 0; i < _current_device_number; i++) {
+    NetDev *dev = _dev_table[i].device;
+
+    if(dev != nullptr) {
+      (*list)[j] = dev->GetName();
+      j++;
+    }
+  }
+  
+  return list;
 }
+

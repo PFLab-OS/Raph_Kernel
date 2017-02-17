@@ -76,6 +76,18 @@ extern "C" {
     return s;
   }
 
+  static inline const char *strstr(const char *s1, const char *s2) {
+    // TODO should use better algorithm
+    size_t len = strlen(s2);
+    while(*s1 != '\0') {
+      if (strncmp(s1, s2, len) == 0) {
+        return s1;
+      }
+      s1++;
+    }
+    return NULL;
+  }
+
   static inline void *memcpy(void *dest, const void *src, size_t n) {
     uint8_t *d = (uint8_t *)dest;
     const uint8_t *s = (const uint8_t *)src;

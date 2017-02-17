@@ -26,37 +26,21 @@
 #include <setjmp.h>
 #include <_task.h>
 #include <_queue.h>
+#include <cpu.h>
+#include <global.h>
 
 // enable to blocking operation
 class TaskWithStack : public Task {
 public:
-  class TaskThread {
-  public:
-    TaskThread() {
-    }
-    void Init();
-    void SetFunc(const GenericFunction &func) {
-      _func.Copy(func);
-    }
-    ~TaskThread() {
-    }
-    void InitBuffer();
-    void Wait();
-    void SwitchTo();
-  private:  
-    virt_addr _stack;
-    jmp_buf _buf;
-    jmp_buf _return_buf;
-    FunctionBase _func;
-  };
-  TaskWithStack() {
+  TaskWithStack() = delete;
+  TaskWithStack(CpuId cpuid) : _tthread(cpuid) {
   }
   virtual ~TaskWithStack() {
   }
   void Init() {
     _tthread.Init();
   }
-  virtual void SetFunc(const GenericFunction &func) override {
+  virtual void SetFunc(uptr<GenericFunction<>> func) override {
     _tthread.SetFunc(func);
   }
   virtual void Execute() override {
@@ -68,6 +52,32 @@ public:
   virtual void Kill() override {
     kernel_panic("TaskWithStack", "not implemented");
   }
+  class TaskThread {
+  public:
+    TaskThread() = delete;
+    TaskThread(CpuId cpuid) : _cpuid(cpuid) {
+      assert(cpuid.IsValid());
+    }
+    void Init();
+    void SetFunc(uptr<GenericFunction<>> func) {
+      _func = func;
+    }
+    ~TaskThread() {
+    }
+    void InitBuffer();
+    void Wait();
+    void SwitchTo();
+  private:  
+    virt_addr _stack;
+    jmp_buf _buf;
+    jmp_buf _return_buf;
+    uptr<GenericFunction<>> _func;
+    CpuId _cpuid;
+    enum State {
+      kRunning,
+      kWaiting,
+    } _state = State::kWaiting;
+  };
 private:
   TaskThread _tthread;
 };
@@ -82,9 +92,8 @@ public:
   };
   TaskCtrl() {}
   void Setup();
-  void Register(CpuId cpuid, Task *task);
-  void Remove(Task *task);
-  void Wait();
+  void Register(CpuId cpuid, sptr<Task> task);
+  void Remove(sptr<Task> task);
   void Run();
   TaskQueueState GetState(CpuId cpuid) {
     if (_task_struct == nullptr) {
@@ -92,27 +101,30 @@ public:
     }
     return _task_struct[cpuid.GetRawId()].state;
   }
+  void RegisterCallout2(sptr<Callout> task, int us);
+  void RegisterCallout(sptr<Callout> task, int us) {
+    RegisterCallout(task, cpu_ctrl->GetCpuId(), us);
+  }
+  void RegisterCallout(sptr<Callout> task, CpuId cpuid, int us);
+  bool CancelCallout(sptr<Callout> task);
 private:
   
-  friend Callout;
-  void RegisterCallout(Callout *task);
-  void CancelCallout(Callout *task);
   void ForceWakeup(CpuId cpuid); 
   class TaskStruct {
   public:
     TaskStruct();
     // queue
-    Task *top;
-    Task *bottom;
-    Task *top_sub;
-    Task *bottom_sub;
-    IntSpinLock lock;
+    sptr<Task> top;
+    sptr<Task> bottom;
+    sptr<Task> top_sub;
+    sptr<Task> bottom_sub;
+    SpinLock lock;
 
     TaskQueueState state;
 
     // for Callout
-    IntSpinLock dlock;
-    Callout *dtop;
+    SpinLock dlock;
+    sptr<Callout> dtop;
 
   } *_task_struct = nullptr;
   // this const value defines interval of wakeup task controller when all task slept

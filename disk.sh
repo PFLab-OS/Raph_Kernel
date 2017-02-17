@@ -1,5 +1,5 @@
 MOUNT_DIR="/mnt/Raph_Kernel"
-IMAGE="disk.img"
+IMAGE="/tmp/disk.img"
 
 umount() {
     sudo umount ${MOUNT_DIR}

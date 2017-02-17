@@ -29,6 +29,10 @@
 #ifndef _FREEBSD_SYS_ENDIAN_H_
 #define _FREEBSD_SYS_ENDIAN_H_
 
+#define htobe16(x)  __builtin_bswap16((x))
+#define htobe32(x)  __builtin_bswap32((x))
+#define htobe64(x)  __builtin_bswap64((x))
+
 #define	htole16(x)	((uint16_t)(x))
 #define	htole32(x)	((uint32_t)(x))
 #define	htole64(x)	((uint64_t)(x))

@@ -1,8 +1,8 @@
-OBJS = em.o
+OBJS = em.o ix.o
 
 DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))
 
-.PHONY: clean em.o
+.PHONY: clean em.o ix.o
 
 default: ../intel.o
 
@@ -12,8 +12,12 @@ default: ../intel.o
 	ld -r $^ -o $@
 
 em.o:
-	make -C em CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
+	@$(MAKE) -C em CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
+
+ix.o:
+	@$(MAKE) -C ix CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
 
 clean:
-	make -C em clean
+	$(MAKE) -C em clean
+	$(MAKE) -C ix clean
 	-rm -f $(OBJS) $(TEST_OBJS) $(DEPS) *.s *.ii

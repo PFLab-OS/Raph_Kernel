@@ -23,11 +23,7 @@
 #include <apic.h>
 #include <global.h>
 #include <cpu.h>
-
-//
-// CpuCtrl
-//
-
+#include <tty.h>
 
 void CpuCtrl::Init() {
   _cpu_purpose_map = new CpuPurpose[apic_ctrl->GetHowManyCpus()];
@@ -59,4 +55,9 @@ CpuId CpuCtrl::RetainCpuIdForPurpose(CpuPurpose p) {
     return CpuId(cpu_id);
   }
   return CpuId(CpuId::kCpuIdBootProcessor);
+}
+
+void CpuId::Error() {
+  gtty->CprintfRaw("[CpuId] error: unknown rawid %d\n", _rawid);
+  kernel_panic("CpuId", "Invalid ID");
 }

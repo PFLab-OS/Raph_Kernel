@@ -31,6 +31,7 @@
 #include <cam/cam.h>
 #include <cam/cam_ccb.h>
 #include <ptr.h>
+#include <array.h>
 
 class AhciChannel;
 
@@ -52,7 +53,7 @@ public:
   uint32_t dxfer_len;
   uint8_t *data_ptr;
 
-  auptr<uint8_t> ptr;
+  uptr<Array<uint8_t>> ptr;
 
   enum class Status {
     kErr,
@@ -153,7 +154,7 @@ public:
   }
   void Identify();
   void Read(int lba, int count);
-  void Write(int lba, auptr<uint8_t> ptr);
+  void Write(int lba, uptr<Array<uint8_t>> ptr);
   void DonePacket(PacketAtaio *ataio);
   void Handle(void *);
   static AhciChannel *Init(AhciCtrl *ctrl);
@@ -186,7 +187,7 @@ public:
   }
 private:
   AhciChannel();
-  PacketAtaio *MakePacket(uint32_t lba, uint8_t count, auptr<uint8_t> ptr, uint32_t flags, uint8_t cmd_flags, uint8_t command);
+  PacketAtaio *MakePacket(uint32_t lba, uint8_t count, uptr<Array<uint8_t>> ptr, uint32_t flags, uint8_t cmd_flags, uint8_t command);
   virtual int DevMethodBusProbe() override final;
   virtual int DevMethodBusAttach() override final;
   virtual int DevMethodBusSetupIntr(struct resource *r, int flags, driver_filter_t filter, driver_intr_t ithread, void *arg, void **cookiep) override final;

@@ -42,7 +42,7 @@ public:
     E1000BsdEthernet(E1000 &master) : _master(master) {
     }
     
-    static void PollingHandler(void *arg);
+    static void PollingHandler(E1000 *that);
     
     virtual void UpdateLinkStatus() override;
     

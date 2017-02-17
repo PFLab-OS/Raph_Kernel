@@ -15,8 +15,13 @@ Desktop.ini
 .Spotlight-V100
 .Trashes
 
-testcase/test.c
-hoge.c
+load.cfg
+disk.img
+disk.vdi
+net/disk.img.gz
+.vagrant
+.ssh_config
+build/
 
 # Object files
 *.o
@@ -53,6 +58,7 @@ hoge.c
 *.dSYM/
 *.s
 *.i
+*.ii
 
 # Makefile
 *.d

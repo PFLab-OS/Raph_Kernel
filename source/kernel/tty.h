@@ -30,6 +30,7 @@
 #include <spinlock.h>
 #include <queue.h>
 #include <global.h>
+#include <buf.h>
 
 class Tty {
  public:
@@ -67,50 +68,36 @@ class Tty {
     va_end(args);
   }
   void Cvprintf(const char *fmt, va_list args) {
-    String *str = String::New();
+    String *str = String::Get(_str_buffer);
     Cvprintf_sub(str, fmt, args);
-    str->Exit();
+    str->Exit(_str_buffer);
     DoString(str);
   }
   void CvprintfRaw(const char *fmt, va_list args) {
     String str;
     Cvprintf_sub(&str, fmt, args);
-    str.Exit();
+    str.Exit(_str_buffer);
     Locker locker(_lock);
     PrintString(&str);
   }
-  [[deprecated]] void Printf() {
-  }
-  template<class... T>
-  [[deprecated]] void Printf(const T& ...args) {
-    String *str = String::New();
-    Printf_sub1(*str, args...);
-    str->Exit();
-    DoString(str);
-  }
-  // use to print error message
-  template<class... T>
-  [[deprecated]] void PrintfRaw(const T& ...args) {
-    String str;
-    str.Init();
-    str.type = String::Type::kSingle;
-    Printf_sub1(str, args...);
-    str.Exit();
-    Locker locker(_lock);
-    PrintString(&str);
-  }
+  virtual void PrintShell(const char *str) = 0;
   virtual void SetColor(Color) = 0;
   virtual void ResetColor() = 0;
  protected:
+  virtual void _Init() {
+  }
   virtual void Write(uint8_t c) = 0;
   int _cx = 0;
   int _cy = 0;
  private:
+  class String;
+  using StringBuffer = RingBuffer<String *, 64>;
   class String {
   public:
     enum class Type {
       kSingle,
       kQueue,
+      kBuffered,
     } type;
     String() {
       type = Type::kSingle;
@@ -118,161 +105,95 @@ class Tty {
       next = nullptr;
     } 
     static String *New();
-    void Delete();
-    void Init() {
-      type = Type::kQueue;
-      offset = 0;
-      next = nullptr;
+    static void Init(StringBuffer &buf);
+    static String *Get(StringBuffer &buf) {
+      String *s;
+      if (buf.Pop(s)) {
+        return s;
+      } else {
+        String *s_ = New();
+        return s_;
+      }
     }
-    void Write(const uint8_t c) {
+    void Delete(StringBuffer &buf);
+    void Write(const uint8_t c, StringBuffer &buf) {
       if (offset == length) {
         if (next == nullptr) {
           if (type == Type::kQueue) {
             String *s = New();
             next = s;
-            next->Write(c);
+            next->Write(c, buf);
+          } else if (type == Type::kBuffered) {
+            String *s = Get(buf);
+            next = s;
+            next->Write(c, buf);
           }
         } else {
-          next->Write(c);
+          next->Write(c, buf);
         }
       } else {
         str[offset] = c;
         offset++;
       }
     }
-    void Exit() {
-      Write('\0');
+    void Exit(StringBuffer &buf) {
+      Write('\0', buf);
     }
     static const int length = 100;
     uint8_t str[length];
     int offset;
     String *next;
   };
-  static void Handle(void *tty){
-    Tty *that = reinterpret_cast<Tty *>(tty);
+  void Handle(void *){
     void *s;
-    while(that->_queue.Pop(s)) {
+    while(_queue.Pop(s)) {
       String *str = reinterpret_cast<String *>(s);
       {
-        Locker locker(that->_lock);
-        that->PrintString(str);
+        Locker locker(_lock);
+        PrintString(str);
       }
-      str->Delete();
+      str->Delete(_str_buffer);
     }
   }
   void Cvprintf_sub(String *str, const char *fmt, va_list args);
-  void Printf_sub1(String &str) {
-  }
-  template<class T>
-    void Printf_sub1(String &str, T /* arg */) {
-    Printf_sub2(str, "s", "(invalid format)");
-  }
-  template<class T1, class T2, class... T>
-    void Printf_sub1(String &str, const T1 &arg1, const T2 &arg2, const T& ...args) {
-    Printf_sub2(str, arg1, arg2);
-    Printf_sub1(str, args...);
-  }
-
-  void Printf_sub2(String &str, const char *arg1, const char arg2) {
-    if (strcmp(arg1, "c")) {
-      Printf_sub2(str, "s", "(invalid format)");
-    } else {
-      str.Write(arg2);
-    }
-  }
-  void Printf_sub2(String &str, const char* arg1, const char *arg2) {
-    if (strcmp(arg1, "s")) {
-      Printf_sub2(str, "s", "(invalid format)");
-    } else {
-      while(*arg2) {
-        str.Write(*arg2);
-        arg2++;
-      }
-    }
-  }
-  void Printf_sub2(String &str, const char *arg1, const int8_t arg2) {
-    PrintInt(str, arg1, arg2);
-  }
-  void Printf_sub2(String &str, const char *arg1, const int16_t arg2) {
-    PrintInt(str, arg1, arg2);
-  }
-  void Printf_sub2(String &str, const char *arg1, const int32_t arg2) {
-    PrintInt(str, arg1, arg2);
-  }
-  void Printf_sub2(String &str, const char *arg1, const int64_t arg2) {
-    PrintInt(str, arg1, arg2);
-  }
-  void Printf_sub2(String &str, const char *arg1, const uint8_t arg2) {
-    PrintInt(str, arg1, arg2);
-  }
-  void Printf_sub2(String &str, const char *arg1, const uint16_t arg2) {
-    PrintInt(str, arg1, arg2);
-  }
-  void Printf_sub2(String &str, const char *arg1, const uint32_t arg2) {
-    PrintInt(str, arg1, arg2);
-  }
-  void Printf_sub2(String &str, const char *arg1, const uint64_t arg2) {
-    PrintInt(str, arg1, arg2);
-  }
-  template<class T1>
-    void Printf_sub2(String &str, const char *arg1, const T1& /*arg2*/) {
-    Printf_sub2(str, "s", "(unknown)");
-  }
-  template<class T1, class T2>
-    void Printf_sub2(String &str, const T1& /*arg1*/, const T2& /*arg2*/) {
-    Printf_sub2(str, "s", "(invalid format)");
-  }
-  void PrintInt(String &str, const char *arg1, const int arg2) {
-    if (!strcmp(arg1, "d")) {
-      if (arg2 < 0) {
-        str.Write('-');
-      }
-      unsigned int _arg2 = (arg2 < 0) ? -arg2 : arg2;
-      unsigned int i = _arg2;
-      int digit = 0;
-      while (i >= 10) {
-        i /= 10;
-        digit++;
-      }
-      for (int j = digit; j >= 0; j--) {
-        i = 1;
-        for (int k = 0; k < j; k++) {
-          i *= 10;
-        }
-        unsigned int l = _arg2 / i;
-        str.Write(l + '0');
-        _arg2 -= l * i;
-      }
-    } else if (!strcmp(arg1, "x")) {
-      unsigned int _arg2 = arg2;
-      unsigned int i = _arg2;
-      int digit = 0;
-      while (i >= 16) {
-        i /= 16;
-        digit++;
-      }
-      for (int j = digit; j >= 0; j--) {
-        i = 1;
-        for (int k = 0; k < j; k++) {
-          i *= 16;
-        }
-        unsigned int l = _arg2 / i;
-        if (l < 10) {
-          str.Write(l + '0');
-        } else if (l < 16) {
-          str.Write(l - 10 + 'A');
-        }
-        _arg2 -= l * i;
-      }
-    } else {
-      Printf_sub2(str, "s", "(invalid format)");
-    }
-  } 
   void PrintString(String *str);
   void DoString(String *str);
   FunctionalQueue _queue;
-  IntSpinLock _lock;
+  SpinLock _lock;
   CpuId _cpuid;
+  StringBuffer _str_buffer;
+};
+
+class StringTty : public Tty {
+public:
+  StringTty() = delete;
+  StringTty(int buffer_size) : _buffer_size(buffer_size) {
+    _offset = 0;
+    _buf = new char[buffer_size];
+  }
+  ~StringTty() {
+    delete[] _buf;
+  }
+  char *GetRawPtr() {
+    return _buf;
+  }
+private:
+  virtual void PrintShell(const char *str) override {
+    kassert(false);
+  }
+  virtual void SetColor(Color) override {
+  }
+  virtual void ResetColor() override {
+  }
+  virtual void Write(uint8_t c) {
+    assert(_offset + 1 < _buffer_size);
+    _buf[_offset] = c;
+    _buf[_offset + 1] = '\0';
+    _offset++;
+  }
+  char *_buf;
+  int _offset;
+  const int _buffer_size;
 };
 
 #endif // __RAPH_KERNEL_TTY_H__

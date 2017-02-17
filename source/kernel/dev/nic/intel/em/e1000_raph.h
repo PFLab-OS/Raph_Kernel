@@ -50,11 +50,7 @@ static inline int sprintf(const char *s, const char *format, ...) {
 
 typedef char *caddr_t;
 
-struct ifmedia {};
-
 struct mbuf {};
-
-typedef struct {} eventhandler_tag;
 
 #define DRIVER_MODULE(...) 
 #define MODULE_DEPEND(...)
