@@ -58,29 +58,24 @@ void TaskCtrl::Run() {
     if (oldstate == TaskQueueState::kNotRunning) {
       uint64_t time = timer->GetCntAfterPeriod(timer->ReadMainCnt(), kTaskExecutionInterval);
       
+      Locker locker1(ts->dlock);
       sptr<Callout> dt = ts->dtop;
       while(true) {
         sptr<Callout> dtt;
-        {
-          Locker locker(ts->dlock);
-          dtt = dt->_next;
-          if (dtt.IsNull()) {
-            break;
-          }
-          if (timer->IsGreater(dtt->_time, time)) {
-            break;
-          }
-          if (dtt->_lock.Trylock() < 0) {
-            // retry
-            continue;
-          }
-          dt->_next = dtt->_next;
+        dtt = dt->_next;
+        if (dtt.IsNull()) {
+          break;
         }
-        dtt->_next = make_sptr<Callout>();
-        dtt->_state = Callout::CalloutState::kTaskQueue;
-        Register(cpuid, dtt->_task);
-        dtt->_lock.Unlock();
-        break;
+        if (timer->IsGreater(dtt->_time, time)) {
+          break;
+        }
+        {
+          Locker locker2(dtt->_lock);
+          dt->_next = dtt->_next;
+          dtt->_next = make_sptr<Callout>();
+          dtt->_state = Callout::CalloutState::kTaskQueue;
+          Register(cpuid, dtt->_task);
+        }
       }
     }
     while(true) {
@@ -116,27 +111,32 @@ void TaskCtrl::Run() {
           }
         }
       }
-      Locker locker(ts->lock);
+      {
+        Locker locker(ts->lock);
 
-      if (ts->top->_next.IsNull() &&
-          ts->top_sub->_next.IsNull()) {
-        ts->state = TaskQueueState::kSlept;
-        break;
+        if (ts->top->_next.IsNull() &&
+            ts->top_sub->_next.IsNull()) {
+          ts->state = TaskQueueState::kSlept;
+          break;
+        }
+        sptr<Task> tmp;
+        tmp = ts->top;
+        ts->top = ts->top_sub;
+        ts->top_sub = tmp;
+
+        tmp = ts->bottom;
+        ts->bottom = ts->bottom_sub;
+        ts->bottom_sub = tmp;
       }
-      sptr<Task> tmp;
-      tmp = ts->top;
-      ts->top = ts->top_sub;
-      ts->top_sub = tmp;
 
-      tmp = ts->bottom;
-      ts->bottom = ts->bottom_sub;
-      ts->bottom_sub = tmp;
-
-      sptr<Callout> dtt = ts->dtop->_next;
       volatile uint64_t time = timer->GetCntAfterPeriod(timer->ReadMainCnt(), kTaskExecutionInterval);
-      if (!dtt.IsNull() && timer->IsGreater(time, dtt->_time)) {
-	ts->state = TaskQueueState::kNotRunning;
-	break;
+      {
+        Locker locker(ts->dlock);
+        sptr<Callout> dtt = ts->dtop->_next;
+        if (!dtt.IsNull() && timer->IsGreater(time, dtt->_time)) {
+          ts->state = TaskQueueState::kNotRunning;
+          break;
+        }
       }
     }
     
@@ -218,12 +218,6 @@ void TaskCtrl::Remove(sptr<Task> task) {
   }
 }
 
-void TaskCtrl::Wait() {
-  // TODO
-  // detect if lock acquired in current task
-  // it will cause deadlock
-}
-
 extern "C" {
   void initialize_TaskThread(TaskWithStack::TaskThread *t) {
     t->InitBuffer();
@@ -231,7 +225,7 @@ extern "C" {
 }
 
 void TaskWithStack::TaskThread::Init() {
-  _stack = KernelStackCtrl::GetCtrl().AllocThreadStack(cpu_ctrl->GetCpuId());
+  _stack = KernelStackCtrl::GetCtrl().AllocThreadStack(_cpuid);
   if (setjmp(_return_buf) == 0) {
     asm volatile("movq %0, %%rsp;"
                  "call initialize_TaskThread;"
@@ -246,29 +240,61 @@ void TaskWithStack::TaskThread::InitBuffer() {
     // return back to TaskThread::Init()
   } else {
     // call from TaskThread::SwitchTo()
-    while(true) {
-      _func->Execute();
-      Wait();
-    }
+    assert(_cpuid == cpu_ctrl->GetCpuId());
+    _func->Execute();
+    longjmp(_return_buf, 1);
   }
   kernel_panic("TaskThread", "unexpectedly ended.");
 }
 
 void TaskWithStack::TaskThread::Wait() {
   if (setjmp(_buf) == 0) {
+    _state = State::kWaiting;
     longjmp(_return_buf, 1);
   }
+  assert(_cpuid == cpu_ctrl->GetCpuId());
 }
 
 void TaskWithStack::TaskThread::SwitchTo() {
-  // TODO have to set current cpuid
-  kassert(false);
+  assert(_cpuid == cpu_ctrl->GetCpuId());
+  assert(_state == State::kWaiting);
+  _state = State::kRunning;
   if (setjmp(_return_buf) == 0) {
     longjmp(_buf, 1);
   }
 }
 
 void TaskCtrl::RegisterCallout(sptr<Callout> task, CpuId cpuid, int us) {
+  assert(task->_state == Callout::CalloutState::kHandling || task->_state == Callout::CalloutState::kStopped);
+  task->SetHandler(task, cpuid, us);
+  TaskStruct *ts = &_task_struct[task->_cpuid.GetRawId()];
+  {
+    Locker locker(ts->dlock);
+    sptr<Callout> dt = ts->dtop;
+    while(true) {
+      sptr<Callout> dtt = dt->_next;
+      if (dtt.IsNull()) {
+        task->_state = Callout::CalloutState::kCalloutQueue;
+      	task->_next = make_sptr<Callout>();
+      	dt->_next = task;
+      	break;
+      }
+      if (timer->IsGreater(dtt->_time, task->_time)) {
+        task->_state = Callout::CalloutState::kCalloutQueue;
+        task->_next = dtt;
+        dt->_next = task;
+        break;
+      }
+      dt = dtt;
+    }
+  }
+
+  ForceWakeup(task->_cpuid);
+}
+
+void TaskCtrl::RegisterCallout2(sptr<Callout> task, int us) {
+  assert(task->_state == Callout::CalloutState::kHandling || task->_state == Callout::CalloutState::kStopped);
+  CpuId cpuid = cpu_ctrl->GetCpuId();
   task->SetHandler(task, cpuid, us);
   TaskStruct *ts = &_task_struct[task->_cpuid.GetRawId()];
   {
@@ -375,12 +401,19 @@ void Callout::Cancel() {
 
 void Callout::HandleSub2(sptr<Callout> callout) {
   if (timer->IsTimePassed(_time)) {
-    _pending = false;
-    _state = CalloutState::kHandling;
-    _task->SetFunc(make_uptr<GenericFunction<>>());
+    {
+      Locker locker(_lock);
+      _pending = false;
+      _state = CalloutState::kHandling;
+      _task->SetFunc(make_uptr<GenericFunction<>>());
+    }
     _func->Execute();
-    if (_state == CalloutState::kHandling) {
-      _state = CalloutState::kStopped;
+    {
+      // TODO CASにする
+      Locker locker(_lock);
+      if (_state == CalloutState::kHandling) {
+        _state = CalloutState::kStopped;
+      }
     }
   } else {
     task_ctrl->Register(cpu_ctrl->GetCpuId(), _task);

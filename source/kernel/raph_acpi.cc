@@ -53,6 +53,33 @@ void AcpiCtrl::Setup() {
   if (!ACPI_FAILURE(AcpiGetTable(const_cast<char *>("SRAT"), 1, &srat))) {
     physmem_ctrl->SetSrat(reinterpret_cast<Srat *>(srat));
   }
+
+  gtty->CprintfRaw("PMTT Info:\n");
+  acpi_table_pmtt *pmtt;
+  if (!ACPI_FAILURE(AcpiGetTable(const_cast<char *>("PMTT"), 1, reinterpret_cast<ACPI_TABLE_HEADER **>(&pmtt)))) {
+    for (uint32_t offset = sizeof(acpi_table_pmtt); offset < pmtt->Header.Length;) {
+      acpi_pmtt_header *subtable = addr2ptr<acpi_pmtt_header>(ptr2virtaddr(pmtt) + offset);
+      switch (subtable->Type) {
+      case ACPI_PMTT_TYPE_SOCKET: {
+        acpi_pmtt_socket *sockettable = reinterpret_cast<acpi_pmtt_socket *>(subtable);
+        gtty->CprintfRaw("Socket: %d \n", sockettable->SocketId);
+        for (uint32_t offset2 = sizeof(acpi_pmtt_socket); offset2 < sockettable->Header.Length;) {
+          acpi_pmtt_controller *controllertable = addr2ptr<acpi_pmtt_controller>(ptr2virtaddr(sockettable) + offset2);
+          assert(controllertable->Header.Type == ACPI_PMTT_TYPE_CONTROLLER);
+          gtty->CprintfRaw("  Controller: RB %dMB/s WB %dMB/s RL %dns WL %dns\n", controllertable->ReadBandwidth, controllertable->WriteBandwidth, controllertable->ReadLatency, controllertable->WriteLatency);
+          offset2 += controllertable->Header.Length;
+        }
+        break;
+      }
+      case ACPI_PMTT_TYPE_CONTROLLER: {
+        acpi_pmtt_controller *controllertable = reinterpret_cast<acpi_pmtt_controller *>(subtable);
+        gtty->CprintfRaw("Controller: R %dns W %dns\n", controllertable->ReadLatency, controllertable->WriteLatency);
+        break;
+      }
+      }
+      offset += subtable->Length;
+    }
+  }
 }
 
 MCFG *AcpiCtrl::GetMCFG() {

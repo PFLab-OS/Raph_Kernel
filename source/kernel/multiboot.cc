@@ -90,6 +90,22 @@ void MultibootCtrl::Setup() {
       break;
     }
   }
+
+  // load module info
+  for (multiboot_tag *tag = reinterpret_cast<multiboot_tag *>(addr); tag->type != MULTIBOOT_TAG_TYPE_END; addr = alignUp(addr + tag->size, 8), tag = reinterpret_cast<multiboot_tag *>(addr)) {
+    switch(tag->type) {
+    case MULTIBOOT_TAG_TYPE_MODULE: {
+      multiboot_tag_module* info = (struct multiboot_tag_module *) tag;
+      phys_addr start = PagingCtrl::RoundUpAddrOnPageBoundary(info->mod_start);
+      phys_addr end = PagingCtrl::RoundUpAddrOnPageBoundary(info->mod_end);
+      physmem_ctrl->Reserve(start, end - start);
+      break;
+    }
+    default:
+      break;
+    }
+  }
+  // TODO reserved area must be released
 }
 
 void MultibootCtrl::ShowModuleInfo() {
