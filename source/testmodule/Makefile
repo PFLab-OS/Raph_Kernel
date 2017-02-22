@@ -1,7 +1,7 @@
 MODULE = testmodule
 #SRCS = testmodule.cc stubstart.S
 SRCS = testmodule.cc
-CC = /usr/local/musl/bin/musl-gcc
+CC = /home/vagrant/newlib-gcc/bin/g++
 
 defalut:
 	$(MAKE) $(MODULE)
@@ -9,7 +9,7 @@ defalut:
 
 $(MODULE) : $(SRCS) Makefile
 #	g++ -nostdlib -fPIE -static -o $(MODULE) $(SRCS)
-	$(CC) -g0 -mcmodel=large -pie -fPIE -static -o $(MODULE) $(SRCS)
+	$(CC) -g0 -mcmodel=large -static -o $(MODULE) $(SRCS)
 
 clean:
 	-rm $(MODULE)

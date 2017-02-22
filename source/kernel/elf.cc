@@ -44,7 +44,6 @@ void readElf(const void *p)
 {
   const uint8_t *head = reinterpret_cast<const uint8_t *>(p);
   const Elf64_Ehdr *ehdr = reinterpret_cast<const Elf64_Ehdr *>(p);
-  const Elf64_Shdr *shstr;
 
   // IA32_EFER.SCE = 1
   SystemCallCtrl::init();
@@ -56,25 +55,36 @@ void readElf(const void *p)
   gtty->CprintfRaw("ABI: %d\n", ehdr->e_ident[EI_OSABI]);
   gtty->CprintfRaw("Entry point is 0x%08x \n", ehdr->e_entry);
 
-  shstr = (Elf64_Shdr *)(head + ehdr->e_shoff + ehdr->e_shentsize * ehdr->e_shstrndx);
-  const Elf64_Shdr *shdr = (const Elf64_Shdr *)ehdr->e_shoff;
-
+  const Elf64_Shdr *shstr = &reinterpret_cast<const Elf64_Shdr *>(head + ehdr->e_shoff)[ehdr->e_shstrndx];
   
   gtty->CprintfRaw("%c\n", head[0x1080]);
 
   Elf64_Xword total_memsize = 0;
 
   gtty->CprintfRaw("Sections:\n");
-  for(int i = 0; i < ehdr->e_shnum; i++){
-    const Elf64_Shdr *shdr = (const Elf64_Shdr *)(head + ehdr->e_shoff + ehdr->e_shentsize * i);
-    const char *sname = (const char *)(head + shstr->sh_offset + shdr->sh_name); 
-    gtty->CprintfRaw(" [%2d] %s size: %x offset: %x\n", i, sname, shdr->sh_size, shdr->sh_offset);
-    if (total_memsize < shdr->sh_addr + shdr->sh_offset) {
-      total_memsize = shdr->sh_addr + shdr->sh_offset;
+  if (ehdr->e_shstrndx != SHN_UNDEF) {
+    const char *strtab = reinterpret_cast<const char *>(head + shstr->sh_offset);
+    gtty->CprintfRaw("<%llx %llx>", ehdr->e_shoff, ehdr->e_shstrndx);
+    gtty->CprintfRaw("<%llx %llx %llx>", (uint64_t)strtab, &shstr->sh_offset, (uint64_t)shstr->sh_offset);
+    for(int i = 0; i < ehdr->e_shnum; i++){
+      const Elf64_Shdr *shdr = (const Elf64_Shdr *)(head + ehdr->e_shoff + ehdr->e_shentsize * i);
+      const char *sname = strtab + shdr->sh_name;
+      gtty->CprintfRaw(" [%2d] %s size: %x offset: %x\n", i, sname, shdr->sh_size, shdr->sh_offset);
+      if (total_memsize < shdr->sh_addr + shdr->sh_offset) {
+        total_memsize = shdr->sh_addr + shdr->sh_offset;
+      }
     }
   }
 
-  uint8_t *membuffer = reinterpret_cast<uint8_t *>(malloc(total_memsize));
+  uint8_t *membuffer;
+  if (ehdr->e_type == ET_DYN) {
+    membuffer = reinterpret_cast<uint8_t *>(malloc(total_memsize));
+  } else if (ehdr->e_type == ET_EXEC) {
+    membuffer = reinterpret_cast<uint8_t *>(0);
+    kassert(false);
+  } else {
+    kassert(false);
+  }
   gtty->CprintfRaw("membuffer: 0x%llx (%llx)\n", membuffer, total_memsize);
   // PT_LOADとなっているセグメントをメモリ上にロード
   for(int i = 0; i < ehdr->e_phnum; i++){
