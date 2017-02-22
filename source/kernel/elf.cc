@@ -57,15 +57,11 @@ void readElf(const void *p)
 
   const Elf64_Shdr *shstr = &reinterpret_cast<const Elf64_Shdr *>(head + ehdr->e_shoff)[ehdr->e_shstrndx];
   
-  gtty->CprintfRaw("%c\n", head[0x1080]);
-
   Elf64_Xword total_memsize = 0;
 
   gtty->CprintfRaw("Sections:\n");
   if (ehdr->e_shstrndx != SHN_UNDEF) {
     const char *strtab = reinterpret_cast<const char *>(head + shstr->sh_offset);
-    gtty->CprintfRaw("<%llx %llx>", ehdr->e_shoff, ehdr->e_shstrndx);
-    gtty->CprintfRaw("<%llx %llx %llx>", (uint64_t)strtab, &shstr->sh_offset, (uint64_t)shstr->sh_offset);
     for(int i = 0; i < ehdr->e_shnum; i++){
       const Elf64_Shdr *shdr = (const Elf64_Shdr *)(head + ehdr->e_shoff + ehdr->e_shentsize * i);
       const char *sname = strtab + shdr->sh_name;
@@ -99,7 +95,6 @@ void readElf(const void *p)
   // セクション .bss を0クリア
   for(int i = 0; i < ehdr->e_shnum; i++){
     const Elf64_Shdr *shdr = (const Elf64_Shdr *)(head + ehdr->e_shoff + ehdr->e_shentsize * i);
-    const char *sname = (const char *)(head + shstr->sh_offset + shdr->sh_name); 
     if (shdr->sh_type == SHT_NOBITS) {
       if ((shdr->sh_flags & SHF_ALLOC) != 0) {
         memset(membuffer + shdr->sh_addr, 0, shdr->sh_size);
