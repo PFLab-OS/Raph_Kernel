@@ -66,11 +66,6 @@ void Shell::Execute(uptr<ExecContainer> ec) {
   if (ec->argc > 0) {
     auto callout_ = make_sptr(new Callout);
     callout_->Init(make_uptr(new Function2<wptr<Callout>, uptr<ExecContainer>>([](wptr<Callout> callout, uptr<ExecContainer> ec_) {
-            gtty->Cprintf(">", ec_->name);
-            for (int i = 0; i < ec_->argc; i++) {
-              gtty->Cprintf(" %s", ec_->argv[i]);
-            }
-            gtty->Cprintf("\n");
             ec_->shell->Exec(ec_->name, ec_->argc, ec_->argv);
           }, make_wptr(callout_), ec)));
     task_ctrl->RegisterCallout(callout_, cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), 0);
@@ -81,6 +76,7 @@ void Shell::Liner::ReadCh(char c) {
   if (c == '\n') {
     auto ec = make_uptr(new ExecContainer(_shell));
     ec = Tokenize(ec, _command);
+    gtty->Cprintf("> %s\n", _command);
     _shell->Execute(ec);
     Reset();
   } else if (c == '\b') {

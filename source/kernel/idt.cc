@@ -102,7 +102,7 @@ void Idt::SetupGeneric() {
   }
   _is_gen_initialized = true;
   for (int i = 0; i < apic_ctrl->GetHowManyCpus(); i++) {
-    CpuId cpuid(apic_ctrl->GetCpuIdFromApicId(i));
+    CpuId cpuid(i);
     SetExceptionCallback(cpuid, 14, HandlePageFault, nullptr);
   }
 }

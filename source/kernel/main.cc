@@ -89,23 +89,17 @@ AhciChannel *g_channel = nullptr;
 #include <dev/fs/fat/fat.h>
 FatFs *fatfs;
 
-#ifdef FLAG_MEMBENCH
-static const bool do_membench = true;
-#else
-static const bool do_membench = false;
-#endif
-
 void register_membench2_callout();
 
-void halt(int argc, const char* argv[]) {
+static void halt(int argc, const char* argv[]) {
   acpi_ctrl->Shutdown();
 }
 
-void reset(int argc, const char* argv[]) {
+static void reset(int argc, const char* argv[]) {
   acpi_ctrl->Reset();
 }
 
-void lspci(int argc, const char* argv[]) {
+static void lspci(int argc, const char* argv[]) {
   MCFG *mcfg = acpi_ctrl->GetMCFG();
   if (mcfg == nullptr) {
     gtty->Cprintf("[Pci] error: could not find MCFG table.\n");
@@ -180,7 +174,7 @@ static void setip(int argc, const char* argv[]) {
   dev->AssignIpv4Address((addr[3] << 24) | (addr[2] << 16) | (addr[1] << 8) | addr[0]);
 }
 
-void ifconfig(int argc, const char* argv[]){
+static void ifconfig(int argc, const char* argv[]){
   uptr<Array<const char *>> list = netdev_ctrl->GetNamesOfAllDevices();
   gtty->CprintfRaw("\n");
   for (size_t l = 0; l < list->GetLen(); l++) {
@@ -194,7 +188,7 @@ void ifconfig(int argc, const char* argv[]){
 void setup_arp_reply(NetDev *dev);
 void send_arp_packet(NetDev *dev, uint8_t *ipaddr);
 
-void bench(int argc, const char* argv[]) {
+static void bench(int argc, const char* argv[]) {
 
   if (argc == 1) {
     gtty->Cprintf("invalid argument.\n");
@@ -447,7 +441,7 @@ static void arp_scan(int argc, const char *argv[]) {
   task_ctrl->RegisterCallout(callout_, cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), 3*1000*1000);
 }
 
-static void udpsend(int argc, const char *argv[]) {
+void udpsend(int argc, const char *argv[]) {
   if (argc != 4) {
     gtty->Cprintf("invalid argument.\n");
     return;
@@ -679,38 +673,74 @@ struct LoadContainer {
   int i = 0;
 };
 
+static void wait_until_linkup(sptr<Callout> sh_task, int argc, const char *argv[]) {
+  if (argc != 2) {
+    gtty->Cprintf("invalid argument.\n");
+    task_ctrl->RegisterCallout(sh_task, 10);
+    return;
+  }
+  NetDevCtrl::NetDevInfo *info = netdev_ctrl->GetDeviceInfo(argv[1]);
+  if (info == nullptr) {
+    gtty->Cprintf("no such device.\n");
+    task_ctrl->RegisterCallout(sh_task, 10);
+    return;
+  }
+  NetDev *dev_ = info->device;
+  auto callout_ = make_sptr(new Callout);
+  callout_->Init(make_uptr(new Function3<wptr<Callout>, sptr<Callout>, NetDev *>([](wptr<Callout> callout, sptr<Callout> sh_task_, NetDev *dev){
+          if (dev->IsLinkUp()) {
+            task_ctrl->RegisterCallout(sh_task_, 10);
+          } else {
+            task_ctrl->RegisterCallout(make_sptr(callout), 1000 * 1000);
+          }
+        }, make_wptr(callout_), sh_task, dev_)));
+  task_ctrl->RegisterCallout(callout_, 10);
+}
+
 static void load_script(sptr<LoadContainer> container_) {
   auto callout_ = make_sptr(new Callout);
   callout_->Init(make_uptr(new Function2<wptr<Callout>, sptr<LoadContainer>>([](wptr<Callout> callout, sptr<LoadContainer> container){
           size_t i = container->i;
-          while(container->i < container->data->GetLen()) {
-            if ((*container->data)[container->i] == '\n') {
-              (*container->data)[container->i] = '\0';
+          while(container->i <= container->data->GetLen()) {
+            if (container->i == container->data->GetLen() || (*container->data)[container->i] == '\n' || (*container->data)[container->i] == '\0') {
+              char buffer[container->i - i + 1];
+              memcpy(buffer, reinterpret_cast<char *>(container->data->GetRawPtr()) + i, container->i - i);
+              buffer[container->i - i] = '\0';
               auto ec = make_uptr(new Shell::ExecContainer(shell));
-              ec = shell->Tokenize(ec, reinterpret_cast<char *>(container->data->GetRawPtr()) + i);
-              container->i++;
-              if (strcmp(ec->argv[0], "wait") != 0) {
-                shell->Execute(ec);
-              } else {
-                gtty->Cprintf("> wait %s\n", ec->argv[1]);
-                if (ec->argc == 2) {
-                  int t = 0;
-                  for(size_t l = 0; l < strlen(ec->argv[1]); l++) {
-                    if ('0' > ec->argv[1][l] || ec->argv[1][l] > '9') {
-                      gtty->Cprintf("invalid argument.\n");
-                      t = 0;
-                      break;
+              ec = shell->Tokenize(ec, buffer);
+              int timeout = 10;
+              if (strlen(buffer) != 0) {
+                gtty->Cprintf("> %s\n", buffer);
+                if (strcmp(ec->argv[0], "wait") == 0) {
+                  if (ec->argc == 2) {
+                    int t = 0;
+                    for(size_t l = 0; l < strlen(ec->argv[1]); l++) {
+                      if ('0' > ec->argv[1][l] || ec->argv[1][l] > '9') {
+                        gtty->Cprintf("invalid argument.\n");
+                        t = 0;
+                        break;
+                      }
+                      t = t * 10 + ec->argv[1][l] - '0';
                     }
-                    t = t * 10 + ec->argv[1][l] - '0';
+                    timeout = t * 1000 * 1000;
+                  } else {
+                    gtty->Cprintf("invalid argument.\n");
                   }
-                  task_ctrl->RegisterCallout(make_sptr(callout), t * 1000 * 1000);
+                } else if (strcmp(ec->argv[0], "wait_until_linkup") == 0) {
+                  wait_until_linkup(make_sptr(callout), ec->argc, ec->argv);
                   return;
                 } else {
-                  gtty->Cprintf("invalid argument.\n");
+                  shell->Execute(ec);
                 }
               }
-              task_ctrl->RegisterCallout(make_sptr(callout), 10);
+              if (container->i < container->data->GetLen()) {
+                container->i++;
+                task_ctrl->RegisterCallout(make_sptr(callout), timeout);
+              }
               return;
+            }
+            if ((*container->data)[container->i] == '\0') {
+              break;
             }
             container->i++;
           }
@@ -731,7 +761,7 @@ static void load(int argc, const char *argv[]) {
   }
 }
 
-static void beep(int argc, const char *argv[]) {
+void beep(int argc, const char *argv[]) {
   CpuId beep_cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority);
   auto callout_ = make_sptr(new Callout);
   callout_->Init(make_uptr(new Function<wptr<Callout>>([](wptr<Callout> callout) {
@@ -754,6 +784,10 @@ static void beep(int argc, const char *argv[]) {
           }
         }, make_wptr(callout_))));
   task_ctrl->RegisterCallout(callout_, beep_cpuid, 1);
+}
+
+static void membench(int argc, const char *argv[]) {
+  register_membench2_callout();
 }
 
 void freebsd_main();
@@ -867,10 +901,7 @@ extern "C" int main() {
   shell->Register("setflag", setflag);
   shell->Register("udpsend", udpsend);
   shell->Register("arp_scan", arp_scan);
-
-  if (do_membench) {
-    register_membench2_callout();
-  }
+  shell->Register("membench", membench);
 
   load_script(make_sptr(new LoadContainer(multiboot_ctrl->LoadFile("init.sh"))));
 
@@ -922,9 +953,6 @@ extern "C" int main_of_others() {
     task_ctrl->RegisterCallout(callout_, 10);
   }
 #endif
-  if (do_membench) {
-    register_membench2_callout();
-  }
 
   task_ctrl->Run();
   return 0;
