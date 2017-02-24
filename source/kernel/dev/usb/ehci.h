@@ -581,7 +581,7 @@ private:
   bool SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) {
     return _sub->SendControlTransfer(request, data, data_size, device_addr);
   }
-  virtual sptr<DevUsbController::Manager> SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer, uptr<GenericFunction<uptr<Array<uint8_t>>>> func) {
+  sptr<DevUsbController::Manager> SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer, uptr<GenericFunction<uptr<Array<uint8_t>>>> func) {
     return _sub->SetupInterruptTransfer(endpt_address, device_addr, interval, direction, max_packetsize, num_td, buffer, func);
   }
 

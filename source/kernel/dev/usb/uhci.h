@@ -31,7 +31,7 @@
 
 class DevUhci final : public DevPci {
 public:
-  DevUhci(uint8_t bus, uint8_t device, uint8_t function) : DevPci(bus, device, function) {
+  DevUhci(uint8_t bus, uint8_t device, uint8_t function) : DevPci(bus, device, function), _controller_dev(this) {
   }
   static DevPci *InitPci(uint8_t bus, uint8_t device, uint8_t function);
   void Init();
@@ -82,11 +82,8 @@ private:
       
       _token = (max_len << 21) | (data_toggle ? (1 << 19) : 0) | (endpoint << 15) | (device_address << 8) | static_cast<uint8_t>(pid);
     }
-    void SetBuffer(UsbCtrl::DeviceRequest *pointer, int offset) {
-      SetBufferSub(v2p(ptr2virtaddr(pointer)) + offset);
-    }
-    void SetBuffer(UsbCtrl::DeviceDescriptor *pointer, int offset) {
-      SetBufferSub(v2p(ptr2virtaddr(pointer)) + offset);
+    void SetBuffer(virt_addr buf, int offset) {
+      SetBufferSub(buf + offset);
     }
     void SetBuffer(/* nullptr */) {
       SetBufferSub(0);
@@ -111,6 +108,10 @@ private:
 
   class QueueHead {
   public:
+    void InitEmpty() {
+      horizontal_next = 1 << 0;
+      vertical_next = 1 << 1;
+    }
     void SetHorizontalNext(QueueHead *next) {
       SetHorizontalNextSub(v2p(ptr2virtaddr(next)), true, false);
     }
@@ -171,6 +172,7 @@ private:
     FramePointer entries[1024];
   } __attribute__((__packed__));
   FrameList *_frlist;
+  QueueHead *_qh0; // horizontal execution head
   
   // see 2.2 PCI Configuration Registers(USB)
   static const uint16_t kBaseAddressReg = 0x20;
@@ -184,10 +186,17 @@ private:
   uint16_t kCtrlRegFrNum = 0x06;
   uint16_t kCtrlRegFlBaseAddr = 0x08;
   uint16_t kCtrlRegSof = 0x0C;
-  uint16_t kCtrlRegPort1 = 0x10;
-  uint16_t kCtrlRegPort2 = 0x12;
+  uint16_t kCtrlRegPortBase = 0x10;
 
+  uint16_t kCtrlRegCmdFlagRunStop = 1 << 0;
+  uint16_t kCtrlRegCmdFlagHcReset = 1 << 1;
   uint16_t kCtrlRegStatusFlagHalted = 1 << 5;
+  uint16_t kCtrlRegPortFlagCurrentConnectStatus = 1 << 0;
+  uint16_t kCtrlRegPortFlagEnable = 1 << 2;
+  uint16_t kCtrlRegPortFlagReset = 1 << 9;
+
+  void DisablePort(int port);
+  void ResetPort(int port);
 
   template<class T> volatile T ReadControllerReg(uint16_t reg);
 
@@ -196,6 +205,23 @@ private:
   uint16_t GetCurrentFameListIndex();
 
   bool SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr);
+  sptr<DevUsbController::Manager> SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer, uptr<GenericFunction<uptr<Array<uint8_t>>>> func);
+
+  class DevUhciUsbController : public DevUsbController {
+  public:
+    DevUhciUsbController(DevUhci *dev_uhci) : _dev_uhci(dev_uhci) {
+    }
+    virtual ~DevUhciUsbController() {
+    }
+    virtual bool SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) override {
+      return _dev_uhci->SendControlTransfer(request, data, data_size, device_addr);
+    }
+    virtual sptr<DevUsbController::Manager> SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer, uptr<GenericFunction<uptr<Array<uint8_t>>>> func) override {
+      return _dev_uhci->SetupInterruptTransfer(endpt_address, device_addr, interval, direction, max_packetsize, num_td, buffer, func);
+    }
+  private:
+    DevUhci *const _dev_uhci;
+  } _controller_dev;
 };
 
 template <> inline volatile uint16_t DevUhci::ReadControllerReg<uint16_t>(uint16_t reg) {
@@ -212,6 +238,23 @@ template <> inline void DevUhci::WriteControllerReg(uint16_t reg, uint32_t data)
 
 inline uint16_t DevUhci::GetCurrentFameListIndex() {
   return ReadControllerReg<uint16_t>(kCtrlRegFrNum) & 1023;
+}
+
+inline void DevUhci::DisablePort(int port) {
+  WriteControllerReg<uint16_t>(kCtrlRegPortBase + port * 2, ReadControllerReg<uint16_t>(kCtrlRegPortBase + port * 2) | kCtrlRegPortFlagEnable);
+}
+
+inline void DevUhci::ResetPort(int port) {
+  DisablePort(kCtrlRegPortBase + port * 2);
+  WriteControllerReg<uint16_t>(kCtrlRegPortBase + port * 2, ReadControllerReg<uint16_t>(kCtrlRegPortBase + port * 2) | kCtrlRegPortFlagReset);
+  // set reset bit for 50ms
+  timer->BusyUwait(50*1000);
+  // then unset reset bit 
+  WriteControllerReg<uint16_t>(kCtrlRegPortBase + port * 2, ReadControllerReg<uint16_t>(kCtrlRegPortBase + port * 2) & ~kCtrlRegPortFlagReset);
+  // wait until end of reset sequence
+  while((ReadControllerReg<uint16_t>(kCtrlRegPortBase + port * 2) & kCtrlRegPortFlagEnable) == 0) {
+    asm volatile("":::"memory");
+  }
 }
 
 #endif /* __RAPH_KERNEL_DEV_USB_UHCI_H__ */

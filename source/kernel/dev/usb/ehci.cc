@@ -203,11 +203,11 @@ void DevEhci::DevEhciSub<QueueHead, TransferDescriptor>::Init() {
   physmem_ctrl->Alloc(qh_buf_paddr, PagingCtrl::kPageSize);
   assert(qh_buf_paddr.GetAddr() <= 0xFFFFFFFF);
   QueueHead *qh_array = addr2ptr<QueueHead>(qh_buf_paddr.GetVirtAddr());
-  for (int i = 0; i < qh_buf_size; i++) {
+  for (int i = 1; i < qh_buf_size; i++) {
     new(&qh_array[i]) QueueHead;
     kassert(_qh_buf.Push(&qh_array[i]));
   }
-  _qh0 = qh_array + qh_buf_size;
+  _qh0 = &qh_array[0];
   _qh0->InitEmpty();
 
   PhysAddr pframe_list_paddr;
@@ -228,15 +228,6 @@ bool DevEhci::DevEhciSub<QueueHead, TransferDescriptor>::SendControlTransfer(Usb
   TransferDescriptor *td1 = nullptr;
   TransferDescriptor *td2 = nullptr;
   TransferDescriptor *td3 = nullptr;
-
-  // (*td_array)[0] = td1;
-  // (*td_array)[1] = td2;
-  // (*td_array)[2] = td3;
-
-  // auto td_array = make_uptr(new Array<TransferDescriptor *>(3));
-  // auto func = make_uptr(new ClassFunction2<DevEhci::DevEhciSub, QueueHead *, uptr<Array<TransferDescriptor *>>>(this, &DevEhci::DevEhciSub::HandleCompletedStruct, qh1, td_array));
-  //   td3->SetFunc(func);
-  //   _queueing_td_buf.PushBack(td3);
 
   if (!_qh_buf.Pop(qh1)) {
     success = false;
@@ -284,8 +275,10 @@ bool DevEhci::DevEhciSub<QueueHead, TransferDescriptor>::SendControlTransfer(Usb
   _qh0->SetHorizontalNext(qh1);
 
   while(td2->IsActiveOfStatus()) {
+    asm volatile("":::"memory");
   }
   assert(td2->GetStatus() == 0);
+  // TODO remove qh1 
   
  release:
   if (qh1 != nullptr) {

@@ -1,2 +1,2 @@
 show info
-lspci EHCI
+lspci UHCI

@@ -47,6 +47,7 @@ void DevUhci::Init() {
   physmem_ctrl->Alloc(td_buf_paddr, PagingCtrl::kPageSize);
   TransferDescriptor *td_array = addr2ptr<TransferDescriptor>(td_buf_paddr.GetVirtAddr());
   for (int i = 0; i < td_buf_size; i++) {
+    new (&td_array[i]) TransferDescriptor;
     kassert(_td_buf.Push(&td_array[i]));
   }
 
@@ -55,8 +56,16 @@ void DevUhci::Init() {
   static_assert(qh_buf_size * sizeof(QueueHead) <= PagingCtrl::kPageSize, "");
   physmem_ctrl->Alloc(qh_buf_paddr, PagingCtrl::kPageSize);
   QueueHead *qh_array = addr2ptr<QueueHead>(qh_buf_paddr.GetVirtAddr());
-  for (int i = 0; i < qh_buf_size; i++) {
+  for (int i = 1; i < qh_buf_size; i++) {
+    new(&qh_array[i]) QueueHead;
     kassert(_qh_buf.Push(&qh_array[i]));
+  }
+
+  _qh0 = &qh_array[0];
+  _qh0->InitEmpty();
+
+  for (int i = 0; i < 1024; i++) {
+    _frlist->entries[i].Set(_qh0);
   }
 
   // legacy support
@@ -70,10 +79,18 @@ void DevUhci::Init() {
   WriteReg<uint16_t>(PciCtrl::kCommandReg, ReadReg<uint16_t>(PciCtrl::kCommandReg) | PciCtrl::kCommandRegBusMasterEnableFlag);
 
   // halt controller
-  WriteControllerReg<uint16_t>(kCtrlRegCmd, ReadControllerReg<uint16_t>(kCtrlRegCmd) & ~1);
+  WriteControllerReg<uint16_t>(kCtrlRegCmd, ReadControllerReg<uint16_t>(kCtrlRegCmd) & ~kCtrlRegCmdFlagRunStop);
   
   while((ReadControllerReg<uint16_t>(kCtrlRegStatus) & kCtrlRegStatusFlagHalted) == 0) {
+    asm volatile("":::"memory");
   }
+
+  // reset controller
+  WriteControllerReg<uint16_t>(kCtrlRegCmd, ReadControllerReg<uint16_t>(kCtrlRegCmd) | kCtrlRegCmdFlagHcReset);
+  
+  while((ReadControllerReg<uint16_t>(kCtrlRegCmd) & kCtrlRegCmdFlagHcReset) != 0) {
+    asm volatile("":::"memory");
+  }  
 
   // allocate frame list
   assert(sizeof(FrameList) == PagingCtrl::kPageSize);
@@ -88,139 +105,161 @@ void DevUhci::Init() {
   WriteControllerReg<uint32_t>(kCtrlRegFlBaseAddr, frame_base_phys_addr);
   WriteControllerReg<uint16_t>(kCtrlRegFrNum, 0);
 
-  WriteControllerReg<uint16_t>(kCtrlRegCmd, ReadControllerReg<uint16_t>(kCtrlRegCmd) | 1);
-
+  WriteControllerReg<uint16_t>(kCtrlRegCmd, ReadControllerReg<uint16_t>(kCtrlRegCmd) | kCtrlRegCmdFlagRunStop);
   while((ReadControllerReg<uint16_t>(kCtrlRegStatus) & kCtrlRegStatusFlagHalted) != 0) {
+    asm volatile("":::"memory");
   }
 
-  if ((ReadControllerReg<uint16_t>(kCtrlRegPort1) & 1) != 0) {
-    // TODO need implementation
-  }
-  if ((ReadControllerReg<uint16_t>(kCtrlRegPort2) & 1) != 0) {
-    // TODO need implementation
+  for (int i = 0; i < 2; i++) {
+    if ((ReadControllerReg<uint16_t>(i) & kCtrlRegPortFlagCurrentConnectStatus) != 0) {
+      ResetPort(i);
+      while(true) {
+        UsbCtrl::DeviceRequest *request = nullptr;
+
+      	if (!UsbCtrl::GetCtrl().AllocDeviceRequest(request)) {
+      	  goto release;
+      	}
+
+      	// TODO
+      	// horrible device address. fix it
+      	request->MakePacketOfSetAddress(i + 1);
+
+      	if (!SendControlTransfer(request, 0, 0, 0)) {
+      	  goto release;
+      	}
+
+      	break;
+
+      release:
+      	if (request != nullptr) {
+      	  assert(UsbCtrl::GetCtrl().ReuseDeviceRequest(request));
+      	}
+      }
+      int dev = i + 1;
+      _controller_dev.InitDevices(dev);
+    }
   }
 }
 
 bool DevUhci::SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) {
-  // TODO rewrite
-  kernel_panic("Uhci", "");
- //  bool success = true;
+  bool success = true;
+  QueueHead *qh1 = nullptr;
+  TransferDescriptor *td1 = nullptr;
+  TransferDescriptor *td2 = nullptr;
+  bool toggle = true;
+  UsbCtrl::PacketIdentification direction = request->GetDirection();
+  TransferDescriptor::PacketIdentification direction_of_data_stage;
+  TransferDescriptor::PacketIdentification direction_of_status_stage;
 
- //  // debug
- //  memset(reinterpret_cast<uint8_t *>(desc), 0xFF, sizeof(UsbCtrl::DeviceDescriptor));
+  // see Figure 8-12 Control Read and Write Sequences
+  if (!_qh_buf.Pop(qh1)) {
+    success = false;
+    goto release;
+  }
+  if (!_td_buf.Pop(td1)) {
+    success = false;
+    goto release;
+  }
+  if (!_td_buf.Pop(td2)) {
+    success = false;
+    goto release;
+  }
 
- //  // debug
- //  TransferDescriptor *td0;
- //  if (!_td_buf.Pop(td0)) {
- //    success = false;
- //    goto release;
- //  }
- //  QueueHead *qh0;
- //  if (!_qh_buf.Pop(qh0)) {
- //    success = false;
- //    goto release;
- //  }
+  TransferDescriptor *td_array[((data_size + 7) / 8) * 8];
+  for (size_t offset = 0; offset < data_size; offset += 8) {
+    if (!_td_buf.Pop(td_array[offset / 8])) {
+      success = false;
+    }
+  }
+  if (success == false) {
+    goto release;
+  }
 
- //  td0->SetNext(false);
- //  td0->SetStatus(false, false, false, false);
- //  td0->SetToken(TransferDescriptor::PacketIdentification::kIn, 127, 0, false, 0);
- //  td0->SetBuffer();
+  if (data_size == 0) {
+    td1->SetNext(td2, true);
+  } else {
+    td1->SetNext(td_array[0], true);
+  }
+  td1->SetStatus(false, false, true, false);
+  td1->SetToken(TransferDescriptor::PacketIdentification::kSetup, device_addr, 0, false, 8);
+  td1->SetBuffer(ptr2virtaddr(request), 0);
 
- //  qh0->SetHorizontalNext();
- //  qh0->SetVerticalNext(td0);
+  switch(direction) {
+  case UsbCtrl::PacketIdentification::kOut:
+    direction_of_data_stage = TransferDescriptor::PacketIdentification::kOut;
+    break;
+  case UsbCtrl::PacketIdentification::kIn:
+    direction_of_data_stage = TransferDescriptor::PacketIdentification::kIn;
+    break;
+  default:
+    assert(false);
+  }
 
- //  for (int i = 0; i < 1024; i++) {
- //    _frlist->entries[i].Set(qh0);
- //  }
+  for (size_t offset = 0; offset < data_size; offset += 8) {
+    if (offset + 8 >= data_size) {
+      td_array[offset / 8]->SetNext(td2, true);
+    } else {
+      td_array[offset / 8]->SetNext(td_array[offset / 8 + 1], true);
+    }
+    td_array[offset / 8]->SetStatus(false, false, true, false);
+    td_array[offset / 8]->SetToken(direction_of_data_stage, device_addr, 0, toggle, 8);
+    td_array[offset / 8]->SetBuffer(data, 0);
 
- //  // see Figure 8-12 Control Read and Write Sequences
- //  QueueHead *qh1;
- //  if (!_qh_buf.Pop(qh1)) {
- //    success = false;
- //    goto release;
- //  }
- //  TransferDescriptor *td1;
- //  if (!_td_buf.Pop(td1)) {
- //    success = false;
- //    goto release;
- //  }
- //  TransferDescriptor *td2;
- //  if (!_td_buf.Pop(td2)) {
- //    success = false;
- //    goto release;
- //  }
- //  TransferDescriptor *td3;
- //  if (!_td_buf.Pop(td3)) {
- //    success = false;
- //    goto release;
- //  }
- //  TransferDescriptor *td4;
- //  if (!_td_buf.Pop(td4)) {
- //    success = false;
- //    goto release;
- //  }
- //  TransferDescriptor *td5;
- //  if (!_td_buf.Pop(td5)) {
- //    success = false;
- //    goto release;
- //  }
+    toggle = ~ toggle;
+  }
 
- //  td1->SetNext(td2, true);
- //  td1->SetStatus(false, false, true, false);
- //  td1->SetToken(TransferDescriptor::PacketIdentification::kSetup, device_addr, 0, false, 8);
- //  td1->SetBuffer(request, 0);
-
- //  td2->SetNext(td3, true);
- //  td2->SetStatus(false, false, true, false);
- //  td2->SetToken(TransferDescriptor::PacketIdentification::kIn, device_addr, 0, true, 8);
- //  td2->SetBuffer(desc, 0);
-
- //  td3->SetNext(td4, true);
- //  td3->SetStatus(false, false, true, false);
- //  td3->SetToken(TransferDescriptor::PacketIdentification::kIn, device_addr, 0, false, 8);
- //  td3->SetBuffer(desc, 8);
-
- //  td4->SetNext(td5, true);
- //  td4->SetStatus(false, false, true, false);
- //  td4->SetToken(TransferDescriptor::PacketIdentification::kIn, device_addr, 0, true, 8);
- //  td4->SetBuffer(desc, 16);
-
- //  td5->SetNext(true);
- //  td5->SetStatus(false, false, true, false);
- //  td5->SetToken(TransferDescriptor::PacketIdentification::kOut, device_addr, 0, true, 8);
- //  td5->SetBuffer();
-
- //  qh1->SetHorizontalNext(qh1);
- //  qh1->SetVerticalNext(td1);
-
- //  _frlist->entries[GetCurrentFameListIndex()].Set(qh1);
-
- //  //gtty->CprintfRaw("<%d %d>", device_addr, GetCurrentFameListIndex());
-
- //  while(td5->IsActiveOfStatus()) {
- //    if (td1->IsStalledOfStatus() || td1->IsCrcErrorOfStatus()) {
- //      break;
- //    }
- //  }
- //  if (td5->IsActiveOfStatus()) {
- //    success = false;
- //    goto release;
- //  }
- //  gtty->CprintfRaw(" %x ", td1->GetStatus());
- //  gtty->CprintfRaw(" %x ", td2->GetStatus());
- //  gtty->CprintfRaw(" %x ", td3->GetStatus());
- //  gtty->CprintfRaw(" %x ", td4->GetStatus());
- //  gtty->CprintfRaw(" %x ", td5->GetStatus());
- // release:
- //  assert(_td_buf.Push(td0));
- //  assert(_td_buf.Push(td1));
- //  assert(_td_buf.Push(td2));
- //  assert(_td_buf.Push(td3));
- //  assert(_td_buf.Push(td4));
- //  assert(_td_buf.Push(td5));
- //  assert(_qh_buf.Push(qh0));
- //  assert(_qh_buf.Push(qh1));
+  switch(direction) {
+  case UsbCtrl::PacketIdentification::kOut:
+    direction_of_status_stage = TransferDescriptor::PacketIdentification::kIn;
+    break;
+  case UsbCtrl::PacketIdentification::kIn:
+    direction_of_status_stage = TransferDescriptor::PacketIdentification::kOut;
+    break;
+  default:
+    assert(false);
+  }
   
- //  return success;
+  td2->SetNext(true);
+  td2->SetStatus(false, false, true, false);
+  td2->SetToken(direction_of_status_stage, device_addr, 0, true, 8);
+  td2->SetBuffer();
+
+  qh1->SetHorizontalNext(qh1);
+  qh1->SetVerticalNext(td1);
+
+  _qh0->SetHorizontalNext(qh1);
+
+  while(td2->IsActiveOfStatus()) {
+    if (td1->IsStalledOfStatus() || td1->IsCrcErrorOfStatus()) {
+      break;
+    }
+    asm volatile("":::"memory");
+  }
+  if (td2->IsActiveOfStatus()) {
+    success = false;
+    goto release;
+  }
+  // TODO remove qh1 
+
+ release:
+  if (td1 != nullptr) {
+    assert(_td_buf.Push(td1));
+  }
+  if (td2 != nullptr) {
+    assert(_td_buf.Push(td2));
+  }
+  if (qh1 != nullptr) {
+    assert(_qh_buf.Push(qh1));
+  }
+  for (size_t offset = 0; offset < data_size; offset += 8) {
+    if (td_array[offset / 8] != nullptr) {
+      _td_buf.Push(td_array[offset / 8]);
+    }
+  }
+  
+  return success;
 }
 
+sptr<DevUsbController::Manager> DevUhci::SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer, uptr<GenericFunction<uptr<Array<uint8_t>>>> func) {
+  return make_sptr<DevUsbController::Manager>();
+}
