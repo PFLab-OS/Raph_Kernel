@@ -142,9 +142,10 @@ UsbCtrl::DummyDescriptor *DevUsb::GetDescriptorInCombinedDescriptors(UsbCtrl::De
   assert(desc_index >= 0);
 
   UsbCtrl::ConfigurationDescriptor *config_desc = reinterpret_cast<UsbCtrl::ConfigurationDescriptor *>(_combined_desc);
-  
+
   for (uint16_t index = 0; index < config_desc->total_length;) {
     UsbCtrl::DummyDescriptor *dummy_desc = reinterpret_cast<UsbCtrl::DummyDescriptor *>(_combined_desc + index);
+    assert(dummy_desc->length != 0);
     if (static_cast<UsbCtrl::DescriptorType>(dummy_desc->type) == type) {
       if (desc_index == 0) {
         return dummy_desc;

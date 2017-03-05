@@ -1,3 +1,6 @@
+//RAPH_DEBUG
+#include <tty.h>
+#include <global.h>
 /*
  *
  * Copyright (c) 2016 Raphine Project
@@ -41,10 +44,20 @@ DevPci *DevUhci::InitPci(uint8_t bus, uint8_t device, uint8_t function) {
 
 void DevUhci::Init() {
 
+  // allocate frame list
+  assert(sizeof(FrameList) == PagingCtrl::kPageSize);
+  PhysAddr frame_base_addr;
+  physmem_ctrl->Alloc(frame_base_addr, PagingCtrl::kPageSize);
+  _frlist = addr2ptr<FrameList>(frame_base_addr.GetVirtAddr());
+  if (frame_base_addr.GetAddr() > 0xFFFFFFFF) {
+    kernel_panic("DevUhci", "cannot allocate 32bit phys memory");
+  }
+  
   constexpr int td_buf_size = _td_buf.GetBufSize();
   PhysAddr td_buf_paddr;
   static_assert(td_buf_size * sizeof(TransferDescriptor) <= PagingCtrl::kPageSize, "");
   physmem_ctrl->Alloc(td_buf_paddr, PagingCtrl::kPageSize);
+  assert(td_buf_paddr.GetAddr() <= 0xFFFFFFFF);
   TransferDescriptor *td_array = addr2ptr<TransferDescriptor>(td_buf_paddr.GetVirtAddr());
   for (int i = 0; i < td_buf_size; i++) {
     new (&td_array[i]) TransferDescriptor;
@@ -55,6 +68,7 @@ void DevUhci::Init() {
   PhysAddr qh_buf_paddr;
   static_assert(qh_buf_size * sizeof(QueueHead) <= PagingCtrl::kPageSize, "");
   physmem_ctrl->Alloc(qh_buf_paddr, PagingCtrl::kPageSize);
+  assert(qh_buf_paddr.GetAddr() <= 0xFFFFFFFF);
   QueueHead *qh_array = addr2ptr<QueueHead>(qh_buf_paddr.GetVirtAddr());
   for (int i = 1; i < qh_buf_size; i++) {
     new(&qh_array[i]) QueueHead;
@@ -91,15 +105,6 @@ void DevUhci::Init() {
   while((ReadControllerReg<uint16_t>(kCtrlRegCmd) & kCtrlRegCmdFlagHcReset) != 0) {
     asm volatile("":::"memory");
   }  
-
-  // allocate frame list
-  assert(sizeof(FrameList) == PagingCtrl::kPageSize);
-  PhysAddr frame_base_addr;
-  physmem_ctrl->Alloc(frame_base_addr, PagingCtrl::kPageSize);
-  _frlist = addr2ptr<FrameList>(frame_base_addr.GetVirtAddr());
-  if (frame_base_addr.GetAddr() > 0xFFFFFFFF) {
-    kernel_panic("DevUhci", "cannot allocate 32bit phys memory");
-  }
   
   uint32_t frame_base_phys_addr = frame_base_addr.GetAddr();
   WriteControllerReg<uint32_t>(kCtrlRegFlBaseAddr, frame_base_phys_addr);
@@ -111,7 +116,7 @@ void DevUhci::Init() {
   }
 
   for (int i = 0; i < 2; i++) {
-    if ((ReadControllerReg<uint16_t>(i) & kCtrlRegPortFlagCurrentConnectStatus) != 0) {
+    if ((ReadControllerReg<uint16_t>(kCtrlRegPortBase + i * 2) & kCtrlRegPortFlagCurrentConnectStatus) != 0) {
       ResetPort(i);
       while(true) {
         UsbCtrl::DeviceRequest *request = nullptr;
@@ -203,7 +208,7 @@ bool DevUhci::SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr dat
     }
     td_array[offset / 8]->SetStatus(false, false, true, false);
     td_array[offset / 8]->SetToken(direction_of_data_stage, device_addr, 0, toggle, 8);
-    td_array[offset / 8]->SetBuffer(data, 0);
+    td_array[offset / 8]->SetBuffer(data, offset);
 
     toggle = ~ toggle;
   }
@@ -224,7 +229,7 @@ bool DevUhci::SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr dat
   td2->SetToken(direction_of_status_stage, device_addr, 0, true, 8);
   td2->SetBuffer();
 
-  qh1->SetHorizontalNext(qh1);
+  qh1->SetHorizontalNext();
   qh1->SetVerticalNext(td1);
 
   _qh0->SetHorizontalNext(qh1);

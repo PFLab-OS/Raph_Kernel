@@ -83,7 +83,7 @@ private:
       _token = (max_len << 21) | (data_toggle ? (1 << 19) : 0) | (endpoint << 15) | (device_address << 8) | static_cast<uint8_t>(pid);
     }
     void SetBuffer(virt_addr buf, int offset) {
-      SetBufferSub(buf + offset);
+      SetBufferSub(k2p(buf + offset));
     }
     void SetBuffer(/* nullptr */) {
       SetBufferSub(0);
@@ -110,7 +110,7 @@ private:
   public:
     void InitEmpty() {
       horizontal_next = 1 << 0;
-      vertical_next = 1 << 1;
+      vertical_next = 1 << 0;
     }
     void SetHorizontalNext(QueueHead *next) {
       SetHorizontalNextSub(v2p(ptr2virtaddr(next)), true, false);
@@ -122,10 +122,13 @@ private:
       SetHorizontalNextSub(0, false, true);
     }
     void SetVerticalNext(QueueHead *next) {
-      SetVerticalNextSub(v2p(ptr2virtaddr(next)), true);
+      SetVerticalNextSub(v2p(ptr2virtaddr(next)), true, false);
     }
     void SetVerticalNext(TransferDescriptor *next) {
-      SetVerticalNextSub(v2p(ptr2virtaddr(next)), false);
+      SetVerticalNextSub(v2p(ptr2virtaddr(next)), false, false);
+    }
+    void SetVerticalNext(/* nullptr */) {
+      SetVerticalNextSub(0, false, true);
     }
   private:
     void SetHorizontalNextSub(phys_addr next, bool q, bool terminate) {
@@ -133,10 +136,10 @@ private:
       assert((next & 0xF) == 0);
       horizontal_next = (next & 0xFFFFFFF0) | (q ? (1 << 1) : 0) | (terminate ? (1 << 0) : 0);
     }
-    void SetVerticalNextSub(phys_addr next, bool q) {
+    void SetVerticalNextSub(phys_addr next, bool q, bool terminate) {
       assert(next <= 0xFFFFFFFF);
       assert((next & 0xF) == 0);
-      vertical_next = (next & 0xFFFFFFF0) | (q ? (1 << 1) : 0);
+      vertical_next = (next & 0xFFFFFFF0) | (q ? (1 << 1) : 0) | (terminate ? (1 << 0) : 0);
     }
     uint32_t horizontal_next;
     uint32_t vertical_next;
@@ -196,6 +199,7 @@ private:
   uint16_t kCtrlRegPortFlagReset = 1 << 9;
 
   void DisablePort(int port);
+  void EnablePort(int port);
   void ResetPort(int port);
 
   template<class T> volatile T ReadControllerReg(uint16_t reg);
@@ -241,20 +245,33 @@ inline uint16_t DevUhci::GetCurrentFameListIndex() {
 }
 
 inline void DevUhci::DisablePort(int port) {
-  WriteControllerReg<uint16_t>(kCtrlRegPortBase + port * 2, ReadControllerReg<uint16_t>(kCtrlRegPortBase + port * 2) | kCtrlRegPortFlagEnable);
+  while(true) {
+    WriteControllerReg<uint16_t>(kCtrlRegPortBase + port * 2, ReadControllerReg<uint16_t>(kCtrlRegPortBase + port * 2) & ~kCtrlRegPortFlagEnable);
+    if ((ReadControllerReg<uint16_t>(kCtrlRegPortBase + port * 2) & kCtrlRegPortFlagEnable) == 0) {
+      break;
+    }
+    asm volatile("":::"memory");
+  }
+}
+
+inline void DevUhci::EnablePort(int port) {
+  while(true) {
+    WriteControllerReg<uint16_t>(kCtrlRegPortBase + port * 2, ReadControllerReg<uint16_t>(kCtrlRegPortBase + port * 2) | kCtrlRegPortFlagEnable);
+    if ((ReadControllerReg<uint16_t>(kCtrlRegPortBase + port * 2) & kCtrlRegPortFlagEnable) != 0) {
+      break;
+    }
+    asm volatile("":::"memory");
+  }
 }
 
 inline void DevUhci::ResetPort(int port) {
-  DisablePort(kCtrlRegPortBase + port * 2);
+  DisablePort(port);
   WriteControllerReg<uint16_t>(kCtrlRegPortBase + port * 2, ReadControllerReg<uint16_t>(kCtrlRegPortBase + port * 2) | kCtrlRegPortFlagReset);
   // set reset bit for 50ms
   timer->BusyUwait(50*1000);
   // then unset reset bit 
   WriteControllerReg<uint16_t>(kCtrlRegPortBase + port * 2, ReadControllerReg<uint16_t>(kCtrlRegPortBase + port * 2) & ~kCtrlRegPortFlagReset);
-  // wait until end of reset sequence
-  while((ReadControllerReg<uint16_t>(kCtrlRegPortBase + port * 2) & kCtrlRegPortFlagEnable) == 0) {
-    asm volatile("":::"memory");
-  }
+  EnablePort(port);
 }
 
 #endif /* __RAPH_KERNEL_DEV_USB_UHCI_H__ */
