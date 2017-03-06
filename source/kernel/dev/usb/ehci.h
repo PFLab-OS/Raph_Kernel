@@ -39,6 +39,7 @@ public:
   }
   static DevPci *InitPci(uint8_t bus, uint8_t device, uint8_t function);
   void Init();
+  virtual void Attach() override;
 private:
   sptr<Task> _int_task;
 
@@ -288,6 +289,10 @@ private:
     void SetHorizontalNext(/* nullptr */) {
       SetHorizontalNextSub(0, 0, true);
     }
+    void InsertHorizontalNext(QueueHead32 *next) {
+      next->SetHorizontalNext(_horizontal_next);
+      SetHorizontalNextSub(v2p(ptr2virtaddr(next)), 1, false);
+    }
     void SetNextTd(TransferDescriptor32 *next) {
       _next_td = v2p(ptr2virtaddr(next));
     }
@@ -332,6 +337,9 @@ private:
       _capabilities |= interrupt_schedule_mask;
     }
   private:
+    void SetHorizontalNext(uint32_t next) {
+      _horizontal_next = next;
+    }
     void SetHorizontalNextSub(phys_addr next, int type, bool terminate) {
       assert(type < 4);
       _horizontal_next = next | (type << 1) | (terminate ? (1 << 0) : 0);
@@ -385,6 +393,10 @@ private:
     void SetHorizontalNext(/* nullptr */) {
       SetHorizontalNextSub(0, 0, true);
     }
+    void InsertHorizontalNext(QueueHead64 *next) {
+      next->SetHorizontalNext(_horizontal_next);
+      SetHorizontalNextSub(v2p(ptr2virtaddr(next)), 1, false);
+    }
     void SetNextTd(TransferDescriptor64 *next) {
       _next_td = v2p(ptr2virtaddr(next));
     }
@@ -429,6 +441,9 @@ private:
       _capabilities |= interrupt_schedule_mask;
     }
   private:
+    void SetHorizontalNext(uint32_t next) {
+      _horizontal_next = next;
+    }
     void SetHorizontalNextSub(phys_addr next, int type, bool terminate) {
       assert(type < 4);
       _horizontal_next = next | (type << 1) | (terminate ? (1 << 0) : 0);
@@ -509,8 +524,6 @@ private:
     RingBuffer<QueueHead *, PagingCtrl::kPageSize / sizeof(QueueHead)> _qh_buf;
     RingBuffer<TransferDescriptor *, PagingCtrl::kPageSize / sizeof(TransferDescriptor)> _td_buf;
     List<TransferDescriptor *> _queueing_td_buf;
-    
-    void HandleCompletedStruct(QueueHead *qh , uptr<Array<TransferDescriptor *>> td_array);
   };
   using DevEhciSub32 = DevEhciSub<QueueHead32, TransferDescriptor32>;
   using DevEhciSub64 = DevEhciSub<QueueHead64, TransferDescriptor64>;
@@ -576,6 +589,10 @@ private:
   uint32_t kOpRegPortScFlagCurrentConnectStatus = 1 << 0;
   uint32_t kOpRegPortScFlagPortEnable = 1 << 2;
   uint32_t kOpRegPortScFlagPortReset = 1 << 8;
+  uint32_t kOpRegPortScMaskLineStatus = 0b11 << 10;
+  uint32_t kOpRegPortScValueLineStatusKState = 0b01 << 10;
+  uint32_t kOpRegPortScFlagPortPower = 1 << 12;
+  uint32_t kOpRegPortScFlagPortOwner = 1 << 13;
 
   bool _is_64bit_addressing;
   bool SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) {
@@ -600,6 +617,10 @@ private:
       asm volatile("":::"memory");
     }
   }
+  void ReleasePort(int port) {
+    // to companion host controller
+    _op_reg_base_addr[kOpRegOffsetPortScBase + port] |= kOpRegPortScFlagPortOwner;
+  }
   void HandlerSub();
   static void Handler(void *arg) {
     auto that = reinterpret_cast<DevEhci *>(arg);
@@ -607,12 +628,13 @@ private:
   }
   void CheckQueuedTdIfCompleted(void *) {
     // tell controller to acknowledge interrupt
-    _op_reg_base_addr[kOpRegOffsetUsbSts] &= ~kOpRegUsbStsFlagInterrupt;
+    _op_reg_base_addr[kOpRegOffsetUsbSts] = kOpRegUsbStsFlagInterrupt;
     asm volatile("":::"memory");
-    // enable new interrupt
-    _op_reg_base_addr[kOpRegOffsetUsbSts] |= kOpRegUsbStsFlagInterrupt;
     _sub->CheckQueuedTdIfCompleted();
     // TODO check not only TDs but also all interrupt sources before enable interrupt
+    
+    // enable new interrupt
+    _op_reg_base_addr[kOpRegOffsetUsbIntr] |= kOpRegUsbIntrFlagInterruptEnable;
   }
 };
 

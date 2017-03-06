@@ -20,8 +20,7 @@
  * 
  */
 
-#ifndef __RAPH_KERNEL_DEV_Pci_H__
-#define __RAPH_KERNEL_DEV_Pci_H__
+#pragma once
 
 #include <stdint.h>
 #include <raph_acpi.h>
@@ -32,6 +31,7 @@
 #include <apic.h>
 #include <dev/device.h>
 #include <_cpu.h>
+#include <list.h>
 
 struct MCFGSt {
   uint8_t reserved1[8];
@@ -149,6 +149,7 @@ public:
 
   static const uint16_t kCommandRegBusMasterEnableFlag = 1 << 2;
   static const uint16_t kCommandRegMemWriteInvalidateFlag = 1 << 4;
+  static const uint16_t kCommandRegInterruptDisableFlag = 1 << 10;
 
   static const uint8_t kHeaderTypeRegFlagMultiFunction = 1 << 7;
   static const uint8_t kHeaderTypeRegMaskDeviceType = (1 << 7) - 1;
@@ -185,6 +186,8 @@ private:
       return dev;
     }
   }
+
+  List<DevPci *> _devices;
 
   class IntHandler {
   public:
@@ -256,6 +259,7 @@ public:
   static DevPci *InitPci(uint8_t bus, uint8_t device, uint8_t function) {
     return nullptr;
   } // dummy
+  virtual void Attach() = 0;
   template<class T> T ReadReg(uint16_t reg) {
     kassert(pci_ctrl != nullptr);
     return pci_ctrl->ReadReg<T>(_bus, _device, _function, reg);
@@ -315,6 +319,3 @@ private:
   void *_intarg;
   ioint_callback _handler = nullptr;
 };
-
-
-#endif /* __RAPH_KERNEL_DEV_Pci_H__ */

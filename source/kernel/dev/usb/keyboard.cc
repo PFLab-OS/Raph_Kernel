@@ -32,7 +32,7 @@ DevUsb *DevUsbKeyboard::InitUsb(DevUsbController *controller, int addr) {
   that->LoadCombinedDescriptors();
   UsbCtrl::InterfaceDescriptor *interface_desc = that->GetInterfaceDescriptorInCombinedDescriptors(0);
 
-  if (interface_desc->class_code == 3 && interface_desc->protocol_code == 1) {
+  if (interface_desc->class_code == 3 && interface_desc->subclass_code == 1 && interface_desc->protocol_code == 1) {
     gtty->CprintfRaw("kbd: info: usb keyboard detected\n");
     that->Init();
     return that;
@@ -43,22 +43,50 @@ DevUsb *DevUsbKeyboard::InitUsb(DevUsbController *controller, int addr) {
 }
 
 void DevUsbKeyboard::InitSub() {
-  if (GetDescriptorNumInCombinedDescriptors(UsbCtrl::DescriptorType::kEndpoint) != 1) {
-    kernel_panic("DevUsbKeyboard", "not supported");
-  }
+  // if (GetDescriptorNumInCombinedDescriptors(UsbCtrl::DescriptorType::kEndpoint) != 1) {
+  //   kernel_panic("DevUsbKeyboard", "not supported");
+  // }
   UsbCtrl::EndpointDescriptor *ed0 = GetEndpointDescriptorInCombinedDescriptors(0);
   assert(ed0->GetMaxPacketSize() == kMaxPacketSize);
   for (int i = 0; i < kTdNum; i++) {
     memset(_buffer[i].buf, i, kMaxPacketSize);
   }
   SetupInterruptTransfer(kTdNum, reinterpret_cast<uint8_t *>(_buffer), make_uptr(new ClassFunction<DevUsbKeyboard, void *, uptr<Array<uint8_t>>>(this, &DevUsbKeyboard::Handle, nullptr)));
+
+  while(true) {
+    UsbCtrl::DeviceRequest *request = nullptr;
+
+    bool retry = true;
+
+    do {
+      if (!UsbCtrl::GetCtrl().AllocDeviceRequest(request)) {
+        break;
+      }
+
+      // Set_Protocol
+      // see HID1_11 7.2.6 Set_Protocol Request
+      request->MakePacket(0b00100001, 0x0B, 0, 0, 0);
+
+      if (!SendControlTransfer(request, 0, 0)) {
+        break;
+      }
+
+      retry = false;
+    } while(0);
+
+    if (request != nullptr) {
+      assert(UsbCtrl::GetCtrl().ReuseDeviceRequest(request));
+    }
+
+    if (!retry) {
+      break;
+    }
+  }
   
   _dev.Setup();
 }
 
 void DevUsbKeyboard::Handle(void *, uptr<Array<uint8_t>> buf) {
-  gtty->CprintfRaw("%x %x %x %x %x %x %x %x\n", (*buf)[0], (*buf)[1], (*buf)[2], (*buf)[3], (*buf)[4], (*buf)[5], (*buf)[6], (*buf)[7]);
-
   bool same = true;
   for (int i = 2; i < 8; i++) {
     if ((*buf)[i] != _prev_buf[i]) {
@@ -70,7 +98,7 @@ void DevUsbKeyboard::Handle(void *, uptr<Array<uint8_t>> buf) {
     int c = (*buf)[i];
     if (c != 0) {
       bool exist = false;
-      for (int j = j; j < 8; j++) {
+      for (int j = 0; j < 8; j++) {
         if (c == _prev_buf[j]) {
           exist = true;
         }

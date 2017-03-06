@@ -122,12 +122,25 @@ public:
     kassert(_lapic != nullptr);
     return _lapic->_ncpu;
   }
-  bool SetupIoInt(uint32_t irq, uint8_t lapicid, uint8_t vector) {
+  // trigger_mode:
+  //  true: edge sensitive   false: level sensitive
+  // polarity
+  //  true: high active   false: low active
+  bool SetupIoInt(uint32_t irq, uint8_t lapicid, uint8_t vector, bool trigger_mode, bool polarity) {
     kassert(vector >= 32);
-    return _ioapic.SetupInt(irq, lapicid, vector);
+    return _ioapic.SetupInt(irq, lapicid, vector, trigger_mode, polarity);
+  }
+  // for debug
+  bool IsIrqPending(uint32_t irq) {
+    return _ioapic.IsIrqPending(irq);
   }
   void SendEoi() {
     _lapic->SendEoi();
+  }
+  
+  void SendEoi(uint8_t vector) {
+    _lapic->SendEoi();
+    _ioapic.SendEoi(vector);
   }
 
   void SendIpi(uint32_t destid) {
@@ -155,6 +168,12 @@ protected:
   volatile bool _all_bootup = false;
 
 private:
+  // see intel MPspec Appendix B.5
+  static const uint32_t kIoRtc = 0x70;
+  static void Outb(int pin, uint8_t data) {
+    asm volatile("outb %%al, %%dx"::"d"(pin), "a"(data));
+  }
+  
   class Lapic {
   public:
     // see intel64 manual vol3 Table 10-1 (Local APIC Register Address Map)
@@ -215,7 +234,7 @@ private:
     void SetupTimer(int interval);
     void StartTimer() {
       WriteReg(RegisterOffset::kTimerInitCnt, ReadReg(RegisterOffset::kTimerInitCnt));
-      WriteReg(RegisterOffset::kLvtTimer, ReadReg(RegisterOffset::kLvtTimer) & ~kRegLvtMask);
+      WriteReg(RegisterOffset::kLvtTimer, (ReadReg(RegisterOffset::kLvtTimer) & ~kRegLvtMask) | kDeliverModeFixed);
     }
     void StopTimer() {
       WriteReg(RegisterOffset::kLvtTimer, ReadReg(RegisterOffset::kLvtTimer) | kRegLvtMask);
@@ -224,7 +243,7 @@ private:
       return kMsiAddrRegReserved | (static_cast<uint64_t>(dest_lapicid) << kMsiAddrRegDestOffset);
     }
     static uint16_t GetMsiData(uint8_t vector) {
-      return kRegIcrTriggerModeEdge | kDeliverModeLowest | vector;
+      return kRegIcrTriggerModeEdge | kDeliverModeFixed | vector;
     }
     static const int kIa32ApicBaseMsr = 0x1B;
     static const uint32_t kApicX2ApicEnableFlag = 1 << 10;
@@ -254,6 +273,7 @@ private:
     static const uint32_t kDeliverModeNmi     = 4 << 8;
     static const uint32_t kDeliverModeInit    = 5 << 8;
     static const uint32_t kDeliverModeStartup = 6 << 8;
+    static const uint32_t kDeliverModeExtint  = 7 << 8;
 
     // see intel64 manual vol3 Figure 10-12 (Interrupt Command Register)
     static const uint32_t kRegIcrLevelAssert   = 1 << 14;
@@ -267,13 +287,6 @@ private:
     // see intel64 manual vol3 Figure 10-24 (Layout of the MSI Message Address Register)
     static const uint64_t kMsiAddrRegReserved = 0xFEE00000;
     static const int kMsiAddrRegDestOffset = 12;
-
-    // see intel MPspec Appendix B.5
-    static const uint32_t kIoRtc = 0x70;
-    
-    void Outb(int pin, uint8_t data) {
-      asm volatile("outb %%al, %%dx"::"d"(pin), "a"(data));
-    }
   };
   class LapicX : public Lapic {
   public:
@@ -332,20 +345,37 @@ private:
   class Ioapic {
   public:
     void Setup();
-    bool SetupInt(uint32_t irq, uint8_t lapicid, uint8_t vector);
+    bool SetupInt(uint32_t irq, uint8_t lapicid, uint8_t vector, bool trigger_mode, bool polarity) {
+      int controller_index = GetControllerIndexFromIrq(irq);
+      return _controller[controller_index].SetupInt(irq - _controller[controller_index].int_base, lapicid, vector, trigger_mode, polarity);
+    }
+    bool IsIrqPending(uint32_t irq) {
+      int controller_index = GetControllerIndexFromIrq(irq);
+      return _controller[controller_index].IsIrqPending(irq - _controller[controller_index].int_base);
+    }
+    void SendEoi(uint8_t vector) {
+      for (int j = 0; j < _controller_num; j++) {
+        _controller[j].SendEoi(vector);
+      }
+    }
     struct Controller {
       // see IOAPIC manual 3.1 (Memory Mapped Registers for Accessing IOAPIC Registers)
       static const int kIndex = 0x0;
       static const int kData = 0x10 / sizeof(uint32_t);
+      static const int kEoi = 0x40 / sizeof(uint32_t);
 
       // see IOAPIC manual 3.2 (IOAPIC Registers)
       static const uint32_t kRegVer = 0x1;
       static const uint32_t kRegRedTbl = 0x10;
 
       // see IOAPIC manual 3.2.4 (I/O Redirection Table Registers)
-      static const uint32_t kRegRedTblFlagValueDeliveryLow = 1 << 8;
+      static const uint32_t kRegRedTblFlagValueDeliveryFixed = 0b000 << 8;
+      static const uint32_t kRegRedTblFlagValueDeliveryLow = 0b001 << 8;
       static const uint32_t kRegRedTblFlagDestModePhys = 0 << 11;
       static const uint32_t kRegRedTblFlagDestModeLogical = 1 << 11;
+      static const uint32_t kRegRedTblFlagDeliveryStatus = 1 << 12;
+      static const uint32_t kRegRedTblFlagPolarityHighActive = 0 << 13;
+      static const uint32_t kRegRedTblFlagPolarityLowActive = 1 << 13;
       static const uint32_t kRegRedTblFlagTriggerModeEdge = 0 << 15;
       static const uint32_t kRegRedTblFlagTriggerModeLevel = 1 << 15;
       static const uint32_t kRegRedTblFlagMask = 1 << 16;
@@ -362,6 +392,7 @@ private:
       void Write(uint32_t index, uint32_t data) {
         reg[kIndex] = index;
         reg[kData] = data;
+        asm volatile("":::"memory");
       }
       void DisableInt() {
         for (uint32_t i = 0; i <= int_max; i++) {
@@ -369,10 +400,29 @@ private:
           Write(kRegRedTbl + 2 * i + 1, 0);
         }
       }
-      bool SetupInt(uint32_t irq, uint8_t lapicid, uint8_t vector);
+      bool SetupInt(uint32_t irq, uint8_t lapicid, uint8_t vector, bool trigger_mode, bool polarity);
+      bool IsIrqPending(uint32_t irq) {
+        return (Read(kRegRedTbl + 2 * irq) & kRegRedTblFlagDeliveryStatus) != 0;
+      }
+      void SendEoi(uint8_t vector) {
+        if (_has_eoi) {
+          reg[kEoi] = vector;
+        } else {
+          for (uint32_t i = 0; i <= int_max; i++) {
+            if ((Read(kRegRedTbl + 2 * i) & 0xff) == vector) {
+              uint32_t old = Read(kRegRedTbl + 2 * i);
+              Write(kRegRedTbl + 2 * i, (old & ~kRegRedTblFlagTriggerModeLevel) | kRegRedTblFlagMask);
+              Write(kRegRedTbl + 2 * i, old);
+            }
+          }
+        }
+      }
+    private:
+      bool _has_eoi = false;
     } *_controller = nullptr;
     int _controller_num = 0;
   private:
+    int GetControllerIndexFromIrq(uint32_t irq);
   };
   static void TmrCallback(Regs *rs, void *arg) {
   }
@@ -385,7 +435,8 @@ private:
   Ioapic _ioapic;
   MADT *_madt = nullptr;
 
-  static const uint32_t kMadtFlagLapicEnable = 1;
+  static const uint32_t kMadtFlagPcatCompat = 1 << 0;
+  static const uint32_t kMadtLapicFlagLapicEnable = 1 << 0;
   bool _setup = false;
 };
 

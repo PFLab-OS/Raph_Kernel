@@ -45,11 +45,22 @@ extern "C" void handle_int(Regs *rs) {
     }
   } else {
     idt->_callback[cpuid][rs->n].callback(rs, idt->_callback[cpuid][rs->n].arg);
+    switch(idt->_callback[cpuid][rs->n].eoi) {
+    case Idt::EoiType::kNone:
+      break;
+    case Idt::EoiType::kLapic:
+      apic_ctrl->SendEoi();
+      break;
+    case Idt::EoiType::kIoapic:
+      apic_ctrl->SendEoi(rs->n);
+      break;
+    default:
+      assert(false);
+      break;
+    }
   }
   idt->_handling_cnt[cpuid]--;
   enable_interrupt(iflag);
-  //TODO 普通の割り込みの場合にまずい
-  apic_ctrl->SendEoi();
 }
 }
 
@@ -98,12 +109,13 @@ void Idt::SetupGeneric() {
     _handling_cnt[i] = 0;
     for (int j = 0; j < 256; j++) {
       _callback[i][j].callback = nullptr;
+      _callback[i][j].eoi = EoiType::kNone;
     }
   }
   _is_gen_initialized = true;
   for (int i = 0; i < apic_ctrl->GetHowManyCpus(); i++) {
     CpuId cpuid(i);
-    SetExceptionCallback(cpuid, 14, HandlePageFault, nullptr);
+    SetExceptionCallback(cpuid, 14, HandlePageFault, nullptr, Idt::EoiType::kNone);
   }
 }
 
@@ -121,7 +133,7 @@ void Idt::SetGate(idt_callback gate, int vector, uint8_t dpl, bool trap, uint8_t
   idt_def[vector].entry[3] = 0;
 }
 
-int Idt::SetIntCallback(CpuId cpuid, int_callback callback, void *arg) {
+int Idt::SetIntCallback(CpuId cpuid, int_callback callback, void *arg, EoiType eoi) {
   kassert(_is_gen_initialized);
   Locker locker(_lock);
   int raw_cpu_id = cpuid.GetRawId();
@@ -129,13 +141,14 @@ int Idt::SetIntCallback(CpuId cpuid, int_callback callback, void *arg) {
     if (_callback[raw_cpu_id][vector].callback == nullptr) {
       _callback[raw_cpu_id][vector].callback = callback;
       _callback[raw_cpu_id][vector].arg = arg;
+      _callback[raw_cpu_id][vector].eoi = eoi;
       return vector;
     }
   }
   return ReservedIntVector::kError;
 }
 
-int Idt::SetIntCallback(CpuId cpuid, int_callback *callback, void **arg, int range) {
+int Idt::SetIntCallback(CpuId cpuid, int_callback *callback, void **arg, int range, EoiType eoi) {
   kassert(_is_gen_initialized);
   int _range = 1;
   while(_range < range) {
@@ -160,19 +173,21 @@ int Idt::SetIntCallback(CpuId cpuid, int_callback *callback, void **arg, int ran
     for (i = 0; i < range; i++) {
       _callback[raw_cpu_id][vector + i].callback = callback[i];
       _callback[raw_cpu_id][vector + i].arg = arg[i];
+      _callback[raw_cpu_id][vector + i].eoi = eoi;
     }
     return vector;
   }
   return ReservedIntVector::kError;
 }
 
-void Idt::SetExceptionCallback(CpuId cpuid, int vector, int_callback callback, void *arg) {
+void Idt::SetExceptionCallback(CpuId cpuid, int vector, int_callback callback, void *arg, EoiType eoi) {
   kassert(_is_gen_initialized);
   kassert(vector < 64 && vector >= 1);
   Locker locker(_lock);
   int raw_cpu_id = cpuid.GetRawId();
   _callback[raw_cpu_id][vector].callback = callback;
   _callback[raw_cpu_id][vector].arg = arg;
+  _callback[raw_cpu_id][vector].eoi = eoi;
 }
 
 void Idt::HandlePageFault(Regs *rs, void *arg) {

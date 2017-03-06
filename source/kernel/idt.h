@@ -44,19 +44,24 @@ namespace C {
 
 class Idt {
  public:
+  enum class EoiType {
+    kNone,
+    kLapic,
+    kIoapic,
+  };
   void SetupGeneric();
   void SetupProc();
   // I/O等用の割り込みハンドラ
   // 確保したvectorが返る(vector >= 64)
   // 確保できなかった場合はReservedIntVector::kErrorが返る
-  int SetIntCallback(CpuId cpuid, int_callback callback, void *arg);
+  int SetIntCallback(CpuId cpuid, int_callback callback, void *arg, EoiType eoi);
   // 一括で連続したvectorを確保する
   // rangeは2のn乗である必要がある
   // 戻り値は先頭vectorで、rangeで割り切れる事を保証する
-  int SetIntCallback(CpuId cpuid, int_callback *callback, void **arg, int range);
+  int SetIntCallback(CpuId cpuid, int_callback *callback, void **arg, int range, EoiType eoi);
   // 例外等用の割り込みハンドラ
   // vector < 64でなければならない
-  void SetExceptionCallback(CpuId cpuid, int vector, int_callback callback, void *arg);
+  void SetExceptionCallback(CpuId cpuid, int vector, int_callback callback, void *arg, EoiType eoi);
   // if 0, cpu is not handling interrupt
   volatile int GetHandlingCnt() {
     if (!_is_gen_initialized) {
@@ -79,6 +84,7 @@ class Idt {
   struct IntCallback {
     int_callback callback;
     void *arg;
+    EoiType eoi;
   } **_callback;
   int *_handling_cnt;
   friend void C::handle_int(Regs *rs);

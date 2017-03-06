@@ -55,7 +55,6 @@ public:
     kernel_panic("bus", "no method\n");
     return -1;
   }
-private:
   virtual int DevMethodProbe() override final {
     if (DevMethodBusProbe() == BUS_PROBE_DEFAULT) {
       return 0;
@@ -66,6 +65,7 @@ private:
   virtual int DevMethodAttach() override final {
     return DevMethodBusAttach();
   }
+private:
 };
 
 class BsdDevPci : public BsdDevBus {
@@ -105,7 +105,7 @@ public:
     driver_intr_t _ithread = nullptr;
     void *_iarg;
   };
-  BsdDevPci(uint8_t bus, uint8_t device, uint8_t function) : _pci(bus, device, function) {
+  BsdDevPci(uint8_t bus, uint8_t device, uint8_t function) : _pci(bus, device, function, this) {
     SetPciClass(this);
   }
   virtual ~BsdDevPci() {
@@ -143,7 +143,7 @@ public:
     }
     _is_legacy_interrupt_enable = false;
     CpuId cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority);
-    int vector = idt->SetIntCallback(cpuid, callbacks, args, count);
+    int vector = idt->SetIntCallback(cpuid, callbacks, args, count, Idt::EoiType::kLapic);
     _pci.SetMsi(cpuid, vector);
   }
   void ReleaseMsi() {
@@ -225,7 +225,16 @@ private:
     icontainer->Handle();
   }
 
-  DevPci _pci;
+  class BsdDevPciSub : public DevPci {
+  public:
+    BsdDevPciSub(uint8_t bus, uint8_t device, uint8_t function, BsdDevPci *master) : DevPci(bus, device, function), _master(master) {
+    }
+    virtual void Attach() override {
+      _master->DevMethodAttach();
+    }
+  private:
+    BsdDevPci *const _master;
+  } _pci;
   bool _is_legacy_interrupt_enable = true;
   IntContainer *_icontainer_list = nullptr;
 };
