@@ -91,6 +91,9 @@ public:
     return _task;
   }
   void Inc();
+  int GetCnt() {
+    return _cnt;
+  }
 private:
   void HandleSub(void *);
   sptr<Task> _task;

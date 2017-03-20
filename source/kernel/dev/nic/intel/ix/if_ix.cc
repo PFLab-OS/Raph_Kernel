@@ -5811,7 +5811,7 @@ int IxGbe::DevMethodBusAttach() {
 DevPci *IxGbe::InitPci(uint8_t bus, uint8_t device, uint8_t function) {
   IxGbe *addr = new IxGbe(bus, device, function);
   addr->InitBsdDevice(addr, sizeof(struct adapter));
-  if (addr->ProbeAndAttach() == 0) {
+  if (addr->DevMethodProbe() == 0) {
     return &addr->GetDevPci();
   } else {
     delete addr;

@@ -61,15 +61,24 @@ void PciCtrl::_Init() {
           if (vid == 0xffff) {
             continue;
           }
-          InitPciDevices(j, k, l);
+          WriteReg<uint16_t>(j, k, l, PciCtrl::kCommandReg, ReadReg<uint16_t>(j, k, l, PciCtrl::kCommandReg) | PciCtrl::kCommandRegInterruptDisableFlag);
+          DevPci *dev = InitPciDevices(j, k, l);
+          if (dev != nullptr) {
+            _devices.PushBack(dev);
+          }
         }
       }
     }
   }
+  auto iter = _devices.GetBegin();
+  while(!iter.IsNull()) {
+    (*(*iter))->Attach();
+    iter = iter->GetNext();
+  }
 }
 
 DevPci *PciCtrl::InitPciDevices(uint8_t bus, uint8_t device, uint8_t func) {
-  return _InitPciDevices<IxGbe, E1000, lE1000, DevUhci, DevEhci, /*AhciCtrl,*/ DevPci>(bus, device, func);
+  return _InitPciDevices</*IxGbe, E1000, */lE1000, /*DevEhci,*/ DevUhci, /*AhciCtrl,*/ DevPci>(bus, device, func);
 }
 
 uint16_t PciCtrl::FindCapability(uint8_t bus, uint8_t device, uint8_t func, CapabilityId id) {
@@ -108,6 +117,9 @@ void PciCtrl::SetMsi(uint8_t bus, uint8_t device, uint8_t func, uint64_t addr, u
   if (offset == 0) {
     return;
   }
+
+  WriteReg<uint16_t>(bus, device, func, PciCtrl::kCommandReg, ReadReg<uint16_t>(bus, device, func, PciCtrl::kCommandReg) | PciCtrl::kCommandRegInterruptDisableFlag);
+  
   uint16_t control = ReadReg<uint16_t>(bus, device, func, offset + kMsiCapRegControl);
   
   if (control & kMsiCapRegControlAddr64Flag) {
@@ -123,7 +135,7 @@ void PciCtrl::SetMsi(uint8_t bus, uint8_t device, uint8_t func, uint64_t addr, u
   WriteReg<uint16_t>(bus, device, func, offset + kMsiCapRegControl, control | kMsiCapRegControlMsiEnableFlag);
 }
 
-void PciCtrl::RegisterLegacyIntHandler(int irq, DevPci *device) {
+int PciCtrl::RegisterLegacyIntHandler(int irq, DevPci *device, Idt::EoiType type) {
   Locker lock(_irq_container_lock);
   IrqContainer *ic = _irq_container;
   while(ic->next != nullptr) {
@@ -134,14 +146,16 @@ void PciCtrl::RegisterLegacyIntHandler(int irq, DevPci *device) {
         ih = ih->next;
       }
       ih->Add(device);
-      return;
+      return nic->vector;
     } 
     ic = nic;
   }
-  int vector = idt->SetIntCallback(_cpuid, LegacyIntHandler, reinterpret_cast<void *>(this));
-  apic_ctrl->SetupIoInt(irq, apic_ctrl->GetApicIdFromCpuId(_cpuid), vector);
+  int vector = idt->SetIntCallback(_cpuid, LegacyIntHandler, reinterpret_cast<void *>(this), type);
+  apic_ctrl->SetupIoInt(irq, _cpuid.GetApicId(), vector, false, false);
   ic->Add(irq, vector);
   ic->next->inthandler->Add(device);
+  device->WriteReg<uint16_t>(PciCtrl::kCommandReg, device->ReadReg<uint16_t>(PciCtrl::kCommandReg) & ~PciCtrl::kCommandRegInterruptDisableFlag);
+  return vector;
 }
 
 void PciCtrl::IrqContainer::Handle() {

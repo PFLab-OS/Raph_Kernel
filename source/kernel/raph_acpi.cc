@@ -122,7 +122,10 @@ void AcpiCtrl::SetupAcpica() {
 
   Container *container = new Container();
   container->task->SetFunc(make_uptr(new ClassFunction<AcpiCtrl, void *>(this, &AcpiCtrl::GlobalEventHandler, nullptr)));
-   AcpiInstallGlobalEventHandler(AcpiGlobalEventHandler, reinterpret_cast<void *>(container));
+  AcpiInstallGlobalEventHandler(AcpiGlobalEventHandler, reinterpret_cast<void *>(container));
+
+  // TODO should be executed within ApicCtrl
+  acpi_ctrl->SetPicMode(AcpiCtrl::PicMode::kApic);
 } 
   
 void AcpiCtrl::Shutdown() {
@@ -221,7 +224,7 @@ static ACPI_STATUS GetRouteTable(ACPI_HANDLE obj_handle, UINT32 level, void *con
           if ((((entry->Address >> 16) & 0xFFFF) == device->GetDevice()) &&
               (entry->Pin + 1 == static_cast<unsigned int>(container->intpin))) {
 
-            if (entry->Source[0] == '\0') {
+            if (entry->Source[0] == 0x00) {
               container->source_not_found = false;
               container->source_available_flag = false;
               container->source_index = entry->SourceIndex;
@@ -304,4 +307,31 @@ int AcpiCtrl::GetPciIntNum(DevPci *device) {
   AcpiWalkNamespace(ACPI_TYPE_DEVICE, ACPI_ROOT_OBJECT, 100, GetIntLink, nullptr, reinterpret_cast<void *>(&container2), nullptr);
 
   return container2.irq;
+}
+
+void AcpiCtrl::SetPicMode(PicMode mode) {
+  ACPI_OBJECT_LIST        params;
+  ACPI_OBJECT             obj;
+
+  params.Count = 1;
+  params.Pointer = &obj;
+    
+  obj.Type = ACPI_TYPE_INTEGER;
+
+  switch(mode) {
+  case PicMode::kPic:
+    obj.Integer.Value = 0;
+    break;
+  case PicMode::kApic:
+    obj.Integer.Value = 1;
+    break;
+  default:
+    assert(false);
+  }
+  
+  ACPI_STATUS status = AcpiEvaluateObject(ACPI_ROOT_OBJECT, "_PIC", &params, nullptr);
+  if (ACPI_FAILURE(status) && (status != AE_NOT_FOUND)) {
+    kernel_panic("APICA", "failed to switch to APIC mode in ACPI");
+  }
+
 }

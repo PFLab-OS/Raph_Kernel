@@ -34,8 +34,8 @@ void LegacyKeyboard::Init() {
 
 void LegacyKeyboard::SetupSub() {
   CpuId cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority);
-  int vector = idt->SetIntCallback(cpuid, LegacyKeyboard::Handler, reinterpret_cast<void *>(this));
-  apic_ctrl->SetupIoInt(ApicCtrl::kIrqKeyboard, cpuid.GetApicId(), vector);
+  int vector = idt->SetIntCallback(cpuid, LegacyKeyboard::Handler, reinterpret_cast<void *>(this), Idt::EoiType::kLapic);
+  apic_ctrl->SetupIoInt(ApicCtrl::kIrqKeyboard, cpuid.GetApicId(), vector, true, true);
 }
 
 void LegacyKeyboard::Handler(Regs *reg, void *arg) {
