@@ -45,6 +45,11 @@ public:
   void SetupAcpica();
   void Reset();
   void Shutdown();
+  enum class PicMode {
+    kPic,
+    kApic,
+  };
+  void SetPicMode(PicMode mode);
 private:
   friend class AcpicaPciCtrl;
   int GetPciIntNum(DevPci *device);
