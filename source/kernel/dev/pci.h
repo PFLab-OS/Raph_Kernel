@@ -107,7 +107,7 @@ public:
   }
   // 0より小さい場合はLegacyInterruptが存在しない
   virtual int GetLegacyIntNum(DevPci *device) = 0;
-  void RegisterLegacyIntHandler(int irq, DevPci *device);
+  int RegisterLegacyIntHandler(int irq, DevPci *device, Idt::EoiType type);
   static const uint16_t kDevIdentifyReg = 0x2;
   static const uint16_t kVendorIDReg = 0x00;
   static const uint16_t kDeviceIDReg = 0x02;
@@ -298,12 +298,14 @@ public:
     int irq = pci_ctrl->GetLegacyIntNum(this);
     return irq >= 0;
   }
-  void SetLegacyInterrupt(ioint_callback handler, void *arg) {
+  int SetLegacyInterrupt(ioint_callback handler, void *arg, Idt::EoiType type) {
     _intarg = arg;
     _handler = handler;
     int irq = pci_ctrl->GetLegacyIntNum(this);
     if (irq >= 0) {
-      pci_ctrl->RegisterLegacyIntHandler(irq, this);
+      return pci_ctrl->RegisterLegacyIntHandler(irq, this, type);
+    } else {
+      kernel_panic("PCI", "could not assign irq to legacy interrupt");
     }
   }
   void LegacyIntHandler() {

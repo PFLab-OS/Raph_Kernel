@@ -78,7 +78,7 @@ void PciCtrl::_Init() {
 }
 
 DevPci *PciCtrl::InitPciDevices(uint8_t bus, uint8_t device, uint8_t func) {
-  return _InitPciDevices<IxGbe, E1000, lE1000, DevEhci, DevUhci, /*AhciCtrl,*/ DevPci>(bus, device, func);
+  return _InitPciDevices</*IxGbe, E1000, */lE1000, /*DevEhci,*/ DevUhci, /*AhciCtrl,*/ DevPci>(bus, device, func);
 }
 
 uint16_t PciCtrl::FindCapability(uint8_t bus, uint8_t device, uint8_t func, CapabilityId id) {
@@ -135,7 +135,7 @@ void PciCtrl::SetMsi(uint8_t bus, uint8_t device, uint8_t func, uint64_t addr, u
   WriteReg<uint16_t>(bus, device, func, offset + kMsiCapRegControl, control | kMsiCapRegControlMsiEnableFlag);
 }
 
-void PciCtrl::RegisterLegacyIntHandler(int irq, DevPci *device) {
+int PciCtrl::RegisterLegacyIntHandler(int irq, DevPci *device, Idt::EoiType type) {
   Locker lock(_irq_container_lock);
   IrqContainer *ic = _irq_container;
   while(ic->next != nullptr) {
@@ -146,15 +146,16 @@ void PciCtrl::RegisterLegacyIntHandler(int irq, DevPci *device) {
         ih = ih->next;
       }
       ih->Add(device);
-      return;
+      return nic->vector;
     } 
     ic = nic;
   }
-  int vector = idt->SetIntCallback(_cpuid, LegacyIntHandler, reinterpret_cast<void *>(this), Idt::EoiType::kIoapic);
+  int vector = idt->SetIntCallback(_cpuid, LegacyIntHandler, reinterpret_cast<void *>(this), type);
   apic_ctrl->SetupIoInt(irq, _cpuid.GetApicId(), vector, false, false);
   ic->Add(irq, vector);
   ic->next->inthandler->Add(device);
   device->WriteReg<uint16_t>(PciCtrl::kCommandReg, device->ReadReg<uint16_t>(PciCtrl::kCommandReg) & ~PciCtrl::kCommandRegInterruptDisableFlag);
+  return vector;
 }
 
 void PciCtrl::IrqContainer::Handle() {

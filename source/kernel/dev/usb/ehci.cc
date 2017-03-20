@@ -73,7 +73,7 @@ void DevEhci::Init() {
 
   _int_task->SetFunc(make_uptr(new ClassFunction<DevEhci, void *>(this, &DevEhci::CheckQueuedTdIfCompleted, nullptr)));
   assert(HasLegacyInterrupt());
-  SetLegacyInterrupt(Handler, reinterpret_cast<void *>(this));
+  SetLegacyInterrupt(Handler, reinterpret_cast<void *>(this), Idt::EoiType::kIoapic);
   _op_reg_base_addr[kOpRegOffsetUsbIntr] |= kOpRegUsbIntrFlagInterruptEnable;
 
   if ((ReadCapabilityRegHccParams() & 1) == 0) {

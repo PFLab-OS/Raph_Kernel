@@ -143,6 +143,13 @@ public:
     _ioapic.SendEoi(vector);
   }
 
+  // flag:
+  //   true: mask (disable interrupt)
+  //   false: unmask (enable interrupt)
+  void MaskInt(uint8_t vector, bool flag) {
+    _ioapic.MaskInt(vector, flag);
+  }
+
   void SendIpi(uint32_t destid) {
     _lapic->SendIpi(destid);
   }
@@ -358,6 +365,11 @@ private:
         _controller[j].SendEoi(vector);
       }
     }
+    void MaskInt(uint8_t vector, bool flag) {
+      for (int j = 0; j < _controller_num; j++) {
+        _controller[j].MaskInt(vector, flag);
+      }
+    }
     struct Controller {
       // see IOAPIC manual 3.1 (Memory Mapped Registers for Accessing IOAPIC Registers)
       static const int kIndex = 0x0;
@@ -416,6 +428,14 @@ private:
             }
           }
         }
+      }
+      void MaskInt(uint8_t vector, bool flag) {
+          for (uint32_t i = 0; i <= int_max; i++) {
+            if ((Read(kRegRedTbl + 2 * i) & 0xff) == vector) {
+              uint32_t old = Read(kRegRedTbl + 2 * i);
+              Write(kRegRedTbl + 2 * i, flag ? (old | kRegRedTblFlagMask) : (old & ~kRegRedTblFlagMask));
+            }
+          }
       }
     private:
       bool _has_eoi = false;

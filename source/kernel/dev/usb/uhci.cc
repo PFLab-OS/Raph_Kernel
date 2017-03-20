@@ -130,7 +130,7 @@ void DevUhci::Init() {
   WriteControllerReg<uint16_t>(kCtrlRegStatus, kCtrlRegStatusFlagInt);
   WriteControllerReg<uint16_t>(kCtrlRegIntr, /*ReadControllerReg<uint16_t>(kCtrlRegIntr) | */kCtrlRegIntrFlagIoc);
   assert(HasLegacyInterrupt());
-  SetLegacyInterrupt(Handler, reinterpret_cast<void *>(this));
+  SetLegacyInterrupt(Handler, reinterpret_cast<void *>(this), Idt::EoiType::kIoapic);
 
   for (int i = 0; i < 2; i++) {
     DisablePort(i);

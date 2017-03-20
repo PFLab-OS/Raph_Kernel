@@ -27,6 +27,7 @@
 #include <raph.h>
 #include <task.h>
 #include <idt.h>
+#include <apic.h>
 #include <global.h>
 #include <dev/pci.h>
 
@@ -73,13 +74,18 @@ public:
   class IntContainer {
   public:
     IntContainer() {
-      _ctask.SetFunc(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), make_uptr(new Function<IntContainer *>(HandleSub, this)));
+      _ctask.SetFunc(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), make_uptr(new ClassFunction<IntContainer, void *>(this, &IntContainer::HandleSub, nullptr)));
+    }
+    void SetVector(int vector) {
+      _vector = vector;
     }
     void Handle() {
       if (_filter != nullptr) {
         _filter(_farg);
+        apic_ctrl->SendEoi(_vector);
       }
       if (_ithread != nullptr) {
+        apic_ctrl->MaskInt(_vector, true);
         _ctask.Inc();
       }
     }
@@ -92,9 +98,12 @@ public:
       _iarg = arg;
     }
   private:
-    static void HandleSub(IntContainer *that) {
-      if (that->_ithread != nullptr) {
-        (*that->_ithread)(that->_iarg);
+    void HandleSub(void *) {
+      if (_ithread != nullptr) {
+        _ithread(_iarg);
+        if (_ctask.GetCnt() == 0) {
+          apic_ctrl->MaskInt(_vector, false);
+        }
       }
     }
     CountableTask _ctask;
@@ -104,6 +113,8 @@ public:
     
     driver_intr_t _ithread = nullptr;
     void *_iarg;
+
+    int _vector = -1;
   };
   BsdDevPci(uint8_t bus, uint8_t device, uint8_t function) : _pci(bus, device, function, this) {
     SetPciClass(this);
@@ -144,7 +155,11 @@ public:
     _is_legacy_interrupt_enable = false;
     CpuId cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority);
     int vector = idt->SetIntCallback(cpuid, callbacks, args, count, Idt::EoiType::kLapic);
-    _pci.SetMsi(cpuid, vector);
+    for (int i = 0; i < count; i++) {
+      _icontainer_list[i].SetVector(vector + i);
+    }
+    _pci.SetMsi(cpuid, vector); // TODO it will not work if count >= 2
+    assert(count == 1); // to notice this issue
   }
   void ReleaseMsi() {
     if (_icontainer_list != nullptr) {
@@ -212,9 +227,8 @@ private:
   }
   void SetupLegacyIntContainers() {
     _icontainer_list = new IntContainer[1];
-    for (int i = 0; i < 1; i++) {
-      _pci.SetLegacyInterrupt(HandleSubLegacy, reinterpret_cast<void *>(_icontainer_list + i));
-    }
+    int vector = _pci.SetLegacyInterrupt(HandleSubLegacy, reinterpret_cast<void *>(_icontainer_list), Idt::EoiType::kLapic);
+    _icontainer_list[0].SetVector(vector);
   }
   static void HandleSubLegacy(void *arg) {
     IntContainer *icontainer = reinterpret_cast<IntContainer *>(arg);
