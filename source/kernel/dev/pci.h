@@ -20,8 +20,7 @@
  * 
  */
 
-#ifndef __RAPH_KERNEL_DEV_Pci_H__
-#define __RAPH_KERNEL_DEV_Pci_H__
+#pragma once
 
 #include <stdint.h>
 #include <raph_acpi.h>
@@ -32,6 +31,7 @@
 #include <apic.h>
 #include <dev/device.h>
 #include <_cpu.h>
+#include <list.h>
 
 struct MCFGSt {
   uint8_t reserved1[8];
@@ -107,7 +107,7 @@ public:
   }
   // 0より小さい場合はLegacyInterruptが存在しない
   virtual int GetLegacyIntNum(DevPci *device) = 0;
-  void RegisterLegacyIntHandler(int irq, DevPci *device);
+  int RegisterLegacyIntHandler(int irq, DevPci *device, Idt::EoiType type);
   static const uint16_t kDevIdentifyReg = 0x2;
   static const uint16_t kVendorIDReg = 0x00;
   static const uint16_t kDeviceIDReg = 0x02;
@@ -149,6 +149,7 @@ public:
 
   static const uint16_t kCommandRegBusMasterEnableFlag = 1 << 2;
   static const uint16_t kCommandRegMemWriteInvalidateFlag = 1 << 4;
+  static const uint16_t kCommandRegInterruptDisableFlag = 1 << 10;
 
   static const uint8_t kHeaderTypeRegFlagMultiFunction = 1 << 7;
   static const uint8_t kHeaderTypeRegMaskDeviceType = (1 << 7) - 1;
@@ -185,6 +186,8 @@ private:
       return dev;
     }
   }
+
+  List<DevPci *> _devices;
 
   class IntHandler {
   public:
@@ -256,6 +259,7 @@ public:
   static DevPci *InitPci(uint8_t bus, uint8_t device, uint8_t function) {
     return nullptr;
   } // dummy
+  virtual void Attach() = 0;
   template<class T> T ReadReg(uint16_t reg) {
     kassert(pci_ctrl != nullptr);
     return pci_ctrl->ReadReg<T>(_bus, _device, _function, reg);
@@ -294,12 +298,14 @@ public:
     int irq = pci_ctrl->GetLegacyIntNum(this);
     return irq >= 0;
   }
-  void SetLegacyInterrupt(ioint_callback handler, void *arg) {
+  int SetLegacyInterrupt(ioint_callback handler, void *arg, Idt::EoiType type) {
     _intarg = arg;
     _handler = handler;
     int irq = pci_ctrl->GetLegacyIntNum(this);
     if (irq >= 0) {
-      pci_ctrl->RegisterLegacyIntHandler(irq, this);
+      return pci_ctrl->RegisterLegacyIntHandler(irq, this, type);
+    } else {
+      kernel_panic("PCI", "could not assign irq to legacy interrupt");
     }
   }
   void LegacyIntHandler() {
@@ -315,6 +321,3 @@ private:
   void *_intarg;
   ioint_callback _handler = nullptr;
 };
-
-
-#endif /* __RAPH_KERNEL_DEV_Pci_H__ */

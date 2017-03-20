@@ -242,14 +242,14 @@ extern "C" {
     kassert(apic_ctrl != nullptr);
     kassert(idt != nullptr);
     CpuId cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority);
-    int vector = idt->SetIntCallback(cpuid, AcpiHandlerSub, Context);
+    int vector = idt->SetIntCallback(cpuid, AcpiHandlerSub, Context, Idt::EoiType::kLapic);
     for(int i = 0; i < 10; i++) {
       if (handler[i].func == nullptr) {
         handler[i].func = Handler;
         handler[i].vector = vector;
       }
     }
-    apic_ctrl->SetupIoInt(InterruptLevel, apic_ctrl->GetApicIdFromCpuId(cpuid), vector);
+    apic_ctrl->SetupIoInt(InterruptLevel, apic_ctrl->GetApicIdFromCpuId(cpuid), vector, true, true);
     return (AE_OK);
   }
 

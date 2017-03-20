@@ -68,6 +68,19 @@ public:
     kIn = 0b01,
     kSetup = 0b10,
   };
+
+  static PacketIdentification ReversePacketIdentification(PacketIdentification pid) {
+    switch(pid) {
+    case PacketIdentification::kOut: {
+      return PacketIdentification::kIn;
+    }
+    case PacketIdentification::kIn: {
+      return PacketIdentification::kOut;
+    }
+    default:
+      assert(false);
+    }
+  }
   
   // see Table 9-5 Descriptor Types
   enum class DescriptorType : uint8_t {
@@ -184,6 +197,13 @@ public:
       _index = 0;
       _length = 0;
     }
+    void MakePacket(uint8_t request_type, uint8_t request, uint16_t value, uint16_t index, uint16_t length) {
+      _request_type = request_type;
+      _request = request;
+      _value = value;
+      _index = index;
+      _length = length;
+    }
     PacketIdentification GetDirection() {
       return (_request_type & 0b10000000) != 0 ? PacketIdentification::kIn : PacketIdentification::kOut;
     }
@@ -260,6 +280,9 @@ protected:
     InitSub();
   }
   virtual void InitSub() = 0;
+  bool SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data, size_t data_size) {
+    return _controller->SendControlTransfer(request, data, data_size, _addr);
+  }
   void LoadDeviceDescriptor();
   void LoadCombinedDescriptors();
   UsbCtrl::DeviceDescriptor *GetDeviceDescriptor() {

@@ -860,6 +860,14 @@ extern "C" int main() {
 
   gdt->SetupProc();
 
+  // 各コアは最低限の初期化ののち、TaskCtrlに制御が移さなければならない
+  // 特定のコアで専用の処理をさせたい場合は、TaskCtrlに登録したジョブとして
+  // 実行する事
+
+  apic_ctrl->StartAPs();
+  
+  gtty->Init();
+
   idt->SetupProc();
   
   pci_ctrl = new (&_acpica_pci_ctrl) AcpicaPciCtrl;
@@ -871,19 +879,9 @@ extern "C" int main() {
   freebsd_main();
 
   InitDevices<PciCtrl, LegacyKeyboard, Device>();
-
-  // 各コアは最低限の初期化ののち、TaskCtrlに制御が移さなければならない
-  // 特定のコアで専用の処理をさせたい場合は、TaskCtrlに登録したジョブとして
-  // 実行する事
-
-  apic_ctrl->StartAPs();
-
-  gtty->Init();
   
   // arp_table->Setup();
 
-  while (!apic_ctrl->IsBootupAll()) {
-  }
   gtty->Cprintf("\n\n[kernel] info: initialization completed\n");
 
   arp_table = new ArpTable;
