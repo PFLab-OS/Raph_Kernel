@@ -6299,14 +6299,14 @@ int E1000::DevMethodBusAttach() {
   int rval = em_attach(this);
   em_init(reinterpret_cast<struct adapter *>(softc));
   _bsd_eth.SetupNetInterface("em");
-  _bsd_eth.SetHandleMethod(E1000BsdEthernet::HandleMethod::kPolling);
+  // _bsd_eth.SetHandleMethod(E1000BsdEthernet::HandleMethod::kPolling);
   return rval;
 }
 
 DevPci *E1000::InitPci(uint8_t bus, uint8_t device, uint8_t function) {
   E1000 *addr = new E1000(bus, device, function);
   addr->InitBsdDevice(addr, sizeof(struct adapter));
-  if (addr->ProbeAndAttach() == 0) {
+  if (addr->DevMethodProbe() == 0) {
     return &addr->GetDevPci();
   } else {
     delete addr;

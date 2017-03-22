@@ -657,7 +657,7 @@ ahci_pci_detach(device_t dev)
 DevPci *AhciCtrl::InitPci(uint8_t bus, uint8_t device, uint8_t function) {
   AhciCtrl *addr = new AhciCtrl(bus, device, function);
   addr->InitBsdDevice(addr, sizeof(struct ahci_controller));
-  if (addr->ProbeAndAttach() == 0) {
+  if (addr->DevMethodProbe() == 0) {
     return &addr->GetDevPci();
   } else {
     delete addr;

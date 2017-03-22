@@ -22,8 +22,7 @@
  *
  */
 
-#ifndef __RAPH_KERNEL_DEV_HPET_H__
-#define __RAPH_KERNEL_DEV_HPET_H__
+#pragma once
 
 #include <stdint.h>
 #include <raph.h>
@@ -31,7 +30,6 @@
 #include <raph_acpi.h>
 #include <timer.h>
 #include <apic.h>
-#include <global.h>
 
 struct HPETDT {
   ACPISDTHeader header;
@@ -48,66 +46,17 @@ struct HPETDT {
 
 class Hpet : public Timer {
  public:
-  virtual bool SetupSub() override {
-    _dt = acpi_ctrl->GetHPETDT();
-    if (_dt == nullptr) {
-      return false;
-    }
-    phys_addr pbase = _dt->BaseAddr;
-    _reg = reinterpret_cast<uint64_t *>(p2v(pbase));
-
-    _cnt_clk_period = ((_reg[kRegGenCap] & kRegGenCapMaskMainCntPeriod) >> kRegGenCapOffsetMainCntPeriod) / (1000 * 1000);
-
-    _table_num = ((_reg[kRegGenCap] & kRegGenCapMaskNumTimer)
-                  >> kRegGenCapOffsetNumTimer) + 1;
-
-    if (_table_num == 0) {
-      kernel_panic("hpet","not enough hpet timer");
-    }
-
-    // disable all timer
-    for(int i = 0; i < _table_num; i++) {
-      this->Disable(i);
-    }
-
-    // Enable Timer
-    _reg[kRegGenConfig] &= ~kRegGenConfigFlagLegacy;
-    _reg[kRegGenConfig] |= kRegGenConfigFlagEnable;
-    return true;
-  }
+  virtual bool SetupSub() override;
   virtual volatile uint64_t ReadMainCnt() override {
     return _reg[kRegMainCnt];
   }
-  void SetInt(CpuId cpuid, uint64_t cnt) {
-    int id = 0;
-    int table;
-    uint32_t routecap = (_reg[GetRegTmrOfN(id, kBaseRegTmrConfigCap)] & kRegTmrConfigCapBaseMaskIntRouteCap) >> 32;
-    // table == 0はvirtualboxで動かない
-    for (int i = 1; i < 32; i++) {
-      if ((routecap & (1 << i)) != 0) {
-        table = i;
-        break;
-      }
-    }
-    if (table == -1) {
-      kernel_panic("hpet","unknown error");
-    }
-    _reg[GetRegTmrOfN(id, kBaseRegTmrConfigCap)] =
-      (_reg[GetRegTmrOfN(id, kBaseRegTmrConfigCap)]
-       & ~kRegTmrConfigCapBaseMaskIntRoute) |
-      (table << kRegTmrConfigCapBaseOffsetIntRoute) |
-      kRegTmrConfigCapBaseFlagIntTypeEdge |
-      kRegTmrConfigCapBaseFlagIntEnable |
-      kRegTmrConfigCapBaseFlagTypeNonPer;
-    _reg[GetRegTmrOfN(id, kBaseRegTmrCmp)] = cnt;
-    kassert(apic_ctrl != nullptr);
-    kassert(apic_ctrl->SetupIoInt(table, apic_ctrl->GetApicIdFromCpuId(cpuid), 38));
-  }
+  void SetInt(CpuId cpuid, uint64_t cnt);
  private:
   void Disable(int table) {
-    _reg[GetRegTmrOfN(table, kBaseRegTmrConfigCap)] &=
-      ~kRegTmrConfigCapBaseFlagIntEnable;
+    _reg[GetRegTmrOfN(table, kBaseRegTmrConfigCap)] &= ~kRegTmrConfigCapBaseFlagIntEnable & ~kRegTmrConfigCapBaseFlagFsbEnable;
+    _reg[kBaseRegFsbIntRoute] = 0;
   }
+  static void Handle(Regs *rs, void *arg);
 
   HPETDT *_dt;
   uint64_t *_reg;
@@ -131,6 +80,7 @@ class Hpet : public Timer {
 
   static const int kRegGenCapOffsetMainCntPeriod = 32;
   static const uint64_t kRegGenCapMaskMainCntPeriod = 0xffffffff00000000;
+  static const int kRegGenCapLegacyRoute = 1 << 15;
   static const int kRegGenCapOffsetNumTimer = 8;
   static const uint64_t kRegGenCapMaskNumTimer = 0x1F00;
   
@@ -151,5 +101,3 @@ class Hpet : public Timer {
   static const uint64_t kRegTmrConfigCapBaseFlagFsbIntDel = 1 << 15;
   static const uint64_t kRegTmrConfigCapBaseMaskIntRouteCap = 0xffffffff00000000;
 };
-
-#endif /* __RAPH_KERNEL_DEV_HPET_H__ */

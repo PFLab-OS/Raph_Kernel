@@ -64,7 +64,7 @@ void ApicCtrl::Setup() {
     case MADTStType::kLocalAPIC:
       {
         MADTStLAPIC *madtStLAPIC = reinterpret_cast<MADTStLAPIC *>(ptr);
-        if ((madtStLAPIC->flags & kMadtFlagLapicEnable) == 0) {
+        if ((madtStLAPIC->flags & kMadtLapicFlagLapicEnable) == 0) {
           break;
         }
         ncpu++;
@@ -73,7 +73,7 @@ void ApicCtrl::Setup() {
     case MADTStType::kLocalX2Apic:
       {
         MadtStructX2Lapic *madt = reinterpret_cast<MadtStructX2Lapic *>(ptr);
-        if ((madt->flags & kMadtFlagLapicEnable) == 0) {
+        if ((madt->flags & kMadtLapicFlagLapicEnable) == 0) {
           break;
         }
         ncpu++;
@@ -107,7 +107,7 @@ void ApicCtrl::Setup() {
     case MADTStType::kLocalAPIC:
       {
         MADTStLAPIC *madtStLAPIC = reinterpret_cast<MADTStLAPIC *>(ptr);
-        if ((madtStLAPIC->flags & kMadtFlagLapicEnable) == 0) {
+        if ((madtStLAPIC->flags & kMadtLapicFlagLapicEnable) == 0) {
           break;
         }
         if (_madt->lapicCtrlAddr != LapicX::kMmioBaseAddr) {
@@ -120,7 +120,7 @@ void ApicCtrl::Setup() {
     case MADTStType::kLocalX2Apic:
       {
         MadtStructX2Lapic *madt = reinterpret_cast<MadtStructX2Lapic *>(ptr);
-        if ((madt->flags & kMadtFlagLapicEnable) == 0) {
+        if ((madt->flags & kMadtLapicFlagLapicEnable) == 0) {
           break;
         }
         _lapic->_apic_info[ncpu].id = madt->apic_id;
@@ -138,7 +138,7 @@ void ApicCtrl::Setup() {
     }
     offset += madtSt->length;
   }
-  _ioapic.Setup();
+
   _setup = true;
 }
 
@@ -165,6 +165,7 @@ void ApicCtrl::StartAPs() {
     while(!__atomic_load_n(&_started, __ATOMIC_ACQUIRE)) {}
   }
   _all_bootup = true;
+  _ioapic.Setup();
 }
 
 void ApicCtrl::PicSpuriousCallback(Regs *rs, void *arg) {
@@ -194,13 +195,15 @@ void ApicCtrl::Lapic::Setup() {
   WriteReg(RegisterOffset::kLvtPerformanceCnt, kRegLvtMask);
   WriteReg(RegisterOffset::kLvtLint0, kRegLvtMask);
   WriteReg(RegisterOffset::kLvtLint1, kRegLvtMask);
-  WriteReg(RegisterOffset::kLvtErr, kRegLvtMask | Idt::ReservedIntVector::kError);
+  // WriteReg(RegisterOffset::kLvtLint0, kDeliverModeFixed | kDeliverModeExtint);
+  // WriteReg(RegisterOffset::kLvtLint1, kDeliverModeFixed | kDeliverModeNmi);
+  WriteReg(RegisterOffset::kLvtErr, kDeliverModeFixed | Idt::ReservedIntVector::kError);
 
   kassert(idt != nullptr);
-  idt->SetExceptionCallback(cpu_ctrl->GetCpuId(), Idt::ReservedIntVector::kIpi, IpiCallback, nullptr);
-  idt->SetExceptionCallback(cpu_ctrl->GetCpuId(), Idt::ReservedIntVector::k8259Spurious1, PicSpuriousCallback, nullptr);
-  idt->SetExceptionCallback(cpu_ctrl->GetCpuId(), Idt::ReservedIntVector::k8259Spurious2, PicSpuriousCallback, nullptr);
-  idt->SetExceptionCallback(cpu_ctrl->GetCpuId(), Idt::ReservedIntVector::k8259Rtc, PicUnknownCallback, nullptr);
+  idt->SetExceptionCallback(cpu_ctrl->GetCpuId(), Idt::ReservedIntVector::kIpi, IpiCallback, nullptr, Idt::EoiType::kLapic);
+  idt->SetExceptionCallback(cpu_ctrl->GetCpuId(), Idt::ReservedIntVector::k8259Spurious1, PicSpuriousCallback, nullptr, Idt::EoiType::kNone);
+  idt->SetExceptionCallback(cpu_ctrl->GetCpuId(), Idt::ReservedIntVector::k8259Spurious2, PicSpuriousCallback, nullptr, Idt::EoiType::kNone);
+  idt->SetExceptionCallback(cpu_ctrl->GetCpuId(), Idt::ReservedIntVector::k8259Rtc, PicUnknownCallback, nullptr, Idt::EoiType::kNone);
 
   WriteReg(RegisterOffset::kSvr, kRegSvrApicEnableFlag | Idt::ReservedIntVector::kError);
 }
@@ -246,10 +249,10 @@ void ApicCtrl::Lapic::SetupTimer(int interval) {
   kassert(base_cnt > 0);
 
   kassert(idt != nullptr);
-  int irq = idt->SetIntCallback(cpu_ctrl->GetCpuId(), TmrCallback, nullptr);
+  int vector = idt->SetIntCallback(cpu_ctrl->GetCpuId(), TmrCallback, nullptr, Idt::EoiType::kLapic);
   WriteReg(RegisterOffset::kTimerInitCnt, base_cnt);
 
-  WriteReg(RegisterOffset::kLvtTimer, kRegLvtMask | kRegTimerPeriodic | irq);
+  WriteReg(RegisterOffset::kLvtTimer, kRegLvtMask | kRegTimerPeriodic | vector);
 }
 
 void ApicCtrl::Lapic::SendIpi(uint32_t destid) {
@@ -288,11 +291,6 @@ void ApicCtrl::Ioapic::Setup() {
   asm volatile("mov $0x0a, %al; out %al, $0xa0");
   asm volatile("mov $0x68, %al; out %al, $0x20");
   asm volatile("mov $0x0a, %al; out %al, $0x20");
-    
-  // move to symmetric I/O mode
-  // see MP spec 3.6.2.3 Symmetric I/O mode
-  asm volatile("mov $0x70, %al; out %al, $0x22");
-  asm volatile("mov $0x1, %al; out %al, $0x23");
 
   // disable all external I/O interrupts
   for (int i = 0; i < _controller_num; i++) {
@@ -300,7 +298,7 @@ void ApicCtrl::Ioapic::Setup() {
   }
 }
 
-bool ApicCtrl::Ioapic::SetupInt(uint32_t irq, uint8_t lapicid, uint8_t vector) {
+int ApicCtrl::Ioapic::GetControllerIndexFromIrq(uint32_t irq) {
   int controller_index = -1;
   for (int j = 0; j < _controller_num; j++) {
     if (_controller[j].int_base <= irq && irq <= _controller[j].int_base + _controller[j].int_max) {
@@ -311,7 +309,7 @@ bool ApicCtrl::Ioapic::SetupInt(uint32_t irq, uint8_t lapicid, uint8_t vector) {
   if (controller_index == -1) {
     kernel_panic("APIC", "IRQ out of range");
   }
-  return _controller[controller_index].SetupInt(irq - _controller[controller_index].int_base, lapicid, vector);
+  return controller_index;
 }
 
 void ApicCtrl::Ioapic::Controller::Setup(MADTStIOAPIC *madt_struct_ioapic) {
@@ -320,17 +318,22 @@ void ApicCtrl::Ioapic::Controller::Setup(MADTStIOAPIC *madt_struct_ioapic) {
   // get maximum redirection entry
   // see IOAPIC manual 3.2.2 (IOAPIC Version Register)
   int_max = (Read(kRegVer) >> 16) & 0xff;
+  _has_eoi = (Read(kRegVer) & 0xff) >= 0x20;
 }
 
-bool ApicCtrl::Ioapic::Controller::SetupInt(uint32_t irq, uint8_t lapicid, uint8_t vector) {
+bool ApicCtrl::Ioapic::Controller::SetupInt(uint32_t irq, uint8_t lapicid, uint8_t vector, bool trigger_mode, bool polarity) {
   if ((Read(kRegRedTbl + 2 * irq) | kRegRedTblFlagMask) == 0) {
     return false;
   }
+  if (IsIrqPending(irq)) {
+    kernel_panic("APIC", "try to assign to a pending irq");
+  }
   Write(kRegRedTbl + 2 * irq + 1, lapicid << kRegRedTblOffsetDest);
   Write(kRegRedTbl + 2 * irq,
-        kRegRedTblFlagValueDeliveryLow |
+        kRegRedTblFlagValueDeliveryFixed |
         kRegRedTblFlagDestModePhys |
-        kRegRedTblFlagTriggerModeEdge |
+        (trigger_mode ? kRegRedTblFlagTriggerModeEdge : kRegRedTblFlagTriggerModeLevel) |
+        (polarity ? kRegRedTblFlagPolarityHighActive : kRegRedTblFlagPolarityLowActive) |
         vector);
   return true;
 }
