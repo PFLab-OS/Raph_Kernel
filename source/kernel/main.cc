@@ -877,6 +877,8 @@ extern "C" int main() {
   // 実行する事
 
   apic_ctrl->StartAPs();
+
+  paging_ctrl->ReleaseLowMemory();
   
   gtty->Init();
 
@@ -972,6 +974,9 @@ static int error_output_flag = 0;
 
 void show_backtrace(size_t *rbp) {
     for (int i = 0; i < 3; i++) {
+      if (rbp[1] == 0) {
+        break;
+      }
       gtty->CprintfRaw("backtrace(%d): rip:%llx,\n", i, rbp[1]);
       rbp = reinterpret_cast<size_t *>(rbp[0]);
     }

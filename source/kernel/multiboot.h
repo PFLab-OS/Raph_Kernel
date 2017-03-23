@@ -33,11 +33,14 @@
 #include <ptr.h>
 #include <array.h>
 
-extern uint32_t multiboot_info;
-
 class MultibootCtrl {
 public:
   MultibootCtrl() {
+    // because multiboot_info is defined on boot/boot.S, it is placed at lower memory
+    extern uint32_t multiboot_info;
+    extern int kLinearAddrOffset;
+    _multiboot_info = reinterpret_cast<uint32_t *>(reinterpret_cast<virt_addr>(&multiboot_info) + reinterpret_cast<virt_addr>(&kLinearAddrOffset));
+    kassert(align(*_multiboot_info, 8) == *_multiboot_info);
   }
   void Setup();
   void ShowModuleInfo();
@@ -47,6 +50,7 @@ public:
     return _phys_memory_end;
   }
 private:
+  uint32_t *_multiboot_info;
   PhysAddr _info_addr;
   phys_addr _phys_memory_end = 0;
 };

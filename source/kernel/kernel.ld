@@ -10,18 +10,18 @@ SECTIONS{
   phys_memory_start = .;
   .boot : {
     *(.bootstrap*) 
-    *boot.o (.text*)
-    *boot.o (.rodata*)
-    *boot.o (.data*)
-    *boot.o (.bss*)
+    boot/boot.o (.text*)
+    boot/boot.o (.rodata*)
+    boot/boot.o (.data*)
+    boot/boot.o (.bss*)
   }
 
   . = 0x8000;
   .boot16 : AT(LOADADDR(.boot) + SIZEOF(.boot)) {
-    *bootap.o (.text*)
-    *bootap.o (.rodata*)
-    *bootap.o (.data*)
-    *bootap.o (.bss*)
+    boot/bootap.o (.text*)
+    boot/bootap.o (.rodata*)
+    boot/bootap.o (.data*)
+    boot/bootap.o (.bss*)
     . = ALIGN(0x1000);
   }
   boot16_start = LOADADDR(.boot16);

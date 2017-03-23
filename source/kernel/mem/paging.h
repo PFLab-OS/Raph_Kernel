@@ -97,6 +97,7 @@ class PagingCtrl {
  public:
   PagingCtrl();
   void MapAllPhysMemory();
+  void ReleaseLowMemory();
   void ConvertVirtMemToPhysMem(virt_addr vaddr, PhysAddr &paddr);
   bool IsVirtAddrMapped(virt_addr vaddr);
   void GetTranslationEntries(virt_addr vaddr, entry_type *pml4e, entry_type *pdpte, entry_type *pde, entry_type *pte);

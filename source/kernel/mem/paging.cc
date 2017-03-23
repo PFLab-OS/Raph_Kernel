@@ -44,6 +44,13 @@ void PagingCtrl::MapAllPhysMemory() {
   }
 }
 
+void PagingCtrl::ReleaseLowMemory() {
+  // release low address(1MB~) which is set in boot/boot.S
+  entry_type entry = _pml4t->entry[GetPML4TIndex(0)];
+  assert((entry & PML4E_PRESENT_BIT) != 0);
+  _pml4t->entry[GetPML4TIndex(0)] = 0;
+}
+
 void PagingCtrl::ConvertVirtMemToPhysMem(virt_addr vaddr, PhysAddr &paddr) {
   Locker locker(_lock);
   entry_type entry = _pml4t->entry[GetPML4TIndex(vaddr)];

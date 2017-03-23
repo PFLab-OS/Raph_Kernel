@@ -214,6 +214,7 @@ void Idt::HandlePageFault(Regs *rs, void *arg) {
     PRINT_PAGING_ENTRY("PDPTE", pdpte);
     PRINT_PAGING_ENTRY("PDE  ", pde);
     PRINT_PAGING_ENTRY("PTE  ", pte);
+    gtty->CprintfRaw("\n");
     show_backtrace(reinterpret_cast<size_t *>(rs->rbp));
   }
   while(true){
