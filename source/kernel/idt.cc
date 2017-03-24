@@ -181,6 +181,10 @@ int Idt::SetIntCallback(CpuId cpuid, int_callback *callback, void **arg, int ran
   return ReservedIntVector::kError;
 }
 
+static inline void ShowPagingEntry(const char *str, uint64_t entry) {
+  gtty->CprintfRaw("\n%s: 0x%llx P:%d R/W: %d U/S: %d", str, entry, (entry & 1) != 0, (entry & 2) != 0, (entry & 4) != 0);
+}
+
 void Idt::SetExceptionCallback(CpuId cpuid, int vector, int_callback callback, void *arg, EoiType eoi) {
   kassert(_is_gen_initialized);
   kassert(vector < 64 && vector >= 1);
@@ -190,8 +194,6 @@ void Idt::SetExceptionCallback(CpuId cpuid, int vector, int_callback callback, v
   _callback[raw_cpu_id][vector].arg = arg;
   _callback[raw_cpu_id][vector].eoi = eoi;
 }
-
-#define PRINT_PAGING_ENTRY(s, v)  gtty->CprintfRaw("\n%s: 0x%llx P:%d R/W: %d U/S: %d", s, v, v&1!=0, v&2!=0, v&4!=0);
 
 void Idt::HandlePageFault(Regs *rs, void *arg) {
   if (gtty != nullptr) {
@@ -210,10 +212,10 @@ void Idt::HandlePageFault(Regs *rs, void *arg) {
     gtty->CprintfRaw("\nrsi:%llx r13: %llx cs:%x ss:%x ecode:%llx", rs->rsi, rs->r13, rs->cs, rs->ss, rs->ecode);
     uint64_t pml4e, pdpte, pde, pte;
     paging_ctrl->GetTranslationEntries(addr, &pml4e, &pdpte, &pde, &pte);
-    PRINT_PAGING_ENTRY("PML4E", pml4e);
-    PRINT_PAGING_ENTRY("PDPTE", pdpte);
-    PRINT_PAGING_ENTRY("PDE  ", pde);
-    PRINT_PAGING_ENTRY("PTE  ", pte);
+    ShowPagingEntry("PML4E", pml4e);
+    ShowPagingEntry("PDPTE", pdpte);
+    ShowPagingEntry("PDE  ", pde);
+    ShowPagingEntry("PTE  ", pte);
     gtty->CprintfRaw("\n");
     show_backtrace(reinterpret_cast<size_t *>(rs->rbp));
   }

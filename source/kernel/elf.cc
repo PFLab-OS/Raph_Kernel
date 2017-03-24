@@ -73,11 +73,12 @@ void readElf(const void *p)
   }
 
   uint8_t *membuffer;
+  bool page_mapping = false;
   if (ehdr->e_type == ET_DYN) {
     membuffer = reinterpret_cast<uint8_t *>(malloc(total_memsize));
   } else if (ehdr->e_type == ET_EXEC) {
     membuffer = reinterpret_cast<uint8_t *>(0);
-    kassert(false);
+    page_mapping = true;
   } else {
     kassert(false);
   }
@@ -85,6 +86,14 @@ void readElf(const void *p)
   // PT_LOADとなっているセグメントをメモリ上にロード
   for(int i = 0; i < ehdr->e_phnum; i++){
     const Elf64_Phdr *phdr = (const Elf64_Phdr *)(head + ehdr->e_phoff + ehdr->e_phentsize * i);
+
+    if (page_mapping && phdr->p_memsz != 0) {
+      size_t psize = PagingCtrl::ConvertNumToPageSize(phdr->p_memsz);
+      PhysAddr paddr;
+      physmem_ctrl->Alloc(paddr, psize);
+      paging_ctrl->MapPhysAddrToVirtAddr(ptr2virtaddr(membuffer + phdr->p_vaddr), paddr, psize, PDE_WRITE_BIT | PDE_USER_BIT, PTE_WRITE_BIT | PTE_GLOBAL_BIT | PTE_USER_BIT); // TODO check return value
+    }
+    
     switch(phdr->p_type){
       case PT_LOAD:
         gtty->CprintfRaw("phdr[%d]: Load to +0x%llx\n", i, phdr->p_vaddr);
@@ -100,10 +109,6 @@ void readElf(const void *p)
         memset(membuffer + shdr->sh_addr, 0, shdr->sh_size);
       }
     }
-  }
-  // デバッグ用にロードしたメモリを表示
-  for(int i = 0xB3D; i < 0xB40; i++){
-    gtty->CprintfRaw("+%llx Load to +0x%llx\n", i, membuffer[i]);
   }
 
   // 実行
