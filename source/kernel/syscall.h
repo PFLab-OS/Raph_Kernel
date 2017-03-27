@@ -27,16 +27,28 @@
 
 class SystemCallCtrl {
 public:
-  static void init();
-  static int64_t handler(int64_t v1, int64_t v2, int64_t v3, int64_t rcx, int64_t v5, int64_t v6);
+  struct Args {
+    int64_t arg1;
+    int64_t arg2;
+    int64_t arg3;
+    int64_t arg4;
+    int64_t arg5;
+    int64_t arg6;
+  };
+  static void Init();
+  static int64_t Handler(Args *args, int index, size_t raddr);
 private:
   enum MSRAddr : uint32_t {
     kIA32EFER     = 0xC0000080,
     kIA32STAR     = 0xC0000081,
     kIA32LSTAR    = 0xC0000082,
-    kIA32FSBase  = 0xC0000100,
+    kIA32FSBase   = 0xC0000100,
     kIA32GSBase   = 0xC0000101,
   };
+  static const int kArchSetGs = 0x1001;
+  static const int kArchSetFs = 0x1002;
+  static const int kArchGetFs = 0x1003;
+  static const int kArchGetGs = 0x1004;
   static uint64_t rdmsr(MSRAddr addr) {
     return x86::rdmsr(addr);
   }

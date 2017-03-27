@@ -30,8 +30,19 @@
 syscall_handler:
   push %rcx
   push %r11
-  mov %rax, %rcx
+  subq $48, %rsp
+  movq %rsp, %rbp
+  movq %rdi, 0(%rbp)
+  movq %rsi, 8(%rbp)
+  movq %rdx, 16(%rbp)
+  movq %r10, 24(%rbp)
+  movq %r8, 32(%rbp) 
+  movq %r9, 40(%rbp)
+  movq %rbp, %rdi
+  movq %rax, %rsi
+  movq %rcx, %rdx
   call syscall_handler_sub
+  addq $48, %rsp
   pop %r11
   pop %rcx
   sysretq

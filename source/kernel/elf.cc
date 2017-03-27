@@ -30,25 +30,17 @@
 #include <syscall.h>
 #include <cpu.h>
 
-void readElf(const void *p);
-
-#define IS_ELF(ehdr)    (ehdr->e_ident[0] == ELFMAG0 && ehdr->e_ident[1] == ELFMAG1 && ehdr->e_ident[2] == ELFMAG2 && ehdr->e_ident[3] == ELFMAG3)
-#define IS_ELF64(ehdr)  (ehdr->e_ident[EI_CLASS] == ELFCLASS64)
-#define IS_OSABI_SYSV(ehdr)   (ehdr->e_ident[EI_OSABI] == ELFOSABI_SYSV)
-#define IS_OSABI_GNU(ehdr)   (ehdr->e_ident[EI_OSABI] == ELFOSABI_GNU)
-
 using FType = int (*)(int, char*[]);
 extern "C" int execute_elf_binary(FType f, uint64_t *stack_addr);
 
-void readElf(const void *p)
-{
-  const uint8_t *head = reinterpret_cast<const uint8_t *>(p);
-  const Elf64_Ehdr *ehdr = reinterpret_cast<const Elf64_Ehdr *>(p);
+void ElfLoader::Load(const void *ptr) {
+  const uint8_t *head = reinterpret_cast<const uint8_t *>(ptr);
+  const Elf64_Ehdr *ehdr = reinterpret_cast<const Elf64_Ehdr *>(ptr);
 
   // IA32_EFER.SCE = 1
-  SystemCallCtrl::init();
+  SystemCallCtrl::Init();
   //  
-  if(!IS_ELF(ehdr) || !IS_ELF64(ehdr) || (!IS_OSABI_SYSV(ehdr) && !IS_OSABI_GNU(ehdr))){
+  if(!IsElf(ehdr) || !IsElf64(ehdr) || (!IsOsabiSysv(ehdr) && !IsOsabiGnu(ehdr))){
     gtty->CprintfRaw("Not supported module type.\n");
     return;
   }
@@ -113,9 +105,11 @@ void readElf(const void *p)
 
   // 実行
   FType f = reinterpret_cast<FType>(membuffer + ehdr->e_entry);
- 
+
+  // TODO : カーネルスタックで実行しない
   // TODO : 現在のカーネルスタックが破棄されるので、なんとかする
   uint64_t *stack_addr = reinterpret_cast<uint64_t *>(KernelStackCtrl::GetCtrl().AllocThreadStack(cpu_ctrl->GetCpuId()));
+  gtty->CprintfRaw("stack addr: %llx\n", stack_addr);
 
   int argc = 1;
   const char *str[1] = {"123"};

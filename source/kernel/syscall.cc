@@ -28,21 +28,14 @@
 #include <syscall.h>
 #include <gdt.h>
 
-#define ARCH_SET_GS 0x1001
-#define ARCH_SET_FS 0x1002
-#define ARCH_GET_FS 0x1003
-#define ARCH_GET_GS 0x1004
-
 extern "C" int64_t syscall_handler();
 
-extern "C" int64_t  syscall_handler_sub(int64_t rdi, int64_t rsi, int64_t rdx, int64_t rcx, int64_t r8, int64_t r9)
-{
-  return SystemCallCtrl::handler(rdi, rsi, rdx, rcx, r8, r9);
+extern "C" int64_t syscall_handler_sub(SystemCallCtrl::Args *args, int index, size_t raddr) {
+  return SystemCallCtrl::Handler(args, index, raddr);
 }
 
 
-void SystemCallCtrl::init()
-{
+void SystemCallCtrl::Init() {
   // IA32_EFER.SCE = 1
   const uint64_t bit_efer_SCE = 0x01;
   uint64_t efer = rdmsr(kIA32EFER);
@@ -53,30 +46,60 @@ void SystemCallCtrl::init()
   wrmsr(kIA32LSTAR, reinterpret_cast<uint64_t>(syscall_handler));
 }
 
-int64_t SystemCallCtrl::handler(int64_t rdi, int64_t rsi, int64_t rdx, int64_t rcx, int64_t r8, int64_t r9)
-{
-  gtty->CprintfRaw("syscall(%llx) \n", rcx);
-  if(rcx == 158){
-    gtty->CprintfRaw("sys_arch_prctl code=%llx addr=%llx\n", rdi, rsi);
-    switch(rdi){
-      case ARCH_SET_GS:
-        wrmsr(kIA32GSBase, rsi);
+int64_t SystemCallCtrl::Handler(Args *args, int index, size_t raddr) {
+  gtty->CprintfRaw("syscall(%d) (return address %llx)\n", index, raddr);
+  switch(index) {
+  case 2:
+    {
+      gtty->CprintfRaw("<%s>", args->arg1);
+      return 3;
+    }
+  case 63:
+    // uname
+    {
+#define __NEW_UTS_LEN 64
+      struct new_utsname {
+        char sysname[__NEW_UTS_LEN + 1];
+        char nodename[__NEW_UTS_LEN + 1];
+        char release[__NEW_UTS_LEN + 1];
+        char version[__NEW_UTS_LEN + 1];
+        char machine[__NEW_UTS_LEN + 1];
+        char domainname[__NEW_UTS_LEN + 1];
+      };
+      new_utsname tmp;
+      strcpy(tmp.sysname, "");
+      strcpy(tmp.nodename, "");
+      strcpy(tmp.release, "");
+      strcpy(tmp.version, "");
+      strcpy(tmp.machine, "");
+      strcpy(tmp.domainname, "");
+      memcpy(reinterpret_cast<void *>(args->arg1), &tmp, sizeof(new_utsname));
+      return 0;
+    }
+  case 158:
+    {
+      gtty->CprintfRaw("sys_arch_prctl code=%llx addr=%llx\n", args->arg1, args->arg2);
+      switch(args->arg1){
+      case kArchSetGs:
+        wrmsr(kIA32GSBase, args->arg2);
         break;
-      case ARCH_SET_FS:
-        wrmsr(kIA32FSBase, rsi);
+      case kArchSetFs:
+        wrmsr(kIA32FSBase, args->arg2);
         break;
-      case ARCH_GET_FS:
-        *(uint64_t *)rsi = rdmsr(kIA32FSBase);
+      case kArchGetFs:
+        *reinterpret_cast<uint64_t *>(args->arg2) = rdmsr(kIA32FSBase);
         break;
-      case ARCH_GET_GS:
-        *(uint64_t *)rsi = rdmsr(kIA32GSBase);
+      case kArchGetGs:
+        *reinterpret_cast<uint64_t *>(args->arg2) = rdmsr(kIA32GSBase);
         break;
       default:
-        gtty->CprintfRaw("Invalid args\n", rcx);
+        gtty->CprintfRaw("Invalid args\n", index);
         kassert(false);
+      }
     }
+    break;
   }
-  gtty->CprintfRaw("syscall(%llx) end \n", rcx);
+  gtty->CprintfRaw("syscall(%d) end \n", index);
   return 0;
 }
 

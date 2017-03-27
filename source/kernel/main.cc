@@ -36,6 +36,7 @@
 #include <shell.h>
 #include <measure.h>
 #include <mem/kstack.h>
+#include <elf.h>
 
 #include <dev/hpet.h>
 #include <dev/pci.h>
@@ -748,12 +749,10 @@ static void load_script(sptr<LoadContainer> container_) {
   task_ctrl->RegisterCallout(callout_, 10);
 }
 
-void readElf(const void *p);
-
 static void load_elf(uptr<Array<uint8_t>> buf_) {
   auto callout_ = make_sptr(new Callout);
   callout_->Init(make_uptr(new Function2<wptr<Callout>, uptr<Array<uint8_t>>>([](wptr<Callout> callout, uptr<Array<uint8_t>> buf){
-          readElf(buf->GetRawPtr());
+          ElfLoader::Load(buf->GetRawPtr());
         }, make_wptr(callout_), buf_)));
   task_ctrl->RegisterCallout(callout_, 10);
 }

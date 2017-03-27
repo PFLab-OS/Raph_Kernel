@@ -26,6 +26,22 @@
 #include <boot/multiboot2.h>
 #include <elfhead.h>
 
-void readElfTest(struct multiboot_tag_module *module);
+class ElfLoader {
+public:
+  static void Load(const void *ptr);
+private:
+  static bool IsElf(const Elf64_Ehdr *ehdr) {
+    return ehdr->e_ident[0] == ELFMAG0 && ehdr->e_ident[1] == ELFMAG1 && ehdr->e_ident[2] == ELFMAG2 && ehdr->e_ident[3] == ELFMAG3;
+  }
+  static bool IsElf64(const Elf64_Ehdr *ehdr) {
+    return ehdr->e_ident[EI_CLASS] == ELFCLASS64;
+  }
+  static bool IsOsabiSysv(const Elf64_Ehdr *ehdr) {
+    return ehdr->e_ident[EI_OSABI] == ELFOSABI_SYSV;
+  }
+  static bool IsOsabiGnu(const Elf64_Ehdr *ehdr) {
+    return ehdr->e_ident[EI_OSABI] == ELFOSABI_GNU;
+  }
+};
 
 #endif // __RAPH_LIB_ELF_H__
