@@ -289,14 +289,14 @@ static void func10(sptr<TaskWithStack> task) {
     udpsend(argc, argv);
   }
   func106<i, McsSpinLock<64>>(task);
-  func106<i, TtsSpinLock>(task);
+  func106<i, TtsBackoffSpinLock>(task);
   func106<i, TicketSpinLock>(task);
   func106<i, AndersonSpinLock<1, 256>>(task);
   func106<i, ClhSpinLock>(task);
   func106<i, AndersonSpinLock<64, 256>>(task);
-  func106<i, SimpleSpinLockR>(task);
+  func106<i, TtsSpinLock>(task);
   func106<i, HClhSpinLock>(task);
-  func106<i, ExpSpinLock10<TtsSpinLock, ClhSpinLock, kMax>>(task);
+  func106<i, ExpSpinLock10<TtsBackoffSpinLock, ClhSpinLock, kMax>>(task);
   func106<i, ExpSpinLock10<ClhSpinLock, AndersonSpinLock<64, 256>, kMax>>(task);
   func106<i, ExpSpinLock10<ClhSpinLock, ClhSpinLock, kMax>>(task);
   func106<i, ExpSpinLock10<ClhSpinLock, McsSpinLock<64>, kMax>>(task);

@@ -79,9 +79,9 @@ void unlock(T &flag) {
   assert(__sync_lock_test_and_set(&flag, 0) == 1);
 }
 
-class TtsSpinLock {
+class TtsBackoffSpinLock {
 public:
-  TtsSpinLock() {
+  TtsBackoffSpinLock() {
   }
   bool TryLock() {
     assert(false);
@@ -345,10 +345,9 @@ private:
   QueueNode _node[37 * 8];
 } __attribute__ ((aligned (64)));
 
-// 単純 Spin On Read
-class SimpleSpinLockR {
+class TtsSpinLock {
 public:
-  SimpleSpinLockR() {
+  TtsSpinLock() {
     check_align(this);
     check_align(&_flag);
   }
