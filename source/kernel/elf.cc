@@ -57,7 +57,7 @@ void ElfLoader::Load(const void *ptr) {
     for(int i = 0; i < ehdr->e_shnum; i++){
       const Elf64_Shdr *shdr = (const Elf64_Shdr *)(head + ehdr->e_shoff + ehdr->e_shentsize * i);
       const char *sname = strtab + shdr->sh_name;
-      //      gtty->CprintfRaw(" [%2d] %s size: %x offset: %x\n", i, sname, shdr->sh_size, shdr->sh_offset);//RAPH_DEBUG
+      //      gtty->CprintfRaw(" [%2d] %s size: %x offset: %x\n", i, sname, shdr->sh_size, shdr->sh_offset);
       if (total_memsize < shdr->sh_addr + shdr->sh_offset) {
         total_memsize = shdr->sh_addr + shdr->sh_offset;
       }
