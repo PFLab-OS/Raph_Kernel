@@ -28,6 +28,8 @@
 class SystemCallCtrl {
 public:
   struct Args {
+    size_t raddr;
+    uint64_t rflags;
     int64_t arg1;
     int64_t arg2;
     int64_t arg3;
@@ -36,14 +38,15 @@ public:
     int64_t arg6;
   };
   static void Init();
-  static int64_t Handler(Args *args, int index, size_t raddr);
+  static int64_t Handler(Args *args, int index);
 private:
   enum MSRAddr : uint32_t {
-    kIA32EFER     = 0xC0000080,
-    kIA32STAR     = 0xC0000081,
-    kIA32LSTAR    = 0xC0000082,
-    kIA32FSBase   = 0xC0000100,
-    kIA32GSBase   = 0xC0000101,
+    kIA32EFER         = 0xC0000080,
+    kIA32STAR         = 0xC0000081,
+    kIA32LSTAR        = 0xC0000082,
+    kIA32FsBase       = 0xC0000100,
+    kIA32GsBase       = 0xC0000101,
+    kIA32KernelGsBase = 0xC0000102,
   };
   static const int kArchSetGs = 0x1001;
   static const int kArchSetFs = 0x1002;
@@ -55,6 +58,21 @@ private:
   static void wrmsr(MSRAddr addr, uint64_t data) {
     x86::wrmsr(addr, data);
   }
+  
+  // tty ioctl numbers
+  static const int TCGETS =	0x5401;
+  static const int TIOCGWINSZ =	0x5413;
+  struct winsize {
+    unsigned short ws_row;
+    unsigned short ws_col;
+    unsigned short ws_xpixel;
+    unsigned short ws_ypixel;
+  };
+  
+  struct iovec {
+    void  *iov_base;    /* Starting address */
+    size_t iov_len;     /* Number of bytes to transfer */
+  };
 };
 
 #endif // __RAPH_LIB_SYSCALL_H__

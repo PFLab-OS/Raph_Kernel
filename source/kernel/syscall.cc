@@ -27,11 +27,13 @@
 #include <x86.h>
 #include <syscall.h>
 #include <gdt.h>
+#include <global.h>
 
 extern "C" int64_t syscall_handler();
+extern size_t syscall_handler_stack; 
 
-extern "C" int64_t syscall_handler_sub(SystemCallCtrl::Args *args, int index, size_t raddr) {
-  return SystemCallCtrl::Handler(args, index, raddr);
+extern "C" int64_t syscall_handler_sub(SystemCallCtrl::Args *args, int index) {
+  return SystemCallCtrl::Handler(args, index);
 }
 
 
@@ -44,15 +46,68 @@ void SystemCallCtrl::Init() {
   // set vLSTAR
   wrmsr(kIA32STAR, (static_cast<uint64_t>(KERNEL_CS) << 32) | ((static_cast<uint64_t>(USER_DS) - 8) << 48));
   wrmsr(kIA32LSTAR, reinterpret_cast<uint64_t>(syscall_handler));
+  wrmsr(kIA32KernelGsBase, KERNEL_DS);
+  syscall_handler_stack = KernelStackCtrl::GetCtrl().AllocThreadStack(cpu_ctrl->GetCpuId());
 }
 
-int64_t SystemCallCtrl::Handler(Args *args, int index, size_t raddr) {
-  gtty->CprintfRaw("syscall(%d) (return address %llx)\n", index, raddr);
+int64_t SystemCallCtrl::Handler(Args *args, int index) {
   switch(index) {
   case 2:
     {
-      gtty->CprintfRaw("<%s>", args->arg1);
-      return 3;
+      // // open
+      // gtty->CprintfRaw("<%s>", args->arg1);
+      // return 3;
+      break;
+    }
+  case 16:
+    {
+      // ioctl
+      if (args->arg1 == 1) {
+        // stdout
+        switch (args->arg2) {
+        case TCGETS:
+          {
+            return 0;
+          }
+        case TIOCGWINSZ:
+          {
+            winsize *ws = reinterpret_cast<winsize *>(args->arg3);
+            ws->ws_row = gtty->GetRow();
+            ws->ws_col = gtty->GetColumn();
+            ws->ws_xpixel = 0;
+            ws->ws_ypixel = 0;
+            return 0;
+          }
+        default:
+          {
+            gtty->CprintfRaw("%x\n", args->arg2);
+            kernel_panic("Sysctrl", "unknown argument(ioctrl)");
+          }
+        };
+      } else {
+        kernel_panic("Sysctrl", "unknown fd(ioctrl)");
+      }
+      break;
+    }
+  case 20:
+    // writev
+    {
+      if (args->arg1 == 1) {
+        // stdout
+        iovec *iv_array = reinterpret_cast<iovec *>(args->arg2);
+        int rval = 0;
+        for (int i = 0; i < args->arg3; i++) {
+          for (int j = 0; j < iv_array[i].iov_len; j++) {
+            gtty->CprintfRaw("%c", reinterpret_cast<char *>(iv_array[i].iov_base)[j]);
+            rval++;
+          }
+        }
+        return rval;
+      } else {
+        gtty->CprintfRaw("<%llx>", args->arg1);
+        kernel_panic("Sysctrl", "unknown fd(writev)");
+      }
+      break;
     }
   case 63:
     // uname
@@ -81,25 +136,31 @@ int64_t SystemCallCtrl::Handler(Args *args, int index, size_t raddr) {
       gtty->CprintfRaw("sys_arch_prctl code=%llx addr=%llx\n", args->arg1, args->arg2);
       switch(args->arg1){
       case kArchSetGs:
-        wrmsr(kIA32GSBase, args->arg2);
+        wrmsr(kIA32GsBase, args->arg2);
         break;
       case kArchSetFs:
-        wrmsr(kIA32FSBase, args->arg2);
+        wrmsr(kIA32FsBase, args->arg2);
         break;
       case kArchGetFs:
-        *reinterpret_cast<uint64_t *>(args->arg2) = rdmsr(kIA32FSBase);
+        *reinterpret_cast<uint64_t *>(args->arg2) = rdmsr(kIA32FsBase);
         break;
       case kArchGetGs:
-        *reinterpret_cast<uint64_t *>(args->arg2) = rdmsr(kIA32GSBase);
+        *reinterpret_cast<uint64_t *>(args->arg2) = rdmsr(kIA32GsBase);
         break;
       default:
         gtty->CprintfRaw("Invalid args\n", index);
         kassert(false);
       }
+      return 0;
     }
-    break;
+  case 231:
+    {
+      // exit group
+      gtty->CprintfRaw("user program called exit\n");
+      while(true) {asm volatile("hlt;");}
+    }
   }
-  gtty->CprintfRaw("syscall(%d) end \n", index);
-  return 0;
+  gtty->CprintfRaw("syscall(%d) (return address %llx)\n", index, args->raddr);
+  kernel_panic("Syscall", "unimplemented systemcall");
 }
 

@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 int x = 123;
 int buf[10] = {0};
 
@@ -21,7 +23,7 @@ int calc() {
 
 int main(int argc, char *argv[])
 {
-  asm volatile("cli;hlt;");
+  printf("hello world\n");
   if(argv && argv[0]){
     argv[0][0] = 'X';
     argv[0][1] = 0;

@@ -116,6 +116,7 @@ void Idt::SetupGeneric() {
   _is_gen_initialized = true;
   for (int i = 0; i < apic_ctrl->GetHowManyCpus(); i++) {
     CpuId cpuid(i);
+    SetExceptionCallback(cpuid, 13, HandleGeneralProtectionFault, nullptr, Idt::EoiType::kNone);
     SetExceptionCallback(cpuid, 14, HandlePageFault, nullptr, Idt::EoiType::kNone);
   }
 }
@@ -216,6 +217,21 @@ void Idt::HandlePageFault(Regs *rs, void *arg) {
     ShowPagingEntry("PDPTE", pdpte);
     ShowPagingEntry("PDE  ", pde);
     ShowPagingEntry("PTE  ", pte);
+    gtty->CprintfRaw("\n");
+    show_backtrace(reinterpret_cast<size_t *>(rs->rbp));
+  }
+  while(true){
+    asm volatile("cli;hlt");
+  }
+}
+
+void Idt::HandleGeneralProtectionFault(Regs *rs, void *arg) {
+  if (gtty != nullptr) {
+    int cpuid = cpu_ctrl->GetCpuId().GetRawId();
+    gtty->CprintfRaw("\nGeneral Protection fault (INT 0x%x) occured at cpuid %d!", rs->n, cpuid);
+    gtty->CprintfRaw("\nrip: %llx rbp: %llx", rs->rip, rs->rbp);
+    gtty->CprintfRaw("\nrax: %llx rbx:%llx rcx:%llx rdx:%llx", rs->rax, rs->rbx, rs->rcx, rs->rdx);
+    gtty->CprintfRaw("\nrsi:%llx r13: %llx cs:%x ss:%x ecode:%llx", rs->rsi, rs->r13, rs->cs, rs->ss, rs->ecode);
     gtty->CprintfRaw("\n");
     show_backtrace(reinterpret_cast<size_t *>(rs->rbp));
   }

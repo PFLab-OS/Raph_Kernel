@@ -1,7 +1,7 @@
 MODULE = testmodule
 #SRCS = testmodule.cc stubstart.S
 SRCS = testmodule.cc
-CC = /home/vagrant/newlib-gcc/bin/g++
+CC = musl-gcc
 
 defalut:
 	$(MAKE) $(MODULE)

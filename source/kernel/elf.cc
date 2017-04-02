@@ -57,7 +57,7 @@ void ElfLoader::Load(const void *ptr) {
     for(int i = 0; i < ehdr->e_shnum; i++){
       const Elf64_Shdr *shdr = (const Elf64_Shdr *)(head + ehdr->e_shoff + ehdr->e_shentsize * i);
       const char *sname = strtab + shdr->sh_name;
-      gtty->CprintfRaw(" [%2d] %s size: %x offset: %x\n", i, sname, shdr->sh_size, shdr->sh_offset);
+      //      gtty->CprintfRaw(" [%2d] %s size: %x offset: %x\n", i, sname, shdr->sh_size, shdr->sh_offset);//RAPH_DEBUG
       if (total_memsize < shdr->sh_addr + shdr->sh_offset) {
         total_memsize = shdr->sh_addr + shdr->sh_offset;
       }
@@ -80,10 +80,14 @@ void ElfLoader::Load(const void *ptr) {
     const Elf64_Phdr *phdr = (const Elf64_Phdr *)(head + ehdr->e_phoff + ehdr->e_phentsize * i);
 
     if (page_mapping && phdr->p_memsz != 0) {
-      size_t psize = PagingCtrl::ConvertNumToPageSize(phdr->p_memsz);
+      virt_addr start = ptr2virtaddr(membuffer) + phdr->p_vaddr;
+      virt_addr end = start + phdr->p_memsz;
+      start = PagingCtrl::RoundAddrOnPageBoundary(start);
+      end = PagingCtrl::RoundUpAddrOnPageBoundary(end);
+      size_t psize = PagingCtrl::ConvertNumToPageSize(end - start);
       PhysAddr paddr;
       physmem_ctrl->Alloc(paddr, psize);
-      paging_ctrl->MapPhysAddrToVirtAddr(ptr2virtaddr(membuffer + phdr->p_vaddr), paddr, psize, PDE_WRITE_BIT | PDE_USER_BIT, PTE_WRITE_BIT | PTE_GLOBAL_BIT | PTE_USER_BIT); // TODO check return value
+      paging_ctrl->MapPhysAddrToVirtAddr(start, paddr, psize, PDE_WRITE_BIT | PDE_USER_BIT, PTE_WRITE_BIT | PTE_GLOBAL_BIT | PTE_USER_BIT); // TODO check return value
     }
     
     switch(phdr->p_type){

@@ -972,13 +972,14 @@ extern "C" int main_of_others() {
 static int error_output_flag = 0;
 
 void show_backtrace(size_t *rbp) {
-    for (int i = 0; i < 3; i++) {
-      if (rbp[1] == 0) {
-        break;
-      }
-      gtty->CprintfRaw("backtrace(%d): rip:%llx,\n", i, rbp[1]);
-      rbp = reinterpret_cast<size_t *>(rbp[0]);
+  size_t top_rbp = reinterpret_cast<size_t>(rbp);
+  for (int i = 0; i < 3; i++) {
+    if (top_rbp <= rbp[1] || top_rbp - 4096 > rbp[1]) {
+      break;
     }
+    gtty->CprintfRaw("backtrace(%d): rip:%llx,\n", i, rbp[1]);
+    rbp = reinterpret_cast<size_t *>(rbp[0]);
+  }
 }
 
 extern "C" void _kernel_panic(const char *class_name, const char *err_str) {

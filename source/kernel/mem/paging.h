@@ -115,8 +115,10 @@ class PagingCtrl {
   bool Map4KPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr pst_flag, phys_addr page_flag);
   bool Map2MPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr pst_flag, phys_addr page_flag);
   bool MapPhysAddrToVirtAddr(virt_addr vaddr, PhysAddr &paddr, size_t size, phys_addr pst_flag, phys_addr page_flag) {
+    kassert(vaddr == align(vaddr, kPageSize));
     kassert(size == align(size, kPageSize));
     phys_addr addr = paddr.GetAddr();
+    kassert(addr == align(addr, kPageSize));
     while (size > 0) {
       PhysAddr tpaddr;
       tpaddr.SetAddr(addr);
