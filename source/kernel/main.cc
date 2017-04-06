@@ -40,7 +40,7 @@
 #include <dev/hpet.h>
 #include <dev/pci.h>
 #include <dev/usb/usb.h>
-#include <dev/vga.h>
+#include <dev/framebuffer.h>
 #include <dev/pciid.h>
 #include <dev/8042.h>
 
@@ -73,7 +73,7 @@ PhysmemCtrl _physmem_ctrl;
 PagingCtrl _paging_ctrl;
 TaskCtrl _task_ctrl;
 Hpet _htimer;
-Vga _vga;
+FrameBuffer _framebuffer;
 Shell _shell;
 AcpicaPciCtrl _acpica_pci_ctrl;
 NetDevCtrl _netdev_ctrl;
@@ -816,7 +816,7 @@ extern "C" int main() {
 
   timer = new (&_htimer) Hpet;
 
-  gtty = new (&_vga) Vga;
+  gtty = new (&_framebuffer) FrameBuffer;
 
   shell = new (&_shell) Shell;
 
@@ -828,6 +828,8 @@ extern "C" int main() {
 
   multiboot_ctrl->Setup();
 
+  _framebuffer.Setup();
+    
   paging_ctrl->MapAllPhysMemory();
 
   KernelStackCtrl::Init();
@@ -865,9 +867,9 @@ extern "C" int main() {
   // 実行する事
 
   apic_ctrl->StartAPs();
-  
-  gtty->Init();
 
+  gtty->Init();
+  
   idt->SetupProc();
   
   pci_ctrl = new (&_acpica_pci_ctrl) AcpicaPciCtrl;

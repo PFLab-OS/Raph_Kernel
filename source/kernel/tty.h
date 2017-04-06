@@ -81,14 +81,19 @@ class Tty {
     PrintString(&str);
   }
   virtual void PrintShell(const char *str) = 0;
-  virtual void SetColor(Color) = 0;
-  virtual void ResetColor() = 0;
+  void SetColor(Color c) {
+    _color = c;
+  }
+  void ResetColor() {
+    _color = Color::kWhite;
+  }
  protected:
   virtual void _Init() {
   }
   virtual void Write(uint8_t c) = 0;
   int _cx = 0;
   int _cy = 0;
+  Color _color;
  private:
   class String;
   using StringBuffer = RingBuffer<String *, 64>;
@@ -180,10 +185,6 @@ public:
 private:
   virtual void PrintShell(const char *str) override {
     kassert(false);
-  }
-  virtual void SetColor(Color) override {
-  }
-  virtual void ResetColor() override {
   }
   virtual void Write(uint8_t c) {
     assert(_offset + 1 < _buffer_size);

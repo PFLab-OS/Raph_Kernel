@@ -39,7 +39,8 @@ _run:
 	$(MAKE) _qemuend
 
 _qemurun: _image
-	sudo qemu-system-x86_64 -cpu qemu64,+x2apic -smp 8 -machine q35 -monitor telnet:127.0.0.1:1234,server,nowait -vnc 0.0.0.0:0,password -net nic -net bridge,br=br0 -drive id=disk,file=$(IMAGE),if=virtio -device ich9-usb-uhci1 -device usb-kbd &
+	sudo qemu-system-x86_64 -bios /usr/share/ovmf/OVMF.fd -cpu qemu64,+x2apic -smp 8 -monitor telnet:127.0.0.1:1234,server,nowait -vnc 0.0.0.0:0,password $(IMAGE)&
+#	sudo qemu-system-x86_64 -bios /usr/share/ovmf/OVMF.fd -cpu qemu64,+x2apic -smp 8 -machine q35 -monitor telnet:127.0.0.1:1234,server,nowait -vnc 0.0.0.0:0,password -net nic -net bridge,br=br0 -drive id=disk,file=$(IMAGE),if=virtio -device ich9-usb-uhci1 -device usb-kbd &
 #	sudo qemu-system-x86_64 -cpu qemu64,+x2apic -smp 8 -machine q35 -monitor telnet:127.0.0.1:1234,server,nowait -vnc 0.0.0.0:0,password -net nic -net bridge,br=br0 -drive id=disk,file=$(IMAGE),if=virtio -usb -usbdevice keyboard &
 #	sudo qemu-system-x86_64 -cpu qemu64,+x2apic -smp 8 -machine q35 -monitor telnet:127.0.0.1:1234,server,nowait -vnc 0.0.0.0:0,password -net nic -net bridge,br=br0 -drive id=disk,file=$(IMAGE),if=none -device ahci,id=ahci -device ide-drive,drive=disk,bus=ahci.0 &
 #	sudo qemu-system-x86_64 -smp 8 -machine q35 -monitor telnet:127.0.0.1:1234,server,nowait -vnc 0.0.0.0:0,password -net nic -net bridge,br=br0 -drive file=$(IMAGE),if=virtio &
@@ -53,7 +54,7 @@ _qemuend:
 	-sudo pkill -KILL qemu
 
 _bin:
-	-mkdir $(BUILD_DIR)
+	mkdir -p $(BUILD_DIR)
 	cp script $(BUILD_DIR)/script
 	cp $(INIT_FILE) $(BUILD_DIR)/init
 	$(MAKE) -C source
@@ -72,8 +73,8 @@ _cpimage: _image
 
 $(IMAGE):
 	$(MAKE) _umount
-	dd if=/dev/zero of=$(IMAGE) bs=1M count=20
-	parted -s $(IMAGE) mklabel msdos -- mkpart primary 2048s -1
+	dd if=/dev/zero of=$(IMAGE) bs=1M count=200
+	sh disk.sh disk-setup
 	sh disk.sh grub-install
 	$(MAKE) _mount
 	sudo cp memtest86+.bin $(MOUNT_DIR)/boot/memtest86+.bin

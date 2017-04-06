@@ -17,6 +17,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * Author: Liva
+ *
+ * driver for vga/text
+ * !!! deprecated !!!
  * 
  */
 
@@ -40,12 +43,6 @@ class Vga : public Tty {
     // TODO : サイズ適当
     physmem_ctrl->Reserve(PagingCtrl::RoundAddrOnPageBoundary(vga_addr), PagingCtrl::RoundUpAddrOnPageBoundary(0x1000));
     _vga_addr = reinterpret_cast<uint8_t *>(p2v(vga_addr));
-  }
-  void SetColor(Color c) override {
-    _color = c;
-  }
-  void ResetColor() override {
-    _color = Color::kWhite;
   }
  private:
   virtual void _Init() override {

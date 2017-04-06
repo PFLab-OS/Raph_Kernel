@@ -3,6 +3,7 @@ sudo -sh c 'test -f /etc/bootstrapped && exit'
 
 sudo apt-get update
 sudo apt-get install -y git g++ make parted emacs language-pack-ja-base language-pack-ja kpartx gdb bridge-utils libyaml-dev silversearcher-ag
+sudo apt-get install -y grub-efi gdisk dosfstools ovmf
 sudo update-locale LANG=ja_JP.UTF-8 LANGUAGE="ja_JP:ja"
 
 # install qemu

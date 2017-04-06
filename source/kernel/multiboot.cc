@@ -21,6 +21,7 @@
  */
 
 #include <mem/paging.h>
+#include <dev/framebuffer.h>
 #include "multiboot.h"
 
 void MultibootCtrl::Setup() {
@@ -106,6 +107,31 @@ void MultibootCtrl::Setup() {
     }
   }
   // TODO reserved area must be released
+}
+
+void MultibootCtrl::SetupFrameBuffer(FrameBufferInfo *fb_info) {
+  kassert(align(multiboot_info, 8) == multiboot_info);
+  virt_addr addr = p2v(static_cast<phys_addr>(multiboot_info));
+  addr += 8;
+  multiboot_tag *tag;
+  asm volatile("cli;hlt;nop;nop;cli;");
+
+  // load memory info
+  for (tag = reinterpret_cast<multiboot_tag *>(addr); tag->type != MULTIBOOT_TAG_TYPE_END; addr = alignUp(addr + tag->size, 8), tag = reinterpret_cast<multiboot_tag *>(addr)) {
+    switch(tag->type) {
+    case MULTIBOOT_TAG_TYPE_FRAMEBUFFER:
+      {
+        multiboot_tag_framebuffer_common *info = reinterpret_cast<multiboot_tag_framebuffer_common *>(tag);
+        fb_info->buffer = (uint8_t *)info->framebuffer_addr ;
+        fb_info->width = info->framebuffer_width;
+        fb_info->height = info->framebuffer_height;
+        fb_info->bpp = info->framebuffer_bpp;
+      }
+      break;
+    default:
+      break;
+    }
+  }
 }
 
 void MultibootCtrl::ShowModuleInfo() {

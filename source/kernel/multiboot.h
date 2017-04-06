@@ -31,6 +31,7 @@
 #include <ptr.h>
 #include <array.h>
 
+class FrameBufferInfo;
 extern uint32_t multiboot_info;
 
 class MultibootCtrl {
@@ -38,6 +39,7 @@ public:
   MultibootCtrl() {
   }
   void Setup();
+  void SetupFrameBuffer(FrameBufferInfo *fb_info);
   void ShowModuleInfo();
   void ShowBuildTimeStamp();
   uptr<Array<uint8_t>> LoadFile(const char *str);
