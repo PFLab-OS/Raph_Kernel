@@ -91,6 +91,12 @@ class Vga : public Tty {
       _vga_addr[((_y - 1) * _x + x) * 2 + 1] = 0xF0;
     }
   }
+  virtual int GetRow() {
+    return _y;
+  }
+  virtual int GetColumn() {
+    return _x;
+  }
   void Scroll() {
     if (_cy == _y - 1) {
       _cy--;

@@ -198,7 +198,7 @@ private:
           func->Execute(false, j, i);
         }
         for (int j = 0; j < width; j++) {
-          func->Execute((_buf[byte_offset] & (1 << bit_offset)) != 0, j, i + yoffset);
+          func->Execute((_buf[byte_offset] & (1 << bit_offset)) != 0, j + xoffset, i + yoffset);
           bit_offset--;
           if (bit_offset == -1) {
             bit_offset = 7;

@@ -27,13 +27,9 @@
 #include "framebuffer.h"
 
 void FrameBuffer::Setup() {
-  asm volatile("cli;hlt;nop;nop;cli;nop;");
   multiboot_ctrl->SetupFrameBuffer(&_info);
-  assert(_info.bpp == 8);  // TODO : support modes other than 32bit true color
+  assert(_info.bpp == 32);  // TODO : support modes other than 32bit true color
   
-  asm volatile("cli;hlt;nop;nop;nop;");
-  new uint8_t[1];
-  asm volatile("cli;hlt;nop;nop;");
   auto font_file = multiboot_ctrl->LoadFile("font"); 
   _font.Load(reinterpret_cast<char *>(font_file.GetRawPtr()->GetRawPtr()));
   
@@ -75,7 +71,7 @@ void FrameBuffer::PrintShell(const char *str) {
     DrawInfo info = {
       .buf_base = _info.buffer + (_info.height - _font.GetMaxh()) * _info.width * 4,
       .dcolor = 0,
-      .bcolor = 0xFFFFFFFF,
+      .bcolor = 0x00FFFFFF,
       .width = _info.width,
     };
     _font.Print(U'>', make_uptr(new Function<DrawInfo, bool, int, int>(DrawPoint, info)));
@@ -94,7 +90,7 @@ void FrameBuffer::PrintShell(const char *str) {
     DrawInfo info = {
       .buf_base = _info.buffer + xoffset * (_info.height - _font.GetMaxh()) * _info.width * 4,
       .dcolor = 0,
-      .bcolor = 0xFFFFFFFF,
+      .bcolor = 0x00FFFFFF,
       .width = _info.width,
     };
     _font.Print(c, make_uptr(new Function<DrawInfo, bool, int, int>(DrawPoint, info)));

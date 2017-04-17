@@ -36,6 +36,7 @@
 #include <shell.h>
 #include <measure.h>
 #include <mem/kstack.h>
+#include <elf.h>
 
 #include <dev/hpet.h>
 #include <dev/pci.h>
@@ -748,6 +749,14 @@ static void load_script(sptr<LoadContainer> container_) {
   task_ctrl->RegisterCallout(callout_, 10);
 }
 
+static void load_elf(uptr<Array<uint8_t>> buf_) {
+  auto callout_ = make_sptr(new Callout);
+  callout_->Init(make_uptr(new Function2<wptr<Callout>, uptr<Array<uint8_t>>>([](wptr<Callout> callout, uptr<Array<uint8_t>> buf){
+          ElfLoader::Load(buf->GetRawPtr());
+        }, make_wptr(callout_), buf_)));
+  task_ctrl->RegisterCallout(callout_, 10);
+}
+
 static void load(int argc, const char *argv[]) {
   if (argc != 2) {
     gtty->Cprintf("invalid argument.\n");
@@ -755,6 +764,8 @@ static void load(int argc, const char *argv[]) {
   }
   if (strcmp(argv[1], "script.sh") == 0) {
     load_script(make_sptr(new LoadContainer(multiboot_ctrl->LoadFile(argv[1]))));
+  } else if (strcmp(argv[1], "test.elf") == 0) {
+    load_elf(multiboot_ctrl->LoadFile(argv[1]));
   } else {
     gtty->Cprintf("invalid argument.\n");
     return;
@@ -829,6 +840,8 @@ extern "C" int main() {
   multiboot_ctrl->Setup();
 
   _framebuffer.Setup();
+  gtty->Cprintf("#####\n******\n");
+  asm volatile("cli;hlt;");
     
   paging_ctrl->MapAllPhysMemory();
 
@@ -868,6 +881,8 @@ extern "C" int main() {
 
   apic_ctrl->StartAPs();
 
+  paging_ctrl->ReleaseLowMemory();
+  
   gtty->Init();
   
   idt->SetupProc();
@@ -961,10 +976,14 @@ extern "C" int main_of_others() {
 static int error_output_flag = 0;
 
 void show_backtrace(size_t *rbp) {
-    for (int i = 0; i < 3; i++) {
-      gtty->CprintfRaw("backtrace(%d): rip:%llx,\n", i, rbp[1]);
-      rbp = reinterpret_cast<size_t *>(rbp[0]);
+  size_t top_rbp = reinterpret_cast<size_t>(rbp);
+  for (int i = 0; i < 3; i++) {
+    if (top_rbp <= rbp[1] || top_rbp - 4096 > rbp[1]) {
+      break;
     }
+    gtty->CprintfRaw("backtrace(%d): rip:%llx,\n", i, rbp[1]);
+    rbp = reinterpret_cast<size_t *>(rbp[0]);
+  }
 }
 
 extern "C" void _kernel_panic(const char *class_name, const char *err_str) {

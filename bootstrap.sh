@@ -20,11 +20,11 @@ cd ..
 # make & install musl with CFLAGS="-fpie -fPIE"
 git clone git://git.musl-libc.org/musl
 cd musl
-git checkout refs/tags/v1.1.16
+git checkout refs/tags/v0.9.15
 export CFLAGS="-fpie -fPIE"
 ./configure
 unset CFLAGS
-make
+make -j2
 sudo make install
 cd ..
 

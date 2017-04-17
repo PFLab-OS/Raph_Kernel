@@ -23,6 +23,29 @@
 #ifndef __RAPH_KERNEL_MEM_PAGING_H__
 #define __RAPH_KERNEL_MEM_PAGING_H__
 
+/*
+  IA-32e pagingを採用。(CR0.PG = 1, CR4.PAE = 1, IA32_EFER.LME = 1)
+  48bitリニアアドレスを52bit物理アドレスに変換する。
+  CR3にPML4(Page Map Level 4)を指す物理アドレスが格納される。
+
+  PML4を指す物理アドレス52bitのうち
+    bits 51:12  はCR3[31:5]の値
+    bits 11:3   はbit 47:39と同一
+    bits 2:0    は0
+  PML4の構造はuint64_t[512]
+
+  PDPTを指す物理アドレス52bitのうち
+    bits 51:12  はPML4Eの値
+    bits 11:3   はbit 38:30と同一
+    bits 2:0    は0
+  PDPTの構造はuint64_t[512]
+
+  ページングによって変換される、リニアアドレスの構造:
+    bit 47-39 ( 9 bits): PML4中のPML4Eのindex. PML4EはPDPTの物理アドレスを保持。
+    bit 38-30 ( 9 bits): 
+  
+*/
+
 #define PML4E_PRESENT_BIT          (1<<0)
 #define PML4E_WRITE_BIT            (1<<1)
 #define PML4E_USER_BIT             (1<<2)
@@ -74,8 +97,10 @@ class PagingCtrl {
  public:
   PagingCtrl();
   void MapAllPhysMemory();
+  void ReleaseLowMemory();
   void ConvertVirtMemToPhysMem(virt_addr vaddr, PhysAddr &paddr);
   bool IsVirtAddrMapped(virt_addr vaddr);
+  void GetTranslationEntries(virt_addr vaddr, entry_type *pml4e, entry_type *pdpte, entry_type *pde, entry_type *pte);
   // 4Kページを仮想メモリにマッピングする
   // 既にマッピングされていた場合はfalseを返す
   // 物理メモリの確保はPhysmemCtrlで事前に行っておくこと（PaginCtrlは物理メモリを管理しない）
@@ -90,8 +115,10 @@ class PagingCtrl {
   bool Map4KPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr pst_flag, phys_addr page_flag);
   bool Map2MPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr pst_flag, phys_addr page_flag);
   bool MapPhysAddrToVirtAddr(virt_addr vaddr, PhysAddr &paddr, size_t size, phys_addr pst_flag, phys_addr page_flag) {
+    kassert(vaddr == align(vaddr, kPageSize));
     kassert(size == align(size, kPageSize));
     phys_addr addr = paddr.GetAddr();
+    kassert(addr == align(addr, kPageSize));
     while (size > 0) {
       PhysAddr tpaddr;
       tpaddr.SetAddr(addr);

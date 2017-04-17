@@ -46,6 +46,12 @@ public:
     ResetColor();
   }
   void Setup();
+  virtual int GetRow() override {
+    return 0;
+  }
+  virtual int GetColumn() override {
+    return 0;
+  }
 private:
   virtual void Write(uint8_t c) override;
   virtual void PrintShell(const char *str) override;
@@ -56,10 +62,10 @@ private:
     uint32_t width;
   };
   static void DrawPoint(DrawInfo info, bool f, int x, int y) {
-    info.buf_base[(y * info.width + x) * 4] = f ? info.dcolor : info.bcolor;
+    *(reinterpret_cast<uint32_t *>(info.buf_base + (y * info.width + x) * 4)) = f ? info.dcolor : info.bcolor;
   }
   uint32_t GetColor() {
-    return 0xFFFFFFFF;
+    return 0x00FFFFFF;
   }
   void Scroll();
   FrameBufferInfo _info;

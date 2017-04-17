@@ -87,6 +87,8 @@ class Tty {
   void ResetColor() {
     _color = Color::kWhite;
   }
+  virtual int GetRow() = 0;
+  virtual int GetColumn() = 0;
  protected:
   virtual void _Init() {
   }
@@ -192,6 +194,12 @@ private:
     _buf[_offset + 1] = '\0';
     _offset++;
   }
+  virtual int GetRow() override {
+    return 1;
+  }
+  virtual int GetColumn() override {
+    return _buffer_size;
+  };
   char *_buf;
   int _offset;
   const int _buffer_size;
