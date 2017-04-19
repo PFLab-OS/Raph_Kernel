@@ -21,7 +21,7 @@ git clone git://git.musl-libc.org/musl
 cd musl
 git checkout refs/tags/v0.9.15
 export CFLAGS="-fpie -fPIE"
-./configure
+./configure --prefix=/usr/local/musl --exec-prefix=/usr/local
 unset CFLAGS
 make -j2
 sudo make install
