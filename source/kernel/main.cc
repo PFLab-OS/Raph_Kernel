@@ -804,7 +804,6 @@ static void membench(int argc, const char *argv[]) {
 void freebsd_main();
 
 extern "C" int main() {
-
   multiboot_ctrl = new (&_multiboot_ctrl) MultibootCtrl;
 
   acpi_ctrl = new (&_acpi_ctrl) AcpiCtrl;
@@ -840,8 +839,8 @@ extern "C" int main() {
   multiboot_ctrl->Setup();
 
   _framebuffer.Setup();
-  gtty->Cprintf("#####\n******\n");
-  asm volatile("cli;hlt;");
+
+  multiboot_ctrl->ShowMemoryInfo();
     
   paging_ctrl->MapAllPhysMemory();
 
@@ -881,8 +880,8 @@ extern "C" int main() {
 
   apic_ctrl->StartAPs();
 
-  paging_ctrl->ReleaseLowMemory();
-  
+  paging_ctrl->ReleaseLowMemory(); 
+ 
   gtty->Init();
   
   idt->SetupProc();

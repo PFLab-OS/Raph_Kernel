@@ -25,41 +25,86 @@
 #pragma once
 
 #include <assert.h>
+#include <ptr.h>
+#include <array.h>
 #include <string.h>
 #include <endian.h>
 #include <stdint.h>
-#include <function.h>
+#include <mem/physmem.h>
 
 class Font {
 public:
   Font() {
   }
-  int Load(char *buf) {
+  int Load(uptr<Array<uint8_t>> buf, size_t len) {
     _buf = buf;
-    if (strncmp("FILE", _buf, 4) != 0) {
+    char *_buf_ptr = _buf->GetRawPtr();
+    if (strncmp("FILE", _buf_ptr, 4) != 0) {
       return -1;
     }
-    if (be32toh(*(reinterpret_cast<uint32_t *>(_buf + 4))) != 4) {
+    if (be32toh(*(reinterpret_cast<uint32_t *>(_buf_ptr + 4))) != 4) {
       return -1;
     }
-    if (strncmp("PFF2", _buf + 8, 4) != 0) {
+    if (strncmp("PFF2", _buf_ptr + 8, 4) != 0) {
       return -1;
     }
 
-    _maxw.Load(_buf + 12);
-    _maxh.Load(_buf + 12);
-    _ptsz.Load(_buf + 12);
-    _data.SetBuffer(_buf);
-    _data.Load(_buf + 12);
-    _chix.Load(_buf + 12);
+    _maxw.Load(_buf_ptr + 12);
+    _maxh.Load(_buf_ptr + 12);
+    _data.SetBuffer(_buf_ptr);
+    _data.Load(_buf_ptr + 12);
+    _chix.Load(_buf_ptr + 12);
+    _asce.Load(_buf_ptr + 12);
+    _desc.Load(_buf_ptr + 12);
     _is_initialized = true;
     return 0;
   }
-  void Print(char32_t c, uptr<GenericFunction<bool, int, int>> func) {
+  void Print(char32_t c, void (*func)(bool f, int x, int y)) {
     if (!_is_initialized) {
       return;
     }
-    _data.Print(_chix.GetOffset(c), func);
+
+    uint32_t index = _chix.GetIndex(c);
+    if (index == 0xFFFFFFFF || _chix.GetStorageFlag(index)) {
+      return;
+    }
+    uint32_t offset = _chix.GetOffset(index);
+    int maxh = _maxh.Get();
+    
+    uint32_t byte_offset = offset + 10;
+    uint32_t bit_offset = 7;
+    int bitmap_bottom = _asce.Get() - _data.GetYOffset(offset);
+    int bitmap_top = bitmap_bottom - _data.GetHeight(offset);
+    int bitmap_left = _data.GetXOffset(offset);
+    int bitmap_right = _data.GetXOffset(offset) + _data.GetWidth(offset);
+    int width = _data.GetDeviceWidth(offset);
+
+    for (int y = 0; y < bitmap_top; y++) {
+      for (int x = 0; x < width; x++) {
+        func(false, x, y);
+      }
+    }
+    for (int y = bitmap_top; y < bitmap_bottom; y++) {
+      for (int x = 0; x < bitmap_left; x++) {
+        func(false, x, y);
+      }
+      for (int x = bitmap_left; x < bitmap_right; x++) {
+        func((_buf->GetRawPtr()[byte_offset] & (1 << bit_offset)) != 0, x, y);
+        bit_offset--;
+        if (bit_offset == -1) {
+          bit_offset = 7;
+          byte_offset++;
+        }
+      }
+      for (int x = bitmap_right; x < width; x++) {
+        func(false, x, y);
+      }
+    }
+    for (int y = bitmap_bottom; y < maxh; y++) {
+      for (int x = 0; x < width; x++) {
+        func(false, x, y);
+      }
+    }
   }
   uint16_t GetMaxw() {
     return _maxw.Get();
@@ -68,7 +113,17 @@ public:
     return _maxh.Get();
   }
   uint16_t GetWidth(char32_t c) {
-    return _data.GetDeviceWidth(_chix.GetOffset(c));
+    uint32_t index = _chix.GetIndex(c);
+    if (index == 0xFFFFFFFF || _chix.GetStorageFlag(index)) {
+      return 0;
+    }
+    return _data.GetDeviceWidth(_chix.GetOffset(index));
+  }
+  uint16_t GetAsce() {
+    return _asce.Get();
+  }
+  uint16_t GetDesc() {
+    return _desc.Get();
   }
 private:
   bool _is_initialized = false;
@@ -125,32 +180,21 @@ private:
     uint16_t _value;
   } _maxh;
 
-  class Ptsz : public Section {
-  public:
-    uint16_t Get() {
-      return _value;
-    }
-  private:
-    virtual const char *GetSignature() override {
-      return "PTSZ";
-    }
-    virtual void LoadSub(char *buf, uint32_t length) override {
-      assert(length == 2);
-      _value = be16toh(*(reinterpret_cast<uint16_t *>(buf)));
-    }
-    uint16_t _value;
-  } _ptsz;
-
   class Chix : public Section {
   public:
-    uint32_t GetOffset(uint32_t point) {
+    uint32_t GetIndex(uint32_t point) {
       for (uint32_t offset = 0; offset < _len; offset += 9) {
         if (be32toh(*(reinterpret_cast<uint32_t *>(_buf + offset))) == point) {
-          assert((_buf[offset + 4] & 0b111) == 0b000);
-          return be32toh(*(reinterpret_cast<uint32_t *>(_buf + offset + 5)));
+          return offset;
         }
       }
       return 0xFFFFFFFF;
+    }
+    uint32_t GetOffset(uint32_t offset) {
+      return be32toh(*(reinterpret_cast<uint32_t *>(_buf + offset + 5)));
+    }
+    bool GetStorageFlag(uint32_t offset) {
+      return (_buf[offset + 4] & 0b111 != 0b000);
     }
   private:
     virtual const char *GetSignature() override {
@@ -164,6 +208,38 @@ private:
     uint32_t _len;
   } _chix;
 
+  class Asce : public Section {
+  public:
+    uint16_t Get() {
+      return _value;
+    }
+  private:
+    virtual const char *GetSignature() override {
+      return "ASCE";
+    }
+    virtual void LoadSub(char *buf, uint32_t length) override {
+      assert(length == 2);
+      _value = be16toh(*(reinterpret_cast<uint16_t *>(buf)));
+    }
+    uint16_t _value;
+  } _asce;
+
+  class Desc : public Section {
+  public:
+    uint16_t Get() {
+      return _value;
+    }
+  private:
+    virtual const char *GetSignature() override {
+      return "DESC";
+    }
+    virtual void LoadSub(char *buf, uint32_t length) override {
+      assert(length == 2);
+      _value = be16toh(*(reinterpret_cast<uint16_t *>(buf)));
+    }
+    uint16_t _value;
+  } _desc;
+  
   class Data : public Section {
   public:
     uint16_t GetWidth(uint32_t offset) {
@@ -181,32 +257,6 @@ private:
     int16_t GetDeviceWidth(uint32_t offset) {
       return be16toh(*(reinterpret_cast<int16_t *>(_buf + offset + 8)));
     }
-    void Print(uint32_t offset, uptr<GenericFunction<bool, int, int>> func) {
-      uint32_t byte_offset = offset + 10;
-      uint32_t bit_offset = 7;
-      int height = GetHeight(offset);
-      int width = GetWidth(offset);
-      int xoffset = GetXOffset(offset);
-      int yoffset = GetYOffset(offset);
-      for (int i = 0; i < yoffset; i++) {
-        for (int j = 0; j < xoffset + width; j++) {
-          func->Execute(false, j, i);
-        }
-      }
-      for (int i = 0; i < height; i++) {
-        for (int j = 0; j < xoffset; j++) {
-          func->Execute(false, j, i);
-        }
-        for (int j = 0; j < width; j++) {
-          func->Execute((_buf[byte_offset] & (1 << bit_offset)) != 0, j + xoffset, i + yoffset);
-          bit_offset--;
-          if (bit_offset == -1) {
-            bit_offset = 7;
-            byte_offset++;
-          }
-        }
-      }
-    }
     void SetBuffer(char *buf) {
       _buf = buf;
     }
@@ -221,6 +271,6 @@ private:
   } _data;
 
 
-  char *_buf = nullptr;
+  uptr<Array<char>> _buf;
 };
 

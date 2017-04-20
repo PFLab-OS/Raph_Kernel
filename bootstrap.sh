@@ -1,20 +1,27 @@
-#!/bin/sh
+#!/biAn/sh
 sudo -sh c 'test -f /etc/bootstrapped && exit'
 
 sudo apt-get update
 sudo apt-get install -y git g++ make parted emacs language-pack-ja-base language-pack-ja kpartx gdb bridge-utils libyaml-dev silversearcher-ag
-sudo apt-get install -y grub-efi gdisk dosfstools ovmf
+sudo apt-get install -y grub-efi gdisk dosfstools
 sudo update-locale LANG=ja_JP.UTF-8 LANGUAGE="ja_JP:ja"
 
 # install qemu
 sudo apt-get install -y libglib2.0-dev libfdt-dev libpixman-1-dev zlib1g-dev
-wget http://wiki.qemu-project.org/download/qemu-2.4.1.tar.bz2
-tar xvf qemu-2.4.1.tar.bz2
+wget http://download.qemu-project.org/qemu-2.4.1.tar.xz
+tar xvJf qemu-2.4.1.tar.xz
 mkdir build-qemu
 cd build-qemu
 ../qemu-2.4.1/configure --target-list=x86_64-softmmu --disable-kvm --enable-debug
 make -j2
 sudo make install
+cd ..
+
+# get OVMF
+wget http://downloads.sourceforge.net/project/edk2/OVMF/OVMF-X64-r15214.zip
+mkdir OVMF-X64-r15214
+cd OVMF-X64-r15214
+unzip ~/OVMF-X64-r15214.zip
 cd ..
 
 # make & install musl with CFLAGS="-fpie -fPIE"
@@ -47,9 +54,9 @@ make bin-x86_64-pcbios/ipxe.usb
 cd ../
 
 # install rust
-(curl -sSf https://static.rust-lang.org/rustup.sh | sh) || return 0
-echo "export PATH=\$PATH:~/.cargo/bin\n" >> /home/vagrant/.bashrc
-cargo install rustfmt --verbose
+#(curl -sSf https://static.rust-lang.org/rustup.sh | sh) || return 0
+#echo "export PATH=\$PATH:~/.cargo/bin\n" >> /home/vagrant/.bashrc
+#cargo install rustfmt --verbose
 
 # setup bridge initialize script
 sudo sed -i -e 's/exit 0//g' /etc/rc.local

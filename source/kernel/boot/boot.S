@@ -41,24 +41,38 @@
 .extern initial_PML4T
   
 .extern main
-  
 multibootheader_start:
-        .long MULTIBOOT2_HEADER_MAGIC
-        .long MULTIBOOT_ARCHITECTURE_I386
-        .long MULTIBOOTHEADER_SIZE
-        .long -(MULTIBOOT2_HEADER_MAGIC + MULTIBOOT_ARCHITECTURE_I386 + MULTIBOOTHEADER_SIZE)
+  .long MULTIBOOT2_HEADER_MAGIC
+  .long MULTIBOOT_ARCHITECTURE_I386
+  .long MULTIBOOTHEADER_SIZE
+  .long -(MULTIBOOT2_HEADER_MAGIC + MULTIBOOT_ARCHITECTURE_I386 + MULTIBOOTHEADER_SIZE)
 
-align_tag_start:  
+  // multiboot tags
+  // each tags must be aligned at 8-byte boundary.
+  // see multiboot2 specification 3.1.3 General tag structure
+
+  .balign 8
+align_tag:  
+  // see multiboot2 specification 3.1.11 Module alignment tag
   .short MULTIBOOT_HEADER_TAG_MODULE_ALIGN
-        .short 0
-        .long align_tag_end - align_tag_start
-align_tag_end:  
+  .short 0
+  .long 8
 
-end_tag_start:  
-        .short MULTIBOOT_HEADER_TAG_END
-        .short 0
-        .long end_tag_end - end_tag_start
-end_tag_end:  
+  .balign 8
+framebuffer_tag:  
+  // see multiboot2 specification 3.1.10 The framebuffer tag of Multiboot2 header
+  .short MULTIBOOT_HEADER_TAG_FRAMEBUFFER
+  .short 0
+  .long  20
+  .long 1024
+  .long 768
+  .long 32
+
+  .balign 8
+end_tag:
+  .short MULTIBOOT_HEADER_TAG_END
+  .short 0
+  .long 8
   
 multibootheader_end:
 

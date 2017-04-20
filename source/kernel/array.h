@@ -40,8 +40,24 @@ public:
     kassert(0 <= n && n < _len);
     return _array[n];
   }
-  T& operator=(const T &array) {
-    kassert(false);
+  template <class A>
+  Array& operator=(const Array<A> &a) {
+    delete[] _array;
+    _array = reinterpret_cast<T *>(a._array);
+    _len = a._len;
+    Array<A> *a_ = const_cast<Array<A> *>(&a);
+    a_->_array = nullptr;
+    a_->_len = 0;
+    return (*this);
+  }
+  T& operator=(const T &a) {
+    delete[] _array;
+    _array = a._array;
+    _len = a._len;
+    Array *a_ = const_cast<Array *>(&a);
+    a->_array = nullptr;
+    a->_len = 0;
+    return (*this);
   }
   T *GetRawPtr() {
     return _array;
@@ -50,6 +66,8 @@ public:
     return _len;
   }
 private:
+  template <typename A>
+  friend class Array;
   Array();
   T *_array;
   size_t _len;

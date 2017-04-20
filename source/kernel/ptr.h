@@ -29,7 +29,7 @@ class uptr {
 public:
   template <class A>
   uptr(const uptr<A> &p) {
-    _obj = p._obj;
+    _obj = reinterpret_cast<T *>(p._obj);
     uptr<A> *p_ = const_cast<uptr<A> *>(&p);
     p_->_obj = nullptr;
   }

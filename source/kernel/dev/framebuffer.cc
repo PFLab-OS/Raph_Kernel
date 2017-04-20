@@ -26,22 +26,27 @@
 #include <multiboot.h>
 #include "framebuffer.h"
 
+FrameBuffer::DrawInfo FrameBuffer::_d_info;
+
 void FrameBuffer::Setup() {
-  multiboot_ctrl->SetupFrameBuffer(&_info);
-  assert(_info.bpp == 32);  // TODO : support modes other than 32bit true color
+  multiboot_ctrl->SetupFrameBuffer(&_fb_info);
+  assert(_fb_info.bpp == 24 || _fb_info.bpp == 32);
   
-  auto font_file = multiboot_ctrl->LoadFile("font"); 
-  _font.Load(reinterpret_cast<char *>(font_file.GetRawPtr()->GetRawPtr()));
+  auto font_file = multiboot_ctrl->LoadFile("font");
+  _font.Load(font_file, font_file->GetLen());
   
-  _info_row = (_info.height / _font.GetMaxh() - 1) * _font.GetMaxh();
+  _info_row = (_fb_info.height / _font.GetMaxh() - 1) * _font.GetMaxh();
   _cx = 0;
   _cy = 0;
+
+  bzero(_fb_info.buffer, _fb_info.width * _fb_info.height * (_fb_info.bpp / 8));
 }
 
 void FrameBuffer::Write(uint8_t c) {
-  if (_info.buffer == nullptr) {
+  if (_fb_info.buffer == nullptr) {
     return;
   }
+  Locker locker(_lock);
   switch(c) {
   case '\n':
     _cx = 0;
@@ -49,32 +54,41 @@ void FrameBuffer::Write(uint8_t c) {
     break;
   default:
     int width = _font.GetWidth(c);
-    if (_cx + width > _info.width) {
+    if (_cx + width > _fb_info.width) {
       _cx = 0;
       _cy += _font.GetMaxh();
       Scroll();
     }
-    DrawInfo info = {
-      .buf_base = _info.buffer + _cx * _cy * _info.width * 4,
-      .dcolor = GetColor(),
-      .bcolor = 0,
-      .width = _info.width,
-    };
-    _font.Print(c, make_uptr(new Function<DrawInfo, bool, int, int>(DrawPoint, info)));
+    {
+      DrawInfo info = {
+        .buf_base = _fb_info.buffer + (_cx + _cy * _fb_info.width) * (_fb_info.bpp / 8),
+        .dcolor = GetColor(),
+        .bcolor = 0,
+        .width = _fb_info.width,
+        .bpp = _fb_info.bpp,
+      };
+      _d_info = info;
+      _font.Print(c, DrawPoint);
+    }
     _cx += width;
+    break;
   }
   Scroll();
 }
 
 void FrameBuffer::PrintShell(const char *str) {
+  Locker locker(_lock);
+  memset(_fb_info.buffer + (_fb_info.height - _font.GetMaxh()) * _fb_info.width * (_fb_info.bpp / 8), 0xff, _fb_info.width * _font.GetMaxh() * (_fb_info.bpp / 8));
   {
     DrawInfo info = {
-      .buf_base = _info.buffer + (_info.height - _font.GetMaxh()) * _info.width * 4,
+      .buf_base = _fb_info.buffer + (_fb_info.height - _font.GetMaxh()) * _fb_info.width * (_fb_info.bpp / 8),
       .dcolor = 0,
       .bcolor = 0x00FFFFFF,
-      .width = _info.width,
+      .width = _fb_info.width,
+      .bpp = _fb_info.bpp,
     };
-    _font.Print(U'>', make_uptr(new Function<DrawInfo, bool, int, int>(DrawPoint, info)));
+    _d_info = info;
+    _font.Print(U'>', DrawPoint);
   }
   int xoffset = _font.GetWidth(U'>');
   // TODO consider overflow 
@@ -84,28 +98,33 @@ void FrameBuffer::PrintShell(const char *str) {
       c = *str;
       str++;
     }
-    if (xoffset + _font.GetWidth(c) > _info.width) {
+    if (xoffset + _font.GetWidth(c) > _fb_info.width) {
       break;
     }
-    DrawInfo info = {
-      .buf_base = _info.buffer + xoffset * (_info.height - _font.GetMaxh()) * _info.width * 4,
-      .dcolor = 0,
-      .bcolor = 0x00FFFFFF,
-      .width = _info.width,
-    };
-    _font.Print(c, make_uptr(new Function<DrawInfo, bool, int, int>(DrawPoint, info)));
+    {
+      DrawInfo info = {
+        .buf_base = _fb_info.buffer + (xoffset + (_fb_info.height - _font.GetMaxh()) * _fb_info.width) * (_fb_info.bpp / 8),
+        .dcolor = 0,
+        .bcolor = 0x00FFFFFF,
+        .width = _fb_info.width,
+        .bpp = _fb_info.bpp,
+      };
+      _d_info = info;
+      _font.Print(c, DrawPoint);
+    }
+    xoffset += _font.GetWidth(c);
   }
 }
 
 void FrameBuffer::Scroll() {
-  if (_cy == _info_row) {
+  if (_cy >= _info_row) {
     _cy -= _font.GetMaxh();
     for (int y = 0; y < _cy / _font.GetMaxh(); y++) {
-      memcpy(_info.buffer + y * _font.GetMaxh() * _info.width * 4,
-             _info.buffer + (y + 1) * _font.GetMaxh() * _info.width * 4,
-             _font.GetMaxh() * _info.width * 4);
+      memcpy(_fb_info.buffer + y * _font.GetMaxh() * _fb_info.width * (_fb_info.bpp / 8),
+             _fb_info.buffer + (y + 1) * _font.GetMaxh() * _fb_info.width * (_fb_info.bpp / 8),
+             _font.GetMaxh() * _fb_info.width * (_fb_info.bpp / 8));
     }
-    bzero(_info.buffer + _cy * _info.width * 4,
-          _font.GetMaxh() * _info.width * 4);
+    bzero(_fb_info.buffer + _cy * _fb_info.width * (_fb_info.bpp / 8),
+          _font.GetMaxh() * _fb_info.width * (_fb_info.bpp / 8));
   }
 }

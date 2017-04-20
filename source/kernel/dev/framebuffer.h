@@ -25,12 +25,11 @@
 #pragma once
 
 #include <global.h>
-#include <mem/physmem.h>
-#include <mem/paging.h>
 #include <raph.h>
 #include <tty.h>
 #include <font.h>
 #include <stdint.h>
+#include <spinlock.h>
 
 struct FrameBufferInfo {
   uint8_t *buffer;
@@ -42,7 +41,7 @@ struct FrameBufferInfo {
 class FrameBuffer : public Tty {
 public:
   FrameBuffer() {
-    _info.buffer = nullptr;
+    _fb_info.buffer = nullptr;
     ResetColor();
   }
   void Setup();
@@ -60,17 +59,25 @@ private:
     uint32_t dcolor;
     uint32_t bcolor;
     uint32_t width;
+    uint32_t bpp;
   };
-  static void DrawPoint(DrawInfo info, bool f, int x, int y) {
-    *(reinterpret_cast<uint32_t *>(info.buf_base + (y * info.width + x) * 4)) = f ? info.dcolor : info.bcolor;
+  static void DrawPoint(bool f, int x, int y) {
+    uint32_t c = f ? _d_info.dcolor : _d_info.bcolor;
+    _d_info.buf_base[(y * _d_info.width + x) * (_d_info.bpp / 8)] = c;
+    _d_info.buf_base[(y * _d_info.width + x) * (_d_info.bpp / 8) + 1] = c >> 8;
+    _d_info.buf_base[(y * _d_info.width + x) * (_d_info.bpp / 8) + 2] = c >> 16;
   }
   uint32_t GetColor() {
     return 0x00FFFFFF;
   }
   void Scroll();
-  FrameBufferInfo _info;
+  SpinLock _lock;
+  FrameBufferInfo _fb_info;
   Font _font;
   int _column;
   int _info_row; // row of information display area
   int _cx, _cy; // current position of the cursor
+
+  // frameinfo to path DrawPoint()
+  static DrawInfo _d_info;
 };

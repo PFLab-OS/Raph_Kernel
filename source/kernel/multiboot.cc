@@ -33,7 +33,6 @@ void MultibootCtrl::Setup() {
     for (multiboot_tag *tag = reinterpret_cast<multiboot_tag *>(addr); tag->type != MULTIBOOT_TAG_TYPE_END; addr = alignUp(addr + tag->size, 8), tag = reinterpret_cast<multiboot_tag *>(addr)) {
       switch(tag->type) {
       case MULTIBOOT_TAG_TYPE_MMAP: {
-        gtty->Cprintf("mmap from grub\n");
         multiboot_memory_map_t *mmap;
         int available_entry_num = 0;
         for (mmap = ((struct multiboot_tag_mmap *) tag)->entries;
@@ -54,11 +53,6 @@ void MultibootCtrl::Setup() {
              mmap = (multiboot_memory_map_t *) 
                ((unsigned long) mmap
                 + ((struct multiboot_tag_mmap *) tag)->entry_size)) {
-          gtty->Cprintf (" base_addr = 0x%llx,"
-                         " length = 0x%llx, type = 0x%x\n",
-                         mmap->addr,
-                         mmap->len,
-                         (unsigned) mmap->type);
           if (mmap->type == MULTIBOOT_MEMORY_AVAILABLE) {
             entries[cnt] = *mmap;
             cnt++;
@@ -95,13 +89,14 @@ void MultibootCtrl::Setup() {
   do {
     virt_addr addr = p2v(static_cast<phys_addr>(*_multiboot_info));
     addr += 8;
+    multiboot_tag *tag = reinterpret_cast<multiboot_tag *>(addr);
 
-    // load module info
-    for (multiboot_tag *tag = reinterpret_cast<multiboot_tag *>(addr); tag->type != MULTIBOOT_TAG_TYPE_END; addr = alignUp(addr + tag->size, 8), tag = reinterpret_cast<multiboot_tag *>(addr)) {
+    // reserve module area
+    for (; tag->type != MULTIBOOT_TAG_TYPE_END; addr = alignUp(addr + tag->size, 8), tag = reinterpret_cast<multiboot_tag *>(addr)) {
       switch(tag->type) {
       case MULTIBOOT_TAG_TYPE_MODULE: {
-        multiboot_tag_module* info = (struct multiboot_tag_module *) tag;
-        phys_addr start = PagingCtrl::RoundUpAddrOnPageBoundary(info->mod_start);
+        multiboot_tag_module* info = reinterpret_cast<struct multiboot_tag_module *>(tag);
+        phys_addr start = PagingCtrl::RoundAddrOnPageBoundary(info->mod_start);
         phys_addr end = PagingCtrl::RoundUpAddrOnPageBoundary(info->mod_end);
         physmem_ctrl->Reserve(start, end - start);
         break;
@@ -110,7 +105,80 @@ void MultibootCtrl::Setup() {
         break;
       }
     }
+    
+    phys_addr start = PagingCtrl::RoundAddrOnPageBoundary(static_cast<phys_addr>(*_multiboot_info));
+    phys_addr end = PagingCtrl::RoundUpAddrOnPageBoundary(v2p(alignUp(addr + tag->size, 8)));
+    physmem_ctrl->Reserve(start, end - start);
   } while(0);
+  physmem_ctrl->EnableToAllocate();
+}
+
+void MultibootCtrl::ShowMemoryInfo() {
+  do {
+    virt_addr addr = p2v(static_cast<phys_addr>(*_multiboot_info));
+    addr += 8;
+
+    // load memory info
+    for (multiboot_tag *tag = reinterpret_cast<multiboot_tag *>(addr); tag->type != MULTIBOOT_TAG_TYPE_END; addr = alignUp(addr + tag->size, 8), tag = reinterpret_cast<multiboot_tag *>(addr)) {
+      switch(tag->type) {
+      case MULTIBOOT_TAG_TYPE_MMAP: {
+        gtty->CprintfRaw("mmap from grub\n");
+        for (multiboot_memory_map_t *mmap = ((struct multiboot_tag_mmap *) tag)->entries;
+             (multiboot_uint8_t *) mmap 
+               < (multiboot_uint8_t *) tag + tag->size;
+             mmap = (multiboot_memory_map_t *) 
+               ((unsigned long) mmap
+                + ((struct multiboot_tag_mmap *) tag)->entry_size)) {
+          gtty->CprintfRaw(" base_addr = 0x%llx,"
+                         " length = 0x%llx, type = 0x%x\n",
+                         mmap->addr,
+                         mmap->len,
+                         (unsigned) mmap->type);
+        }
+        break;
+      }
+      default:
+        break;
+      }
+    }
+
+  } while(0);
+}
+
+phys_addr MultibootCtrl::GetAcpiRoot() {
+  do {
+    virt_addr addr = p2v(static_cast<phys_addr>(*_multiboot_info));
+    addr += 8;
+
+    // load memory info
+    for (multiboot_tag *tag = reinterpret_cast<multiboot_tag *>(addr); tag->type != MULTIBOOT_TAG_TYPE_END; addr = alignUp(addr + tag->size, 8), tag = reinterpret_cast<multiboot_tag *>(addr)) {
+      switch(tag->type) {
+      case MULTIBOOT_TAG_TYPE_ACPI_NEW: {
+        multiboot_tag_new_acpi *entry = reinterpret_cast<multiboot_tag_new_acpi *>(tag);
+        return v2p(ptr2virtaddr(entry->rsdp));
+      }
+      default:
+        break;
+      }
+    }
+  } while(0);
+  do {
+    virt_addr addr = p2v(static_cast<phys_addr>(*_multiboot_info));
+    addr += 8;
+
+    // load memory info
+    for (multiboot_tag *tag = reinterpret_cast<multiboot_tag *>(addr); tag->type != MULTIBOOT_TAG_TYPE_END; addr = alignUp(addr + tag->size, 8), tag = reinterpret_cast<multiboot_tag *>(addr)) {
+      switch(tag->type) {
+      case MULTIBOOT_TAG_TYPE_ACPI_OLD: {
+        multiboot_tag_old_acpi *entry = reinterpret_cast<multiboot_tag_old_acpi *>(tag);
+        return v2p(ptr2virtaddr(entry->rsdp));
+      }
+      default:
+        break;
+      }
+    }
+  } while(0);
+  return 0;
 }
 
 void MultibootCtrl::SetupFrameBuffer(FrameBufferInfo *fb_info) {
@@ -123,7 +191,7 @@ void MultibootCtrl::SetupFrameBuffer(FrameBufferInfo *fb_info) {
     case MULTIBOOT_TAG_TYPE_FRAMEBUFFER:
       {
         multiboot_tag_framebuffer_common *info = reinterpret_cast<multiboot_tag_framebuffer_common *>(tag);
-        fb_info->buffer = (uint8_t *)info->framebuffer_addr ;
+        fb_info->buffer = (uint8_t *)p2v(info->framebuffer_addr);
         fb_info->width = info->framebuffer_width;
         fb_info->height = info->framebuffer_height;
         fb_info->bpp = info->framebuffer_bpp;
@@ -133,6 +201,7 @@ void MultibootCtrl::SetupFrameBuffer(FrameBufferInfo *fb_info) {
       break;
     }
   }
+  kernel_panic("multiboot", "no framebuffer interface");
 }
 
 void MultibootCtrl::ShowModuleInfo() {
@@ -144,7 +213,6 @@ void MultibootCtrl::ShowModuleInfo() {
     case MULTIBOOT_TAG_TYPE_MODULE: {
       multiboot_tag_module* info = (struct multiboot_tag_module *) tag;
       gtty->CprintfRaw("module: %x %x\n", info->mod_start, info->mod_end);
-      // readElfTest(info);
       break;
     }
     default:

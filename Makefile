@@ -34,18 +34,17 @@ default: image
 ###################################
 
 _run:
+	$(MAKE) _qemuend
 	$(MAKE) _qemurun
-	-telnet 127.0.0.1 1234
+	-telnet 127.0.0.1 1235
 	$(MAKE) _qemuend
 
 _qemurun: _image
-	sudo qemu-system-x86_64 -bios /usr/share/ovmf/OVMF.fd -cpu qemu64,+x2apic -smp 8 -monitor telnet:127.0.0.1:1234,server,nowait -vnc 0.0.0.0:0,password $(IMAGE)&
-#	sudo qemu-system-x86_64 -bios /usr/share/ovmf/OVMF.fd -cpu qemu64,+x2apic -smp 8 -machine q35 -monitor telnet:127.0.0.1:1234,server,nowait -vnc 0.0.0.0:0,password -net nic -net bridge,br=br0 -drive id=disk,file=$(IMAGE),if=virtio -device ich9-usb-uhci1 -device usb-kbd &
-#	sudo qemu-system-x86_64 -cpu qemu64,+x2apic -smp 8 -machine q35 -monitor telnet:127.0.0.1:1234,server,nowait -vnc 0.0.0.0:0,password -net nic -net bridge,br=br0 -drive id=disk,file=$(IMAGE),if=virtio -usb -usbdevice keyboard &
-#	sudo qemu-system-x86_64 -cpu qemu64,+x2apic -smp 8 -machine q35 -monitor telnet:127.0.0.1:1234,server,nowait -vnc 0.0.0.0:0,password -net nic -net bridge,br=br0 -drive id=disk,file=$(IMAGE),if=none -device ahci,id=ahci -device ide-drive,drive=disk,bus=ahci.0 &
-#	sudo qemu-system-x86_64 -smp 8 -machine q35 -monitor telnet:127.0.0.1:1234,server,nowait -vnc 0.0.0.0:0,password -net nic -net bridge,br=br0 -drive file=$(IMAGE),if=virtio &
+#	sudo qemu-system-x86_64 -bios ~/OVMF-X64-r15214/OVMF.fd -cpu qemu64 -smp 8 -clock hpet -monitor telnet:127.0.0.1:1235,server,nowait -vnc 0.0.0.0:0,password $(IMAGE)&
+	sudo qemu-system-x86_64 -cpu qemu64,+x2apic -smp 8 -machine q35 -monitor telnet:127.0.0.1:1235,server,nowait -vnc 0.0.0.0:0,password -net nic -net bridge,br=br0 -drive id=disk,file=$(IMAGE),if=virtio -usb -usbdevice keyboard &
+#	sudo qemu-system-x86_64 -cpu qemu64,+x2apic -smp 8 -machine q35 -monitor telnet:127.0.0.1:1235,server,nowait -vnc 0.0.0.0:0,password -net nic -net bridge,br=br0 -drive id=disk,file=$(IMAGE),if=none -device ahci,id=ahci -device ide-drive,drive=disk,bus=ahci.0 &
 	sleep 0.2s
-	echo "set_password vnc a" | netcat 127.0.0.1 1234
+	echo "set_password vnc a" | netcat 127.0.0.1 1235
 
 _debugqemu:
 	sudo gdb -x ./.gdbinit -p `ps aux | grep qemu | sed -n 2P | awk '{ print $$2 }'`
@@ -53,14 +52,18 @@ _debugqemu:
 _qemuend:
 	-sudo pkill -KILL qemu
 
-_bin:
-	mkdir -p $(BUILD_DIR)
+$(BUILD_DIR)/script:
 	cp script $(BUILD_DIR)/script
+
+$(BUILD_DIR)/init: $(INIT_FILE)
 	cp $(INIT_FILE) $(BUILD_DIR)/init
+
+_bin: $(BUILD_DIR)/script $(BUILD_DIR)/init
 	$(MAKE) -C source
 
 _image:
 	$(MAKE) _mount
+	mkdir -p $(BUILD_DIR)
 	$(MAKE) _bin
 	sudo cp memtest86+.bin $(MOUNT_DIR)/boot/memtest86+.bin
 	sudo cp grub.cfg $(MOUNT_DIR)/boot/grub/grub.cfg
@@ -141,7 +144,7 @@ vboxrun: vboxkill synctime
 	-vboxmanage unregistervm RK_Test --delete
 	-rm $(VDI)
 	vboxmanage createvm --name RK_Test --register
-	vboxmanage modifyvm RK_Test --cpus 4 --ioapic on --chipset ich9 --hpet on --x2apic on --nic1 nat --nictype1 82540EM
+	vboxmanage modifyvm RK_Test --cpus 4 --ioapic on --chipset ich9 --hpet on --x2apic on --nic1 nat --nictype1 82540EM --firmware efi
 	vboxmanage convertfromraw $(IMAGEFILE) $(VDI)
 	vboxmanage storagectl RK_Test --name SATAController --add sata --controller IntelAHCI --bootable on
 	vboxmanage storageattach RK_Test --storagectl SATAController --port 0 --device 0 --type hdd --medium disk.vdi
@@ -171,6 +174,9 @@ vboxkill:
 vnc:
 	@echo info: vnc password is "a"
 	$(VNC)
+
+debug:
+	vagrant ssh -c "cd /vagrant/; gdb -x .gdbinit_for_kernel"
 
 synctime: .ssh_config
 	@./time.sh

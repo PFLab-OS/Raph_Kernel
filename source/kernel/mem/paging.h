@@ -131,11 +131,10 @@ class PagingCtrl {
     }
     return true;
   }
-  // マッピングした仮想メモリを解放する
   void UnmapVirtAddr(virt_addr addr);
   // kHeapEndAddr以降から空き領域を探す
   //virt_addr SearchUnmappedArea(size_t size);
-  // 数字をページサイズに広げる
+  // align up size to page boundary
   static size_t ConvertNumToPageSize(size_t size) {
     return ((size + kPageSize - 1) / kPageSize) * kPageSize;
   }

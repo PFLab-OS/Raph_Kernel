@@ -47,6 +47,8 @@ public:
   }
   void Setup();
   void SetupFrameBuffer(FrameBufferInfo *fb_info);
+  phys_addr GetAcpiRoot();
+  void ShowMemoryInfo();
   void ShowModuleInfo();
   void ShowBuildTimeStamp();
   uptr<Array<uint8_t>> LoadFile(const char *str);
