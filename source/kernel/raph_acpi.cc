@@ -54,49 +54,57 @@ void AcpiCtrl::Setup() {
     physmem_ctrl->SetSrat(reinterpret_cast<Srat *>(srat));
   }
 
-  gtty->CprintfRaw("PMTT Info:\n");
-  acpi_table_pmtt *pmtt;
-  if (!ACPI_FAILURE(AcpiGetTable(const_cast<char *>("PMTT"), 1, reinterpret_cast<ACPI_TABLE_HEADER **>(&pmtt)))) {
-    for (uint32_t offset = sizeof(acpi_table_pmtt); offset < pmtt->Header.Length;) {
-      acpi_pmtt_header *subtable = addr2ptr<acpi_pmtt_header>(ptr2virtaddr(pmtt) + offset);
-      switch (subtable->Type) {
-      case ACPI_PMTT_TYPE_SOCKET: {
-        acpi_pmtt_socket *sockettable = reinterpret_cast<acpi_pmtt_socket *>(subtable);
-        gtty->CprintfRaw("Socket: %d \n", sockettable->SocketId);
-        for (uint32_t offset2 = sizeof(acpi_pmtt_socket); offset2 < sockettable->Header.Length;) {
-          acpi_pmtt_controller *controllertable = addr2ptr<acpi_pmtt_controller>(ptr2virtaddr(sockettable) + offset2);
-          assert(controllertable->Header.Type == ACPI_PMTT_TYPE_CONTROLLER);
-          gtty->CprintfRaw("  Controller: RB %dMB/s WB %dMB/s RL %dns WL %dns\n", controllertable->ReadBandwidth, controllertable->WriteBandwidth, controllertable->ReadLatency, controllertable->WriteLatency);
-          offset2 += controllertable->Header.Length;
+  do {
+    acpi_table_pmtt *pmtt;
+    if (!ACPI_FAILURE(AcpiGetTable(const_cast<char *>("PMTT"), 1, reinterpret_cast<ACPI_TABLE_HEADER **>(&pmtt)))) {
+      gtty->CprintfRaw("PMTT Info:\n");
+      for (uint32_t offset = sizeof(acpi_table_pmtt); offset < pmtt->Header.Length;) {
+        acpi_pmtt_header *subtable = addr2ptr<acpi_pmtt_header>(ptr2virtaddr(pmtt) + offset);
+        switch (subtable->Type) {
+        case ACPI_PMTT_TYPE_SOCKET: {
+          acpi_pmtt_socket *sockettable = reinterpret_cast<acpi_pmtt_socket *>(subtable);
+          gtty->CprintfRaw("Socket: %d \n", sockettable->SocketId);
+          for (uint32_t offset2 = sizeof(acpi_pmtt_socket); offset2 < sockettable->Header.Length;) {
+            acpi_pmtt_controller *controllertable = addr2ptr<acpi_pmtt_controller>(ptr2virtaddr(sockettable) + offset2);
+            assert(controllertable->Header.Type == ACPI_PMTT_TYPE_CONTROLLER);
+            gtty->CprintfRaw("  Controller: RB %dMB/s WB %dMB/s RL %dns WL %dns\n", controllertable->ReadBandwidth, controllertable->WriteBandwidth, controllertable->ReadLatency, controllertable->WriteLatency);
+            offset2 += controllertable->Header.Length;
+          }
+          break;
         }
-        break;
+        case ACPI_PMTT_TYPE_CONTROLLER: {
+          acpi_pmtt_controller *controllertable = reinterpret_cast<acpi_pmtt_controller *>(subtable);
+          gtty->CprintfRaw("Controller: R %dns W %dns\n", controllertable->ReadLatency, controllertable->WriteLatency);
+          break;
+        }
+        }
+        offset += subtable->Length;
       }
-      case ACPI_PMTT_TYPE_CONTROLLER: {
-        acpi_pmtt_controller *controllertable = reinterpret_cast<acpi_pmtt_controller *>(subtable);
-        gtty->CprintfRaw("Controller: R %dns W %dns\n", controllertable->ReadLatency, controllertable->WriteLatency);
-        break;
-      }
-      }
-      offset += subtable->Length;
     }
-  }
+  } while(0);
 }
 
 MCFG *AcpiCtrl::GetMCFG() {
   ACPI_TABLE_HEADER *table;
-  kassert(!ACPI_FAILURE(AcpiGetTable(const_cast<char *>("MCFG"), 1, &table)));
+  if (ACPI_FAILURE(AcpiGetTable(const_cast<char *>("MCFG"), 1, &table))) {
+    kernel_panic("acpi", "no MCFG");
+  }
   return reinterpret_cast<MCFG *>(table);
 }
 
 HPETDT *AcpiCtrl::GetHPETDT() {
   ACPI_TABLE_HEADER *table;
-  kassert(!ACPI_FAILURE(AcpiGetTable(const_cast<char *>("HPET"), 1, &table)));
+  if (ACPI_FAILURE(AcpiGetTable(const_cast<char *>("HPET"), 1, &table))) {
+    kernel_panic("acpi", "no HPET");
+  }
   return reinterpret_cast<HPETDT *>(table);
 }
 
 FADT *AcpiCtrl::GetFADT() {
   ACPI_TABLE_HEADER *table;
-  kassert(!ACPI_FAILURE(AcpiGetTable(const_cast<char *>("FACP"), 1, &table)));
+  if (ACPI_FAILURE(AcpiGetTable(const_cast<char *>("FACP"), 1, &table))) {
+    kernel_panic("acpi", "no FACP");
+  }
   return reinterpret_cast<FADT *>(table);
 }
 
@@ -136,7 +144,7 @@ void AcpiCtrl::Shutdown() {
 }
 
 void AcpiCtrl::GlobalEventHandler(void *) {
-  gtty->Cprintf("shutting down the system...\n");
+  gtty->CprintfRaw("shutting down the system...\n");
   Shutdown();
 }
 

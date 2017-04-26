@@ -29,6 +29,7 @@
 #include <mem/physmem.h>
 #include <cpu.h>
 #include <dev/pci.h>
+#include <multiboot.h>
 
 extern "C" {
 
@@ -55,9 +56,11 @@ extern "C" {
   }
 
   ACPI_PHYSICAL_ADDRESS AcpiOsGetRootPointer() {
-    ACPI_SIZE Ret;
-    AcpiFindRootPointer(&Ret);
-    return Ret;
+    phys_addr ptr = multiboot_ctrl->GetAcpiRoot();
+    if (ptr == 0) {
+      kernel_panic("ACPICA", "no RSDP");
+    }
+    return ptr;
   }
 
   ACPI_STATUS AcpiOsPredefinedOverride(const ACPI_PREDEFINED_NAMES *PredefinedObject, ACPI_STRING *NewValue) {
@@ -267,7 +270,7 @@ extern "C" {
 
   void AcpiOsVprintf(const char *Fmt, va_list Args) {
     kassert(gtty != nullptr);
-    gtty->Cvprintf(Fmt, Args);
+    gtty->CvprintfRaw(Fmt, Args);
   }
 
   ACPI_STATUS AcpiOsReadMemory(ACPI_PHYSICAL_ADDRESS Address, UINT64 *Value, UINT32 Width) {

@@ -73,7 +73,11 @@ void SpinLock::Lock() {
   _cpuid = cpu_ctrl->GetCpuId();
   size_t *rbp;
   asm volatile("movq %%rbp, %0":"=r"(rbp));
+  size_t top_rbp = reinterpret_cast<size_t>(rbp);
   for (size_t i = 0; i < sizeof(_rip) / sizeof(_rip[0]); i++) {
+    if (top_rbp <= rbp[1] || top_rbp - 4096 > rbp[1]) {
+      break;
+    }
     _rip[i] = rbp[1];
     rbp = reinterpret_cast<size_t *>(rbp[0]);
   }

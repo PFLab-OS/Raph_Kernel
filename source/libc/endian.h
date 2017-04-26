@@ -20,21 +20,53 @@
  * 
  */
 
-#ifndef __RAPH_LIB_ENDIAN_H__
-#define __RAPH_LIB_ENDIAN_H__
+#pragma once
+
+#include <stdint.h>
 
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 
-#define htole16(x) (x)
-#define htole32(x) (x)
-#define htole64(x) (x)
+static const uint16_t htole16(uint16_t v) {
+  return v;
+}
+static const uint32_t htole32(uint32_t v) {
+  return v;
+}
+static const uint64_t htole64(uint64_t v) {
+  return v;
+}
 
-#define le16toh(x) (x)
-#define le32toh(x) (x)
-#define le64toh(x) (x)
+static const uint16_t le16toh(uint16_t v) {
+  return v;
+}
+static const uint32_t le32toh(uint32_t v) {
+  return v;
+}
+static const uint64_t le64toh(uint64_t v) {
+  return v;
+}
+
+static const uint16_t htobe16(uint16_t v) {
+  return __builtin_bswap16(v);
+}
+static const uint32_t htobe32(uint32_t v) {
+  return __builtin_bswap32(v);
+}
+static const uint64_t htobe64(uint64_t v) {
+  return __builtin_bswap64(v);
+}
+
+static const uint16_t be16toh(uint16_t v) {
+  return __builtin_bswap16(v);
+}
+static const uint32_t be32toh(uint32_t v) {
+  return __builtin_bswap32(v);
+}
+static const uint64_t be64toh(uint64_t v) {
+  return __builtin_bswap64(v);
+}
 
 #else
 #error not supported
 #endif
 
-#endif /* __RAPH_LIB_ENDIAN_H__ */

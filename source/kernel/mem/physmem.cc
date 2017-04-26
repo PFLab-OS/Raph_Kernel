@@ -164,7 +164,9 @@ void PhysmemCtrl::Free(PhysAddr &paddr, size_t size) {
 }
 
 void PhysmemCtrl::ReserveSub(phys_addr addr, size_t size) {
-  kassert(size > 0);
+  if (size == 0) {
+    return;
+  }
   kassert(size % PagingCtrl::kPageSize == 0);
   kassert(addr % PagingCtrl::kPageSize == 0);
   AllocatedArea *fraged_area = nullptr;

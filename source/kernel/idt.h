@@ -79,6 +79,7 @@ class Idt {
  private:
   void SetGate(idt_callback gate, int vector, uint8_t dpl, bool trap, uint8_t ist);
   static void HandlePageFault(Regs *rs, void *arg);
+  static void HandleGeneralProtectionFault(Regs *rs, void *arg);
   static const uint32_t kIdtPresent = 1 << 15;
   volatile uint16_t _idtr[5];
   struct IntCallback {
