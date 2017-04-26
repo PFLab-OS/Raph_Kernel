@@ -59,7 +59,7 @@ public:
     _is_initialized = true;
     return 0;
   }
-  void Print(char32_t c, void (*func)(bool f, int x, int y)) {
+  void Print(char32_t c, void (*func)(int x, int y)) {
     if (!_is_initialized) {
       return;
     }
@@ -79,30 +79,16 @@ public:
     int bitmap_right = _data.GetXOffset(offset) + _data.GetWidth(offset);
     int width = _data.GetDeviceWidth(offset);
 
-    for (int y = 0; y < bitmap_top; y++) {
-      for (int x = 0; x < width; x++) {
-        func(false, x, y);
-      }
-    }
     for (int y = bitmap_top; y < bitmap_bottom; y++) {
-      for (int x = 0; x < bitmap_left; x++) {
-        func(false, x, y);
-      }
       for (int x = bitmap_left; x < bitmap_right; x++) {
-        func((_buf->GetRawPtr()[byte_offset] & (1 << bit_offset)) != 0, x, y);
+        if ((_buf->GetRawPtr()[byte_offset] & (1 << bit_offset)) != 0) {
+          func(x, y);
+        }
         bit_offset--;
         if (bit_offset == -1) {
           bit_offset = 7;
           byte_offset++;
         }
-      }
-      for (int x = bitmap_right; x < width; x++) {
-        func(false, x, y);
-      }
-    }
-    for (int y = bitmap_bottom; y < maxh; y++) {
-      for (int x = 0; x < width; x++) {
-        func(false, x, y);
       }
     }
   }

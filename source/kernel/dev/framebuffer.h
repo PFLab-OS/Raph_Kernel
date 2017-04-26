@@ -56,16 +56,14 @@ private:
   virtual void PrintShell(const char *str) override;
   struct DrawInfo {
     uint8_t *buf_base;
-    uint32_t dcolor;
-    uint32_t bcolor;
+    uint32_t color;
     uint32_t width;
     uint32_t bpp;
   };
-  static void DrawPoint(bool f, int x, int y) {
-    uint32_t c = f ? _d_info.dcolor : _d_info.bcolor;
-    _d_info.buf_base[(y * _d_info.width + x) * (_d_info.bpp / 8)] = c;
-    _d_info.buf_base[(y * _d_info.width + x) * (_d_info.bpp / 8) + 1] = c >> 8;
-    _d_info.buf_base[(y * _d_info.width + x) * (_d_info.bpp / 8) + 2] = c >> 16;
+  static void DrawPoint(int x, int y) {
+    _d_info.buf_base[(y * _d_info.width + x) * (_d_info.bpp / 8)] = _d_info.color;
+    _d_info.buf_base[(y * _d_info.width + x) * (_d_info.bpp / 8) + 1] = _d_info.color >> 8;
+    _d_info.buf_base[(y * _d_info.width + x) * (_d_info.bpp / 8) + 2] = _d_info.color >> 16;
   }
   uint32_t GetColor() {
     return 0x00FFFFFF;

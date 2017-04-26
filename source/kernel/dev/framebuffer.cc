@@ -62,8 +62,7 @@ void FrameBuffer::Write(uint8_t c) {
     {
       DrawInfo info = {
         .buf_base = _fb_info.buffer + (_cx + _cy * _fb_info.width) * (_fb_info.bpp / 8),
-        .dcolor = GetColor(),
-        .bcolor = 0,
+        .color = GetColor(),
         .width = _fb_info.width,
         .bpp = _fb_info.bpp,
       };
@@ -78,12 +77,11 @@ void FrameBuffer::Write(uint8_t c) {
 
 void FrameBuffer::PrintShell(const char *str) {
   Locker locker(_lock);
-  memset(_fb_info.buffer + (_fb_info.height - _font.GetMaxh()) * _fb_info.width * (_fb_info.bpp / 8), 0xff, _fb_info.width * _font.GetMaxh() * (_fb_info.bpp / 8));
+  __builtin_memset(_fb_info.buffer + (_fb_info.height - _font.GetMaxh()) * _fb_info.width * (_fb_info.bpp / 8), 0xff, _fb_info.width * _font.GetMaxh() * (_fb_info.bpp / 8));
   {
     DrawInfo info = {
       .buf_base = _fb_info.buffer + (_fb_info.height - _font.GetMaxh()) * _fb_info.width * (_fb_info.bpp / 8),
-      .dcolor = 0,
-      .bcolor = 0x00FFFFFF,
+      .color = 0,
       .width = _fb_info.width,
       .bpp = _fb_info.bpp,
     };
@@ -93,26 +91,24 @@ void FrameBuffer::PrintShell(const char *str) {
   int xoffset = _font.GetWidth(U'>');
   // TODO consider overflow 
   for (int x = 0; x < strlen(str); x++) {
-    char c = ' ';
-    if (*str != '\0') {
-      c = *str;
-      str++;
+    if (str[x] == '\0') {
+      return;
     }
-    if (xoffset + _font.GetWidth(c) > _fb_info.width) {
+    int width = _font.GetWidth(str[x]);
+    if (xoffset + width > _fb_info.width) {
       break;
     }
     {
       DrawInfo info = {
         .buf_base = _fb_info.buffer + (xoffset + (_fb_info.height - _font.GetMaxh()) * _fb_info.width) * (_fb_info.bpp / 8),
-        .dcolor = 0,
-        .bcolor = 0x00FFFFFF,
+        .color = 0,
         .width = _fb_info.width,
         .bpp = _fb_info.bpp,
       };
       _d_info = info;
-      _font.Print(c, DrawPoint);
+      _font.Print(str[x], DrawPoint);
     }
-    xoffset += _font.GetWidth(c);
+    xoffset += width;
   }
 }
 
