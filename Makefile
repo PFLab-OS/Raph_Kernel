@@ -58,12 +58,15 @@ $(BUILD_DIR)/script:
 $(BUILD_DIR)/init: $(INIT_FILE)
 	cp $(INIT_FILE) $(BUILD_DIR)/init
 
-_bin: $(BUILD_DIR)/script $(BUILD_DIR)/init
+_bin_sub: $(BUILD_DIR)/script $(BUILD_DIR)/init
 	$(MAKE) -C source
+
+_bin:
+	mkdir -p $(BUILD_DIR)
+	$(MAKE) _bin_sub
 
 _image:
 	$(MAKE) _mount
-	mkdir -p $(BUILD_DIR)
 	$(MAKE) _bin
 	sudo cp memtest86+.bin $(MOUNT_DIR)/boot/memtest86+.bin
 	sudo cp grub.cfg $(MOUNT_DIR)/boot/grub/grub.cfg
