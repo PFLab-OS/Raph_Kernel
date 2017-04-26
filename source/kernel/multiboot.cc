@@ -244,9 +244,7 @@ void MultibootCtrl::ShowBuildTimeStamp() {
   }
   size_t len = info->mod_end - info->mod_start;
   char str[len + 1];
-  for (size_t i = 0; i < len; i++) {
-    str[i] = reinterpret_cast<uint8_t *>(info->mod_start)[i];
-  }
+  memcpy(str, reinterpret_cast<uint8_t *>(p2v(info->mod_start)), len);
   str[len] = '\0';
   if (info == nullptr) {
     gtty->Cprintf("No build information\n");
