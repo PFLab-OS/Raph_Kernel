@@ -76,7 +76,7 @@ private:
         DisableTimeupDraw();
       } else {
         if (_last_time_refresh == 0 ||
-            timer->IsTimePassed(timer->GetCntAfterPeriod(_last_time_refresh, 300 * 1000))) {
+            timer->IsTimePassed(timer->GetCntAfterPeriod(_last_time_refresh, 500 * 1000))) {
           memcpy(_fb_info.buffer, _hidden_buffer, _fb_info.width * _fb_info.height * (_fb_info.bpp / 8));
           _last_time_refresh = timer->ReadMainCnt();
         }
