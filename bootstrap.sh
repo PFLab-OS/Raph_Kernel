@@ -1,4 +1,4 @@
-#!/biAn/sh
+#!/bin/sh
 sudo -sh c 'test -f /etc/bootstrapped && exit'
 
 sudo apt-get update
