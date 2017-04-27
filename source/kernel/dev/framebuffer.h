@@ -27,9 +27,11 @@
 #include <global.h>
 #include <raph.h>
 #include <tty.h>
+#include <task.h>
 #include <font.h>
 #include <stdint.h>
 #include <spinlock.h>
+#include <ptr.h>
 
 struct FrameBufferInfo {
   uint8_t *buffer;
@@ -68,7 +70,27 @@ private:
   uint32_t GetColor() {
     return 0x00FFFFFF;
   }
+  void Refresh() {
+    if (_timeup_draw) {
+      if (task_ctrl->GetState(_draw_cpuid) != TaskCtrl::TaskQueueState::kNotStarted) {
+        DisableTimeupDraw();
+      } else {
+        if (_last_time_refresh == 0 ||
+            timer->IsTimePassed(timer->GetCntAfterPeriod(_last_time_refresh, 300 * 1000))) {
+          memcpy(_fb_info.buffer, _hidden_buffer, _fb_info.width * _fb_info.height * (_fb_info.bpp / 8));
+          _last_time_refresh = timer->ReadMainCnt();
+        }
+      }
+    } else {
+      _redraw = true;
+    }
+  }
   void Scroll();
+  void DoPeriodicRefresh(void *);
+  void DisableTimeupDraw();
+  void ScheduleRefresh() {
+    task_ctrl->RegisterCallout(_refresh_callout, _draw_cpuid, 300);
+  }
   SpinLock _lock;
   FrameBufferInfo _fb_info;
   Font _font;
@@ -78,4 +100,17 @@ private:
 
   // frameinfo to path DrawPoint()
   static DrawInfo _d_info;
+
+  // use this until TaskCtrl runs.
+  bool _timeup_draw = true;
+  // for checking if time is up
+  uint64_t _last_time_refresh = 0;
+  
+  CpuId _draw_cpuid;
+  // use this buffer for drawing
+  // TaskCtrl periodically copies this to framebuffer
+  uint8_t *_hidden_buffer = nullptr;
+  bool _redraw = false;
+
+  sptr<Callout> _refresh_callout;
 };

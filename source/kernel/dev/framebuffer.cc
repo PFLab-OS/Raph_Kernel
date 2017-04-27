@@ -24,6 +24,7 @@
 
 #include <global.h>
 #include <multiboot.h>
+#include <cpu.h>
 #include "framebuffer.h"
 
 FrameBuffer::DrawInfo FrameBuffer::_d_info;
@@ -39,11 +40,14 @@ void FrameBuffer::Setup() {
   _cx = 0;
   _cy = 0;
 
-  bzero(_fb_info.buffer, _fb_info.width * _fb_info.height * (_fb_info.bpp / 8));
+  _hidden_buffer = new uint8_t[_fb_info.width * _fb_info.height * (_fb_info.bpp / 8)];  
+  bzero(_hidden_buffer, _fb_info.width * _fb_info.height * (_fb_info.bpp / 8));
+  
+  _draw_cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority);
 }
 
 void FrameBuffer::Write(uint8_t c) {
-  if (_fb_info.buffer == nullptr) {
+  if (_hidden_buffer == nullptr) {
     return;
   }
   Locker locker(_lock);
@@ -61,7 +65,7 @@ void FrameBuffer::Write(uint8_t c) {
     }
     {
       DrawInfo info = {
-        .buf_base = _fb_info.buffer + (_cx + _cy * _fb_info.width) * (_fb_info.bpp / 8),
+        .buf_base = _hidden_buffer + (_cx + _cy * _fb_info.width) * (_fb_info.bpp / 8),
         .color = GetColor(),
         .width = _fb_info.width,
         .bpp = _fb_info.bpp,
@@ -73,14 +77,15 @@ void FrameBuffer::Write(uint8_t c) {
     break;
   }
   Scroll();
+  Refresh();
 }
 
 void FrameBuffer::PrintShell(const char *str) {
   Locker locker(_lock);
-  __builtin_memset(_fb_info.buffer + (_fb_info.height - _font.GetMaxh()) * _fb_info.width * (_fb_info.bpp / 8), 0xff, _fb_info.width * _font.GetMaxh() * (_fb_info.bpp / 8));
+  memset(_hidden_buffer + (_fb_info.height - _font.GetMaxh()) * _fb_info.width * (_fb_info.bpp / 8), 0xff, _fb_info.width * _font.GetMaxh() * (_fb_info.bpp / 8));
   {
     DrawInfo info = {
-      .buf_base = _fb_info.buffer + (_fb_info.height - _font.GetMaxh()) * _fb_info.width * (_fb_info.bpp / 8),
+      .buf_base = _hidden_buffer + (_fb_info.height - _font.GetMaxh()) * _fb_info.width * (_fb_info.bpp / 8),
       .color = 0,
       .width = _fb_info.width,
       .bpp = _fb_info.bpp,
@@ -100,7 +105,7 @@ void FrameBuffer::PrintShell(const char *str) {
     }
     {
       DrawInfo info = {
-        .buf_base = _fb_info.buffer + (xoffset + (_fb_info.height - _font.GetMaxh()) * _fb_info.width) * (_fb_info.bpp / 8),
+        .buf_base = _hidden_buffer + (xoffset + (_fb_info.height - _font.GetMaxh()) * _fb_info.width) * (_fb_info.bpp / 8),
         .color = 0,
         .width = _fb_info.width,
         .bpp = _fb_info.bpp,
@@ -110,15 +115,33 @@ void FrameBuffer::PrintShell(const char *str) {
     }
     xoffset += width;
   }
+  Refresh();
 }
 
 void FrameBuffer::Scroll() {
   if (_cy >= _info_row) {
     _cy -= _font.GetMaxh();
-    memcpy(_fb_info.buffer,
-           _fb_info.buffer + _font.GetMaxh() * _fb_info.width * (_fb_info.bpp / 8),
+    memcpy(_hidden_buffer,
+           _hidden_buffer + _font.GetMaxh() * _fb_info.width * (_fb_info.bpp / 8),
            _cy * _fb_info.width * (_fb_info.bpp / 8));
-    bzero(_fb_info.buffer + _cy * _fb_info.width * (_fb_info.bpp / 8),
+    bzero(_hidden_buffer + _cy * _fb_info.width * (_fb_info.bpp / 8),
           _font.GetMaxh() * _fb_info.width * (_fb_info.bpp / 8));
   }
+}
+
+void FrameBuffer::DoPeriodicRefresh(void *) {
+  if (_redraw) {
+    memcpy(_fb_info.buffer, _hidden_buffer, _fb_info.width * _fb_info.height * (_fb_info.bpp / 8));
+    _redraw = false;
+  }
+  ScheduleRefresh();
+}
+
+void FrameBuffer::DisableTimeupDraw() {
+  _timeup_draw = false;
+  _redraw = true;
+  
+  _refresh_callout = make_sptr(new Callout);
+  _refresh_callout->Init(make_uptr(new ClassFunction<FrameBuffer, void *>(this, &FrameBuffer::DoPeriodicRefresh, nullptr)));
+  ScheduleRefresh();
 }
