@@ -34,8 +34,9 @@
 #include <dev/nic/intel/em/lem.h>
 #include <dev/disk/ahci/ahci-raph.h>
 
-void PciCtrl::_Init() {
+void PciCtrl::Probe() {
   _cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority);
+
   _mcfg = acpi_ctrl->GetMCFG();
   if (_mcfg == nullptr) {
     gtty->Cprintf("[Pci] error: could not find MCFG table.\n");
@@ -52,6 +53,11 @@ void PciCtrl::_Init() {
       continue;
     }
     _base_addr = p2v(_mcfg->list[i].ecam_base);
+  }
+}
+
+void PciCtrl::_Attach() {
+  for (int i = 0; i * sizeof(MCFGSt) < _mcfg->header.Length - sizeof(ACPISDTHeader); i++) {
     for (int j = _mcfg->list[i].pci_bus_start; j <= _mcfg->list[i].pci_bus_end; j++) {
       for (int k = 0; k < 32; k++) {
 

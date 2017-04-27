@@ -24,21 +24,21 @@
 #define __RAPH_KERNEL_DEV_DEVICE_H__
 
 // !!! important !!!
-// 派生クラスはstatic void Init(); を作成する事
+// 派生クラスはstatic void Attach(); を作成する事
 class Device {
  public:
-  static void Init() {} // dummy
+  static void Attach() {} // dummy
 };
 
 template<class T>
-static inline void InitDevices() {
-  T::Init();
+static inline void AttachDevices() {
+  T::Attach();
 }
 
 template<class T1, class T2, class... Rest>
-static inline void InitDevices() {
-  T1::Init();
-  InitDevices<T2, Rest...>();
+static inline void AttachDevices() {
+  T1::Attach();
+  AttachDevices<T2, Rest...>();
 }
 
 #endif /* __RAPH_KERNEL_DEV_DEVICE_H__ */

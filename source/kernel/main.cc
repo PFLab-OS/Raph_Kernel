@@ -888,13 +888,15 @@ extern "C" int main() {
   
   pci_ctrl = new (&_acpica_pci_ctrl) AcpicaPciCtrl;
 
+  pci_ctrl->Probe();
+
   acpi_ctrl->SetupAcpica();
 
   UsbCtrl::Init();
 
   freebsd_main();
 
-  InitDevices<PciCtrl, LegacyKeyboard, Device>();
+  AttachDevices<PciCtrl, LegacyKeyboard, Device>();
   
   // arp_table->Setup();
 

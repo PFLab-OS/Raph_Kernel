@@ -67,9 +67,10 @@ public:
   }
   virtual ~PciCtrl() {
   }
-  static void Init() {
+  void Probe();
+  static void Attach() {
     kassert(pci_ctrl != nullptr);
-    pci_ctrl->_Init();
+    pci_ctrl->_Attach();
   }
   DevPci *InitPciDevices(uint8_t bus, uint8_t device, uint8_t function);
   virt_addr GetVaddr(uint8_t bus, uint8_t device, uint8_t func, uint16_t reg) {
@@ -171,7 +172,7 @@ private:
   virt_addr _base_addr = 0;
   CpuId _cpuid;
   
-  void _Init();
+  void _Attach();
   template<class T>
   static inline DevPci *_InitPciDevices(uint8_t bus, uint8_t device, uint8_t function) {
     return T::InitPci(bus, device, function);
