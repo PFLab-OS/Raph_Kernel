@@ -115,11 +115,9 @@ void FrameBuffer::PrintShell(const char *str) {
 void FrameBuffer::Scroll() {
   if (_cy >= _info_row) {
     _cy -= _font.GetMaxh();
-    for (int y = 0; y < _cy / _font.GetMaxh(); y++) {
-      memcpy(_fb_info.buffer + y * _font.GetMaxh() * _fb_info.width * (_fb_info.bpp / 8),
-             _fb_info.buffer + (y + 1) * _font.GetMaxh() * _fb_info.width * (_fb_info.bpp / 8),
-             _font.GetMaxh() * _fb_info.width * (_fb_info.bpp / 8));
-    }
+    memcpy(_fb_info.buffer,
+           _fb_info.buffer + _font.GetMaxh() * _fb_info.width * (_fb_info.bpp / 8),
+           _cy * _fb_info.width * (_fb_info.bpp / 8));
     bzero(_fb_info.buffer + _cy * _fb_info.width * (_fb_info.bpp / 8),
           _font.GetMaxh() * _fb_info.width * (_fb_info.bpp / 8));
   }
