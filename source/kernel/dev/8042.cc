@@ -27,7 +27,7 @@
 #include <buf.h>
 #include "8042.h"
 
-void LegacyKeyboard::Init() {
+void LegacyKeyboard::Attach() {
   LegacyKeyboard *keyboard = new LegacyKeyboard;
   keyboard->Setup();
 }
