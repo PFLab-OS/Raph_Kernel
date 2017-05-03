@@ -48,6 +48,9 @@ class Hpet : public Timer {
  public:
   virtual bool SetupSub() override;
   virtual volatile uint64_t ReadMainCnt() override {
+    if (!DidSetup()) {
+      return 0;
+    }
     return _reg[kRegMainCnt];
   }
   void SetInt(CpuId cpuid, uint64_t cnt);

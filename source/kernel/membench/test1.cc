@@ -52,7 +52,7 @@ uint64_t func101() {
 
     if (cpuid == 0) {
       time = ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000;
-      // gtty->CprintfRaw("<%c %d(%d) %d us> ", f ? 'M' : 'C', sizeof(Container<i>), i, time);
+      // gtty->Printf("<%c %d(%d) %d us> ", f ? 'M' : 'C', sizeof(Container<i>), i, time);
       if (!f) {
         physmem_ctrl->Free(paddr, PagingCtrl::ConvertNumToPageSize(alloc_size));
       }
@@ -290,9 +290,9 @@ void func102_sub(int cpunum) {
   variance /= num;
   int apicid = cpu_ctrl->GetCpuId().GetApicId();
   if (apicid == 0) {
-    gtty->CprintfRaw("<%c %d(%d) %lld(%lld) us> ", f ? 'D' : 'A', sizeof(Container<i>), i, avg, variance);
+    gtty->Printf("<%c %d(%d) %lld(%lld) us> ", f ? 'D' : 'A', sizeof(Container<i>), i, avg, variance);
     StringTty tty(200);
-    tty.CprintfRaw("%c\t%d\t%d\t%d\t%d\n", f ? 'D' : 'A', i, avg, cpunum, avg / cpunum);
+    tty.Printf("%c\t%d\t%d\t%d\t%d\n", f ? 'D' : 'A', i, avg, cpunum, avg / cpunum);
     int argc = 4;
     const char *argv[] = {"udpsend", "192.168.12.35", "1234", tty.GetRawPtr()};
     udpsend(argc, argv);
@@ -343,7 +343,7 @@ template<class S>
 static void membench10(sptr<TaskWithStack> task) {
   int cpuid = cpu_ctrl->GetCpuId().GetRawId();
   if (cpuid == 0) {
-    gtty->CprintfRaw("start >>>\n");
+    gtty->Printf("start >>>\n");
   }
   func10<S, 4, 7, 10>(task); 
 }

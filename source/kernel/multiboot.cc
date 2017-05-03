@@ -122,19 +122,20 @@ void MultibootCtrl::ShowMemoryInfo() {
     for (multiboot_tag *tag = reinterpret_cast<multiboot_tag *>(addr); tag->type != MULTIBOOT_TAG_TYPE_END; addr = alignUp(addr + tag->size, 8), tag = reinterpret_cast<multiboot_tag *>(addr)) {
       switch(tag->type) {
       case MULTIBOOT_TAG_TYPE_MMAP: {
-        gtty->CprintfRaw("mmap from grub\n");
+        gtty->Printf("mmap from grub\n");
         for (multiboot_memory_map_t *mmap = ((struct multiboot_tag_mmap *) tag)->entries;
              (multiboot_uint8_t *) mmap 
                < (multiboot_uint8_t *) tag + tag->size;
              mmap = (multiboot_memory_map_t *) 
                ((unsigned long) mmap
                 + ((struct multiboot_tag_mmap *) tag)->entry_size)) {
-          gtty->CprintfRaw(" base_addr = 0x%llx,"
+          gtty->Printf(" base_addr = 0x%llx,"
                          " length = 0x%llx, type = 0x%x\n",
                          mmap->addr,
                          mmap->len,
                          (unsigned) mmap->type);
         }
+        gtty->Flush();
         break;
       }
       default:
@@ -207,12 +208,12 @@ void MultibootCtrl::SetupFrameBuffer(FrameBufferInfo *fb_info) {
 void MultibootCtrl::ShowModuleInfo() {
   virt_addr addr = p2v(static_cast<phys_addr>(*_multiboot_info));
   addr += 8;
-  gtty->CprintfRaw("\n");
+  gtty->Printf("\n");
   for (multiboot_tag *tag = reinterpret_cast<multiboot_tag *>(addr); tag->type != MULTIBOOT_TAG_TYPE_END; addr = alignUp(addr + tag->size, 8), tag = reinterpret_cast<multiboot_tag *>(addr)) {
     switch(tag->type) {
     case MULTIBOOT_TAG_TYPE_MODULE: {
       multiboot_tag_module* info = (struct multiboot_tag_module *) tag;
-      gtty->CprintfRaw("module: %x %x\n", info->mod_start, info->mod_end);
+      gtty->Printf("module: %x %x\n", info->mod_start, info->mod_end);
       break;
     }
     default:
@@ -247,9 +248,9 @@ void MultibootCtrl::ShowBuildTimeStamp() {
   memcpy(str, reinterpret_cast<uint8_t *>(p2v(info->mod_start)), len);
   str[len] = '\0';
   if (info == nullptr) {
-    gtty->Cprintf("No build information\n");
+    gtty->Printf("No build information\n");
   } else {
-    gtty->Cprintf("%s\n", str);
+    gtty->Printf("%s\n", str);
   }
 }
 

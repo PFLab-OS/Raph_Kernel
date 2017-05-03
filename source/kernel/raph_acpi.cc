@@ -42,8 +42,10 @@ extern "C" {
 #include <mem/physmem.h>
 
 void AcpiCtrl::Setup() {
+  gtty->Flush();
   kassert(!ACPI_FAILURE(AcpiInitializeSubsystem()));
   kassert(!ACPI_FAILURE(AcpiInitializeTables(NULL, 16, FALSE)));
+  gtty->Flush();
 
   ACPI_TABLE_HEADER *madt;
   kassert(!ACPI_FAILURE(AcpiGetTable(const_cast<char *>("APIC"), 1, &madt)));
@@ -57,24 +59,24 @@ void AcpiCtrl::Setup() {
   do {
     acpi_table_pmtt *pmtt;
     if (!ACPI_FAILURE(AcpiGetTable(const_cast<char *>("PMTT"), 1, reinterpret_cast<ACPI_TABLE_HEADER **>(&pmtt)))) {
-      gtty->CprintfRaw("PMTT Info:\n");
+      gtty->Printf("PMTT Info:\n");
       for (uint32_t offset = sizeof(acpi_table_pmtt); offset < pmtt->Header.Length;) {
         acpi_pmtt_header *subtable = addr2ptr<acpi_pmtt_header>(ptr2virtaddr(pmtt) + offset);
         switch (subtable->Type) {
         case ACPI_PMTT_TYPE_SOCKET: {
           acpi_pmtt_socket *sockettable = reinterpret_cast<acpi_pmtt_socket *>(subtable);
-          gtty->CprintfRaw("Socket: %d \n", sockettable->SocketId);
+          gtty->Printf("Socket: %d \n", sockettable->SocketId);
           for (uint32_t offset2 = sizeof(acpi_pmtt_socket); offset2 < sockettable->Header.Length;) {
             acpi_pmtt_controller *controllertable = addr2ptr<acpi_pmtt_controller>(ptr2virtaddr(sockettable) + offset2);
             assert(controllertable->Header.Type == ACPI_PMTT_TYPE_CONTROLLER);
-            gtty->CprintfRaw("  Controller: RB %dMB/s WB %dMB/s RL %dns WL %dns\n", controllertable->ReadBandwidth, controllertable->WriteBandwidth, controllertable->ReadLatency, controllertable->WriteLatency);
+            gtty->Printf("  Controller: RB %dMB/s WB %dMB/s RL %dns WL %dns\n", controllertable->ReadBandwidth, controllertable->WriteBandwidth, controllertable->ReadLatency, controllertable->WriteLatency);
             offset2 += controllertable->Header.Length;
           }
           break;
         }
         case ACPI_PMTT_TYPE_CONTROLLER: {
           acpi_pmtt_controller *controllertable = reinterpret_cast<acpi_pmtt_controller *>(subtable);
-          gtty->CprintfRaw("Controller: R %dns W %dns\n", controllertable->ReadLatency, controllertable->WriteLatency);
+          gtty->Printf("Controller: R %dns W %dns\n", controllertable->ReadLatency, controllertable->WriteLatency);
           break;
         }
         }
@@ -124,9 +126,13 @@ void AcpiGlobalEventHandler(UINT32 type, ACPI_HANDLE device, UINT32 num, void *c
 }
 
 void AcpiCtrl::SetupAcpica() {
+  gtty->Flush();
   kassert(!ACPI_FAILURE(AcpiEnableSubsystem(ACPI_FULL_INITIALIZATION)));
+  gtty->Flush();
   kassert(!ACPI_FAILURE(AcpiLoadTables()));
+  gtty->Flush();
   kassert(!ACPI_FAILURE(AcpiInitializeObjects(ACPI_FULL_INITIALIZATION)));
+  gtty->Flush();
 
   Container *container = new Container();
   container->task->SetFunc(make_uptr(new ClassFunction<AcpiCtrl, void *>(this, &AcpiCtrl::GlobalEventHandler, nullptr)));
@@ -144,7 +150,8 @@ void AcpiCtrl::Shutdown() {
 }
 
 void AcpiCtrl::GlobalEventHandler(void *) {
-  gtty->CprintfRaw("shutting down the system...\n");
+  gtty->Printf("shutting down the system...\n");
+  gtty->Flush();
   Shutdown();
 }
 

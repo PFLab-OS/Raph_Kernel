@@ -41,23 +41,23 @@ void ElfLoader::Load(const void *ptr) {
   SystemCallCtrl::Init();
   //  
   if(!IsElf(ehdr) || !IsElf64(ehdr) || (!IsOsabiSysv(ehdr) && !IsOsabiGnu(ehdr))){
-    gtty->CprintfRaw("Not supported module type.\n");
+    gtty->Printf("Not supported module type.\n");
     return;
   }
-  gtty->CprintfRaw("ABI: %d\n", ehdr->e_ident[EI_OSABI]);
-  gtty->CprintfRaw("Entry point is 0x%08x \n", ehdr->e_entry);
+  gtty->Printf("ABI: %d\n", ehdr->e_ident[EI_OSABI]);
+  gtty->Printf("Entry point is 0x%08x \n", ehdr->e_entry);
 
   const Elf64_Shdr *shstr = &reinterpret_cast<const Elf64_Shdr *>(head + ehdr->e_shoff)[ehdr->e_shstrndx];
   
   Elf64_Xword total_memsize = 0;
 
-  gtty->CprintfRaw("Sections:\n");
+  gtty->Printf("Sections:\n");
   if (ehdr->e_shstrndx != SHN_UNDEF) {
     const char *strtab = reinterpret_cast<const char *>(head + shstr->sh_offset);
     for(int i = 0; i < ehdr->e_shnum; i++){
       const Elf64_Shdr *shdr = (const Elf64_Shdr *)(head + ehdr->e_shoff + ehdr->e_shentsize * i);
       const char *sname = strtab + shdr->sh_name;
-      //      gtty->CprintfRaw(" [%2d] %s size: %x offset: %x\n", i, sname, shdr->sh_size, shdr->sh_offset);
+      //      gtty->Printf(" [%2d] %s size: %x offset: %x\n", i, sname, shdr->sh_size, shdr->sh_offset);
       if (total_memsize < shdr->sh_addr + shdr->sh_offset) {
         total_memsize = shdr->sh_addr + shdr->sh_offset;
       }
@@ -74,7 +74,7 @@ void ElfLoader::Load(const void *ptr) {
   } else {
     kassert(false);
   }
-  gtty->CprintfRaw("membuffer: 0x%llx (%llx)\n", membuffer, total_memsize);
+  gtty->Printf("membuffer: 0x%llx (%llx)\n", membuffer, total_memsize);
   // PT_LOADとなっているセグメントをメモリ上にロード
   for(int i = 0; i < ehdr->e_phnum; i++){
     const Elf64_Phdr *phdr = (const Elf64_Phdr *)(head + ehdr->e_phoff + ehdr->e_phentsize * i);
@@ -92,7 +92,7 @@ void ElfLoader::Load(const void *ptr) {
     
     switch(phdr->p_type){
       case PT_LOAD:
-        gtty->CprintfRaw("phdr[%d]: Load to +0x%llx\n", i, phdr->p_vaddr);
+        gtty->Printf("phdr[%d]: Load to +0x%llx\n", i, phdr->p_vaddr);
         memcpy(membuffer + phdr->p_vaddr, &head[phdr->p_offset], phdr->p_filesz);
         break;
     }
@@ -107,13 +107,12 @@ void ElfLoader::Load(const void *ptr) {
     }
   }
 
-  // 実行
   FType f = reinterpret_cast<FType>(membuffer + ehdr->e_entry);
 
   // TODO : カーネルスタックで実行しない
   // TODO : 現在のカーネルスタックが破棄されるので、なんとかする
   uint64_t *stack_addr = reinterpret_cast<uint64_t *>(KernelStackCtrl::GetCtrl().AllocThreadStack(cpu_ctrl->GetCpuId()));
-  gtty->CprintfRaw("stack addr: %llx\n", stack_addr);
+  gtty->Printf("stack addr: %llx\n", stack_addr);
 
   int argc = 1;
   const char *str[1] = {"123"};
@@ -146,10 +145,12 @@ void ElfLoader::Load(const void *ptr) {
   stack_addr--;
   *stack_addr = argc;
   
+  gtty->Flush();
+  
   int64_t rval = execute_elf_binary(f, stack_addr);
 
-  gtty->CprintfRaw("return value: %d\n", rval); 
-  gtty->CprintfRaw("%s Returned.\n", str);
+  gtty->Printf("return value: %d\n", rval); 
+  gtty->Printf("%s Returned.\n", str);
 
   free(membuffer);
 }

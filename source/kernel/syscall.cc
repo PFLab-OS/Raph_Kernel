@@ -55,7 +55,7 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
   case 2:
     {
       // // open
-      // gtty->CprintfRaw("<%s>", args->arg1);
+      // gtty->Printf("<%s>", args->arg1);
       // return 3;
       break;
     }
@@ -80,7 +80,8 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
           }
         default:
           {
-            gtty->CprintfRaw("%x\n", args->arg2);
+            gtty->DisablePrint();
+            gtty->ErrPrintf("%x\n", args->arg2);
             kernel_panic("Sysctrl", "unknown argument(ioctrl)");
           }
         };
@@ -98,13 +99,15 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
         int rval = 0;
         for (int i = 0; i < args->arg3; i++) {
           for (int j = 0; j < iv_array[i].iov_len; j++) {
-            gtty->CprintfRaw("%c", reinterpret_cast<char *>(iv_array[i].iov_base)[j]);
+            gtty->Printf("%c", reinterpret_cast<char *>(iv_array[i].iov_base)[j]);
             rval++;
           }
         }
+        gtty->Flush();
         return rval;
       } else {
-        gtty->CprintfRaw("<%llx>", args->arg1);
+        gtty->DisablePrint();
+        gtty->ErrPrintf("<%llx>", args->arg1);
         kernel_panic("Sysctrl", "unknown fd(writev)");
       }
       break;
@@ -133,7 +136,7 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
     }
   case 158:
     {
-      gtty->CprintfRaw("sys_arch_prctl code=%llx addr=%llx\n", args->arg1, args->arg2);
+      gtty->Printf("sys_arch_prctl code=%llx addr=%llx\n", args->arg1, args->arg2);
       switch(args->arg1){
       case kArchSetGs:
         wrmsr(kIA32GsBase, args->arg2);
@@ -148,7 +151,8 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
         *reinterpret_cast<uint64_t *>(args->arg2) = rdmsr(kIA32GsBase);
         break;
       default:
-        gtty->CprintfRaw("Invalid args\n", index);
+        gtty->DisablePrint();
+        gtty->ErrPrintf("Invalid args\n", index);
         kassert(false);
       }
       return 0;
@@ -156,11 +160,13 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
   case 231:
     {
       // exit group
-      gtty->CprintfRaw("user program called exit\n");
+      gtty->Printf("user program called exit\n");
+      gtty->Flush();
       while(true) {asm volatile("hlt;");}
     }
   }
-  gtty->CprintfRaw("syscall(%d) (return address %llx)\n", index, args->raddr);
+  gtty->DisablePrint();
+  gtty->ErrPrintf("syscall(%d) (return address %llx)\n", index, args->raddr);
   kernel_panic("Syscall", "unimplemented systemcall");
 }
 

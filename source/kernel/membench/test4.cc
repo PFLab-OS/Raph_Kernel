@@ -130,9 +130,9 @@ static void func1_sub(int apicid_) {
   variance /= num;
   int apicid = cpu_ctrl->GetCpuId().GetApicId();
   if (apicid == apicid_) {
-    gtty->CprintfRaw("<%d %lld(%lld) us> ", mode, avg, variance);
+    gtty->Printf("<%d %lld(%lld) us> ", mode, avg, variance);
     StringTty tty(200);
-    tty.CprintfRaw("%d\t%d\t%d\n", apicid, avg, variance);
+    tty.Printf("%d\t%d\t%d\n", apicid, avg, variance);
     int argc = 4;
     const char *argv[] = {"udpsend", "192.168.12.35", "1234", tty.GetRawPtr()};
     udpsend(argc, argv);
@@ -155,7 +155,7 @@ static void func1(sptr<TaskWithStack> task) {
               int apicid = cpu_ctrl->GetCpuId().GetApicId();
               if (apicid == 0) {
                 StringTty tty(20);
-                tty.CprintfRaw("# mode %d\n", mode);
+                tty.Printf("# mode %d\n", mode);
                 int argc = 4;
                 const char *argv[] = {"udpsend", "192.168.12.35", "1234", tty.GetRawPtr()};
                 udpsend(argc, argv);
@@ -165,7 +165,7 @@ static void func1(sptr<TaskWithStack> task) {
               }
               if (apicid == 0) {
                 StringTty tty(4);
-                tty.CprintfRaw("\n");
+                tty.Printf("\n");
                 int argc = 4;
                 const char *argv[] = {"udpsend", "192.168.12.35", "1234", tty.GetRawPtr()};
                 udpsend(argc, argv);
@@ -185,11 +185,11 @@ static void func1(sptr<TaskWithStack> task) {
 void membench4(sptr<TaskWithStack> task) {
   int cpuid = cpu_ctrl->GetCpuId().GetRawId();
   if (cpuid == 0) {
-    gtty->CprintfRaw("start >>>\n");
+    gtty->Printf("start >>>\n");
   }
   if (cpuid == 0) {
     StringTty tty(20);
-    tty.CprintfRaw("# mem latency\n");
+    tty.Printf("# mem latency\n");
     int argc = 4;
     const char *argv[] = {"udpsend", "192.168.12.35", "1234", tty.GetRawPtr()};
     udpsend(argc, argv);
@@ -203,7 +203,7 @@ void membench4(sptr<TaskWithStack> task) {
   func1<7>(task); 
   func1<8>(task); 
   if (cpuid == 0) {
-    gtty->CprintfRaw("<<< end\n");
+    gtty->Printf("<<< end\n");
   }
 }
 

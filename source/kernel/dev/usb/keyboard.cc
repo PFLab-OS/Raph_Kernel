@@ -33,7 +33,7 @@ DevUsb *DevUsbKeyboard::InitUsb(DevUsbController *controller, int addr) {
   UsbCtrl::InterfaceDescriptor *interface_desc = that->GetInterfaceDescriptorInCombinedDescriptors(0);
 
   if (interface_desc->class_code == 3 && interface_desc->subclass_code == 1 && interface_desc->protocol_code == 1) {
-    gtty->CprintfRaw("kbd: info: usb keyboard detected\n");
+    gtty->Printf("kbd: info: usb keyboard detected\n");
     that->Init();
     return that;
   } else {

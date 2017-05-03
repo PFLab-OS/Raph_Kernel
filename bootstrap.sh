@@ -8,16 +8,24 @@ sudo update-locale LANG=ja_JP.UTF-8 LANGUAGE="ja_JP:ja"
 
 # install qemu
 sudo apt-get install -y libglib2.0-dev libfdt-dev libpixman-1-dev zlib1g-dev
-wget http://download.qemu-project.org/qemu-2.4.1.tar.xz
-tar xvJf qemu-2.4.1.tar.xz
+wget http://download.qemu-project.org/qemu-2.9.0.tar.xz
+tar xvJf qemu-2.9.0.tar.xz
 mkdir build-qemu
 cd build-qemu
-../qemu-2.4.1/configure --target-list=x86_64-softmmu --disable-kvm --enable-debug
+../qemu-2.9.0/configure --target-list=x86_64-softmmu --disable-kvm --enable-debug
 make -j2
 sudo make install
 cd ..
 
-# get OVMF
+# install OVMF
+sudo apt-get install -y build-essential uuid-dev nasm iasl
+git clone http://github.com/tianocore/edk2
+cd edk2
+git checkout UDK2017
+make -j2 -C BaseTools
+. ./edksetup.sh
+build -a X64 -t GCC48 -p OvmfPkg/OvmfPkgX64.dsc
+
 wget http://downloads.sourceforge.net/project/edk2/OVMF/OVMF-X64-r15214.zip
 mkdir OVMF-X64-r15214
 cd OVMF-X64-r15214

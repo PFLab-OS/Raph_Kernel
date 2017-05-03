@@ -270,7 +270,7 @@ extern "C" {
 
   void AcpiOsVprintf(const char *Fmt, va_list Args) {
     kassert(gtty != nullptr);
-    gtty->CvprintfRaw(Fmt, Args);
+    gtty->Vprintf(Fmt, Args);
   }
 
   ACPI_STATUS AcpiOsReadMemory(ACPI_PHYSICAL_ADDRESS Address, UINT64 *Value, UINT32 Width) {
