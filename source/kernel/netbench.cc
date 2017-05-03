@@ -199,12 +199,12 @@ void send_arp_packet(NetDev *dev, uint8_t *ipaddr) {
     auto callout_ = make_sptr(new Callout);
     callout_->Init(make_uptr(new Function2<wptr<Callout>, NetDev *>([](wptr<Callout> callout, NetDev *eth){
             if (rtime > 0) {
-              gtty->Cprintf("ARP Reply average latency:%dus [%d/%d]\n", sum / rtime, rtime, stime);
+              gtty->Printf("ARP Reply average latency:%dus [%d/%d]\n", sum / rtime, rtime, stime);
             } else {
               if (eth->GetStatus() == NetDev::LinkStatus::kUp) {
-                gtty->Cprintf("Link is Up, but no ARP Reply\n");
+                gtty->Printf("Link is Up, but no ARP Reply\n");
               } else {
-                gtty->Cprintf("Link is Down, please wait...\n");
+                gtty->Printf("Link is Down, please wait...\n");
               }
             }
             if (rtime != stime) {

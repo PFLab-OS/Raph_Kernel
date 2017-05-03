@@ -27,7 +27,7 @@
 #include <tty.h>
 #include <global.h>
 
-#define measure for(uint64_t t1 = 0, t2 = timer->ReadMainCnt(); ({if (t1 != 0) gtty->Cprintf("<%d ns>",(timer->ReadMainCnt() - t2) * timer->GetCntClkPeriod()); (t1 == 0);}) ; t1++)
+#define measure for(uint64_t t1 = 0, t2 = timer->ReadMainCnt(); ({if (t1 != 0) gtty->Printf("<%d ns>",(timer->ReadMainCnt() - t2) * timer->GetCntClkPeriod()); (t1 == 0);}) ; t1++)
 
 #endif // __RAPH_KERNEL_MEASURE_H__
 

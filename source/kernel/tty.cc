@@ -45,6 +45,18 @@ void Tty::PrintString(String *str) {
   }
 }
 
+void Tty::PrintErrString(String *str) {
+  for(int i = 0; i < String::length; i++) {
+    if (str->str[i] == '\0') {
+      return;
+    }
+    WriteErr(str->str[i]);
+  }
+  if (str->next != nullptr) {
+    PrintErrString(str->next);
+  }
+}
+
 void Tty::DoString(String *str) {
   if (_cpuid.IsValid() && task_ctrl->GetState(_cpuid) != TaskCtrl::TaskQueueState::kNotStarted) {
     _queue.Push(str);
@@ -91,7 +103,7 @@ void Tty::String::Delete(StringBuffer &buf) {
   }
 }
 
-void Tty::Cvprintf_sub(String *str, const char *fmt, va_list args) {
+void Tty::Vprintf_sub(String *str, const char *fmt, va_list args) {
   while(*fmt != '\0') {
     switch(*fmt) {
     case '%': {

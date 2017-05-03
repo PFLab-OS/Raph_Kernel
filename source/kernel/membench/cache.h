@@ -36,7 +36,7 @@ public:
       uint32_t ebx;
       asm volatile("cpuid;":"=b"(ebx):"a"(7),"c"(0));
       if ((ebx & (1 << 23)) != 0) {
-        gtty->CprintfRaw("info: CLFLUSHOPT exists!\n");
+        gtty->Printf("info: CLFLUSHOPT exists!\n");
         _use_clflushopt = true;
       }
 
@@ -44,14 +44,14 @@ public:
       uint32_t edx;
       asm volatile("cpuid;":"=d"(edx):"a"(1));
       if ((edx & (1 << 19)) == 0) {
-        gtty->CprintfRaw("error: CLFLUSH not exists!\n");
+        gtty->Printf("error: CLFLUSH not exists!\n");
         kassert(false);
       }
 
       // cache line size
       asm volatile("cpuid;":"=b"(ebx):"a"(1));
       _cacheline_size = ((ebx >> 8) & 0xFF) * 8;
-      gtty->CprintfRaw("info: cacheline size is %d.\n", _cacheline_size);
+      gtty->Printf("info: cacheline size is %d.\n", _cacheline_size);
     }
   }
   template<class T>

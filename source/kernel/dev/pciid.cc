@@ -33,7 +33,7 @@ void Table::Search(uint8_t bus, uint8_t device, uint8_t function, const char *se
   Device *d = nullptr;
   Subsystem *s = nullptr;
   if(p == nullptr) {
-    gtty->Cprintf("error: Initialization failed\n");
+    gtty->Printf("error: Initialization failed\n");
     return;
   }
   while(p->id != vendorid) {
@@ -77,9 +77,9 @@ void Table::Search(uint8_t bus, uint8_t device, uint8_t function, const char *se
       (p != nullptr && strstr(p->name, search) != nullptr) ||
       (d != nullptr && strstr(d->name, search) != nullptr) ||
       (s != nullptr && strstr(s->name, search) != nullptr)) {
-    gtty->Cprintf("%x::%x.%x %s", bus, device, function, p == nullptr ? "???" : p->name);
-    gtty->Cprintf(" %s", d == nullptr ? "???" : d->name);
-    gtty->Cprintf(" %s", s == nullptr ? "???" : s->name);
-    gtty->Cprintf(" [%04x]:[%04x]:[%04x, %04x]\n", vendorid, deviceid, subvendorid, subdeviceid);
+    gtty->Printf("%x::%x.%x %s", bus, device, function, p == nullptr ? "???" : p->name);
+    gtty->Printf(" %s", d == nullptr ? "???" : d->name);
+    gtty->Printf(" %s", s == nullptr ? "???" : s->name);
+    gtty->Printf(" [%04x]:[%04x]:[%04x, %04x]\n", vendorid, deviceid, subvendorid, subdeviceid);
   }
 }

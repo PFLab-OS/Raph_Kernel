@@ -3,6 +3,8 @@ IMAGEFILE = disk.img
 IMAGE = /tmp/$(IMAGEFILE)
 BUILD_DIR = build
 
+OVMF_DIR = /home/vagrant/edk2/Build/OvmfX64/DEBUG_GCC48/FV/
+
 SSH_CMD = ssh -F .ssh_config default
 
 VDI = disk.vdi
@@ -40,8 +42,8 @@ _run:
 	$(MAKE) _qemuend
 
 _qemurun: _image
-#	sudo qemu-system-x86_64 -bios ~/OVMF-X64-r15214/OVMF.fd -cpu qemu64 -smp 8 -clock hpet -monitor telnet:127.0.0.1:1235,server,nowait -vnc 0.0.0.0:0,password $(IMAGE)&
-	sudo qemu-system-x86_64 -cpu qemu64,+x2apic -smp 8 -machine q35 -monitor telnet:127.0.0.1:1235,server,nowait -vnc 0.0.0.0:0,password -net nic -net bridge,br=br0 -drive id=disk,file=$(IMAGE),if=virtio -usb -usbdevice keyboard &
+	sudo qemu-system-x86_64 -drive if=pflash,readonly,file=$(OVMF_DIR)OVMF_CODE.fd,format=raw -drive if=pflash,file=$(OVMF_DIR)OVMF_VARS.fd,format=raw -cpu qemu64 -smp 8 -machine q35 -clock hpet -monitor telnet:127.0.0.1:1235,server,nowait -vnc 0.0.0.0:0,password $(IMAGE)&
+#	sudo qemu-system-x86_64 -cpu qemu64,+x2apic -smp 8 -machine q35 -monitor telnet:127.0.0.1:1235,server,nowait -vnc 0.0.0.0:0,password -net nic -net bridge,br=br0 -drive id=disk,file=$(IMAGE),if=virtio -usb -usbdevice keyboard &
 #	sudo qemu-system-x86_64 -cpu qemu64,+x2apic -smp 8 -machine q35 -monitor telnet:127.0.0.1:1235,server,nowait -vnc 0.0.0.0:0,password -net nic -net bridge,br=br0 -drive id=disk,file=$(IMAGE),if=none -device ahci,id=ahci -device ide-drive,drive=disk,bus=ahci.0 &
 	sleep 0.2s
 	echo "set_password vnc a" | netcat 127.0.0.1 1235

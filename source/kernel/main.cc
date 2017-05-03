@@ -103,13 +103,13 @@ static void reset(int argc, const char* argv[]) {
 static void lspci(int argc, const char* argv[]) {
   MCFG *mcfg = acpi_ctrl->GetMCFG();
   if (mcfg == nullptr) {
-    gtty->Cprintf("[Pci] error: could not find MCFG table.\n");
+    gtty->Printf("[Pci] error: could not find MCFG table.\n");
     return;
   }
 
   const char *search = nullptr;
   if (argc > 2) {
-    gtty->Cprintf("[lspci] error: invalid argument\n");
+    gtty->Printf("[lspci] error: invalid argument\n");
     return;
   } else if (argc == 2) {
     search = argv[1];
@@ -120,7 +120,7 @@ static void lspci(int argc, const char* argv[]) {
 
   for (int i = 0; i * sizeof(MCFGSt) < mcfg->header.Length - sizeof(ACPISDTHeader); i++) {
     if (i == 1) {
-      gtty->Cprintf("[Pci] info: multiple MCFG tables.\n");
+      gtty->Printf("[Pci] info: multiple MCFG tables.\n");
       break;
     }
     for (int j = mcfg->list[i].pci_bus_start; j <= mcfg->list[i].pci_bus_end; j++) {
@@ -156,19 +156,19 @@ static bool parse_ipaddr(const char *c, uint8_t *addr) {
 
 static void setip(int argc, const char* argv[]) {
   if (argc != 3) {
-    gtty->Cprintf("invalid argument\n");
+    gtty->Printf("invalid argument\n");
     return;
   }
   NetDevCtrl::NetDevInfo *info = netdev_ctrl->GetDeviceInfo(argv[1]);
   if (info == nullptr) {
-    gtty->Cprintf("no ethernet interface(%s).\n", argv[1]);
+    gtty->Printf("no ethernet interface(%s).\n", argv[1]);
     return;
   }
   NetDev *dev = info->device;
 
   uint8_t addr[4] = {0, 0, 0, 0};
   if (!parse_ipaddr(argv[2], addr)) {
-    gtty->Cprintf("invalid ip v4 addr.\n");
+    gtty->Printf("invalid ip v4 addr.\n");
     return;
   }
 
@@ -177,12 +177,12 @@ static void setip(int argc, const char* argv[]) {
 
 static void ifconfig(int argc, const char* argv[]){
   uptr<Array<const char *>> list = netdev_ctrl->GetNamesOfAllDevices();
-  gtty->CprintfRaw("\n");
+  gtty->Printf("\n");
   for (size_t l = 0; l < list->GetLen(); l++) {
-    gtty->CprintfRaw("%s", (*list)[l]);
+    gtty->Printf("%s", (*list)[l]);
     NetDev *dev = netdev_ctrl->GetDeviceInfo((*list)[l])->device;
     dev->UpdateLinkStatus();
-    gtty->CprintfRaw("  link: %s\n", dev->IsLinkUp() ? "up" : "down");
+    gtty->Printf("  link: %s\n", dev->IsLinkUp() ? "up" : "down");
   }
 }
 
@@ -192,42 +192,42 @@ void send_arp_packet(NetDev *dev, uint8_t *ipaddr);
 static void bench(int argc, const char* argv[]) {
 
   if (argc == 1) {
-    gtty->Cprintf("invalid argument.\n");
+    gtty->Printf("invalid argument.\n");
     return;
   }
   if (strcmp(argv[1], "snd") == 0) {
     if (argc == 2) {
-      gtty->Cprintf("specify ethernet interface.\n");
+      gtty->Printf("specify ethernet interface.\n");
       return;
     } else if (argc == 3) {
-      gtty->Cprintf("specify ip v4 addr.\n");
+      gtty->Printf("specify ip v4 addr.\n");
       return;
     } else if (argc != 4) {
-      gtty->Cprintf("invalid arguments\n");
+      gtty->Printf("invalid arguments\n");
       return;
     }
     NetDevCtrl::NetDevInfo *info = netdev_ctrl->GetDeviceInfo(argv[2]);
     if (info == nullptr) {
-      gtty->Cprintf("no ethernet interface(%s).\n", argv[2]);
+      gtty->Printf("no ethernet interface(%s).\n", argv[2]);
       return;
     }
     NetDev *dev = info->device;
 
     uint8_t addr[4] = {0, 0, 0, 0};
     if (!parse_ipaddr(argv[3], addr)) {
-      gtty->Cprintf("invalid ip v4 addr.\n");
+      gtty->Printf("invalid ip v4 addr.\n");
       return;
     }
 
     send_arp_packet(dev, addr);
   } else if (strcmp(argv[1], "set_reply") == 0) {
     if (argc == 2) {
-      gtty->Cprintf("specify ethernet interface.\n");
+      gtty->Printf("specify ethernet interface.\n");
       return;
     }
     NetDevCtrl::NetDevInfo *info = netdev_ctrl->GetDeviceInfo(argv[2]);
     if (info == nullptr) {
-      gtty->Cprintf("no ethernet interface(%s).\n", argv[2]);
+      gtty->Printf("no ethernet interface(%s).\n", argv[2]);
       return;
     }
     setup_arp_reply(info->device);
@@ -239,23 +239,23 @@ static void bench(int argc, const char* argv[]) {
     sdevice = (argc == 2) ? "eth0" : argv[2];
     rdevice = (argc == 2) ? "eth0" : argv[2];
     if (!netdev_ctrl->Exists(rdevice)) {
-      gtty->Cprintf("no ethernet interface(%s).\n", rdevice);
+      gtty->Printf("no ethernet interface(%s).\n", rdevice);
       return;
     }
     } */ else {
-    gtty->Cprintf("invalid argument.\n");
+    gtty->Printf("invalid argument.\n");
     return;
   }
 }
 
 static void setflag(int argc, const char *argv[]) {
   if (argc == 1) {
-    gtty->Cprintf("invalid argument.\n");
+    gtty->Printf("invalid argument.\n");
     return;
   }
   if (strcmp(argv[1], "spinlock_timeout") == 0) {
     if (argc == 2) {
-      gtty->Cprintf("invalid argument.\n");
+      gtty->Printf("invalid argument.\n");
       return;
     }
     if (strcmp(argv[2], "true") == 0) {
@@ -263,11 +263,11 @@ static void setflag(int argc, const char *argv[]) {
     } else if (strcmp(argv[2], "false") == 0) {
       SpinLock::_spinlock_timeout = false;
     } else {
-      gtty->Cprintf("invalid argument.\n");
+      gtty->Printf("invalid argument.\n");
       return;
     }
   } else {
-    gtty->Cprintf("invalid argument.\n");
+    gtty->Printf("invalid argument.\n");
     return;
   }
 }
@@ -316,15 +316,15 @@ static void arp_scan(int argc, const char *argv[]) {
   for (size_t i = 0; i < devices->GetLen(); i++) {
     auto dev = netdev_ctrl->GetDeviceInfo((*devices)[i])->device;
     if (dev->GetStatus() != NetDev::LinkStatus::kUp) {
-      gtty->Cprintf("skip %s (Link Down)\n", (*devices)[i]);
+      gtty->Printf("skip %s (Link Down)\n", (*devices)[i]);
       continue;
     }
     uint32_t my_addr_int_;
     if (!dev->GetIpv4Address(my_addr_int_) || my_addr_int_ == 0) {
-      gtty->Cprintf("skip %s (no IP)\n", (*devices)[i]);
+      gtty->Printf("skip %s (no IP)\n", (*devices)[i]);
       continue;
     }
-    gtty->Cprintf("ARP scan with %s\n", (*devices)[i]);
+    gtty->Printf("ARP scan with %s\n", (*devices)[i]);
     dev->SetReceiveCallback(network_cpu, make_uptr(new Function<NetDev *>([](NetDev *eth) {
             NetDev::Packet *rpacket;
             if(!eth->ReceivePacket(rpacket)) {
@@ -444,13 +444,13 @@ static void arp_scan(int argc, const char *argv[]) {
 
 void udpsend(int argc, const char *argv[]) {
   if (argc != 4) {
-    gtty->Cprintf("invalid argument.\n");
+    gtty->Printf("invalid argument.\n");
     return;
   }
 
   uint8_t target_addr[4] = {0, 0, 0, 0};
   if (!parse_ipaddr(argv[1], target_addr)) {
-    gtty->Cprintf("invalid ip v4 addr.\n");
+    gtty->Printf("invalid ip v4 addr.\n");
     return;
   }
   uint32_t target_addr_int = (target_addr[3] << 24) | (target_addr[2] << 16) | (target_addr[1] << 8) | target_addr[0];
@@ -458,7 +458,7 @@ void udpsend(int argc, const char *argv[]) {
   uint8_t target_mac[6];
   NetDev *dev = arp_table->Search(target_addr_int, target_mac);
   if (dev == nullptr) {
-    gtty->Cprintf("cannot solve mac address from ARP Table.\n");
+    gtty->Printf("cannot solve mac address from ARP Table.\n");
     return;
   }
 
@@ -645,23 +645,23 @@ void udpsend(int argc, const char *argv[]) {
   
 static void show(int argc, const char *argv[]) {
   if (argc == 1) {
-    gtty->Cprintf("invalid argument.\n");
+    gtty->Printf("invalid argument.\n");
     return;
   }
   if (strcmp(argv[1], "module") == 0) {
     if (argc != 2) {
-      gtty->Cprintf("invalid argument.\n");
+      gtty->Printf("invalid argument.\n");
       return;
     }
     multiboot_ctrl->ShowModuleInfo();
   } else if (strcmp(argv[1], "info") == 0) {
-    gtty->Cprintf("[kernel] info: Hardware Information\n");
-    gtty->Cprintf("available cpu thread num: %d\n", cpu_ctrl->GetHowManyCpus());
-    gtty->Cprintf("\n");
-    gtty->Cprintf("[kernel] info: Build Information\n");
+    gtty->Printf("[kernel] info: Hardware Information\n");
+    gtty->Printf("available cpu thread num: %d\n", cpu_ctrl->GetHowManyCpus());
+    gtty->Printf("\n");
+    gtty->Printf("[kernel] info: Build Information\n");
     multiboot_ctrl->ShowBuildTimeStamp();
   } else {
-    gtty->Cprintf("invalid argument.\n");
+    gtty->Printf("invalid argument.\n");
     return;
   }
 }
@@ -676,13 +676,13 @@ struct LoadContainer {
 
 static void wait_until_linkup(sptr<Callout> sh_task, int argc, const char *argv[]) {
   if (argc != 2) {
-    gtty->Cprintf("invalid argument.\n");
+    gtty->Printf("invalid argument.\n");
     task_ctrl->RegisterCallout(sh_task, 10);
     return;
   }
   NetDevCtrl::NetDevInfo *info = netdev_ctrl->GetDeviceInfo(argv[1]);
   if (info == nullptr) {
-    gtty->Cprintf("no such device.\n");
+    gtty->Printf("no such device.\n");
     task_ctrl->RegisterCallout(sh_task, 10);
     return;
   }
@@ -711,13 +711,13 @@ static void load_script(sptr<LoadContainer> container_) {
               ec = shell->Tokenize(ec, buffer);
               int timeout = 10;
               if (strlen(buffer) != 0) {
-                gtty->Cprintf("> %s\n", buffer);
+                gtty->Printf("> %s\n", buffer);
                 if (strcmp(ec->argv[0], "wait") == 0) {
                   if (ec->argc == 2) {
                     int t = 0;
                     for(size_t l = 0; l < strlen(ec->argv[1]); l++) {
                       if ('0' > ec->argv[1][l] || ec->argv[1][l] > '9') {
-                        gtty->Cprintf("invalid argument.\n");
+                        gtty->Printf("invalid argument.\n");
                         t = 0;
                         break;
                       }
@@ -725,7 +725,7 @@ static void load_script(sptr<LoadContainer> container_) {
                     }
                     timeout = t * 1000 * 1000;
                   } else {
-                    gtty->Cprintf("invalid argument.\n");
+                    gtty->Printf("invalid argument.\n");
                   }
                 } else if (strcmp(ec->argv[0], "wait_until_linkup") == 0) {
                   wait_until_linkup(make_sptr(callout), ec->argc, ec->argv);
@@ -759,7 +759,7 @@ static void load_elf(uptr<Array<uint8_t>> buf_) {
 
 static void load(int argc, const char *argv[]) {
   if (argc != 2) {
-    gtty->Cprintf("invalid argument.\n");
+    gtty->Printf("invalid argument.\n");
     return;
   }
   if (strcmp(argv[1], "script.sh") == 0) {
@@ -767,7 +767,7 @@ static void load(int argc, const char *argv[]) {
   } else if (strcmp(argv[1], "test.elf") == 0) {
     load_elf(multiboot_ctrl->LoadFile(argv[1]));
   } else {
-    gtty->Cprintf("invalid argument.\n");
+    gtty->Printf("invalid argument.\n");
     return;
   }
 }
@@ -851,7 +851,7 @@ extern "C" int main() {
   acpi_ctrl->Setup();
 
   if (timer->Setup()) {
-    gtty->Cprintf("[timer] info: HPET supported.\n");
+    gtty->Printf("[timer] info: HPET supported.\n");
   } else {
     kernel_panic("timer", "HPET not supported.\n");
   }
@@ -900,7 +900,7 @@ extern "C" int main() {
   
   // arp_table->Setup();
 
-  gtty->Cprintf("\n\n[kernel] info: initialization completed\n");
+  gtty->Printf("\n\n[kernel] info: initialization completed\n");
 
   arp_table = new ArpTable;
   
@@ -943,7 +943,7 @@ extern "C" int main_of_others() {
     static int hoge = 0;
     p.Init(make_uptr(new Function<void *>([](void *){
             int hoge2 = timer->GetUsecFromCnt(timer->ReadMainCnt()) - hoge;
-            gtty->Cprintf("%d ", hoge2);
+            gtty->Printf("%d ", hoge2);
             hoge = timer->GetUsecFromCnt(timer->ReadMainCnt());
           }, nullptr)));
     p.Register();
@@ -974,32 +974,28 @@ extern "C" int main_of_others() {
   return 0;
 }
 
-static int error_output_flag = 0;
-
 void show_backtrace(size_t *rbp) {
   size_t top_rbp = reinterpret_cast<size_t>(rbp);
   for (int i = 0; i < 3; i++) {
     if (top_rbp <= rbp[1] || top_rbp - 4096 > rbp[1]) {
       break;
     }
-    gtty->CprintfRaw("backtrace(%d): rip:%llx,\n", i, rbp[1]);
+    gtty->ErrPrintf("backtrace(%d): rip:%llx,\n", i, rbp[1]);
     rbp = reinterpret_cast<size_t *>(rbp[0]);
   }
 }
 
 extern "C" void _kernel_panic(const char *class_name, const char *err_str) {
   if (gtty != nullptr) {
-    while(!__sync_bool_compare_and_swap(&error_output_flag, 0, 1)) {
-    }
-    gtty->CprintfRaw("\n!!!! Kernel Panic !!!!\n");
-    gtty->CprintfRaw("[%s] error: %s\n",class_name, err_str);
-    gtty->CprintfRaw("\n"); 
-    gtty->CprintfRaw(">> debugging information >>\n");
-    gtty->CprintfRaw("cpuid: %d\n", cpu_ctrl->GetCpuId().GetRawId());
+    gtty->DisablePrint();
+    gtty->ErrPrintf("\n!!!! Kernel Panic !!!!\n");
+    gtty->ErrPrintf("[%s] error: %s\n",class_name, err_str);
+    gtty->ErrPrintf("\n"); 
+    gtty->ErrPrintf(">> debugging information >>\n");
+    gtty->ErrPrintf("cpuid: %d\n", cpu_ctrl->GetCpuId().GetRawId());
     size_t *rbp;
     asm volatile("movq %%rbp, %0":"=r"(rbp));
     show_backtrace(rbp);
-    __sync_bool_compare_and_swap(&error_output_flag, 1, 0);
   }
   while(true) {
     asm volatile("cli;hlt;");
@@ -1008,23 +1004,23 @@ extern "C" void _kernel_panic(const char *class_name, const char *err_str) {
 
 extern "C" void checkpoint(int id, const char *str) {
   if (id < 0 || cpu_ctrl->GetCpuId().GetRawId() == id) {
-    gtty->CprintfRaw(str);
+    gtty->Printf(str);
+    gtty->Flush();
   }
 }
 
 extern "C" void _checkpoint(const char *func, const int line) {
-  gtty->CprintfRaw("[%s:%d]", func, line);
+  gtty->Printf("[%s:%d]", func, line);
+  gtty->Flush();
 }
 
 extern "C" void abort() {
   if (gtty != nullptr) {
-    while(!__sync_bool_compare_and_swap(&error_output_flag, 0, 1)) {
-    }
-    gtty->CprintfRaw("system stopped by unexpected error.\n");
+    gtty->DisablePrint();
+    gtty->ErrPrintf("system stopped by unexpected error.\n");
     size_t *rbp;
     asm volatile("movq %%rbp, %0":"=r"(rbp));
     show_backtrace(rbp);
-    __sync_bool_compare_and_swap(&error_output_flag, 1, 0);
   }
   while(true){
     asm volatile("cli;hlt");
@@ -1033,14 +1029,12 @@ extern "C" void abort() {
 
 extern "C" void _kassert(const char *file, int line, const char *func) {
   if (gtty != nullptr) {
-    while(!__sync_bool_compare_and_swap(&error_output_flag, 0, 1)) {
-    }
-    gtty->CprintfRaw("assertion failed at %s l.%d (%s) cpuid: %d\n",
+    gtty->DisablePrint();
+    gtty->ErrPrintf("assertion failed at %s l.%d (%s) cpuid: %d\n",
                      file, line, func, cpu_ctrl->GetCpuId().GetRawId());
     size_t *rbp;
     asm volatile("movq %%rbp, %0":"=r"(rbp));
     show_backtrace(rbp);
-    __sync_bool_compare_and_swap(&error_output_flag, 1, 0);
   }
   while(true){
     asm volatile("cli;hlt");

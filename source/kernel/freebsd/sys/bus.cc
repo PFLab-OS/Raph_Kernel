@@ -132,12 +132,12 @@ extern "C" {
 
 
   int device_printf(device_t dev, const char *fmt, ...) {
-    gtty->Cprintf("[pci device]:");
+    gtty->Printf("[pci device]:");
     va_list args;
     va_start(args, fmt);
-    gtty->Cvprintf(fmt, args);
+    gtty->Vprintf(fmt, args);
     va_end(args);
-    gtty->Cprintf("\n");
+    gtty->Printf("\n");
     return 0;  // TODO fix this
   }
 

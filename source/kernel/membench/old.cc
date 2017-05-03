@@ -27,7 +27,7 @@ static void membench() {
     return;
   }
   
-  gtty->CprintfRaw("-%d-", cpu_ctrl->GetCpuId().GetRawId());
+  gtty->Printf("-%d-", cpu_ctrl->GetCpuId().GetRawId());
   
   int entry = 20 * 1024 * 1024 / sizeof(int);
   int *tmp = new int[entry];
@@ -159,7 +159,7 @@ static void membench2() {
 
   for (int num = 100; num < 60000; num += 1000) {
     if (cpuid == 0) {
-      gtty->CprintfRaw("\nnum: %d\n", num);
+      gtty->Printf("\nnum: %d\n", num);
       
       PhysAddr paddr1;
       physmem_ctrl->Alloc(paddr1, PagingCtrl::ConvertNumToPageSize(num * num * sizeof(int)));
@@ -192,7 +192,7 @@ static void membench2() {
         }
       }
 
-      gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+      gtty->Printf("<%d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
     }
 
     // if (cpuid == 0) {
@@ -200,7 +200,7 @@ static void membench2() {
     //   physmem_ctrl->Alloc(paddr, PagingCtrl::ConvertNumToPageSize(num * num * sizeof(int)));
     //   ddr = reinterpret_cast<int *>(paddr.GetVirtAddr());
     //   memcpy(ddr, init, num * num * sizeof(int));
-    //   gtty->CprintfRaw("init ddr ");
+    //   gtty->Printf("init ddr ");
     // }
   
     // {
@@ -234,7 +234,7 @@ static void membench2() {
     //   }
       
     //   if (cpuid == 0) {
-    //     gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+    //     gtty->Printf("<%d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
     //     cnt = 0;
     //   }
     // }
@@ -243,7 +243,7 @@ static void membench2() {
     if (cpuid == 0) {
       mcdram = reinterpret_cast<int *>(p2v(0x1840000000));
       memcpy(mcdram, init, num * num * sizeof(int));
-      gtty->CprintfRaw("init mcdram ");
+      gtty->Printf("init mcdram ");
     }
 
 
@@ -280,7 +280,7 @@ static void membench2() {
         sync(l1, l2, l3);
       }
       if (cpuid == 0) {
-        gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+        gtty->Printf("<%d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
         for (int i = 0; i < num; i++) {
           for (int j = 0; j < num; j++) {
             kassert(mcdram[i * num + j] == answer[i * num + j]);
@@ -304,7 +304,7 @@ static void membench3() {
     sync(l1, l2, l3);
   }
   if (cpuid == 0) {
-    gtty->CprintfRaw("bench start\n");
+    gtty->Printf("bench start\n");
   }
   for (int i = 1; i < 256; i++) {
     static volatile int cnt = 0;
@@ -323,7 +323,7 @@ static void membench3() {
       }
       {
         CpuId cpuid_(i);
-        gtty->CprintfRaw("%d:%d:%d ", i, cpuid_.GetApicId(), (((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod())) / 1000);
+        gtty->Printf("%d:%d:%d ", i, cpuid_.GetApicId(), (((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod())) / 1000);
       }
       for (int j = 1; j < cpu_ctrl->GetHowManyCpus(); j++) {
         if (i != j) {
@@ -357,7 +357,7 @@ static void membench4() {
     sync(l1, l2, l3);
   }
   if (cpuid == 0) {
-    gtty->CprintfRaw("bench start\n");
+    gtty->Printf("bench start\n");
   }
   for (int i = 1; i < 256; i++) {
     static volatile int cnt = 0;
@@ -376,7 +376,7 @@ static void membench4() {
       }
       {
         CpuId cpuid_(i);
-        gtty->CprintfRaw("%d:%d:%d ", i, cpuid_.GetApicId(), (((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod())) / 1000);
+        gtty->Printf("%d:%d:%d ", i, cpuid_.GetApicId(), (((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod())) / 1000);
       }
       for (int j = 1; j < 256; j++) {
         if (i < j) {
@@ -411,7 +411,7 @@ static void membench5() {
   }
 
   if (cpuid == 0) {
-    gtty->CprintfRaw("start >>>");
+    gtty->Printf("start >>>");
   }
   
   {
@@ -426,7 +426,7 @@ static void membench5() {
       sync(l1, l2, l3);
     }
     if (cpuid == 0) {
-      gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+      gtty->Printf("<%d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
     }
   }
 
@@ -442,7 +442,7 @@ static void membench5() {
       sync_read(l1, l2, l3);
     }
     if (cpuid == 0) {
-      gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+      gtty->Printf("<%d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
     }
   }
 
@@ -460,7 +460,7 @@ static void membench5() {
       sync_.Do();
     }
     if (cpuid == 0) {
-      gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t2) * timer->GetCntClkPeriod()) / 1000);
+      gtty->Printf("<%d us> ", ((timer->ReadMainCnt() - t2) * timer->GetCntClkPeriod()) / 1000);
     }
   }
 
@@ -478,7 +478,7 @@ static void membench5() {
       sync_.Do();
     }
     if (cpuid == 0) {
-      gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t2) * timer->GetCntClkPeriod()) / 1000);
+      gtty->Printf("<%d us> ", ((timer->ReadMainCnt() - t2) * timer->GetCntClkPeriod()) / 1000);
     }
   }
 }
@@ -498,7 +498,7 @@ static void membench6() {
   }
 
   if (cpuid == 0) {
-    gtty->CprintfRaw("start >>>");
+    gtty->Printf("start >>>");
   }
   
   for (unsigned int i = 1; i <= 1/*37*/; i++) {
@@ -537,7 +537,7 @@ static void membench6() {
         sync2(cpu_num, l1, l2, l3);
       }
       if (apicid == 0) {
-        gtty->CprintfRaw("<%d %d us> ", cpu_num, ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+        gtty->Printf("<%d %d us> ", cpu_num, ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
         for (int j = 0; j < 256; j++) {
           CpuId cpuid_(j);
           if (cpuid_.GetApicId() != 0) {
@@ -566,7 +566,7 @@ static void membench6() {
         sync2_read(cpu_num, l1, l2, l3);
       }
       if (apicid == 0) {
-        gtty->CprintfRaw("<%d %d us> ", cpu_num, ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+        gtty->Printf("<%d %d us> ", cpu_num, ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
         for (int j = 0; j < 256; j++) {
           CpuId cpuid_(j);
           if (cpuid_.GetApicId() != 0) {
@@ -621,7 +621,7 @@ static void membench6() {
       }
 
       if (apicid == 0) {
-        gtty->CprintfRaw("<%d %d us> ", cpu_num, ((timer->ReadMainCnt() - t2) * timer->GetCntClkPeriod()) / 1000);
+        gtty->Printf("<%d %d us> ", cpu_num, ((timer->ReadMainCnt() - t2) * timer->GetCntClkPeriod()) / 1000);
         for (int j = 0; j < 256; j++) {
           CpuId cpuid_(j);
           if (cpuid_.GetApicId() != 0) {
@@ -654,7 +654,7 @@ static void membench6() {
       }
 
       if (apicid == 0) {
-        gtty->CprintfRaw("<%d %d us> ", cpu_num, ((timer->ReadMainCnt() - t2) * timer->GetCntClkPeriod()) / 1000);
+        gtty->Printf("<%d %d us> ", cpu_num, ((timer->ReadMainCnt() - t2) * timer->GetCntClkPeriod()) / 1000);
         for (int j = 0; j < 256; j++) {
           CpuId cpuid_(j);
           if (cpuid_.GetApicId() != 0) {
@@ -682,7 +682,7 @@ static void membench8() {
     sync(l1, l2, l3);
   }
   if (apicid == 0) {
-    gtty->CprintfRaw("bench start\n");
+    gtty->Printf("bench start\n");
   }
   {
     static volatile int tmp = 0;
@@ -700,7 +700,7 @@ static void membench8() {
         sync2(2, l1, l2, l3);
       }
       if (apicid == 0) {
-        gtty->CprintfRaw("<%d> ", (((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod())) / 1000);
+        gtty->Printf("<%d> ", (((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod())) / 1000);
         tmp = 1;
       }
     } else if (apicid == 24) {
@@ -736,7 +736,7 @@ static void membench8() {
         sync2(2, l1, l2, l3);
       }
       if (apicid == 0) {
-        gtty->CprintfRaw("<%d> ", (((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod())) / 1000);
+        gtty->Printf("<%d> ", (((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod())) / 1000);
         tmp = 1;
       }
     } else if (apicid == 295) {
@@ -769,7 +769,7 @@ static void membench9() {
   }
 
   if (cpuid == 0) {
-    gtty->CprintfRaw("start >>>");
+    gtty->Printf("start >>>");
   }
   
   {
@@ -784,7 +784,7 @@ static void membench9() {
       sync(l1, l2, l3);
     }
     if (cpuid == 0) {
-      gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+      gtty->Printf("<%d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
     }
   }
 
@@ -800,7 +800,7 @@ static void membench9() {
       sync_read(l1, l2, l3);
     }
     if (cpuid == 0) {
-      gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
+      gtty->Printf("<%d us> ", ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000);
     }
   }
 
@@ -818,7 +818,7 @@ static void membench9() {
       sync_.Do();
     }
     if (cpuid == 0) {
-      gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t2) * timer->GetCntClkPeriod()) / 1000);
+      gtty->Printf("<%d us> ", ((timer->ReadMainCnt() - t2) * timer->GetCntClkPeriod()) / 1000);
     }
   }
 
@@ -836,7 +836,7 @@ static void membench9() {
       sync_.Do();
     }
     if (cpuid == 0) {
-      gtty->CprintfRaw("<%d us> ", ((timer->ReadMainCnt() - t2) * timer->GetCntClkPeriod()) / 1000);
+      gtty->Printf("<%d us> ", ((timer->ReadMainCnt() - t2) * timer->GetCntClkPeriod()) / 1000);
     }
   }
 }

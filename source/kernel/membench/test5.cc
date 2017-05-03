@@ -151,9 +151,9 @@ static void func107_sub(int kMax) {
   }
   variance /= num;
   if (apicid == 0) {
-    gtty->CprintfRaw("<%d %lld(%lld) us> ", kMax, avg, variance);
+    gtty->Printf("<%d %lld(%lld) us> ", kMax, avg, variance);
     StringTty tty(200);
-    tty.CprintfRaw("%d\t%d\t%d\t%d\n", kMax, avg.time, avg.fairness, variance);
+    tty.Printf("%d\t%d\t%d\t%d\n", kMax, avg.time, avg.fairness, variance);
     int argc = 4;
     const char *argv[] = {"udpsend", "192.168.12.35", "1234", tty.GetRawPtr()};
     udpsend(argc, argv);
@@ -190,7 +190,7 @@ static void func107(sptr<TaskWithStack> task) {
             int apicid = cpu_ctrl->GetCpuId().GetApicId();
             if (apicid == 0) {
               StringTty tty(4);
-              tty.CprintfRaw("\n");
+              tty.Printf("\n");
               int argc = 4;
               const char *argv[] = {"udpsend", "192.168.12.35", "1234", tty.GetRawPtr()};
               udpsend(argc, argv);
@@ -208,11 +208,11 @@ static void func107(sptr<TaskWithStack> task) {
 void membench5(sptr<TaskWithStack> task) {
   int cpuid = cpu_ctrl->GetCpuId().GetRawId();
   if (cpuid == 0) {
-    gtty->CprintfRaw("start >>>\n");
+    gtty->Printf("start >>>\n");
   }
   if (cpuid == 0) {
     StringTty tty(10);
-    tty.CprintfRaw("# count\n");
+    tty.Printf("# count\n");
     int argc = 4;
     const char *argv[] = {"udpsend", "192.168.12.35", "1234", tty.GetRawPtr()};
     udpsend(argc, argv);
@@ -220,7 +220,7 @@ void membench5(sptr<TaskWithStack> task) {
   func107<ClhSpinLock, ClhSpinLock>(task);
   func107<McsSpinLock<64>, ClhSpinLock>(task);
   if (cpuid == 0) {
-    gtty->CprintfRaw("<<< end\n");
+    gtty->Printf("<<< end\n");
   }
 }
 

@@ -36,79 +36,32 @@ class Font {
 public:
   Font() {
   }
-  int Load(uptr<Array<uint8_t>> buf, size_t len) {
-    _buf = buf;
-    char *_buf_ptr = _buf->GetRawPtr();
-    if (strncmp("FILE", _buf_ptr, 4) != 0) {
-      return -1;
-    }
-    if (be32toh(*(reinterpret_cast<uint32_t *>(_buf_ptr + 4))) != 4) {
-      return -1;
-    }
-    if (strncmp("PFF2", _buf_ptr + 8, 4) != 0) {
-      return -1;
-    }
-
-    _maxw.Load(_buf_ptr + 12);
-    _maxh.Load(_buf_ptr + 12);
-    _data.SetBuffer(_buf_ptr);
-    _data.Load(_buf_ptr + 12);
-    _chix.Load(_buf_ptr + 12);
-    _asce.Load(_buf_ptr + 12);
-    _desc.Load(_buf_ptr + 12);
-    _is_initialized = true;
-    return 0;
-  }
-  void Print(char32_t c, void (*func)(int x, int y)) {
-    if (!_is_initialized) {
-      return;
-    }
-
-    uint32_t index = _chix.GetIndex(c);
-    if (index == 0xFFFFFFFF || _chix.GetStorageFlag(index)) {
-      return;
-    }
-    uint32_t offset = _chix.GetOffset(index);
-    int maxh = _maxh.Get();
-    
-    uint32_t byte_offset = offset + 10;
-    uint32_t bit_offset = 7;
-    int bitmap_bottom = _asce.Get() - _data.GetYOffset(offset);
-    int bitmap_top = bitmap_bottom - _data.GetHeight(offset);
-    int bitmap_left = _data.GetXOffset(offset);
-    int bitmap_right = _data.GetXOffset(offset) + _data.GetWidth(offset);
-    int width = _data.GetDeviceWidth(offset);
-
-    for (int y = bitmap_top; y < bitmap_bottom; y++) {
-      for (int x = bitmap_left; x < bitmap_right; x++) {
-        if ((_buf->GetRawPtr()[byte_offset] & (1 << bit_offset)) != 0) {
-          func(x, y);
-        }
-        bit_offset--;
-        if (bit_offset == -1) {
-          bit_offset = 7;
-          byte_offset++;
-        }
-      }
-    }
-  }
-  uint16_t GetMaxw() {
+  int Load(uptr<Array<uint8_t>> buf, size_t len);
+  void Print(uint32_t index, void (*func)(bool f, int x, int y));
+  void GetData(char32_t c, int &width, bool *byte);
+  uint16_t GetMaxw() const {
     return _maxw.Get();
   }
-  uint16_t GetMaxh() {
+  uint16_t GetMaxh() const {
     return _maxh.Get();
   }
-  uint16_t GetWidth(char32_t c) {
+  uint32_t GetIndex(char32_t c) const {
+    return _chix.GetIndex(c);
+  }
+  uint16_t GetWidth(char32_t c) const {
     uint32_t index = _chix.GetIndex(c);
+    return GetWidth(index);
+  }
+  uint16_t GetWidth(uint32_t index) const {
     if (index == 0xFFFFFFFF || _chix.GetStorageFlag(index)) {
       return 0;
     }
     return _data.GetDeviceWidth(_chix.GetOffset(index));
   }
-  uint16_t GetAsce() {
+  uint16_t GetAsce() const {
     return _asce.Get();
   }
-  uint16_t GetDesc() {
+  uint16_t GetDesc() const {
     return _desc.Get();
   }
 private:
@@ -136,7 +89,7 @@ private:
 
   class Maxw : public Section {
   public:
-    uint16_t Get() {
+    uint16_t Get() const {
       return _value;
     }
   private:
@@ -152,7 +105,7 @@ private:
 
   class Maxh : public Section {
   public:
-    uint16_t Get() {
+    uint16_t Get() const {
       return _value;
     }
   private:
@@ -168,7 +121,7 @@ private:
 
   class Chix : public Section {
   public:
-    uint32_t GetIndex(uint32_t point) {
+    uint32_t GetIndex(uint32_t point) const {
       for (uint32_t offset = 0; offset < _len; offset += 9) {
         if (be32toh(*(reinterpret_cast<uint32_t *>(_buf + offset))) == point) {
           return offset;
@@ -176,10 +129,10 @@ private:
       }
       return 0xFFFFFFFF;
     }
-    uint32_t GetOffset(uint32_t offset) {
+    uint32_t GetOffset(uint32_t offset) const {
       return be32toh(*(reinterpret_cast<uint32_t *>(_buf + offset + 5)));
     }
-    bool GetStorageFlag(uint32_t offset) {
+    bool GetStorageFlag(uint32_t offset) const {
       return (_buf[offset + 4] & 0b111 != 0b000);
     }
   private:
@@ -196,7 +149,7 @@ private:
 
   class Asce : public Section {
   public:
-    uint16_t Get() {
+    uint16_t Get() const {
       return _value;
     }
   private:
@@ -212,7 +165,7 @@ private:
 
   class Desc : public Section {
   public:
-    uint16_t Get() {
+    uint16_t Get() const {
       return _value;
     }
   private:
@@ -228,19 +181,19 @@ private:
   
   class Data : public Section {
   public:
-    uint16_t GetWidth(uint32_t offset) {
+    uint16_t GetWidth(uint32_t offset) const {
       return be16toh(*(reinterpret_cast<uint16_t *>(_buf + offset)));
     }
-    uint16_t GetHeight(uint32_t offset) {
+    uint16_t GetHeight(uint32_t offset) const {
       return be16toh(*(reinterpret_cast<uint16_t *>(_buf + offset + 2)));
     }
-    int16_t GetXOffset(uint32_t offset) {
+    int16_t GetXOffset(uint32_t offset) const {
       return be16toh(*(reinterpret_cast<int16_t *>(_buf + offset + 4)));
     }
-    int16_t GetYOffset(uint32_t offset) {
+    int16_t GetYOffset(uint32_t offset) const {
       return be16toh(*(reinterpret_cast<int16_t *>(_buf + offset + 6)));
     }
-    int16_t GetDeviceWidth(uint32_t offset) {
+    int16_t GetDeviceWidth(uint32_t offset) const {
       return be16toh(*(reinterpret_cast<int16_t *>(_buf + offset + 8)));
     }
     void SetBuffer(char *buf) {

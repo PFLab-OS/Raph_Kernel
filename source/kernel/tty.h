@@ -32,6 +32,18 @@
 #include <global.h>
 #include <buf.h>
 
+/*
+ * How to print strings
+ *
+ * In many cases, you can use Printf(). However, it takes time from when this function is
+ * executed until it is drawn on the screen. If you want to output to the screen instantly,
+ * you have to call Flush().
+ *
+ * ErrPrintf() is used when a serious error occurs in the system. Since this function does
+ * not alloc memory internally, there is a high possibility that it will be executed normally
+ * even if there is a problem in the system. In order to prevent Printf() from overwriting the
+ * screen while this function is drawing, DisablePrint() should be called beforehand.
+ */
 class Tty {
  public:
   enum class Color : uint8_t {
@@ -55,30 +67,29 @@ class Tty {
   Tty() {
   }
   void Init();
-  void Cprintf(const char *fmt, ...) {
+  void Printf(const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
-    Cvprintf(fmt, args);
+    Vprintf(fmt, args);
     va_end(args);
   }
-  void CprintfRaw(const char *fmt, ...) {
+  void ErrPrintf(const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
-    CvprintfRaw(fmt, args);
+    ErrVprintf(fmt, args);
     va_end(args);
   }
-  void Cvprintf(const char *fmt, va_list args) {
+  void Vprintf(const char *fmt, va_list args) {
     String *str = String::Get(_str_buffer);
-    Cvprintf_sub(str, fmt, args);
+    Vprintf_sub(str, fmt, args);
     str->Exit(_str_buffer);
     DoString(str);
   }
-  void CvprintfRaw(const char *fmt, va_list args) {
+  void ErrVprintf(const char *fmt, va_list args) {
     String str;
-    Cvprintf_sub(&str, fmt, args);
+    Vprintf_sub(&str, fmt, args);
     str.Exit(_str_buffer);
-    Locker locker(_lock);
-    PrintString(&str);
+    PrintErrString(&str);
   }
   virtual void PrintShell(const char *str) = 0;
   void SetColor(Color c) {
@@ -89,13 +100,21 @@ class Tty {
   }
   virtual int GetRow() = 0;
   virtual int GetColumn() = 0;
+  virtual void Flush() = 0;
+  void DisablePrint() {
+    _disable_flag = true;
+  }
  protected:
   virtual void _Init() {
   }
-  virtual void Write(uint8_t c) = 0;
+  virtual void Write(char c) = 0;
+  virtual void WriteErr(char c) {
+    Write(c);
+  }
   int _cx = 0;
   int _cy = 0;
   Color _color;
+  bool _disable_flag = false;
  private:
   class String;
   using StringBuffer = RingBuffer<String *, 64>;
@@ -123,7 +142,7 @@ class Tty {
       }
     }
     void Delete(StringBuffer &buf);
-    void Write(const uint8_t c, StringBuffer &buf) {
+    void Write(const char c, StringBuffer &buf) {
       if (offset == length) {
         if (next == nullptr) {
           if (type == Type::kQueue) {
@@ -162,8 +181,9 @@ class Tty {
       str->Delete(_str_buffer);
     }
   }
-  void Cvprintf_sub(String *str, const char *fmt, va_list args);
+  void Vprintf_sub(String *str, const char *fmt, va_list args);
   void PrintString(String *str);
+  void PrintErrString(String *str);
   void DoString(String *str);
   FunctionalQueue _queue;
   SpinLock _lock;
@@ -188,7 +208,7 @@ private:
   virtual void PrintShell(const char *str) override {
     kassert(false);
   }
-  virtual void Write(uint8_t c) {
+  virtual void Write(char c) {
     assert(_offset + 1 < _buffer_size);
     _buf[_offset] = c;
     _buf[_offset + 1] = '\0';
@@ -200,6 +220,8 @@ private:
   virtual int GetColumn() override {
     return _buffer_size;
   };
+  virtual void Flush() override {
+  }
   char *_buf;
   int _offset;
   const int _buffer_size;

@@ -146,7 +146,7 @@ static Pair func107(int cpunum, int i) {
       }
       // assert(varidation == kMax);
       if (varidation != kMax) {
-        gtty->CprintfRaw("[[[%d]]]", varidation);
+        gtty->Printf("[[[%d]]]", varidation);
         assert(false);
       }
       f_avg /= cpunum;
@@ -212,9 +212,9 @@ static void func107_sub(int cpunum, int i) {
   variance /= num;
   int apicid = cpu_ctrl->GetCpuId().GetApicId();
   if (apicid == 0) {
-    gtty->CprintfRaw("<%d %lld(%lld) us> ", i, avg, variance);
+    gtty->Printf("<%d %lld(%lld) us> ", i, avg, variance);
     StringTty tty(200);
-    tty.CprintfRaw("%d\t%d\t%d\t%d\t%d\n", i, cpunum, avg.time, avg.fairness, variance);
+    tty.Printf("%d\t%d\t%d\t%d\t%d\n", i, cpunum, avg.time, avg.fairness, variance);
     int argc = 4;
     const char *argv[] = {"udpsend", "192.168.12.35", "1234", tty.GetRawPtr()};
     udpsend(argc, argv);
@@ -255,7 +255,7 @@ static void func107(sptr<TaskWithStack> task) {
             int apicid = cpu_ctrl->GetCpuId().GetApicId();
             if (apicid == 0) {
               StringTty tty(4);
-              tty.CprintfRaw("\n");
+              tty.Printf("\n");
               int argc = 4;
               const char *argv[] = {"udpsend", "192.168.12.35", "1234", tty.GetRawPtr()};
               udpsend(argc, argv);
@@ -283,7 +283,7 @@ static void func10(sptr<TaskWithStack> task) {
   int cpuid = cpu_ctrl->GetCpuId().GetRawId();
   if (cpuid == 0) {
     StringTty tty(10);
-    tty.CprintfRaw("# %d\n", i);
+    tty.Printf("# %d\n", i);
     int argc = 4;
     const char *argv[] = {"udpsend", "192.168.12.35", "1234", tty.GetRawPtr()};
     udpsend(argc, argv);
@@ -320,11 +320,11 @@ static void func10(sptr<TaskWithStack> task) {
 void membench3(sptr<TaskWithStack> task) {
   int cpuid = cpu_ctrl->GetCpuId().GetRawId();
   if (cpuid == 0) {
-    gtty->CprintfRaw("start >>>\n");
+    gtty->Printf("start >>>\n");
   }
   func10<100, 10, 20, 40, 80>(task); 
   if (cpuid == 0) {
-    gtty->CprintfRaw("<<< end\n");
+    gtty->Printf("<<< end\n");
   }
 }
 
