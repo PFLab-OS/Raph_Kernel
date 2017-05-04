@@ -23,7 +23,7 @@
  <tr style="height: 56px;">
   <td style="padding-left: 0.5em;">
    <div id="projectname">Raph_Kernel
-   &#160;<span id="projectnumber">99ba652f803bd0cdead302db6192d16cf9f936d9 (with uncommitted changes)</span>
+   &#160;<span id="projectnumber">36875aa22490610cd0ef28cada3097788c76682b (with uncommitted changes)</span>
    </div>
   </td>
  </tr>
@@ -141,7 +141,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <div class="line"><a name="l00051"></a><span class="lineno">   51</span>&#160;  <span class="keyword">virtual</span> <span class="keywordtype">void</span> Execute() {</div>
 <div class="line"><a name="l00052"></a><span class="lineno">   52</span>&#160;    _func-&gt;Execute();</div>
 <div class="line"><a name="l00053"></a><span class="lineno">   53</span>&#160;  }</div>
-<div class="line"><a name="l00054"></a><span class="lineno">   54</span>&#160;  <span class="keyword">virtual</span> <span class="keywordtype">void</span> Wait() {</div>
+<div class="line"><a name="l00054"></a><span class="lineno">   54</span>&#160;  <span class="keyword">virtual</span> <span class="keywordtype">void</span> Wait(<span class="keywordtype">int</span> sig) {</div>
 <div class="line"><a name="l00055"></a><span class="lineno">   55</span>&#160;    kernel_panic(<span class="stringliteral">&quot;Task&quot;</span>, <span class="stringliteral">&quot;unable to use blocking operation(use TaskWithStack instead)&quot;</span>);</div>
 <div class="line"><a name="l00056"></a><span class="lineno">   56</span>&#160;  }</div>
 <div class="line"><a name="l00057"></a><span class="lineno">   57</span>&#160;  <span class="keyword">virtual</span> <span class="keywordtype">void</span> Kill() {</div>
@@ -266,7 +266,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <div class="ttc" id="class_callout_html"><div class="ttname"><a href="class_callout.html">Callout</a></div><div class="ttdef"><b>Definition:</b> _task.h:109</div></div>
 <div class="ttc" id="class_countable_task_html"><div class="ttname"><a href="class_countable_task.html">CountableTask</a></div><div class="ttdef"><b>Definition:</b> _task.h:75</div></div>
 <div class="ttc" id="class_class_function_html"><div class="ttname"><a href="class_class_function.html">ClassFunction</a></div><div class="ttdef"><b>Definition:</b> function.h:116</div></div>
-<div class="ttc" id="class_task_ctrl_html"><div class="ttname"><a href="class_task_ctrl.html">TaskCtrl</a></div><div class="ttdef"><b>Definition:</b> task.h:85</div></div>
+<div class="ttc" id="class_task_ctrl_html"><div class="ttname"><a href="class_task_ctrl.html">TaskCtrl</a></div><div class="ttdef"><b>Definition:</b> task.h:100</div></div>
 <div class="ttc" id="class_task_html"><div class="ttname"><a href="class_task.html">Task</a></div><div class="ttdef"><b>Definition:</b> _task.h:32</div></div>
 <div class="ttc" id="classuptr_html"><div class="ttname"><a href="classuptr.html">uptr</a></div><div class="ttdef"><b>Definition:</b> ptr.h:28</div></div>
 <div class="ttc" id="structcallout_html"><div class="ttname"><a href="structcallout.html">callout</a></div><div class="ttdef"><b>Definition:</b> _callout.h:43</div></div>

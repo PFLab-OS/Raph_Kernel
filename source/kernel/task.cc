@@ -210,8 +210,8 @@ void TaskCtrl::Remove(sptr<Task> task) {
     case Task::Status::kOutOfQueue: {
       break;
     }
-    default:{
-      kassert(false);
+    case Task::Status::kGuard: {
+      assert(false);
     }
     }
     task->_status = Task::Status::kOutOfQueue;  
@@ -226,41 +226,55 @@ extern "C" {
 
 void TaskWithStack::TaskThread::Init() {
   _stack = KernelStackCtrl::GetCtrl().AllocThreadStack(_cpuid);
+  AllocReturnBuf();
   if (setjmp(_return_buf) == 0) {
     asm volatile("movq %0, %%rsp;"
                  "call initialize_TaskThread;"
                  :: "r"(_stack), "D"(this));
+    kernel_panic("TaskThread", "unexpectedly ended.");
+  } else {
+    // return from TaskThread::InitBuffer()
   }
-  // return from TaskThread::InitBuffer()
 }
 
 void TaskWithStack::TaskThread::InitBuffer() {
   if (setjmp(_buf) == 0) {
+    ReleaseReturnBuf();
     longjmp(_return_buf, 1);
     // return back to TaskThread::Init()
   } else {
     // call from TaskThread::SwitchTo()
     assert(_cpuid == cpu_ctrl->GetCpuId());
     _func->Execute();
+    ReleaseReturnBuf();
     longjmp(_return_buf, 1);
   }
   kernel_panic("TaskThread", "unexpectedly ended.");
 }
 
-void TaskWithStack::TaskThread::Wait() {
+void TaskWithStack::TaskThread::Wait(int sig) {
   if (setjmp(_buf) == 0) {
     _state = State::kWaiting;
-    longjmp(_return_buf, 1);
+    ReleaseReturnBuf();
+    if (sig == 0) {
+      sig = 1;
+    }
+    longjmp(_return_buf, sig);
   }
   assert(_cpuid == cpu_ctrl->GetCpuId());
 }
 
-void TaskWithStack::TaskThread::SwitchTo() {
+int TaskWithStack::TaskThread::SwitchTo() {
   assert(_cpuid == cpu_ctrl->GetCpuId());
   assert(_state == State::kWaiting);
   _state = State::kRunning;
-  if (setjmp(_return_buf) == 0) {
+  AllocReturnBuf();
+  int sig;
+  if ((sig = setjmp(_return_buf)) == 0) {
     longjmp(_buf, 1);
+    kernel_panic("TaskThread", "unexpectedly ended.");
+  } else {
+    return sig;
   }
 }
 

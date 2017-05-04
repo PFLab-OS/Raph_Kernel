@@ -23,7 +23,9 @@ var searchData=
   ['devusb',['DevUsb',['../class_dev_usb.html',1,'']]],
   ['devusbcontroller',['DevUsbController',['../class_dev_usb_controller.html',1,'']]],
   ['devusbkeyboard',['DevUsbKeyboard',['../class_dev_usb_keyboard.html',1,'']]],
-  ['dir',['DIR',['../struct_d_i_r.html',1,'']]],
+  ['dinode',['dinode',['../structdinode.html',1,'']]],
+  ['dirent',['dirent',['../structdirent.html',1,'']]],
+  ['diskfilesystem',['DiskFileSystem',['../class_disk_file_system.html',1,'']]],
   ['dport',['dport',['../struct_udp_layer_1_1_header.html#a1ccf9151f462d4a37d7b5b575dcd8248',1,'UdpLayer::Header']]],
   ['drawinfo',['DrawInfo',['../struct_frame_buffer_1_1_draw_info.html',1,'FrameBuffer']]],
   ['dummydescriptor',['DummyDescriptor',['../class_usb_ctrl_1_1_dummy_descriptor.html',1,'UsbCtrl']]]

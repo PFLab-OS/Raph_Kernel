@@ -52,6 +52,9 @@ $(BUILD_DIR)/script:
 $(BUILD_DIR)/init: $(INIT_FILE)
 	cp $(INIT_FILE) $(BUILD_DIR)/init
 
+$(BUILD_DIR)/fs.img:
+	./source/tool/mkfs $(BUILD_DIR)/fs.img README.md
+
 bin_sub: $(BUILD_DIR)/script $(BUILD_DIR)/init
 	$(MAKE_SUBDIR) source
 
@@ -105,11 +108,11 @@ clean: deldisk
 diskclean: deldisk clean
 
 showerror:
-	$(MAKE) _image 2>&1 | egrep "In function|error:"
+	$(MAKE) image 2>&1 | egrep "In function|error:"
 
 numerror:
 	@echo -n "number of error: "
-	@$(MAKE) _image 2>&1 | egrep "error:" | wc -l
+	@$(MAKE) image 2>&1 | egrep "error:" | wc -l
 
 doc:
 	doxygen

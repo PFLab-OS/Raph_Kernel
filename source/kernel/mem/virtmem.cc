@@ -95,12 +95,12 @@ void *operator new[](size_t size) {
 void operator delete(void *p) {
   virtmem_ctrl->Free(reinterpret_cast<virt_addr>(p));
 }
- 
-void operator delete[](void *p) {
+
+void operator delete(void *p, size_t) {
   virtmem_ctrl->Free(reinterpret_cast<virt_addr>(p));
 }
 
-void operator delete(void *p, size_t) {
+void operator delete[](void *p) {
   virtmem_ctrl->Free(reinterpret_cast<virt_addr>(p));
 }
  

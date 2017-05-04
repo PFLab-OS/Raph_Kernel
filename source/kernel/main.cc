@@ -44,6 +44,11 @@
 #include <dev/framebuffer.h>
 #include <dev/pciid.h>
 #include <dev/8042.h>
+#include <dev/storage/storage.h>
+#include <dev/storage/ramdisk.h>
+
+#include <fs.h>
+#include <v6fs.h>
 
 #include <dev/netdev.h>
 #include <dev/eth.h>
@@ -85,10 +90,8 @@ CpuId pstack_cpu;
 
 static uint32_t rnd_next = 1;
 
-#include <dev/disk/ahci/ahci-raph.h>
+#include <dev/storage/ahci/ahci-raph.h>
 AhciChannel *g_channel = nullptr;
-#include <dev/fs/fat/fat.h>
-FatFs *fatfs;
 
 void register_membench2_callout();
 
@@ -838,7 +841,7 @@ extern "C" int main() {
 
   multiboot_ctrl->Setup();
 
-  _framebuffer.Setup();
+  gtty->Init();
 
   multiboot_ctrl->ShowMemoryInfo();
     
@@ -882,7 +885,7 @@ extern "C" int main() {
 
   paging_ctrl->ReleaseLowMemory(); 
  
-  gtty->Init();
+  gtty->Setup();
   
   idt->SetupProc();
   
@@ -896,7 +899,7 @@ extern "C" int main() {
 
   freebsd_main();
 
-  AttachDevices<PciCtrl, LegacyKeyboard, Device>();
+  AttachDevices<PciCtrl, LegacyKeyboard, Ramdisk, Device>();
   
   // arp_table->Setup();
 
@@ -918,6 +921,14 @@ extern "C" int main() {
   shell->Register("udpsend", udpsend);
   shell->Register("arp_scan", arp_scan);
   shell->Register("membench", membench);
+
+  Storage *storage;
+  if (StorageCtrl::GetDevice("ram0", storage) != IoReturnState::kOk) {
+    kernel_panic("storage", "not found");
+  }
+  V6FileSystem v6fs(storage);
+  VirtualFileSystem vfs(&v6fs);
+  vfs.Init();
 
   load_script(make_sptr(new LoadContainer(multiboot_ctrl->LoadFile("init.sh"))));
 
@@ -961,10 +972,6 @@ extern "C" int main_of_others() {
               task_ctrl->RegisterCallout(make_sptr(callout), 1000);
               return;
             }
-            // kassert(g_channel != nullptr);
-            // FatFs *fatfs = new FatFs();
-            // kassert(fatfs->Mount());
-            //        g_channel->Read(0, 1);
           }, make_wptr(callout_))));
     task_ctrl->RegisterCallout(callout_, 10);
   }

@@ -23,7 +23,7 @@
  <tr style="height: 56px;">
   <td style="padding-left: 0.5em;">
    <div id="projectname">Raph_Kernel
-   &#160;<span id="projectnumber">99ba652f803bd0cdead302db6192d16cf9f936d9 (with uncommitted changes)</span>
+   &#160;<span id="projectnumber">36875aa22490610cd0ef28cada3097788c76682b (with uncommitted changes)</span>
    </div>
   </td>
  </tr>
@@ -90,6 +90,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="#pri-types">Private Types</a> &#124;
+<a href="#pri-methods">Private Member Functions</a> &#124;
 <a href="#pri-attribs">Private Attributes</a> &#124;
 <a href="class_task_with_stack_1_1_task_thread-members.html">List of all members</a>  </div>
   <div class="headertitle">
@@ -118,12 +119,12 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>SetFunc</b> (<a class
 <tr class="memitem:a775dc938e50dd6994958a13073e5d3bf"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a775dc938e50dd6994958a13073e5d3bf"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>InitBuffer</b> ()</td></tr>
 <tr class="separator:a775dc938e50dd6994958a13073e5d3bf"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a740b8ba93b7470956e956a60cfcb011b"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a740b8ba93b7470956e956a60cfcb011b"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>Wait</b> ()</td></tr>
-<tr class="separator:a740b8ba93b7470956e956a60cfcb011b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5c24ab8a398a99bc80acd40b39760089"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a5c24ab8a398a99bc80acd40b39760089"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>SwitchTo</b> ()</td></tr>
-<tr class="separator:a5c24ab8a398a99bc80acd40b39760089"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af5ce73a04d5d900a4bf1dd4a201c0e9b"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="af5ce73a04d5d900a4bf1dd4a201c0e9b"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>Wait</b> (int sig)</td></tr>
+<tr class="separator:af5ce73a04d5d900a4bf1dd4a201c0e9b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:abd89d5ae0162a956ffc25717401c3543"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="abd89d5ae0162a956ffc25717401c3543"></a>
+int&#160;</td><td class="memItemRight" valign="bottom"><b>SwitchTo</b> ()</td></tr>
+<tr class="separator:abd89d5ae0162a956ffc25717401c3543"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pri-types"></a>
 Private Types</h2></td></tr>
@@ -131,6 +132,15 @@ Private Types</h2></td></tr>
 <b>kWaiting</b>
  }</td></tr>
 <tr class="separator:a58e3b75cbc62ba3fc3c1be029b2a4140"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pri-methods"></a>
+Private Member Functions</h2></td></tr>
+<tr class="memitem:a4c87682d46682d4a4b89a43c786a027f"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a4c87682d46682d4a4b89a43c786a027f"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>AllocReturnBuf</b> ()</td></tr>
+<tr class="separator:a4c87682d46682d4a4b89a43c786a027f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ada69b3a3fd4ebcea993b1c800a6a1bd4"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ada69b3a3fd4ebcea993b1c800a6a1bd4"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>ReleaseReturnBuf</b> ()</td></tr>
+<tr class="separator:ada69b3a3fd4ebcea993b1c800a6a1bd4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pri-attribs"></a>
 Private Attributes</h2></td></tr>
@@ -149,6 +159,9 @@ jmp_buf&#160;</td><td class="memItemRight" valign="bottom"><b>_return_buf</b></t
 <tr class="memitem:a0d2ce70f602c25b1aba23e36e901529c"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a0d2ce70f602c25b1aba23e36e901529c"></a>
 <a class="el" href="class_cpu_id.html">CpuId</a>&#160;</td><td class="memItemRight" valign="bottom"><b>_cpuid</b></td></tr>
 <tr class="separator:a0d2ce70f602c25b1aba23e36e901529c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a475174d14806910dc97f9514f48dc464"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a475174d14806910dc97f9514f48dc464"></a>
+int&#160;</td><td class="memItemRight" valign="bottom"><b>_using_return_buf</b> = 0</td></tr>
+<tr class="separator:a475174d14806910dc97f9514f48dc464"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa3bb53955949778c45abc07c718d5e8f"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="aa3bb53955949778c45abc07c718d5e8f"></a>
 enum <br class="typebreak"/>
 TaskWithStack::TaskThread::State&#160;</td><td class="memItemRight" valign="bottom"><b>_state</b> = State::kWaiting</td></tr>

@@ -1,7 +1,7 @@
 <map id="V6FileSystem" name="V6FileSystem">
-<area shape="rect" id="node2" href="$class_disk_file_system.html" title="DiskFileSystem" alt="" coords="5,92,119,117"/>
-<area shape="rect" id="node3" href="$class_storage.html" title="Storage" alt="" coords="143,92,211,117"/>
-<area shape="rect" id="node4" href="$class_device.html" title="Device" alt="" coords="144,5,206,31"/>
-<area shape="rect" id="node5" href="$class_v6_file_system_1_1_inode_ctrl.html" title="V6FileSystem::InodeCtrl" alt="" coords="235,92,400,117"/>
-<area shape="rect" id="node6" href="$struct_v6_file_system_1_1_super_block.html" title="V6FileSystem::SuperBlock" alt="" coords="230,5,409,31"/>
+<area shape="rect" id="node2" href="$class_disk_file_system.html" title="DiskFileSystem" alt="" coords="5,96,120,123"/>
+<area shape="rect" id="node3" href="$class_storage.html" title="Storage" alt="" coords="144,96,211,123"/>
+<area shape="rect" id="node4" href="$class_device.html" title="Device" alt="" coords="146,5,208,32"/>
+<area shape="rect" id="node5" href="$class_v6_file_system_1_1_v6fs_inode_ctrl.html" title="V6FileSystem::V6fsInodeCtrl" alt="" coords="235,96,427,123"/>
+<area shape="rect" id="node6" href="$struct_v6_file_system_1_1_super_block.html" title="V6FileSystem::SuperBlock" alt="" coords="241,5,420,32"/>
 </map>

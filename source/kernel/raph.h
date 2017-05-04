@@ -112,6 +112,11 @@ extern "C" {
       asm volatile("sti");
     }
   }
+
+  enum class ReturnState {
+    kOk,
+    kError,
+  };
 #ifdef __cplusplus
 }
 #endif

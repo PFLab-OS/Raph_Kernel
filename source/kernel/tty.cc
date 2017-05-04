@@ -26,10 +26,10 @@
 #include <global.h>
 #include <task.h>
 
-void Tty::Init() {
+void Tty::Setup() {
   _cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority);
   _queue.SetFunction(_cpuid, make_uptr(new ClassFunction<Tty, void *>(this, &Tty::Handle, nullptr)));
-  _Init();
+  _Setup();
   String::Init(_str_buffer);
 }
 

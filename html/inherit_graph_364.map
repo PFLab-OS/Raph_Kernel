@@ -1,3 +1,5 @@
 <map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
-<area shape="rect" id="node1" href="$classuptr.html" title="uptr\&lt; Array\&lt; uint8\l_t \&gt; \&gt;" alt="" coords="6,5,133,46"/>
+<area shape="rect" id="node1" href="$class_tty.html" title="Tty" alt="" coords="6,31,47,57"/>
+<area shape="rect" id="node2" href="$class_frame_buffer.html" title="FrameBuffer" alt="" coords="97,5,191,32"/>
+<area shape="rect" id="node3" href="$class_string_tty.html" title="StringTty" alt="" coords="107,56,181,83"/>
 </map>

@@ -1,6 +1,8 @@
 var searchData=
 [
+  ['ramdisk',['Ramdisk',['../class_ramdisk.html',1,'']]],
   ['read',['Read',['../class_arp_socket.html#a24a8c6ec95db23ca90f008b740dd8f87',1,'ArpSocket']]],
+  ['readdatafrominode',['ReadDataFromInode',['../class_v6_file_system.html#a488fa7edf9dfde439f42e4135e92bd63',1,'V6FileSystem']]],
   ['receivepacket',['ReceivePacket',['../class_net_dev.html#ae0493d0d716f559bb338030a7f587654',1,'NetDev::ReceivePacket()'],['../class_protocol_stack_layer.html#a9a5d2ea32d4eb2472df9a01a20d09491',1,'ProtocolStackLayer::ReceivePacket()'],['../class_protocol_stack_base_layer.html#a377ad90898cea96d04ed441078719d18',1,'ProtocolStackBaseLayer::ReceivePacket()']]],
   ['region',['Region',['../struct_physmem_ctrl_1_1_alloc_option_1_1_region.html',1,'PhysmemCtrl::AllocOption']]],
   ['registerdevice',['RegisterDevice',['../class_net_dev_ctrl.html#a182186b3e26206cd1a2838dc82e48222',1,'NetDevCtrl']]],

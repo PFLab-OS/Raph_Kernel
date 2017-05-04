@@ -1,6 +1,6 @@
 <map id="Ramdisk" name="Ramdisk">
-<area shape="rect" id="node2" href="$class_storage.html" title="Storage" alt="" coords="5,99,73,124"/>
-<area shape="rect" id="node3" href="$class_device.html" title="Device" alt="" coords="8,5,70,31"/>
-<area shape="rect" id="node4" href="$classuptr.html" title="uptr\&lt; Array\&lt; uint8\l_t \&gt; \&gt;" alt="" coords="97,92,224,131"/>
-<area shape="rect" id="node5" href="$class_array.html" title="Array\&lt; uint8_t \&gt;" alt="" coords="103,5,219,31"/>
+<area shape="rect" id="node2" href="$class_storage.html" title="Storage" alt="" coords="5,104,72,131"/>
+<area shape="rect" id="node3" href="$class_device.html" title="Device" alt="" coords="7,5,69,32"/>
+<area shape="rect" id="node4" href="$classuptr.html" title="uptr\&lt; Array\&lt; uint8\l_t \&gt; \&gt;" alt="" coords="97,97,223,138"/>
+<area shape="rect" id="node5" href="$class_array.html" title="Array\&lt; uint8_t \&gt;" alt="" coords="102,5,217,32"/>
 </map>

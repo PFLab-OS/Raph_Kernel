@@ -1,4 +1,3 @@
 <map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
-<area shape="rect" id="node1" href="$class_dev_ehci_1_1_dev_ehci_sub_base.html" title="DevEhci::DevEhciSubBase" alt="" coords="6,12,189,39"/>
-<area shape="rect" id="node2" href="$class_dev_ehci_1_1_dev_ehci_sub.html" title="DevEhci::DevEhciSub\l\&lt; QueueHead, TransferDescriptor \&gt;" alt="" coords="238,5,469,46"/>
+<area shape="rect" id="node1" href="$class_dev_ehci_1_1_frame_list_element_pointer.html" title="DevEhci::FrameListElement\lPointer" alt="" coords="5,5,192,46"/>
 </map>

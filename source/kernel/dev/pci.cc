@@ -32,7 +32,7 @@
 #include <dev/nic/intel/ix/ix.h>
 #include <dev/nic/intel/em/em.h>
 #include <dev/nic/intel/em/lem.h>
-#include <dev/disk/ahci/ahci-raph.h>
+#include <dev/storage/ahci/ahci-raph.h>
 
 void PciCtrl::Probe() {
   _cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority);

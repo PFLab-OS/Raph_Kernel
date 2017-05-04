@@ -66,7 +66,9 @@ class Tty {
   };
   Tty() {
   }
-  void Init();
+  virtual void Init() {
+  }
+  void Setup();
   void Printf(const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
@@ -105,7 +107,7 @@ class Tty {
     _disable_flag = true;
   }
  protected:
-  virtual void _Init() {
+  virtual void _Setup() {
   }
   virtual void Write(char c) = 0;
   virtual void WriteErr(char c) {

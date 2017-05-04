@@ -67,6 +67,7 @@ build/
 
 source/kernel/dev/pciid_table.cc
 source/kernel/dev/pci.ids.formatted
+source/tool/mkfs
 
 GPATH
 GRTAGS

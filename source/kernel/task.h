@@ -30,6 +30,7 @@
 #include <global.h>
 
 // enable to blocking operation
+// TODO prohibit multiple execution
 class TaskWithStack : public Task {
 public:
   TaskWithStack() = delete;
@@ -46,12 +47,18 @@ public:
   virtual void Execute() override {
     _tthread.SwitchTo();
   }
-  virtual void Wait() override {
-    _tthread.Wait();
+  // sig : Signal notifying the process which is called by dispatch
+  //       The value must be non-zero.
+  virtual void Wait(int sig) override {
+    _tthread.Wait(sig);
   }
   virtual void Kill() override {
     kernel_panic("TaskWithStack", "not implemented");
   }
+  int SwitchTo() {
+    return _tthread.SwitchTo();
+  }
+  // enable to access from initialize_TaskThread()
   class TaskThread {
   public:
     TaskThread() = delete;
@@ -65,18 +72,26 @@ public:
     ~TaskThread() {
     }
     void InitBuffer();
-    void Wait();
-    void SwitchTo();
+    void Wait(int sig);
+    int SwitchTo();
   private:  
     virt_addr _stack;
     jmp_buf _buf;
     jmp_buf _return_buf;
     uptr<GenericFunction<>> _func;
     CpuId _cpuid;
+    int _using_return_buf = 0;
     enum State {
       kRunning,
       kWaiting,
     } _state = State::kWaiting;
+    void AllocReturnBuf() {
+      assert(__sync_lock_test_and_set(&_using_return_buf, 1) == 0);
+    }
+    void ReleaseReturnBuf() {
+      assert(_using_return_buf == 1);
+      _using_return_buf = 0;
+    }
   };
 private:
   TaskThread _tthread;
