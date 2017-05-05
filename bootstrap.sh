@@ -1,5 +1,5 @@
 #!/bin/sh
-sudo sh c 'test -f /etc/bootstrapped && exit'
+sudo sh -c 'test -f /etc/bootstrapped && exit'
 
 sudo apt update
 sudo apt install -y git g++ make parted emacs language-pack-ja-base language-pack-ja kpartx gdb bridge-utils libyaml-dev silversearcher-ag
