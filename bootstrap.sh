@@ -1,4 +1,7 @@
 #!/bin/sh
+
+export DEBIAN_FRONTEND=noninteractive
+
 sudo sh -c 'test -f /etc/bootstrapped && exit'
 
 sudo apt update
