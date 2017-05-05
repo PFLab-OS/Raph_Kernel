@@ -84,7 +84,7 @@ sudo mkdir /usr/local/etc/qemu
 sudo sh -c 'echo "allow br0" > /usr/local/etc/qemu/bridge.conf'
 
 # setup ntp
-sudo apt-get install ntp
+sudo apt-get install -y ntp
 sudo service ntp stop
 sudo ntpdate ntp.nict.jp
 sed -i -e 's/^server/#server/g' /etc/ntp.conf
