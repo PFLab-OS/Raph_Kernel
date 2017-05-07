@@ -88,7 +88,7 @@ extern "C" {
     return NULL;
   }
 
-  static inline void *memcpy(void *dest, const void *src, size_t n) {
+  inline void *memcpy(void *dest, const void *src, size_t n) {
     uint8_t *d = (uint8_t *)dest;
     const uint8_t *s = (const uint8_t *)src;
     for(; n > 0; n--, d++, s++) {
@@ -97,7 +97,7 @@ extern "C" {
     return dest;
   }
 
-  static void *memset(void *dest, uint8_t c, size_t n) {
+  inline void *memset(void *dest, uint8_t c, size_t n) {
     uint8_t *d = (uint8_t *)dest;
     for(; n > 0; n--, d++) {
       *d = c;

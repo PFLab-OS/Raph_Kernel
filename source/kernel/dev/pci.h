@@ -77,11 +77,11 @@ public:
     return _base_addr + ((bus & 0xff) << 20) + ((device & 0x1f) << 15) + ((func & 0x7) << 12) + (reg & 0xfff);
   }
   template<class T>
-    T ReadReg(uint8_t bus, uint8_t device, uint8_t func, uint16_t reg) override {
+    T ReadReg(uint8_t bus, uint8_t device, uint8_t func, uint16_t reg) {
     return *(reinterpret_cast<T *>(GetVaddr(bus, device, func, reg)));
   }
   template<class T>
-    void WriteReg(uint8_t bus, uint8_t device, uint8_t func, uint16_t reg, T value) override {
+    void WriteReg(uint8_t bus, uint8_t device, uint8_t func, uint16_t reg, T value) {
     *(reinterpret_cast<T *>(GetVaddr(bus, device, func, reg))) = value;
   }
   // Capabilityへのオフセットを返す
