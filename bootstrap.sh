@@ -23,10 +23,7 @@ cd ..
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential uuid-dev nasm iasl
 git clone -b UDK2017 http://github.com/tianocore/edk2 --depth=1
 cd edk2
-git checkout UDK2017
-make -j2 -C BaseTools
-. ./edksetup.sh
-build -a X64 -t GCC48 -p OvmfPkg/OvmfPkgX64.dsc
+bash -c 'make -C BaseTools; make -C BaseTools; . ./edksetup.sh; build -a X64 -t GCC48 -p OvmfPkg/OvmfPkgX64.dsc'
 cd ..
 
 # make & install musl with CFLAGS="-fpie -fPIE"
