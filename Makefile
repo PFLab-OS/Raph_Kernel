@@ -3,7 +3,7 @@ IMAGEFILE = disk.img
 IMAGE = /tmp/$(IMAGEFILE)
 BUILD_DIR = build
 
-OVMF_DIR = /home/vagrant/edk2/Build/OvmfX64/DEBUG_GCC48/FV/
+OVMF_DIR = /home/vagrant/edk2-UDK2017/
 
 SSH_CMD = ssh -F .ssh_config default
 
