@@ -21,7 +21,7 @@ pci.ids.formatted : pci.ids
 	sed 's/\("\|\?\|\\\)/\\\1/g' pci.ids > pci.ids.formatted
 
 usb.o:
-	$(MAKE) -C usb CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
+	@$(MAKE) -C usb CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
 
 nic.o:
 	@$(MAKE) -C nic CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
