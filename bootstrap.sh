@@ -5,10 +5,14 @@ sudo sh -c 'test -f /etc/bootstrapped && exit'
 sudo sed -i'~' -E "s@http://(..\.)?(archive|security)\.ubuntu\.com/ubuntu@http://linux.yz.yamagata-u.ac.jp/pub/linux/ubuntu-archive/@g" /etc/apt/sources.list
 
 sudo DEBIAN_FRONTEND=noninteractive apt-get -qq update
-sudo DEBIAN_FRONTEND=noninteractive apt-get -qq install -y gdebi git g++ make autoconf bison flex parted emacs language-pack-ja-base language-pack-ja kpartx gdb bridge-utils libyaml-dev silversearcher-ag
+sudo DEBIAN_FRONTEND=noninteractive apt-get -qq install -y gdebi git g++ make autoconf bison flex parted emacs language-pack-ja-base language-pack-ja kpartx gdb bridge-utils libyaml-dev silversearcher-ag ccache
 sudo DEBIAN_FRONTEND=noninteractive apt-get -qq -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install -y grub-efi
 sudo DEBIAN_FRONTEND=noninteractive apt-get -qq install -y gdisk dosfstools
 sudo update-locale LANG=ja_JP.UTF-8 LANGUAGE="ja_JP:ja"
+
+echo 'export USE_CCACHE=1' >> ~/.bashrc
+echo 'export CCACHE_DIR=~/.ccache' >> ~/.bashrc
+echo 'export PATH="/usr/lib/ccache:$PATH"' >> ~/.bashrc
 
 # install qemu
 wget -q "http://drive.google.com/uc?export=download&id=0BzboiC2yUBwnZkU3QzMzMUc3cW8" -O qemu_2.9.0-1_amd64.deb
