@@ -100,6 +100,9 @@ sudo sed -i -e 's/^server/#server/g' /etc/ntp.conf
 sudo sh -c 'echo "server ntp.nict.jp" >> /etc/ntp.conf'
 sudo service ntp start
 
+mkdir "/mnt/Raph_Kernel"
+mkdir "/mnt/efi"
+
 sudo sh -c 'date > /etc/bootstrapped'
 
 echo "setup done!"
