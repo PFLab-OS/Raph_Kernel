@@ -19,9 +19,7 @@ loopsetup() {
 
 mount() {
     loopsetup
-    sudo mkdir -p ${MOUNT_DIR}
     sudo mount -t ext2 ${MAPPEDDEVICE_DATA_PT} ${MOUNT_DIR}
-    sudo mkdir -p ${MOUNT_DIR_EFI}
     sudo mount -t vfat ${MAPPEDDEVICE_EFI_PT} ${MOUNT_DIR_EFI}
 }
 
