@@ -1,0 +1,5 @@
+<map id="ProtocolStackLayer::Setup" name="ProtocolStackLayer::Setup">
+<area shape="rect" id="node2" href="$class_protocol_stack_layer.html#ac1600cd3b014707d6c385bb596629c98" title="ProtocolStackLayer\l::hasNext" alt="" coords="373,5,509,46"/>
+<area shape="rect" id="node3" href="$class_protocol_stack_layer.html#abe5ab979a60473f393608c2748ed6675" title="ProtocolStackLayer\l::AddLayer" alt="" coords="189,34,325,75"/>
+<area shape="rect" id="node4" href="$class_protocol_stack_layer.html#a375c6c28822a524124cd89b06f61d21a" title="ProtocolStackLayer\l::SetupSubclass" alt="" coords="189,99,325,141"/>
+</map>

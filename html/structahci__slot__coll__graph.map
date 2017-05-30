@@ -1,0 +1,42 @@
+<map id="ahci_slot" name="ahci_slot">
+<area shape="rect" id="node18" href="$structahci__channel.html" title="ahci_channel" alt="" coords="2069,681,2168,708"/>
+<area shape="rect" id="node2" href="$structcallout.html" title="callout" alt="" coords="1714,616,1774,643"/>
+<area shape="rect" id="node3" href="$struct_lck_callout_container.html" title="LckCalloutContainer" alt="" coords="1378,616,1518,643"/>
+<area shape="rect" id="node4" href="$classsptr.html" title="sptr\&lt; LckCallout \&gt;" alt="" coords="1123,616,1253,643"/>
+<area shape="rect" id="node5" href="$classcounter__helper.html" title="counter_helper" alt="" coords="19,815,125,841"/>
+<area shape="rect" id="node8" href="$classsptr.html" title="sptr\&lt; Task \&gt;" alt="" coords="275,657,373,684"/>
+<area shape="rect" id="node14" href="$classsptr.html" title="sptr\&lt; Callout \&gt;" alt="" coords="837,524,947,551"/>
+<area shape="rect" id="node6" href="$class_lck_callout.html" title="LckCallout" alt="" coords="850,444,934,471"/>
+<area shape="rect" id="node7" href="$class_callout.html" title="Callout" alt="" coords="567,461,630,488"/>
+<area shape="rect" id="node9" href="$class_task.html" title="Task" alt="" coords="573,631,624,657"/>
+<area shape="rect" id="node33" href="$class_countable_task.html" title="CountableTask" alt="" coords="543,333,654,360"/>
+<area shape="rect" id="node10" href="$classuptr.html" title="uptr\&lt; GenericFunction\&lt;\&gt; \&gt;" alt="" coords="235,503,413,529"/>
+<area shape="rect" id="node11" href="$class_generic_function.html" title="GenericFunction\&lt;\&gt;" alt="" coords="5,631,139,657"/>
+<area shape="rect" id="node12" href="$class_cpu_id.html" title="CpuId" alt="" coords="43,297,101,324"/>
+<area shape="rect" id="node15" href="$class_spin_lock.html" title="SpinLock" alt="" coords="286,179,362,205"/>
+<area shape="rect" id="node13" href="$struct_status.html" title="Status" alt="" coords="294,749,354,776"/>
+<area shape="rect" id="node34" href="$class_packet_ataio.html" title="PacketAtaio" alt="" coords="1697,771,1791,797"/>
+<area shape="rect" id="node24" href="$class_object_list.html" title="ObjectList\&lt; BsdDevice * \&gt;" alt="" coords="509,131,688,157"/>
+<area shape="rect" id="node42" href="$structlock__object.html" title="lock_object" alt="" coords="555,80,643,107"/>
+<area shape="rect" id="node16" href="$class_spin_lock_interface.html" title="SpinLockInterface" alt="" coords="9,179,135,205"/>
+<area shape="rect" id="node17" href="$structata__dmaslot.html" title="ata_dmaslot" alt="" coords="1697,681,1791,708"/>
+<area shape="rect" id="node19" href="$structahci__device.html" title="ahci_device" alt="" coords="1901,832,1992,859"/>
+<area shape="rect" id="node20" href="$structata__dma.html" title="ata_dma" alt="" coords="1911,909,1983,936"/>
+<area shape="rect" id="node21" href="$structbus__dma__tag.html" title="bus_dma_tag" alt="" coords="1694,969,1794,996"/>
+<area shape="rect" id="node22" href="$class_phys_addr.html" title="PhysAddr" alt="" coords="1409,983,1487,1009"/>
+<area shape="rect" id="node23" href="$class_bsd_device.html" title="BsdDevice" alt="" coords="1405,265,1491,292"/>
+<area shape="rect" id="node28" href="$class_bsd_dev_bus.html" title="BsdDevBus" alt="" coords="1698,300,1790,327"/>
+<area shape="rect" id="node25" href="$struct_object_list_1_1_container.html" title="ObjectList\&lt; T \&gt;::Container" alt="" coords="235,44,413,71"/>
+<area shape="rect" id="node27" href="$class_bsd_dev_pci.html" title="BsdDevPci" alt="" coords="1144,333,1232,360"/>
+<area shape="rect" id="node29" href="$class_bsd_dev_pci_1_1_bsd_dev_pci_sub.html" title="BsdDevPci::BsdDevPciSub" alt="" coords="1355,316,1541,343"/>
+<area shape="rect" id="node30" href="$class_dev_pci.html" title="DevPci" alt="" coords="1155,231,1221,257"/>
+<area shape="rect" id="node31" href="$class_device.html" title="Device" alt="" coords="861,231,923,257"/>
+<area shape="rect" id="node32" href="$class_bsd_dev_pci_1_1_int_container.html" title="BsdDevPci::IntContainer" alt="" coords="809,333,975,360"/>
+<area shape="rect" id="node35" href="$classuptr.html" title="uptr\&lt; Array\&lt; uint8\l_t \&gt; \&gt;" alt="" coords="1385,815,1511,857"/>
+<area shape="rect" id="node36" href="$class_array.html" title="Array\&lt; uint8_t \&gt;" alt="" coords="1130,823,1246,849"/>
+<area shape="rect" id="node37" href="$structata__res.html" title="ata_res" alt="" coords="1415,881,1481,908"/>
+<area shape="rect" id="node38" href="$unionccb__spriv__area.html" title="ccb_spriv_area" alt="" coords="1393,932,1503,959"/>
+<area shape="rect" id="node39" href="$unionccb__priv__entry.html" title="ccb_priv_entry" alt="" coords="1135,932,1241,959"/>
+<area shape="rect" id="node40" href="$structata__cmd.html" title="ata_cmd" alt="" coords="1412,713,1484,740"/>
+<area shape="rect" id="node41" href="$structmtx__padalign.html" title="mtx_padalign" alt="" coords="1000,85,1099,112"/>
+</map>

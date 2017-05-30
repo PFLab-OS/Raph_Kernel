@@ -1,0 +1,4 @@
+<map id="DevUsbController" name="DevUsbController">
+<area shape="rect" id="node2" href="$class_dev_ehci_1_1_dev_ehci_usb_controller.html" title="DevEhci::DevEhciUsbController" alt="" coords="5,80,215,107"/>
+<area shape="rect" id="node3" href="$class_dev_uhci_1_1_dev_uhci_usb_controller.html" title="DevUhci::DevUhciUsbController" alt="" coords="239,80,451,107"/>
+</map>

@@ -1,0 +1,5 @@
+<map id="AhciCtrl" name="AhciCtrl">
+<area shape="rect" id="node2" href="$class_bsd_dev_pci.html" title="BsdDevPci" alt="" coords="7,155,95,181"/>
+<area shape="rect" id="node3" href="$class_bsd_dev_bus.html" title="BsdDevBus" alt="" coords="5,80,96,107"/>
+<area shape="rect" id="node4" href="$class_bsd_device.html" title="BsdDevice" alt="" coords="7,5,93,32"/>
+</map>

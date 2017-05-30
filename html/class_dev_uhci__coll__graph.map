@@ -1,0 +1,29 @@
+<map id="DevUhci" name="DevUhci">
+<area shape="rect" id="node13" href="$class_dev_uhci_1_1_uhci_manager.html" title="DevUhci::UhciManager" alt="" coords="1750,221,1909,248"/>
+<area shape="rect" id="node26" href="$class_dev_uhci_1_1_dev_uhci_usb_controller.html" title="DevUhci::DevUhciUsbController" alt="" coords="1723,415,1935,441"/>
+<area shape="rect" id="node2" href="$class_dev_pci.html" title="DevPci" alt="" coords="1113,520,1178,547"/>
+<area shape="rect" id="node3" href="$class_device.html" title="Device" alt="" coords="791,677,854,704"/>
+<area shape="rect" id="node4" href="$class_ring_buffer.html" title="RingBuffer\&lt; DevUhci\l::TransferDescriptor\l *, 128 \&gt;" alt="" coords="1072,272,1219,328"/>
+<area shape="rect" id="node5" href="$class_dev_uhci_1_1_transfer_descriptor.html" title="DevUhci::TransferDescriptor" alt="" coords="728,196,917,223"/>
+<area shape="rect" id="node6" href="$classuptr.html" title="uptr\&lt; GenericFunction\&lt;\&gt; \&gt;" alt="" coords="453,140,632,167"/>
+<area shape="rect" id="node21" href="$class_task.html" title="Task" alt="" coords="797,247,848,273"/>
+<area shape="rect" id="node7" href="$class_generic_function.html" title="GenericFunction\&lt;\&gt;" alt="" coords="224,140,357,167"/>
+<area shape="rect" id="node8" href="$class_spin_lock.html" title="SpinLock" alt="" coords="253,525,329,552"/>
+<area shape="rect" id="node23" href="$class_list.html" title="List\&lt; DevUhci::TransferDescriptor * \&gt;" alt="" coords="1024,469,1267,496"/>
+<area shape="rect" id="node25" href="$class_list_1_1_container.html" title="List\&lt; T \&gt;::Container" alt="" coords="473,475,612,501"/>
+<area shape="rect" id="node28" href="$class_ring_buffer.html" title="RingBuffer\&lt; DevUhci\l::QueueHead *, 256 \&gt;" alt="" coords="1071,403,1220,445"/>
+<area shape="rect" id="node9" href="$class_spin_lock_interface.html" title="SpinLockInterface" alt="" coords="6,525,133,552"/>
+<area shape="rect" id="node10" href="$class_cpu_id.html" title="CpuId" alt="" coords="41,292,98,319"/>
+<area shape="rect" id="node11" href="$struct_dev_uhci_1_1_frame_list.html" title="DevUhci::FrameList" alt="" coords="1076,571,1215,597"/>
+<area shape="rect" id="node12" href="$class_dev_uhci_1_1_frame_pointer.html" title="DevUhci::FramePointer" alt="" coords="743,728,902,755"/>
+<area shape="rect" id="node14" href="$class_dev_usb_controller_1_1_manager.html" title="DevUsbController::Manager" alt="" coords="1053,621,1237,648"/>
+<area shape="rect" id="node27" href="$class_dev_usb_controller.html" title="DevUsbController" alt="" coords="1434,612,1561,639"/>
+<area shape="rect" id="node15" href="$class_dev_uhci_1_1_queue_head.html" title="DevUhci::QueueHead" alt="" coords="747,143,898,169"/>
+<area shape="rect" id="node16" href="$classuptr.html" title="uptr\&lt; GenericFunction\l\&lt; uptr\&lt; Array\&lt; uint8\l_t \&gt; \&gt; \&gt; \&gt;" alt="" coords="1422,5,1573,61"/>
+<area shape="rect" id="node17" href="$class_generic_function.html" title="GenericFunction\&lt; uptr\l\&lt; Array\&lt; uint8_t \&gt; \&gt; \&gt;" alt="" coords="1069,13,1221,54"/>
+<area shape="rect" id="node18" href="$struct_dev_uhci_1_1_td_container.html" title="DevUhci::TdContainer" alt="" coords="1421,171,1573,197"/>
+<area shape="rect" id="node19" href="$classsptr.html" title="sptr\&lt; Task \&gt;" alt="" coords="494,320,591,347"/>
+<area shape="rect" id="node20" href="$classcounter__helper.html" title="counter_helper" alt="" coords="237,359,344,385"/>
+<area shape="rect" id="node24" href="$classsptr.html" title="sptr\&lt; List::Container \&gt;" alt="" coords="746,444,899,471"/>
+<area shape="rect" id="node22" href="$struct_status.html" title="Status" alt="" coords="513,203,573,229"/>
+</map>

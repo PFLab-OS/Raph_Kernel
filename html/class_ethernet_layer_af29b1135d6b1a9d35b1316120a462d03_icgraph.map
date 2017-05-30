@@ -1,0 +1,4 @@
+<map id="EthernetLayer::SetAddress" name="EthernetLayer::SetAddress">
+<area shape="rect" id="node2" href="$class_arp_socket.html#a225562b1b7fb860036dedf763afde809" title="ArpSocket::Open" alt="" coords="235,5,357,32"/>
+<area shape="rect" id="node3" href="$class_udp_socket.html#a8f062c4dd1161ffeda79baae3a257317" title="UdpSocket::Open" alt="" coords="233,56,359,83"/>
+</map>

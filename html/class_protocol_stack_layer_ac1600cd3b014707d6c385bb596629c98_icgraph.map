@@ -1,0 +1,6 @@
+<map id="ProtocolStackLayer::hasNext" name="ProtocolStackLayer::hasNext">
+<area shape="rect" id="node2" href="$class_protocol_stack_layer.html#a89bef3d242a99dce160a2406f3864906" title="ProtocolStackLayer\l::Setup" alt="" coords="373,23,509,65"/>
+<area shape="rect" id="node5" href="$class_protocol_stack_layer.html#abe5ab979a60473f393608c2748ed6675" title="ProtocolStackLayer\l::AddLayer" alt="" coords="189,53,325,94"/>
+<area shape="rect" id="node3" href="$class_arp_socket.html#a225562b1b7fb860036dedf763afde809" title="ArpSocket::Open" alt="" coords="560,5,683,32"/>
+<area shape="rect" id="node4" href="$class_udp_socket.html#a8f062c4dd1161ffeda79baae3a257317" title="UdpSocket::Open" alt="" coords="558,56,685,83"/>
+</map>
