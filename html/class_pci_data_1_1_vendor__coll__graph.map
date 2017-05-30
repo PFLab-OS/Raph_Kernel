@@ -1,0 +1,8 @@
+<map id="PciData::Vendor" name="PciData::Vendor">
+<area shape="rect" id="node2" href="$class_pci_data_1_1_list.html" title="PciData::List\&lt; Vendor \&gt;" alt="" coords="5,445,168,472"/>
+<area shape="rect" id="node3" href="$class_pci_data_1_1_base.html" title="PciData::Base" alt="" coords="100,5,207,32"/>
+<area shape="rect" id="node5" href="$class_pci_data_1_1_list.html" title="PciData::List\&lt; Device \&gt;" alt="" coords="72,173,235,200"/>
+<area shape="rect" id="node7" href="$class_pci_data_1_1_list.html" title="PciData::List\&lt; Subsystem \&gt;" alt="" coords="193,83,380,109"/>
+<area shape="rect" id="node4" href="$class_pci_data_1_1_device.html" title="PciData::Device" alt="" coords="101,264,219,291"/>
+<area shape="rect" id="node6" href="$class_pci_data_1_1_subsystem.html" title="PciData::Subsystem" alt="" coords="259,173,401,200"/>
+</map>

@@ -5,7 +5,7 @@ sudo sh -c 'test -f /etc/bootstrapped && exit'
 sudo sed -i'~' -E "s@http://(..\.)?(archive|security)\.ubuntu\.com/ubuntu@http://linux.yz.yamagata-u.ac.jp/pub/linux/ubuntu-archive/@g" /etc/apt/sources.list
 
 sudo DEBIAN_FRONTEND=noninteractive apt-get -qq update
-sudo DEBIAN_FRONTEND=noninteractive apt-get -qq install -y gdebi git g++ make autoconf bison flex parted emacs language-pack-ja-base language-pack-ja kpartx gdb bridge-utils libyaml-dev silversearcher-ag ccache
+sudo DEBIAN_FRONTEND=noninteractive apt-get -qq install -y gdebi git g++ make autoconf bison flex parted emacs language-pack-ja-base language-pack-ja kpartx gdb bridge-utils libyaml-dev silversearcher-ag ccache doxygen graphviz
 sudo DEBIAN_FRONTEND=noninteractive apt-get -qq -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install -y grub-efi
 sudo DEBIAN_FRONTEND=noninteractive apt-get -qq install -y gdisk dosfstools
 sudo update-locale LANG=ja_JP.UTF-8 LANGUAGE="ja_JP:ja"
@@ -91,14 +91,6 @@ sudo /etc/rc.local
 
 sudo mkdir /usr/local/etc/qemu
 sudo sh -c 'echo "allow br0" > /usr/local/etc/qemu/bridge.conf'
-
-# setup ntp
-sudo DEBIAN_FRONTEND=noninteractive apt-get -qq install -y ntp
-sudo service ntp stop
-sudo ntpdate ntp.nict.jp
-sudo sed -i -e 's/^server/#server/g' /etc/ntp.conf
-sudo sh -c 'echo "server ntp.nict.jp" >> /etc/ntp.conf'
-sudo service ntp start
 
 sudo mkdir "/mnt/Raph_Kernel"
 sudo mkdir "/mnt/efi"

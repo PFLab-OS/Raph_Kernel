@@ -1,0 +1,5 @@
+<map id="ProtocolStack::EscalationHandler" name="ProtocolStack::EscalationHandler">
+<area shape="rect" id="node2" href="$class_protocol_stack_base_layer.html#a23a0981f0344852c3a7fcf97ed70edf2" title="ProtocolStackBaseLayer\l::IsFull" alt="" coords="227,5,394,46"/>
+<area shape="rect" id="node3" href="$class_protocol_stack_base_layer.html#a60bf2ef4d266351bb3001cd018213749" title="ProtocolStackBaseLayer\l::FetchRxBuffer" alt="" coords="227,70,394,111"/>
+<area shape="rect" id="node4" href="$class_protocol_stack_base_layer.html#a36648d3c70173354fa90978afec5dd4d" title="ProtocolStackBaseLayer\l::Delegate" alt="" coords="227,135,394,177"/>
+</map>

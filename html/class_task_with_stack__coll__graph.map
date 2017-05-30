@@ -1,0 +1,10 @@
+<map id="TaskWithStack" name="TaskWithStack">
+<area shape="rect" id="node2" href="$class_task.html" title="Task" alt="" coords="264,187,315,213"/>
+<area shape="rect" id="node3" href="$classsptr.html" title="sptr\&lt; Task \&gt;" alt="" coords="287,291,384,317"/>
+<area shape="rect" id="node4" href="$classcounter__helper.html" title="counter_helper" alt="" coords="351,187,457,213"/>
+<area shape="rect" id="node5" href="$classuptr.html" title="uptr\&lt; GenericFunction\&lt;\&gt; \&gt;" alt="" coords="5,96,184,123"/>
+<area shape="rect" id="node9" href="$class_task_with_stack_1_1_task_thread.html" title="TaskWithStack::TaskThread" alt="" coords="51,187,240,213"/>
+<area shape="rect" id="node6" href="$class_generic_function.html" title="GenericFunction\&lt;\&gt;" alt="" coords="28,5,161,32"/>
+<area shape="rect" id="node7" href="$class_cpu_id.html" title="CpuId" alt="" coords="237,96,293,123"/>
+<area shape="rect" id="node8" href="$struct_status.html" title="Status" alt="" coords="333,96,392,123"/>
+</map>

@@ -1,0 +1,4 @@
+<map id="ProtocolStack::DeviceBufferHandler" name="ProtocolStack::DeviceBufferHandler">
+<area shape="rect" id="node2" href="$class_net_dev.html#ae0493d0d716f559bb338030a7f587654" title="NetDev::ReceivePacket" alt="" coords="243,5,407,32"/>
+<area shape="rect" id="node3" href="$class_net_dev.html#ac2e97c870813924621fd1c7058414d49" title="NetDev::ReuseRxBuffer" alt="" coords="243,56,408,83"/>
+</map>

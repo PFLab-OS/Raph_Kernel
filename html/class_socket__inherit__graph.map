@@ -1,0 +1,5 @@
+<map id="Socket" name="Socket">
+<area shape="rect" id="node3" href="$class_arp_socket.html" title="ArpSocket" alt="" coords="5,155,87,181"/>
+<area shape="rect" id="node4" href="$class_udp_socket.html" title="UdpSocket" alt="" coords="113,155,199,181"/>
+<area shape="rect" id="node2" href="$class_protocol_stack_layer.html" title="ProtocolStackLayer" alt="" coords="33,5,168,32"/>
+</map>

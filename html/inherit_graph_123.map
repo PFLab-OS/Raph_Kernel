@@ -1,0 +1,5 @@
+<map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
+<area shape="rect" id="node1" href="$class_dev_usb_controller.html" title="DevUsbController" alt="" coords="6,31,133,57"/>
+<area shape="rect" id="node2" href="$class_dev_ehci_1_1_dev_ehci_usb_controller.html" title="DevEhci::DevEhciUsbController" alt="" coords="183,5,393,32"/>
+<area shape="rect" id="node3" href="$class_dev_uhci_1_1_dev_uhci_usb_controller.html" title="DevUhci::DevUhciUsbController" alt="" coords="182,56,394,83"/>
+</map>

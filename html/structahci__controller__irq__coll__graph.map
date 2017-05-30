@@ -1,0 +1,24 @@
+<map id="ahci_controller_irq" name="ahci_controller_irq">
+<area shape="rect" id="node2" href="$structahci__controller.html" title="ahci_controller" alt="" coords="103,472,209,499"/>
+<area shape="rect" id="node3" href="$structbus__dma__tag.html" title="bus_dma_tag" alt="" coords="155,381,255,408"/>
+<area shape="rect" id="node4" href="$class_phys_addr.html" title="PhysAddr" alt="" coords="165,291,243,317"/>
+<area shape="rect" id="node5" href="$class_bsd_device.html" title="BsdDevice" alt="" coords="314,381,400,408"/>
+<area shape="rect" id="node13" href="$class_bsd_dev_bus.html" title="BsdDevBus" alt="" coords="369,472,460,499"/>
+<area shape="rect" id="node6" href="$class_object_list.html" title="ObjectList\&lt; BsdDevice * \&gt;" alt="" coords="268,291,447,317"/>
+<area shape="rect" id="node7" href="$struct_object_list_1_1_container.html" title="ObjectList\&lt; T \&gt;::Container" alt="" coords="199,187,376,213"/>
+<area shape="rect" id="node9" href="$class_spin_lock.html" title="SpinLock" alt="" coords="454,187,529,213"/>
+<area shape="rect" id="node18" href="$class_countable_task.html" title="CountableTask" alt="" coords="513,381,623,408"/>
+<area shape="rect" id="node10" href="$class_spin_lock_interface.html" title="SpinLockInterface" alt="" coords="391,96,517,123"/>
+<area shape="rect" id="node11" href="$class_cpu_id.html" title="CpuId" alt="" coords="542,96,599,123"/>
+<area shape="rect" id="node21" href="$class_task.html" title="Task" alt="" coords="840,187,891,213"/>
+<area shape="rect" id="node12" href="$class_bsd_dev_pci.html" title="BsdDevPci" alt="" coords="431,563,519,589"/>
+<area shape="rect" id="node14" href="$class_bsd_dev_pci_1_1_bsd_dev_pci_sub.html" title="BsdDevPci::BsdDevPciSub" alt="" coords="442,653,627,680"/>
+<area shape="rect" id="node15" href="$class_dev_pci.html" title="DevPci" alt="" coords="657,563,721,589"/>
+<area shape="rect" id="node16" href="$class_device.html" title="Device" alt="" coords="675,472,737,499"/>
+<area shape="rect" id="node17" href="$class_bsd_dev_pci_1_1_int_container.html" title="BsdDevPci::IntContainer" alt="" coords="485,472,651,499"/>
+<area shape="rect" id="node19" href="$classsptr.html" title="sptr\&lt; Task \&gt;" alt="" coords="753,291,849,317"/>
+<area shape="rect" id="node20" href="$classcounter__helper.html" title="counter_helper" alt="" coords="709,187,816,213"/>
+<area shape="rect" id="node22" href="$classuptr.html" title="uptr\&lt; GenericFunction\&lt;\&gt; \&gt;" alt="" coords="629,96,808,123"/>
+<area shape="rect" id="node23" href="$class_generic_function.html" title="GenericFunction\&lt;\&gt;" alt="" coords="652,5,785,32"/>
+<area shape="rect" id="node24" href="$struct_status.html" title="Status" alt="" coords="835,96,895,123"/>
+</map>

@@ -1,0 +1,4 @@
+<map id="NetDev::IsLinkUp" name="NetDev::IsLinkUp">
+<area shape="rect" id="node2" href="$class_net_dev.html#a318c3cf6e6c5d6ad646f1ac6bc47b5b3" title="NetDev::GetStatus" alt="" coords="178,5,311,31"/>
+<area shape="rect" id="node3" href="$class_bsd_ethernet.html#a54fb6681f922aa6988b6e984d9f7b49c" title="BsdEthernet::IsLinkUp" alt="" coords="359,5,513,31"/>
+</map>

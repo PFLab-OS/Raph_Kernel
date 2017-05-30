@@ -1,0 +1,5 @@
+<map id="Keyboard" name="Keyboard">
+<area shape="rect" id="node3" href="$class_dev_usb_keyboard_1_1_keyboard_sub.html" title="DevUsbKeyboard::KeyboardSub" alt="" coords="5,155,215,181"/>
+<area shape="rect" id="node4" href="$class_legacy_keyboard.html" title="LegacyKeyboard" alt="" coords="239,155,357,181"/>
+<area shape="rect" id="node2" href="$class_device.html" title="Device" alt="" coords="173,5,235,32"/>
+</map>

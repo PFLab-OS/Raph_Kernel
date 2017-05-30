@@ -1,148 +1,78 @@
-MOUNT_DIR = /mnt/Raph_Kernel
-IMAGEFILE = disk.img
-IMAGE = /tmp/$(IMAGEFILE)
-BUILD_DIR = build
+include common.mk
 
-OVMF_DIR = /home/vagrant/edk2-UDK2017/
+VNC_PORT = 15900
 
-SSH_CMD = ssh -F .ssh_config default
+define make_wrapper
+	$(if $(shell if [ -e /etc/bootstrapped ]; then echo "guest"; fi), \
+	  # guest environment
+	  $(MAKE) -f $(RULE_FILE) $(1), \
+	  # host environment
+	  $(if $(shell ssh -F .ssh_config default "exit"; if [ $$? != 0 ]; then echo "no-guest"; fi), vagrant up;)
+	  ssh -F .ssh_config default "cd /vagrant/; env MAKEFLAGS=$(MAKEFLAGS) make -f $(RULE_FILE) $(1)"
+	)
+endef
 
-VDI = disk.vdi
+define check_guest
+	$(if $(shell if [ -e /etc/bootstrapped ]; then echo "guest"; fi), \
+	  @echo "error: run this command on the host environment."; exit 1)
+endef
+
 UNAME = ${shell uname}
 ifeq ($(OS),Windows_NT)
-	VNC = @echo windows is not supported; exit 1
+define vnc
+	@echo Windows is not supported; exit 1
+endef
 else ifeq ($(UNAME),Linux)
-	VNC = vncviewer localhost::15900
+define vnc
+	@echo open with VNC Viewer.
+	@echo Please install it in advance.
+	vncviewer localhost::$(VNC_PORT)
+endef
 else ifeq ($(UNAME),Darwin)
-	VNC = open vnc://localhost:15900
+define vnc
+	@echo open with the default VNC viewer.
+	open vnc://localhost:$(VNC_PORT)
+endef
 else
-	VNC = @echo non supported OS; exit 1
+define vnc
+	@echo non supported OS; exit 1
+endef
 endif
 
-ifdef INIT
-	REMOTE_COMMAND += export INIT=$(INIT); 
-	INIT_FILE = init_$(INIT)
-else
-	BRANCH_INIT_FILE = init_$(shell git rev-parse --abbrev-ref HEAD)
-	INIT_FILE = $(if $(shell ls | grep $(BRANCH_INIT_FILE)),$(BRANCH_INIT_FILE),init)
-endif
+VDI = disk.vdi
 
-.PHONY: clean disk run image mount umount debugqemu showerror numerror vboxrun run_pxeserver pxeimg burn_ipxe burn_ipxe_remote vboxkill vnc synctime
+default:
+	$(call make_wrapper, image)
 
-default: image
+.PHONY: run hd image mount umount clean
 
-###################################
-# for remote host (Vagrant)
-###################################
+run:
+	$(call make_wrapper, run)
 
-_run:
-	$(MAKE) _qemuend
-	$(MAKE) _qemurun
-	-telnet 127.0.0.1 1235
-	$(MAKE) _qemuend
+hd:
+	$(call make_wrapper, hd)
 
-_qemurun: _image
-	sudo qemu-system-x86_64 -drive if=pflash,readonly,file=$(OVMF_DIR)OVMF_CODE.fd,format=raw -drive if=pflash,file=$(OVMF_DIR)OVMF_VARS.fd,format=raw -cpu qemu64 -smp 8 -machine q35 -clock hpet -monitor telnet:127.0.0.1:1235,server,nowait -vnc 0.0.0.0:0,password $(IMAGE)&
-#	sudo qemu-system-x86_64 -cpu qemu64,+x2apic -smp 8 -machine q35 -monitor telnet:127.0.0.1:1235,server,nowait -vnc 0.0.0.0:0,password -net nic -net bridge,br=br0 -drive id=disk,file=$(IMAGE),if=virtio -usb -usbdevice keyboard &
-#	sudo qemu-system-x86_64 -cpu qemu64,+x2apic -smp 8 -machine q35 -monitor telnet:127.0.0.1:1235,server,nowait -vnc 0.0.0.0:0,password -net nic -net bridge,br=br0 -drive id=disk,file=$(IMAGE),if=none -device ahci,id=ahci -device ide-drive,drive=disk,bus=ahci.0 &
-	sleep 0.2s
-	echo "set_password vnc a" | netcat 127.0.0.1 1235
+image:
+	$(call make_wrapper, image)
 
-_debugqemu:
-	sudo gdb -x ./.gdbinit -p `ps aux | grep qemu | sed -n 2P | awk '{ print $$2 }'`
+mount:
+	$(call make_wrapper, mount)
 
-_qemuend:
-	-sudo pkill -KILL qemu
+umount:
+	$(call make_wrapper, umount)
 
-$(BUILD_DIR)/script:
-	cp script $(BUILD_DIR)/script
+clean:
+	$(call make_wrapper, clean)
 
-$(BUILD_DIR)/init: $(INIT_FILE)
-	cp $(INIT_FILE) $(BUILD_DIR)/init
 
-_bin_sub: $(BUILD_DIR)/script $(BUILD_DIR)/init
-	$(MAKE) -C source
+.PHONY: vnc debug vboxrun vboxkill run_pxeserver pxeimg burn_ipxe burn_ipxe_remote debugqemu showerror numerror doc
+vnc:
+	$(call check_guest)
+	@echo info: vnc password is "a"
+	$(call vnc)
 
-_bin:
-	mkdir -p $(BUILD_DIR)
-	$(MAKE) _bin_sub
-
-_image:
-	$(MAKE) _mount
-	$(MAKE) _bin
-	sudo cp memtest86+.bin $(MOUNT_DIR)/boot/memtest86+.bin
-	sudo cp grub.cfg $(MOUNT_DIR)/boot/grub/grub.cfg
-	-sudo rm -rf $(MOUNT_DIR)/core
-	sudo cp -r $(BUILD_DIR) $(MOUNT_DIR)/core
-	$(MAKE) _umount
-
-_cpimage: _image
-	cp $(IMAGE) /vagrant/
-
-$(IMAGE):
-	$(MAKE) _umount
-	dd if=/dev/zero of=$(IMAGE) bs=1M count=200
-	sh disk.sh disk-setup
-	sh disk.sh grub-install
-	$(MAKE) _mount
-	sudo cp memtest86+.bin $(MOUNT_DIR)/boot/memtest86+.bin
-	$(MAKE) _umount
-
-_hd: _image
-	@if [ ! -e /dev/sdb ]; then echo "error: insert usb memory!"; exit -1; fi
-	sudo dd if=$(IMAGE) of=/dev/sdb
-
-_disk:
-	$(MAKE) _diskclean
-	$(MAKE) $(IMAGE)
-	$(MAKE) _image
-
-_mount: $(IMAGE)
-	sh disk.sh mount
-
-_umount:
-	sh disk.sh umount
-
-_deldisk: _umount
-	-rm -f $(IMAGE)
-
-_clean: _deldisk
-	-rm -rf $(BUILD_DIR)
-	$(MAKE) -C source clean
-
-_diskclean: _deldisk _clean
-
-_showerror:
-	$(MAKE) _image 2>&1 | egrep "In function|error:"
-
-_numerror:
-	@echo -n "number of error: "
-	@$(MAKE) _image 2>&1 | egrep "error:" | wc -l
-
-###################################
-# for local host
-###################################
-
-image: synctime
-	@$(SSH_CMD) "$(REMOTE_COMMAND) cd /vagrant/; make -j3 _image"
-
-run: synctime
-	@$(SSH_CMD) "$(REMOTE_COMMAND) cd /vagrant/; make -j3 _run"
-
-debugqemu: synctime
-	@$(SSH_CMD) "$(REMOTE_COMMAND) cd /vagrant/; make _debugqemu"
-
-hd: synctime
-	@$(SSH_CMD) "$(REMOTE_COMMAND) cd /vagrant/; make -j3 _hd"
-
-clean: synctime
-	@$(SSH_CMD) "$(REMOTE_COMMAND) cd /vagrant/; make _clean"
-
-showerror: synctime
-	@$(SSH_CMD) "$(REMOTE_COMMAND) cd /vagrant/; make -j3 _showerror"
-
-numerror: synctime
-	@$(SSH_CMD) "$(REMOTE_COMMAND) cd /vagrant/; make -j3 _numerror"
+debug:
+	vagrant ssh -c "cd /vagrant/; gdb -x .gdbinit_for_kernel"
 
 vboxrun: vboxkill synctime
 	@$(SSH_CMD) "$(REMOTE_COMMAND) cd /vagrant/; make -j3 _cpimage"
@@ -154,6 +84,9 @@ vboxrun: vboxkill synctime
 	vboxmanage storagectl RK_Test --name SATAController --add sata --controller IntelAHCI --bootable on
 	vboxmanage storageattach RK_Test --storagectl SATAController --port 0 --device 0 --type hdd --medium disk.vdi
 	vboxmanage startvm RK_Test --type gui
+
+vboxkill:
+	-vboxmanage controlvm RK_Test poweroff
 
 run_pxeserver:
 	make pxeimg
@@ -173,18 +106,17 @@ burn_ipxe_remote: synctime
 	./lan.sh remote
 	@$(SSH_CMD) "cd ipxe/src; make bin-x86_64-pcbios/ipxe.usb EMBED=/vagrant/load.cfg; if [ ! -e /dev/sdb ]; then echo 'error: insert usb memory!'; exit -1; fi; sudo dd if=bin-x86_64-pcbios/ipxe.usb of=/dev/sdb"
 
-vboxkill:
-	-vboxmanage controlvm RK_Test poweroff
+debugqemu:
+	$(call make_wrapper, debugqemu)
 
-vnc:
-	@echo info: vnc password is "a"
-	$(VNC)
+showerror:
+	$(call make_wrapper, showerror)
 
-debug:
-	vagrant ssh -c "cd /vagrant/; gdb -x .gdbinit_for_kernel"
+numerror:
+	$(call make_wrapper, numerror)
 
-synctime: .ssh_config
-	@./time.sh
+doc:
+	$(call make_wrapper, doc)
 
 .ssh_config:
 	vagrant ssh-config > .ssh_config

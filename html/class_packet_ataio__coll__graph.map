@@ -1,0 +1,9 @@
+<map id="PacketAtaio" name="PacketAtaio">
+<area shape="rect" id="node2" href="$classuptr.html" title="uptr\&lt; Array\&lt; uint8\l_t \&gt; \&gt;" alt="" coords="5,97,131,138"/>
+<area shape="rect" id="node3" href="$class_array.html" title="Array\&lt; uint8_t \&gt;" alt="" coords="10,5,125,32"/>
+<area shape="rect" id="node4" href="$structata__res.html" title="ata_res" alt="" coords="155,104,220,131"/>
+<area shape="rect" id="node5" href="$unionccb__spriv__area.html" title="ccb_spriv_area" alt="" coords="245,104,355,131"/>
+<area shape="rect" id="node6" href="$unionccb__priv__entry.html" title="ccb_priv_entry" alt="" coords="247,5,353,32"/>
+<area shape="rect" id="node7" href="$structata__cmd.html" title="ata_cmd" alt="" coords="380,104,452,131"/>
+<area shape="rect" id="node8" href="$struct_status.html" title="Status" alt="" coords="477,104,536,131"/>
+</map>

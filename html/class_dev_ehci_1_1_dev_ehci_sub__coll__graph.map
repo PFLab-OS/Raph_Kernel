@@ -1,0 +1,13 @@
+<map id="DevEhci::DevEhciSub&lt; QueueHead, TransferDescriptor &gt;" name="DevEhci::DevEhciSub&lt; QueueHead, TransferDescriptor &gt;">
+<area shape="rect" id="node2" href="$class_dev_ehci_1_1_dev_ehci_sub_base.html" title="DevEhci::DevEhciSubBase" alt="" coords="481,5,663,32"/>
+<area shape="rect" id="node3" href="$class_list.html" title="List\&lt; TransferDescriptor * \&gt;" alt="" coords="480,112,664,139"/>
+<area shape="rect" id="node4" href="$classsptr.html" title="sptr\&lt; List::Container \&gt;" alt="" coords="230,52,383,79"/>
+<area shape="rect" id="node6" href="$class_list_1_1_container.html" title="List\&lt; T \&gt;::Container" alt="" coords="503,56,641,83"/>
+<area shape="rect" id="node5" href="$classcounter__helper.html" title="counter_helper" alt="" coords="16,52,123,79"/>
+<area shape="rect" id="node7" href="$class_spin_lock.html" title="SpinLock" alt="" coords="269,225,345,252"/>
+<area shape="rect" id="node10" href="$class_ring_buffer.html" title="RingBuffer\&lt; QueueHead\l *, PagingCtrl::kPageSize\l/sizeof(QueueHead)\&gt;" alt="" coords="487,228,657,284"/>
+<area shape="rect" id="node12" href="$class_ring_buffer.html" title="RingBuffer\&lt; TransferDescriptor\l *, PagingCtrl::kPageSize\l/sizeof(TransferDescriptor)\&gt;" alt="" coords="470,308,674,364"/>
+<area shape="rect" id="node8" href="$class_spin_lock_interface.html" title="SpinLockInterface" alt="" coords="6,251,133,277"/>
+<area shape="rect" id="node9" href="$class_cpu_id.html" title="CpuId" alt="" coords="41,200,98,227"/>
+<area shape="rect" id="node11" href="$class_dev_ehci_1_1_frame_list_element_pointer.html" title="DevEhci::FrameListElement\lPointer" alt="" coords="479,163,665,205"/>
+</map>

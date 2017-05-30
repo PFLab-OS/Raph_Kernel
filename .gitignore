@@ -2,6 +2,7 @@
 \#*\#
 .\#*
 *.swp
+*.tmp
 
 .directory
 .Trash-*
