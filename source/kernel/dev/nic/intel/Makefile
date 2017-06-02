@@ -2,7 +2,7 @@ OBJS = em.o ix.o
 
 DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))
 
-.PHONY: clean em.o ix.o
+.PHONY: clean
 
 default: ../intel.o
 

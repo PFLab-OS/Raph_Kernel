@@ -2,7 +2,7 @@ OBJS = pci.o usb.o nic.o netdev.o disk.o fs.o 8042.o keyboard.o pciid.o pciid_ta
 
 DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))
 
-.PHONY: clean usb.o nic.o disk.o fs.o
+.PHONY: clean
 
 default: ../dev.o
 
