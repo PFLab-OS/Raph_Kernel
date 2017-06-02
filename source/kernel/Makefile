@@ -18,7 +18,7 @@ CXXFLAGS += $(RAPHCXXFLAGS)
 
 ASFLAGS += $(RAPHFLAGS)
 
-.PHONY: clean dev.o net.o freebsd.o acpica.o ../libc/lib.o
+.PHONY: clean
 
 default: $(BUILD)$(KERNEL)
 

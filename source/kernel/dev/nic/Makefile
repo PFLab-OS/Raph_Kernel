@@ -2,7 +2,7 @@ OBJS = intel.o
 
 DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))
 
-.PHONY: clean intel.o
+.PHONY: clean
 
 default: ../nic.o
 
