@@ -64,30 +64,11 @@ private:
         delete _next;
       }
     }
-    void Write(uint32_t index) {
-      if (_length == 1024) {
-        if (_next == nullptr) {
-          _next = new StringBuffer(_info, _font);
-        }
-        _next->Write(index);
-      } else {
-        _cur_width += _font->GetWidth(index);
-        _length++;
-        if (index == kNewLineSignature) {
-          _buffer[_length - 1] = index;
-          _cur_width = 0;
-          _row++;
-        } else if (_cur_width > _info->width) {
-          _buffer[_length - 1] = kNewLineSignature;
-          _cur_width = 0;
-          _row++;
-          Write(index);
-        } else {
-          _buffer[_length - 1] = index;
-        }
-      }
+    void Write(char32_t c) {
+      WriteSub(c, c == '\n' ? kNewLineSignature : _font->GetIndex(c));
     }
     uint32_t _buffer[1024];
+    char32_t _cBuffer[1024];
     int _length = 0;
     int _row = 0;
     int _cur_width = 0;
@@ -95,8 +76,111 @@ private:
     const FrameBufferInfo *_info;
     const Font *_font;
     static const uint32_t kNewLineSignature = 0xFFFFFFFF;
+    void WriteSub(char32_t c, uint32_t index) {
+      if (_length == 1024) {
+        if (_next == nullptr) {
+          _next = new StringBuffer(_info, _font);
+        }
+        _next->WriteSub(c, index);
+      } else {
+        _cur_width += _font->GetWidth(index);
+        _length++;
+        if (index == kNewLineSignature) {
+          _buffer[_length - 1] = index;
+          _cBuffer[_length - 1] = c;
+          _cur_width = 0;
+          _row++;
+        } else if (_cur_width > _info->width) {
+          _buffer[_length - 1] = kNewLineSignature;
+          _cBuffer[_length - 1] = c;
+          _cur_width = 0;
+          _row++;
+          WriteSub(c, index);
+        } else {
+          _buffer[_length - 1] = index;
+          _cBuffer[_length - 1] = c;
+        }
+      }
+    }
   } *_info_buffer;
-  
+
+  class CachedFont : public Font {
+  public:
+    CachedFont(){
+    }
+    ~CachedFont() {
+      delete _widthChache;
+      delete _fontCache;
+    }
+    void SetBitsPerPixel(int bitsPerPixel)
+    {
+      _bytesPerPixel = bitsPerPixel / 8;
+      UpdateCache();
+    }
+    
+    int PrintChar(uint8_t *vram, int vramXSize, int px, int py, char32_t c) {
+      if(!_is_initialized || _bytesPerPixel == 0) return 0;
+      uint8_t *font;
+      int fontWidth;
+      
+      if(0 <= c && c < _cachedCount && _fontCache && _widthChache){
+        // use cached font
+        fontWidth = _widthChache[c];
+        font = getFontCache(c);
+      } else{
+        // not in cache
+        GetPixels(c, _bytesPerPixel, GetMaxw(),
+            _tmpFont, fontWidth, _fColor, _bColor);
+        font = _tmpFont;
+      }
+      
+      for(int y = 0; y < GetMaxh(); y++){
+        memcpy(&vram[((y + py) * vramXSize + px) * _bytesPerPixel],
+            &font[(y * GetMaxw() + 0) * _bytesPerPixel], _bytesPerPixel * fontWidth);
+      }
+      return fontWidth;
+    }
+    void SetForegroundColor(uint8_t r, uint8_t g, uint8_t b) {
+      _fColor[0] = b;
+      _fColor[1] = g;
+      _fColor[2] = r;
+      _fColor[3] = 0x00;
+    }
+    void SetBackgroundColor(uint8_t r, uint8_t g, uint8_t b) {
+      _bColor[0] = b;
+      _bColor[1] = g;
+      _bColor[2] = r;
+      _bColor[3] = 0x00;
+    }
+    void UpdateCache(){
+      delete _tmpFont;
+      delete _widthChache;
+      delete _fontCache;
+      //
+      _tmpFont = new uint8_t[GetMaxh() * GetMaxw() * _bytesPerPixel];
+      _fontCache = new uint8_t[
+        GetMaxh() * GetMaxw() * _bytesPerPixel * _cachedCount];
+      _widthChache = new int[_cachedCount];
+      for(int k = 0; k < _cachedCount; k++){
+        uint8_t *font = getFontCache(k);
+        GetPixels(k, _bytesPerPixel, 
+            GetMaxw(), font, _widthChache[k], _fColor, _bColor);
+      }
+    }
+  private:
+    int _bytesPerPixel = 0;
+    uint8_t _fColor[4];
+    uint8_t _bColor[4];
+    const int _cachedCount = 0x100;
+    uint8_t *_fontCache = nullptr;
+    int *_widthChache = nullptr;
+    uint8_t *_tmpFont;
+    uint8_t *getFontCache(char32_t c){
+      if(c < 0 || _cachedCount <= c) return nullptr;
+      return &_fontCache[GetMaxh() * GetMaxw() * _bytesPerPixel * c];
+    }
+  };
+
   virtual void Write(char c) override;
   virtual void WriteErr(char c) override;
   virtual void PrintShell(const char *str) override;
@@ -107,7 +191,7 @@ private:
       _last_time_refresh = timer->ReadMainCnt();
     } else {
       DrawScreen();
-      _redraw = false;
+      _needsRedraw = false;
     }
   }
   struct DrawInfo {
@@ -123,21 +207,18 @@ private:
     _d_info.buf_base[(y * _d_info.width + x) * (_d_info.bpp / 8) + 1] = c >> 8;
     _d_info.buf_base[(y * _d_info.width + x) * (_d_info.bpp / 8) + 2] = c >> 16;
   }
-  uint32_t GetColor() {
-    return 0x00FFFFFF;
-  }
   void Refresh() {
     if (_timeup_draw) {
       if (task_ctrl->GetState(_draw_cpuid) != TaskCtrl::TaskQueueState::kNotStarted) {
         DisableTimeupDraw();
-      } else {
-        if (timer->IsTimePassed(timer->GetCntAfterPeriod(_last_time_refresh, 50 * 1000))) {
+      } else{
+        if (timer->IsTimePassed(timer->GetCntAfterPeriod(_last_time_refresh, 100 * 1000))) {
           DrawScreen();
           _last_time_refresh = timer->ReadMainCnt();
         }
       }
     } else {
-      _redraw = true;
+      _needsRedraw = true;
     }
   }
   void DrawScreen();
@@ -145,11 +226,12 @@ private:
   void DoPeriodicRefresh(void *);
   void DisableTimeupDraw();
   void ScheduleRefresh() {
-    task_ctrl->RegisterCallout(_refresh_callout, _draw_cpuid, 50);
+    task_ctrl->RegisterCallout(_refresh_callout, _draw_cpuid, 10 * 1000);
   }
   SpinLock _lock;
   FrameBufferInfo _fb_info;
-  Font _font;
+  CachedFont _font_normal;
+  CachedFont _font_inverted;
   bool *_font_buffer;  // for Error printing
   int _info_row; // row of information display area
 
@@ -169,7 +251,7 @@ private:
   uint64_t _last_time_refresh = 0;
   
   CpuId _draw_cpuid;
-  bool _redraw = false;
+  bool _needsRedraw = false;  // if true, there are some changes should be display.
 
   sptr<Callout> _refresh_callout;
 };
