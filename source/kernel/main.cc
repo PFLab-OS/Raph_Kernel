@@ -921,17 +921,6 @@ extern "C" int main() {
 
   load_script(make_sptr(new LoadContainer(multiboot_ctrl->LoadFile("init.sh"))));
 
-  auto callout_ = make_sptr(new Callout);
-  callout_->Init(make_uptr(new Function<void *>([](void *){
-          for(int i = 0x20; i <= 0x7e; i++){
-            for(int k = 0; k < 128; k++){
-              gtty->Printf("%c", i);
-            }
-            gtty->Printf("\n");
-          }
-       }, nullptr)));
-  task_ctrl->RegisterCallout(callout_, 10);
-
   task_ctrl->Run();
 
   return 0;
