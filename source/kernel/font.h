@@ -38,11 +38,15 @@ public:
   }
   int Load(uptr<Array<uint8_t>> buf, size_t len);
   void Print(uint32_t index, void (*func)(bool f, int x, int y));
-  void GetData(char32_t c, int &width, bool *byte);
+  void GetData(char32_t c, int &width, bool *data);
+  void GetPixels(char32_t c, int bytesPerPixel, int xsize, 
+      uint8_t *data, int &width, uint8_t *foreColor, uint8_t *backColor);
   uint16_t GetMaxw() const {
+    // Maximum character width in pixels
     return _maxw.Get();
   }
   uint16_t GetMaxh() const {
+    // Maximum character height in pixels
     return _maxh.Get();
   }
   uint32_t GetIndex(char32_t c) const {
@@ -64,9 +68,10 @@ public:
   uint16_t GetDesc() const {
     return _desc.Get();
   }
-private:
+protected:
   bool _is_initialized = false;
 
+private:
   class Section {
   public:
     void Load(char *buf) {

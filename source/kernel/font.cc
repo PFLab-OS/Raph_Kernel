@@ -23,10 +23,12 @@
  */
 
 #include "font.h"
+#include <global.h>
 
 int Font::Load(uptr<Array<uint8_t>> buf, size_t len) {
   _buf = buf;
   char *_buf_ptr = _buf->GetRawPtr();
+  
   if (strncmp("FILE", _buf_ptr, 4) != 0) {
     return -1;
   }
@@ -39,16 +41,20 @@ int Font::Load(uptr<Array<uint8_t>> buf, size_t len) {
 
   _maxw.Load(_buf_ptr + 12);
   _maxh.Load(_buf_ptr + 12);
+
   _data.SetBuffer(_buf_ptr);
   _data.Load(_buf_ptr + 12);
+
   _chix.Load(_buf_ptr + 12);
   _asce.Load(_buf_ptr + 12);
   _desc.Load(_buf_ptr + 12);
   _is_initialized = true;
+
   return 0;
 }
 
-void Font::GetData(char32_t c, int &width, bool *byte) {
+void Font::GetData(char32_t c, int &width, bool *data) {
+  // return width of character into width
   if (!_is_initialized) {
     return;
   }
@@ -60,7 +66,7 @@ void Font::GetData(char32_t c, int &width, bool *byte) {
   uint32_t offset = _chix.GetOffset(index);
   int maxh = _maxh.Get();
     
-  uint32_t byte_offset = offset + 10;
+  uint32_t data_offset = offset + 10;
   uint32_t bit_offset = 7;
   int bitmap_bottom = _asce.Get() - _data.GetYOffset(offset);
   int bitmap_top = bitmap_bottom - _data.GetHeight(offset);
@@ -70,28 +76,44 @@ void Font::GetData(char32_t c, int &width, bool *byte) {
   
   for (int y = 0; y < bitmap_top; y++) {
     for (int x = 0; x < width; x++) {
-      byte[y * width + x] = false;
+      data[y * width + x] = false;
     }
   }
   for (int y = bitmap_top; y < bitmap_bottom; y++) {
     for (int x = 0; x < bitmap_left; x++) {
-      byte[y * width + x] = false;
+      data[y * width + x] = false;
     }
     for (int x = bitmap_left; x < bitmap_right; x++) {
-      byte[y * width + x] = (_buf->GetRawPtr()[byte_offset] & (1 << bit_offset)) != 0;
+      data[y * width + x] = (_buf->GetRawPtr()[data_offset] & (1 << bit_offset)) != 0;
       bit_offset--;
       if (bit_offset == -1) {
         bit_offset = 7;
-        byte_offset++;
+        data_offset++;
       }
     }
     for (int x = bitmap_right; x < width; x++) {
-      byte[y * width + x] = false;
+      data[y * width + x] = false;
     }
   }
   for (int y = bitmap_bottom; y < maxh; y++) {
     for (int x = 0; x < width; x++) {
-      byte[y * width + x] = false;
+      data[y * width + x] = false;
+    }
+  }
+}
+
+void Font::GetPixels(char32_t c, int bytesPerPixel, int xsize, 
+   uint8_t *data, int &width, uint8_t *foreColor, uint8_t *backColor)
+{
+  bool bData[GetMaxw() * GetMaxh()];
+
+  GetData(c, width, bData);
+  for(int y = 0; y < GetMaxh(); y++){
+    for(int x = 0; x < GetMaxw(); x++){
+      for(int i = 0; i < bytesPerPixel; i++){
+        data[(xsize * y + x) * bytesPerPixel + i] =
+          bData[width * y + x] ? foreColor[i] : backColor[i];
+      }
     }
   }
 }
