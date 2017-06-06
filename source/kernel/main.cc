@@ -671,7 +671,7 @@ struct LoadContainer {
   LoadContainer(uptr<Array<uint8_t>> data_) : data(data_) {
   }
   uptr<Array<uint8_t>> data;
-  int i = 0;
+  size_t i = 0;
 };
 
 static void wait_until_linkup(sptr<Callout> sh_task, int argc, const char *argv[]) {

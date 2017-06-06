@@ -138,7 +138,7 @@ private:
       return be32toh(*(reinterpret_cast<uint32_t *>(_buf + offset + 5)));
     }
     bool GetStorageFlag(uint32_t offset) const {
-      return (_buf[offset + 4] & 0b111 != 0b000);
+      return ((_buf[offset + 4] & 0b111) != 0b000);
     }
   private:
     virtual const char *GetSignature() override {

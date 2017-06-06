@@ -71,7 +71,7 @@ private:
     char32_t _cBuffer[1024];
     int _length = 0;
     int _row = 0;
-    int _cur_width = 0;
+    uint32_t _cur_width = 0;
     StringBuffer *_next = nullptr;
     const FrameBufferInfo *_info;
     const Font *_font;
@@ -161,7 +161,7 @@ private:
       _fontCache = new uint8_t[
         GetMaxh() * GetMaxw() * _bytesPerPixel * _cachedCount];
       _widthChache = new int[_cachedCount];
-      for(int k = 0; k < _cachedCount; k++){
+      for(uint32_t k = 0; k < _cachedCount; k++){
         uint8_t *font = getFontCache(k);
         GetPixels(k, _bytesPerPixel, 
             GetMaxw(), font, _widthChache[k], _fColor, _bColor);
@@ -171,7 +171,7 @@ private:
     int _bytesPerPixel = 0;
     uint8_t _fColor[4];
     uint8_t _bColor[4];
-    const int _cachedCount = 0x100;
+    const uint32_t _cachedCount = 0x100;
     uint8_t *_fontCache = nullptr;
     int *_widthChache = nullptr;
     uint8_t *_tmpFont;
@@ -236,8 +236,8 @@ private:
   int _info_row; // row of information display area
 
   // current position of error printing
-  int _cex = 0;
-  int _cey = 0;
+  uint32_t _cex = 0;
+  uint32_t _cey = 0;
 
   char *_shell_buffer = nullptr;
   size_t _shell_buffer_len = 0;
