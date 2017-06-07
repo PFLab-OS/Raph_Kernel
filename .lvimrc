@@ -1,3 +1,5 @@
-set expandtab
+if &ft != 'make'
+  set expandtab
+end
 set tabstop=2
 set shiftwidth=2
