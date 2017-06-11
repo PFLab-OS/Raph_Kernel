@@ -38,14 +38,11 @@
 #include <stdint.h>
 
 
-class Rtl8139: public DevPci{
+class Rtl8139 : public DevPci{
 public:
-  Rtl8139(uint8_t bus, uint8_t device, uint8_t function) :DevPci(bus,device, function){ }
+  Rtl8139(uint8_t bus,uint8_t device,uint8_t function) : DevPci(bus,device, function){ }
 
-  static DevPci *InitPci(uint8_t bus, uint8_t device, uint8_t function);
-
-
-
+  static DevPci *InitPci(uint8_t bus,uint8_t device,uint8_t function);
 
 
 private:
@@ -54,7 +51,6 @@ private:
 
   static const uint16_t kVendorId = 0x10ec;
   static const uint16_t kDeviceId = 0x8139;
-
 
   //Registers see datasheet p16
   static const uint16_t kRegTxAddr = 0x20; //dw * 4
@@ -66,6 +62,7 @@ private:
   static const uint16_t kRegCommand = 0x37; //b
   static const uint16_t kRegIrStatus = 0x3e; //w
   static const uint16_t kRegIrMask = 0x3c; //w
+  static const uint16_t kReg93C46Cmd = 0x50; //b
 
 
   //Command  see datasheet p21
@@ -73,7 +70,7 @@ private:
   static const uint8_t kCmdRxEnable = 0x8;
   static const uint8_t kCmdReset = 0x10;
   static const uint8_t kCmdRxBufEmpty = 0x1;
-  class Rlt8139Ethernet: public DevEthernet {
+  class Rlt8139Ethernet: public DevEthernet{
   };
 
   virtual void Attach() override;
