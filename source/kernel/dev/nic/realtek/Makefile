@@ -1,0 +1,19 @@
+OBJS = rtl8139.o
+
+DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))
+
+.PHONY: clean rtl8139.o 
+
+default: ../realtek.o
+
+-include $(DEPS)
+
+../realtek.o: $(OBJS)
+	ld -r $^ -o $@
+
+rtl8139.o:
+	@$(MAKE) -C rtl8139 CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
+
+clean:
+	$(MAKE) -C realtek clean
+	-rm -f $(OBJS) $(TEST_OBJS) $(DEPS) *.s *.ii
