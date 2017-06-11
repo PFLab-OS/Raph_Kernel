@@ -977,7 +977,7 @@ extern "C" int main_of_others() {
 void show_backtrace(size_t *rbp) {
   size_t top_rbp = reinterpret_cast<size_t>(rbp);
   for (int i = 0; i < 3; i++) {
-    if (top_rbp <= rbp[1] || top_rbp - 4096 > rbp[1]) {
+    if (top_rbp >= rbp[0] || top_rbp <= rbp[0] - 4096) {
       break;
     }
     gtty->ErrPrintf("backtrace(%d): rip:%llx,\n", i, rbp[1]);
