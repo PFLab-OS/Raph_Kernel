@@ -1,5 +1,4 @@
-SUB = intel
-OBJS = $(addsuffix .o,$(SUB))
+OBJS = intel.o realtek.o
 
 DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))
 
@@ -16,6 +15,13 @@ build:
 ../nic.o: $(OBJS)
 	ld -r $^ -o $@
 
+intel.o:
+	@$(MAKE) -C intel CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
+
+realtek.o:
+	@$(MAKE) -C realtek CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
+
 clean:
-	@$(foreach rule, $(SUB), $(MAKE) -C $(rule) clean;)
+	$(MAKE) -C intel clean
+	$(MAKE) -C realtek clean
 	-rm -f $(OBJS) $(TEST_OBJS) $(DEPS) *.s *.ii

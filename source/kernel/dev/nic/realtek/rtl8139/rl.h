@@ -73,11 +73,14 @@ public:
 
 
 protected:
-  virtual int32_t Transmit(const uint8_t *packet.uint32_t length);
-  virtual int32_t Receive(uint8_t *buffer, uint32_t size);
+  //virtual int32_t Transmit(const uint8_t *packet.uint32_t length);
+  //virtual int32_t Receive(uint8_t *buffer, uint32_t size);
 
   volatile uint32_t *_mmioAddr = nullptr;
 
+private:
+  class Rlt8139Ethernet: public DevEthernet {
 
+  };
 
 }
