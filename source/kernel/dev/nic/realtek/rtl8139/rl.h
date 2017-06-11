@@ -40,7 +40,7 @@
 
 class Rtl8139 : public DevPci{
 public:
-  Rtl8139(uint8_t bus,uint8_t device,uint8_t function) : DevPci(bus,device, function){ }
+  Rtl8139(uint8_t bus,uint8_t device,uint8_t function) : DevPci(bus,device,function){ }
 
   static DevPci *InitPci(uint8_t bus,uint8_t device,uint8_t function);
 
