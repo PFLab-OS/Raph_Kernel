@@ -2,7 +2,7 @@ OBJS = rtl8139.o
 
 DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))
 
-.PHONY: clean rtl8139.o 
+.PHONY: clean 
 
 default: ../realtek.o
 

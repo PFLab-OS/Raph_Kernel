@@ -38,15 +38,11 @@
 #include<stdint.h>
 
 
-class Rtl8139: public DevPci,public NetDev{
+class Rtl8139: public DevPci{
 public:
   Rtl8139(uint8_t bus, uint8_t device, uint8_t function) :DevPci(bus,device, function) { }
 
   static DevPci *InitPci(uint8_t bus, uint8_t device, uint8_t function);
-  virtual void Init();
-  virtual void Attach();
-
-  inline uint16_t ReadEeprom(uint16_t offset,uint16_t length);
 
 
   static const int kVendorId = 0x10ec;
@@ -72,15 +68,14 @@ public:
   static const uint8_t kCmdRxBufEmpty = 0x1;
 
 
-protected:
-  //virtual int32_t Transmit(const uint8_t *packet.uint32_t length);
-  //virtual int32_t Receive(uint8_t *buffer, uint32_t size);
-
   volatile uint32_t *_mmioAddr = nullptr;
+
 
 private:
   class Rlt8139Ethernet: public DevEthernet {
 
   };
 
+  virtual void Attach() override;
+  uint16_t ReadEeprom(uint16_t offset,uint16_t length);
 }
