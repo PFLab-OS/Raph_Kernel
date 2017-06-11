@@ -7,7 +7,10 @@ define make_wrapper
 	  # guest environment
 	  $(MAKE) -f $(RULE_FILE) $(1), \
 	  # host environment
-	  $(if $(shell ssh -F .ssh_config default "exit"; if [ $$? != 0 ]; then echo "no-guest"; fi), vagrant up;)
+	  $(if $(shell ssh -F .ssh_config default "exit"; if [ $$? != 0 ]; then echo "no-guest"; fi), rm -f .ssh_config
+	  vagrant halt
+	  vagrant up
+	  vagrant ssh-config > .ssh_config; )
 	  ssh -F .ssh_config default "cd /vagrant/; env MAKEFLAGS=$(MAKEFLAGS) make -f $(RULE_FILE) $(1)"
 	)
 endef
