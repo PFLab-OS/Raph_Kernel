@@ -88,33 +88,33 @@ void Rtl8139::Attach(){
 uint16_t Rtl8139::ReadEeprom(uint16_t offset,uint16_t length){
   //cf http://www.jbox.dk/sanos/source/sys/dev/rtl8139.c.html#:309
 
-      outb(_mmio_addr + kReg93C46Cmd,0x80); 
-      outb(_mmio_addr + kReg93C46Cmd,0x08); 
+  outb(_mmio_addr + kReg93C46Cmd,0x80); 
+  outb(_mmio_addr + kReg93C46Cmd,0x08); 
 
-      int read_cmd = offset | (6 << len);
-      
-      for(int i= 4 + len; i>= 0; i--){
-          int dataval = (read_cmd & (1 << i))? 2 : 0;
-          outb(_mmio_addr + kReg93C46Cmd,0x80 | 0x08 | dataval); 
-          inw(_mmio_addr + kReg93C46Cmd);
-          outb(_mmio_addr + kReg93C46Cmd,0x80 | 0x08 | dataval | 0x4);
-          inw(_mmio_addr + kReg93C46Cmd);
-      }
-      outb(_mmio_addr + kReg93C46Cmd,0x80 | 0x08);
-      inw(_mmio_addr + kReg93C46Cmd);
-
-      uint16_t retval = 0;
-      for(int i = 16;i > 0; i--){
-          outb(_mmio_addr + kReg93C46Cmd,0x80 | 0x08 | 0x4);
-          inw(_mmio_addr + kReg93C46Cmd);
-          retval = (retval << 1) | ((inb(_mmio_addr + kReg93C46Cmd) & 0x01) ? 1 : 0);
-          outb(_mmio_addr + kReg93C46Cmd,0x80 | 0x08);
-          inw(_mmio_addr + kReg93C46Cmd);
-      }
-
-      outb(_mmio_addr + kReg93C46Cmd,~(0x80 | 0x08));
-      return retval;
+  int read_cmd = offset | (6 << len);
+  
+  for(int i= 4 + len;i >= 0;i--){
+    int dataval = (read_cmd & (1 << i))? 2 : 0;
+    outb(_mmio_addr + kReg93C46Cmd,0x80 | 0x08 | dataval); 
+    inw(_mmio_addr + kReg93C46Cmd);
+    outb(_mmio_addr + kReg93C46Cmd,0x80 | 0x08 | dataval | 0x4);
+    inw(_mmio_addr + kReg93C46Cmd);
   }
+  outb(_mmio_addr + kReg93C46Cmd,0x80 | 0x08);
+  inw(_mmio_addr + kReg93C46Cmd);
+
+  uint16_t retval = 0;
+  for(int i = 16;i > 0;i--){
+    outb(_mmio_addr + kReg93C46Cmd,0x80 | 0x08 | 0x4);
+    inw(_mmio_addr + kReg93C46Cmd);
+    retval = (retval << 1) | ((inb(_mmio_addr + kReg93C46Cmd) & 0x01) ? 1 : 0);
+    outb(_mmio_addr + kReg93C46Cmd,0x80 | 0x08);
+    inw(_mmio_addr + kReg93C46Cmd);
+  }
+
+  outb(_mmio_addr + kReg93C46Cmd,~(0x80 | 0x08));
+  return retval;
+}
 
 
 }
