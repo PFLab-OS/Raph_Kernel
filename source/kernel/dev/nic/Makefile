@@ -16,10 +16,10 @@ build:
 	ld -r $^ -o $@
 
 intel.o:
-	@$(MAKE) -C intel CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
+	@$(MAKE) -C intel 
 
 realtek.o:
-	@$(MAKE) -C realtek CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
+	@$(MAKE) -C realtek 
 
 clean:
 	$(MAKE) -C intel clean

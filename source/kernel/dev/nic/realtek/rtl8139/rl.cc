@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2016 Raphine Project
+ * Copyright (c) 2017 Raphine Project
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -47,7 +47,7 @@ DevPci *Rtl8139::InitPCI(uint8_t bus, uint8_t device, uint8_t function){
 
 void Rtl8139::Attach(){
   volatile uint32_t temp_mmio = ReadReg<uint32_t>(kBaseAddressReg0);
-  _mmioAddr = (temp_mmio & ( ~3));
+  _mmioAddr = (temp_mmio & ( ~0b11));
 
   //Enable BusMastering
   WriteReg<uint16_t>(PciCtrl::kCommandReg, ReadReg<uint16_t>(PciCtrl::kCommandReg) | PciCtrl::kCommandRegBusMasterEnableFlag);

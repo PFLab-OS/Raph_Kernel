@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2016 Raphine Project
+ * Copyright (c) 2017 Raphine Project
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -45,6 +45,13 @@ public:
   static DevPci *InitPci(uint8_t bus, uint8_t device, uint8_t function);
 
 
+
+  volatile uint32_t *_mmioAddr = nullptr;
+
+
+private:
+
+
   static const int kVendorId = 0x10ec;
   static const int kDeviceId = 0x8139;
 
@@ -66,12 +73,6 @@ public:
   static const uint8_t kCmdRxEnable = 0x8;
   static const uint8_t kCmdReset = 0x10;
   static const uint8_t kCmdRxBufEmpty = 0x1;
-
-
-  volatile uint32_t *_mmioAddr = nullptr;
-
-
-private:
   class Rlt8139Ethernet: public DevEthernet {
 
   };

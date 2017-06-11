@@ -12,7 +12,7 @@ default: ../realtek.o
 	ld -r $^ -o $@
 
 rtl8139.o:
-	@$(MAKE) -C rtl8139 CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
+	@$(MAKE) -C rtl8139 
 
 clean:
 	$(MAKE) -C realtek clean
