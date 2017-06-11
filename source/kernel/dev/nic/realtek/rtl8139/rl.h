@@ -28,44 +28,44 @@
  */
 
 
-#include<polling.h>
-#include<mem/paging.h>
-#include<mem/virtmem.h>
-#include<mem/physmem.h>
-#include<tty.h>
-#include<dev/netdev.h>
-#include<global.h>
-#include<stdint.h>
+#include <polling.h>
+#include <mem/paging.h>
+#include <mem/virtmem.h>
+#include <mem/physmem.h>
+#include <tty.h>
+#include <dev/netdev.h>
+#include <global.h>
+#include <stdint.h>
 
 
 class Rtl8139: public DevPci{
 public:
-  Rtl8139(uint8_t bus, uint8_t device, uint8_t function) :DevPci(bus,device, function) { }
+  Rtl8139(uint8_t bus, uint8_t device, uint8_t function) :DevPci(bus,device, function){ }
 
   static DevPci *InitPci(uint8_t bus, uint8_t device, uint8_t function);
 
 
 
-  volatile uint32_t *_mmioAddr = nullptr;
 
 
 private:
 
+  volatile uint32_t *_mmio_addr = nullptr;
 
-  static const int kVendorId = 0x10ec;
-  static const int kDeviceId = 0x8139;
+  static const uint16_t kVendorId = 0x10ec;
+  static const uint16_t kDeviceId = 0x8139;
 
 
   //Registers see datasheet p16
-  static const int kRegTxAddr = 0x20; //dw * 4
-  static const int kRegTxStatus = 0x10; //dw * 4
-  static const int kRegTxConfig = 0x40; //dw
-  static const int kRegRxAddr = 0x30;
-  static const int kRegRxConfig = 0x44; //dw 
-  static const int kRegRxCAP = 0x38;
-  static const int kRegCommand = 0x37; //b
-  static const int kRegIrStatus = 0x3e; //w
-  static const int kRegIrMask = 0x3c; //w
+  static const uint16_t kRegTxAddr = 0x20; //dw * 4
+  static const uint16_t kRegTxStatus = 0x10; //dw * 4
+  static const uint16_t kRegTxConfig = 0x40; //dw
+  static const uint16_t kRegRxAddr = 0x30;
+  static const uint16_t kRegRxConfig = 0x44; //dw 
+  static const uint16_t kRegRxCAP = 0x38;
+  static const uint16_t kRegCommand = 0x37; //b
+  static const uint16_t kRegIrStatus = 0x3e; //w
+  static const uint16_t kRegIrMask = 0x3c; //w
 
 
   //Command  see datasheet p21
@@ -74,7 +74,6 @@ private:
   static const uint8_t kCmdReset = 0x10;
   static const uint8_t kCmdRxBufEmpty = 0x1;
   class Rlt8139Ethernet: public DevEthernet {
-
   };
 
   virtual void Attach() override;
