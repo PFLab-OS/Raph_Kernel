@@ -50,15 +50,14 @@ void Rtl8139::Attach(){
   _mmio_addr = (temp_mmio & (~0b11));
 
   //Enable BusMastering
-  WriteReg<uint16_t>(PciCtrl::kCommandReg,ReadReg<uint16_t>(PciCtrl::kCommandReg) | PciCtrl::kCommandRegBusMasterEnableFlag);
+  WritePciReg<uint16_t>(PciCtrl::kCommandReg,ReadPciReg<uint16_t>(PciCtrl::kCommandReg) | PciCtrl::kCommandRegBusMasterEnableFlag);
 
   //Software Reset
   outb(_mmio_addr+Command,kCmdReset); 
   while((inb(_mmio_addr + 0x37) & 0x10) != 0) { }
 
   outb(_mmio_addr + Command,kCmdTxEnable | kCmdRxEnable);
-
-
+aaaaaaa
 
   //intrrupt
   //RxOK only (TODO :add interruption)

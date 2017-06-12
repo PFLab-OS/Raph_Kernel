@@ -44,10 +44,26 @@ public:
 
   static DevPci *InitPci(uint8_t bus,uint8_t device,uint8_t function);
 
+  template<>
+  static void WriteReg<uint8_t>(uint16_t offset,uint8_t data){
+    outb(Rtl8139::_mmio_addr + offset,data);
+  } 
+
+  template<>
+  static void WriteReg<uint16_t>(uint16_t offset,uint16_t data){
+    outw(Rtl8139::_mmio_addr + offset,data);
+  } 
+
+  template<>
+  static  inline void WriteReg<uint32_t>(uint16_t offset,uint32_t data){
+    outl(Rtl8139::_mmio_addr + offset,data);
+  } 
+
+  //called from static function
+  volatile uint32_t *_mmio_addr = nullptr;
 
 private:
 
-  volatile uint32_t *_mmio_addr = nullptr;
 
   static const uint16_t kVendorId = 0x10ec;
   static const uint16_t kDeviceId = 0x8139;
