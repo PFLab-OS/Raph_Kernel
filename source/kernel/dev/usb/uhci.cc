@@ -28,9 +28,9 @@
 
 DevPci *DevUhci::InitPci(uint8_t bus, uint8_t device, uint8_t function) {
   DevUhci *dev = new DevUhci(bus, device, function);
-  if (dev->ReadReg<uint8_t>(PciCtrl::kRegInterfaceClassCode) == 0x00 &&
-      dev->ReadReg<uint8_t>(PciCtrl::kRegSubClassCode) == 0x03 &&
-      dev->ReadReg<uint8_t>(PciCtrl::kRegBaseClassCode) == 0x0C) {
+  if (dev->ReadPciReg<uint8_t>(PciCtrl::kRegInterfaceClassCode) == 0x00 &&
+      dev->ReadPciReg<uint8_t>(PciCtrl::kRegSubClassCode) == 0x03 &&
+      dev->ReadPciReg<uint8_t>(PciCtrl::kRegBaseClassCode) == 0x0C) {
     dev->Init();
     return dev;
   } else {
@@ -87,14 +87,14 @@ void DevUhci::Init() {
   }
 
   // legacy support
-  WriteReg<uint16_t>(0xC0, 0x2000);
+  WritePciReg<uint16_t>(0xC0, 0x2000);
   
-  _base_addr = ReadReg<uint32_t>(kBaseAddressReg);
+  _base_addr = ReadPciReg<uint32_t>(kBaseAddressReg);
   if ((_base_addr & 1) == 0) {
     kernel_panic("Uhci", "cannot get valid base address.");
   }
   _base_addr &= 0xFFE0;
-  WriteReg<uint16_t>(PciCtrl::kCommandReg, ReadReg<uint16_t>(PciCtrl::kCommandReg) | PciCtrl::kCommandRegBusMasterEnableFlag);
+  WritePciReg<uint16_t>(PciCtrl::kCommandReg, ReadPciReg<uint16_t>(PciCtrl::kCommandReg) | PciCtrl::kCommandRegBusMasterEnableFlag);
 
   // halt controller
   WriteControllerReg<uint16_t>(kCtrlRegCmd, ReadControllerReg<uint16_t>(kCtrlRegCmd) & ~kCtrlRegCmdFlagRunStop);

@@ -395,15 +395,15 @@ extern "C" {
     kassert(pci_ctrl != nullptr);
     switch(Width) {
     case 8: {
-      pci_ctrl->WriteReg<uint8_t>(PciId->Bus, PciId->Device, PciId->Function, Register, Value);
+      pci_ctrl->WritePciReg<uint8_t>(PciId->Bus, PciId->Device, PciId->Function, Register, Value);
       break;
     }
     case 16: {
-      pci_ctrl->WriteReg<uint16_t>(PciId->Bus, PciId->Device, PciId->Function, Register, Value);
+      pci_ctrl->WritePciReg<uint16_t>(PciId->Bus, PciId->Device, PciId->Function, Register, Value);
       break;
     }
     case 32: {
-      pci_ctrl->WriteReg<uint32_t>(PciId->Bus, PciId->Device, PciId->Function, Register, Value);
+      pci_ctrl->WritePciReg<uint32_t>(PciId->Bus, PciId->Device, PciId->Function, Register, Value);
       break;
     }
     default: {

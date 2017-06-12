@@ -185,7 +185,7 @@ private:
     switch(type) {
     case SYS_RES_MEMORY: {
       int bar = *rid;
-      uint32_t addr = GetDevPci().ReadReg<uint32_t>(static_cast<uint32_t>(bar));
+      uint32_t addr = GetDevPci().ReadPciReg<uint32_t>(static_cast<uint32_t>(bar));
       if ((addr & PciCtrl::kRegBaseAddrFlagIo) != 0) {
         return NULL;
       }
@@ -194,14 +194,14 @@ private:
       r->r_bushandle = addr & PciCtrl::kRegBaseAddrMaskMemAddr;
 
       if ((addr & PciCtrl::kRegBaseAddrMaskMemType) == PciCtrl::kRegBaseAddrValueMemType64) {
-        r->r_bushandle |= static_cast<uint64_t>(GetDevPci().ReadReg<uint32_t>(static_cast<uint32_t>(bar + 4))) << 32;
+        r->r_bushandle |= static_cast<uint64_t>(GetDevPci().ReadPciReg<uint32_t>(static_cast<uint32_t>(bar + 4))) << 32;
       }
       r->r_bushandle = p2v(r->r_bushandle);
       break;
     }
     case SYS_RES_IOPORT: {
       int bar = *rid;
-      uint32_t addr = GetDevPci().ReadReg<uint32_t>(static_cast<uint32_t>(bar));
+      uint32_t addr = GetDevPci().ReadPciReg<uint32_t>(static_cast<uint32_t>(bar));
       if ((addr & PciCtrl::kRegBaseAddrFlagIo) == 0) {
         return NULL;
       }

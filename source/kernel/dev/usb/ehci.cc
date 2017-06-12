@@ -28,9 +28,9 @@
 
 DevPci *DevEhci::InitPci(uint8_t bus, uint8_t device, uint8_t function) {
   DevEhci *dev = new DevEhci(bus, device, function);
-  if (dev->ReadReg<uint8_t>(PciCtrl::kRegInterfaceClassCode) == 0x20 &&
-      dev->ReadReg<uint8_t>(PciCtrl::kRegSubClassCode) == 0x03 &&
-      dev->ReadReg<uint8_t>(PciCtrl::kRegBaseClassCode) == 0x0C) {
+  if (dev->ReadPciReg<uint8_t>(PciCtrl::kRegInterfaceClassCode) == 0x20 &&
+      dev->ReadPciReg<uint8_t>(PciCtrl::kRegSubClassCode) == 0x03 &&
+      dev->ReadPciReg<uint8_t>(PciCtrl::kRegBaseClassCode) == 0x0C) {
     dev->Init();
     return dev;
   } else {
@@ -40,12 +40,12 @@ DevPci *DevEhci::InitPci(uint8_t bus, uint8_t device, uint8_t function) {
 }
 
 void DevEhci::Init() {
-  WriteReg<uint16_t>(PciCtrl::kCommandReg, ReadReg<uint16_t>(PciCtrl::kCommandReg) | PciCtrl::kCommandRegBusMasterEnableFlag);
+  WritePciReg<uint16_t>(PciCtrl::kCommandReg, ReadPciReg<uint16_t>(PciCtrl::kCommandReg) | PciCtrl::kCommandRegBusMasterEnableFlag);
 
-  phys_addr addr = ReadReg<uint32_t>(kBaseAddressReg);
+  phys_addr addr = ReadPciReg<uint32_t>(kBaseAddressReg);
   if ((addr & 0x4) != 0) {
     // may be mapped into 64bit addressing space
-    addr |= static_cast<phys_addr>(ReadReg<uint32_t>(kBaseAddressReg + 4)) << 32;
+    addr |= static_cast<phys_addr>(ReadPciReg<uint32_t>(kBaseAddressReg + 4)) << 32;
   }
   addr &= 0xFFFFFFFFFFFFFF00;
   _capability_reg_base_addr = addr2ptr<volatile uint8_t>(p2v(addr));
@@ -126,16 +126,16 @@ void DevEhci::Init() {
   uint8_t eecp = (ReadCapabilityRegHccParams() >> 8) & 0xff;
   uint32_t eec;
   for(; eecp !=0; eecp = (eec >> 8) & 0xff) {
-    eec = ReadReg<uint32_t>(eecp);
+    eec = ReadPciReg<uint32_t>(eecp);
     if ((eec & 0xff) != 0x1) {
       continue;
     }
     if ((eec & (1 << 16)) == 0) {
       continue;
     }
-    WriteReg<uint32_t>(eecp, eec & (1 << 24));
+    WritePciReg<uint32_t>(eecp, eec & (1 << 24));
     while(true) {
-      eec = ReadReg<uint32_t>(eecp);
+      eec = ReadPciReg<uint32_t>(eecp);
       if ((eec & 0xff) != 0x1) {
         break;
       }
