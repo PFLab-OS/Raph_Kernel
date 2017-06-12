@@ -15,5 +15,5 @@ rtl8139.o:
 	@$(MAKE) -C rtl8139 
 
 clean:
-	$(MAKE) -C realtek clean
+	$(MAKE) -C rtl8139 clean
 	-rm -f $(OBJS) $(TEST_OBJS) $(DEPS) *.s *.ii
