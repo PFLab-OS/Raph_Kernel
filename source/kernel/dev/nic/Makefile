@@ -1,19 +1,19 @@
-OBJS = intel.o
+SUB = intel
+OBJS = $(addsuffix .o,$(SUB))
 
 DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))
 
 .PHONY: clean
 
-default: ../nic.o
+default:
+	@$(foreach rule, $(SUB), $(MAKE) -C $(rule);)
+	@$(MAKE) ../nic.o
 
 -include $(DEPS)
 
 ../nic.o: $(OBJS)
 	ld -r $^ -o $@
 
-intel.o:
-	@$(MAKE) -C intel CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
-
 clean:
-	$(MAKE) -C intel clean
+	@$(foreach rule, $(SUB), $(MAKE) -C $(rule) clean;)
 	-rm -f $(OBJS) $(TEST_OBJS) $(DEPS) *.s *.ii
