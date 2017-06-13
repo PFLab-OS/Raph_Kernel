@@ -26,16 +26,17 @@
 #include <mem/physmem.h>
 #include <tty.h>
 #include <dev/netdev.h>
+#include <dev/eth.h>
 #include <dev/pci.h>
 #include <global.h>
 #include <stdint.h>
 
 #include "rl.h"
 
-DevPci *Rtl8139::InitPCI(uint8_t bus,uint8_t device,uint8_t function){
+DevPci *Rtl8139::InitPci(uint8_t bus,uint8_t device,uint8_t function){
   Rtl8139 *dev = new Rtl8139(bus,device,function);
-  uint16_t vid = dev->ReadReg<uint16_t>(PciCtrl::kVendorIDReg);
-  uint16_t did = dev->ReadReg<uint16_t>(PciCtrl::kDeviceIDReg);
+  uint16_t vid = dev->ReadPciReg<uint16_t>(PciCtrl::kVendorIDReg);
+  uint16_t did = dev->ReadPciReg<uint16_t>(PciCtrl::kDeviceIDReg);
 
   if( vid == kVendorId && did == kDeviceId ){
     return dev;
@@ -46,18 +47,17 @@ DevPci *Rtl8139::InitPCI(uint8_t bus,uint8_t device,uint8_t function){
 }
 
 void Rtl8139::Attach(){
-  volatile uint32_t temp_mmio = ReadReg<uint32_t>(kBaseAddressReg0);
+  volatile uint32_t temp_mmio = ReadPciReg<uint32_t>(PciCtrl::kBaseAddressReg0);
   _mmio_addr = (temp_mmio & (~0b11));
 
   //Enable BusMastering
   WritePciReg<uint16_t>(PciCtrl::kCommandReg,ReadPciReg<uint16_t>(PciCtrl::kCommandReg) | PciCtrl::kCommandRegBusMasterEnableFlag);
 
   //Software Reset
-  outb(_mmio_addr+Command,kCmdReset); 
+  outb(_mmio_addr+kRegCommand,kCmdReset); 
   while((inb(_mmio_addr + 0x37) & 0x10) != 0) { }
 
-  outb(_mmio_addr + Command,kCmdTxEnable | kCmdRxEnable);
-aaaaaaa
+  outb(_mmio_addr + kRegCommand,kCmdTxEnable | kCmdRxEnable);
 
   //intrrupt
   //RxOK only (TODO :add interruption)
@@ -67,7 +67,7 @@ aaaaaaa
   //Receive Configuration Registerの設定
   //７bit目はwrapで最後にあふれた時に、リングの先頭に戻るか(０)、そのままはみでるか(１)
   //1にするなら余裕を持って確保すること
-  outl(_mmio_addr + RxConfig,0xf | (1<<7) | (1<<5));
+  outl(_mmio_addr + kRegRxConfig,0xf | (1<<7) | (1<<5));
 
   //txconig
   outl(_mmio_addr + kRegTxConfig,4 << 8);
@@ -79,7 +79,7 @@ aaaaaaa
   outl(_mmio_addr + kRegRxAddr,recv_buf_addr.GetAddr());
 
 
-  outb(_mmio_addr + Command,kCmdTxEnable|kCmdRxEnable);
+  outb(_mmio_addr + kRegCommand,kCmdTxEnable|kCmdRxEnable);
 
  }
 
@@ -90,9 +90,9 @@ uint16_t Rtl8139::ReadEeprom(uint16_t offset,uint16_t length){
   outb(_mmio_addr + kReg93C46Cmd,0x80); 
   outb(_mmio_addr + kReg93C46Cmd,0x08); 
 
-  int read_cmd = offset | (6 << len);
+  int read_cmd = offset | (6 << length);
   
-  for(int i= 4 + len;i >= 0;i--){
+  for(int i= 4 + length;i >= 0;i--){
     int dataval = (read_cmd & (1 << i))? 2 : 0;
     outb(_mmio_addr + kReg93C46Cmd,0x80 | 0x08 | dataval); 
     inw(_mmio_addr + kReg93C46Cmd);
@@ -115,5 +115,34 @@ uint16_t Rtl8139::ReadEeprom(uint16_t offset,uint16_t length){
   return retval;
 }
 
-
+template<>
+void Rtl8139::WriteReg(uint32_t offset,uint8_t data){
+  outb(_mmio_addr + offset,data);
 }
+
+template<>
+void Rtl8139::WriteReg(uint32_t offset,uint16_t data){
+  outw(_mmio_addr + offset,data);
+}
+
+template<>
+void Rtl8139::WriteReg(uint32_t offset,uint32_t data){
+  outl(_mmio_addr + offset,data);
+}
+
+template<>
+uint32_t Rtl8139::ReadReg(uint32_t offset){
+  return inl(_mmio_addr + offset);
+}
+
+template<>
+uint16_t Rtl8139::ReadReg(uint32_t offset){
+  return inw(_mmio_addr + offset);
+}
+
+template<>
+uint8_t Rtl8139::ReadReg(uint32_t offset){
+  return inb(_mmio_addr + offset);
+}
+
+
