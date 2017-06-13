@@ -24,10 +24,10 @@ Table::~Table() {
 }
 
 void Table::Search(uint8_t bus, uint8_t device, uint8_t function, const char *search) {
-  uint16_t vendorid = pci_ctrl->ReadReg<uint16_t>(bus, device, function, PciCtrl::kVendorIDReg);
-  uint16_t deviceid = pci_ctrl->ReadReg<uint16_t>(bus, device, function, PciCtrl::kDeviceIDReg);
-  uint16_t subvendorid = pci_ctrl->ReadReg<uint16_t>(bus, device, function, PciCtrl::kSubsystemVendorIdReg);
-  uint16_t subdeviceid = pci_ctrl->ReadReg<uint16_t>(bus, device, function, PciCtrl::kSubsystemIdReg);
+  uint16_t vendorid = pci_ctrl->ReadPciReg<uint16_t>(bus, device, function, PciCtrl::kVendorIDReg);
+  uint16_t deviceid = pci_ctrl->ReadPciReg<uint16_t>(bus, device, function, PciCtrl::kDeviceIDReg);
+  uint16_t subvendorid = pci_ctrl->ReadPciReg<uint16_t>(bus, device, function, PciCtrl::kSubsystemVendorIdReg);
+  uint16_t subdeviceid = pci_ctrl->ReadPciReg<uint16_t>(bus, device, function, PciCtrl::kSubsystemIdReg);
   
   Vendor *p = vendor;
   Device *d = nullptr;
