@@ -55,31 +55,31 @@ void Rtl8139::Attach(){
 
   //Software Reset
   outb(_mmio_addr+kRegCommand,kCmdReset); 
-  while((inb(_mmio_addr + 0x37) & 0x10) != 0) { }
+  while((ReadReg<uint8_t>(0x37) & 0x10) != 0) { }
 
-  outb(_mmio_addr + kRegCommand,kCmdTxEnable | kCmdRxEnable);
+  WriteReg<uint8_t>(kRegCommand,kCmdTxEnable | kCmdRxEnable);
 
   //intrrupt
   //RxOK only (TODO :add interruption)
-  outw(_mmio_addr + kRegIrMask,0x01);
+  WriteReg<uint16_t>(kRegIrMask,0x01);
 
 
   //Receive Configuration Registerの設定
   //７bit目はwrapで最後にあふれた時に、リングの先頭に戻るか(０)、そのままはみでるか(１)
   //1にするなら余裕を持って確保すること
-  outl(_mmio_addr + kRegRxConfig,0xf | (1<<7) | (1<<5));
+  WriteReg<uint32_t>(kRegRxConfig,0xf | (1<<7) | (1<<5));
 
   //txconig
-  outl(_mmio_addr + kRegTxConfig,4 << 8);
+  WriteReg<uint32_t>(kRegTxConfig,4 << 8);
 
 
   //受信バッファ設定
   PhysAddr recv_buf_addr;
   physmem_ctrl->Alloc(recv_buf_addr,PagingCtrl::kPageSize);
-  outl(_mmio_addr + kRegRxAddr,recv_buf_addr.GetAddr());
+  WriteReg<uint32_t>(kRegRxAddr,recv_buf_addr.GetAddr());
 
 
-  outb(_mmio_addr + kRegCommand,kCmdTxEnable|kCmdRxEnable);
+  WriteReg<uint8_t>(kRegCommand,kCmdTxEnable|kCmdRxEnable);
 
  }
 
@@ -87,31 +87,31 @@ void Rtl8139::Attach(){
 uint16_t Rtl8139::ReadEeprom(uint16_t offset,uint16_t length){
   //cf http://www.jbox.dk/sanos/source/sys/dev/rtl8139.c.html#:309
 
-  outb(_mmio_addr + kReg93C46Cmd,0x80); 
-  outb(_mmio_addr + kReg93C46Cmd,0x08); 
+  WriteReg<uint8_t>(kReg93C46Cmd,0x80); 
+  WriteReg<uint8_t>(kReg93C46Cmd,0x08); 
 
   int read_cmd = offset | (6 << length);
   
   for(int i= 4 + length;i >= 0;i--){
     int dataval = (read_cmd & (1 << i))? 2 : 0;
-    outb(_mmio_addr + kReg93C46Cmd,0x80 | 0x08 | dataval); 
-    inw(_mmio_addr + kReg93C46Cmd);
-    outb(_mmio_addr + kReg93C46Cmd,0x80 | 0x08 | dataval | 0x4);
-    inw(_mmio_addr + kReg93C46Cmd);
+    WriteReg<uint8_t>(kReg93C46Cmd,0x80 | 0x08 | dataval); 
+    ReadReg<uint16_t>(kReg93C46Cmd);
+    WriteReg<uint8_t>(kReg93C46Cmd,0x80 | 0x08 | dataval | 0x4);
+    ReadReg<uint16_t>(kReg93C46Cmd);
   }
-  outb(_mmio_addr + kReg93C46Cmd,0x80 | 0x08);
-  inw(_mmio_addr + kReg93C46Cmd);
+  WriteReg<uint8_t>(kReg93C46Cmd,0x80 | 0x08);
+  ReadReg<uint16_t>(kReg93C46Cmd);
 
   uint16_t retval = 0;
   for(int i = 16;i > 0;i--){
-    outb(_mmio_addr + kReg93C46Cmd,0x80 | 0x08 | 0x4);
-    inw(_mmio_addr + kReg93C46Cmd);
-    retval = (retval << 1) | ((inb(_mmio_addr + kReg93C46Cmd) & 0x01) ? 1 : 0);
-    outb(_mmio_addr + kReg93C46Cmd,0x80 | 0x08);
-    inw(_mmio_addr + kReg93C46Cmd);
+    WriteReg<uint8_t>(kReg93C46Cmd,0x80 | 0x08 | 0x4);
+    ReadReg<uint16_t>(kReg93C46Cmd);
+    retval = (retval << 1) | ((ReadReg<uint8_t>(kReg93C46Cmd) & 0x01) ? 1 : 0);
+    WriteReg<uint8_t>(kReg93C46Cmd,0x80 | 0x08);
+    ReadReg<uint16_t>(kReg93C46Cmd);
   }
 
-  outb(_mmio_addr + kReg93C46Cmd,~(0x80 | 0x08));
+  WriteReg<uint8_t>(kReg93C46Cmd,~(0x80 | 0x08));
   return retval;
 }
 
@@ -145,4 +145,4 @@ uint8_t Rtl8139::ReadReg(uint32_t offset){
   return inb(_mmio_addr + offset);
 }
 
-
+aaa
