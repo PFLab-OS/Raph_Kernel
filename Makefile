@@ -43,10 +43,6 @@ define vnc
 endef
 endif
 
-.PHONY: clean disk run image mount umount debugqemu showerror numerror vboxrun run_pxeserver pxeimg burn_ipxe burn_ipxe_remote vboxkill vnc synctime
-
-default: image
-
 ###################################
 # for remote host (Vagrant)
 ###################################
