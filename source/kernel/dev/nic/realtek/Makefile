@@ -1,19 +1,19 @@
-OBJS = rtl8139.o
+SUB = rtl8139
+OBJS = $(addsuffix .o,$(SUB))
 
 DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))
 
-.PHONY: clean 
+.PHONY: clean
 
-default: ../realtek.o
+default:
+	@$(foreach rule, $(SUB), $(MAKE) -C $(rule);)
+	@$(MAKE) ../realtek.o
 
 -include $(DEPS)
 
 ../realtek.o: $(OBJS)
 	ld -r $^ -o $@
 
-rtl8139.o:
-	@$(MAKE) -C rtl8139 
-
 clean:
-	$(MAKE) -C rtl8139 clean
+	@$(foreach rule, $(SUB), $(MAKE) -C $(rule) clean;)
 	-rm -f $(OBJS) $(TEST_OBJS) $(DEPS) *.s *.ii

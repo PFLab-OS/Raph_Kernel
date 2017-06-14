@@ -42,10 +42,28 @@
 
 class Rtl8139 : public DevPci{
 public:
-  Rtl8139(uint8_t bus,uint8_t device,uint8_t function) : DevPci(bus,device,function){ }
+  Rtl8139(uint8_t bus,uint8_t device,uint8_t function) : DevPci(bus,device,function), _eth(*this){ }
 
   static DevPci *InitPci(uint8_t bus,uint8_t device,uint8_t function);
 
+  class Rtl8139Ethernet: public DevEthernet{
+  public:
+    Rtl8139Ethernet(Rtl8139 &master) : _master(master){
+    }
+
+    static void PollingHandler(Rtl8139 *that);
+    
+    virtual void UpdateLinkStatus() override;
+    
+    // allocate 6 byte before call
+    virtual void GetEthAddr(uint8_t *buffer) override;
+    virtual void ChangeHandleMethodToPolling() override;
+    virtual void ChangeHandleMethodToInt() override;
+    virtual void Transmit(void *) override;
+    virtual bool IsLinkUp() override;
+  private:
+    Rtl8139 &_master;
+  };
 
 private:
   template <class T>
@@ -71,16 +89,14 @@ private:
   static const uint32_t kRegIrMask = 0x3c; //w
   static const uint32_t kReg93C46Cmd = 0x50; //b
 
-
   //Command  see datasheet p21
   static const uint8_t kCmdTxEnable = 0x4;
   static const uint8_t kCmdRxEnable = 0x8;
   static const uint8_t kCmdReset = 0x10;
   static const uint8_t kCmdRxBufEmpty = 0x1;
 
-  class Rlt8139Ethernet: public DevEthernet{
-  };
-
   virtual void Attach() override;
   uint16_t ReadEeprom(uint16_t offset,uint16_t length);
+
+  Rtl8139Ethernet _eth;
 };

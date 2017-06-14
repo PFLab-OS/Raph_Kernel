@@ -145,4 +145,31 @@ uint16_t Rtl8139::ReadEeprom(uint16_t offset,uint16_t length){
   return retval;
 }
 
+//TODO
+static void PollingHandler(Rtl8139 *that){
 
+}
+
+void Rtl8139::Rtl8139Ethernet::UpdateLinkStatus(){
+
+}
+
+void Rtl8139::Rtl8139Ethernet::GetEthAddr(uint8_t *buffer){
+
+}
+
+void Rtl8139::Rtl8139Ethernet::ChangeHandleMethodToPolling(){
+
+}
+
+void Rtl8139::Rtl8139Ethernet::ChangeHandleMethodToInt(){
+
+}
+
+void Rtl8139::Rtl8139Ethernet::Transmit(void *){
+
+}
+
+bool Rtl8139::Rtl8139Ethernet::IsLinkUp(){
+  return true;
+} 
