@@ -23,7 +23,7 @@
  <tr style="height: 56px;">
   <td style="padding-left: 0.5em;">
    <div id="projectname">Raph_Kernel
-   &#160;<span id="projectnumber">36875aa22490610cd0ef28cada3097788c76682b (with uncommitted changes)</span>
+   &#160;<span id="projectnumber">1bcb0fd27ed9fac05599e47edba8c7345459a143 (with uncommitted changes)</span>
    </div>
   </td>
  </tr>
@@ -131,9 +131,12 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <div class="line"><a name="l00041"></a><span class="lineno">   41</span>&#160;  <span class="keyword">virtual</span> <span class="keywordtype">size_t</span> GetBlockSize() {</div>
 <div class="line"><a name="l00042"></a><span class="lineno">   42</span>&#160;    <span class="keywordflow">return</span> 1;</div>
 <div class="line"><a name="l00043"></a><span class="lineno">   43</span>&#160;  }</div>
-<div class="line"><a name="l00044"></a><span class="lineno">   44</span>&#160;  <a class="code" href="classuptr.html">uptr&lt;Array&lt;uint8_t&gt;</a>&gt; _image;</div>
-<div class="line"><a name="l00045"></a><span class="lineno">   45</span>&#160;  <span class="keyword">const</span> <span class="keywordtype">char</span> *_fname;</div>
-<div class="line"><a name="l00046"></a><span class="lineno">   46</span>&#160;};</div>
+<div class="line"><a name="l00044"></a><span class="lineno">   44</span>&#160;  <span class="keyword">virtual</span> <span class="keyword">const</span> <span class="keywordtype">char</span> *GetName() {</div>
+<div class="line"><a name="l00045"></a><span class="lineno">   45</span>&#160;    <span class="keywordflow">return</span> <span class="stringliteral">&quot;ram&quot;</span>;</div>
+<div class="line"><a name="l00046"></a><span class="lineno">   46</span>&#160;  }</div>
+<div class="line"><a name="l00047"></a><span class="lineno">   47</span>&#160;  <a class="code" href="classuptr.html">uptr&lt;Array&lt;uint8_t&gt;</a>&gt; _image;</div>
+<div class="line"><a name="l00048"></a><span class="lineno">   48</span>&#160;  <span class="keyword">const</span> <span class="keywordtype">char</span> *_fname;</div>
+<div class="line"><a name="l00049"></a><span class="lineno">   49</span>&#160;};</div>
 <div class="ttc" id="class_storage_html"><div class="ttname"><a href="class_storage.html">Storage</a></div><div class="ttdef"><b>Definition:</b> storage.h:30</div></div>
 <div class="ttc" id="class_ramdisk_html"><div class="ttname"><a href="class_ramdisk.html">Ramdisk</a></div><div class="ttdef"><b>Definition:</b> ramdisk.h:29</div></div>
 <div class="ttc" id="classuptr_html"><div class="ttname"><a href="classuptr.html">uptr</a></div><div class="ttdef"><b>Definition:</b> ptr.h:28</div></div>

@@ -23,7 +23,7 @@
  <tr style="height: 56px;">
   <td style="padding-left: 0.5em;">
    <div id="projectname">Raph_Kernel
-   &#160;<span id="projectnumber">36875aa22490610cd0ef28cada3097788c76682b (with uncommitted changes)</span>
+   &#160;<span id="projectnumber">1bcb0fd27ed9fac05599e47edba8c7345459a143 (with uncommitted changes)</span>
    </div>
   </td>
  </tr>
@@ -91,9 +91,13 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <p>This is the complete list of members for <a class="el" href="class_inode_container.html">InodeContainer</a>, including all inherited members.</p>
 <table class="directory">
   <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>_node</b> (defined in <a class="el" href="class_inode_container.html">InodeContainer</a>)</td><td class="entry"><a class="el" href="class_inode_container.html">InodeContainer</a></td><td class="entry"><span class="mlabel">private</span></td></tr>
-  <tr bgcolor="#f0f0f0"><td class="entry"><b>GetStatOfInode</b>(Stat &amp;st) (defined in <a class="el" href="class_inode_container.html">InodeContainer</a>)</td><td class="entry"><a class="el" href="class_inode_container.html">InodeContainer</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
+  <tr bgcolor="#f0f0f0"><td class="entry"><b>DirLookup</b>(char *name, int &amp;offset, InodeNumber &amp;inum) __attribute__((warn_unused_result)) (defined in <a class="el" href="class_inode_container.html">InodeContainer</a>)</td><td class="entry"><a class="el" href="class_inode_container.html">InodeContainer</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
+  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>GetStatOfInode</b>(VirtualFileSystem::Stat &amp;st) __attribute__((warn_unused_result)) (defined in <a class="el" href="class_inode_container.html">InodeContainer</a>)</td><td class="entry"><a class="el" href="class_inode_container.html">InodeContainer</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
+  <tr><td class="entry"><a class="el" href="class_inode_container.html#a8e612fd044d96716ceb5dbaa1cf1377d">InitInode</a>(Inode *inode, InodeNumber inum)</td><td class="entry"><a class="el" href="class_inode_container.html">InodeContainer</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
   <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>InodeContainer</b>()=default (defined in <a class="el" href="class_inode_container.html">InodeContainer</a>)</td><td class="entry"><a class="el" href="class_inode_container.html">InodeContainer</a></td><td class="entry"></td></tr>
-  <tr bgcolor="#f0f0f0"><td class="entry"><b>Set</b>(Inode *inode) (defined in <a class="el" href="class_inode_container.html">InodeContainer</a>)</td><td class="entry"><a class="el" href="class_inode_container.html">InodeContainer</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
+  <tr bgcolor="#f0f0f0"><td class="entry"><b>InodeContainer</b>(const InodeContainer &amp;obj) (defined in <a class="el" href="class_inode_container.html">InodeContainer</a>)</td><td class="entry"><a class="el" href="class_inode_container.html">InodeContainer</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
+  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>ReadData</b>(uint8_t *data, size_t offset, size_t &amp;size) __attribute__((warn_unused_result)) (defined in <a class="el" href="class_inode_container.html">InodeContainer</a>)</td><td class="entry"><a class="el" href="class_inode_container.html">InodeContainer</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
+  <tr bgcolor="#f0f0f0"><td class="entry"><b>SetIfSame</b>(Inode *inode, InodeNumber inum) (defined in <a class="el" href="class_inode_container.html">InodeContainer</a>)</td><td class="entry"><a class="el" href="class_inode_container.html">InodeContainer</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
   <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>~InodeContainer</b>() (defined in <a class="el" href="class_inode_container.html">InodeContainer</a>)</td><td class="entry"><a class="el" href="class_inode_container.html">InodeContainer</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
 </table></div><!-- contents -->
 <!-- start footer part -->

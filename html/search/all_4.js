@@ -2,6 +2,7 @@ var searchData=
 [
   ['daddr',['daddr',['../struct_ipv4_layer_1_1_header.html#a42dd47420828bf22f2cebba8cf365c6a',1,'Ipv4Layer::Header']]],
   ['data',['Data',['../class_font_1_1_data.html',1,'Font']]],
+  ['decref',['DecRef',['../class_inode.html#a41e9b1202930546fda7f85d9f0c7f67d',1,'Inode']]],
   ['delegate',['Delegate',['../class_protocol_stack_base_layer.html#a36648d3c70173354fa90978afec5dd4d',1,'ProtocolStackBaseLayer']]],
   ['desc',['Desc',['../class_font_1_1_desc.html',1,'Font']]],
   ['detachprotocolheader',['DetachProtocolHeader',['../class_protocol_stack_layer.html#ae1adc0edb98b431580105c14d0b48048',1,'ProtocolStackLayer']]],
@@ -25,6 +26,8 @@ var searchData=
   ['devusbkeyboard',['DevUsbKeyboard',['../class_dev_usb_keyboard.html',1,'']]],
   ['dinode',['dinode',['../structdinode.html',1,'']]],
   ['dirent',['dirent',['../structdirent.html',1,'']]],
+  ['direntry',['DirEntry',['../struct_v6_file_system_1_1_dir_entry.html',1,'V6FileSystem']]],
+  ['dirlookup',['DirLookup',['../class_disk_file_system.html#a2fc9240085a3c9c31bbe0074b9879ebb',1,'DiskFileSystem::DirLookup()'],['../class_v6_file_system.html#a255d4451786c7685244ef40a0e78597b',1,'V6FileSystem::DirLookup(InodeNumber dinode, char *name, int &amp;offset, InodeNumber &amp;inode) override __attribute__((warn_unused_result))'],['../class_v6_file_system.html#afd4d6d72c213475c56b9e0cbc391ab8d',1,'V6FileSystem::DirLookup(V6fsInode &amp;dinode, char *name, int &amp;offset, InodeNumber &amp;inode) __attribute__((warn_unused_result))']]],
   ['diskfilesystem',['DiskFileSystem',['../class_disk_file_system.html',1,'']]],
   ['dport',['dport',['../struct_udp_layer_1_1_header.html#a1ccf9151f462d4a37d7b5b575dcd8248',1,'UdpLayer::Header']]],
   ['drawinfo',['DrawInfo',['../struct_frame_buffer_1_1_draw_info.html',1,'FrameBuffer']]],

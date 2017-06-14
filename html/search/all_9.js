@@ -5,6 +5,7 @@ var searchData=
   ['idt_5fentity',['idt_entity',['../structidt__entity.html',1,'']]],
   ['ifmedia',['ifmedia',['../structifmedia.html',1,'']]],
   ['ifnet',['ifnet',['../structifnet.html',1,'']]],
+  ['initinode',['InitInode',['../class_inode_container.html#a8e612fd044d96716ceb5dbaa1cf1377d',1,'InodeContainer']]],
   ['initrxpacketbuffer',['InitRxPacketBuffer',['../class_net_dev.html#afd8bc8f0520ead4e15561ba18d099769',1,'NetDev']]],
   ['inittxpacketbuffer',['InitTxPacketBuffer',['../class_net_dev.html#abbb178ad7806b952e3de8b6c1c72bc69',1,'NetDev']]],
   ['inode',['Inode',['../class_inode.html',1,'']]],

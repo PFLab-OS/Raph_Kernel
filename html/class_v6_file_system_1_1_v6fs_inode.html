@@ -23,7 +23,7 @@
  <tr style="height: 56px;">
   <td style="padding-left: 0.5em;">
    <div id="projectname">Raph_Kernel
-   &#160;<span id="projectnumber">36875aa22490610cd0ef28cada3097788c76682b (with uncommitted changes)</span>
+   &#160;<span id="projectnumber">1bcb0fd27ed9fac05599e47edba8c7345459a143 (with uncommitted changes)</span>
    </div>
   </td>
  </tr>
@@ -96,6 +96,13 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <div class="title">V6FileSystem::V6fsInode Class Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
+<div class="dynheader">
+Collaboration diagram for V6FileSystem::V6fsInode:</div>
+<div class="dyncontent">
+<div class="center"><img src="class_v6_file_system_1_1_v6fs_inode__coll__graph.png" border="0" usemap="#_v6_file_system_1_1_v6fs_inode_coll__map" alt="Collaboration graph"/></div>
+<map name="_v6_file_system_1_1_v6fs_inode_coll__map" id="_v6_file_system_1_1_v6fs_inode_coll__map">
+<area shape="rect" id="node2" href="class_storage.html" title="Storage" alt="" coords="5,83,72,109"/><area shape="rect" id="node3" href="class_device.html" title="Device" alt="" coords="7,5,69,32"/><area shape="rect" id="node4" href="struct_v6_file_system_1_1_super_block.html" title="V6FileSystem::SuperBlock" alt="" coords="96,83,275,109"/></map>
+<center><span class="legend">[<a href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="nested-classes"></a>
 Classes</h2></td></tr>
@@ -104,25 +111,41 @@ Classes</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a8223d2e2d1ad81bda4fb7e49a95ba95c"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a8223d2e2d1ad81bda4fb7e49a95ba95c"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>V6fsInode</b> (int index)</td></tr>
-<tr class="separator:a8223d2e2d1ad81bda4fb7e49a95ba95c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0219215db721e382d2f175157cd40f01"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a0219215db721e382d2f175157cd40f01"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>Init</b> (uint16_t type)</td></tr>
-<tr class="separator:a0219215db721e382d2f175157cd40f01"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:acce0815b206469b94c4a34bd90b71444"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="acce0815b206469b94c4a34bd90b71444"></a>
 struct <br class="typebreak"/>
 <a class="el" href="struct_v6_file_system_1_1_v6fs_inode_1_1_v6fs_inode_struct.html">V6FileSystem::V6fsInode::V6fsInodeStruct</a>&#160;</td><td class="memItemRight" valign="bottom"><b>__attribute__</b> ((__packed__)) _st</td></tr>
 <tr class="separator:acce0815b206469b94c4a34bd90b71444"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2ef420572b01b3f556d0b36f0e9d56c1"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a2ef420572b01b3f556d0b36f0e9d56c1"></a>
+&#160;</td><td class="memItemRight" valign="bottom"><b>V6fsInode</b> (int index, <a class="el" href="class_storage.html">Storage</a> &amp;storage, <a class="el" href="struct_v6_file_system_1_1_super_block.html">SuperBlock</a> &amp;sb)</td></tr>
+<tr class="separator:a2ef420572b01b3f556d0b36f0e9d56c1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a54a733bfa6bcbefa8ab7f6c90b07c6b1"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a54a733bfa6bcbefa8ab7f6c90b07c6b1"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>Init</b> (Type type)</td></tr>
+<tr class="separator:a54a733bfa6bcbefa8ab7f6c90b07c6b1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0870e4392385c2b03dd01c2d38ea7e4e"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a0870e4392385c2b03dd01c2d38ea7e4e"></a>
+IoReturnState&#160;</td><td class="memItemRight" valign="bottom"><b>Read</b> () __attribute__((warn_unused_result))</td></tr>
+<tr class="separator:a0870e4392385c2b03dd01c2d38ea7e4e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a005264b8d4380d986d4dc7a9e8b6b495"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a005264b8d4380d986d4dc7a9e8b6b495"></a>
+IoReturnState&#160;</td><td class="memItemRight" valign="bottom"><b>Write</b> () __attribute__((warn_unused_result))</td></tr>
+<tr class="separator:a005264b8d4380d986d4dc7a9e8b6b495"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a61ea3adcdbf9ba38ccf2bd8be8c0086b"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a61ea3adcdbf9ba38ccf2bd8be8c0086b"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>GetStatOfInode</b> (<a class="el" href="struct_virtual_file_system_1_1_stat.html">VirtualFileSystem::Stat</a> &amp;<a class="el" href="structstat.html">stat</a>)</td></tr>
+<tr class="separator:a61ea3adcdbf9ba38ccf2bd8be8c0086b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
 <tr class="memitem:a75e040869d82939464d7bc698c5d219b"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a75e040869d82939464d7bc698c5d219b"></a>
 const int&#160;</td><td class="memItemRight" valign="bottom"><b>_index</b></td></tr>
 <tr class="separator:a75e040869d82939464d7bc698c5d219b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab926685215cf46967f086fad5608cb21"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ab926685215cf46967f086fad5608cb21"></a>
+<a class="el" href="class_storage.html">Storage</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>_storage</b></td></tr>
+<tr class="separator:ab926685215cf46967f086fad5608cb21"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a69343ea1a82702a86480046adf18d626"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a69343ea1a82702a86480046adf18d626"></a>
+<a class="el" href="struct_v6_file_system_1_1_super_block.html">SuperBlock</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>_sb</b></td></tr>
+<tr class="separator:a69343ea1a82702a86480046adf18d626"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<hr/>The documentation for this class was generated from the following file:<ul>
+<hr/>The documentation for this class was generated from the following files:<ul>
 <li>source/kernel/<a class="el" href="v6fs_8h_source.html">v6fs.h</a></li>
+<li>source/kernel/v6fs.cc</li>
 </ul>
 </div><!-- contents -->
 <!-- start footer part -->

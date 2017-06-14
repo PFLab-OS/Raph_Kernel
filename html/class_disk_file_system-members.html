@@ -23,7 +23,7 @@
  <tr style="height: 56px;">
   <td style="padding-left: 0.5em;">
    <div id="projectname">Raph_Kernel
-   &#160;<span id="projectnumber">36875aa22490610cd0ef28cada3097788c76682b (with uncommitted changes)</span>
+   &#160;<span id="projectnumber">1bcb0fd27ed9fac05599e47edba8c7345459a143 (with uncommitted changes)</span>
    </div>
   </td>
  </tr>
@@ -90,9 +90,11 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 
 <p>This is the complete list of members for <a class="el" href="class_disk_file_system.html">DiskFileSystem</a>, including all inherited members.</p>
 <table class="directory">
-  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>AllocInode</b>(uint32_t &amp;inum, VirtualFileSystem::FileType type) __attribute__((warn_unused_result))=0 (defined in <a class="el" href="class_disk_file_system.html">DiskFileSystem</a>)</td><td class="entry"><a class="el" href="class_disk_file_system.html">DiskFileSystem</a></td><td class="entry"><span class="mlabel">pure virtual</span></td></tr>
-  <tr bgcolor="#f0f0f0"><td class="entry"><b>GetRootInodeNum</b>()=0 (defined in <a class="el" href="class_disk_file_system.html">DiskFileSystem</a>)</td><td class="entry"><a class="el" href="class_disk_file_system.html">DiskFileSystem</a></td><td class="entry"><span class="mlabel">pure virtual</span></td></tr>
-  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>GetStatOfInode</b>(uint32_t inum, Stat &amp;stat)=0 (defined in <a class="el" href="class_disk_file_system.html">DiskFileSystem</a>)</td><td class="entry"><a class="el" href="class_disk_file_system.html">DiskFileSystem</a></td><td class="entry"><span class="mlabel">pure virtual</span></td></tr>
+  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>AllocInode</b>(InodeNumber &amp;inum, VirtualFileSystem::FileType type) __attribute__((warn_unused_result))=0 (defined in <a class="el" href="class_disk_file_system.html">DiskFileSystem</a>)</td><td class="entry"><a class="el" href="class_disk_file_system.html">DiskFileSystem</a></td><td class="entry"><span class="mlabel">pure virtual</span></td></tr>
+  <tr><td class="entry"><a class="el" href="class_disk_file_system.html#a2fc9240085a3c9c31bbe0074b9879ebb">DirLookup</a>(InodeNumber dinode, char *name, int &amp;offset, InodeNumber &amp;inode) __attribute__((warn_unused_result))=0</td><td class="entry"><a class="el" href="class_disk_file_system.html">DiskFileSystem</a></td><td class="entry"><span class="mlabel">pure virtual</span></td></tr>
+  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>GetRootInodeNum</b>()=0 (defined in <a class="el" href="class_disk_file_system.html">DiskFileSystem</a>)</td><td class="entry"><a class="el" href="class_disk_file_system.html">DiskFileSystem</a></td><td class="entry"><span class="mlabel">pure virtual</span></td></tr>
+  <tr bgcolor="#f0f0f0"><td class="entry"><b>GetStatOfInode</b>(InodeNumber inum, VirtualFileSystem::Stat &amp;stat) __attribute__((warn_unused_result))=0 (defined in <a class="el" href="class_disk_file_system.html">DiskFileSystem</a>)</td><td class="entry"><a class="el" href="class_disk_file_system.html">DiskFileSystem</a></td><td class="entry"><span class="mlabel">pure virtual</span></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="class_disk_file_system.html#a17cc6fa655df259757d2bb396e2b36a0">ReadDataFromInode</a>(uint8_t *data, InodeNumber inum, size_t offset, size_t &amp;size) __attribute__((warn_unused_result))=0</td><td class="entry"><a class="el" href="class_disk_file_system.html">DiskFileSystem</a></td><td class="entry"><span class="mlabel">pure virtual</span></td></tr>
   <tr bgcolor="#f0f0f0"><td class="entry"><b>~DiskFileSystem</b>() (defined in <a class="el" href="class_disk_file_system.html">DiskFileSystem</a>)</td><td class="entry"><a class="el" href="class_disk_file_system.html">DiskFileSystem</a></td><td class="entry"><span class="mlabel">inline</span><span class="mlabel">virtual</span></td></tr>
 </table></div><!-- contents -->
 <!-- start footer part -->

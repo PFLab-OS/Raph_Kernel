@@ -23,7 +23,7 @@
  <tr style="height: 56px;">
   <td style="padding-left: 0.5em;">
    <div id="projectname">Raph_Kernel
-   &#160;<span id="projectnumber">36875aa22490610cd0ef28cada3097788c76682b (with uncommitted changes)</span>
+   &#160;<span id="projectnumber">1bcb0fd27ed9fac05599e47edba8c7345459a143 (with uncommitted changes)</span>
    </div>
   </td>
  </tr>
@@ -101,17 +101,23 @@ Collaboration diagram for VirtualFileSystem::InodeCtrl:</div>
 <div class="dyncontent">
 <div class="center"><img src="class_virtual_file_system_1_1_inode_ctrl__coll__graph.png" border="0" usemap="#_virtual_file_system_1_1_inode_ctrl_coll__map" alt="Collaboration graph"/></div>
 <map name="_virtual_file_system_1_1_inode_ctrl_coll__map" id="_virtual_file_system_1_1_inode_ctrl_coll__map">
-<area shape="rect" id="node2" href="class_inode.html" title="Inode" alt="" coords="79,187,133,213"/><area shape="rect" id="node3" href="class_disk_file_system.html" title="DiskFileSystem" alt="" coords="5,96,120,123"/><area shape="rect" id="node4" href="class_spin_lock.html" title="SpinLock" alt="" coords="145,96,220,123"/><area shape="rect" id="node5" href="class_spin_lock_interface.html" title="SpinLockInterface" alt="" coords="61,5,187,32"/><area shape="rect" id="node6" href="class_cpu_id.html" title="CpuId" alt="" coords="211,5,268,32"/></map>
+<area shape="rect" id="node3" href="class_virtual_file_system.html" title="VirtualFileSystem" alt="" coords="32,293,157,320"/><area shape="rect" id="node2" href="class_inode.html" title="Inode" alt="" coords="138,384,192,411"/><area shape="rect" id="node4" href="class_disk_file_system.html" title="DiskFileSystem" alt="" coords="8,96,122,123"/><area shape="rect" id="node5" href="class_spin_lock.html" title="SpinLock" alt="" coords="211,96,286,123"/><area shape="rect" id="node6" href="class_spin_lock_interface.html" title="SpinLockInterface" alt="" coords="127,5,253,32"/><area shape="rect" id="node7" href="class_cpu_id.html" title="CpuId" alt="" coords="278,5,334,32"/></map>
 <center><span class="legend">[<a href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a64ab66dc44b1ea41120b6eae7bfb20fd"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a64ab66dc44b1ea41120b6eae7bfb20fd"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>Init</b> ()</td></tr>
-<tr class="separator:a64ab66dc44b1ea41120b6eae7bfb20fd"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad6c4049103614d0404182e2f3de2a89b"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ad6c4049103614d0404182e2f3de2a89b"></a>
-IoReturnState&#160;</td><td class="memItemRight" valign="bottom"><b>Alloc</b> (FileType type) __attribute__((warn_unused_result))</td></tr>
-<tr class="separator:ad6c4049103614d0404182e2f3de2a89b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a47f8fb4a5a420e5eef1b05a4bd17bc4c"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a47f8fb4a5a420e5eef1b05a4bd17bc4c"></a>
+&#160;</td><td class="memItemRight" valign="bottom"><b>InodeCtrl</b> (<a class="el" href="class_disk_file_system.html">DiskFileSystem</a> *fs)</td></tr>
+<tr class="separator:a47f8fb4a5a420e5eef1b05a4bd17bc4c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a493dd39c994999649fe3b86fd0a754fd"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a493dd39c994999649fe3b86fd0a754fd"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>Init</b> (<a class="el" href="class_virtual_file_system.html">VirtualFileSystem</a> *vfs)</td></tr>
+<tr class="separator:a493dd39c994999649fe3b86fd0a754fd"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a52f0d0bac69bf45d308b893324622a4c"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a52f0d0bac69bf45d308b893324622a4c"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>ReleaseInode</b> ()</td></tr>
+<tr class="separator:a52f0d0bac69bf45d308b893324622a4c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab52f74b6d3baf638b0740be93fa4dbab"><td class="memItemLeft" align="right" valign="top">IoReturnState&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_virtual_file_system_1_1_inode_ctrl.html#ab52f74b6d3baf638b0740be93fa4dbab">Alloc</a> (FileType type, <a class="el" href="class_inode_container.html">InodeContainer</a> &amp;inode) __attribute__((warn_unused_result))</td></tr>
+<tr class="memdesc:ab52f74b6d3baf638b0740be93fa4dbab"><td class="mdescLeft">&#160;</td><td class="mdescRight">allocate vfs inode  <a href="#ab52f74b6d3baf638b0740be93fa4dbab">More...</a><br/></td></tr>
+<tr class="separator:ab52f74b6d3baf638b0740be93fa4dbab"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1ea27b7ed65515703a849b685aaebd68"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a1ea27b7ed65515703a849b685aaebd68"></a>
 IoReturnState&#160;</td><td class="memItemRight" valign="bottom"><b>Get</b> (<a class="el" href="class_inode_container.html">InodeContainer</a> &amp;icontainer, uint32_t inum) __attribute__((warn_unused_result))</td></tr>
 <tr class="separator:a1ea27b7ed65515703a849b685aaebd68"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -124,6 +130,9 @@ Private Attributes</h2></td></tr>
 <tr class="memitem:aaa535b02b5d6a0e4e55f91042839d28b"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="aaa535b02b5d6a0e4e55f91042839d28b"></a>
 <a class="el" href="class_inode.html">Inode</a>&#160;</td><td class="memItemRight" valign="bottom"><b>_nodes</b> [kNodesNum]</td></tr>
 <tr class="separator:aaa535b02b5d6a0e4e55f91042839d28b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a64d1cd661ecee7ae85f6cb38d7d28572"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a64d1cd661ecee7ae85f6cb38d7d28572"></a>
+<a class="el" href="class_disk_file_system.html">DiskFileSystem</a> *&#160;</td><td class="memItemRight" valign="bottom"><b>_dfs</b></td></tr>
+<tr class="separator:a64d1cd661ecee7ae85f6cb38d7d28572"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pri-static-attribs"></a>
 Static Private Attributes</h2></td></tr>
@@ -131,6 +140,42 @@ Static Private Attributes</h2></td></tr>
 static const int&#160;</td><td class="memItemRight" valign="bottom"><b>kNodesNum</b> = 50</td></tr>
 <tr class="separator:a1d88776d50201d8ac757f2f287dadd00"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
+<h2 class="groupheader">Member Function Documentation</h2>
+<a class="anchor" id="ab52f74b6d3baf638b0740be93fa4dbab"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">IoReturnState VirtualFileSystem::InodeCtrl::Alloc </td>
+          <td>(</td>
+          <td class="paramtype">FileType&#160;</td>
+          <td class="paramname"><em>type</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="class_inode_container.html">InodeContainer</a> &amp;&#160;</td>
+          <td class="paramname"><em>inode</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>allocate vfs inode </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">type</td><td>type of inode </td></tr>
+    <tr><td class="paramname">inode</td><td>allocated inode (returned by this function) </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
 <hr/>The documentation for this class was generated from the following files:<ul>
 <li>source/kernel/<a class="el" href="kernel_2fs_8h_source.html">fs.h</a></li>
 <li>source/kernel/fs.cc</li>

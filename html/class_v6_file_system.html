@@ -23,7 +23,7 @@
  <tr style="height: 56px;">
   <td style="padding-left: 0.5em;">
    <div id="projectname">Raph_Kernel
-   &#160;<span id="projectnumber">36875aa22490610cd0ef28cada3097788c76682b (with uncommitted changes)</span>
+   &#160;<span id="projectnumber">1bcb0fd27ed9fac05599e47edba8c7345459a143 (with uncommitted changes)</span>
    </div>
   </td>
  </tr>
@@ -108,11 +108,15 @@ Collaboration diagram for V6FileSystem:</div>
 <div class="dyncontent">
 <div class="center"><img src="class_v6_file_system__coll__graph.png" border="0" usemap="#_v6_file_system_coll__map" alt="Collaboration graph"/></div>
 <map name="_v6_file_system_coll__map" id="_v6_file_system_coll__map">
-<area shape="rect" id="node2" href="class_disk_file_system.html" title="DiskFileSystem" alt="" coords="5,96,120,123"/><area shape="rect" id="node3" href="class_storage.html" title="Storage" alt="" coords="144,96,211,123"/><area shape="rect" id="node4" href="class_device.html" title="Device" alt="" coords="146,5,208,32"/><area shape="rect" id="node5" href="class_v6_file_system_1_1_v6fs_inode_ctrl.html" title="V6FileSystem::V6fsInodeCtrl" alt="" coords="235,96,427,123"/><area shape="rect" id="node6" href="struct_v6_file_system_1_1_super_block.html" title="V6FileSystem::SuperBlock" alt="" coords="241,5,420,32"/></map>
+<area shape="rect" id="node2" href="class_disk_file_system.html" title="DiskFileSystem" alt="" coords="5,187,120,213"/><area shape="rect" id="node3" href="class_storage.html" title="Storage" alt="" coords="243,96,309,123"/><area shape="rect" id="node5" href="class_v6_file_system_1_1_block_ctrl.html" title="V6FileSystem::BlockCtrl" alt="" coords="463,187,629,213"/><area shape="rect" id="node10" href="class_v6_file_system_1_1_v6fs_inode_ctrl.html" title="V6FileSystem::V6fsInodeCtrl" alt="" coords="247,187,439,213"/><area shape="rect" id="node4" href="class_device.html" title="Device" alt="" coords="245,5,307,32"/><area shape="rect" id="node6" href="struct_v6_file_system_1_1_super_block.html" title="V6FileSystem::SuperBlock" alt="" coords="357,96,536,123"/><area shape="rect" id="node7" href="class_spin_lock.html" title="SpinLock" alt="" coords="561,96,636,123"/><area shape="rect" id="node8" href="class_spin_lock_interface.html" title="SpinLockInterface" alt="" coords="593,5,719,32"/><area shape="rect" id="node9" href="class_cpu_id.html" title="CpuId" alt="" coords="511,5,568,32"/></map>
 <center><span class="legend">[<a href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="nested-classes"></a>
 Classes</h2></td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_v6_file_system_1_1_block_ctrl.html">BlockCtrl</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="struct_v6_file_system_1_1_dir_entry.html">DirEntry</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="struct_v6_file_system_1_1_super_block.html">SuperBlock</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_v6_file_system_1_1_v6fs_inode.html">V6fsInode</a></td></tr>
@@ -128,59 +132,72 @@ Public Member Functions</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pri-types"></a>
 Private Types</h2></td></tr>
-<tr class="memitem:a68ccddb0ac2165e14a782bc0e1d8cc9a"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom"><b>Type</b> : uint16_t { <b>kDirectory</b> = 1, 
+<tr class="memitem:a68ccddb0ac2165e14a782bc0e1d8cc9a"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom"><b>Type</b> : uint16_t { <b>kFree</b> = 0, 
+<b>kDirectory</b> = 1, 
 <b>kFile</b> = 2, 
 <b>kDevice</b> = 3
  }</td></tr>
 <tr class="separator:a68ccddb0ac2165e14a782bc0e1d8cc9a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6b228e5ad90eb0fa0b76b8126127bb96"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a6b228e5ad90eb0fa0b76b8126127bb96"></a>
+using&#160;</td><td class="memItemRight" valign="bottom"><b>BlockIndex</b> = uint32_t</td></tr>
+<tr class="separator:a6b228e5ad90eb0fa0b76b8126127bb96"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pri-methods"></a>
 Private Member Functions</h2></td></tr>
 <tr class="memitem:a1a77a71251918b8c59216cfe5a466948"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a1a77a71251918b8c59216cfe5a466948"></a>
 struct <a class="el" href="struct_v6_file_system_1_1_super_block.html">V6FileSystem::SuperBlock</a>&#160;</td><td class="memItemRight" valign="bottom"><b>__attribute__</b> ((__packed__)) _sb</td></tr>
 <tr class="separator:a1a77a71251918b8c59216cfe5a466948"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af5547aaaf85f296e2d503ec7e98b200e"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="af5547aaaf85f296e2d503ec7e98b200e"></a>
-IoReturnState&#160;</td><td class="memItemRight" valign="bottom"><b>ReadV6fsInode</b> (<a class="el" href="class_v6_file_system_1_1_v6fs_inode.html">V6fsInode</a> &amp;inode) __attribute__((warn_unused_result))</td></tr>
-<tr class="separator:af5547aaaf85f296e2d503ec7e98b200e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aedb6b95e3a2b66b77ea3f79339a6563d"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="aedb6b95e3a2b66b77ea3f79339a6563d"></a>
-IoReturnState&#160;</td><td class="memItemRight" valign="bottom"><b>WriteV6fsInode</b> (<a class="el" href="class_v6_file_system_1_1_v6fs_inode.html">V6fsInode</a> &amp;inode) __attribute__((warn_unused_result))</td></tr>
-<tr class="separator:aedb6b95e3a2b66b77ea3f79339a6563d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:affd50b3258d148b88a98f96c0cdd5d2e"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="affd50b3258d148b88a98f96c0cdd5d2e"></a>
-virtual IoReturnState&#160;</td><td class="memItemRight" valign="bottom"><b>AllocInode</b> (uint32_t &amp;inum, VirtualFileSystem::FileType type) __attribute__((warn_unused_result)) override</td></tr>
-<tr class="separator:affd50b3258d148b88a98f96c0cdd5d2e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a35185de6ce31ac4b54200e98078fcfd1"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a35185de6ce31ac4b54200e98078fcfd1"></a>
-virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>GetStatOfInode</b> (uint32_t inum, <a class="el" href="struct_stat.html">Stat</a> &amp;<a class="el" href="structstat.html">stat</a>) override</td></tr>
-<tr class="separator:a35185de6ce31ac4b54200e98078fcfd1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a35bd9e5ee94a3784337c900e45383396"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a35bd9e5ee94a3784337c900e45383396"></a>
-virtual uint32_t&#160;</td><td class="memItemRight" valign="bottom"><b>GetRootInodeNum</b> () override</td></tr>
-<tr class="separator:a35bd9e5ee94a3784337c900e45383396"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a488fa7edf9dfde439f42e4135e92bd63"><td class="memItemLeft" align="right" valign="top">virtual IoReturnState&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_v6_file_system.html#a488fa7edf9dfde439f42e4135e92bd63">ReadDataFromInode</a> (uint8_t *data, <a class="el" href="class_inode.html">Inode</a> *inode, size_t offset, size_t size) override</td></tr>
-<tr class="memdesc:a488fa7edf9dfde439f42e4135e92bd63"><td class="mdescLeft">&#160;</td><td class="mdescRight">read data from inode  <a href="#a488fa7edf9dfde439f42e4135e92bd63">More...</a><br/></td></tr>
-<tr class="separator:a488fa7edf9dfde439f42e4135e92bd63"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aae4a49b8b0836f8fbf20d3ec7ba6b0b1"><td class="memItemLeft" align="right" valign="top">IoReturnState&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_v6_file_system.html#aae4a49b8b0836f8fbf20d3ec7ba6b0b1">MapBlock</a> (<a class="el" href="class_v6_file_system_1_1_v6fs_inode.html">V6fsInode</a> *inode, int index, uint32_t &amp;addr)</td></tr>
-<tr class="memdesc:aae4a49b8b0836f8fbf20d3ec7ba6b0b1"><td class="mdescLeft">&#160;</td><td class="mdescRight">map block to inode. if already mapped, return mapped address.  <a href="#aae4a49b8b0836f8fbf20d3ec7ba6b0b1">More...</a><br/></td></tr>
-<tr class="separator:aae4a49b8b0836f8fbf20d3ec7ba6b0b1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:afe2dd3a22613bb05d24c7fc2dc5b1f3c"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="afe2dd3a22613bb05d24c7fc2dc5b1f3c"></a>
+struct <a class="el" href="struct_v6_file_system_1_1_dir_entry.html">V6FileSystem::DirEntry</a>&#160;</td><td class="memItemRight" valign="bottom"><b>__attribute__</b> ((__packed__))</td></tr>
+<tr class="separator:afe2dd3a22613bb05d24c7fc2dc5b1f3c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0bb1c3b5bdfbeefada4f336435e71678"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a0bb1c3b5bdfbeefada4f336435e71678"></a>
+virtual IoReturnState&#160;</td><td class="memItemRight" valign="bottom"><b>AllocInode</b> (InodeNumber &amp;inum, VirtualFileSystem::FileType type) override __attribute__((warn_unused_result))</td></tr>
+<tr class="separator:a0bb1c3b5bdfbeefada4f336435e71678"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aacf9b3f20bc370d61cd364dfaed5b0b3"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="aacf9b3f20bc370d61cd364dfaed5b0b3"></a>
+virtual IoReturnState&#160;</td><td class="memItemRight" valign="bottom"><b>GetStatOfInode</b> (InodeNumber inum, <a class="el" href="struct_virtual_file_system_1_1_stat.html">VirtualFileSystem::Stat</a> &amp;<a class="el" href="structstat.html">stat</a>) override __attribute__((warn_unused_result))</td></tr>
+<tr class="separator:aacf9b3f20bc370d61cd364dfaed5b0b3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af28098a41408fc9a5f115683963c3403"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="af28098a41408fc9a5f115683963c3403"></a>
+virtual InodeNumber&#160;</td><td class="memItemRight" valign="bottom"><b>GetRootInodeNum</b> () override</td></tr>
+<tr class="separator:af28098a41408fc9a5f115683963c3403"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a19193e762f3236fff04007560de1b7c7"><td class="memItemLeft" align="right" valign="top">virtual IoReturnState&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_v6_file_system.html#a19193e762f3236fff04007560de1b7c7">ReadDataFromInode</a> (uint8_t *data, InodeNumber inum, size_t offset, size_t &amp;size) override __attribute__((warn_unused_result))</td></tr>
+<tr class="memdesc:a19193e762f3236fff04007560de1b7c7"><td class="mdescLeft">&#160;</td><td class="mdescRight">read data from inode  <a href="#a19193e762f3236fff04007560de1b7c7">More...</a><br/></td></tr>
+<tr class="separator:a19193e762f3236fff04007560de1b7c7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4613b904e28f2e62fc2ac3953e76f2e8"><td class="memItemLeft" align="right" valign="top">IoReturnState&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_v6_file_system.html#a4613b904e28f2e62fc2ac3953e76f2e8">ReadDataFromInode</a> (uint8_t *data, <a class="el" href="class_v6_file_system_1_1_v6fs_inode.html">V6fsInode</a> &amp;inode, size_t offset, size_t &amp;size) __attribute__((warn_unused_result))</td></tr>
+<tr class="memdesc:a4613b904e28f2e62fc2ac3953e76f2e8"><td class="mdescLeft">&#160;</td><td class="mdescRight">read data from inode  <a href="#a4613b904e28f2e62fc2ac3953e76f2e8">More...</a><br/></td></tr>
+<tr class="separator:a4613b904e28f2e62fc2ac3953e76f2e8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a255d4451786c7685244ef40a0e78597b"><td class="memItemLeft" align="right" valign="top">virtual IoReturnState&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_v6_file_system.html#a255d4451786c7685244ef40a0e78597b">DirLookup</a> (InodeNumber <a class="el" href="structdinode.html">dinode</a>, char *name, int &amp;offset, InodeNumber &amp;inode) override __attribute__((warn_unused_result))</td></tr>
+<tr class="memdesc:a255d4451786c7685244ef40a0e78597b"><td class="mdescLeft">&#160;</td><td class="mdescRight">lookup directory and return inode  <a href="#a255d4451786c7685244ef40a0e78597b">More...</a><br/></td></tr>
+<tr class="separator:a255d4451786c7685244ef40a0e78597b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:afd4d6d72c213475c56b9e0cbc391ab8d"><td class="memItemLeft" align="right" valign="top">IoReturnState&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_v6_file_system.html#afd4d6d72c213475c56b9e0cbc391ab8d">DirLookup</a> (<a class="el" href="class_v6_file_system_1_1_v6fs_inode.html">V6fsInode</a> &amp;<a class="el" href="structdinode.html">dinode</a>, char *name, int &amp;offset, InodeNumber &amp;inode) __attribute__((warn_unused_result))</td></tr>
+<tr class="memdesc:afd4d6d72c213475c56b9e0cbc391ab8d"><td class="mdescLeft">&#160;</td><td class="mdescRight">lookup directory and return inode  <a href="#afd4d6d72c213475c56b9e0cbc391ab8d">More...</a><br/></td></tr>
+<tr class="separator:afd4d6d72c213475c56b9e0cbc391ab8d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a34f3fe17f6f1827d48f6693d6b3eafb8"><td class="memItemLeft" align="right" valign="top">IoReturnState&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_v6_file_system.html#a34f3fe17f6f1827d48f6693d6b3eafb8">MapBlock</a> (<a class="el" href="class_v6_file_system_1_1_v6fs_inode.html">V6fsInode</a> &amp;inode, int index, uint32_t &amp;addr)</td></tr>
+<tr class="memdesc:a34f3fe17f6f1827d48f6693d6b3eafb8"><td class="mdescLeft">&#160;</td><td class="mdescRight">map block to inode. if already mapped, return mapped address.  <a href="#a34f3fe17f6f1827d48f6693d6b3eafb8">More...</a><br/></td></tr>
+<tr class="separator:a34f3fe17f6f1827d48f6693d6b3eafb8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pri-static-methods"></a>
 Static Private Member Functions</h2></td></tr>
 <tr class="memitem:a02798f927b4b5ac32e908efc9bf11b9c"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a02798f927b4b5ac32e908efc9bf11b9c"></a>
 static Type&#160;</td><td class="memItemRight" valign="bottom"><b>ConvType</b> (VirtualFileSystem::FileType type)</td></tr>
 <tr class="separator:a02798f927b4b5ac32e908efc9bf11b9c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aaa3605a804f43badce19a3f7dc5ed695"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="aaa3605a804f43badce19a3f7dc5ed695"></a>
+static VirtualFileSystem::FileType&#160;</td><td class="memItemRight" valign="bottom"><b>ConvType</b> (Type type)</td></tr>
+<tr class="separator:aaa3605a804f43badce19a3f7dc5ed695"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pri-attribs"></a>
 Private Attributes</h2></td></tr>
 <tr class="memitem:a50d74125bbfd220433cba9e779cbd6a4"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a50d74125bbfd220433cba9e779cbd6a4"></a>
 enum V6FileSystem::Type&#160;</td><td class="memItemRight" valign="bottom"><b>__attribute__</b></td></tr>
 <tr class="separator:a50d74125bbfd220433cba9e779cbd6a4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2179e6ef8d478a6c6a0c3844358bd26c"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a2179e6ef8d478a6c6a0c3844358bd26c"></a>
-class <a class="el" href="class_v6_file_system_1_1_v6fs_inode_ctrl.html">V6FileSystem::V6fsInodeCtrl</a>&#160;</td><td class="memItemRight" valign="bottom"><b>_inode_ctrl</b></td></tr>
-<tr class="separator:a2179e6ef8d478a6c6a0c3844358bd26c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:afc2f81f99596351d52035e08064e4648"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="afc2f81f99596351d52035e08064e4648"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>_inode_ctrl</b></td></tr>
-<tr class="separator:afc2f81f99596351d52035e08064e4648"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a620e6a4f9b30d1fae4049c7e560d35e4"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a620e6a4f9b30d1fae4049c7e560d35e4"></a>
 <a class="el" href="class_storage.html">Storage</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>_storage</b></td></tr>
 <tr class="separator:a620e6a4f9b30d1fae4049c7e560d35e4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8eb8a3d406463758ba1bf97be24cee49"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a8eb8a3d406463758ba1bf97be24cee49"></a>
+<a class="el" href="class_v6_file_system_1_1_v6fs_inode_ctrl.html">V6fsInodeCtrl</a>&#160;</td><td class="memItemRight" valign="bottom"><b>_inode_ctrl</b></td></tr>
+<tr class="separator:a8eb8a3d406463758ba1bf97be24cee49"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae3ad897a0c579428ea24da7da9b8f459"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ae3ad897a0c579428ea24da7da9b8f459"></a>
+<a class="el" href="class_v6_file_system_1_1_block_ctrl.html">BlockCtrl</a>&#160;</td><td class="memItemRight" valign="bottom"><b>_block_ctrl</b></td></tr>
+<tr class="separator:ae3ad897a0c579428ea24da7da9b8f459"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pri-static-attribs"></a>
 Static Private Attributes</h2></td></tr>
@@ -193,9 +210,137 @@ static const int&#160;</td><td class="memItemRight" valign="bottom"><b>kNumOfDir
 <tr class="memitem:a0cb6180b72cc1dd78830f4cbe067d0ec"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a0cb6180b72cc1dd78830f4cbe067d0ec"></a>
 static const int&#160;</td><td class="memItemRight" valign="bottom"><b>kNumEntriesOfIndirectBlock</b> = kBlockSize / sizeof(uint32_t)</td></tr>
 <tr class="separator:a0cb6180b72cc1dd78830f4cbe067d0ec"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7e670ebce1f04c2cc62c22efc1e173b8"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a7e670ebce1f04c2cc62c22efc1e173b8"></a>
+static const size_t&#160;</td><td class="memItemRight" valign="bottom"><b>kMaxDirectoryNameLength</b> = 14</td></tr>
+<tr class="separator:a7e670ebce1f04c2cc62c22efc1e173b8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Member Function Documentation</h2>
-<a class="anchor" id="aae4a49b8b0836f8fbf20d3ec7ba6b0b1"></a>
+<a class="anchor" id="a255d4451786c7685244ef40a0e78597b"></a>
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual IoReturnState V6FileSystem::DirLookup </td>
+          <td>(</td>
+          <td class="paramtype">InodeNumber&#160;</td>
+          <td class="paramname"><em>dinode</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">char *&#160;</td>
+          <td class="paramname"><em>name</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">int &amp;&#160;</td>
+          <td class="paramname"><em>offset</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">InodeNumber &amp;&#160;</td>
+          <td class="paramname"><em>inode</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">override</span><span class="mlabel">private</span><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>lookup directory and return inode </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">dinode</td><td>inode of directory </td></tr>
+    <tr><td class="paramname">name</td><td>entry name to lookup </td></tr>
+    <tr><td class="paramname">offset</td><td>offset of entry (returned by this function) </td></tr>
+    <tr><td class="paramname">inode</td><td>found inode (returned by this function) </td></tr>
+  </table>
+  </dd>
+</dl>
+
+<p>Implements <a class="el" href="class_disk_file_system.html#a2fc9240085a3c9c31bbe0074b9879ebb">DiskFileSystem</a>.</p>
+
+</div>
+</div>
+<a class="anchor" id="afd4d6d72c213475c56b9e0cbc391ab8d"></a>
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">IoReturnState V6FileSystem::DirLookup </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="class_v6_file_system_1_1_v6fs_inode.html">V6fsInode</a> &amp;&#160;</td>
+          <td class="paramname"><em>dinode</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">char *&#160;</td>
+          <td class="paramname"><em>name</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">int &amp;&#160;</td>
+          <td class="paramname"><em>offset</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">InodeNumber &amp;&#160;</td>
+          <td class="paramname"><em>inode</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>lookup directory and return inode </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">dinode</td><td>inode of directory </td></tr>
+    <tr><td class="paramname">name</td><td>entry name to lookup </td></tr>
+    <tr><td class="paramname">offset</td><td>offset of entry (returned by this function) </td></tr>
+    <tr><td class="paramname">inode</td><td>found inode (returned by this function) </td></tr>
+  </table>
+  </dd>
+</dl>
+
+<p><div class="dynheader">
+Here is the call graph for this function:</div>
+<div class="dyncontent">
+<div class="center"><img src="class_v6_file_system_afd4d6d72c213475c56b9e0cbc391ab8d_cgraph.png" border="0" usemap="#class_v6_file_system_afd4d6d72c213475c56b9e0cbc391ab8d_cgraph" alt=""/></div>
+<map name="class_v6_file_system_afd4d6d72c213475c56b9e0cbc391ab8d_cgraph" id="class_v6_file_system_afd4d6d72c213475c56b9e0cbc391ab8d_cgraph">
+<area shape="rect" id="node2" href="class_v6_file_system.html#a19193e762f3236fff04007560de1b7c7" title="read data from inode " alt="" coords="225,5,426,46"/></map>
+</div>
+</p>
+
+</div>
+</div>
+<a class="anchor" id="a34f3fe17f6f1827d48f6693d6b3eafb8"></a>
 <div class="memitem">
 <div class="memproto">
 <table class="mlabels">
@@ -205,7 +350,7 @@ static const int&#160;</td><td class="memItemRight" valign="bottom"><b>kNumEntri
         <tr>
           <td class="memname">IoReturnState V6FileSystem::MapBlock </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="class_v6_file_system_1_1_v6fs_inode.html">V6fsInode</a> *&#160;</td>
+          <td class="paramtype"><a class="el" href="class_v6_file_system_1_1_v6fs_inode.html">V6fsInode</a> &amp;&#160;</td>
           <td class="paramname"><em>inode</em>, </td>
         </tr>
         <tr>
@@ -238,24 +383,102 @@ static const int&#160;</td><td class="memItemRight" valign="bottom"><b>kNumEntri
   <table class="params">
     <tr><td class="paramname">inode</td><td>target inode </td></tr>
     <tr><td class="paramname">index</td><td>block index of inode </td></tr>
-    <tr><td class="paramname">addr</td><td>mapped block address</td></tr>
+    <tr><td class="paramname">addr</td><td>mapped block address (returned by this function)</td></tr>
   </table>
   </dd>
 </dl>
 <p>Block address will be set to 'addr' if succeeds. </p>
 
 <p><div class="dynheader">
+Here is the call graph for this function:</div>
+<div class="dyncontent">
+<div class="center"><img src="class_v6_file_system_a34f3fe17f6f1827d48f6693d6b3eafb8_cgraph.png" border="0" usemap="#class_v6_file_system_a34f3fe17f6f1827d48f6693d6b3eafb8_cgraph" alt=""/></div>
+<map name="class_v6_file_system_a34f3fe17f6f1827d48f6693d6b3eafb8_cgraph" id="class_v6_file_system_a34f3fe17f6f1827d48f6693d6b3eafb8_cgraph">
+<area shape="rect" id="node2" href="class_v6_file_system_1_1_block_ctrl.html#a469c304cd8020df447918fa3974e3e8a" title="allocate block " alt="" coords="225,5,391,46"/></map>
+</div>
+</p>
+
+<p><div class="dynheader">
 Here is the caller graph for this function:</div>
 <div class="dyncontent">
-<div class="center"><img src="class_v6_file_system_aae4a49b8b0836f8fbf20d3ec7ba6b0b1_icgraph.png" border="0" usemap="#class_v6_file_system_aae4a49b8b0836f8fbf20d3ec7ba6b0b1_icgraph" alt=""/></div>
-<map name="class_v6_file_system_aae4a49b8b0836f8fbf20d3ec7ba6b0b1_icgraph" id="class_v6_file_system_aae4a49b8b0836f8fbf20d3ec7ba6b0b1_icgraph">
-<area shape="rect" id="node2" href="class_v6_file_system.html#a488fa7edf9dfde439f42e4135e92bd63" title="read data from inode " alt="" coords="225,5,426,46"/></map>
+<div class="center"><img src="class_v6_file_system_a34f3fe17f6f1827d48f6693d6b3eafb8_icgraph.png" border="0" usemap="#class_v6_file_system_a34f3fe17f6f1827d48f6693d6b3eafb8_icgraph" alt=""/></div>
+<map name="class_v6_file_system_a34f3fe17f6f1827d48f6693d6b3eafb8_icgraph" id="class_v6_file_system_a34f3fe17f6f1827d48f6693d6b3eafb8_icgraph">
+<area shape="rect" id="node2" href="class_v6_file_system.html#a4613b904e28f2e62fc2ac3953e76f2e8" title="read data from inode " alt="" coords="225,5,426,46"/></map>
 </div>
 </p>
 
 </div>
 </div>
-<a class="anchor" id="a488fa7edf9dfde439f42e4135e92bd63"></a>
+<a class="anchor" id="a19193e762f3236fff04007560de1b7c7"></a>
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual IoReturnState V6FileSystem::ReadDataFromInode </td>
+          <td>(</td>
+          <td class="paramtype">uint8_t *&#160;</td>
+          <td class="paramname"><em>data</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">InodeNumber&#160;</td>
+          <td class="paramname"><em>inum</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">size_t&#160;</td>
+          <td class="paramname"><em>offset</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">size_t &amp;&#160;</td>
+          <td class="paramname"><em>size</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">override</span><span class="mlabel">private</span><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>read data from inode </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">buf</td><td>buffer for storing data </td></tr>
+    <tr><td class="paramname">inum</td><td>target inode number </td></tr>
+    <tr><td class="paramname">offset</td><td>offset in target inode file </td></tr>
+    <tr><td class="paramname">size</td><td>size of the data to be read. This function overwrites the value with the actually size read.</td></tr>
+  </table>
+  </dd>
+</dl>
+<p>Caller must allocate 'data'. The size of 'data' must be larger than 'size'. TODO: check if we can remove this function </p>
+
+<p>Implements <a class="el" href="class_disk_file_system.html#a17cc6fa655df259757d2bb396e2b36a0">DiskFileSystem</a>.</p>
+
+<p><div class="dynheader">
+Here is the caller graph for this function:</div>
+<div class="dyncontent">
+<div class="center"><img src="class_v6_file_system_a19193e762f3236fff04007560de1b7c7_icgraph.png" border="0" usemap="#class_v6_file_system_a19193e762f3236fff04007560de1b7c7_icgraph" alt=""/></div>
+<map name="class_v6_file_system_a19193e762f3236fff04007560de1b7c7_icgraph" id="class_v6_file_system_a19193e762f3236fff04007560de1b7c7_icgraph">
+<area shape="rect" id="node2" href="class_v6_file_system.html#afd4d6d72c213475c56b9e0cbc391ab8d" title="lookup directory and return inode " alt="" coords="256,12,427,39"/></map>
+</div>
+</p>
+
+</div>
+</div>
+<a class="anchor" id="a4613b904e28f2e62fc2ac3953e76f2e8"></a>
 <div class="memitem">
 <div class="memproto">
 <table class="mlabels">
@@ -266,12 +489,12 @@ Here is the caller graph for this function:</div>
           <td class="memname">IoReturnState V6FileSystem::ReadDataFromInode </td>
           <td>(</td>
           <td class="paramtype">uint8_t *&#160;</td>
-          <td class="paramname"><em>data</em>, </td>
+          <td class="paramname"><em>buf</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="class_inode.html">Inode</a> *&#160;</td>
+          <td class="paramtype"><a class="el" href="class_v6_file_system_1_1_v6fs_inode.html">V6fsInode</a> &amp;&#160;</td>
           <td class="paramname"><em>inode</em>, </td>
         </tr>
         <tr>
@@ -283,7 +506,7 @@ Here is the caller graph for this function:</div>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">size_t&#160;</td>
+          <td class="paramtype">size_t &amp;&#160;</td>
           <td class="paramname"><em>size</em>&#160;</td>
         </tr>
         <tr>
@@ -294,7 +517,7 @@ Here is the caller graph for this function:</div>
       </table>
   </td>
   <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">override</span><span class="mlabel">private</span><span class="mlabel">virtual</span></span>  </td>
+<span class="mlabels"><span class="mlabel">private</span></span>  </td>
   </tr>
 </table>
 </div><div class="memdoc">
@@ -303,7 +526,7 @@ Here is the caller graph for this function:</div>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">buf</td><td>buffer for storing data </td></tr>
-    <tr><td class="paramname">inode</td><td>target inode </td></tr>
+    <tr><td class="paramname">inode</td><td>target inode number </td></tr>
     <tr><td class="paramname">offset</td><td>offset in target inode file </td></tr>
     <tr><td class="paramname">size</td><td>size of the data to be read. This function overwrites the value with the actually size read.</td></tr>
   </table>
@@ -314,9 +537,9 @@ Here is the caller graph for this function:</div>
 <p><div class="dynheader">
 Here is the call graph for this function:</div>
 <div class="dyncontent">
-<div class="center"><img src="class_v6_file_system_a488fa7edf9dfde439f42e4135e92bd63_cgraph.png" border="0" usemap="#class_v6_file_system_a488fa7edf9dfde439f42e4135e92bd63_cgraph" alt=""/></div>
-<map name="class_v6_file_system_a488fa7edf9dfde439f42e4135e92bd63_cgraph" id="class_v6_file_system_a488fa7edf9dfde439f42e4135e92bd63_cgraph">
-<area shape="rect" id="node2" href="class_v6_file_system.html#aae4a49b8b0836f8fbf20d3ec7ba6b0b1" title="map block to inode. if already mapped, return mapped address. " alt="" coords="256,12,427,39"/></map>
+<div class="center"><img src="class_v6_file_system_a4613b904e28f2e62fc2ac3953e76f2e8_cgraph.png" border="0" usemap="#class_v6_file_system_a4613b904e28f2e62fc2ac3953e76f2e8_cgraph" alt=""/></div>
+<map name="class_v6_file_system_a4613b904e28f2e62fc2ac3953e76f2e8_cgraph" id="class_v6_file_system_a4613b904e28f2e62fc2ac3953e76f2e8_cgraph">
+<area shape="rect" id="node2" href="class_v6_file_system.html#a34f3fe17f6f1827d48f6693d6b3eafb8" title="map block to inode. if already mapped, return mapped address. " alt="" coords="256,12,427,39"/><area shape="rect" id="node3" href="class_v6_file_system_1_1_block_ctrl.html#a469c304cd8020df447918fa3974e3e8a" title="allocate block " alt="" coords="475,5,642,46"/></map>
 </div>
 </p>
 

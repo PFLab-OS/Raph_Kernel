@@ -21,6 +21,7 @@ var searchData=
   ['devusbkeyboard',['DevUsbKeyboard',['../class_dev_usb_keyboard.html',1,'']]],
   ['dinode',['dinode',['../structdinode.html',1,'']]],
   ['dirent',['dirent',['../structdirent.html',1,'']]],
+  ['direntry',['DirEntry',['../struct_v6_file_system_1_1_dir_entry.html',1,'V6FileSystem']]],
   ['diskfilesystem',['DiskFileSystem',['../class_disk_file_system.html',1,'']]],
   ['drawinfo',['DrawInfo',['../struct_frame_buffer_1_1_draw_info.html',1,'FrameBuffer']]],
   ['dummydescriptor',['DummyDescriptor',['../class_usb_ctrl_1_1_dummy_descriptor.html',1,'UsbCtrl']]]

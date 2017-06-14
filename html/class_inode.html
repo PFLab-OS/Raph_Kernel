@@ -23,7 +23,7 @@
  <tr style="height: 56px;">
   <td style="padding-left: 0.5em;">
    <div id="projectname">Raph_Kernel
-   &#160;<span id="projectnumber">36875aa22490610cd0ef28cada3097788c76682b (with uncommitted changes)</span>
+   &#160;<span id="projectnumber">1bcb0fd27ed9fac05599e47edba8c7345459a143 (with uncommitted changes)</span>
    </div>
   </td>
  </tr>
@@ -85,6 +85,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <div class="header">
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
+<a href="#pri-methods">Private Member Functions</a> &#124;
 <a href="#pri-attribs">Private Attributes</a> &#124;
 <a href="class_inode-members.html">List of all members</a>  </div>
   <div class="headertitle">
@@ -96,35 +97,32 @@ Collaboration diagram for Inode:</div>
 <div class="dyncontent">
 <div class="center"><img src="class_inode__coll__graph.png" border="0" usemap="#_inode_coll__map" alt="Collaboration graph"/></div>
 <map name="_inode_coll__map" id="_inode_coll__map">
-<area shape="rect" id="node2" href="class_disk_file_system.html" title="DiskFileSystem" alt="" coords="5,96,120,123"/><area shape="rect" id="node3" href="class_spin_lock.html" title="SpinLock" alt="" coords="145,96,220,123"/><area shape="rect" id="node4" href="class_spin_lock_interface.html" title="SpinLockInterface" alt="" coords="61,5,187,32"/><area shape="rect" id="node5" href="class_cpu_id.html" title="CpuId" alt="" coords="211,5,268,32"/></map>
+<area shape="rect" id="node3" href="class_virtual_file_system_1_1_inode_ctrl.html" title="VirtualFileSystem::\lInodeCtrl" alt="" coords="73,278,207,319"/><area shape="rect" id="node2" href="class_virtual_file_system.html" title="VirtualFileSystem" alt="" coords="77,384,203,411"/><area shape="rect" id="node4" href="class_disk_file_system.html" title="DiskFileSystem" alt="" coords="5,96,120,123"/><area shape="rect" id="node5" href="class_spin_lock.html" title="SpinLock" alt="" coords="150,96,225,123"/><area shape="rect" id="node6" href="class_spin_lock_interface.html" title="SpinLockInterface" alt="" coords="66,5,192,32"/><area shape="rect" id="node7" href="class_cpu_id.html" title="CpuId" alt="" coords="217,5,273,32"/></map>
 <center><span class="legend">[<a href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:ae841622578dd1edf3d36a9a7bef0c95b"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ae841622578dd1edf3d36a9a7bef0c95b"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>Init</b> (<a class="el" href="class_disk_file_system.html">DiskFileSystem</a> *fs)</td></tr>
-<tr class="separator:ae841622578dd1edf3d36a9a7bef0c95b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9e316e1d00bd642236fd5432c2d0cc0a"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a9e316e1d00bd642236fd5432c2d0cc0a"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>GetStatOfInode</b> (<a class="el" href="struct_stat.html">Stat</a> &amp;st)</td></tr>
-<tr class="separator:a9e316e1d00bd642236fd5432c2d0cc0a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a72b705f5c11708c2495b4b8a09015f3d"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a72b705f5c11708c2495b4b8a09015f3d"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>Get</b> ()</td></tr>
-<tr class="separator:a72b705f5c11708c2495b4b8a09015f3d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab5e9e1667850127bc3eb9948668f2242"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ab5e9e1667850127bc3eb9948668f2242"></a>
-IoReturnState&#160;</td><td class="memItemRight" valign="bottom"><b>Put</b> () __attribute__((warn_unused_result))</td></tr>
-<tr class="separator:ab5e9e1667850127bc3eb9948668f2242"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:abc7debb06dac1376a17aabb6e9866401"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="abc7debb06dac1376a17aabb6e9866401"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>Init</b> (<a class="el" href="class_disk_file_system.html">DiskFileSystem</a> *fs, <a class="el" href="class_virtual_file_system.html">VirtualFileSystem</a> *vfs)</td></tr>
+<tr class="separator:abc7debb06dac1376a17aabb6e9866401"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa896e6b6be1d386e3aac79bef063deea"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="aa896e6b6be1d386e3aac79bef063deea"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>IsEmpty</b> ()</td></tr>
+<tr class="separator:aa896e6b6be1d386e3aac79bef063deea"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pri-methods"></a>
+Private Member Functions</h2></td></tr>
+<tr class="memitem:a41e9b1202930546fda7f85d9f0c7f67d"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_inode.html#a41e9b1202930546fda7f85d9f0c7f67d">DecRef</a> ()</td></tr>
+<tr class="memdesc:a41e9b1202930546fda7f85d9f0c7f67d"><td class="mdescLeft">&#160;</td><td class="mdescRight">decrement reference  <a href="#a41e9b1202930546fda7f85d9f0c7f67d">More...</a><br/></td></tr>
+<tr class="separator:a41e9b1202930546fda7f85d9f0c7f67d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pri-attribs"></a>
 Private Attributes</h2></td></tr>
-<tr class="memitem:a75156217cad3bfc0d56c6308bc10464a"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a75156217cad3bfc0d56c6308bc10464a"></a>
-friend&#160;</td><td class="memItemRight" valign="bottom"><b>InodeCtrl</b></td></tr>
-<tr class="separator:a75156217cad3bfc0d56c6308bc10464a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0899bdf8b052e156454276c7837b1aa3"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a0899bdf8b052e156454276c7837b1aa3"></a>
+friend&#160;</td><td class="memItemRight" valign="bottom"><b>InodeContainer</b></td></tr>
+<tr class="separator:a0899bdf8b052e156454276c7837b1aa3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:abfe2a6331dcc87bd49fa50eb7f720b10"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="abfe2a6331dcc87bd49fa50eb7f720b10"></a>
 <a class="el" href="class_spin_lock.html">SpinLock</a>&#160;</td><td class="memItemRight" valign="bottom"><b>_lock</b></td></tr>
 <tr class="separator:abfe2a6331dcc87bd49fa50eb7f720b10"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8f1a03514c8df90b9a9fa64172728732"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a8f1a03514c8df90b9a9fa64172728732"></a>
-uint32_t&#160;</td><td class="memItemRight" valign="bottom"><b>_inum</b></td></tr>
-<tr class="separator:a8f1a03514c8df90b9a9fa64172728732"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0634e3a487531babc0b18279b8e1f514"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a0634e3a487531babc0b18279b8e1f514"></a>
 int&#160;</td><td class="memItemRight" valign="bottom"><b>_ref</b> = 0</td></tr>
 <tr class="separator:a0634e3a487531babc0b18279b8e1f514"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -134,7 +132,49 @@ int&#160;</td><td class="memItemRight" valign="bottom"><b>_flags</b></td></tr>
 <tr class="memitem:a3da0e944cd2da18bb6bd74715ba66673"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a3da0e944cd2da18bb6bd74715ba66673"></a>
 <a class="el" href="class_disk_file_system.html">DiskFileSystem</a> *&#160;</td><td class="memItemRight" valign="bottom"><b>_fs</b> = nullptr</td></tr>
 <tr class="separator:a3da0e944cd2da18bb6bd74715ba66673"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8588f52d8caeb2d94e3535af9dbbca26"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a8588f52d8caeb2d94e3535af9dbbca26"></a>
+InodeNumber&#160;</td><td class="memItemRight" valign="bottom"><b>_inum</b></td></tr>
+<tr class="separator:a8588f52d8caeb2d94e3535af9dbbca26"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab501be38be2ac51a9f1bf6f130387149"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ab501be38be2ac51a9f1bf6f130387149"></a>
+<a class="el" href="class_virtual_file_system.html">VirtualFileSystem</a> *&#160;</td><td class="memItemRight" valign="bottom"><b>_vfs</b></td></tr>
+<tr class="separator:ab501be38be2ac51a9f1bf6f130387149"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
+<h2 class="groupheader">Member Function Documentation</h2>
+<a class="anchor" id="a41e9b1202930546fda7f85d9f0c7f67d"></a>
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void Inode::DecRef </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>decrement reference </p>
+<p>This function must be called from <a class="el" href="class_inode_container.html" title="wrapper class of Inode ">InodeContainer</a> </p>
+
+<p><div class="dynheader">
+Here is the caller graph for this function:</div>
+<div class="dyncontent">
+<div class="center"><img src="class_inode_a41e9b1202930546fda7f85d9f0c7f67d_icgraph.png" border="0" usemap="#class_inode_a41e9b1202930546fda7f85d9f0c7f67d_icgraph" alt=""/></div>
+<map name="class_inode_a41e9b1202930546fda7f85d9f0c7f67d_icgraph" id="class_inode_a41e9b1202930546fda7f85d9f0c7f67d_icgraph">
+<area shape="rect" id="node2" href="class_inode_container.html#a8e612fd044d96716ceb5dbaa1cf1377d" title="initialize and set inode " alt="" coords="160,5,328,32"/></map>
+</div>
+</p>
+
+</div>
+</div>
 <hr/>The documentation for this class was generated from the following file:<ul>
 <li>source/kernel/<a class="el" href="kernel_2fs_8h_source.html">fs.h</a></li>
 </ul>

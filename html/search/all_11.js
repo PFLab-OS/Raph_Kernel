@@ -2,7 +2,7 @@ var searchData=
 [
   ['ramdisk',['Ramdisk',['../class_ramdisk.html',1,'']]],
   ['read',['Read',['../class_arp_socket.html#a24a8c6ec95db23ca90f008b740dd8f87',1,'ArpSocket']]],
-  ['readdatafrominode',['ReadDataFromInode',['../class_v6_file_system.html#a488fa7edf9dfde439f42e4135e92bd63',1,'V6FileSystem']]],
+  ['readdatafrominode',['ReadDataFromInode',['../class_virtual_file_system.html#aad3fa3dac74a0ca88aec0151d28e524e',1,'VirtualFileSystem::ReadDataFromInode()'],['../class_disk_file_system.html#a17cc6fa655df259757d2bb396e2b36a0',1,'DiskFileSystem::ReadDataFromInode()'],['../class_v6_file_system.html#a19193e762f3236fff04007560de1b7c7',1,'V6FileSystem::ReadDataFromInode(uint8_t *data, InodeNumber inum, size_t offset, size_t &amp;size) override __attribute__((warn_unused_result))'],['../class_v6_file_system.html#a4613b904e28f2e62fc2ac3953e76f2e8',1,'V6FileSystem::ReadDataFromInode(uint8_t *data, V6fsInode &amp;inode, size_t offset, size_t &amp;size) __attribute__((warn_unused_result))']]],
   ['receivepacket',['ReceivePacket',['../class_net_dev.html#ae0493d0d716f559bb338030a7f587654',1,'NetDev::ReceivePacket()'],['../class_protocol_stack_layer.html#a9a5d2ea32d4eb2472df9a01a20d09491',1,'ProtocolStackLayer::ReceivePacket()'],['../class_protocol_stack_base_layer.html#a377ad90898cea96d04ed441078719d18',1,'ProtocolStackBaseLayer::ReceivePacket()']]],
   ['region',['Region',['../struct_physmem_ctrl_1_1_alloc_option_1_1_region.html',1,'PhysmemCtrl::AllocOption']]],
   ['registerdevice',['RegisterDevice',['../class_net_dev_ctrl.html#a182186b3e26206cd1a2838dc82e48222',1,'NetDevCtrl']]],

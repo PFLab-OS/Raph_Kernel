@@ -23,7 +23,7 @@
  <tr style="height: 56px;">
   <td style="padding-left: 0.5em;">
    <div id="projectname">Raph_Kernel
-   &#160;<span id="projectnumber">36875aa22490610cd0ef28cada3097788c76682b (with uncommitted changes)</span>
+   &#160;<span id="projectnumber">1bcb0fd27ed9fac05599e47edba8c7345459a143 (with uncommitted changes)</span>
    </div>
   </td>
  </tr>
@@ -86,12 +86,20 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
   <div class="summary">
 <a href="#nested-classes">Classes</a> &#124;
 <a href="#pub-methods">Public Member Functions</a> &#124;
+<a href="#pro-attribs">Protected Attributes</a> &#124;
 <a href="#pri-attribs">Private Attributes</a> &#124;
 <a href="class_font-members.html">List of all members</a>  </div>
   <div class="headertitle">
 <div class="title">Font Class Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
+<div class="dynheader">
+Inheritance diagram for Font:</div>
+<div class="dyncontent">
+<div class="center"><img src="class_font__inherit__graph.png" border="0" usemap="#_font_inherit__map" alt="Inheritance graph"/></div>
+<map name="_font_inherit__map" id="_font_inherit__map">
+<area shape="rect" id="node2" href="class_frame_buffer_1_1_cached_font.html" title="FrameBuffer::CachedFont" alt="" coords="5,80,179,107"/></map>
+<center><span class="legend">[<a href="graph_legend.html">legend</a>]</span></center></div>
 <div class="dynheader">
 Collaboration diagram for Font:</div>
 <div class="dyncontent">
@@ -125,9 +133,12 @@ int&#160;</td><td class="memItemRight" valign="bottom"><b>Load</b> (<a class="el
 <tr class="memitem:a0e14fc715093c4a459e41758e6ac2222"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a0e14fc715093c4a459e41758e6ac2222"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>Print</b> (uint32_t index, void(*func)(bool f, int x, int y))</td></tr>
 <tr class="separator:a0e14fc715093c4a459e41758e6ac2222"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8b579fb313aa291e1b086a07fd4fa51f"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a8b579fb313aa291e1b086a07fd4fa51f"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>GetData</b> (char32_t c, int &amp;width, bool *byte)</td></tr>
-<tr class="separator:a8b579fb313aa291e1b086a07fd4fa51f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5f32abb63e3a23d9262acbcb692414fd"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a5f32abb63e3a23d9262acbcb692414fd"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>GetData</b> (char32_t c, int &amp;width, bool *data)</td></tr>
+<tr class="separator:a5f32abb63e3a23d9262acbcb692414fd"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aca74fc968b8cfe120144a41a2a70f0a9"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="aca74fc968b8cfe120144a41a2a70f0a9"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>GetPixels</b> (char32_t c, int bytesPerPixel, int xsize, uint8_t *data, int &amp;width, uint8_t *foreColor, uint8_t *backColor)</td></tr>
+<tr class="separator:aca74fc968b8cfe120144a41a2a70f0a9"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a33ca63fac7b7666a3c1d7d02b580563d"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a33ca63fac7b7666a3c1d7d02b580563d"></a>
 uint16_t&#160;</td><td class="memItemRight" valign="bottom"><b>GetMaxw</b> () const </td></tr>
 <tr class="separator:a33ca63fac7b7666a3c1d7d02b580563d"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -150,11 +161,14 @@ uint16_t&#160;</td><td class="memItemRight" valign="bottom"><b>GetAsce</b> () co
 uint16_t&#160;</td><td class="memItemRight" valign="bottom"><b>GetDesc</b> () const </td></tr>
 <tr class="separator:a242681e6fc2bad595878519ae6ba36bc"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
-<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pri-attribs"></a>
-Private Attributes</h2></td></tr>
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pro-attribs"></a>
+Protected Attributes</h2></td></tr>
 <tr class="memitem:af71172ed087e52501b8e90c39be91b52"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="af71172ed087e52501b8e90c39be91b52"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>_is_initialized</b> = false</td></tr>
 <tr class="separator:af71172ed087e52501b8e90c39be91b52"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pri-attribs"></a>
+Private Attributes</h2></td></tr>
 <tr class="memitem:a7f5ea8728eed9731ef9d6f3bd67732c6"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a7f5ea8728eed9731ef9d6f3bd67732c6"></a>
 <a class="el" href="class_font_1_1_maxw.html">Font::Maxw</a>&#160;</td><td class="memItemRight" valign="bottom"><b>_maxw</b></td></tr>
 <tr class="separator:a7f5ea8728eed9731ef9d6f3bd67732c6"><td class="memSeparator" colspan="2">&#160;</td></tr>
