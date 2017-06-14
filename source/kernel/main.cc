@@ -923,12 +923,20 @@ extern "C" int main() {
   shell->Register("membench", membench);
 
   Storage *storage;
-  if (StorageCtrl::GetDevice("ram0", storage) != IoReturnState::kOk) {
+  if (StorageCtrl::GetCtrl().GetDevice("ram0", storage) != IoReturnState::kOk) {
     kernel_panic("storage", "not found");
   }
-  V6FileSystem v6fs(storage);
-  VirtualFileSystem vfs(&v6fs);
-  vfs.Init();
+  V6FileSystem *v6fs = new V6FileSystem(*storage);
+  VirtualFileSystem *vfs = new VirtualFileSystem(v6fs);
+  vfs->Init();
+  {
+    InodeContainer inode;
+    if (vfs->LookupInodeFromPath(inode, "/README.md", false) == IoReturnState::kOk) {
+      gtty->Printf("file:ok\n");
+    } else {
+      gtty->Printf("file:not ok\n");
+    }
+  }
 
   load_script(make_sptr(new LoadContainer(multiboot_ctrl->LoadFile("init.sh"))));
 
@@ -983,7 +991,7 @@ extern "C" int main_of_others() {
 
 void show_backtrace(size_t *rbp) {
   size_t top_rbp = reinterpret_cast<size_t>(rbp);
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < 10; i++) {
     if (top_rbp >= rbp[0] || top_rbp <= rbp[0] - 4096) {
       break;
     }

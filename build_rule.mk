@@ -17,6 +17,8 @@ else
 	INIT_FILE = $(if $(shell ls | grep $(BRANCH_INIT_FILE)),$(BRANCH_INIT_FILE),init)
 endif
 
+FS = README.md
+
 doc: export PROJECT_NUMBER:=$(shell git rev-parse HEAD ; git diff-index --quiet HEAD || echo "(with uncommitted changes)")
 
 .PHONY: clean disk run image mount umount debugqemu showerror numerror doc
@@ -47,15 +49,16 @@ qemuend:
 	-sudo pkill -KILL qemu
 
 $(BUILD_DIR)/script:
-	cp script $(BUILD_DIR)/script
+	cp script $@
 
 $(BUILD_DIR)/init: $(INIT_FILE)
-	cp $(INIT_FILE) $(BUILD_DIR)/init
+	cp $^ $@
 
-$(BUILD_DIR)/fs.img:
-	./source/tool/mkfs $(BUILD_DIR)/fs.img README.md
+$(BUILD_DIR)/fs.img: $(FS)
+	$(MAKE_SUBDIR) source
+	./source/tool/mkfs $@ $(FS)
 
-bin_sub: $(BUILD_DIR)/script $(BUILD_DIR)/init
+bin_sub: $(BUILD_DIR)/script $(BUILD_DIR)/init $(BUILD_DIR)/fs.img
 	$(MAKE_SUBDIR) source
 
 bin:

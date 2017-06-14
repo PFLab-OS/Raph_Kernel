@@ -28,8 +28,7 @@
 class V6FileSystem : public DiskFileSystem{
 public:
   V6FileSystem() = delete;
-  V6FileSystem(Storage &storage) : _storage(storage), _inode_ctrl(_sb) {
-  }
+  V6FileSystem(Storage &storage);
   virtual ~V6FileSystem() {
   }
 private:
@@ -51,6 +50,7 @@ private:
     char name[kMaxDirectoryNameLength];
   } __attribute__((__packed__));
   enum class Type : uint16_t {
+    kFree = 0,
     kDirectory = 1,
     kFile = 2,
     kDevice = 3,
@@ -58,7 +58,7 @@ private:
   class V6fsInode {
   public:
     struct V6fsInodeStruct {
-      int16_t type;
+      Type type;
       int16_t major;
       int16_t minor;
       int16_t nlink;
@@ -67,20 +67,60 @@ private:
       uint32_t indirect;
     } __attribute__((__packed__)) _st;
     V6fsInode() = delete;
-    V6fsInode(int index) : _index(index) {
+    V6fsInode(int index, Storage &storage, SuperBlock &sb) : _index(index), _storage(storage), _sb(sb) {
     }
-    void Init(uint16_t type) {
+    void Init(Type type) {
       _st.type = type;
       _st.major = 0;
       _st.minor = 0;
       _st.nlink = 0;
       _st.size = 0;
-      bzero(_st.addrs, sizeof(addrs));
+      bzero(_st.addrs, sizeof(_st.addrs));
       _st.indirect = 0;
     }
-    void GetStatOfInode(Stat &stat);
+    IoReturnState Read() __attribute__((warn_unused_result)) {
+      return _storage.Read(_st, _sb.inodestart * kBlockSize + sizeof(V6fsInodeStruct) * _index);
+    }
+    IoReturnState Write() __attribute__((warn_unused_result)) {
+      return _storage.Write(_st, _sb.inodestart * kBlockSize + sizeof(V6fsInodeStruct) * _index);
+    }
+    void GetStatOfInode(VirtualFileSystem::Stat &stat);
     const int _index;
+    Storage &_storage;
+    SuperBlock &_sb;
   };
+  class V6fsInodeCtrl {
+  public:
+    V6fsInodeCtrl() = delete;
+    V6fsInodeCtrl(Storage &storage, SuperBlock &sb) : _storage(storage), _sb(sb) {
+    }
+    IoReturnState Alloc(InodeNumber &inum, Type type) __attribute__((warn_unused_result));
+    IoReturnState GetStatOfInode(InodeNumber inum, VirtualFileSystem::Stat &stat) __attribute__((warn_unused_result)) {
+      assert(inum < _sb.ninodes);
+      V6fsInode inode(inum, _storage, _sb);
+      RETURN_IF_IOSTATE_NOT_OK(inode.Read());
+      inode.GetStatOfInode(stat);
+      stat.ino = inum;
+      return IoReturnState::kOk;
+    }
+  private:
+    Storage &_storage;
+    SuperBlock &_sb;
+  };
+  using BlockIndex = uint32_t;
+  class BlockCtrl {
+  public:
+    BlockCtrl() = delete;
+    BlockCtrl(Storage &storage, SuperBlock &sb) : _storage(storage), _sb(sb) {
+    }
+    IoReturnState Alloc(BlockIndex &index) __attribute__((warn_unused_result));
+    IoReturnState ClearBlock(BlockIndex index) __attribute__((warn_unused_result));
+  private:
+    Storage &_storage;
+    SuperBlock &_sb;
+    SpinLock _lock;
+  };
+  
   static Type ConvType(VirtualFileSystem::FileType type) {
     switch(type) {
     case VirtualFileSystem::FileType::kDirectory:
@@ -90,58 +130,50 @@ private:
     case VirtualFileSystem::FileType::kDevice:
       return Type::kDevice;
     };
+    assert(false);
   }
-  IoReturnState ReadV6fsInode(V6fsInode &inode) __attribute__((warn_unused_result)) {
-    return _storage.Read(inode._st, _sb.inodestart + sizeof(V6fsInodeStruct) * inode._index);
+  static VirtualFileSystem::FileType ConvType(Type type) {
+    switch(type) {
+    case Type::kDirectory:
+      return VirtualFileSystem::FileType::kDirectory;
+    case Type::kFile:
+      return VirtualFileSystem::FileType::kFile;
+    case Type::kDevice:
+      return VirtualFileSystem::FileType::kDevice;
+    case Type::kFree:
+      assert(false);
+    };
+    assert(false);
   }
-  IoReturnState WriteV6fsInode(V6fsInode &inode) __attribute__((warn_unused_result)) {
-    return _storage.Write(inode._st, _sb.inodestart + sizeof(V6fsInodeStruct) * inode._index);
-  }
-  class V6fsInodeCtrl {
-  public:
-    V6fsInodeCtrl() = delete;
-    V6fsInodeCtrl(SuperBlock &sb) : _sb(sb) {
-    }
-    IoReturnState Alloc(InodeNumber &inum, uint16_t type) __attribute__((warn_unused_result));
-    void GetStatOfInode(InodeNumber inum, Stat &stat) {
-      assert(inum < _sb.ninodes);
-      V6fsInode inode(inum);
-      ReadV6fsInode(inode);
-      inode.GetStatOfInode(stat);
-      stat.ino = inum;
-    }
-  private:
-    SuperBlock &_sb;
-  } _inode_ctrl;
-  virtual IoReturnState AllocInode(InodeNumber &inum, VirtualFileSystem::FileType type) __attribute__((warn_unused_result)) override {
+  virtual IoReturnState AllocInode(InodeNumber &inum, VirtualFileSystem::FileType type) override __attribute__((warn_unused_result)) {
     return _inode_ctrl.Alloc(inum, ConvType(type));
-  } _inode_ctrl;
-  virtual void GetStatOfInode(InodeNumber inum, Stat &stat) override {
-    _inode_ctrl.GetStatOfInode(inum, stat);
+  }
+  virtual IoReturnState GetStatOfInode(InodeNumber inum, VirtualFileSystem::Stat &stat) override __attribute__((warn_unused_result)) {
+    return _inode_ctrl.GetStatOfInode(inum, stat);
   }
   virtual InodeNumber GetRootInodeNum() override {
-    return 0;
+    return 1;
   }
-  virtual IoReturnState ReadDataFromInode(uint8_t *data, InodeNumber inum, size_t offset, size_t size) __attribute__((warn_unused_result)) override {
+  virtual IoReturnState ReadDataFromInode(uint8_t *data, InodeNumber inum, size_t offset, size_t &size) override __attribute__((warn_unused_result)) {
     assert(inum < _sb.ninodes);
-    V6fsInode inode(inum);
-    IoReturnState rstate = ReadV6fsInode(inode);
+    V6fsInode inode(inum, _storage, _sb);
+    IoReturnState rstate = inode.Read();
     if (rstate != IoReturnState::kOk) {
       return rstate;
     }
     return ReadDataFromInode(data, inode, offset, size);
   }
-  IoReturnState ReadDataFromInode(uint8_t *data, Inode &inode, size_t offset, size_t &size) __attribute__((warn_unused_result));
-  virtual IoReturnState V6FileSystem::DirLookup(InodeNumber dinode, char *name, int &offset, InodeNumber &inode) __attribute__((warn_unused_result)) override {
-    assert(inum < _sb.ninodes);
-    V6fsInode dinode_(inum);
-    IoReturnState rstate = ReadV6fsInode(dinode_);
-    if (rstate != IoReturnState::kOk) {
-      return rstate;
-    }
+  IoReturnState ReadDataFromInode(uint8_t *data, V6fsInode &inode, size_t offset, size_t &size) __attribute__((warn_unused_result));
+  virtual IoReturnState DirLookup(InodeNumber dinode, char *name, int &offset, InodeNumber &inode) override __attribute__((warn_unused_result)) {
+    assert(dinode < _sb.ninodes);
+    V6fsInode dinode_(dinode, _storage, _sb);
+    RETURN_IF_IOSTATE_NOT_OK(dinode_.Read());
     return DirLookup(dinode_, name, offset, inode);
   }
-  IoReturnState V6FileSystem::DirLookup(Inode &dinode, char *name, int &offset, InodeNumber &inode) __attribute__((warn_unused_result));
+  IoReturnState DirLookup(V6fsInode &dinode, char *name, int &offset, InodeNumber &inode) __attribute__((warn_unused_result));
   IoReturnState MapBlock(V6fsInode &inode, int index, uint32_t &addr);
+
   Storage &_storage;
+  V6fsInodeCtrl _inode_ctrl;
+  BlockCtrl _block_ctrl;
 };

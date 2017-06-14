@@ -22,18 +22,19 @@
 
 #include "v6fs.h"
 
-V6FileSystem::V6FileSystem(Storage &storage) {
-  _storage.Read(_sb, kBlockSize);
+V6FileSystem::V6FileSystem(Storage &storage) : _storage(storage), _inode_ctrl(storage, _sb), _block_ctrl(storage, _sb) {
+  if (_storage.Read(_sb, kBlockSize) != IoReturnState::kOk) {
+    kernel_panic("V6FS", "storage error");
+  }
 }
 
-IoReturnState V6FileSystem::V6fsInodeCtrl::Alloc(InodeNumber &inum, uint16_t type) {
+IoReturnState V6FileSystem::V6fsInodeCtrl::Alloc(InodeNumber &inum, Type type) {
   for (InodeNumber i = 1; i < _sb.ninodes; i++) {
-    V6fsInode inode(i);
-    ReadV6fsInode(inode);
-    if (inode.type == 0) {
-      // a free inode
+    V6fsInode inode(i, _storage, _sb);
+    RETURN_IF_IOSTATE_NOT_OK(inode.Read());
+    if (inode._st.type == Type::kFree) {
       inode.Init(type);
-      WriteV6fsInode(inode);
+      RETURN_IF_IOSTATE_NOT_OK(inode.Write());
       inum = i;
       return IoReturnState::kOk;
     }
@@ -41,12 +42,45 @@ IoReturnState V6FileSystem::V6fsInodeCtrl::Alloc(InodeNumber &inum, uint16_t typ
   return IoReturnState::kErrNoHwResource;
 }
 
-void V6FileSystem::V6fsInode::GetStatOfInode(Stat &stat) {
-  stat.type = type;
-  stat.nlink = nlink;
-  stat.size = size;
+void V6FileSystem::V6fsInode::GetStatOfInode(VirtualFileSystem::Stat &stat) {
+  stat.type = ConvType(_st.type);
+  stat.nlink = _st.nlink;
+  stat.size = _st.size;
   return;
 }
+
+/**
+ * @brief allocate block
+ * @param index block index allocated by this function (returned by this function)
+ */
+IoReturnState V6FileSystem::BlockCtrl::Alloc(BlockIndex &index) {
+  Locker locker(_lock);
+  for (uint32_t b = 0; b < _sb.size; b+=8) {
+    uint8_t flag;
+    _storage.Read(flag, _sb.bmapstart * kBlockSize + b / 8);
+    for (int bi = 0; bi < 8; bi++) {
+      uint8_t m = 1 << bi;
+      if ((flag & m) == 0) {
+        flag |= m;
+        _storage.Write(flag, _sb.bmapstart * kBlockSize + b / 8);
+        RETURN_IF_IOSTATE_NOT_OK(ClearBlock(b));
+        index = b;
+        return IoReturnState::kOk;
+      }
+    }
+  }
+  return IoReturnState::kErrNoHwResource;
+}
+
+/**
+ * @brief clear block
+ * @param index block index to clear
+ */
+IoReturnState V6FileSystem::BlockCtrl::ClearBlock(BlockIndex index) {
+  uint32_t buf[kBlockSize] = {};
+  return _storage.Write(buf, index * kBlockSize);
+}
+
 
 /**
  * @brief read data from inode
@@ -57,13 +91,13 @@ void V6FileSystem::V6fsInode::GetStatOfInode(Stat &stat) {
  * 
  * Caller must allocate 'data'. The size of 'data' must be larger than 'size'.
  */
-IoReturnState V6FileSystem::ReadDataFromInode(uint8_t *buf, Inode &inode, size_t offset, size_t &size) {
+IoReturnState V6FileSystem::ReadDataFromInode(uint8_t *buf, V6fsInode &inode, size_t offset, size_t &size) {
   IoReturnState rstate;
-  if (offset > inode.size || offset + size < offset) {
+  if (offset > inode._st.size || offset + size < offset) {
     return IoReturnState::kErrInvalid;
   }
-  if (offset + size > inode.size) {
-    size = inode.size - offset;
+  if (offset + size > inode._st.size) {
+    size = inode._st.size - offset;
   }
 
   for (size_t total = 0; total < size;) {
@@ -77,7 +111,7 @@ IoReturnState V6FileSystem::ReadDataFromInode(uint8_t *buf, Inode &inode, size_t
     if (cur_size > size - total) {
       cur_size = size - total;
     }
-    rstate = _storage.Read(buf + total, addr, cur_size);
+    rstate = _storage.Read(buf + total, addr * kBlockSize + offset % kBlockSize, cur_size);
     if (rstate != IoReturnState::kOk) {
       size = total;
       return rstate;
@@ -92,34 +126,34 @@ IoReturnState V6FileSystem::ReadDataFromInode(uint8_t *buf, Inode &inode, size_t
  * @brief map block to inode. if already mapped, return mapped address. 
  * @param inode target inode
  * @param index block index of inode
- * @param addr mapped block address
+ * @param addr mapped block address (returned by this function)
  *
  * Block address will be set to 'addr' if succeeds.
  */
 IoReturnState V6FileSystem::MapBlock(V6fsInode &inode, int index, uint32_t &addr) {
   if (index < kNumOfDirectBlocks) {
-    addr = inode.addr[index];
+    addr = inode._st.addrs[index];
     if (addr == 0) {
-      addr = balloc();//RAPH_DEBUG
-      inode.addr[index] = addr;
-      WriteV6fsInode(inode);
+      RETURN_IF_IOSTATE_NOT_OK(_block_ctrl.Alloc(addr));
+      inode._st.addrs[index] = addr;
+      RETURN_IF_IOSTATE_NOT_OK(inode.Write());
     }
     return IoReturnState::kOk;
   }
   index -= kNumOfDirectBlocks;
 
   if (index < kNumEntriesOfIndirectBlock) {
-    addr = info->addr[kNumOfDirectBlocks];
+    addr = inode._st.addrs[kNumOfDirectBlocks];
     if (addr == 0) {
-      addr = balloc();//RAPH_DEBUG
-      info->addr[kNumOfDirectBlocks] = addr;
+      RETURN_IF_IOSTATE_NOT_OK(_block_ctrl.Alloc(addr));
+      inode._st.addrs[kNumOfDirectBlocks] = addr;
     }
 
     uint32_t entry;
     _storage.Read(entry, addr * kBlockSize + index * sizeof(uint32_t));
     addr = entry;
     if (addr == 0) {
-      addr = balloc(); //RAPH_DEBUG
+      RETURN_IF_IOSTATE_NOT_OK(_block_ctrl.Alloc(addr));
       _storage.Write(entry, addr * kBlockSize + index * sizeof(uint32_t));
     }
 
@@ -133,31 +167,28 @@ IoReturnState V6FileSystem::MapBlock(V6fsInode &inode, int index, uint32_t &addr
  * @brief lookup directory and return inode
  * @param dinode inode of directory
  * @param name entry name to lookup
- * @param offset offset of entry (no need to pass, returned by this function)
- * @param inode found inode (no need to pass, returned by this function)
+ * @param offset offset of entry (returned by this function)
+ * @param inode found inode (returned by this function)
  */
 IoReturnState V6FileSystem::DirLookup(V6fsInode &dinode, char *name, int &offset, InodeNumber &inode) {
-  Stat dinode_stat;
-  dinode.GetStatOfInode(dinode_stat);
-  if (dinode_stat.type != Stat::Type::kDirectory) {
+  if (dinode._st.type != Type::kDirectory) {
     return IoReturnState::kErrInvalid;
   }
 
   DirEntry entry;
   
-  for (uint32_t i = 0; i < dinode_stat.size; i += sizeof(DirEntry)) {
+  for (uint32_t i = 0; i < dinode._st.size; i += sizeof(DirEntry)) {
     size_t size = sizeof(DirEntry);
-    IoReturnState rstate = ReadDataFromInode(reinterpret_cast<uint8_t *>(&dinode), dinode, i, size);
-    RETURN_IF_IOSTATE_NOT_OK(rstate);
+    RETURN_IF_IOSTATE_NOT_OK(ReadDataFromInode(reinterpret_cast<uint8_t *>(&entry), dinode, i, size));
     if (size != sizeof(DirEntry)) {
       return IoReturnState::kErrInvalid;
     }
-    if (dinode.inum == 0) {
+    if (entry.inum == 0) {
       continue;
     }
-    if (strcmp(name, dinode.name) == 0) {
+    if (strcmp(name, entry.name) == 0) {
       offset = i;
-      inode = dinode.inum;
+      inode = entry.inum;
       return IoReturnState::kOk;
     }
   }

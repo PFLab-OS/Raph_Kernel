@@ -42,12 +42,18 @@ IoReturnState Ramdisk::Read(uint8_t *buf, size_t offset, size_t size) {
   if (_image->GetLen() < offset + size) {
     return IoReturnState::kErrInvalid;
   }
+  for (size_t i = 0; i < size; i++) {
+    buf[i] = (*_image)[i + offset];
+  }
   return IoReturnState::kOk;
 }
 
 IoReturnState Ramdisk::Write(uint8_t *buf, size_t offset, size_t size) {
   if (_image->GetLen() < offset + size) {
     return IoReturnState::kErrInvalid;
+  }
+  for (size_t i = 0; i < size; i++) {
+    (*_image)[i + offset] = buf[i];
   }
   return IoReturnState::kOk;
 }

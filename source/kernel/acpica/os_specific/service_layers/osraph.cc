@@ -152,11 +152,11 @@ extern "C" {
   ACPI_STATUS AcpiOsAcquireMutex(ACPI_MUTEX Handle, UINT16 Timeout) {
     SpinLock *lock = reinterpret_cast<SpinLock *>(Handle);
     if (Timeout == 0) {
-      return (lock->Trylock() == 0) ? (AE_OK) : (AE_ERROR);
+      return (lock->Trylock() == ReturnState::kOk) ? (AE_OK) : (AE_ERROR);
     } else if (Timeout > 0) {
       uint64_t cnt = timer->GetCntAfterPeriod(timer->ReadMainCnt(), Timeout * 1000);
       while(!timer->IsTimePassed(cnt)) {
-        if (lock->Trylock() == 0) {
+        if (lock->Trylock() == ReturnState::kOk) {
           return (AE_OK);
         }
       }

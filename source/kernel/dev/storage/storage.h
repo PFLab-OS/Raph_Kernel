@@ -73,7 +73,7 @@ public:
     return instance;
   }
   IoReturnState Register(Storage *dev, const char *str) __attribute__((warn_unused_result));
-  IoReturnState GetDevice(char *str, Storage *&dev) __attribute__((warn_unused_result));
+  IoReturnState GetDevice(const char *str, Storage *&dev) __attribute__((warn_unused_result));
 private:
   StorageCtrl() {
   }

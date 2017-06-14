@@ -20,22 +20,27 @@
  * 
  */
 
+#include <string.h>
 #include "fs.h"
 
-IoReturnState VirtualFileSystem::InodeCtrl::Alloc(FileType type) __attribute__((warn_unused_result)) {
+/**
+ * @brief allocate vfs inode
+ * @param type type of inode
+ * @param inode allocated inode (returned by this function)
+ */
+IoReturnState VirtualFileSystem::InodeCtrl::Alloc(FileType type, InodeContainer &inode) {
   InodeNumber inum;
   IoReturnState state1 = _dfs->AllocInode(inum, type);
   if (state1 != IoReturnState::kOk) {
     return state1;
   }
-  Inode *inode;
   IoReturnState state2 = Get(inode, inum);
   return state2;
 }
 
 IoReturnState VirtualFileSystem::InodeCtrl::Get(InodeContainer &icontainer, uint32_t inum) {
   Locker locker(_lock);
-  Inode *empty == nullptr;
+  Inode *empty = nullptr;
   for (int i = 0; i < kNodesNum; i++) {
     if (icontainer.SetIfSame(&_nodes[i], inum)) {
       return IoReturnState::kOk;
@@ -58,14 +63,14 @@ IoReturnState VirtualFileSystem::InodeCtrl::Get(InodeContainer &icontainer, uint
  * if no next path name, return nullptr.
  * the buffer size of 'name' must be 'kMaxDirectoryNameLength + 1'.
  */
-static char *VirtualFileSystem::GetNextPathNameFromPath(char *path, char *name) {
+const char *VirtualFileSystem::GetNextPathNameFromPath(const char *path, char *name) {
   while(*path == '/') {
     path++;
   }
   if (*path == '\0') {
     return nullptr;
   }
-  char *start = path;
+  const char *start = path;
   while(*path != '/' && *path != '\0') {
     path++;
   }
@@ -73,7 +78,7 @@ static char *VirtualFileSystem::GetNextPathNameFromPath(char *path, char *name) 
   if (len > kMaxDirectoryNameLength) {
     len = kMaxDirectoryNameLength;
   }
-  memmove(name, s, len);
+  memcpy(name, start, len);
   name[len] = '\0';
   while(*path == '/') {
     path++;
@@ -90,10 +95,10 @@ static char *VirtualFileSystem::GetNextPathNameFromPath(char *path, char *name) 
  * 
  * Caller must allocate 'data'. The size of 'data' must be larger than 'size'.
  */
-IoReturnState VirtualFileSystem::ReadDataFromInode(uint8_t *data, InodeContainer &inode, size_t offset, size_t size) {
+IoReturnState VirtualFileSystem::ReadDataFromInode(uint8_t *data, InodeContainer &inode, size_t offset, size_t &size) {
   Stat stat;
-  inode.GetStatOfInode(stat);
-  if (stat.type == Stat::Type::kDevice) {
+  RETURN_IF_IOSTATE_NOT_OK(inode.GetStatOfInode(stat));
+  if (stat.type == FileType::kDevice) {
     //TODO impl
     kernel_panic("VFS", "needs implementation!");
   }
@@ -101,7 +106,13 @@ IoReturnState VirtualFileSystem::ReadDataFromInode(uint8_t *data, InodeContainer
   return inode.ReadData(data, offset, size);
 }
 
-IoReturnState VirtualFileSystem::LookupInodeFromPath(InodeContainer &inode, char *path, bool parent, char *name) {
+/**
+ * @brief lookup inode from path
+ * @param inode found inode (returned by this function)
+ * @param path path to lookup
+ * @param parent return parent inode if true
+ */
+IoReturnState VirtualFileSystem::LookupInodeFromPath(InodeContainer &inode, const char *path, bool parent) {
   InodeContainer cinode;
   if (*path == '/') {
     RETURN_IF_IOSTATE_NOT_OK(_inode_ctrl.Get(cinode, _dfs->GetRootInodeNum()));
@@ -113,9 +124,9 @@ IoReturnState VirtualFileSystem::LookupInodeFromPath(InodeContainer &inode, char
   char name[kMaxDirectoryNameLength * 1];
   while((path = GetNextPathNameFromPath(path, name)) != nullptr) {
     Stat st;
-    inode.GetStatOfInode(st);
+    RETURN_IF_IOSTATE_NOT_OK(cinode.GetStatOfInode(st));
 
-    if (st.type != Stat::Type::kDirectory) {
+    if (st.type != FileType::kDirectory) {
       return IoReturnState::kErrInvalid;
     }
 
@@ -125,11 +136,14 @@ IoReturnState VirtualFileSystem::LookupInodeFromPath(InodeContainer &inode, char
     }
 
     InodeNumber inum;
-    RETURN_IF_IOSTATE_NOT_OK(cinode.DirLookup(name, 0, inum));
+    int offset;
+    RETURN_IF_IOSTATE_NOT_OK(cinode.DirLookup(name, offset, inum));
 
     RETURN_IF_IOSTATE_NOT_OK(_inode_ctrl.Get(cinode, inum));
   }
   if (parent) {
     return IoReturnState::kErrInvalid;
   }
+  inode = cinode;
+  return IoReturnState::kOk;
 }

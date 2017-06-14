@@ -41,14 +41,14 @@ IoReturnState StorageCtrl::Register(Storage *dev, const char *str) {
       }
       memcpy(_container[i].str, str, len);
       _container[i].str[len] = '0' + i;
-      _container[i].stro[len + 1] = '\0';
+      _container[i].str[len + 1] = '\0';
       return IoReturnState::kOk;
     }
   }
   return IoReturnState::kErrNoSwResource;
 }
 
-IoReturnState StorageCtrl::GetDevice(char *str, Storage *&dev) {
+IoReturnState StorageCtrl::GetDevice(const char *str, Storage *&dev) {
   for (int i = 0; i < kElementNum; i++) {
     if (_container[i].dev == nullptr) {
       continue;
