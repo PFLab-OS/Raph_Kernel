@@ -125,9 +125,9 @@ static void lspci(int argc, const char* argv[]) {
     }
     for (int j = mcfg->list[i].pci_bus_start; j <= mcfg->list[i].pci_bus_end; j++) {
       for (int k = 0; k < 32; k++) {
-        int maxf = ((pci_ctrl->ReadReg<uint16_t>(j, k, 0, PciCtrl::kHeaderTypeReg) & PciCtrl::kHeaderTypeRegFlagMultiFunction) != 0) ? 7 : 0;
+        int maxf = ((pci_ctrl->ReadPciReg<uint16_t>(j, k, 0, PciCtrl::kHeaderTypeReg) & PciCtrl::kHeaderTypeRegFlagMultiFunction) != 0) ? 7 : 0;
         for (int l = 0; l <= maxf; l++) {
-          if (pci_ctrl->ReadReg<uint16_t>(j, k, l, PciCtrl::kVendorIDReg) == 0xffff) {
+          if (pci_ctrl->ReadPciReg<uint16_t>(j, k, l, PciCtrl::kVendorIDReg) == 0xffff) {
             continue;
           }
           table.Search(j, k, l, search);
