@@ -932,7 +932,15 @@ extern "C" int main() {
   {
     InodeContainer inode;
     if (vfs->LookupInodeFromPath(inode, "/README.md", false) == IoReturnState::kOk) {
-      gtty->Printf("file:ok\n");
+      VirtualFileSystem::Stat st;
+      auto x = inode.GetStatOfInode(st);
+      size_t s = st.size;
+      uint8_t buf[s];
+      auto y = inode.ReadData(buf, 0, s);
+      for(size_t i = 0; i < s; i++) {
+        gtty->Printf("%c",buf[i]);
+      }
+      gtty->Printf("\n");
     } else {
       gtty->Printf("file:not ok\n");
     }
