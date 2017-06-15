@@ -48,7 +48,7 @@ void KernelStackCtrl::Init() {
     int size = kStackSize - PagingCtrl::kPageSize;
     PhysAddr paddr;
     physmem_ctrl->Alloc(paddr, size);
-    kassert(paging_ctrl->MapPhysAddrToVirtAddr(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (kStackSize + PagingCtrl::kPageSize) + 1, paddr, size, PDE_WRITE_BIT, PTE_WRITE_BIT | PTE_GLOBAL_BIT));
+    kassert(paging_ctrl->MapPhysAddrToVirtAddr(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (kStackSize + PagingCtrl::kPageSize) + 1, paddr, size, PDE_WRITE_BIT | PDE_USER_BIT, PTE_WRITE_BIT | PTE_GLOBAL_BIT | PTE_USER_BIT));
   }
 
   new (&_ctrl) KernelStackCtrl();
@@ -77,7 +77,7 @@ virt_addr KernelStackCtrl::AllocThreadStack(CpuId cpuid) {
   
     PhysAddr paddr;
     physmem_ctrl->Alloc(paddr, kStackSize);
-    kassert(paging_ctrl->MapPhysAddrToVirtAddr(_stack_area_top + PagingCtrl::kPageSize, paddr, kStackSize, PDE_WRITE_BIT, PTE_WRITE_BIT | PTE_GLOBAL_BIT));
+    kassert(paging_ctrl->MapPhysAddrToVirtAddr(_stack_area_top + PagingCtrl::kPageSize, paddr, kStackSize, PDE_WRITE_BIT, PTE_WRITE_BIT | PTE_GLOBAL_BIT | PTE_USER_BIT));
     bzero(reinterpret_cast<void *>(_stack_area_top + PagingCtrl::kPageSize), PagingCtrl::kPageSize);
   }
 
@@ -111,7 +111,7 @@ virt_addr KernelStackCtrl::AllocIntStack(CpuId cpuid) {
   
   PhysAddr paddr;
   physmem_ctrl->Alloc(paddr, kStackSize);
-  kassert(paging_ctrl->MapPhysAddrToVirtAddr(_stack_area_top + PagingCtrl::kPageSize, paddr, kStackSize, PDE_WRITE_BIT, PTE_WRITE_BIT | PTE_GLOBAL_BIT));
+  kassert(paging_ctrl->MapPhysAddrToVirtAddr(_stack_area_top + PagingCtrl::kPageSize, paddr, kStackSize, PDE_WRITE_BIT | PDE_USER_BIT, PTE_WRITE_BIT | PTE_GLOBAL_BIT | PTE_USER_BIT));
 
 
   StackInfo *sinfo = GetStackInfoPtr(_stack_area_top + PagingCtrl::kPageSize);

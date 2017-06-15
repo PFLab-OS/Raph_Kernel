@@ -1,0 +1,14 @@
+<map id="TaskCtrl" name="TaskCtrl">
+<area shape="rect" id="node2" href="$class_task_ctrl_1_1_task_struct.html" title="TaskCtrl::TaskStruct" alt="" coords="313,424,457,451"/>
+<area shape="rect" id="node3" href="$classsptr.html" title="sptr\&lt; Task \&gt;" alt="" coords="542,96,639,123"/>
+<area shape="rect" id="node5" href="$class_task.html" title="Task" alt="" coords="496,200,547,227"/>
+<area shape="rect" id="node11" href="$class_callout.html" title="Callout" alt="" coords="286,200,348,227"/>
+<area shape="rect" id="node4" href="$classcounter__helper.html" title="counter_helper" alt="" coords="665,5,772,32"/>
+<area shape="rect" id="node10" href="$classsptr.html" title="sptr\&lt; Callout \&gt;" alt="" coords="331,333,440,360"/>
+<area shape="rect" id="node6" href="$classuptr.html" title="uptr\&lt; GenericFunction\&lt;\&gt; \&gt;" alt="" coords="339,96,517,123"/>
+<area shape="rect" id="node7" href="$class_generic_function.html" title="GenericFunction\&lt;\&gt;" alt="" coords="361,5,495,32"/>
+<area shape="rect" id="node8" href="$class_cpu_id.html" title="CpuId" alt="" coords="155,5,212,32"/>
+<area shape="rect" id="node12" href="$class_spin_lock.html" title="SpinLock" alt="" coords="50,96,125,123"/>
+<area shape="rect" id="node9" href="$struct_status.html" title="Status" alt="" coords="663,96,723,123"/>
+<area shape="rect" id="node13" href="$class_spin_lock_interface.html" title="SpinLockInterface" alt="" coords="5,5,131,32"/>
+</map>

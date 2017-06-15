@@ -4,7 +4,7 @@ DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))
 
 .PHONY: clean
 
-default: ../net.o
+default:
 
 -include $(DEPS)
 

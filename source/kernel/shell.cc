@@ -55,7 +55,7 @@ void Shell::Exec(const char *name, int argc, const char **argv) {
     }
   }
 
-  gtty->Cprintf("unknown command: %s\n", name);
+  gtty->Printf("unknown command: %s\n", name);
 }
 
 void Shell::ReadCh(char c) {
@@ -76,7 +76,7 @@ void Shell::Liner::ReadCh(char c) {
   if (c == '\n') {
     auto ec = make_uptr(new ExecContainer(_shell));
     ec = Tokenize(ec, _command);
-    gtty->Cprintf("> %s\n", _command);
+    gtty->Printf("> %s\n", _command);
     _shell->Execute(ec);
     Reset();
   } else if (c == '\b') {

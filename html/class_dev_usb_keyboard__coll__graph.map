@@ -1,0 +1,30 @@
+<map id="DevUsbKeyboard" name="DevUsbKeyboard">
+<area shape="rect" id="node2" href="$class_dev_usb.html" title="DevUsb" alt="" coords="914,296,985,323"/>
+<area shape="rect" id="node3" href="$class_dev_usb_1_1_interrupt_endpoint.html" title="DevUsb::InterruptEndpoint" alt="" coords="1206,355,1383,381"/>
+<area shape="rect" id="node4" href="$class_polling_func.html" title="PollingFunc" alt="" coords="904,428,995,455"/>
+<area shape="rect" id="node5" href="$class_polling.html" title="Polling" alt="" coords="604,352,665,379"/>
+<area shape="rect" id="node6" href="$classsptr.html" title="sptr\&lt; Task \&gt;" alt="" coords="278,457,375,484"/>
+<area shape="rect" id="node8" href="$class_task.html" title="Task" alt="" coords="609,491,660,517"/>
+<area shape="rect" id="node27" href="$class_functional.html" title="Functional" alt="" coords="593,225,676,252"/>
+<area shape="rect" id="node7" href="$classcounter__helper.html" title="counter_helper" alt="" coords="19,696,125,723"/>
+<area shape="rect" id="node14" href="$classsptr.html" title="sptr\&lt; DevUsbController\l::Manager \&gt;" alt="" coords="555,731,715,773"/>
+<area shape="rect" id="node9" href="$classuptr.html" title="uptr\&lt; GenericFunction\&lt;\&gt; \&gt;" alt="" coords="237,587,416,613"/>
+<area shape="rect" id="node10" href="$class_generic_function.html" title="GenericFunction\&lt;\&gt;" alt="" coords="5,587,139,613"/>
+<area shape="rect" id="node11" href="$class_cpu_id.html" title="CpuId" alt="" coords="43,256,101,283"/>
+<area shape="rect" id="node19" href="$class_spin_lock.html" title="SpinLock" alt="" coords="289,109,365,136"/>
+<area shape="rect" id="node12" href="$struct_status.html" title="Status" alt="" coords="297,536,357,563"/>
+<area shape="rect" id="node13" href="$class_usb_ctrl_1_1_endpoint_descriptor.html" title="UsbCtrl::EndpointDescriptor" alt="" coords="856,377,1043,404"/>
+<area shape="rect" id="node15" href="$class_dev_usb_controller_1_1_manager.html" title="DevUsbController::Manager" alt="" coords="235,685,419,712"/>
+<area shape="rect" id="node22" href="$class_dev_usb_controller.html" title="DevUsbController" alt="" coords="571,680,698,707"/>
+<area shape="rect" id="node16" href="$class_ring_buffer.html" title="RingBuffer\&lt; uptr\&lt; Array\l\&lt; uint8_t \&gt; \&gt;, 32 \&gt;" alt="" coords="554,110,715,151"/>
+<area shape="rect" id="node17" href="$classuptr.html" title="uptr\&lt; Array\&lt; uint8\l_t \&gt; \&gt;" alt="" coords="263,6,390,47"/>
+<area shape="rect" id="node18" href="$class_array.html" title="Array\&lt; uint8_t \&gt;" alt="" coords="14,13,130,40"/>
+<area shape="rect" id="node28" href="$class_ring_buffer.html" title="RingBuffer\&lt; char, S \&gt;" alt="" coords="559,59,710,85"/>
+<area shape="rect" id="node20" href="$class_spin_lock_interface.html" title="SpinLockInterface" alt="" coords="9,109,135,136"/>
+<area shape="rect" id="node21" href="$class_usb_ctrl_1_1_device_descriptor.html" title="UsbCtrl::DeviceDescriptor" alt="" coords="547,296,723,323"/>
+<area shape="rect" id="node23" href="$class_dev_usb_keyboard_1_1_keyboard_sub.html" title="DevUsbKeyboard::KeyboardSub" alt="" coords="1435,161,1645,188"/>
+<area shape="rect" id="node24" href="$class_keyboard.html" title="Keyboard" alt="" coords="1256,125,1333,152"/>
+<area shape="rect" id="node25" href="$class_device.html" title="Device" alt="" coords="918,125,981,152"/>
+<area shape="rect" id="node26" href="$class_functional_ring_buffer.html" title="FunctionalRingBuffer\l\&lt; char, kBufSize \&gt;" alt="" coords="877,59,1021,101"/>
+<area shape="rect" id="node29" href="$struct_dev_usb_keyboard_1_1_buffer.html" title="DevUsbKeyboard::Buffer" alt="" coords="1456,295,1624,321"/>
+</map>

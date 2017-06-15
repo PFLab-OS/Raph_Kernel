@@ -169,11 +169,11 @@ void ApicCtrl::StartAPs() {
 }
 
 void ApicCtrl::PicSpuriousCallback(Regs *rs, void *arg) {
-  gtty->CprintfRaw("[APIC] info: spurious 8259A interrupt\n");
+  gtty->Printf("[APIC] info: spurious 8259A interrupt\n");
 }
 
 void ApicCtrl::PicUnknownCallback(Regs *rs, void *arg) {
-  gtty->CprintfRaw("[APIC] info: unknown 8259A interrupt\n");
+  gtty->Printf("[APIC] info: unknown 8259A interrupt\n");
 }
 
 void ApicCtrl::Lapic::Setup() {

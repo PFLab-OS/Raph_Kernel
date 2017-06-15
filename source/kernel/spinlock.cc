@@ -35,9 +35,10 @@ bool SpinLock::_spinlock_timeout = true;
 void SpinLock::Lock() {
   if ((_flag % 2) == 1 && _cpuid == cpu_ctrl->GetCpuId()) {
     assert(_cpuid.IsValid());
-    gtty->CprintfRaw("SpinLock is holded by cpuid %d.\n(current interrupt handling cnt: %d)\n", _cpuid.GetRawId(), idt->GetHandlingCnt());
+    gtty->DisablePrint();
+    gtty->ErrPrintf("SpinLock is holded by cpuid %d.\n(current interrupt handling cnt: %d)\n", _cpuid.GetRawId(), idt->GetHandlingCnt());
     for (size_t i = 0; i < sizeof(_rip) / sizeof(_rip[0]); i++) {
-      gtty->CprintfRaw("backtrace(%d): rip:%llx,\n", i, _rip[i]);
+      gtty->ErrPrintf("backtrace(%d): rip:%llx,\n", i, _rip[i]);
     }
     kernel_panic("SpinLock", "self lock! need to solve deadlock.");
   }
@@ -57,14 +58,15 @@ void SpinLock::Lock() {
       enable_interrupt(iflag);
     }
     if (_spinlock_timeout && !showed_timeout_warning && timer != nullptr && timer->DidSetup() && timer->IsTimePassed(t1)) {
-      gtty->CprintfRaw("[warning]: unable to take SpinLock for a long time on cpuid %d.\nA deadlock may occur.\n", cpu_ctrl->GetCpuId().GetRawId());
+      gtty->DisablePrint();
+      gtty->ErrPrintf("[error]: unable to take SpinLock for a long time on cpuid %d.\nA deadlock may occur.\n", cpu_ctrl->GetCpuId().GetRawId());
       size_t *rbp;
       asm volatile("movq %%rbp, %0":"=r"(rbp));
       show_backtrace(rbp);
       assert(_cpuid.IsValid());
-      gtty->CprintfRaw("SpinLock is holded by cpuid %d.\n", _cpuid.GetRawId());
+      gtty->ErrPrintf("SpinLock is holded by cpuid %d.\n", _cpuid.GetRawId());
       for (size_t i = 0; i < sizeof(_rip) / sizeof(_rip[0]); i++) {
-        gtty->CprintfRaw("backtrace(%d): rip:%llx,\n", i, _rip[i]);
+        gtty->ErrPrintf("backtrace(%d): rip:%llx,\n", i, _rip[i]);
       }
       showed_timeout_warning = true;
     }
@@ -73,7 +75,11 @@ void SpinLock::Lock() {
   _cpuid = cpu_ctrl->GetCpuId();
   size_t *rbp;
   asm volatile("movq %%rbp, %0":"=r"(rbp));
+  size_t top_rbp = reinterpret_cast<size_t>(rbp);
   for (size_t i = 0; i < sizeof(_rip) / sizeof(_rip[0]); i++) {
+    if (top_rbp <= rbp[1] || top_rbp - 4096 > rbp[1]) {
+      break;
+    }
     _rip[i] = rbp[1];
     rbp = reinterpret_cast<size_t *>(rbp[0]);
   }

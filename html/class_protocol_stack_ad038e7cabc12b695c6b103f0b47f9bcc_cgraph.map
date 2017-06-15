@@ -1,0 +1,6 @@
+<map id="ProtocolStack::SetDevice" name="ProtocolStack::SetDevice">
+<area shape="rect" id="node2" href="$class_protocol_stack.html#a5606e90c9f77f311fc3a40638402fbdd" title="ProtocolStack::DeviceBuffer\lHandler" alt="" coords="230,23,418,65"/>
+<area shape="rect" id="node5" href="$class_net_dev.html#a96b443b0ad595aa670983a6b9e4f7d6f" title="NetDev::SetReceiveCallback" alt="" coords="227,89,421,116"/>
+<area shape="rect" id="node3" href="$class_net_dev.html#ae0493d0d716f559bb338030a7f587654" title="NetDev::ReceivePacket" alt="" coords="470,5,634,32"/>
+<area shape="rect" id="node4" href="$class_net_dev.html#ac2e97c870813924621fd1c7058414d49" title="NetDev::ReuseRxBuffer" alt="" coords="469,56,635,83"/>
+</map>

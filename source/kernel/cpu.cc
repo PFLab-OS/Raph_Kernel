@@ -58,6 +58,7 @@ CpuId CpuCtrl::RetainCpuIdForPurpose(CpuPurpose p) {
 }
 
 void CpuId::Error() {
-  gtty->CprintfRaw("[CpuId] error: unknown rawid %d\n", _rawid);
+  gtty->DisablePrint();
+  gtty->ErrPrintf("[CpuId] error: unknown rawid %d\n", _rawid);
   kernel_panic("CpuId", "Invalid ID");
 }

@@ -1,0 +1,10 @@
+<map id="PollingFunc" name="PollingFunc">
+<area shape="rect" id="node2" href="$class_polling.html" title="Polling" alt="" coords="172,200,234,227"/>
+<area shape="rect" id="node3" href="$classsptr.html" title="sptr\&lt; Task \&gt;" alt="" coords="29,96,126,123"/>
+<area shape="rect" id="node5" href="$class_task.html" title="Task" alt="" coords="258,200,308,227"/>
+<area shape="rect" id="node4" href="$classcounter__helper.html" title="counter_helper" alt="" coords="24,5,131,32"/>
+<area shape="rect" id="node6" href="$classuptr.html" title="uptr\&lt; GenericFunction\&lt;\&gt; \&gt;" alt="" coords="406,96,584,123"/>
+<area shape="rect" id="node7" href="$class_generic_function.html" title="GenericFunction\&lt;\&gt;" alt="" coords="428,5,562,32"/>
+<area shape="rect" id="node8" href="$class_cpu_id.html" title="CpuId" alt="" coords="206,96,263,123"/>
+<area shape="rect" id="node9" href="$struct_status.html" title="Status" alt="" coords="321,96,380,123"/>
+</map>

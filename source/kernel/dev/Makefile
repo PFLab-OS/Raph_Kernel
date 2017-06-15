@@ -1,10 +1,13 @@
-OBJS = pci.o usb.o nic.o netdev.o disk.o fs.o 8042.o keyboard.o pciid.o pciid_table.o hpet.o
+SUB = usb nic disk fs
+OBJS = pci.o netdev.o 8042.o keyboard.o pciid.o pciid_table.o hpet.o framebuffer.o $(addsuffix .o,$(SUB))
 
 DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))
 
-.PHONY: clean usb.o nic.o disk.o fs.o
+.PHONY: clean
 
-default: ../dev.o
+default:
+	@$(foreach rule, $(SUB), $(MAKE) -C $(rule);)
+	@$(MAKE) ../dev.o
 
 -include $(DEPS)
 
@@ -20,22 +23,7 @@ pciid_table.cc: pci.ids.formatted pciid.py
 pci.ids.formatted : pci.ids
 	sed 's/\("\|\?\|\\\)/\\\1/g' pci.ids > pci.ids.formatted
 
-usb.o:
-	$(MAKE) -C usb CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
-
-nic.o:
-	@$(MAKE) -C nic CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
-
-disk.o:
-	@$(MAKE) -C disk CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
-
-fs.o:
-	@$(MAKE) -C fs CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
-
 clean:
-	$(MAKE) -C nic clean
-	$(MAKE) -C disk clean
-	$(MAKE) -C fs clean
-	$(MAKE) -C usb clean
+	@$(foreach rule, $(SUB), $(MAKE) -C $(rule) clean;)
 	-rm -f $(OBJS) $(TEST_OBJS) $(DEPS) *.s *.ii
 	-rm -f pciid_table.cc pci.ids.formatted

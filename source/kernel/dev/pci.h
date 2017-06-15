@@ -67,20 +67,21 @@ public:
   }
   virtual ~PciCtrl() {
   }
-  static void Init() {
+  void Probe();
+  static void Attach() {
     kassert(pci_ctrl != nullptr);
-    pci_ctrl->_Init();
+    pci_ctrl->_Attach();
   }
   DevPci *InitPciDevices(uint8_t bus, uint8_t device, uint8_t function);
   virt_addr GetVaddr(uint8_t bus, uint8_t device, uint8_t func, uint16_t reg) {
     return _base_addr + ((bus & 0xff) << 20) + ((device & 0x1f) << 15) + ((func & 0x7) << 12) + (reg & 0xfff);
   }
   template<class T>
-    T ReadReg(uint8_t bus, uint8_t device, uint8_t func, uint16_t reg) override {
+    T ReadPciReg(uint8_t bus, uint8_t device, uint8_t func, uint16_t reg) {
     return *(reinterpret_cast<T *>(GetVaddr(bus, device, func, reg)));
   }
   template<class T>
-    void WriteReg(uint8_t bus, uint8_t device, uint8_t func, uint16_t reg, T value) override {
+    void WritePciReg(uint8_t bus, uint8_t device, uint8_t func, uint16_t reg, T value) {
     *(reinterpret_cast<T *>(GetVaddr(bus, device, func, reg))) = value;
   }
   // Capabilityへのオフセットを返す
@@ -92,7 +93,7 @@ public:
       return 0;
     }
 
-    uint16_t control = ReadReg<uint16_t>(bus, device, func, offset + kMsiCapRegControl);
+    uint16_t control = ReadPciReg<uint16_t>(bus, device, func, offset + kMsiCapRegControl);
     uint16_t cap = (control & kMsiCapRegControlMultiMsgCapMask) >> kMsiCapRegControlMultiMsgCapOffset;
     int count = 1;
     for (; cap > 0; cap--) {
@@ -103,7 +104,7 @@ public:
   // 先にGetMsiCountでMsiが使えるか調べる事
   void SetMsi(uint8_t bus, uint8_t device, uint8_t func, uint64_t addr, uint16_t data);
   IntPin GetLegacyIntPin(uint8_t bus, uint8_t device, uint8_t func) {
-    return static_cast<IntPin>(ReadReg<uint8_t>(bus, device, func, kIntPinReg));
+    return static_cast<IntPin>(ReadPciReg<uint8_t>(bus, device, func, kIntPinReg));
   }
   // 0より小さい場合はLegacyInterruptが存在しない
   virtual int GetLegacyIntNum(DevPci *device) = 0;
@@ -171,7 +172,7 @@ private:
   virt_addr _base_addr = 0;
   CpuId _cpuid;
   
-  void _Init();
+  void _Attach();
   template<class T>
   static inline DevPci *_InitPciDevices(uint8_t bus, uint8_t device, uint8_t function) {
     return T::InitPci(bus, device, function);
@@ -260,13 +261,13 @@ public:
     return nullptr;
   } // dummy
   virtual void Attach() = 0;
-  template<class T> T ReadReg(uint16_t reg) {
+  template<class T> T ReadPciReg(uint16_t reg) {
     kassert(pci_ctrl != nullptr);
-    return pci_ctrl->ReadReg<T>(_bus, _device, _function, reg);
+    return pci_ctrl->ReadPciReg<T>(_bus, _device, _function, reg);
   }
-  template<class T> void WriteReg(uint16_t reg, T value) {
+  template<class T> void WritePciReg(uint16_t reg, T value) {
     kassert(pci_ctrl != nullptr);
-    pci_ctrl->WriteReg<T>(_bus, _device, _function, reg, value);
+    pci_ctrl->WritePciReg<T>(_bus, _device, _function, reg, value);
   }
   uint16_t FindCapability(PciCtrl::CapabilityId id) {
     kassert(pci_ctrl != nullptr);

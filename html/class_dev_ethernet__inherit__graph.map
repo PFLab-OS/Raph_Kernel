@@ -1,0 +1,4 @@
+<map id="DevEthernet" name="DevEthernet">
+<area shape="rect" id="node3" href="$class_bsd_ethernet.html" title="BsdEthernet" alt="" coords="5,155,99,181"/>
+<area shape="rect" id="node2" href="$class_net_dev.html" title="NetDev" alt="" coords="19,5,85,32"/>
+</map>

@@ -1,23 +1,19 @@
-OBJS = em.o ix.o
+SUB = em ix
+OBJS = $(addsuffix .o,$(SUB))
 
 DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))
 
-.PHONY: clean em.o ix.o
+.PHONY: clean
 
-default: ../intel.o
+default:
+	@$(foreach rule, $(SUB), $(MAKE) -C $(rule);)
+	@$(MAKE) ../intel.o
 
 -include $(DEPS)
 
 ../intel.o: $(OBJS)
 	ld -r $^ -o $@
 
-em.o:
-	@$(MAKE) -C em CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
-
-ix.o:
-	@$(MAKE) -C ix CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
-
 clean:
-	$(MAKE) -C em clean
-	$(MAKE) -C ix clean
+	@$(foreach rule, $(SUB), $(MAKE) -C $(rule) clean;)
 	-rm -f $(OBJS) $(TEST_OBJS) $(DEPS) *.s *.ii

@@ -23,6 +23,7 @@
 #include <idt.h>
 #include <mem/virtmem.h>
 #include <mem/physmem.h>
+#include <mem/paging.h>
 #include <apic.h>
 #include <mem/kstack.h>
 #include <gdt.h>
@@ -37,7 +38,8 @@ extern "C" void handle_int(Regs *rs) {
   idt->_handling_cnt[cpuid]++;
   if (idt->_callback[cpuid][rs->n].callback == nullptr) {
     if (gtty != nullptr) {
-      gtty->CprintfRaw("[kernel] error: unimplemented interrupt %d at cpuid: %d\nrip: %llx rbp: %llx\n", rs->n, cpuid, rs->rip, rs->rbp);
+      gtty->DisablePrint();
+      gtty->ErrPrintf("[kernel] error: unimplemented interrupt %d at cpuid: %d\nrip: %llx rbp: %llx\n", rs->n, cpuid, rs->rip, rs->rbp);
       show_backtrace(reinterpret_cast<size_t *>(rs->rbp));
     }
     while(true) {
@@ -115,6 +117,7 @@ void Idt::SetupGeneric() {
   _is_gen_initialized = true;
   for (int i = 0; i < apic_ctrl->GetHowManyCpus(); i++) {
     CpuId cpuid(i);
+    SetExceptionCallback(cpuid, 13, HandleGeneralProtectionFault, nullptr, Idt::EoiType::kNone);
     SetExceptionCallback(cpuid, 14, HandlePageFault, nullptr, Idt::EoiType::kNone);
   }
 }
@@ -180,6 +183,10 @@ int Idt::SetIntCallback(CpuId cpuid, int_callback *callback, void **arg, int ran
   return ReservedIntVector::kError;
 }
 
+static inline void ShowPagingEntry(const char *str, uint64_t entry) {
+  gtty->ErrPrintf("\n%s: 0x%llx P:%d R/W: %d U/S: %d", str, entry, (entry & 1) != 0, (entry & 2) != 0, (entry & 4) != 0);
+}
+
 void Idt::SetExceptionCallback(CpuId cpuid, int vector, int_callback callback, void *arg, EoiType eoi) {
   kassert(_is_gen_initialized);
   kassert(vector < 64 && vector >= 1);
@@ -195,7 +202,40 @@ void Idt::HandlePageFault(Regs *rs, void *arg) {
     uint64_t addr;
     asm volatile("movq %%cr2, %0;":"=r"(addr));
     int cpuid = cpu_ctrl->GetCpuId().GetRawId();
-    gtty->CprintfRaw("\nunexpected page fault occured at cpuid %d!\naddress: %llx rip: %llx rbp: %llx\n", cpuid, addr, rs->rip, rs->rbp);
+    const uint64_t ECodePBit = 0x01;	// 0: not present, 1: present
+    const uint64_t ECodeRWBit = 0x02;	// 0: read, 1: write
+    const uint64_t ECodeSUBit = 0x03;	// 0: from privileged mode, 1: from user mode
+    gtty->DisablePrint();
+    gtty->ErrPrintf("\nUnexpected page fault (INT 0x%x) occured at cpuid %d!", rs->n, cpuid);
+    gtty->ErrPrintf("\nwhile trying %s access on addr: 0x%llx (%spresent)",
+      rs->ecode & ECodeRWBit ? "write" : "read", addr, rs->ecode & ECodePBit ? "" : "not ");
+    gtty->ErrPrintf("\nfrom %s mode", (rs->ecode & ECodeSUBit) ? "user" : "kernel");
+    gtty->ErrPrintf("\nrip: %llx rbp: %llx", rs->rip, rs->rbp);
+    gtty->ErrPrintf("\nrax: %llx rbx:%llx rcx:%llx rdx:%llx", rs->rax, rs->rbx, rs->rcx, rs->rdx);
+    gtty->ErrPrintf("\nrsi:%llx r13: %llx cs:%x ss:%x ecode:%llx", rs->rsi, rs->r13, rs->cs, rs->ss, rs->ecode);
+    uint64_t pml4e, pdpte, pde, pte;
+    paging_ctrl->GetTranslationEntries(addr, &pml4e, &pdpte, &pde, &pte);
+    ShowPagingEntry("PML4E", pml4e);
+    ShowPagingEntry("PDPTE", pdpte);
+    ShowPagingEntry("PDE  ", pde);
+    ShowPagingEntry("PTE  ", pte);
+    gtty->ErrPrintf("\n");
+    show_backtrace(reinterpret_cast<size_t *>(rs->rbp));
+  }
+  while(true){
+    asm volatile("cli;hlt");
+  }
+}
+
+void Idt::HandleGeneralProtectionFault(Regs *rs, void *arg) {
+  if (gtty != nullptr) {
+    int cpuid = cpu_ctrl->GetCpuId().GetRawId();
+    gtty->DisablePrint();
+    gtty->ErrPrintf("\nGeneral Protection fault (INT 0x%x) occured at cpuid %d!", rs->n, cpuid);
+    gtty->ErrPrintf("\nrip: %llx rbp: %llx", rs->rip, rs->rbp);
+    gtty->ErrPrintf("\nrax: %llx rbx:%llx rcx:%llx rdx:%llx", rs->rax, rs->rbx, rs->rcx, rs->rdx);
+    gtty->ErrPrintf("\nrsi:%llx r13: %llx cs:%x ss:%x ecode:%llx", rs->rsi, rs->r13, rs->cs, rs->ss, rs->ecode);
+    gtty->ErrPrintf("\n");
     show_backtrace(reinterpret_cast<size_t *>(rs->rbp));
   }
   while(true){

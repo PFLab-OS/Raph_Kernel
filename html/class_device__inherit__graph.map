@@ -1,0 +1,11 @@
+<map id="Device" name="Device">
+<area shape="rect" id="node2" href="$class_dev_pci.html" title="DevPci" alt="" coords="123,101,189,128"/>
+<area shape="rect" id="node6" href="$class_keyboard.html" title="Keyboard" alt="" coords="117,164,195,191"/>
+<area shape="rect" id="node9" href="$class_pci_ctrl.html" title="PciCtrl" alt="" coords="125,240,187,267"/>
+<area shape="rect" id="node3" href="$class_bsd_dev_pci_1_1_bsd_dev_pci_sub.html" title="BsdDevPci::BsdDevPciSub" alt="" coords="255,5,441,32"/>
+<area shape="rect" id="node4" href="$class_dev_ehci.html" title="DevEhci" alt="" coords="312,56,384,83"/>
+<area shape="rect" id="node5" href="$class_dev_uhci.html" title="DevUhci" alt="" coords="311,107,385,133"/>
+<area shape="rect" id="node7" href="$class_dev_usb_keyboard_1_1_keyboard_sub.html" title="DevUsbKeyboard::KeyboardSub" alt="" coords="243,157,453,184"/>
+<area shape="rect" id="node8" href="$class_legacy_keyboard.html" title="LegacyKeyboard" alt="" coords="289,208,407,235"/>
+<area shape="rect" id="node10" href="$class_acpica_pci_ctrl.html" title="AcpicaPciCtrl" alt="" coords="297,259,399,285"/>
+</map>

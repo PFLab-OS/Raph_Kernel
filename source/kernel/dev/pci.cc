@@ -34,34 +34,40 @@
 #include <dev/nic/intel/em/lem.h>
 #include <dev/disk/ahci/ahci-raph.h>
 
-void PciCtrl::_Init() {
+void PciCtrl::Probe() {
   _cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority);
+
   _mcfg = acpi_ctrl->GetMCFG();
   if (_mcfg == nullptr) {
-    gtty->Cprintf("[Pci] error: could not find MCFG table.\n");
+    gtty->Printf("[Pci] error: could not find MCFG table.\n");
     return;
   }
 
   for (int i = 0; i * sizeof(MCFGSt) < _mcfg->header.Length - sizeof(ACPISDTHeader); i++) {
     if (i == 1) {
-      gtty->Cprintf("[Pci] info: multiple MCFG tables.\n");
+      gtty->Printf("[Pci] info: multiple MCFG tables.\n");
       break;
     }
     if (_mcfg->list[i].ecam_base >= 0x100000000) {
-      gtty->Cprintf("[Pci] error: ECAM base addr does not exist in low 4GB of memory\n");
+      gtty->Printf("[Pci] error: ECAM base addr does not exist in low 4GB of memory\n");
       continue;
     }
     _base_addr = p2v(_mcfg->list[i].ecam_base);
+  }
+}
+
+void PciCtrl::_Attach() {
+  for (int i = 0; i * sizeof(MCFGSt) < _mcfg->header.Length - sizeof(ACPISDTHeader); i++) {
     for (int j = _mcfg->list[i].pci_bus_start; j <= _mcfg->list[i].pci_bus_end; j++) {
       for (int k = 0; k < 32; k++) {
 
-        int maxf = ((ReadReg<uint16_t>(j, k, 0, kHeaderTypeReg) & kHeaderTypeRegFlagMultiFunction) != 0) ? 7 : 0;
+        int maxf = ((ReadPciReg<uint16_t>(j, k, 0, kHeaderTypeReg) & kHeaderTypeRegFlagMultiFunction) != 0) ? 7 : 0;
         for (int l = 0; l <= maxf; l++) {
-          uint16_t vid = ReadReg<uint16_t>(j, k, l, kVendorIDReg);
+          uint16_t vid = ReadPciReg<uint16_t>(j, k, l, kVendorIDReg);
           if (vid == 0xffff) {
             continue;
           }
-          WriteReg<uint16_t>(j, k, l, PciCtrl::kCommandReg, ReadReg<uint16_t>(j, k, l, PciCtrl::kCommandReg) | PciCtrl::kCommandRegInterruptDisableFlag);
+          WritePciReg<uint16_t>(j, k, l, PciCtrl::kCommandReg, ReadPciReg<uint16_t>(j, k, l, PciCtrl::kCommandReg) | PciCtrl::kCommandRegInterruptDisableFlag);
           DevPci *dev = InitPciDevices(j, k, l);
           if (dev != nullptr) {
             _devices.PushBack(dev);
@@ -78,17 +84,17 @@ void PciCtrl::_Init() {
 }
 
 DevPci *PciCtrl::InitPciDevices(uint8_t bus, uint8_t device, uint8_t func) {
-  return _InitPciDevices</*IxGbe, E1000, */lE1000, /*DevEhci,*/ DevUhci, /*AhciCtrl,*/ DevPci>(bus, device, func);
+  return _InitPciDevices<IxGbe, E1000, lE1000, DevEhci, DevUhci, /*AhciCtrl,*/ DevPci>(bus, device, func);
 }
 
 uint16_t PciCtrl::FindCapability(uint8_t bus, uint8_t device, uint8_t func, CapabilityId id) {
-  if ((ReadReg<uint16_t>(bus, device, func, kStatusReg) | kStatusRegFlagCapListAvailable) == 0) {
+  if ((ReadPciReg<uint16_t>(bus, device, func, kStatusReg) | kStatusRegFlagCapListAvailable) == 0) {
     return 0;
   }
   
   uint8_t ptr = 0;
 
-  switch(ReadReg<uint8_t>(bus, device, func, kHeaderTypeReg)
+  switch(ReadPciReg<uint8_t>(bus, device, func, kHeaderTypeReg)
          & kHeaderTypeRegMaskDeviceType) {
   case kHeaderTypeRegValueDeviceTypeNormal:
   case kHeaderTypeRegValueDeviceTypeBridge:
@@ -99,16 +105,16 @@ uint16_t PciCtrl::FindCapability(uint8_t bus, uint8_t device, uint8_t func, Capa
     kassert(false);
   }
 
-  ptr = ReadReg<uint8_t>(bus, device, func, ptr);
+  ptr = ReadPciReg<uint8_t>(bus, device, func, ptr);
 
   while (true) {
     if (ptr == 0) {
       return 0;
     }
-    if (ReadReg<uint8_t>(bus, device, func, ptr + kCapRegId) == static_cast<uint8_t>(id)) {
+    if (ReadPciReg<uint8_t>(bus, device, func, ptr + kCapRegId) == static_cast<uint8_t>(id)) {
       return ptr;
     }
-    ptr = ReadReg<uint8_t>(bus, device, func, ptr + kCapRegNext);
+    ptr = ReadPciReg<uint8_t>(bus, device, func, ptr + kCapRegNext);
   }
 }
 
@@ -118,21 +124,21 @@ void PciCtrl::SetMsi(uint8_t bus, uint8_t device, uint8_t func, uint64_t addr, u
     return;
   }
 
-  WriteReg<uint16_t>(bus, device, func, PciCtrl::kCommandReg, ReadReg<uint16_t>(bus, device, func, PciCtrl::kCommandReg) | PciCtrl::kCommandRegInterruptDisableFlag);
+  WritePciReg<uint16_t>(bus, device, func, PciCtrl::kCommandReg, ReadPciReg<uint16_t>(bus, device, func, PciCtrl::kCommandReg) | PciCtrl::kCommandRegInterruptDisableFlag);
   
-  uint16_t control = ReadReg<uint16_t>(bus, device, func, offset + kMsiCapRegControl);
+  uint16_t control = ReadPciReg<uint16_t>(bus, device, func, offset + kMsiCapRegControl);
   
   if (control & kMsiCapRegControlAddr64Flag) {
     // addr 64bit
-    WriteReg<uint32_t>(bus, device, func, offset + kMsiCapRegMsgAddr, static_cast<uint32_t>(addr));
-    WriteReg<uint32_t>(bus, device, func, offset + kMsiCapReg64MsgUpperAddr, static_cast<uint32_t>(addr >> 32));
-    WriteReg<uint16_t>(bus, device, func, offset + kMsiCapReg64MsgData, static_cast<uint16_t>(data));
+    WritePciReg<uint32_t>(bus, device, func, offset + kMsiCapRegMsgAddr, static_cast<uint32_t>(addr));
+    WritePciReg<uint32_t>(bus, device, func, offset + kMsiCapReg64MsgUpperAddr, static_cast<uint32_t>(addr >> 32));
+    WritePciReg<uint16_t>(bus, device, func, offset + kMsiCapReg64MsgData, static_cast<uint16_t>(data));
   } else {
     kassert(addr < 0x100000000);
-    WriteReg<uint32_t>(bus, device, func, offset + kMsiCapRegMsgAddr, static_cast<uint32_t>(addr));
-    WriteReg<uint16_t>(bus, device, func, offset + kMsiCapReg32MsgData, static_cast<uint16_t>(data));
+    WritePciReg<uint32_t>(bus, device, func, offset + kMsiCapRegMsgAddr, static_cast<uint32_t>(addr));
+    WritePciReg<uint16_t>(bus, device, func, offset + kMsiCapReg32MsgData, static_cast<uint16_t>(data));
   }
-  WriteReg<uint16_t>(bus, device, func, offset + kMsiCapRegControl, control | kMsiCapRegControlMsiEnableFlag);
+  WritePciReg<uint16_t>(bus, device, func, offset + kMsiCapRegControl, control | kMsiCapRegControlMsiEnableFlag);
 }
 
 int PciCtrl::RegisterLegacyIntHandler(int irq, DevPci *device, Idt::EoiType type) {
@@ -154,7 +160,7 @@ int PciCtrl::RegisterLegacyIntHandler(int irq, DevPci *device, Idt::EoiType type
   apic_ctrl->SetupIoInt(irq, _cpuid.GetApicId(), vector, false, false);
   ic->Add(irq, vector);
   ic->next->inthandler->Add(device);
-  device->WriteReg<uint16_t>(PciCtrl::kCommandReg, device->ReadReg<uint16_t>(PciCtrl::kCommandReg) & ~PciCtrl::kCommandRegInterruptDisableFlag);
+  device->WritePciReg<uint16_t>(PciCtrl::kCommandReg, device->ReadPciReg<uint16_t>(PciCtrl::kCommandReg) & ~PciCtrl::kCommandRegInterruptDisableFlag);
   return vector;
 }
 

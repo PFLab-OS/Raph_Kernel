@@ -33,7 +33,7 @@ public:
   FatFs() {
   }
   bool Mount() {
-    gtty->Cprintf(">>>%d\n", f_mount(&_fs, "0:/", 1));
+    gtty->Printf(">>>%d\n", f_mount(&_fs, "0:/", 1));
       
       //    return (f_mount(&_fs, "C:/", 1) == FR_OK);
     return false;

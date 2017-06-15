@@ -27,7 +27,7 @@
 
 class LegacyKeyboard : Keyboard {
  public:
-  static void Init();
+  static void Attach();
   virtual ~LegacyKeyboard() {
   }
  private:

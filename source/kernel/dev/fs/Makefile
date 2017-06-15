@@ -1,19 +1,19 @@
-OBJS = fat.o
+SUB = fat
+OBJS = $(addsuffix .o,$(SUB))
 
 DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))
 
-.PHONY: clean fat.o
+.PHONY: clean
 
-default: ../fs.o
+default:
+	@$(foreach rule, $(SUB), $(MAKE) -C $(rule);)
+	@$(MAKE) ../fs.o
 
 -include $(DEPS)
 
 ../fs.o: $(OBJS)
 	ld -r $^ -o $@
 
-fat.o:
-	@$(MAKE) -C fat CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" ASFLAGS="$(ASFLAGS)"
-
 clean:
-	$(MAKE) -C fat clean
+	@$(foreach rule, $(SUB), $(MAKE) -C $(rule) clean;)
 	-rm -f $(OBJS) $(TEST_OBJS) $(DEPS) *.s *.ii

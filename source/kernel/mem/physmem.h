@@ -123,6 +123,10 @@ class PhysmemCtrl {
   }
   static const virt_addr kLinearMapOffset = 0xffff800000000000;
   void Show(); // for debug
+  void EnableToAllocate() {
+    kassert(!_is_able_to_allocate);
+    _is_able_to_allocate = true;    
+  }
  private:
   struct AllocOption {
     struct Align {
@@ -145,10 +149,12 @@ class PhysmemCtrl {
   SpinLock _lock;
   bool _alloc_lock = false;
   bool _is_initialized = false;
+  bool _is_able_to_allocate = false;
   Srat *_srat = nullptr;
 };
 
 inline void PhysmemCtrl::Alloc(PhysAddr &paddr, size_t size) {
+  kassert(_is_able_to_allocate);
   AllocOption option = {nullptr, nullptr};
   AllocSub(paddr, size, option);
 }
