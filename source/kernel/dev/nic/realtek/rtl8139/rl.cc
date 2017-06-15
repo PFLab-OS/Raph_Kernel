@@ -89,9 +89,7 @@ void Rtl8139::Attach(){
 
   WriteReg<uint8_t>(kRegCommand,kCmdTxEnable | kCmdRxEnable);
 
-  //intrrupt
-  //RxOK only (TODO :add interruption)
-  WriteReg<uint16_t>(kRegIrMask,0x01);
+  //TODO:Int or Poll 
 
 
   //Receive Configuration Registerの設定
@@ -113,7 +111,6 @@ void Rtl8139::Attach(){
 
  }
 
-//TODO: あまりに汚いのでリファクタリングする
 uint16_t Rtl8139::ReadEeprom(uint16_t offset,uint16_t length){
   //cf http://www.jbox.dk/sanos/source/sys/dev/rtl8139.c.html#:309
 
@@ -146,8 +143,33 @@ uint16_t Rtl8139::ReadEeprom(uint16_t offset,uint16_t length){
 }
 
 //TODO
-static void PollingHandler(Rtl8139 *that){
+void Rtl8139::Rtl8139Ethernet::PollingHandler(Rtl8139 *that){
+  uint8_t *pIncomePacket,*RxRead;
+  uint16_t length;
 
+  while(true){
+    if(that->ReadReg<uint8_t>(that->kRegCommand) & that->kCmdRxBufEmpty){
+        break;
+    }
+    do{
+      pIncomePacket = reinterpret_cast<uint8_t*>(that->_eth.RxBuffer + that->_eth.RxBufferOffset);
+      length = *(uint16_t*)(pIncomePacket+2); // it contains CRC'S 4byte
+            //copy
+    }while(!(that->ReadReg<uint8_t>(that->kRegCommand) & that->kCmdRxBufEmpty));
+    //caprの更新
+    //謎の引き算（どれもこうしてある）
+    that->WriteReg<uint16_t>(that->kRegRxCAP,that->_eth.RxBuffer + that->_eth.RxBufferOffset - 0x10);
+
+        gtty->Printf("COOPY");
+        gtty->Flush();
+    
+    //CMDの４bitを立てると、Rxはバッファが空、Txは何かいい感じに
+    //なお、リセットができればハード側でクリアされる
+    uint8_t cmd = that->ReadReg<uint8_t>(that->kRegCommand);
+    cmd |= (1<<4);
+    that->WriteReg<uint8_t>(that->kRegCommand,cmd);
+  }
+  return;
 }
 
 void Rtl8139::Rtl8139Ethernet::UpdateLinkStatus(){
@@ -155,21 +177,63 @@ void Rtl8139::Rtl8139Ethernet::UpdateLinkStatus(){
 }
 
 void Rtl8139::Rtl8139Ethernet::GetEthAddr(uint8_t *buffer){
-
+    uint16_t tmp;
+    for(int i=0;i<3;i++){
+        tmp = _master.ReadEeprom(i + 7,6);
+        buffer[i*2] = tmp % 0x100;
+        buffer[i*2+1] = tmp >> 8;
+    }
 }
 
 void Rtl8139::Rtl8139Ethernet::ChangeHandleMethodToPolling(){
+  _polling.Init(make_uptr(new Function<Rtl8139 *>(PollingHandler,&_master)));
+  _polling.Register(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kHighPerformance));
 
+  //TODO: int disable
 }
 
 void Rtl8139::Rtl8139Ethernet::ChangeHandleMethodToInt(){
-
+  _polling.Remove();
+  //TODO enable int
+  //RxOK only (TODO :add interruption)
+  _master.WriteReg<uint16_t>(kRegIrMask,0x01);
+  _master.SetLegacyInterrupt(InterruptHandler,reinterpret_cast<void*>(this),Idt::EoiType::kIoapic);
 }
+//TODO: TxOKを監視して送信が重なってもいい感じにする
+//この関数はどんな引数で呼び出されるのか?ページ境界じゃないとDMAできない気がする
+void Rtl8139::Rtl8139Ethernet::Transmit(void *buffer){
+  //送信パケットの長さ？
+  uint32_t length;
+  uint8_t *buf;
 
-void Rtl8139::Rtl8139Ethernet::Transmit(void *){
+  //tmp 
+  uint32_t entry = 0;
 
+  return;
+  _master.WriteReg<uint32_t>(Rtl8139::kRegTxAddr + entry*4,static_cast<uint32_t>(reinterpret_cast<uintptr_t>(buf)));
+  _master.WriteReg<uint32_t>(Rtl8139::kRegTxStatus + entry*4,((256 << 11) & 0x003f0000) | length);  //256 means http://www.jbox.dk/sanos/source/sys/dev/rtl8139.c.html#:56
 }
 
 bool Rtl8139::Rtl8139Ethernet::IsLinkUp(){
+
   return true;
 } 
+
+void Rtl8139::Rtl8139Ethernet::InterruptHandler(void *p){
+  Rtl8139 *that = reinterpret_cast<Rtl8139*>(p);
+  uint16_t status = that->ReadReg<uint16_t>(kRegIrStatus);
+
+  //ビットが立っているところに1を書き込むとクリア？
+  that->WriteReg<uint16_t>(that->kRegIrStatus,status);
+
+  //TODO
+  if(status & 0b01){
+    //RxOK
+
+  }
+  if(status & 0b100){
+    //TxOK
+
+  }
+}
+

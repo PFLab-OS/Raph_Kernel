@@ -52,6 +52,7 @@ public:
     }
 
     static void PollingHandler(Rtl8139 *that);
+    static void InterruptHandler(void *p);
     
     virtual void UpdateLinkStatus() override;
     
@@ -63,19 +64,12 @@ public:
     virtual bool IsLinkUp() override;
   private:
     Rtl8139 &_master;
+    uint32_t TxDescriptorStatus = 0;
+    uint32_t currentTxDescriptor = 0;
+    uint32_t RxBuffer;
+    uint32_t RxBufferOffset;
+
   };
-
-private:
-  template <class T>
-  void WriteReg(uint32_t offset,T data);
-
-  template <class T>
-  T ReadReg(uint32_t offset);
-
-  uint32_t _mmio_addr = 0;
-
-  static const uint16_t kVendorId = 0x10ec;
-  static const uint16_t kDeviceId = 0x8139;
 
   //Registers see datasheet p16
   static const uint32_t kRegTxAddr = 0x20; //dw * 4
@@ -94,6 +88,19 @@ private:
   static const uint8_t kCmdRxEnable = 0x8;
   static const uint8_t kCmdReset = 0x10;
   static const uint8_t kCmdRxBufEmpty = 0x1;
+
+private:
+  template <class T>
+  void WriteReg(uint32_t offset,T data);
+
+  template <class T>
+  T ReadReg(uint32_t offset);
+
+  uint32_t _mmio_addr = 0;
+
+  static const uint16_t kVendorId = 0x10ec;
+  static const uint16_t kDeviceId = 0x8139;
+
 
   virtual void Attach() override;
   uint16_t ReadEeprom(uint16_t offset,uint16_t length);
