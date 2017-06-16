@@ -91,13 +91,14 @@ static Pair func107_main(int cpunum) {
   if (apicid == 0) {
     t1 = timer->ReadMainCnt();
   }
-  
+
   if (eflag) {
     sync_2.Do(cpunum);
 
     while(true) {
       bool flag = true;
       lock->Lock(apicid);
+      asm volatile("":::"memory");
       if (cnt > 0) {
         cnt--;
         f_array[cpunum_ - 1]++;
@@ -137,6 +138,7 @@ static Pair func107_main(int cpunum) {
       while(tmp == 0 || tmp == 1) {
         __sync_bool_compare_and_swap(&monitor[j], tmp, 1);
         tmp = monitor[j];
+        asm volatile("":::"memory");
       }
     }
   } else {
@@ -144,6 +146,7 @@ static Pair func107_main(int cpunum) {
     while(true) {
       asm volatile("monitor;"::"a"(monitor_addr), "c"(0), "d"(0));
       asm volatile("mwait;"::"a"(0), "c"(0));
+      asm volatile("":::"memory");
       if (*monitor_addr == 1) {
         __sync_lock_test_and_set(monitor_addr, 2);
         break;
@@ -191,10 +194,11 @@ static void func107_sub2(int cpunum) {
 }
 
 static SyncLow sync_5={0};
+static SyncLow sync_6={0};
 
 template<class L>
 static void func107_sub(sptr<TaskWithStack> task) {
-  static int flag = 0;
+  static volatile int flag = 0;
   __sync_fetch_and_add(&flag, 1);
 
   auto ltask_ = make_sptr(new Task);
@@ -202,6 +206,7 @@ static void func107_sub(sptr<TaskWithStack> task) {
           if (flag != cpu_ctrl->GetHowManyCpus()) {
             task_ctrl->Register(cpu_ctrl->GetCpuId(), ltask);
           } else {
+            sync_5.Do();
             for (int cpunum = 1; cpunum <= 7; cpunum++) {
               func107_sub2<L>(cpunum);
             }
@@ -219,7 +224,7 @@ static void func107_sub(sptr<TaskWithStack> task) {
               udpsend(argc, argv);
               flag = 0;
             }
-            sync_5.Do();
+            sync_6.Do();
             task_->Execute();
           }
         }, ltask_, task)));
@@ -270,6 +275,7 @@ void membench7(sptr<TaskWithStack> task) {
   FUNC(task, ExpSpinLock10<ClhSpinLock, TicketSpinLock, 16>);
   FUNC(task, ExpSpinLock10<ClhSpinLock, AndersonSpinLock<64, 8>, 16>);
   FUNC(task, ExpSpinLock10<AndersonSpinLock<64, 37>, AndersonSpinLock<64, 8>, 16>);
+  
   // FUNC(task, ExpSpinLock10<TtsBackoffSpinLock, ClhSpinLock, kMax>);
   // FUNC(task, ExpSpinLock10<ClhSpinLock, AndersonSpinLock<64, 256>, kMax>);
   // FUNC(task, ExpSpinLock10<ClhSpinLock, ClhSpinLock, kMax>);

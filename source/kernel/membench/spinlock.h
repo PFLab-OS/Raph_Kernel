@@ -45,6 +45,7 @@ public:
   }
   void Lock(uint32_t apicid) {
     while(__sync_lock_test_and_set(&_flag, 1) != 0) {
+      asm volatile("":::"memory");
     }
   }
   void Unlock(uint32_t apicid) {

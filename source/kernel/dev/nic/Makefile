@@ -6,7 +6,9 @@ DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))
 .PHONY: clean
 
 default:
-	@$(foreach rule, $(SUB), $(MAKE) -C $(rule);)
+
+build:
+	@$(foreach rule, $(SUB), $(MAKE) -C $(rule) build;)
 	@$(MAKE) ../nic.o
 
 -include $(DEPS)
