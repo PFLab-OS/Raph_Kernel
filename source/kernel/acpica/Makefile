@@ -4,7 +4,9 @@ DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))
 
 .PHONY: clean
 
-default: ../acpica.o
+default:
+
+build: ../acpica.o
 
 -include $(DEPS)
 

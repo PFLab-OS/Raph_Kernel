@@ -24,7 +24,9 @@ export ASFLAGS
 .PHONY: clean
 
 default:
-	@$(foreach rule, $(SUB), $(MAKE) -C $(rule);)
+
+build:
+	@$(foreach rule, $(SUB), $(MAKE) -C $(rule) build;)
 	@$(MAKE) -C ../libc
 	@$(MAKE) $(BUILD)$(KERNEL)
 

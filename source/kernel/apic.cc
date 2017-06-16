@@ -36,9 +36,9 @@ extern "C" void entry();
 
 void ApicCtrl::Init() {
   // see intel64 manual vol3 10.12.1 (Detecting and Enabling x2APIC Mode)
-  uint32_t feature;
-  get_cpuid(1, 0, "c", feature);
-  if ((feature & (1 << 21)) != 0) {
+  uint32_t regs[4];
+  get_cpuid(1, 0, regs);
+  if ((regs[2] & (1 << 21)) != 0) {
     // enable x2APIC
     uint64_t msr = x86::rdmsr(Lapic::kIa32ApicBaseMsr);
     if (!(msr & Lapic::kApicGlobalEnableFlag)) {
@@ -261,9 +261,9 @@ void ApicCtrl::Lapic::SendIpi(uint32_t destid) {
 
 void ApicCtrl::LapicX2::SetupAp() {
   // see intel64 manual vol3 10.12.1 (Detecting and Enabling x2APIC Mode)
-  uint32_t feature;
-  get_cpuid(1, 0, "c", feature);
-  if ((feature & (1 << 21)) != 0) {
+  uint32_t regs[4];
+  get_cpuid(1, 0, regs);
+  if ((regs[2] & (1 << 21)) != 0) {
     // enable x2APIC
     uint64_t msr = x86::rdmsr(Lapic::kIa32ApicBaseMsr);
     if (!(msr & Lapic::kApicGlobalEnableFlag)) {

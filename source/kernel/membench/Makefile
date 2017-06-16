@@ -7,6 +7,8 @@ CXXFLAGS := $(subst -O0,-O2,$(subst -ggdb3,,$(CXXFLAGS)))
 .PHONY: clean
 
 default:
+
+build:
 	@$(MAKE) ../membench.o
 
 -include $(DEPS)
