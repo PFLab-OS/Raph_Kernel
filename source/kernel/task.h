@@ -30,6 +30,8 @@
 #include <global.h>
 
 // enable to blocking operation
+// TODO: implement wakeup function(do not use Execute()!!)
+// TODO: Wait() must be in TaskCtrl
 class TaskWithStack : public Task {
 public:
   TaskWithStack() = delete;

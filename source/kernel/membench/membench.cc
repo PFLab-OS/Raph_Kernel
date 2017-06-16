@@ -35,6 +35,8 @@ void membench7(sptr<TaskWithStack> task);
 
 CacheCtrl *cache_ctrl;
 
+void beep(int argc, const char *argv[]);
+
 void register_membench2_callout() {
   for (int i = 0; i < cpu_ctrl->GetHowManyCpus(); i++) {
     CpuId cpuid(i);
@@ -48,6 +50,9 @@ void register_membench2_callout() {
               cache_ctrl->Init();
             }
             membench7(task);
+            if (raw_cpuid == 0) {
+              beep(0, nullptr);
+            }
           }, task_)));
     task_ctrl->Register(cpuid, task_);
   }

@@ -43,41 +43,16 @@ public:
   bool TryLock() {
     assert(false);
   }
-  void Lock() {
-    while(!__sync_bool_compare_and_swap(&_flag, 0, 1)) {
+  void Lock(uint32_t apicid) {
+    while(__sync_lock_test_and_set(&_flag, 1) != 0) {
     }
   }
-  void Unlock() {
-    // _flag = 0;
-    assert(__sync_bool_compare_and_swap(&_flag, 1, 0));
+  void Unlock(uint32_t apicid) {
+    _flag = 0;
   }
 private:
-  volatile unsigned int _flag = 0;
+  volatile unsigned int _flag __attribute__ ((aligned (64))) = 0;
 } __attribute__ ((aligned (64)));
-
-template<class T>
-void spin_lock_tts(T &flag) {
-  while(flag == 1 || !__sync_bool_compare_and_swap(&flag, 0, 1)) {
-  }
-}
-
-template<class T>
-void spin_lock_tts_b(T &flag) {
-  uint16_t delay = 1;
-  while(flag == 1 || !__sync_bool_compare_and_swap(&flag, 0, 1)) {
-    while(flag == 1) {
-    }
-    for (int j = 0; j < delay; j++) {
-      asm volatile("pause;");
-    }
-    delay *= 2;
-  }
-}
-
-template<class T>
-void unlock(T &flag) {
-  assert(__sync_lock_test_and_set(&flag, 0) == 1);
-}
 
 class TtsBackoffSpinLock {
 public:
@@ -87,16 +62,26 @@ public:
     assert(false);
   }
   void Lock(uint32_t apicid) {
-    spin_lock_tts_b(_flag);
+    uint16_t delay = 1;
+    while(_flag == 1 || __sync_lock_test_and_set(&_flag, 1) != 0) {
+      while(_flag == 1) {
+        asm volatile("":::"memory");
+      }
+      for (int j = 0; j < delay; j++) {
+        asm volatile("pause;":::"memory");
+      }
+      delay *= 2;
+      asm volatile("":::"memory");
+    }
   }
   void Unlock(uint32_t apicid) {
-    unlock(_flag);
+    _flag = 0;
   }
   bool IsNoOneWaiting(uint32_t apicid) {
     return false;
   }
 private:
-  volatile unsigned int _flag = 0;
+  volatile unsigned int _flag __attribute__ ((aligned (64))) = 0;
 } __attribute__ ((aligned (64)));
 
 class TicketSpinLock {
@@ -113,12 +98,13 @@ public:
     uint64_t x = __sync_fetch_and_add(&_cnt, 1);
     while(_flag != x) {
       for (uint64_t j = 0; j < ((x < _flag) ? ((0xffffffffffffffff - _flag) + x): (x - _flag)); j++) {
-        asm volatile("pause;");
+        asm volatile("pause;":::"memory");
       }
+      asm volatile("":::"memory");
     }
   }
   void Unlock(uint32_t apicid) {
-    __sync_fetch_and_add(&_flag, 1);
+    _flag++;
   }
   bool IsNoOneWaiting(uint32_t apicid) {
     return _flag + 1 == _cnt;
@@ -150,6 +136,7 @@ public:
     qnode->locked = 1;
     _pred[apicid] = __sync_lock_test_and_set(&_tail, qnode);
     while(_pred[apicid]->locked == 1) {
+      asm volatile("":::"memory");
     }
   }
   void Unlock(uint32_t apicid) {
@@ -213,6 +200,7 @@ public:
         if (_pred[apicid]->tileid == tileid && _pred[apicid]->locked == 0 && _pred[apicid]->tail_when_spliced == 0) {
           return;
         }
+        asm volatile("":::"memory");
       }
     }
 
@@ -229,6 +217,7 @@ public:
     local_tail->tail_when_spliced = 1;
 
     while(_pred[apicid]->locked == 1) {
+      asm volatile("":::"memory");
     }
   }
   void Unlock(uint32_t apicid) {
@@ -271,6 +260,7 @@ public:
   void Lock(uint32_t apicid) {
     uint64_t cur = __sync_fetch_and_add(&_last, 1) % arraysize;
     while (_flag[cur].i == 0) {
+      asm volatile("":::"memory");
     }
     _flag[cur].i = 0;
     _cur = cur;
@@ -314,6 +304,7 @@ public:
       qnode->_spin = 1;
       pred->_next = qnode;
       while(qnode->_spin == 1) {
+        asm volatile("":::"memory");
       }
     }
   }
@@ -324,6 +315,7 @@ public:
         return;
       }
       while(qnode->_next == nullptr) {
+        asm volatile("":::"memory");
       }
     }
     qnode->_next->_spin = 0;
@@ -358,20 +350,15 @@ public:
     return __sync_bool_compare_and_swap(&_flag, 0, 1);
   }
   void Lock(uint32_t apicid) {
-    while (true) {
-      while(_flag == 1) {
-      }
-      if (__sync_bool_compare_and_swap(&_flag, 0, 1)) {
-        break;
-      }
+    while(_flag == 1 || __sync_lock_test_and_set(&_flag, 1) != 0) {
+      asm volatile("":::"memory");
     }
   }
   void Unlock(uint32_t apicid) {
-    // _flag = 0;
-    assert(__sync_bool_compare_and_swap(&_flag, 1, 0));
+    _flag = 0;
   }
 private:
-  volatile unsigned int _flag = 0;
+  volatile unsigned int _flag __attribute__ ((aligned (64))) = 0;
 } __attribute__ ((aligned (64)));
 
 template<class L1, class L2, int kMax>
@@ -402,12 +389,16 @@ public:
     uint32_t tileid = apicid / 8;
     uint32_t threadid = apicid % 8;
 
-    _top_locked[tileid].i--;
-    if (_top_locked[tileid].i == 0 && !_second_lock[tileid].IsNoOneWaiting(threadid) && _top_lock.IsNoOneWaiting(tileid)) {
-      _top_locked[tileid].i = kMax;
-    } else if (_top_locked[tileid].i == 0 || _second_lock[tileid].IsNoOneWaiting(threadid)) {
-      _top_lock.Unlock(tileid);
+    // _top_locked[tileid].i--;
+    // if (_top_locked[tileid].i == 0 && !_second_lock[tileid].IsNoOneWaiting(threadid) && _top_lock.IsNoOneWaiting(tileid)) {
+    //   _top_locked[tileid].i = kMax;
+    // } else if (_top_locked[tileid].i == 0 || _second_lock[tileid].IsNoOneWaiting(threadid)) {
+    //   _top_locked[tileid].i = 0;
+    //   _top_lock.Unlock(tileid);
+    // }
+    if (_second_lock[tileid].IsNoOneWaiting(threadid)) {
       _top_locked[tileid].i = 0;
+      _top_lock.Unlock(tileid);
     }
     _second_lock[tileid].Unlock(threadid);
   }
