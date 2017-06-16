@@ -89,23 +89,10 @@ void Rtl8139::Attach(){
 
   WriteReg<uint8_t>(kRegCommand,kCmdTxEnable | kCmdRxEnable);
 
-  //TODO:Int or Poll 
+  WriteReg<uint16_t>(kRegIrMask,0b101);
+  SetLegacyInterrupt(_eth.InterruptHandler,reinterpret_cast<void*>(this),Idt::EoiType::kIoapic);
 
-
-  //Receive Configuration Registerの設定
-  //７bit目はwrapで最後にあふれた時に、リングの先頭に戻るか(０)、そのままはみでるか(１)
-  //1にするなら余裕を持って確保すること
-  WriteReg<uint32_t>(kRegRxConfig,0xf | (1<<7) | (1<<5));
-
-  //txconig
-  WriteReg<uint32_t>(kRegTxConfig,4 << 8);
-
-
-  //受信バッファ設定
-  PhysAddr recv_buf_addr;
-  physmem_ctrl->Alloc(recv_buf_addr,PagingCtrl::kPageSize);
-  WriteReg<uint32_t>(kRegRxAddr,recv_buf_addr.GetAddr());
-
+  _eth.SetRxTxConfigRegs();
 
   WriteReg<uint8_t>(kRegCommand,kCmdTxEnable|kCmdRxEnable);
 
@@ -152,13 +139,14 @@ void Rtl8139::Rtl8139Ethernet::PollingHandler(Rtl8139 *that){
         break;
     }
     do{
-      pIncomePacket = reinterpret_cast<uint8_t*>(that->_eth.RxBuffer + that->_eth.RxBufferOffset);
+      pIncomePacket = reinterpret_cast<uint8_t*>(that->_eth.RxBuffer.GetVirtAddr() + that->_eth.RxBufferOffset);
       length = *(uint16_t*)(pIncomePacket+2); // it contains CRC'S 4byte
             //copy
     }while(!(that->ReadReg<uint8_t>(that->kRegCommand) & that->kCmdRxBufEmpty));
     //caprの更新
     //謎の引き算（どれもこうしてある）
-    that->WriteReg<uint16_t>(that->kRegRxCAP,that->_eth.RxBuffer + that->_eth.RxBufferOffset - 0x10);
+    //TODO:確認
+    that->WriteReg<uint16_t>(that->kRegRxCAP,that->_eth.RxBuffer.GetAddr() + that->_eth.RxBufferOffset - 0x10);
 
         gtty->Printf("COOPY");
         gtty->Flush();
@@ -186,24 +174,24 @@ void Rtl8139::Rtl8139Ethernet::GetEthAddr(uint8_t *buffer){
 }
 
 void Rtl8139::Rtl8139Ethernet::ChangeHandleMethodToPolling(){
+  _master.WriteReg<uint16_t>(kRegIrMask,0b101);
+  //TODO:disable LegacyInt
+
   _polling.Init(make_uptr(new Function<Rtl8139 *>(PollingHandler,&_master)));
   _polling.Register(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kHighPerformance));
-
-  //TODO: int disable
 }
 
 void Rtl8139::Rtl8139Ethernet::ChangeHandleMethodToInt(){
   _polling.Remove();
-  //TODO enable int
-  //RxOK only (TODO :add interruption)
-  _master.WriteReg<uint16_t>(kRegIrMask,0x01);
-  _master.SetLegacyInterrupt(InterruptHandler,reinterpret_cast<void*>(this),Idt::EoiType::kIoapic);
+
+  _master.WriteReg<uint16_t>(kRegIrMask,0b101);
+  _master.SetLegacyInterrupt(InterruptHandler,reinterpret_cast<void*>(&_master),Idt::EoiType::kIoapic);
 }
 //TODO: TxOKを監視して送信が重なってもいい感じにする
 //この関数はどんな引数で呼び出されるのか?ページ境界じゃないとDMAできない気がする
 void Rtl8139::Rtl8139Ethernet::Transmit(void *buffer){
-  //送信パケットの長さ？
-  uint32_t length;
+  Packet *packet = reinterpret_cast<Packet*>(buffer);
+  uint32_t length = packet->len;;
   uint8_t *buf;
 
   //tmp 
@@ -237,3 +225,21 @@ void Rtl8139::Rtl8139Ethernet::InterruptHandler(void *p){
   }
 }
 
+void Rtl8139::Rtl8139Ethernet::SetRxTxConfigRegs(){
+  //受信バッファ設定
+  physmem_ctrl->Alloc(RxBuffer,66 * 1024);
+  _master.WriteReg<uint32_t>(kRegRxAddr,RxBuffer.GetAddr());
+  //Receive Configuration Registerの設定
+  //７bit目はwrapで最後にあふれた時に、リングの先頭に戻るか(０)、そのままはみでるか(１)
+  //1にするなら余裕を持って確保すること
+  _master.WriteReg<uint32_t>(kRegRxConfig,0xf | (1<<7) | (1<<5) | (0b11 << 11));
+      //0b11 means 64KB + 16 bytes 上ではwrap用の余分含めて66KB確保してある 
+
+  
+  for(int i = 0;i < 4;i++){
+    physmem_ctrl->Alloc(TxBuffer[i],PagingCtrl::kPageSize);
+    _master.WriteReg<uint32_t>(kRegTxAddr + i*4,TxBuffer[i].GetAddr());
+  }
+  //CRCはハード側でつけてくれる
+  _master.WriteReg<uint32_t>(kRegTxConfig,4 << 8);
+}

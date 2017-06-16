@@ -62,13 +62,14 @@ public:
     virtual void ChangeHandleMethodToInt() override;
     virtual void Transmit(void *) override;
     virtual bool IsLinkUp() override;
+    void SetRxTxConfigRegs();
   private:
     Rtl8139 &_master;
     uint32_t TxDescriptorStatus = 0;
     uint32_t currentTxDescriptor = 0;
-    uint32_t RxBuffer;
-    uint32_t RxBufferOffset;
-
+    PhysAddr TxBuffer[4];
+    PhysAddr RxBuffer;
+    uint32_t RxBufferOffset = 0;
   };
 
   //Registers see datasheet p16
