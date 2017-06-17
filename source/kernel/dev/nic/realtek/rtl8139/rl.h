@@ -83,6 +83,7 @@ public:
   static const uint32_t kRegIrStatus = 0x3e; //w
   static const uint32_t kRegIrMask = 0x3c; //w
   static const uint32_t kReg93C46Cmd = 0x50; //b
+  static const uint32_t kRegCurrentAddr = 0x3a;
 
   //Command  see datasheet p21
   static const uint8_t kCmdTxEnable = 0x4;
