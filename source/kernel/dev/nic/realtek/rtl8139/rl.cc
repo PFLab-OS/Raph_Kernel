@@ -20,13 +20,6 @@
  * 
  */
 
-/*TODO
- *レシーブ状況の確認
- *受信後のコピーのデバッグ
- *
- *
- */
-
 #include <polling.h>
 #include <mem/paging.h>
 #include <mem/virtmem.h>
@@ -39,7 +32,17 @@
 #include <stdint.h>
 
 #include "rl.h"
- 
+ struct Packet {
+  public:
+    Packet() {}
+    size_t len;
+    uint8_t *GetBuffer() {
+      return _data;
+    }
+  private:
+    uint8_t _data[MCLBYTES];  // only accessed via buf
+  };
+    Packet pp;
 DevPci *Rtl8139::InitPci(uint8_t bus,uint8_t device,uint8_t function){
   Rtl8139 *dev = new Rtl8139(bus,device,function);
   uint16_t vid = dev->ReadPciReg<uint16_t>(PciCtrl::kVendorIDReg);
@@ -96,9 +99,6 @@ void Rtl8139::Attach(){
   
   WriteReg<uint8_t>(kRegCommand,kCmdTxEnable | kCmdRxEnable);
 
-  //Interrupt
-  WriteReg<uint16_t>(kRegIrMask,0b101);
-  SetLegacyInterrupt(_eth.InterruptHandler,reinterpret_cast<void*>(this),Idt::EoiType::kIoapic);
 
   _eth.Setup();
 
@@ -106,31 +106,7 @@ void Rtl8139::Attach(){
 
   WriteReg<uint8_t>(kRegCommand,kCmdTxEnable | kCmdRxEnable);
 
-  //DBG
-  //
-  
-  struct Packet {
-  public:
-    Packet() {}
-    size_t len;
-    uint8_t *GetBuffer() {
-      return _data;
-    }
-  private:
-    uint8_t _data[MCLBYTES];  // only accessed via buf
-  };
-  Packet pp;
-  pp.len = 28;
-  memcpy(pp.GetBuffer(),"AAAABBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",28);
-  _eth.Transmit(&pp);
-  
-  _eth.Transmit(&pp);
-  _eth.Transmit(&pp);
-  _eth.Transmit(&pp);
-  _eth.Transmit(&pp);
-
-
- }
+}
 
 uint16_t Rtl8139::ReadEeprom(uint16_t offset,uint16_t length){
   //cf http://www.jbox.dk/sanos/source/sys/dev/rtl8139.c.html#:309
@@ -164,21 +140,19 @@ uint16_t Rtl8139::ReadEeprom(uint16_t offset,uint16_t length){
 }
 
 void Rtl8139::Rtl8139Ethernet::PollingHandler(Rtl8139 *that){
-  uint8_t *payload;
+  uint8_t *payload,*data;
   uint16_t length;
   Packet *packet;
   
-  //Rx Process
+  //Rx
   while(true){
     if(that->ReadReg<uint8_t>(that->kRegCommand) & that->kCmdRxBufEmpty){
         break;
     }
-    //TODO: ギリギリのとき適切に受信できる？
-    payload = reinterpret_cast<uint8_t*>(that->_eth.RxBuffer.GetVirtAddr() + that->_eth.RxBufferOffset);
-    length = *(uint16_t*)(payload+2); // it contains CRC'S 4byte
-            //copy
-    //caprの更新
-    //謎の引き算（どれもこうしてある）
+    data = reinterpret_cast<uint8_t*>(that->_eth.RxBuffer.GetVirtAddr() + that->_eth.RxBufferOffset);
+    length = *(uint16_t*)(data + 2); // it contains CRC'S 4byte
+    payload = data + 4;
+
     that->_eth.RxBufferOffset = ((length + that->_eth.RxBufferOffset + 4 + 3) % (64 * 1024 + 16)) & ~0b11;
     that->WriteReg<uint16_t>(that->kRegRxCAP,that->_eth.RxBufferOffset - 0x10);
 
@@ -189,19 +163,11 @@ void Rtl8139::Rtl8139Ethernet::PollingHandler(Rtl8139 *that){
         kassert(that->_eth._rx_reserved.Push(packet));
       }
     }
-    
-    //CMDの４bitを立てると、Rxはバッファが空、Txは何かいい感じに
-    //なお、リセットができればハード側でクリアされる
-    uint8_t cmd = that->ReadReg<uint8_t>(that->kRegCommand);
-    cmd |= (1<<4);
-    that->WriteReg<uint8_t>(that->kRegCommand,cmd);
   }
-
-  //Tx Process 
+  //Tx 
   for(int i = 0;i < 4;i++){
     uint32_t tx_status = that->ReadReg<uint32_t>(kRegTxStatus + i*4);
     if(tx_status & (1 << 15)){
-      //OWN bit, transmit to FIFO
       that->_eth.TxDescriptorStatus |= (1 << i);
     }
   }
@@ -209,6 +175,7 @@ void Rtl8139::Rtl8139Ethernet::PollingHandler(Rtl8139 *that){
   return;
 }
 
+//todo
 void Rtl8139::Rtl8139Ethernet::UpdateLinkStatus(){
 
 }
@@ -252,47 +219,46 @@ void Rtl8139::Rtl8139Ethernet::Transmit(void *buffer){
   }
   //TxOK
   memcpy(reinterpret_cast<uint8_t*>(TxBuffer[entry].GetVirtAddr()),buf,length);
-  //立ってる
   _master.WriteReg<uint32_t>(Rtl8139::kRegTxStatus + entry*4,((256 << 11) & 0x003f0000) | length);  //256 means http://www.jbox.dk/sanos/source/sys/dev/rtl8139.c.html#:56
   TxDescriptorStatus = TxDescriptorStatus & ~(1 << entry);
 
 }
 
-//TODO
 bool Rtl8139::Rtl8139Ethernet::IsLinkUp(){
-
-  return true;
+  if(GetStatus() == LinkStatus::kUp){
+    return true;
+  }else{
+    return false;
+  }
 } 
 
 void Rtl8139::Rtl8139Ethernet::InterruptHandler(void *p){
   Rtl8139 *that = reinterpret_cast<Rtl8139*>(p);
-  uint16_t status = that->ReadReg<uint16_t>(kRegIrStatus);
+  uint16_t status = that->ReadReg<uint16_t>(that->kRegIrStatus);
   uint32_t length;
-  uint8_t *payload;
+  uint8_t *payload,*data;
   Packet *packet;
 
-  //ビットが立っているところに1を書き込むとクリア？
+  //ビットが立っているところに1を書き込むとクリア
   that->WriteReg<uint16_t>(that->kRegIrStatus,status);
 
   if(status & 0b01){
     //RxOK
-    uint8_t cmd = that->ReadReg<uint8_t>(that->kRegCommand); 
-    if(!(cmd & that->kCmdRxBufEmpty)){
-      payload = reinterpret_cast<uint8_t*>(that->_eth.RxBuffer.GetVirtAddr() + that->_eth.RxBufferOffset);
-      length = *(uint16_t*)(payload + 2); // it contains CRC'S 4byte
-      
-      if (that->_eth._rx_reserved.Pop(packet)) {
-        memcpy(packet->GetBuffer(),payload,length);
+    if(!(that->ReadReg<uint8_t>(that->kRegCommand) & that->kCmdRxBufEmpty)){
+      data = reinterpret_cast<uint8_t*>(that->_eth.RxBuffer.GetVirtAddr() + that->_eth.RxBufferOffset);
+      length = *(uint16_t*)(data + 2); // it contains CRC'S 4byte
+      payload = data + 4; 
+
+      if(that->_eth._rx_reserved.Pop(packet)) {
         packet->len = length;
-        if (!that->_eth._rx_buffered.Push(packet)) {
+        memcpy(packet->GetBuffer(),payload,length);
+        if(!that->_eth._rx_buffered.Push(packet)) {
           kassert(that->_eth._rx_reserved.Push(packet));
         }
       }
 
       that->_eth.RxBufferOffset = ((length + that->_eth.RxBufferOffset + 4 + 3) % (64 * 1024 + 16)) & ~0b11;
       that->WriteReg<uint16_t>(that->kRegRxCAP,that->_eth.RxBufferOffset - 0x10);
-      //Reset
-      that->WriteReg<uint8_t>(kRegCommand,cmd | (1 << 4));
     }
   }
   if(status & 0b100){
@@ -327,11 +293,13 @@ void Rtl8139::Rtl8139Ethernet::SetRxTxConfigRegs(){
   _master.WriteReg<uint32_t>(kRegTxConfig,4 << 8);
 }
 
-//TODO
 void Rtl8139::Rtl8139Ethernet::Setup(){
+  _master.WriteReg<uint16_t>(kRegIrMask,0b101);
+  _master.SetLegacyInterrupt(InterruptHandler,reinterpret_cast<void*>(&_master),Idt::EoiType::kIoapic);
 
-  this->InitTxPacketBuffer();
-  this->InitRxPacketBuffer();
+  InitTxPacketBuffer();
+  InitRxPacketBuffer();
+  SetStatus(LinkStatus::kUp);
 
 }
 
