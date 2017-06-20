@@ -175,9 +175,13 @@ void Rtl8139::Rtl8139Ethernet::PollingHandler(Rtl8139 *that){
   return;
 }
 
-//todo
 void Rtl8139::Rtl8139Ethernet::UpdateLinkStatus(){
-
+  uint8_t cmd = _master.ReadReg<uint8_t>(kRegCommand);
+  if((cmd & kCmdRxEnable) && (cmd & kCmdRxEnable)){
+    SetStatus(LinkStatus::kUp);
+  }else{
+    SetStatus(LinkStatus::kDown);
+  }
 }
 
 void Rtl8139::Rtl8139Ethernet::GetEthAddr(uint8_t *buffer){
