@@ -235,7 +235,9 @@ public:
    *
    * @return if link is already up.
    */
-  virtual bool IsLinkUp() = 0;
+  virtual bool IsLinkUp() {
+    return (true ? _status == LinkStatus::kUp : false);
+  }
 
   /**
    * Set network interface name.
