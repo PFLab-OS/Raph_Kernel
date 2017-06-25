@@ -44,20 +44,20 @@ static inline void sync(int cpunum, volatile int &l1, volatile int &l2, volatile
 
 
 struct SyncLow {
-  volatile int top_level_lock1;
-  volatile int top_level_lock2;
-  volatile int top_level_lock3;
+  volatile int top_level_lock1 __attribute__ ((aligned (64)));
+  volatile int top_level_lock2 __attribute__ ((aligned (64)));
+  volatile int top_level_lock3 __attribute__ ((aligned (64)));
   void Do() {
     int cpunum = cpu_ctrl->GetHowManyCpus();
     sync(cpunum, top_level_lock1, top_level_lock2, top_level_lock3);
   }
-};
+} __attribute__ ((aligned (64)));
 
 struct Sync2Low {
-  volatile int top_level_lock1;
-  volatile int top_level_lock2;
-  volatile int top_level_lock3;
+  volatile int top_level_lock1 __attribute__ ((aligned (64)));
+  volatile int top_level_lock2 __attribute__ ((aligned (64)));
+  volatile int top_level_lock3 __attribute__ ((aligned (64)));
   void Do(int tnum) {
     sync(tnum, top_level_lock1, top_level_lock2, top_level_lock3);
   }
-};
+} __attribute__ ((aligned (64)));

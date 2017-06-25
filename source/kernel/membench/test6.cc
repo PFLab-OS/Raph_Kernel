@@ -33,6 +33,7 @@
 #include "sync.h"
 #include "spinlock.h"
 #include "cache.h"
+#include "membench.h"
 
 static bool is_knl() {
   return x86::get_display_family_model() == 0x0657;
@@ -44,11 +45,6 @@ struct Pair {
   uint64_t time;
   uint64_t fairness;
 };
-
-static SyncLow sync_1={0};
-static SyncLow sync_2={0};
-static SyncLow sync_3={0};
-static SyncLow sync_4={0};
 
 int memory[128];
 

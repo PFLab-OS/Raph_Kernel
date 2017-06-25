@@ -29,6 +29,7 @@
 static const int kFastMeasurement = true;
 
 #define check_align(ptr) assert(reinterpret_cast<size_t>(ptr) % 64 == 0)
+#define check_align2(ptr, num) assert(reinterpret_cast<size_t>(ptr) % (num) == 0)
 
 template<class T>
 static inline void check_type_align() {
@@ -98,7 +99,7 @@ public:
   void Lock(uint32_t apicid) {
     uint64_t x = __sync_fetch_and_add(&_cnt, 1);
     while(_flag != x) {
-      for (uint64_t j = 0; j < ((x < _flag) ? ((0xffffffffffffffff - _flag) + x): (x - _flag)); j++) {
+      for (uint64_t j = 0; j < x - _flag; j++) {
         asm volatile("pause;":::"memory");
       }
       asm volatile("":::"memory");
@@ -369,6 +370,7 @@ public:
     check_align(this);
     check_align(&_top_lock);
     check_align(_second_lock);
+    check_type_align<L1>();
     check_type_align<L2>();
     check_align(_top_locked);
     check_type_align<Status>();
@@ -390,14 +392,10 @@ public:
     uint32_t tileid = apicid / 8;
     uint32_t threadid = apicid % 8;
 
-    // _top_locked[tileid].i--;
-    // if (_top_locked[tileid].i == 0 && !_second_lock[tileid].IsNoOneWaiting(threadid) && _top_lock.IsNoOneWaiting(tileid)) {
-    //   _top_locked[tileid].i = kMax;
-    // } else if (_top_locked[tileid].i == 0 || _second_lock[tileid].IsNoOneWaiting(threadid)) {
-    //   _top_locked[tileid].i = 0;
-    //   _top_lock.Unlock(tileid);
-    // }
-    if (_second_lock[tileid].IsNoOneWaiting(threadid)) {
+    _top_locked[tileid].i--;
+    if (_top_locked[tileid].i == 0 && !_second_lock[tileid].IsNoOneWaiting(threadid) && _top_lock.IsNoOneWaiting(tileid)) {
+      _top_locked[tileid].i = kMax;
+    } else if (_top_locked[tileid].i == 0 || _second_lock[tileid].IsNoOneWaiting(threadid)) {
       _top_locked[tileid].i = 0;
       _top_lock.Unlock(tileid);
     }
@@ -412,3 +410,4 @@ private:
   } __attribute__ ((aligned (64)));
   Status _top_locked[kSubStructNum];
 } __attribute__ ((aligned (64)));
+

@@ -1,4 +1,4 @@
-OBJS = membench.o test2.o test3.o test4.o test5.o test6.o test7.o
+OBJS = membench.o test8.o test9.o test10.o
 
 DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))
 
