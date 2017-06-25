@@ -287,15 +287,28 @@ public:
     arp_table.PushBack(ip_addr, hw_addr, dev);
   }
   NetDev *Search(uint32_t ip_addr, uint8_t *hw_addr) {
+    bool on_network = false;
+    NetDev *gateway = nullptr;
     auto iter = arp_table.GetBegin();
     while(!iter.IsNull()) {
       if ((*iter)->ip_addr == ip_addr) {
         memcpy(hw_addr, (*iter)->hw_addr, 6);
         return (*iter)->dev;
       }
+      if (((*iter)->ip_addr & 0x00ffffff) == (ip_addr & 0x00ffffff)) {
+        on_network = true;
+      }
+      if (((*iter)->ip_addr & 0xff000000) == 0x01000000) {
+        memcpy(hw_addr, (*iter)->hw_addr, 6);
+        gateway = (*iter)->dev;
+      }
       iter = iter->GetNext();
     }
-    return nullptr;
+    if (on_network) {
+      return nullptr;
+    } else {
+      return gateway;
+    }
   }
 private:
   struct ArpEntry {
