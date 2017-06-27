@@ -38,8 +38,6 @@ entryothers:
 
 setup_paging_of_others:
   mov $initial_PML4T, %edi
-  // TODO : remove bits
-  or $(PML4E_WRITETHROUGH_BIT | PML4E_CACHEDISABLE_BIT), %edi
   mov %edi, %cr3
 
   // set PAE&PGE bit
