@@ -98,9 +98,12 @@ class Tty {
   void ResetColor() {
     _color = Color::kWhite;
   }
+  void Flush() {
+    Handle(nullptr);
+    FlushSub();
+  }
   virtual int GetRow() = 0;
   virtual int GetColumn() = 0;
-  virtual void Flush() = 0;
   void DisablePrint() {
     _disable_flag = true;
   }
@@ -111,6 +114,7 @@ class Tty {
   virtual void WriteErr(char c) {
     Write(c);
   }
+  virtual void FlushSub() = 0;
   int _cx = 0;
   int _cy = 0;
   Color _color;
@@ -220,7 +224,7 @@ private:
   virtual int GetColumn() override {
     return _buffer_size;
   };
-  virtual void Flush() override {
+  virtual void FlushSub() override {
   }
   char *_buf;
   int _offset;
