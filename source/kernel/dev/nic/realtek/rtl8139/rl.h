@@ -46,6 +46,9 @@ public:
 
   static DevPci *InitPci(uint8_t bus,uint8_t device,uint8_t function);
 
+
+private:
+
   class Rtl8139Ethernet: public DevEthernet{
   public:
     Rtl8139Ethernet(Rtl8139 &master) : _master(master){
@@ -61,9 +64,10 @@ public:
     virtual void ChangeHandleMethodToPolling() override;
     virtual void ChangeHandleMethodToInt() override;
     virtual void Transmit(void *) override;
-    virtual bool IsLinkUp() override;
     void SetRxTxConfigRegs();
     void Setup();
+    void Start();
+    uint16_t ReadEeprom(uint16_t, uint16_t);
   private:
     Rtl8139 &_master;
     uint32_t TxDescriptorStatus = 0b1111;
@@ -71,7 +75,7 @@ public:
     PhysAddr TxBuffer[4];
     PhysAddr RxBuffer;
     uint32_t RxBufferOffset = 0;
-  };
+
 
   //Registers see datasheet p16
   static const uint32_t kRegTxAddr = 0x20; //dw * 4
@@ -92,7 +96,15 @@ public:
   static const uint8_t kCmdReset = 0x10;
   static const uint8_t kCmdRxBufEmpty = 0x1;
 
-private:
+  //Ir Status
+  static const uint16_t kIsrRok = 0b1;
+  static const uint16_t kIsrTok = 0b100;
+
+  };
+
+  static const uint16_t kVendorId = 0x10ec;
+  static const uint16_t kDeviceId = 0x8139;
+
   template <class T>
   void WriteReg(uint32_t offset,T data);
 
@@ -101,12 +113,39 @@ private:
 
   uint32_t _mmio_addr = 0;
 
-  static const uint16_t kVendorId = 0x10ec;
-  static const uint16_t kDeviceId = 0x8139;
-
-
   virtual void Attach() override;
-  uint16_t ReadEeprom(uint16_t offset,uint16_t length);
 
   Rtl8139Ethernet _eth;
 };
+
+
+
+template<>
+void Rtl8139::WriteReg(uint32_t offset,uint8_t data){
+  outb(_mmio_addr + offset,data);
+}
+
+template<>
+void Rtl8139::WriteReg(uint32_t offset,uint16_t data){
+  outw(_mmio_addr + offset,data);
+}
+
+template<>
+void Rtl8139::WriteReg(uint32_t offset,uint32_t data){
+  outl(_mmio_addr + offset,data);
+}
+
+template<>
+uint32_t Rtl8139::ReadReg(uint32_t offset){
+  return inl(_mmio_addr + offset);
+}
+
+template<>
+uint16_t Rtl8139::ReadReg(uint32_t offset){
+  return inw(_mmio_addr + offset);
+}
+
+template<>
+uint8_t Rtl8139::ReadReg(uint32_t offset){
+  return inb(_mmio_addr + offset);
+}
