@@ -235,8 +235,8 @@ public:
    *
    * @return if link is already up.
    */
-  virtual bool IsLinkUp() {
-    return (true ? _status == LinkStatus::kUp : false);
+  bool IsLinkUp() {
+    return _status == LinkStatus::kUp;
   }
 
   /**
