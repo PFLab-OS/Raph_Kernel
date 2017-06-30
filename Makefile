@@ -2,13 +2,15 @@ include common.mk
 
 VNC_PORT = 15900
 VDI = disk.vdi
+CHECK_REMOTE = ssh -F .ssh_config default "exit"
 
 define make_wrapper
 	$(if $(shell if [ -e /etc/bootstrapped ]; then echo "guest"; fi), \
 	  # guest environment
 	  $(MAKE) -f $(RULE_FILE) $(1), \
 	  # host environment
-	  $(if $(shell ssh -F .ssh_config default "exit"; if [ $$? != 0 ]; then echo "no-guest"; fi), rm -f .ssh_config
+	  $(if $(shell (($(CHECK_REMOTE)) & (for i in `seq 0 3`; do sleep 1 ; ps $$! > /dev/null 2>&1 || exit 0 ; done;  kill -9 $$! ; exit 1 ) && ($(CHECK_REMOTE))) || echo "no-guest"),
+	  rm -f .ssh_config
 	  vagrant halt
 	  vagrant up
 	  vagrant ssh-config > .ssh_config; )
