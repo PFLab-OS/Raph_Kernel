@@ -99,6 +99,10 @@ uptr<Shell::ExecContainer> Shell::Liner::Tokenize(uptr<Shell::ExecContainer> ec,
   bool inToken = false;
   for (int i = 0; i < kCommandSize -1; i++) {
     if (ec->name[i] == '\0') return ec;
+    if (ec->name[i] == '#') {
+      ec->name[i] = '\0';
+      return ec;
+    }
     if (inToken) {
       if (ec->name[i] == ' ') {
         ec->name[i] = '\0';

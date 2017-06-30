@@ -68,7 +68,7 @@ image:
 	sudo cp -r $(BUILD_DIR) $(MOUNT_DIR)/core
 	$(MAKE) umount
 
-_cpimage: _image
+cpimage: image
 	cp $(IMAGE) /vagrant/
 
 $(IMAGE):

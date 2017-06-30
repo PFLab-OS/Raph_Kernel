@@ -29,7 +29,7 @@
 namespace x86 {
   void lgdt(uint32_t *gdt_desc, int entry_num);
   
-#define get_cpuid(eax, ecx, reg, rval) asm volatile("cpuid;" : "="#reg(rval) : "a"(eax), "c"(ecx))
+#define get_cpuid(eax, ecx, regs) asm volatile("cpuid;":"=a"(regs[0]),"=b"(regs[1]),"=c"(regs[2]),"=d"(regs[3]):"a"(eax),"ecx"(ecx));
   
   static inline uint64_t rdmsr(uint32_t addr) {
     uint32_t msr_high, msr_low;
@@ -44,12 +44,12 @@ namespace x86 {
   }
   
   static inline uint16_t get_display_family_model() {
-    uint32_t eax;
-    asm volatile("cpuid;":"=a"(eax):"a"(1));
-    uint8_t family_id = (eax >> 8) & 0b1111;
-    uint8_t ex_family_id = (eax >> 20) & 0b11111111;
-    uint8_t model_id = (eax >> 4) & 0b1111;
-    uint8_t ex_model_id = (eax >> 16) & 0b1111;
+    uint32_t regs[4];
+    get_cpuid(1, 0, regs);
+    uint8_t family_id = (regs[0] >> 8) & 0b1111;
+    uint8_t ex_family_id = (regs[0] >> 20) & 0b11111111;
+    uint8_t model_id = (regs[0] >> 4) & 0b1111;
+    uint8_t ex_model_id = (regs[0] >> 16) & 0b1111;
     uint8_t display_family = (family_id != 0x0f) ? family_id : (ex_family_id + family_id);
     uint8_t display_model = (family_id == 0x06 || family_id == 0x0f) ? ((ex_model_id << 4) + model_id) : model_id;
     return (static_cast<uint16_t>(display_family << 8)) + display_model;
