@@ -33,6 +33,36 @@
 
 #include "rl.h"
 
+template<>
+void Rtl8139::WriteReg(uint32_t offset,uint8_t data){
+  outb(_mmio_addr + offset,data);
+}
+
+template<>
+void Rtl8139::WriteReg(uint32_t offset,uint16_t data){
+  outw(_mmio_addr + offset,data);
+}
+
+template<>
+void Rtl8139::WriteReg(uint32_t offset,uint32_t data){
+  outl(_mmio_addr + offset,data);
+}
+
+template<>
+uint32_t Rtl8139::ReadReg(uint32_t offset){
+  return inl(_mmio_addr + offset);
+}
+
+template<>
+uint16_t Rtl8139::ReadReg(uint32_t offset){
+  return inw(_mmio_addr + offset);
+}
+
+template<>
+uint8_t Rtl8139::ReadReg(uint32_t offset){
+  return inb(_mmio_addr + offset);
+}
+
 DevPci *Rtl8139::InitPci(uint8_t bus,uint8_t device,uint8_t function){
   Rtl8139 *dev = new Rtl8139(bus,device,function);
   uint16_t vid = dev->ReadPciReg<uint16_t>(PciCtrl::kVendorIDReg);
