@@ -282,12 +282,33 @@ void Rtl8139::Rtl8139Ethernet::Setup(){
   InitTxPacketBuffer();
   InitRxPacketBuffer();
 
+  
+
 }
 
 void Rtl8139::Rtl8139Ethernet::Start(){
 
   _master.WriteReg<uint8_t>(kRegCommand,kCmdTxEnable | kCmdRxEnable);
+  uint16_t status = _master.ReadReg<uint8_t>(kRegCommand);
+  if((status & kCmdRxEnable) && (status & kCmdTxEnable)){
+     SetStatus(LinkStatus::kUp);
+  }
 
-  SetStatus(LinkStatus::kUp);
+ StatusCheckCallout = new Callout;
+ StatusCheckCallout->Init(make_uptr(new Function<Rtl8139Ethernet*>(Rtl8139::Rtl8139Ethernet::CheckHwState,this))); 
+
 }
+
+
+void Rtl8139::Rtl8139Ethernet::CheckHwState(Rtl8139Ethernet *p){
+  uint16_t status = p->_master.ReadReg<uint8_t>(kRegCommand);
+  if((status & kCmdRxEnable) && (status & kCmdTxEnable)){
+     p->SetStatus(LinkStatus::kUp);
+  }
+  else {
+    p->SetStatus(LinkStatus::kDown);
+  }
+}
+
+
 
