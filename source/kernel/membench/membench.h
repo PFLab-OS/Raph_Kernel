@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2016 Raphine Project
+ * Copyright (c) 2017 Raphine Project
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -20,23 +20,16 @@
  * 
  */
 
-#ifndef _FREEBSD_NET_IF_VAR_RAPH_H_
-#define _FREEBSD_NET_IF_VAR_RAPH_H_
+#pragma once
 
-#include <dev/eth.h>
-#include <net/if_var.h>
-#include <sys/types-raph.h>
-#include <sys/bus-raph.h>
+struct Uint64 {
+  uint64_t i;
+} __attribute__ ((aligned (64)));
 
-// should be defined at ethernet.h
-class BsdEthernet : public DevEthernet {
-public:
-  BsdEthernet() : DevEthernet() {
-  }
-  virtual ~BsdEthernet() {}
-  struct ifnet _ifp;
+extern SyncLow sync_1;
+extern Sync2Low sync_2;
+extern Sync2Low sync_3;
+extern SyncLow sync_4;
 
-};
-
-
-#endif /* _FREEBSD_NET_IF_VAR_RAPH_H_ */
+extern Uint64 f_array[256];
+extern volatile Uint64 monitor[37 * 8];

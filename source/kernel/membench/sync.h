@@ -28,33 +28,36 @@ static inline void sync(int cpunum, volatile int &l1, volatile int &l2, volatile
   l2 = 0;
   __sync_fetch_and_add(&l1, 1);
   while(l1 != cpunum) {
+    asm volatile("":::"memory");
   }
   l3 = 0;
   __sync_fetch_and_add(&l2, 1);
   while(l2 != cpunum) {
+    asm volatile("":::"memory");
   }
   l1 = 0;
   __sync_fetch_and_add(&l3, 1);
   while(l3 != cpunum) {
+    asm volatile("":::"memory");
   }
 }
 
 
 struct SyncLow {
-  int top_level_lock1;
-  int top_level_lock2;
-  int top_level_lock3;
+  volatile int top_level_lock1 __attribute__ ((aligned (64)));
+  volatile int top_level_lock2 __attribute__ ((aligned (64)));
+  volatile int top_level_lock3 __attribute__ ((aligned (64)));
   void Do() {
     int cpunum = cpu_ctrl->GetHowManyCpus();
     sync(cpunum, top_level_lock1, top_level_lock2, top_level_lock3);
   }
-};
+} __attribute__ ((aligned (64)));
 
 struct Sync2Low {
-  int top_level_lock1;
-  int top_level_lock2;
-  int top_level_lock3;
+  volatile int top_level_lock1 __attribute__ ((aligned (64)));
+  volatile int top_level_lock2 __attribute__ ((aligned (64)));
+  volatile int top_level_lock3 __attribute__ ((aligned (64)));
   void Do(int tnum) {
     sync(tnum, top_level_lock1, top_level_lock2, top_level_lock3);
   }
-};
+} __attribute__ ((aligned (64)));

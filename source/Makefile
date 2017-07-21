@@ -1,6 +1,6 @@
 default:
-	$(MAKE) -C kernel
-	$(MAKE) -C testmodule
+	$(MAKE) -C kernel build
+	$(MAKE) -C testmodule build
 
 clean:
 	$(MAKE) -C kernel clean

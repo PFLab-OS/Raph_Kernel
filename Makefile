@@ -4,17 +4,21 @@ VNC_PORT = 15900
 VDI = disk.vdi
 CHECK_REMOTE = ssh -F .ssh_config default "exit"
 
+define run_remote
+	$(if $(shell (($(CHECK_REMOTE)) & (for i in `seq 0 3`; do sleep 1 ; ps $$! > /dev/null 2>&1 || exit 0 ; done;  kill -9 $$! ; exit 1 ) && ($(CHECK_REMOTE))) || echo "no-guest"),
+	rm -f .ssh_config
+	vagrant halt
+	vagrant up
+	vagrant ssh-config > .ssh_config; )
+	ssh -F .ssh_config default "$(1)"
+endef
+
 define make_wrapper
 	$(if $(shell if [ -e /etc/bootstrapped ]; then echo "guest"; fi), \
 	  # guest environment
 	  $(MAKE) -f $(RULE_FILE) $(1), \
 	  # host environment
-	  $(if $(shell (($(CHECK_REMOTE)) & (for i in `seq 0 3`; do sleep 1 ; ps $$! > /dev/null 2>&1 || exit 0 ; done;  kill -9 $$! ; exit 1 ) && ($(CHECK_REMOTE))) || echo "no-guest"),
-	  rm -f .ssh_config
-	  vagrant halt
-	  vagrant up
-	  vagrant ssh-config > .ssh_config; )
-	  ssh -F .ssh_config default "cd /vagrant/; env MAKEFLAGS=$(MAKEFLAGS) make -f $(RULE_FILE) $(1)"
+	  $(call run_remote, cd /vagrant/; env MAKEFLAGS=$(MAKEFLAGS) make -f $(RULE_FILE) $(1))
 	)
 endef
 
@@ -82,8 +86,8 @@ vnc:
 debug:
 	vagrant ssh -c "cd /vagrant/; gdb -x .gdbinit_for_kernel"
 
-vboxrun: vboxkill synctime
-	@$(SSH_CMD) "$(REMOTE_COMMAND) cd /vagrant/; make -j3 _cpimage"
+vboxrun: vboxkill
+	$(call make_wrapper, cpimage)
 	-vboxmanage unregistervm RK_Test --delete
 	-rm $(VDI)
 	vboxmanage createvm --name RK_Test --register
@@ -101,18 +105,20 @@ run_pxeserver:
 	@echo info: allow port 8080 in your firewall settings
 	cd net; python -m SimpleHTTPServer 8080
 
-pxeimg: synctime
-	@$(SSH_CMD) "$(REMOTE_COMMAND) cd /vagrant/; make -j3 _cpimage"
+pxeimg:
+	$(call make_wrapper, cpimage)
 	gzip $(IMAGEFILE)
 	mv $(IMAGEFILE).gz net/
 
-burn_ipxe: synctime
+burn_ipxe:
+	$(call check_guest)
 	./lan.sh local
-	@$(SSH_CMD) "cd ipxe/src; make bin-x86_64-pcbios/ipxe.usb EMBED=/vagrant/load.cfg; if [ ! -e /dev/sdb ]; then echo 'error: insert usb memory!'; exit -1; fi; sudo dd if=bin-x86_64-pcbios/ipxe.usb of=/dev/sdb"
+	$(call run_remote, cd ipxe/src; make bin-x86_64-pcbios/ipxe.usb EMBED=/vagrant/load.cfg; if [ ! -e /dev/sdb ]; then echo 'error: insert usb memory!'; exit -1; fi; sudo dd if=bin-x86_64-pcbios/ipxe.usb of=/dev/sdb)
 
-burn_ipxe_remote: synctime
+burn_ipxe_remote:
+	$(call check_guest)
 	./lan.sh remote
-	@$(SSH_CMD) "cd ipxe/src; make bin-x86_64-pcbios/ipxe.usb EMBED=/vagrant/load.cfg; if [ ! -e /dev/sdb ]; then echo 'error: insert usb memory!'; exit -1; fi; sudo dd if=bin-x86_64-pcbios/ipxe.usb of=/dev/sdb"
+	$(call run_remote, cd ipxe/src; make bin-x86_64-pcbios/ipxe.usb EMBED=/vagrant/load.cfg; if [ ! -e /dev/sdb ]; then echo 'error: insert usb memory!'; exit -1; fi; sudo dd if=bin-x86_64-pcbios/ipxe.usb of=/dev/sdb)
 
 debugqemu:
 	$(call make_wrapper, debugqemu)

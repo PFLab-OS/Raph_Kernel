@@ -4,7 +4,9 @@ DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))
 
 .PHONY: clean
 
-default: ../usb.o
+default:
+
+build: ../usb.o
 
 -include $(DEPS)
 
