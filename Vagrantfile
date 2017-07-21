@@ -44,6 +44,8 @@ Vagrant.configure(2) do |config|
       "--ioapic", "on",
       "--pae", "on",
       "--paravirtprovider", "kvm",
+      "--natdnsproxy1", "off",
+      "--natdnshostresolver1", "off",
     ]
     vb.customize [
       "guestproperty", "set", :id,
