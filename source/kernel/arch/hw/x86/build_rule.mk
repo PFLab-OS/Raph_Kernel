@@ -53,7 +53,7 @@ $(BUILD_DIR)/init: $(INIT_FILE)
 	cp $(INIT_FILE) $(BUILD_DIR)/init
 
 bin_sub: $(BUILD_DIR)/script $(BUILD_DIR)/init
-	$(MAKE_SUBDIR) ../../../../
+	$(MAKE_SUBDIR) ../
 
 bin:
 	mkdir -p $(BUILD_DIR)
@@ -100,7 +100,7 @@ deldisk: umount
 
 clean: deldisk
 	-rm -rf $(BUILD_DIR)
-	$(MAKE_SUBDIR) ../../../../ clean
+	$(MAKE_SUBDIR) ../ clean
 
 diskclean: deldisk clean
 

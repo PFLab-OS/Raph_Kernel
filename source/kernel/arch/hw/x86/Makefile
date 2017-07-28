@@ -53,10 +53,10 @@ endif
 # for remote host (Vagrant)
 ###################################
 
-default:
-	$(call make_wrapper, image)
-
 .PHONY: run hd image mount umount clean
+
+all:
+	$(call make_wrapper, image)
 
 run:
 	$(call make_wrapper, run)
