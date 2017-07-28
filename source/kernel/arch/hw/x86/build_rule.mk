@@ -2,7 +2,7 @@ include common.mk
 
 MOUNT_DIR = /mnt/Raph_Kernel
 IMAGE = /tmp/$(IMAGEFILE)
-BUILD_DIR = build
+BUILD_DIR = ../../../../../build
 
 OVMF_DIR = /home/vagrant/edk2-UDK2017/
 
