@@ -2,12 +2,12 @@ include common.mk
 
 MOUNT_DIR = /mnt/Raph_Kernel
 IMAGE = /tmp/$(IMAGEFILE)
-BUILD_DIR = build
+BUILD_DIR = ../../../../../build
 
 OVMF_DIR = /home/vagrant/edk2-UDK2017/
 
 MAKE_SUBDIR := $(MAKE) -C
-MAKE := $(MAKE) -f $(RULE_FILE)
+MAKE := $(MAKE) ARCH=$(ARCH) -f $(BUILD_RULE_FILE)
 
 ifdef INIT
 	REMOTE_COMMAND += export INIT=$(INIT); 
@@ -53,7 +53,7 @@ $(BUILD_DIR)/init: $(INIT_FILE)
 	cp $(INIT_FILE) $(BUILD_DIR)/init
 
 bin_sub: $(BUILD_DIR)/script $(BUILD_DIR)/init
-	$(MAKE_SUBDIR) source
+	$(MAKE_SUBDIR) ../
 
 bin:
 	mkdir -p $(BUILD_DIR)
@@ -100,7 +100,7 @@ deldisk: umount
 
 clean: deldisk
 	-rm -rf $(BUILD_DIR)
-	$(MAKE_SUBDIR) source clean
+	$(MAKE_SUBDIR) ../ clean
 
 diskclean: deldisk clean
 
