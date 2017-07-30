@@ -8,10 +8,8 @@ DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))
 
 GIT_BRANCH = $(shell git symbolic-ref --short HEAD)
 
-FLAGS = 
-
 INCLUDE_PATH = -I$(realpath arch/hw/libc/) -I$(realpath ./)  -I$(realpath ./freebsd/) -I$(realpath ./acpica/include/)
-RAPHFLAGS = -ggdb3 -O0 -Wall -Werror=return-type -Wshadow -nostdinc -nostdlib -ffreestanding -fno-builtin -mcmodel=large -mno-mmx -D__KERNEL__ -D_KERNEL -Dbootverbose=0 $(FLAGS) $(INCLUDE_PATH) -MMD -MP
+RAPHFLAGS = -ggdb3 -O0 -Wall -Werror=return-type -Wshadow -nostdinc -nostdlib -ffreestanding -fno-builtin -mcmodel=large -mno-mmx -D__KERNEL__ -D_KERNEL -Dbootverbose=0 $(INCLUDE_PATH) -MMD -MP
 RAPHCFLAGS = $(RAPHFLAGS) -std=c99
 RAPHCXXFLAGS = $(RAPHFLAGS) -std=c++1y -fno-exceptions -fno-rtti -fno-use-cxa-atexit -fno-threadsafe-statics
 CFLAGS += $(RAPHCFLAGS)
