@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2016 Raphine Project
+ * Copyright (c) 2017 Raphine Project
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -20,23 +20,16 @@
  * 
  */
 
-#ifndef __RAPH_LIB_MEM_VIRTMEM_H__
-#define __RAPH_LIB_MEM_VIRTMEM_H__
+#ifndef __RAPH_KERNEL_LOADER_H__
+#error "invalid inclusion"
+#endif /* __RAPH_KERNEL_LOADER_H__ */
 
-#include <stdint.h>
-#include <string.h>
-#include <raph.h>
-#include <spinlock.h>
+class Loader : public LoaderInterface {
+public:
+  virtual void MapAddr(virt_addr start, virt_addr end) override final {
+    kernel_panic("Loader", "unable to map addr");
+  }
+  virtual void Execute(FType f) override final {
+  }
+};
 
-typedef uint64_t virt_addr;
-template <typename ptr> inline virt_addr ptr2virtaddr(ptr *addr) {
-  return reinterpret_cast<virt_addr>(addr);
-}
-
-template <typename ptr> inline ptr *addr2ptr(virt_addr addr) {
-  return reinterpret_cast<ptr *>(addr);
-}
-
-#include <arch_virtmem.h>
-
-#endif // __RAPH_LIB_MEM_VIRTMEM_H__

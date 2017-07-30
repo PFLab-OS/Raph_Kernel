@@ -22,42 +22,30 @@
 
 #include <tty.h>
 #include <elf.h>
-#include <mem/physmem.h>
-#include <mem/kstack.h>
 #include <string.h>
 #include <stdlib.h>
-#include <x86.h>
-#include <syscall.h>
-#include <cpu.h>
 
-using FType = int (*)(int, char*[]);
-extern "C" int execute_elf_binary(FType f, uint64_t *stack_addr);
-
-void ElfLoader::Load(const void *ptr) {
-  const uint8_t *head = reinterpret_cast<const uint8_t *>(ptr);
-  const Elf64_Ehdr *ehdr = reinterpret_cast<const Elf64_Ehdr *>(ptr);
-
+void ElfObject::Init() {
   // IA32_EFER.SCE = 1
-  SystemCallCtrl::Init();
-  //  
-  if(!IsElf(ehdr) || !IsElf64(ehdr) || (!IsOsabiSysv(ehdr) && !IsOsabiGnu(ehdr))){
+  //
+  if(!IsElf() || !IsElf64() || (!IsOsabiSysv() && !IsOsabiGnu())){
     gtty->Printf("Not supported module type.\n");
     return;
   }
-  gtty->Printf("ABI: %d\n", ehdr->e_ident[EI_OSABI]);
-  gtty->Printf("Entry point is 0x%08x \n", ehdr->e_entry);
+  gtty->Printf("ABI: %d\n", _ehdr->e_ident[EI_OSABI]);
+  gtty->Printf("Entry point is 0x%08x \n", _ehdr->e_entry);
 
-  const Elf64_Shdr *shstr = &reinterpret_cast<const Elf64_Shdr *>(head + ehdr->e_shoff)[ehdr->e_shstrndx];
+  const Elf64_Shdr *shstr = &reinterpret_cast<const Elf64_Shdr *>(_head + _ehdr->e_shoff)[_ehdr->e_shstrndx];
   
   Elf64_Xword total_memsize = 0;
 
   gtty->Printf("Sections:\n");
-  if (ehdr->e_shstrndx != SHN_UNDEF) {
-    const char *strtab = reinterpret_cast<const char *>(head + shstr->sh_offset);
-    for(int i = 0; i < ehdr->e_shnum; i++){
-      const Elf64_Shdr *shdr = (const Elf64_Shdr *)(head + ehdr->e_shoff + ehdr->e_shentsize * i);
+  if (_ehdr->e_shstrndx != SHN_UNDEF) {
+    const char *strtab = reinterpret_cast<const char *>(_head + shstr->sh_offset);
+    for(int i = 0; i < _ehdr->e_shnum; i++){
+      const Elf64_Shdr *shdr = (const Elf64_Shdr *)(_head + _ehdr->e_shoff + _ehdr->e_shentsize * i);
       const char *sname = strtab + shdr->sh_name;
-      //      gtty->Printf(" [%2d] %s size: %x offset: %x\n", i, sname, shdr->sh_size, shdr->sh_offset);
+      gtty->Printf(" [%2d] %s size: %x offset: %x\n", i, sname, shdr->sh_size, shdr->sh_offset);
       if (total_memsize < shdr->sh_addr + shdr->sh_offset) {
         total_memsize = shdr->sh_addr + shdr->sh_offset;
       }
@@ -66,9 +54,9 @@ void ElfLoader::Load(const void *ptr) {
 
   uint8_t *membuffer;
   bool page_mapping = false;
-  if (ehdr->e_type == ET_DYN) {
+  if (_ehdr->e_type == ET_DYN || _ehdr->e_type == ET_REL) {
     membuffer = reinterpret_cast<uint8_t *>(malloc(total_memsize));
-  } else if (ehdr->e_type == ET_EXEC) {
+  } else if (_ehdr->e_type == ET_EXEC) {
     membuffer = reinterpret_cast<uint8_t *>(0);
     page_mapping = true;
   } else {
@@ -76,30 +64,25 @@ void ElfLoader::Load(const void *ptr) {
   }
   gtty->Printf("membuffer: 0x%llx (%llx)\n", membuffer, total_memsize);
   // PT_LOADとなっているセグメントをメモリ上にロード
-  for(int i = 0; i < ehdr->e_phnum; i++){
-    const Elf64_Phdr *phdr = (const Elf64_Phdr *)(head + ehdr->e_phoff + ehdr->e_phentsize * i);
+  for(int i = 0; i < _ehdr->e_phnum; i++){
+    const Elf64_Phdr *phdr = (const Elf64_Phdr *)(_head + _ehdr->e_phoff + _ehdr->e_phentsize * i);
 
     if (page_mapping && phdr->p_memsz != 0) {
       virt_addr start = ptr2virtaddr(membuffer) + phdr->p_vaddr;
       virt_addr end = start + phdr->p_memsz;
-      start = PagingCtrl::RoundAddrOnPageBoundary(start);
-      end = PagingCtrl::RoundUpAddrOnPageBoundary(end);
-      size_t psize = PagingCtrl::ConvertNumToPageSize(end - start);
-      PhysAddr paddr;
-      physmem_ctrl->Alloc(paddr, psize);
-      paging_ctrl->MapPhysAddrToVirtAddr(start, paddr, psize, PDE_WRITE_BIT | PDE_USER_BIT, PTE_WRITE_BIT | PTE_GLOBAL_BIT | PTE_USER_BIT); // TODO check return value
+      _loader.MapAddr(start, end);
     }
     
     switch(phdr->p_type){
       case PT_LOAD:
         gtty->Printf("phdr[%d]: Load to +0x%llx\n", i, phdr->p_vaddr);
-        memcpy(membuffer + phdr->p_vaddr, &head[phdr->p_offset], phdr->p_filesz);
+        memcpy(membuffer + phdr->p_vaddr, &_head[phdr->p_offset], phdr->p_filesz);
         break;
     }
   }
   // セクション .bss を0クリア
-  for(int i = 0; i < ehdr->e_shnum; i++){
-    const Elf64_Shdr *shdr = (const Elf64_Shdr *)(head + ehdr->e_shoff + ehdr->e_shentsize * i);
+  for(int i = 0; i < _ehdr->e_shnum; i++){
+    const Elf64_Shdr *shdr = (const Elf64_Shdr *)(_head + _ehdr->e_shoff + _ehdr->e_shentsize * i);
     if (shdr->sh_type == SHT_NOBITS) {
       if ((shdr->sh_flags & SHF_ALLOC) != 0) {
         memset(membuffer + shdr->sh_addr, 0, shdr->sh_size);
@@ -107,50 +90,7 @@ void ElfLoader::Load(const void *ptr) {
     }
   }
 
-  FType f = reinterpret_cast<FType>(membuffer + ehdr->e_entry);
-
-  // TODO : カーネルスタックで実行しない
-  // TODO : 現在のカーネルスタックが破棄されるので、なんとかする
-  uint64_t *stack_addr = reinterpret_cast<uint64_t *>(KernelStackCtrl::GetCtrl().AllocThreadStack(cpu_ctrl->GetCpuId()));
-  gtty->Printf("stack addr: %llx\n", stack_addr);
-
-  int argc = 1;
-  const char *str[1] = {"123"};
-  size_t arg_buf_size = 0;
-  for (int i = 0; i < argc; i++) {
-    arg_buf_size += strlen(str[i]) + 1;
-  }
-  stack_addr -= (arg_buf_size + 7) / 8;
-  char *arg_ptr = reinterpret_cast<char *>(stack_addr);
-  // null auxiliary vector entry
-  stack_addr--;
-  *stack_addr = 0;
-
-  stack_addr--;
-  *stack_addr = 0;
-
-  // no environment pointers
-  
-  stack_addr--;
-  *stack_addr = 0;
-
-  // argument pointers
-  stack_addr -= argc;
-  for (int i = 0; i < argc; i++) {
-    strcpy(arg_ptr, str[i]);
-    stack_addr[i] = reinterpret_cast<uint64_t>(arg_ptr);
-    arg_ptr += strlen(str[i]) + 1;
-  }
-  
-  stack_addr--;
-  *stack_addr = argc;
-  
-  gtty->Flush();
-  
-  int64_t rval = execute_elf_binary(f, stack_addr);
-
-  gtty->Printf("return value: %d\n", rval); 
-  gtty->Printf("%s Returned.\n", str);
+  _entry = reinterpret_cast<FType>(membuffer + _ehdr->e_entry);
 
   free(membuffer);
 }

@@ -37,6 +37,7 @@
 #include <measure.h>
 #include <mem/kstack.h>
 #include <elf.h>
+#include <syscall.h>
 
 #include <dev/hpet.h>
 #include <dev/pci.h>
@@ -765,7 +766,9 @@ static void load_script(sptr<LoadContainer> container_) {
 static void load_elf(uptr<Array<uint8_t>> buf_) {
   auto callout_ = make_sptr(new Callout);
   callout_->Init(make_uptr(new Function2<wptr<Callout>, uptr<Array<uint8_t>>>([](wptr<Callout> callout, uptr<Array<uint8_t>> buf){
-          ElfLoader::Load(buf->GetRawPtr());
+          ElfObject obj(buf->GetRawPtr());
+          obj.Init();
+          obj.Load();
         }, make_wptr(callout_), buf_)));
   task_ctrl->RegisterCallout(callout_, 10);
 }
@@ -912,6 +915,8 @@ extern "C" int main() {
   AttachDevices<PciCtrl, LegacyKeyboard, Device>();
   
   // arp_table->Setup();
+
+  SystemCallCtrl::Init();
 
   gtty->Printf("\n\n[kernel] info: initialization completed\n");
 

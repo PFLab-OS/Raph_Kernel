@@ -38,8 +38,6 @@ static inline T alignUp(T val, int base) {
   return align(val + base - 1, base);
 }
 
-#define __NO_LIBC__
-
 #ifdef __NO_LIBC__
 inline void *operator new  (size_t, void *p)   throw() { return p; }
 inline void *operator new[](size_t, void *p)   throw() { return p; }

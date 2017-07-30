@@ -20,8 +20,7 @@
  * 
  */
 
-#ifndef __RAPH_KERNEL_TTY_H__
-#define __RAPH_KERNEL_TTY_H__
+#pragma once
 
 #include <string.h>
 #include <stdint.h>
@@ -230,5 +229,3 @@ private:
   int _offset;
   const int _buffer_size;
 };
-
-#endif // __RAPH_KERNEL_TTY_H__
