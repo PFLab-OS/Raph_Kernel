@@ -43,6 +43,8 @@ VirtmemCtrl::VirtmemCtrl() {
   // 6MB allocated by boot.S
   _brk_end = reinterpret_cast<virt_addr>(&kLinearAddrOffset) + reinterpret_cast<virt_addr>(&phys_memory_end);
   _heap_allocated_end = reinterpret_cast<virt_addr>(&kLinearAddrOffset) + 0x600000;
+
+  asm("mov %0,%%rax;mov %1,%%rbx;hlt;hlt;hlt;hlt;hlt;"::"m"(_brk_end),"m"(_heap_allocated_end):"rax","rbx","rcx");
   kassert(_brk_end < _heap_allocated_end);
 }
 

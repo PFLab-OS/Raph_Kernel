@@ -93,9 +93,6 @@
 
 typedef uint64_t entry_type;
 
-struct PageTable {
-  entry_type entry[512];
-};
 
 class PagingCtrl {
  public:
@@ -190,6 +187,9 @@ class PagingCtrl {
     return addr & ((1 << 12) - 1);
   }
   static const int kPageSize = 0x1000;
+struct PageTable {
+  entry_type entry[512];
+};
 private:
   // page structure tablesのindex情報を元に仮想アドレスを算出する
   static virt_addr CalcVirtAddrFromStructureTableOffset(int pml4_index, int pdpt_index, int pd_index, int pt_index, int offset) {

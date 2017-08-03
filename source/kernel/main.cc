@@ -916,7 +916,7 @@ extern "C" int main() {
 
   AttachDevices<PciCtrl, LegacyKeyboard, Device>();
   
-  //process_ctrl->Init();
+  process_ctrl->Init();
 
   // arp_table->Setup();
 

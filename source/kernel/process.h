@@ -112,7 +112,8 @@ public:
   static void ReturnToKernelJob(Process*);
   static void Exit(Process*);
   uint64_t* saved_rsp = nullptr;
-  PageTable* pml4t;
+  //PageTable* pml4t;
+  //AA *asa;
 
 private:
   Process* parent;
