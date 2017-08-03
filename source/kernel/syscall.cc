@@ -27,10 +27,12 @@
 #include <x86.h>
 #include <syscall.h>
 #include <gdt.h>
+#include <process.h>
 #include <global.h>
 
 extern "C" int64_t syscall_handler();
 extern size_t syscall_handler_stack; 
+extern size_t syscall_handler_caller_stack; 
 
 extern "C" int64_t syscall_handler_sub(SystemCallCtrl::Args *args, int index) {
   return SystemCallCtrl::Handler(args, index);
@@ -162,7 +164,66 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
       // exit group
       gtty->Printf("user program called exit\n");
       gtty->Flush();
+
+      Process::Exit(process_ctrl->GetCurrentProcess());
+
       while(true) {asm volatile("hlt;");}
+    }
+  case 329:
+    {
+      gtty->Printf("user program called context switch\n");
+      gtty->Flush();
+      Process* p = process_ctrl->GetCurrentProcess();
+      uint64_t stack_addr = syscall_handler_stack;
+
+      //save contexts
+      p->context.rsp = syscall_handler_caller_stack;
+      asm("movq %7,%%rax;"
+          "subq $112,%%rax;"
+          "movq 0(%%rax),%%rcx;"
+          "movq %%rcx,%0;"
+          "movq 8(%%rax),%%rcx;"
+          "movq %%rcx,%1;"
+          "movq 16(%%rax),%%rcx;"
+          "movq %%rcx,%2;" 
+          "movq 24(%%rax),%%rcx;"
+          "movq %%rcx,%3;" 
+          "movq 32(%%rax),%%rcx;"
+          "movq %%rcx,%4;"
+          "movq 40(%%rax),%%rcx;"
+          "movq %%rcx,%5;"
+          "movq 48(%%rax),%%rcx;"
+          "movq %%rcx,%6;"
+        : "=m"(p->context.rip),"=m"(p->context.rflags),"=m"(p->context.rdi),"=m"(p->context.rsi),
+          "=m"(p->context.rdx),"=m"(p->context.r10),"=m"(p->context.r8)
+        : "m"(stack_addr)
+        : "%rax","%rcx");
+          
+      asm("movq %7,%%rax;"
+          "subq $112,%%rax;"
+          "movq 56(%%rax),%%rcx;"
+          "movq %%rcx,%0;"
+          "movq 64(%%rax),%%rcx;"
+          "movq %%rcx,%1;"
+          "movq 72(%%rax),%%rcx;"
+          "movq %%rcx,%2;"
+          "movq 80(%%rax),%%rcx;"
+          "movq %%rcx,%3;"
+          "movq 88(%%rax),%%rcx;"
+          "movq %%rcx,%4;"
+          "movq 96(%%rax),%%rcx;"
+          "movq %%rcx,%5;"
+          "movq 104(%%rax),%%rcx;"
+          "movq %%rcx,%6;"
+          "swapgs;"
+        : "=m"(p->context.r9),"=m"(p->context.rbx),"=m"(p->context.rbp),"=m"(p->context.r12),
+          "=m"(p->context.r13),"=m"(p->context.r14),"=m"(p->context.r15)
+        : "m"(stack_addr)
+        : "%rax","%rcx");
+      p->context.rax = 1; //return value
+
+      Process::ReturnToKernelJob(p);
+
     }
   }
   gtty->DisablePrint();

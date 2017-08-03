@@ -37,6 +37,7 @@
 #include <measure.h>
 #include <mem/kstack.h>
 #include <elf.h>
+#include <process.h>
 
 #include <dev/hpet.h>
 #include <dev/pci.h>
@@ -61,6 +62,7 @@ Idt *idt = nullptr;
 Shell *shell = nullptr;
 PciCtrl *pci_ctrl = nullptr;
 NetDevCtrl *netdev_ctrl = nullptr;
+ProcessCtrl *process_ctrl = nullptr;
 // ArpTable *arp_table = nullptr;
 
 MultibootCtrl _multiboot_ctrl;
@@ -78,6 +80,7 @@ FrameBuffer _framebuffer;
 Shell _shell;
 AcpicaPciCtrl _acpica_pci_ctrl;
 NetDevCtrl _netdev_ctrl;
+ProcessCtrl _process_ctrl;
 // ArpTable _arp_table;
 
 CpuId network_cpu;
@@ -845,6 +848,8 @@ extern "C" int main() {
 
   netdev_ctrl = new (&_netdev_ctrl) NetDevCtrl();
 
+  process_ctrl = new (&_process_ctrl) ProcessCtrl;
+
   // arp_table = new (&_arp_table) ArpTable();
 
   physmem_ctrl->Init();
@@ -911,6 +916,8 @@ extern "C" int main() {
 
   AttachDevices<PciCtrl, LegacyKeyboard, Device>();
   
+  //process_ctrl->Init();
+
   // arp_table->Setup();
 
   gtty->Printf("\n\n[kernel] info: initialization completed\n");

@@ -93,6 +93,10 @@
 
 typedef uint64_t entry_type;
 
+struct PageTable {
+  entry_type entry[512];
+};
+
 class PagingCtrl {
  public:
   PagingCtrl();
@@ -201,9 +205,6 @@ private:
   static bool IsPageOffset(int offset) {
     return offset >= 0 && offset < 4096;
   }
-  struct PageTable {
-    entry_type entry[512];
-  };
   PageTable *_pml4t;
   SpinLock _lock;
 };
