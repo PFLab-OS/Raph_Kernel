@@ -35,16 +35,18 @@
 #include <stdlib.h>
 #include <mem/paging.h>
 #include <mem/physmem.h>
+#include <global.h>
 
 void Process::Init() {
   //これもコンストラクタでやらせたい
   task = make_sptr(new TaskWithStack(cpu_ctrl->GetCpuId()));
   task->Init();
 
-  //pml4t = reinterpret_cast<PageTable*>(virtmem_ctrl->Alloc(sizeof(PageTable)));
-  //kassert(pml4t);
+  procmem_ctrl.Init();
+
   
 }
+
 
 void Process::ReturnToKernelJob(Process* p) {
   gtty->Printf("called ReturnToKernelJob()\n");
@@ -60,6 +62,70 @@ void Process::Exit(Process* p) {
   process_ctrl->HaltProcess(p);
 }
 
+void Process::ProcmemCtrl::Init() {
+  //pml4t = reinterpret_cast<PageTable*>(virtmem_ctrl->Alloc(sizeof(PageTable)));
+  kassert(pml4t);
+  paging_ctrl->InitProcessMemoryPml4t(pml4t);
+}
+
+bool Process::ProcmemCtrl::AllocUserSpace(virt_addr vaddr,size_t size) {
+  assert(size%PagingCtrl::kPageSize == 0);
+  assert(vaddr%PagingCtrl::kPageSize == 0);
+  //Q:プロセス空間であるかのチェックはこれで正しい？
+  assert(reinterpret_cast<uint64_t>(vaddr) + size <= 0xffff800000000000);
+
+  for(virt_addr av = vaddr; av <= vaddr + size; av += PagingCtrl::kPageSize) {
+    PhysAddr paddr;
+    physmem_ctrl->Alloc(paddr,PagingCtrl::kPageSize);
+    if(!Map4KPageToVirtAddr(av,paddr,PDE_WRITE_BIT | PDE_USER_BIT, PDE_WRITE_BIT | PDE_GLOBAL_BIT | PDE_USER_BIT)) {
+      //TODO;Release Memory
+      return false;
+    }
+  }
+  return true;
+}
+
+bool Process::ProcmemCtrl::Map4KPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr pst_flag, phys_addr page_flag) {
+  Locker locker(_lock);
+  entry_type entry = pml4t->entry[PagingCtrl::GetPML4TIndex(vaddr)];
+  if ((entry & PML4E_PRESENT_BIT) == 0) {
+    PhysAddr tpaddr;
+    physmem_ctrl->Alloc(tpaddr, PagingCtrl::kPageSize);
+    bzero(reinterpret_cast<void *>(tpaddr.GetVirtAddr()), PagingCtrl::kPageSize);
+    entry = pml4t->entry[PagingCtrl::GetPML4TIndex(vaddr)] = tpaddr.GetAddr() | pst_flag | PML4E_PRESENT_BIT;
+  }
+  PageTable *pdpt = reinterpret_cast<PageTable *>(p2v(PagingCtrl::GetPML4EMaskedAddr(entry)));
+  entry = pdpt->entry[PagingCtrl::GetPDPTIndex(vaddr)];
+  if ((entry & PDPTE_PRESENT_BIT) == 0) {
+    PhysAddr tpaddr;
+    physmem_ctrl->Alloc(tpaddr, PagingCtrl::kPageSize);
+    bzero(reinterpret_cast<void *>(tpaddr.GetVirtAddr()), PagingCtrl::kPageSize);
+    entry = pdpt->entry[PagingCtrl::GetPDPTIndex(vaddr)] = tpaddr.GetAddr() | pst_flag | PDPTE_PRESENT_BIT;
+  }
+  if ((entry & PDPTE_1GPAGE_BIT) != 0) {
+    return false;
+  }
+  PageTable *pd = reinterpret_cast<PageTable *>(p2v(PagingCtrl::GetPDPTEMaskedAddr(entry)));
+  entry = pd->entry[PagingCtrl::GetPDIndex(vaddr)];
+  if ((entry & PDE_PRESENT_BIT) == 0) {
+    PhysAddr tpaddr;
+    physmem_ctrl->Alloc(tpaddr, PagingCtrl::kPageSize);
+    bzero(reinterpret_cast<void *>(tpaddr.GetVirtAddr()), PagingCtrl::kPageSize);
+    entry = pd->entry[PagingCtrl::GetPDIndex(vaddr)] = tpaddr.GetAddr() | pst_flag | PDE_PRESENT_BIT;
+  }
+  if ((entry & PDE_2MPAGE_BIT) != 0) {
+    return false;
+  }
+  PageTable *pt = reinterpret_cast<PageTable *>(p2v(PagingCtrl::GetPDEMaskedAddr(entry)));
+  entry = pt->entry[PagingCtrl::GetPTIndex(vaddr)];
+  if ((entry & PTE_PRESENT_BIT) == 0) {
+    pt->entry[PagingCtrl::GetPTIndex(vaddr)] = paddr.GetAddr() | page_flag | PTE_PRESENT_BIT;
+    return true;
+  } else {
+    return false;
+  }
+}
+
 void ProcessCtrl::Init() {
   {
 
@@ -73,7 +139,7 @@ void ProcessCtrl::Init() {
 
     //TODO:デバッグ用簡易実装
     Process* p = process_ctrl->GetNextExecProcess();
-    if(p != nullptr && p->status == ProcessStatus::RUNNABLE) {
+    if(p != nullptr && p->GetStatus() == ProcessStatus::RUNNABLE) {
       //処理したいプロセスが存在すれば、それを追加
       task_ctrl->Register(cpu_ctrl->GetCpuId(),p->GetKernelJob());
       task_ctrl->Register(cpu_ctrl->GetCpuId(),ltask);
@@ -81,7 +147,7 @@ void ProcessCtrl::Init() {
 
     //誰がディスパッチ用のタスク（これ）をカーネルジョブに追加する？
     //プリエンプティブ・ノンプリエンプティブで異なるため要検討
-    if(p != nullptr && p->status ==ProcessStatus::EMBRYO){
+    if(p != nullptr && p->GetStatus() ==ProcessStatus::EMBRYO){
       task_ctrl->Register(cpu_ctrl->GetCpuId(),ltask);
     }
 
@@ -113,10 +179,6 @@ Process* ProcessCtrl::CreateProcess() {
 
   process->SetKernelJobFunc(make_uptr(new Function2<sptr<TaskWithStack>,Process*>([](sptr<TaskWithStack> task,Process* p) {
     //TODO
-    {
-      Locker locker(process_ctrl->table_lock);
-      p->status = ProcessStatus::RUNNABLE;
-    }
     
     while(true) {
       task->Wait();
@@ -141,7 +203,9 @@ Process* ProcessCtrl::CreateFirstProcess() {
   process->Init();
 
   process->SetKernelJobFunc(make_uptr(new Function2<sptr<TaskWithStack>,Process*>([](sptr<TaskWithStack> task,Process* p) {
-    //TODO: cr3を変更する機能
+
+    paging_ctrl->InitProcessMemoryPml4t(p->procmem_ctrl.pml4t);
+    paging_ctrl->SwitchToProcmemSpace(p->procmem_ctrl.pml4t);
 
     //初期化用の処理
     //copy and paste from elf.cc
@@ -160,7 +224,9 @@ Process* ProcessCtrl::CreateFirstProcess() {
 
     const Elf64_Shdr *shstr = &reinterpret_cast<const Elf64_Shdr *>(head + ehdr->e_shoff)[ehdr->e_shstrndx];
     
+    //TODO:キレイにする
     Elf64_Xword total_memsize = 0;
+    Elf64_Xword min_memsize = 0xffffffffffffffff;
 
     gtty->Printf("Sections:\n");
     if (ehdr->e_shstrndx != SHN_UNDEF) {
@@ -172,34 +238,44 @@ Process* ProcessCtrl::CreateFirstProcess() {
         if (total_memsize < shdr->sh_addr + shdr->sh_offset) {
           total_memsize = shdr->sh_addr + shdr->sh_offset;
         }
+        if (min_memsize > shdr->sh_addr) {
+          min_memsize = shdr->sh_addr;
+        }
       }
     }
 
-    uint8_t *membuffer;
-    bool page_mapping = false;
-    if (ehdr->e_type == ET_DYN) {
-      membuffer = reinterpret_cast<uint8_t *>(malloc(total_memsize));
-    } else if (ehdr->e_type == ET_EXEC) {
-      membuffer = reinterpret_cast<uint8_t *>(0);
-      page_mapping = true;
-    } else {
-      kassert(false);
+
+    if(!p->procmem_ctrl.AllocUserSpace(PagingCtrl::RoundAddrOnPageBoundary(min_memsize),
+        PagingCtrl::RoundUpAddrOnPageBoundary(total_memsize - min_memsize))) {
+      gtty->Printf("could not Alloc user space memory\n");
+      gtty->Flush();
+      //Wait();
     }
-    gtty->Printf("membuffer: 0x%llx (%llx)\n", membuffer, total_memsize);
+    uint8_t *membuffer = reinterpret_cast<uint8_t*>(PagingCtrl::RoundAddrOnPageBoundary(min_memsize));
+//    bool page_mapping = false;
+//    if (ehdr->e_type == ET_DYN) {
+//      membuffer = reinterpret_cast<uint8_t *>(malloc(total_memsize));
+//    } else if (ehdr->e_type == ET_EXEC) {
+//      membuffer = reinterpret_cast<uint8_t *>(0);
+//      page_mapping = true;
+//    } else {
+//      kassert(false);
+//    }
+//    gtty->Printf("membuffer: 0x%llx (%llx)\n", membuffer, total_memsize);
     // PT_LOADとなっているセグメントをメモリ上にロード
     for(int i = 0; i < ehdr->e_phnum; i++){
       const Elf64_Phdr *phdr = (const Elf64_Phdr *)(head + ehdr->e_phoff + ehdr->e_phentsize * i);
 
-      if (page_mapping && phdr->p_memsz != 0) {
-        virt_addr start = ptr2virtaddr(membuffer) + phdr->p_vaddr;
-        virt_addr end = start + phdr->p_memsz;
-        start = PagingCtrl::RoundAddrOnPageBoundary(start);
-        end = PagingCtrl::RoundUpAddrOnPageBoundary(end);
-        size_t psize = PagingCtrl::ConvertNumToPageSize(end - start);
-        PhysAddr paddr;
-        physmem_ctrl->Alloc(paddr, psize);
-        paging_ctrl->MapPhysAddrToVirtAddr(start, paddr, psize, PDE_WRITE_BIT | PDE_USER_BIT, PTE_WRITE_BIT | PTE_GLOBAL_BIT | PTE_USER_BIT); // TODO check return value
-      }
+//      if (page_mapping && phdr->p_memsz != 0) {
+//        virt_addr start = ptr2virtaddr(membuffer) + phdr->p_vaddr;
+//        virt_addr end = start + phdr->p_memsz;
+//        start = PagingCtrl::RoundAddrOnPageBoundary(start);
+//        end = PagingCtrl::RoundUpAddrOnPageBoundary(end);
+//        size_t psize = PagingCtrl::ConvertNumToPageSize(end - start);
+//        PhysAddr paddr;
+//        physmem_ctrl->Alloc(paddr, psize);
+//        paging_ctrl->MapPhysAddrToVirtAddr(start, paddr, psize, PDE_WRITE_BIT | PDE_USER_BIT, PTE_WRITE_BIT | PTE_GLOBAL_BIT | PTE_USER_BIT); // TODO check return value
+//      }
       
       switch(phdr->p_type){
         case PT_LOAD:
@@ -219,13 +295,18 @@ Process* ProcessCtrl::CreateFirstProcess() {
     }
 
     // TODO: キレイにする
-    uint8_t* stack_addr_tmp = (reinterpret_cast<uint8_t *>(malloc(PagingCtrl::kPageSize*10)) );
-    PhysAddr psaddr;
-    physmem_ctrl->Alloc(psaddr,PagingCtrl::kPageSize*10);
-    paging_ctrl->MapPhysAddrToVirtAddr(PagingCtrl::RoundAddrOnPageBoundary(ptr2virtaddr(stack_addr_tmp)), psaddr, PagingCtrl::kPageSize*11, PDE_WRITE_BIT | PDE_USER_BIT, PTE_WRITE_BIT | PTE_GLOBAL_BIT | PTE_USER_BIT); // TODO check return value
+//    uint8_t* stack_addr_tmp = (reinterpret_cast<uint8_t *>(malloc(PagingCtrl::kPageSize*10)) );
+//    PhysAddr psaddr;
+//    physmem_ctrl->Alloc(psaddr,PagingCtrl::kPageSize*10);
+//    paging_ctrl->MapPhysAddrToVirtAddr(PagingCtrl::RoundAddrOnPageBoundary(ptr2virtaddr(stack_addr_tmp)), psaddr, PagingCtrl::kPageSize*11, PDE_WRITE_BIT | PDE_USER_BIT, PTE_WRITE_BIT | PTE_GLOBAL_BIT | PTE_USER_BIT); // TODO check return value
 
-    uint64_t* stack_addr = reinterpret_cast<uint64_t*>(stack_addr_tmp + PagingCtrl::kPageSize*10);
+//    uint64_t* stack_addr = reinterpret_cast<uint64_t*>(stack_addr_tmp + PagingCtrl::kPageSize*10);
 
+    if(!p->procmem_ctrl.AllocUserSpace(PagingCtrl::RoundAddrOnPageBoundary(total_memsize + PagingCtrl::kPageSize*2),PagingCtrl::kPageSize * 10)) {
+      gtty->Printf("could not Alloc user space memory\n");
+      gtty->Flush();
+    }
+    uint64_t *stack_addr = reinterpret_cast<uint64_t*>(PagingCtrl::RoundAddrOnPageBoundary(min_memsize + PagingCtrl::kPageSize*2));
 
     gtty->Printf("stack addr: %llx\n", stack_addr);
 
@@ -265,27 +346,24 @@ Process* ProcessCtrl::CreateFirstProcess() {
     p->context.rsp = reinterpret_cast<uint64_t>(stack_addr);
 
 
-
-
     gtty->Printf("First Process Created rip = %llx\n",p->context.rip);
     gtty->Flush();
 
 
     while(true) {
-      //Q:こんなクラス設計でいいですか？
-      //TODO:ProcessCtrlでStatusいじる
-      {
-        Locker locker(process_ctrl->table_lock);
-        p->status = ProcessStatus::RUNNABLE;
-      }
+      process_ctrl->SetStatus(p,ProcessStatus::RUNNABLE);
+      //cr3の変更は成功していて、適切にマップできていないだけ？
+
+      gtty->Printf("Wait\n");
+      gtty->Flush();
 
       task->Wait();
 
-      {
-        Locker locker(process_ctrl->table_lock);
-        p->status = ProcessStatus::RUNNING;
-      }
+      paging_ctrl->InitProcessMemoryPml4t(p->procmem_ctrl.pml4t);
+      paging_ctrl->SwitchToProcmemSpace(p->procmem_ctrl.pml4t);
+      process_ctrl->SetStatus(p,ProcessStatus::RUNNING);
       Process::Resume(p);
+      paging_ctrl->SwitchToKermemSpace();
 
     }
 
@@ -450,10 +528,7 @@ Process* ProcessCtrl::GetCurrentProcess() {
 //TODO:デバッグ用簡易実装
 //どうやって参照を消すか？
 void ProcessCtrl::HaltProcess(Process* p) {
-  {
-    Locker locker(table_lock);
-    p->status = ProcessStatus::ZOMBIE;
-  }
   p->GetKernelJob()->Wait();
 
 }
+

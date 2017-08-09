@@ -31,5 +31,10 @@ int main(int argc, char *argv[])
   if (init() != 0) {
     return -1;
   }
+  asm volatile (
+      "mov $329,%%rax;"
+      "syscall"
+      :::"rax","rbx","rcx","rdx","rsi","rdi","r8","r9","r10","r11","r12","r13","r14","r15");
+  printf("good bye!\n");
   return calc();
 }

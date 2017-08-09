@@ -30,10 +30,11 @@
 #include <task.h>
 #include <gdt.h>
 #include <mem/paging.h>
+#include <global.h>
 
 
 typedef uint32_t pid_t;
-
+class ProcmemCtrl;
 
 
 enum class ProcessStatus {
@@ -46,23 +47,21 @@ enum class ProcessStatus {
 };
 
 class Process {
+  friend class ProcessCtrl;
 public:
   Process() {
   }
 
   void Init();
 
-
   pid_t GetPid() {
     return pid;
   }
 
-  void SetPid(pid_t _pid) {
-    pid = _pid;
-  }
+  ProcessStatus GetStatus() {
+    return status;
+  };
 
-  //命名　用途などあとで考える
-  //TODO：カーネルジョブキューに入っていないかチェックする
   sptr<TaskWithStack> GetKernelJob() {
     return task;
   } 
@@ -71,7 +70,6 @@ public:
     task->SetFunc(func);
   }
 
-  ProcessStatus status = ProcessStatus::EMBRYO;
   //TODO:PIDは本当は他人からいじらせたくない
   //今は配列管理だからできないが、リンクリスト形式で一つのオブジェクトが一つのプロセスしか表さないことにして
   //Constメンバにする
@@ -79,45 +77,55 @@ public:
   pid_t  pid;
 
   struct Context {
-    uint64_t rdi;
-    uint64_t rsi;
-    uint64_t rbp;
-    uint64_t rbx;
-    uint64_t rdx;
-    uint64_t rcx;
-    uint64_t rax;
-    uint64_t r8;
-    uint64_t r9;
-    uint64_t r10;
-    uint64_t r11;
-    uint64_t r12;
-    uint64_t r13;
-    uint64_t r14;
-    uint64_t r15;
+    uint64_t rdi,rsi,rbp,rbx,rdx,rcx,rax;
+    uint64_t r8,r9,r10,r11,r12,r13,r14,r15;
     uint64_t rflags = 0x200;
 
     uint64_t gs =USER_DS;
-    uint64_t fs = USER_DS;
-    uint64_t es = USER_DS;
+    const uint64_t fs = USER_DS;
+    const uint64_t es = USER_DS;
     const uint64_t ds = USER_DS;
     
     uint64_t rip;
-    uint64_t cs = USER_CS;
+    const uint64_t cs = USER_CS;
 
     uint64_t rsp;
-    uint64_t ss = USER_DS;
+    const uint64_t ss = USER_DS;
   } context;
+
+
+  class ProcmemCtrl {
+  private:
+    PageTable* GetPml4tAddr() {
+      //TODO:メモリリークしてるので修正
+      virt_addr t = virtmem_ctrl->Alloc(PagingCtrl::kPageSize*2);
+      return reinterpret_cast<PageTable*>((reinterpret_cast<uint64_t>(t) + PagingCtrl::kPageSize) & ~(PagingCtrl::kPageSize - 1));
+    }
+    bool Map4KPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr pst_flag, phys_addr page_flag);
+
+    SpinLock _lock;
+
+  public:
+    ProcmemCtrl() :pml4t(GetPml4tAddr()) {
+    }
+
+    void Init();
+    bool AllocUserSpace(virt_addr addr,size_t size);
+
+
+    PageTable* const pml4t;
+
+  } procmem_ctrl;
 
   static void  Resume(Process*);
   static void ReturnToKernelJob(Process*);
   static void Exit(Process*);
   uint64_t* saved_rsp = nullptr;
-  //PageTable* pml4t;
-  //AA *asa;
 
 private:
   Process* parent;
   sptr<TaskWithStack> task;
+  ProcessStatus status = ProcessStatus::EMBRYO;
 };
 
 
@@ -128,8 +136,17 @@ class ProcessCtrl {
     Process* CreateProcess();
     Process* CreateFirstProcess();
     Process* GetNextExecProcess();
-
     Process* GetCurrentProcess();
+
+
+    void SetStatus(Process* p,ProcessStatus _status) {
+      Locker locker(table_lock);
+      p->status = _status;
+    }
+
+    ProcessStatus GetStatus(Process* p) {
+      return p->status;
+    }
 
     void HaltProcess(Process*);
 
@@ -146,7 +163,7 @@ class ProcessCtrl {
       Process* GetNextProcess();
 
     private:
-      const static int max_process = 0x1000;
+      const static int max_process = 0x10;
       Process processes[max_process];
       pid_t next_pid = 1;
       int current_process = 0;

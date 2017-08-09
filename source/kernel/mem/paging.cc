@@ -44,6 +44,22 @@ void PagingCtrl::MapAllPhysMemory() {
   }
 }
 
+void PagingCtrl::InitProcessMemoryPml4t(PageTable* pml4t) {
+  //TODO:カーネルランド用仮想メモリのページディレクトリは予め確保しておいて、
+  //プロセスを呼び出す前にこの関数を呼ばなくても良いようにする
+  for (int i = 256; i < 512; i++) {
+    pml4t->entry[i] = _pml4t->entry[i];
+  }
+}
+
+void PagingCtrl::SwitchToProcmemSpace(PageTable* pml4t) {
+  asm volatile("movq %0,%%cr3" : : "r" (k2p(ptr2virtaddr(pml4t))) :);
+}
+
+void PagingCtrl::SwitchToKermemSpace() {
+  asm volatile("movq %0,%%cr3" : : "r" (k2p(ptr2virtaddr(_pml4t))) :);
+}
+
 void PagingCtrl::ReleaseLowMemory() {
   // release low address(1MB~) which is set in boot/boot.S
   entry_type entry = _pml4t->entry[GetPML4TIndex(0)];

@@ -93,12 +93,18 @@
 
 typedef uint64_t entry_type;
 
+struct PageTable {
+  entry_type entry[512];
+};
 
 class PagingCtrl {
  public:
   PagingCtrl();
   void MapAllPhysMemory();
   void ReleaseLowMemory();
+  void InitProcessMemoryPml4t(PageTable*);
+  void SwitchToKermemSpace();
+  void SwitchToProcmemSpace(PageTable*);
   void ConvertVirtMemToPhysMem(virt_addr vaddr, PhysAddr &paddr);
   bool IsVirtAddrMapped(virt_addr vaddr);
   void GetTranslationEntries(virt_addr vaddr, entry_type *pml4e, entry_type *pdpte, entry_type *pde, entry_type *pte);
@@ -187,9 +193,6 @@ class PagingCtrl {
     return addr & ((1 << 12) - 1);
   }
   static const int kPageSize = 0x1000;
-struct PageTable {
-  entry_type entry[512];
-};
 private:
   // page structure tablesのindex情報を元に仮想アドレスを算出する
   static virt_addr CalcVirtAddrFromStructureTableOffset(int pml4_index, int pdpt_index, int pd_index, int pt_index, int offset) {
