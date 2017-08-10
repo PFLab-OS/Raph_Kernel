@@ -38,8 +38,6 @@ entryothers:
 
 setup_paging_of_others:
   mov $initial_PML4T, %edi
-  // TODO : remove bits
-  or $(PML4E_WRITETHROUGH_BIT | PML4E_CACHEDISABLE_BIT), %edi
   mov %edi, %cr3
 
   // set PAE&PGE bit
@@ -65,12 +63,19 @@ switchto_longmode_of_others:
 
 .code64
 trampoline_of_others:
-  movl $KERNEL_DS, %eax
-  mov %ax, %ds
-  mov %ax, %es
-  mov %ax, %fs
-  mov %ax, %gs
-  mov %ax, %ss
+  movw $KERNEL_DS, %ax
+  movw %ax, %ds
+  movw %ax, %es
+  movw %ax, %ss
+  movw $0, %ax
+  movw %ax, %fs
+  movw %ax, %gs
+  movl $0, %edx
+  movl $0, %eax
+  movl $MSR_IA32_FS_BASE, %ecx
+  wrmsr
+  movl $MSR_IA32_GS_BASE, %ecx
+  wrmsr
   mov (stack_of_others), %rsp
   sub $8, %rsp
   pushq $0   // return addr

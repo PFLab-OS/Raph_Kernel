@@ -31,10 +31,11 @@ lgdt_sub:
   lgdt (%rdi)                   
   lretq                         
 jmp:
-  movl $KERNEL_DS, %eax
-  mov %ax, %ds
-  mov %ax, %es
-  mov %ax, %fs
-  mov %ax, %gs
-  mov %ax, %ss
+  movw $KERNEL_DS, %ax
+  movw %ax, %ds
+  movw %ax, %es
+  movw %ax, %ss
+  movw $0, %ax
+  movw %ax, %fs
+  movw %ax, %gs
   ret

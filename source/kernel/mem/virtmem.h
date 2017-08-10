@@ -37,51 +37,6 @@ template <typename ptr> inline ptr *addr2ptr(virt_addr addr) {
   return reinterpret_cast<ptr *>(addr);
 }
 
-class VirtmemCtrl final {
-public:
-  VirtmemCtrl();
-  ~VirtmemCtrl() {
-  }
-
-  // 新規に仮想メモリ領域を確保する。
-  // 物理メモリが割り当てられていない領域の場合は物理メモリを割り当てる
-  virt_addr Alloc(size_t size);
-  // 仮想メモリ領域を解放するが、物理メモリは解放しない
-  void Free(virt_addr addr);
-
-  // ０初期化版
-  virt_addr AllocZ(size_t size) {
-    virt_addr addr = Alloc(size);
-    bzero(reinterpret_cast<void *>(addr), size);
-    return addr;
-  }
-  template <class T, class... Y>
-    T *New(const Y& ...args) __attribute__((deprecated));
-  template <class T>
-    void Delete(T *c) __attribute__((deprecated));
-
-  virt_addr Sbrk(int64_t increment);
-  virt_addr GetHeapEnd() {
-    return _brk_end;
-  }
-private:
-  virt_addr _heap_allocated_end;
-  virt_addr _brk_end;
-  virt_addr _heap_limit;
-  SpinLock _lock;
-};
-
-template <class T, class... Y>
-  T *VirtmemCtrl::New(const Y& ...args) {
-  virt_addr addr = Alloc(sizeof(T));
-  T *t = reinterpret_cast<T *>(addr);
-  return new(t) T(args...);
-}
-
-template <class T>
-void VirtmemCtrl::Delete(T *c) {
-  c->~T();
-  Free(reinterpret_cast<virt_addr>(c));
-}
+#include <arch_virtmem.h>
 
 #endif // __RAPH_LIB_MEM_VIRTMEM_H__

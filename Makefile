@@ -1,25 +1,10 @@
 include common.mk
 
+ARCH ?= hw/x86
+export ARCH
+
 VNC_PORT = 15900
 VDI = disk.vdi
-
-define make_wrapper
-	$(if $(shell if [ -e /etc/bootstrapped ]; then echo "guest"; fi), \
-	  # guest environment
-	  $(MAKE) -f $(RULE_FILE) $(1), \
-	  # host environment
-	  $(if $(shell ssh -F .ssh_config default "exit"; if [ $$? != 0 ]; then echo "no-guest"; fi), rm -f .ssh_config
-	  vagrant halt
-	  vagrant up
-	  vagrant ssh-config > .ssh_config; )
-	  ssh -F .ssh_config default "cd /vagrant/; env MAKEFLAGS=$(MAKEFLAGS) make -f $(RULE_FILE) $(1)"
-	)
-endef
-
-define check_guest
-	$(if $(shell if [ -e /etc/bootstrapped ]; then echo "guest"; fi), \
-	  @echo "error: run this command on the host environment."; exit 1)
-endef
 
 UNAME = ${shell uname}
 ifeq ($(OS),Windows_NT)
@@ -43,35 +28,35 @@ define vnc
 endef
 endif
 
-###################################
-# for remote host (Vagrant)
-###################################
+CHECK_REMOTE = ssh -F .ssh_config default "exit"
+
+define check_guest
+	$(if $(shell if [ -e /etc/bootstrapped ]; then echo "guest"; fi), \
+	  @echo "error: run this command on the host environment."; exit 1)
+endef
+
+define run_remote
+	$(if $(shell (($(CHECK_REMOTE)) & (for i in `seq 0 3`; do sleep 1 ; ps $$! > /dev/null 2>&1 || exit 0 ; done;  kill -9 $$! ; exit 1 ) && ($(CHECK_REMOTE))) || echo "no-guest"),
+	rm -f .ssh_config
+	vagrant halt
+	vagrant up
+	vagrant ssh-config > .ssh_config; )
+	ssh -F .ssh_config default "$(1)"
+endef
+
+define make_wrapper
+	$(if $(shell if [ -e /etc/bootstrapped ]; then echo "guest"; fi), \
+	  # guest environment
+    cd /vagrant/source/kernel/arch/$(ARCH); $(MAKE) ARCH=$(ARCH) -f $(BUILD_RULE_FILE) $(1), \
+	  # host environment
+	  $(call run_remote, cd /vagrant/source/kernel/arch/$(ARCH); env MAKEFLAGS=$(MAKEFLAGS) make ARCH=$(ARCH) -f $(BUILD_RULE_FILE) $(1))
+	)
+endef
 
 default:
-	$(call make_wrapper, image)
+	$(call make_wrapper, all)
 
-.PHONY: run hd image mount umount clean
-
-run:
-	$(call make_wrapper, run)
-
-hd:
-	$(call make_wrapper, hd)
-
-image:
-	$(call make_wrapper, image)
-
-mount:
-	$(call make_wrapper, mount)
-
-umount:
-	$(call make_wrapper, umount)
-
-clean:
-	$(call make_wrapper, clean)
-
-
-.PHONY: vnc debug vboxrun vboxkill run_pxeserver pxeimg burn_ipxe burn_ipxe_remote debugqemu showerror numerror doc
+.PHONY: vnc debug vboxrun vboxkill run_pxeserver pxeimg burn_ipxe burn_ipxe_remote
 vnc:
 	$(call check_guest)
 	@echo info: vnc password is "a"
@@ -80,8 +65,8 @@ vnc:
 debug:
 	vagrant ssh -c "cd /vagrant/; gdb -x .gdbinit_for_kernel"
 
-vboxrun: vboxkill synctime
-	@$(SSH_CMD) "$(REMOTE_COMMAND) cd /vagrant/; make -j3 _cpimage"
+vboxrun: vboxkill
+	$(call make_wrapper, cpimage)
 	-vboxmanage unregistervm RK_Test --delete
 	-rm $(VDI)
 	vboxmanage createvm --name RK_Test --register
@@ -99,30 +84,20 @@ run_pxeserver:
 	@echo info: allow port 8080 in your firewall settings
 	cd net; python -m SimpleHTTPServer 8080
 
-pxeimg: synctime
-	@$(SSH_CMD) "$(REMOTE_COMMAND) cd /vagrant/; make -j3 _cpimage"
+pxeimg:
+	$(call make_wrapper, cpimage)
 	gzip $(IMAGEFILE)
 	mv $(IMAGEFILE).gz net/
 
-burn_ipxe: synctime
+burn_ipxe:
+	$(call check_guest)
 	./lan.sh local
-	@$(SSH_CMD) "cd ipxe/src; make bin-x86_64-pcbios/ipxe.usb EMBED=/vagrant/load.cfg; if [ ! -e /dev/sdb ]; then echo 'error: insert usb memory!'; exit -1; fi; sudo dd if=bin-x86_64-pcbios/ipxe.usb of=/dev/sdb"
+	$(call run_remote, cd ipxe/src; make bin-x86_64-pcbios/ipxe.usb EMBED=/vagrant/load.cfg; if [ ! -e /dev/sdb ]; then echo 'error: insert usb memory!'; exit -1; fi; sudo dd if=bin-x86_64-pcbios/ipxe.usb of=/dev/sdb)
 
-burn_ipxe_remote: synctime
+burn_ipxe_remote:
+	$(call check_guest)
 	./lan.sh remote
-	@$(SSH_CMD) "cd ipxe/src; make bin-x86_64-pcbios/ipxe.usb EMBED=/vagrant/load.cfg; if [ ! -e /dev/sdb ]; then echo 'error: insert usb memory!'; exit -1; fi; sudo dd if=bin-x86_64-pcbios/ipxe.usb of=/dev/sdb"
+	$(call run_remote, cd ipxe/src; make bin-x86_64-pcbios/ipxe.usb EMBED=/vagrant/load.cfg; if [ ! -e /dev/sdb ]; then echo 'error: insert usb memory!'; exit -1; fi; sudo dd if=bin-x86_64-pcbios/ipxe.usb of=/dev/sdb)
 
-debugqemu:
-	$(call make_wrapper, debugqemu)
-
-showerror:
-	$(call make_wrapper, showerror)
-
-numerror:
-	$(call make_wrapper, numerror)
-
-doc:
-	$(call make_wrapper, doc)
-
-.ssh_config:
-	vagrant ssh-config > .ssh_config
+%:
+	$(call make_wrapper, $@)

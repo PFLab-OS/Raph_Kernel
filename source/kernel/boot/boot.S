@@ -258,18 +258,20 @@ trampoline:
   // lower address(1MB~)
   // this code call c function which mapped at
   // higher address(last 2GB of virtual memory)
-  movl $KERNEL_DS, %eax
-  mov %ax, %ds
-  mov %ax, %es
-  mov %ax, %fs
-  mov %ax, %gs
-  mov %ax, %ss
+  movw $KERNEL_DS, %ax
+  movw %ax, %ds
+  movw %ax, %es
+  movw %ax, %ss
+  movw $0, %ax
+  movw %ax, %fs
+  movw %ax, %gs
+  movl $0, %edx
+  movl $0, %eax
+  movl $MSR_IA32_FS_BASE, %ecx
+  wrmsr
+  movl $MSR_IA32_GS_BASE, %ecx
+  wrmsr
   mov $kKernelEndAddr - 4096 + 1, %rsp
-  pushq $0
-  pushq $0
-  pushq $0
-  movq $INITIAL_STACK_MAGIC, %rax
-  pushq %rax
   pushq $0   // return addr
   pushq $KERNEL_CS
   mov $main, %rax

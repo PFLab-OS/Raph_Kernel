@@ -36,7 +36,7 @@ public:
   }
   int Get() {
     Container *c = nullptr;
-    _lock.Lock();
+    _lock.Lock(0);
     if (_first.next != nullptr) {
       c = _first.next;
       _first.next = c->next;
@@ -44,7 +44,7 @@ public:
         _last = &_first;
       }
     }
-    _lock.Unlock();
+    _lock.Unlock(0);
     int i = 0;
     if (c != nullptr) {
       for (int l = 0; l < 1000; l++) {
@@ -65,10 +65,10 @@ public:
       c->i[j] = i;
     }
     c->next = nullptr;
-    _lock.Lock();
+    _lock.Lock(0);
     _last->next = c;
     _last = c;
-    _lock.Unlock();
+    _lock.Unlock(0);
   }
   struct Container {
     Container *next;
@@ -122,7 +122,7 @@ public:
   }
   Container<kListEntryNum> *Get() {
     Container<kListEntryNum> *c = nullptr;
-    _lock.Lock();
+    _lock.Lock(0);
     if (_first.next != nullptr) {
       c = _first.next;
       _first.next = c->next;
@@ -130,7 +130,7 @@ public:
         _last = &_first;
       }
     }
-    _lock.Unlock();
+    _lock.Unlock(0);
     return c;
   }
   void Push(Container<kListEntryNum> *c, int i) {
@@ -138,9 +138,9 @@ public:
     for (int j = 0; j < kListEntryNum; j++) {
       c->i[j] = i;
     }
-    _lock.Lock();
+    _lock.Lock(0);
     PushSub(c);
-    _lock.Unlock();
+    _lock.Unlock(0);
   }
   void PushSub(Container<kListEntryNum> *c) {
     c->next = nullptr;
@@ -151,7 +151,7 @@ public:
     return _lock.TryLock();
   }
   void Release() {
-    _lock.Unlock();
+    _lock.Unlock(0);
   }
 private:
   L _lock;
@@ -178,7 +178,7 @@ public:
         break;
       }
       if (_list[apicid / 8].Acquire()) {
-        _lock.Lock();
+        _lock.Lock(0);
         bool flag = false;
         for (int i = 0; i < 16; i++) {
           if (_first.next != nullptr) {
@@ -191,7 +191,7 @@ public:
             _list[apicid / 8].PushSub(c2);
           }
         }
-        _lock.Unlock();
+        _lock.Unlock(0);
         _list[apicid / 8].Release();
         if (!flag) {
           return nullptr;
@@ -207,10 +207,10 @@ public:
       c->i[j] = i;
     }
     c->next = nullptr;
-    _lock.Lock();
+    _lock.Lock(0);
     _last->next = c;
     _last = c;
-    _lock.Unlock();
+    _lock.Unlock(0);
   }
 private:
   SimpleSpinLock _lock;

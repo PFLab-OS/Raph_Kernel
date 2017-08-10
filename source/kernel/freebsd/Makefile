@@ -4,7 +4,9 @@ DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))
 
 .PHONY: clean
 
-default: ../freebsd.o
+default:
+
+build: ../freebsd.o
 
 -include $(DEPS)
 

@@ -4,6 +4,8 @@ SRCS = testmodule.cc
 CC = musl-gcc
 
 defalut:
+
+build:
 	$(MAKE) $(MODULE)
 	cp $(MODULE) ../../build/$(MODULE).elf
 

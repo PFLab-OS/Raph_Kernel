@@ -184,13 +184,12 @@ private:
   virtual void Write(char c) override;
   virtual void WriteErr(char c) override;
   virtual void PrintShell(const char *str) override;
-  virtual void Flush() override {
+  virtual void FlushSub() override {
     Locker locker(_lock);
+    DrawScreen();
     if (_timeup_draw) {
-      DrawScreen();
       _last_time_refresh = timer->ReadMainCnt();
     } else {
-      DrawScreen();
       _needsRedraw = false;
     }
   }

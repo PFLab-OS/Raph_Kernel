@@ -36,9 +36,9 @@ extern "C" void entry();
 
 void ApicCtrl::Init() {
   // see intel64 manual vol3 10.12.1 (Detecting and Enabling x2APIC Mode)
-  uint32_t feature;
-  get_cpuid(1, 0, "c", feature);
-  if ((feature & (1 << 21)) != 0) {
+  uint32_t regs[4];
+  get_cpuid(1, 0, regs);
+  if ((regs[2] & (1 << 21)) != 0) {
     // enable x2APIC
     uint64_t msr = x86::rdmsr(Lapic::kIa32ApicBaseMsr);
     if (!(msr & Lapic::kApicGlobalEnableFlag)) {
@@ -90,7 +90,7 @@ void ApicCtrl::Setup() {
   }
 
   _lapic->_ncpu = ncpu;
-  _lapic->_apic_info = new Lapic::ApicInfo[ncpu];
+  Lapic::ApicInfo apic_info[ncpu];
 
   if (ioapic_num == 0) {
     kernel_panic("ApicCtrl", "No I/O APIC controller");
@@ -113,7 +113,7 @@ void ApicCtrl::Setup() {
         if (_madt->lapicCtrlAddr != LapicX::kMmioBaseAddr) {
           kernel_panic("lapic", "unexpected local APIC control address");
         }
-        _lapic->_apic_info[ncpu].id = madtStLAPIC->apicId;
+        apic_info[ncpu].id = madtStLAPIC->apicId;
         ncpu++;
       }
       break;
@@ -123,7 +123,7 @@ void ApicCtrl::Setup() {
         if ((madt->flags & kMadtLapicFlagLapicEnable) == 0) {
           break;
         }
-        _lapic->_apic_info[ncpu].id = madt->apic_id;
+        apic_info[ncpu].id = madt->apic_id;
         ncpu++;
       }
       break;
@@ -138,6 +138,9 @@ void ApicCtrl::Setup() {
     }
     offset += madtSt->length;
   }
+
+  _lapic->_apic_info = new Lapic::ApicInfo[ncpu];
+  memcpy(_lapic->_apic_info, apic_info, sizeof(Lapic::ApicInfo[ncpu]));
 
   _setup = true;
 }
@@ -261,9 +264,9 @@ void ApicCtrl::Lapic::SendIpi(uint32_t destid) {
 
 void ApicCtrl::LapicX2::SetupAp() {
   // see intel64 manual vol3 10.12.1 (Detecting and Enabling x2APIC Mode)
-  uint32_t feature;
-  get_cpuid(1, 0, "c", feature);
-  if ((feature & (1 << 21)) != 0) {
+  uint32_t regs[4];
+  get_cpuid(1, 0, regs);
+  if ((regs[2] & (1 << 21)) != 0) {
     // enable x2APIC
     uint64_t msr = x86::rdmsr(Lapic::kIa32ApicBaseMsr);
     if (!(msr & Lapic::kApicGlobalEnableFlag)) {
