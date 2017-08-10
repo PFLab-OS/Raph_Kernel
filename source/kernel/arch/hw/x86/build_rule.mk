@@ -1,4 +1,4 @@
-include common.mk
+include ../../../../../common.mk
 
 MOUNT_DIR = /mnt/Raph_Kernel
 IMAGE = /tmp/$(IMAGEFILE)
@@ -19,13 +19,15 @@ endif
 
 doc: export PROJECT_NUMBER:=$(shell git rev-parse HEAD ; git diff-index --quiet HEAD || echo "(with uncommitted changes)")
 
-.PHONY: clean disk run image mount umount debugqemu showerror numerror doc
+.PHONY: clean all disk run image mount umount debugqemu showerror numerror doc
 
 default: image
 
 ###################################
 # for remote host (Vagrant)
 ###################################
+
+all: image
 
 run:
 	$(MAKE) qemuend
@@ -34,7 +36,7 @@ run:
 	$(MAKE) qemuend
 
 qemurun: image
-	sudo qemu-system-x86_64 -drive if=pflash,readonly,file=$(OVMF_DIR)OVMF_CODE.fd,format=raw -drive if=pflash,file=$(OVMF_DIR)OVMF_VARS.fd,format=raw -cpu qemu64 -smp 8 -machine q35 -clock hpet -monitor telnet:127.0.0.1:1235,server,nowait -vnc 0.0.0.0:0,password $(IMAGE)&
+	sudo qemu-system-x86_64 -drive if=pflash,readonly,file=$(OVMF_DIR)OVMF_CODE.fd,format=raw -drive if=pflash,file=$(OVMF_DIR)OVMF_VARS.fd,format=raw -cpu qemu64 -smp 8 -m 2G -machine q35 -clock hpet -monitor telnet:127.0.0.1:1235,server,nowait -vnc 0.0.0.0:0,password $(IMAGE)&
 #	sudo qemu-system-x86_64 -cpu qemu64,+x2apic -smp 8 -machine q35 -monitor telnet:127.0.0.1:1235,server,nowait -vnc 0.0.0.0:0,password -net nic -net bridge,br=br0 -drive id=disk,file=$(IMAGE),if=virtio -usb -usbdevice keyboard &
 #	sudo qemu-system-x86_64 -cpu qemu64,+x2apic -smp 8 -machine q35 -monitor telnet:127.0.0.1:1235,server,nowait -vnc 0.0.0.0:0,password -net nic -net bridge,br=br0 -drive id=disk,file=$(IMAGE),if=none -device ahci,id=ahci -device ide-drive,drive=disk,bus=ahci.0 &
 	sleep 0.2s
@@ -49,10 +51,13 @@ qemuend:
 $(BUILD_DIR)/script:
 	cp script $(BUILD_DIR)/script
 
+$(BUILD_DIR)/rump.bin:
+	cp rump.bin $(BUILD_DIR)/rump.bin
+
 $(BUILD_DIR)/init: $(INIT_FILE)
 	cp $(INIT_FILE) $(BUILD_DIR)/init
 
-bin_sub: $(BUILD_DIR)/script $(BUILD_DIR)/init
+bin_sub: $(BUILD_DIR)/script $(BUILD_DIR)/init $(BUILD_DIR)/rump.bin
 	$(MAKE_SUBDIR) ../
 
 bin:

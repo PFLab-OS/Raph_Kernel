@@ -40,9 +40,6 @@ void KernelStackCtrl::Init() {
   kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (PagingCtrl::kPageSize * 1)));
   kassert(!paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (PagingCtrl::kPageSize * 2)));
 
-  kassert(reinterpret_cast<StackInfo *>(reinterpret_cast<virt_addr>(&kKernelEndAddr) - PagingCtrl::kPageSize + 1) - 1 == GetCurrentStackInfoPtr());
-  kassert(GetCurrentStackInfoPtr()->magic == INITIAL_STACK_MAGIC);
-
   if (PagingCtrl::kPageSize < kStackSize) {
     // expand initial stack(1 page) to default stack size(4 page)
     int size = kStackSize - PagingCtrl::kPageSize;
@@ -58,12 +55,6 @@ void KernelStackCtrl::Init() {
 
 void KernelStackCtrl::InitFirstStack() {
   Locker locker(_lock);
-  StackInfo *sinfo = GetCurrentStackInfoPtr();
-  sinfo->magic = StackInfo::kMagic;
-  sinfo->tid = _next_tid;
-  sinfo->cpuid = cpu_ctrl->GetCpuId();
-  _next_tid++;
-
   _stack_area_top = reinterpret_cast<virt_addr>(&kKernelEndAddr) + 1 - (kStackSize + PagingCtrl::kPageSize * 2);
 }
 
@@ -73,7 +64,7 @@ virt_addr KernelStackCtrl::AllocThreadStack(CpuId cpuid) {
     Locker locker(_lock);
 
     _stack_area_top -= kStackSize + PagingCtrl::kPageSize * 2;
-    addr = _stack_area_top + kStackSize + PagingCtrl::kPageSize - sizeof(StackInfo);
+    addr = _stack_area_top + kStackSize + PagingCtrl::kPageSize;
   
     PhysAddr paddr;
     physmem_ctrl->Alloc(paddr, kStackSize);
@@ -81,23 +72,7 @@ virt_addr KernelStackCtrl::AllocThreadStack(CpuId cpuid) {
     bzero(reinterpret_cast<void *>(_stack_area_top + PagingCtrl::kPageSize), PagingCtrl::kPageSize);
   }
 
-  StackInfo *sinfo = GetStackInfoPtr(addr);
-  sinfo->magic = StackInfo::kMagic;
-  sinfo->tid = _next_tid;
-  sinfo->cpuid = cpuid;
-  _next_tid++;
-
   return addr;
-}
-
-void KernelStackCtrl::CopyThreadStackFromCurrent(virt_addr addr) {
-  StackInfo *info = GetStackInfoPtr(addr);
-  kassert(info->IsValidMagic());
-  StackInfo *current_info = GetCurrentStackInfoPtr();
-  kassert(current_info->IsValidMagic());
-  info->tid = current_info->tid;
-  info->flag = current_info->flag;
-  info->cpuid = current_info->cpuid;
 }
 
 void KernelStackCtrl::FreeThreadStack(virt_addr addr) {
@@ -113,12 +88,5 @@ virt_addr KernelStackCtrl::AllocIntStack(CpuId cpuid) {
   physmem_ctrl->Alloc(paddr, kStackSize);
   kassert(paging_ctrl->MapPhysAddrToVirtAddr(_stack_area_top + PagingCtrl::kPageSize, paddr, kStackSize, PDE_WRITE_BIT | PDE_USER_BIT, PTE_WRITE_BIT | PTE_GLOBAL_BIT | PTE_USER_BIT));
 
-
-  StackInfo *sinfo = GetStackInfoPtr(_stack_area_top + PagingCtrl::kPageSize);
-  sinfo->magic = StackInfo::kMagic;
-  sinfo->tid = _next_tid;
-  sinfo->cpuid = cpuid;
-  _next_tid++;
-
-  return _stack_area_top + kStackSize + PagingCtrl::kPageSize - sizeof(StackInfo);
+  return _stack_area_top + kStackSize + PagingCtrl::kPageSize;
 }

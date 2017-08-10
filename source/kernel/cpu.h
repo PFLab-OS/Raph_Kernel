@@ -28,6 +28,7 @@
 #include <mem/kstack.h>
 #include <_cpu.h>
 #include <apic.h>
+#include <gdt.h>
 
 enum class CpuPurpose {
   kNone = 0,
@@ -55,7 +56,7 @@ public:
 
 #include <mem/kstack.h>
 
-class CpuCtrl : public CpuCtrlInterface {
+class CpuCtrl final : public CpuCtrlInterface {
 public:
   CpuCtrl() {
   }
@@ -64,12 +65,11 @@ public:
     return _is_initialized;
   }
   virtual CpuId GetCpuId() override {
-    if (!KernelStackCtrl::IsInitialized()) {
-      kassert(apic_ctrl->GetCpuId() == 0);
-      CpuId cpuid(0);
+    if (!Gdt::IsInitializedPerCpuStruct()) {
+      CpuId cpuid(apic_ctrl->GetCpuId());
       return cpuid;
     }
-    return KernelStackCtrl::GetCtrl().GetCpuId();
+    return Gdt::GetCpuId();
   }
   virtual int GetHowManyCpus() override {
     return apic_ctrl->GetHowManyCpus();

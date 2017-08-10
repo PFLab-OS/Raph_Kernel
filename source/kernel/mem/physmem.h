@@ -99,14 +99,21 @@ class PhysmemCtrl {
   PhysmemCtrl();
   void Init();
   // Allocate,Free,Reserveでは、ページサイズに拡張したsizeを渡す事
-  void Alloc(PhysAddr &paddr, size_t size);
-  // TODO support these functions
-  // void Alloc(PhysAddr &paddr, size_t size, size_t align) {
-  //   AllocOption option = {{align}, nullptr};
-  //   AllocSub(paddr, size, option);
-  // }
+  void Alloc(PhysAddr &paddr, size_t size) {
+    kassert(_is_able_to_allocate);
+    AllocOption option = {1, false, nullptr};
+    AllocSub(paddr, size, option);
+  }
+  void Alloc(PhysAddr &paddr, size_t size, size_t align) {
+    AllocOption option = {align, false, nullptr};
+    AllocSub(paddr, size, option);
+  }
+  void AllocNonRecursive(PhysAddr &paddr, size_t size) {
+    AllocOption option = {1, true, nullptr};
+    AllocSub(paddr, size, option);
+  }
   // void Alloc(PhysAddr &paddr, size_t size, phys_addr start, phys_addr end) {
-  //   AllocOption option = {nullptr, {start, end}};
+  //   AllocOption option = {1, {start, end}};
   //   AllocSub(paddr, size, option);
   // }
   void Free(PhysAddr &paddr, size_t size);
@@ -129,9 +136,8 @@ class PhysmemCtrl {
   }
  private:
   struct AllocOption {
-    struct Align {
-      size_t val;
-    } *align;
+    size_t align;
+    bool non_recursive;
     struct Region {
       phys_addr start;
       phys_addr end;
@@ -152,12 +158,6 @@ class PhysmemCtrl {
   bool _is_able_to_allocate = false;
   Srat *_srat = nullptr;
 };
-
-inline void PhysmemCtrl::Alloc(PhysAddr &paddr, size_t size) {
-  kassert(_is_able_to_allocate);
-  AllocOption option = {nullptr, nullptr};
-  AllocSub(paddr, size, option);
-}
 
 template <typename ptr> static inline phys_addr ptr2physaddr(ptr *addr) {
   return reinterpret_cast<phys_addr>(addr);

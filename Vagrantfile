@@ -31,7 +31,7 @@ Vagrant.configure(2) do |config|
     if ENV['VAGRANT_MEMORY']
       vb.memory = ENV['VAGRANT_MEMORY']
     else
-      vb.memory = 2048
+      vb.memory = 4096
     end
     vb.cpus = 2
     vb.customize [
@@ -44,8 +44,8 @@ Vagrant.configure(2) do |config|
       "--ioapic", "on",
       "--pae", "on",
       "--paravirtprovider", "kvm",
-      "--natdnsproxy1", "off",
-      "--natdnshostresolver1", "off",
+      "--natdnsproxy1", "on",
+      "--natdnshostresolver1", "on",
     ]
     vb.customize [
       "guestproperty", "set", :id,

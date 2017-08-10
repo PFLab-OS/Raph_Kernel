@@ -79,6 +79,8 @@ void PhysmemCtrl::AllocSub(PhysAddr &paddr, size_t size, PhysmemCtrl::AllocOptio
   kassert(_is_initialized);
   kassert(size > 0);
   kassert(size % PagingCtrl::kPageSize == 0);
+  // non_recursive requires no virtual memory allocation
+  assert(!option.non_recursive || (option.align == 1));
   _alloc_lock = false;
   phys_addr allocated_addr = 0;
   AllocatedArea *allocated_area = nullptr;
@@ -91,16 +93,24 @@ void PhysmemCtrl::AllocSub(PhysAddr &paddr, size_t size, PhysmemCtrl::AllocOptio
           allocated_area->next->start_addr == allocated_area->end_addr) {
         fraged_area = allocated_area;
       }
-      if (allocated_area->next->start_addr - allocated_area->end_addr
+      if (allocated_area->next->start_addr - alignUp(allocated_area->end_addr, option.align)
           >= static_cast<phys_addr>(size)) {
-        allocated_addr = allocated_area->end_addr;
         break;
       }
       allocated_area = allocated_area->next;
     }
-    allocated_addr = allocated_area->end_addr;
-
-    allocated_area->end_addr += size;
+    
+    if (alignUp(allocated_area->end_addr, option.align) != allocated_area->end_addr) {
+      allocated_addr = alignUp(allocated_area->end_addr, option.align);
+      AllocatedArea *newarea = _allocated_area_buffer.Alloc();
+      newarea->next = allocated_area->next;
+      allocated_area->next = newarea;
+      newarea->start_addr = allocated_addr;
+      newarea->end_addr = allocated_addr + size;
+    } else {
+      allocated_addr = allocated_area->end_addr;
+      allocated_area->end_addr += size;
+    }
 
     if (allocated_area->end_addr >= multiboot_ctrl->GetPhysMemoryEnd()) {
       kernel_panic("PhysmemCtrl", "no physical memory");

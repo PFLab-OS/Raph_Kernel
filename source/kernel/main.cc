@@ -37,6 +37,7 @@
 #include <measure.h>
 #include <mem/kstack.h>
 #include <elf.h>
+#include <syscall.h>
 
 #include <dev/hpet.h>
 #include <dev/pci.h>
@@ -762,14 +763,6 @@ static void load_script(sptr<LoadContainer> container_) {
   task_ctrl->RegisterCallout(callout_, 10);
 }
 
-static void load_elf(uptr<Array<uint8_t>> buf_) {
-  auto callout_ = make_sptr(new Callout);
-  callout_->Init(make_uptr(new Function2<wptr<Callout>, uptr<Array<uint8_t>>>([](wptr<Callout> callout, uptr<Array<uint8_t>> buf){
-          ElfLoader::Load(buf->GetRawPtr());
-        }, make_wptr(callout_), buf_)));
-  task_ctrl->RegisterCallout(callout_, 10);
-}
-
 static void load(int argc, const char *argv[]) {
   if (argc != 2) {
     gtty->Printf("invalid argument.\n");
@@ -778,7 +771,31 @@ static void load(int argc, const char *argv[]) {
   if (strcmp(argv[1], "script.sh") == 0) {
     load_script(make_sptr(new LoadContainer(multiboot_ctrl->LoadFile(argv[1]))));
   } else if (strcmp(argv[1], "test.elf") == 0) {
-    load_elf(multiboot_ctrl->LoadFile(argv[1]));
+    auto buf_ = multiboot_ctrl->LoadFile(argv[1]);
+    auto callout_ = make_sptr(new Callout);
+    callout_->Init(make_uptr(new Function2<wptr<Callout>, uptr<Array<uint8_t>>>([](wptr<Callout> callout, uptr<Array<uint8_t>> buf){
+            Loader loader;
+            ElfObject obj(loader, buf->GetRawPtr());
+            if (obj.Init() != BinObjectInterface::ErrorState::kOk) {
+              gtty->Printf("error while loading app\n");
+            } else {
+              obj.Execute();
+            }
+          }, make_wptr(callout_), buf_)));
+    task_ctrl->RegisterCallout(callout_, 10);
+  } else if (strcmp(argv[1], "rump.bin") == 0) {
+    auto buf_ = multiboot_ctrl->LoadFile(argv[1]);
+    auto callout_ = make_sptr(new Callout);
+    callout_->Init(make_uptr(new Function2<wptr<Callout>, uptr<Array<uint8_t>>>([](wptr<Callout> callout, uptr<Array<uint8_t>> buf){
+            Ring0Loader loader;
+            RaphineRing0AppObject obj(loader, buf->GetRawPtr());
+            if (obj.Init() != BinObjectInterface::ErrorState::kOk) {
+              gtty->Printf("error while loading app\n");
+            } else {
+              obj.Execute();
+            }
+          }, make_wptr(callout_), buf_)));
+    task_ctrl->RegisterCallout(callout_, 10);
   } else {
     gtty->Printf("invalid argument.\n");
     return;
@@ -912,6 +929,8 @@ extern "C" int main() {
   AttachDevices<PciCtrl, LegacyKeyboard, Device>();
   
   // arp_table->Setup();
+
+  SystemCallCtrl::Init();
 
   gtty->Printf("\n\n[kernel] info: initialization completed\n");
 

@@ -90,7 +90,7 @@ void ApicCtrl::Setup() {
   }
 
   _lapic->_ncpu = ncpu;
-  _lapic->_apic_info = new Lapic::ApicInfo[ncpu];
+  Lapic::ApicInfo apic_info[ncpu];
 
   if (ioapic_num == 0) {
     kernel_panic("ApicCtrl", "No I/O APIC controller");
@@ -113,7 +113,7 @@ void ApicCtrl::Setup() {
         if (_madt->lapicCtrlAddr != LapicX::kMmioBaseAddr) {
           kernel_panic("lapic", "unexpected local APIC control address");
         }
-        _lapic->_apic_info[ncpu].id = madtStLAPIC->apicId;
+        apic_info[ncpu].id = madtStLAPIC->apicId;
         ncpu++;
       }
       break;
@@ -123,7 +123,7 @@ void ApicCtrl::Setup() {
         if ((madt->flags & kMadtLapicFlagLapicEnable) == 0) {
           break;
         }
-        _lapic->_apic_info[ncpu].id = madt->apic_id;
+        apic_info[ncpu].id = madt->apic_id;
         ncpu++;
       }
       break;
@@ -138,6 +138,9 @@ void ApicCtrl::Setup() {
     }
     offset += madtSt->length;
   }
+
+  _lapic->_apic_info = new Lapic::ApicInfo[ncpu];
+  memcpy(_lapic->_apic_info, apic_info, sizeof(Lapic::ApicInfo[ncpu]));
 
   _setup = true;
 }
