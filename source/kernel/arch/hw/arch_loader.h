@@ -28,11 +28,21 @@
 #include <mem/paging.h>
 #include <cpu.h>
 #include <mem/kstack.h>
+#include <gdt.h>
 
-extern "C" int execute_elf_binary(FType f, uint64_t *stack_addr);
+extern "C" int execute_elf_binary(FType f, uint64_t *stack_addr, uint64_t cs, uint64_t ds);
+extern "C" int execute_kernel_elf_binary(FType f, uint64_t *stack_addr);
 
 class Loader : public LoaderInterface {
 public:
+  Loader() {
+  }
+  virtual void Map1GAddr(virt_addr start) override final {
+    assert((start % 0x40000000) == 0);
+    PhysAddr paddr;
+    physmem_ctrl->Alloc(paddr, 0x40000000, 0x40000000);
+    paging_ctrl->Map1GPageToVirtAddr(start, paddr, PML4E_WRITE_BIT | PML4E_USER_BIT, PDPTE_WRITE_BIT | PDPTE_GLOBAL_BIT | PDPTE_USER_BIT); // TODO check return value
+  }
   virtual void MapAddr(virt_addr start, virt_addr end) override final {
     start = PagingCtrl::RoundAddrOnPageBoundary(start);
     end = PagingCtrl::RoundUpAddrOnPageBoundary(end);
@@ -46,6 +56,7 @@ public:
     // TODO : 現在のカーネルスタックが破棄されるので、なんとかする
     uint64_t *stack_addr = reinterpret_cast<uint64_t *>(KernelStackCtrl::GetCtrl().AllocThreadStack(cpu_ctrl->GetCpuId()));
     gtty->Printf("stack addr: %llx\n", stack_addr);
+    gtty->Printf("entry point: %llx\n", f);
 
     int argc = 1;
     const char *str[1] = {"123"};
@@ -80,9 +91,21 @@ public:
   
     gtty->Flush();
   
-    int64_t rval = execute_elf_binary(f, stack_addr);
+    int64_t rval = ExecuteSub(f, stack_addr);
 
     gtty->Printf("return value: %d\n", rval); 
     gtty->Printf("%s Returned.\n", str);
+  }
+protected:
+  virtual int64_t ExecuteSub(FType f, uint64_t *stack_addr) {
+    return execute_elf_binary(f, stack_addr, USER_CS, USER_DS);
+  }
+private:
+};
+
+class Ring0Loader : public Loader {
+private:
+  virtual int64_t ExecuteSub(FType f, uint64_t *stack_addr) override {
+    return execute_kernel_elf_binary(f, stack_addr);
   }
 };

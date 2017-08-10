@@ -23,11 +23,15 @@
 #ifndef __RAPH_KERNEL_GDT_H__
 #define __RAPH_KERNEL_GDT_H__
 
-#define KERNEL_CS (0x10)
-#define KERNEL_DS (0x18)
-#define USER_DS   (0x23)
-#define USER_CS   (0x2B)
-#define TSS       (0x30)
+#define KERNEL_CS  (0x10)
+#define KERNEL_DS  (0x18)
+#define USER_DS    (0x23)
+#define USER_CS    (0x2B)
+#define KERNEL_CPU (0x30)
+#define TSS        (0x40)
+
+#define MSR_IA32_FS_BASE (0xC0000100)
+#define MSR_IA32_GS_BASE (0xC0000101)
 
 #ifndef ASM_FILE
 
@@ -35,11 +39,17 @@
 #include <raph.h>
 #include <mem/paging.h>
 #include <global.h>
-#include <cpu.h>
+#include <_cpu.h>
 
 class Gdt {
  public:
   void SetupProc();
+  static bool IsInitializedPerCpuStruct() {
+    return x86::rdmsr(MSR_IA32_FS_BASE) != 0;
+  }
+  static CpuId GetCpuId() {
+    return GetCurrentContextInfo()->cpuid;
+  }
  private:
   struct Tss {
     uint32_t reserved1;
@@ -70,7 +80,16 @@ class Gdt {
     uint16_t reserved6;
     uint16_t iomap;
   } __attribute__((packed));
-  static const int kGdtEntryNum = 8;
+  static const int kGdtEntryNum = 10;
+  struct ContextInfo {
+    ContextInfo *info; // self_reference
+    CpuId cpuid;
+  } __attribute__ ((aligned (8)));
+  static ContextInfo *GetCurrentContextInfo() {
+    ContextInfo *ptr;
+    asm volatile("movq %%fs:%1, %0":"=r"(ptr):"m"(*(ContextInfo *)__builtin_offsetof(ContextInfo, info)));
+    return ptr;
+  }
 };
 
 #endif // ! ASM_FILE

@@ -15,7 +15,7 @@ int main() {
   printf("=== user mode Raph_Kernel(experimental)\t===\n");
   
   FILE *fp;
-  const char *fname = "kernel";
+  const char *fname = "helloer-rumprun.bin";
   size_t file_size;
 
   fp = fopen( fname, "rb" );

@@ -25,22 +25,23 @@
 .text
 
   #define ASM_FILE
-  #include <gdt.h>
 
 .globl execute_elf_binary  
+.globl execute_kernel_elf_binary  
 execute_elf_binary:
-  mov $USER_DS, %edx
-  mov %dx, %ds
-  mov %dx, %es
-  mov %dx, %fs
-  mov %dx, %gs
-  movq $0, %rdx
-  pushq $USER_DS
+  mov %cx, %ds
+  mov %cx, %es
+  pushq %rcx
   pushq %rsi
-  pushq $USER_CS
+  pushq %rdx
   pushq %rdi
+  movq $0, %rdx
   lretq
   addq $64, %rsp
   popq %rbp
   ret
 
+execute_kernel_elf_binary:
+  mov %rsi, %rsp
+  jmp *%rdi
+  ret

@@ -31,7 +31,7 @@ Vagrant.configure(2) do |config|
     if ENV['VAGRANT_MEMORY']
       vb.memory = ENV['VAGRANT_MEMORY']
     else
-      vb.memory = 2048
+      vb.memory = 4096
     end
     vb.cpus = 2
     vb.customize [

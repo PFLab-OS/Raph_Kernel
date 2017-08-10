@@ -29,6 +29,7 @@ using FType = int (*)(int, char*[]);
 
 class LoaderInterface {
 public:
+  virtual void Map1GAddr(virt_addr start) = 0;
   virtual void MapAddr(virt_addr start, virt_addr end) = 0;
   virtual void Execute(FType f) = 0;
 };

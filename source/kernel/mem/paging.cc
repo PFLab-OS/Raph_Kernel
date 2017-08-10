@@ -228,3 +228,24 @@ bool PagingCtrl::Map2MPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr
   return true;
 }
 
+bool PagingCtrl::Map1GPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr pst_flag, phys_addr page_flag) {
+  Locker locker(_lock);
+  assert((paddr.GetAddr() % 0x40000000) == 0);
+  entry_type entry = _pml4t->entry[GetPML4TIndex(vaddr)];
+  if ((entry & PML4E_PRESENT_BIT) == 0) {
+    // まだメモリ上に存在していないPDPTに登録しようとしたので、PDPTをmallocしてから継続する。
+    PhysAddr tpaddr;
+    physmem_ctrl->Alloc(tpaddr, kPageSize);
+    bzero(reinterpret_cast<void *>(tpaddr.GetVirtAddr()), kPageSize);
+    entry = _pml4t->entry[GetPML4TIndex(vaddr)] = tpaddr.GetAddr() | pst_flag | PML4E_PRESENT_BIT;
+  }
+  PageTable *pdpt = reinterpret_cast<PageTable *>(p2v(GetPML4EMaskedAddr(entry)));
+  entry = pdpt->entry[GetPDPTIndex(vaddr)];
+  if (entry & PDPTE_PRESENT_BIT) {
+    // すでにマップされていたので中止
+    return false;
+  }
+  pdpt->entry[GetPDPTIndex(vaddr)] = paddr.GetAddr() | pst_flag | PDPTE_PRESENT_BIT | PDPTE_1GPAGE_BIT;
+  return true;
+}
+

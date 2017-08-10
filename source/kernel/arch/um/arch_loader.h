@@ -26,7 +26,13 @@
 
 class Loader : public LoaderInterface {
 public:
+  Loader(BinObjectInterface *bin) {
+  }
+  Loader() = delete;
   virtual void MapAddr(virt_addr start, virt_addr end) override final {
+    kernel_panic("Loader", "unable to map addr");
+  }
+  virtual void Map1GAddr(virt_addr start) override final {
     kernel_panic("Loader", "unable to map addr");
   }
   virtual void Execute(FType f) override final {

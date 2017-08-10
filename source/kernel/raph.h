@@ -28,13 +28,13 @@
 #include <libglobal.h>
 
 #ifdef __cplusplus
-template<class T>
-static inline T align(T val, int base) {
+template<class T, class U>
+static inline T align(T val, U base) {
   return (val / base) * base;
 }
 
-template<class T>
-static inline T alignUp(T val, int base) {
+template<class T, class U>
+static inline T alignUp(T val, U base) {
   return align(val + base - 1, base);
 }
 
