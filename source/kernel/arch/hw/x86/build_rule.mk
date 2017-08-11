@@ -69,6 +69,7 @@ $(BUILD_DIR)/fs.img: ../../../../../source/tool/mkfs README.md
 
 bin_sub: $(BUILD_DIR)/script $(BUILD_DIR)/init $(BUILD_DIR)/fs.img $(BUILD_DIR)/rump.bin
 	$(MAKE_SUBDIR) ../../../../kernel build
+	$(MAKE_SUBDIR) ../../../../testmodule build
 
 bin:
 	mkdir -p $(BUILD_DIR)
@@ -115,8 +116,9 @@ deldisk: umount
 
 clean: deldisk
 	-rm -rf $(BUILD_DIR)
-	$(MAKE_SUBDIR) ../../../kernel clean
-	$(MAKE_SUBDIR) ../../../tool clean
+	$(MAKE_SUBDIR) ../../../../kernel clean
+	$(MAKE_SUBDIR) ../../../../testmodule clean
+	$(MAKE_SUBDIR) ../../../../tool clean
 
 diskclean: deldisk clean
 
