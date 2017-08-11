@@ -13,7 +13,7 @@ Vagrant.configure(2) do |config|
   # Every Vagrant development environment requires a box. You can search for
   # boxes at https://atlas.hashicorp.com/search.
   config.vm.box = "Raphine/001a"
-  #config.vm.box_url = "https://drive.google.com/open?id=0BzboiC2yUBwnRG91cEpDWnNrMzA"
+  config.vm.box_url = "http://pf.is.s.u-tokyo.ac.jp/~awamoto/Raphine/001a.box"
   config.vm.box_check_update = false
 
   # base box
@@ -28,6 +28,7 @@ Vagrant.configure(2) do |config|
   # within the machine from a port on the host machine. In the example below,
   # accessing "localhost:8080" will access port 80 on the guest machine.
   config.vm.network "forwarded_port", guest: 5900, host: 15900 # for VNC
+  config.ssh.forward_x11 = true
 
   config.vm.provider :virtualbox do |vb|
     if ENV['VAGRANT_MEMORY']
@@ -49,7 +50,7 @@ Vagrant.configure(2) do |config|
       "--natdnsproxy1", "on",
       "--natdnshostresolver1", "on",
       "--usb", "on",
-      "--usbxhci", "on"
+      "--usbxhci", "on",
     ]
     vb.customize [
       "guestproperty", "set", :id,
