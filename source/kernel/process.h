@@ -126,6 +126,8 @@ private:
   Process* parent;
   sptr<TaskWithStack> task;
   ProcessStatus status = ProcessStatus::EMBRYO;
+  Process* next;
+  Process* prev;
 };
 
 
@@ -134,9 +136,11 @@ class ProcessCtrl {
   public:
     void Init();
     Process* CreateProcess();
-    Process* CreateFirstProcess();
+    Process* CreateFirstProcess(Process*);
     Process* GetNextExecProcess();
-    Process* GetCurrentProcess();
+    Process* GetCurrentExecProcess() {
+      return current_exec_process;
+    }
 
 
     void SetStatus(Process* p,ProcessStatus _status) {
@@ -151,22 +155,24 @@ class ProcessCtrl {
     void HaltProcess(Process*);
 
   private:
-    Process* current_process = nullptr;
+    Process* current_exec_process = nullptr;
     SpinLock table_lock;
 
     //リンクリストで実装する
     class ProcessTable { 
     public:
-      void Init();
+      Process* Init();
       Process* AllocProcess();
+      void FreeProcess(Process*);
 
       Process* GetNextProcess();
 
     private:
       const static int max_process = 0x10;
-      Process processes[max_process];
+      //Process* list_head = nullptr;
+      //Process processes[max_process];
       pid_t next_pid = 1;
-      int current_process = 0;
+      Process* current_process = nullptr;
 
 
     } process_table;

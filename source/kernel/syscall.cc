@@ -165,7 +165,7 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
       gtty->Printf("user program called exit\n");
       gtty->Flush();
 
-      Process::Exit(process_ctrl->GetCurrentProcess());
+      Process::Exit(process_ctrl->GetCurrentExecProcess());
 
       while(true) {asm volatile("hlt;");}
     }
@@ -173,7 +173,7 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
     {
       gtty->Printf("user program called context switch\n");
       gtty->Flush();
-      Process* p = process_ctrl->GetCurrentProcess();
+      Process* p = process_ctrl->GetCurrentExecProcess();
       uint64_t stack_addr = syscall_handler_stack;
 
       //save contexts

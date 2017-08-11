@@ -23,6 +23,10 @@
 
 //TODO:プロセスが死んだ後処理
 //TODO:ELFのロードを別のクラスで行う
+//TODO:確保した物理メモリの開放
+
+//procmem_ctrlすでに一部作っていたので，残しています
+//問題があるようでしたら消して必要なコードをProcessクラス内に書きます
 
 
 #include <elfhead.h>
@@ -63,7 +67,6 @@ void Process::Exit(Process* p) {
 }
 
 void Process::ProcmemCtrl::Init() {
-  //pml4t = reinterpret_cast<PageTable*>(virtmem_ctrl->Alloc(sizeof(PageTable)));
   kassert(pml4t);
   paging_ctrl->InitProcessMemoryPml4t(pml4t);
 }
@@ -130,8 +133,8 @@ void ProcessCtrl::Init() {
   {
 
     Locker locker(table_lock);
-    process_table.Init();
-    CreateFirstProcess();
+    Process* p = process_table.Init();
+    CreateFirstProcess(p);
   }
 
   auto ltask_ = make_sptr(new Task);
@@ -157,15 +160,14 @@ void ProcessCtrl::Init() {
 
 }
 
-//ここでスケジューリングをする
+//TODO:ここでスケジューリングをする
 Process* ProcessCtrl::GetNextExecProcess() {
 
   {
     Locker locker(table_lock);
-    current_process = process_table.GetNextProcess();
+    current_exec_process = process_table.GetNextProcess();
   }
-  return current_process;
-
+  return current_exec_process;
 }
 
 //実行可能になったプロセスを返す関数
@@ -195,8 +197,7 @@ Process* ProcessCtrl::CreateProcess() {
 
 
 //すべての親となるプロセスを生成する
-Process* ProcessCtrl::CreateFirstProcess() {
-  Process* process = process_table.AllocProcess();
+Process* ProcessCtrl::CreateFirstProcess(Process* process) {
   if(process == nullptr) {
     kernel_panic("ProcessCtrl","Could not alloc first process space.");
   }
@@ -204,7 +205,6 @@ Process* ProcessCtrl::CreateFirstProcess() {
 
   process->SetKernelJobFunc(make_uptr(new Function2<sptr<TaskWithStack>,Process*>([](sptr<TaskWithStack> task,Process* p) {
 
-    paging_ctrl->InitProcessMemoryPml4t(p->procmem_ctrl.pml4t);
     paging_ctrl->SwitchToProcmemSpace(p->procmem_ctrl.pml4t);
 
     //初期化用の処理
@@ -352,6 +352,8 @@ Process* ProcessCtrl::CreateFirstProcess() {
 
     while(true) {
       process_ctrl->SetStatus(p,ProcessStatus::RUNNABLE);
+      paging_ctrl->SwitchToKermemSpace();
+
       //cr3の変更は成功していて、適切にマップできていないだけ？
 
       gtty->Printf("Wait\n");
@@ -359,11 +361,9 @@ Process* ProcessCtrl::CreateFirstProcess() {
 
       task->Wait();
 
-      paging_ctrl->InitProcessMemoryPml4t(p->procmem_ctrl.pml4t);
       paging_ctrl->SwitchToProcmemSpace(p->procmem_ctrl.pml4t);
       process_ctrl->SetStatus(p,ProcessStatus::RUNNING);
       Process::Resume(p);
-      paging_ctrl->SwitchToKermemSpace();
 
     }
 
@@ -490,45 +490,54 @@ void Process::Resume(Process* _p) {
 
 
 
-void ProcessCtrl::ProcessTable::Init() {
-  for(int i= 0;i < max_process;i++) {
-    processes[i].status = ProcessStatus::UNUSED;
-  }
+Process* ProcessCtrl::ProcessTable::Init() {
+  Process* p = new Process();
+  p->status = ProcessStatus::EMBRYO;
+  p->pid = next_pid++;
+  p->next = p->prev = p;
+
+  current_process = p;
+
+  return p;
+
 }
 
 Process* ProcessCtrl::ProcessTable::AllocProcess() { 
-  for(int i= 0;i < max_process;i++) {
-    if(processes[i].status == ProcessStatus::UNUSED) {
-      processes[i].status = ProcessStatus::EMBRYO;
-      processes[i].pid = next_pid++;
-      return &(processes[i]);
-    }
-  }
-  return nullptr;
+  Process* p = new Process();
+  p->status = ProcessStatus::EMBRYO;
+  p->pid = next_pid++;
+
+  Process* cp = current_process;
+
+  p->next = cp->next;
+  p->prev = current_process;
+  cp->next = p;
+  p->prev = p;
+
+  return p;
+}
+
+void ProcessCtrl::ProcessTable::FreeProcess(Process* p) {
+  p->prev = p->next;
+  p->next->prev = p->prev;
+  delete p;
 }
 
 //TODO:デバッグ用簡易実装
 //どんな実装にするのか考える
 Process* ProcessCtrl::ProcessTable::GetNextProcess() {
   while(true) { 
-    for(int i = current_process;i < max_process;i++) {
-      if(processes[i].status != ProcessStatus::UNUSED) {
-        current_process = i;
-        return &(processes[i]);
-      }
-    }
+    Process* res = current_process->next;
+    current_process = res;
+    return res;
   }
   return nullptr;
 }
 
-Process* ProcessCtrl::GetCurrentProcess() {
-  return current_process;
-}
 
 //TODO:デバッグ用簡易実装
 //どうやって参照を消すか？
 void ProcessCtrl::HaltProcess(Process* p) {
   p->GetKernelJob()->Wait();
-
 }
 
