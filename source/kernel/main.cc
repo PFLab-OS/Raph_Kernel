@@ -37,6 +37,7 @@
 #include <measure.h>
 #include <mem/kstack.h>
 #include <elf.h>
+#include <syscall.h>
 
 #include <dev/hpet.h>
 #include <dev/pci.h>
@@ -128,9 +129,9 @@ static void lspci(int argc, const char* argv[]) {
     }
     for (int j = mcfg->list[i].pci_bus_start; j <= mcfg->list[i].pci_bus_end; j++) {
       for (int k = 0; k < 32; k++) {
-        int maxf = ((pci_ctrl->ReadReg<uint16_t>(j, k, 0, PciCtrl::kHeaderTypeReg) & PciCtrl::kHeaderTypeRegFlagMultiFunction) != 0) ? 7 : 0;
+        int maxf = ((pci_ctrl->ReadPciReg<uint16_t>(j, k, 0, PciCtrl::kHeaderTypeReg) & PciCtrl::kHeaderTypeRegFlagMultiFunction) != 0) ? 7 : 0;
         for (int l = 0; l <= maxf; l++) {
-          if (pci_ctrl->ReadReg<uint16_t>(j, k, l, PciCtrl::kVendorIDReg) == 0xffff) {
+          if (pci_ctrl->ReadPciReg<uint16_t>(j, k, l, PciCtrl::kVendorIDReg) == 0xffff) {
             continue;
           }
           table.Search(j, k, l, search);
@@ -290,15 +291,28 @@ public:
     arp_table.PushBack(ip_addr, hw_addr, dev);
   }
   NetDev *Search(uint32_t ip_addr, uint8_t *hw_addr) {
+    bool on_network = false;
+    NetDev *gateway = nullptr;
     auto iter = arp_table.GetBegin();
     while(!iter.IsNull()) {
       if ((*iter)->ip_addr == ip_addr) {
         memcpy(hw_addr, (*iter)->hw_addr, 6);
         return (*iter)->dev;
       }
+      if (((*iter)->ip_addr & 0x00ffffff) == (ip_addr & 0x00ffffff)) {
+        on_network = true;
+      }
+      if (((*iter)->ip_addr & 0xff000000) == 0x01000000) {
+        memcpy(hw_addr, (*iter)->hw_addr, 6);
+        gateway = (*iter)->dev;
+      }
       iter = iter->GetNext();
     }
-    return nullptr;
+    if (on_network) {
+      return nullptr;
+    } else {
+      return gateway;
+    }
   }
 private:
   struct ArpEntry {
@@ -752,14 +766,6 @@ static void load_script(sptr<LoadContainer> container_) {
   task_ctrl->RegisterCallout(callout_, 10);
 }
 
-static void load_elf(uptr<Array<uint8_t>> buf_) {
-  auto callout_ = make_sptr(new Callout);
-  callout_->Init(make_uptr(new Function2<wptr<Callout>, uptr<Array<uint8_t>>>([](wptr<Callout> callout, uptr<Array<uint8_t>> buf){
-          ElfLoader::Load(buf->GetRawPtr());
-        }, make_wptr(callout_), buf_)));
-  task_ctrl->RegisterCallout(callout_, 10);
-}
-
 static void load(int argc, const char *argv[]) {
   if (argc != 2) {
     gtty->Printf("invalid argument.\n");
@@ -768,7 +774,31 @@ static void load(int argc, const char *argv[]) {
   if (strcmp(argv[1], "script.sh") == 0) {
     load_script(make_sptr(new LoadContainer(multiboot_ctrl->LoadFile(argv[1]))));
   } else if (strcmp(argv[1], "test.elf") == 0) {
-    load_elf(multiboot_ctrl->LoadFile(argv[1]));
+    auto buf_ = multiboot_ctrl->LoadFile(argv[1]);
+    auto callout_ = make_sptr(new Callout);
+    callout_->Init(make_uptr(new Function2<wptr<Callout>, uptr<Array<uint8_t>>>([](wptr<Callout> callout, uptr<Array<uint8_t>> buf){
+            Loader loader;
+            ElfObject obj(loader, buf->GetRawPtr());
+            if (obj.Init() != BinObjectInterface::ErrorState::kOk) {
+              gtty->Printf("error while loading app\n");
+            } else {
+              obj.Execute();
+            }
+          }, make_wptr(callout_), buf_)));
+    task_ctrl->RegisterCallout(callout_, 10);
+  } else if (strcmp(argv[1], "rump.bin") == 0) {
+    auto buf_ = multiboot_ctrl->LoadFile(argv[1]);
+    auto callout_ = make_sptr(new Callout);
+    callout_->Init(make_uptr(new Function2<wptr<Callout>, uptr<Array<uint8_t>>>([](wptr<Callout> callout, uptr<Array<uint8_t>> buf){
+            Ring0Loader loader;
+            RaphineRing0AppObject obj(loader, buf->GetRawPtr());
+            if (obj.Init() != BinObjectInterface::ErrorState::kOk) {
+              gtty->Printf("error while loading app\n");
+            } else {
+              obj.Execute();
+            }
+          }, make_wptr(callout_), buf_)));
+    task_ctrl->RegisterCallout(callout_, 10);
   } else {
     gtty->Printf("invalid argument.\n");
     return;
@@ -902,6 +932,8 @@ extern "C" int main() {
   AttachDevices<PciCtrl, LegacyKeyboard, Ramdisk, Device>();
   
   // arp_table->Setup();
+
+  SystemCallCtrl::Init();
 
   gtty->Printf("\n\n[kernel] info: initialization completed\n");
 

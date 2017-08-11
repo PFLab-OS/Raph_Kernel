@@ -16,32 +16,70 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
- * Author: hikalium
+ * Author: hikalium, Liva
  * 
  */
 
-#ifndef __RAPH_LIB_ELF_H__
-#define __RAPH_LIB_ELF_H__
+#pragma once
 
-#include <boot/multiboot2.h>
 #include <elfhead.h>
+#include <loader.h>
+#include <ptr.h>
+#include <array.h>
+#include <bin.h>
 
-class ElfLoader {
+class ElfObject : public BinObjectInterface {
 public:
-  static void Load(const void *ptr);
-private:
-  static bool IsElf(const Elf64_Ehdr *ehdr) {
-    return ehdr->e_ident[0] == ELFMAG0 && ehdr->e_ident[1] == ELFMAG1 && ehdr->e_ident[2] == ELFMAG2 && ehdr->e_ident[3] == ELFMAG3;
+  ElfObject(Loader &loader, const void *ptr) : _head(reinterpret_cast<const uint8_t *>(ptr)), _ehdr(reinterpret_cast<const Elf64_Ehdr *>(ptr)), _membuffer(nullptr), _loader(loader) {
   }
-  static bool IsElf64(const Elf64_Ehdr *ehdr) {
-    return ehdr->e_ident[EI_CLASS] == ELFCLASS64;
+  ElfObject() = delete;
+  virtual ~ElfObject() {
+    free(_membuffer);
   }
-  static bool IsOsabiSysv(const Elf64_Ehdr *ehdr) {
-    return ehdr->e_ident[EI_OSABI] == ELFOSABI_SYSV;
+  virtual ErrorState Init() override __attribute__((warn_unused_result));
+  void Execute() {
+    if (_entry != nullptr) {
+      _loader.Execute(_entry);
+    }
   }
-  static bool IsOsabiGnu(const Elf64_Ehdr *ehdr) {
-    return ehdr->e_ident[EI_OSABI] == ELFOSABI_GNU;
+protected:
+  bool IsElf() {
+    return _ehdr->e_ident[0] == ELFMAG0 && _ehdr->e_ident[1] == ELFMAG1 && _ehdr->e_ident[2] == ELFMAG2 && _ehdr->e_ident[3] == ELFMAG3;
   }
+  bool IsElf64() {
+    return _ehdr->e_ident[EI_CLASS] == ELFCLASS64;
+  }
+  bool IsOsabiSysv() {
+    return _ehdr->e_ident[EI_OSABI] == ELFOSABI_SYSV;
+  }
+  bool IsOsabiGnu() {
+    return _ehdr->e_ident[EI_OSABI] == ELFOSABI_GNU;
+  }
+  virtual ErrorState LoadMemory(bool page_mapping);
+  const uint8_t *_head;
+  const Elf64_Ehdr *_ehdr;
+  uint8_t *_membuffer;
+  Loader &_loader;
+  FType _entry = nullptr;
+  static const bool kDebugOutput = false;
 };
 
-#endif // __RAPH_LIB_ELF_H__
+class RaphineRing0AppObject : public ElfObject {
+public:
+  RaphineRing0AppObject(Loader &loader, const void *ptr) : ElfObject(loader, ptr) {
+  }
+  RaphineRing0AppObject() = delete;
+  virtual ErrorState Init() override __attribute__((warn_unused_result));
+private:
+  virtual ErrorState LoadMemory(bool page_mapping) override;
+  struct Info {
+    uint64_t version;
+    void (*putc)(char c);
+  };
+  static void putc(char c);
+  static Info _info;
+  static const int kInfoSize = 4096;
+  static const uint64_t kMajorVersion = 1;
+  static const uint64_t kMinorVersion = 0;
+  static const uint64_t kVersion = (kMajorVersion << 32) + kMinorVersion;
+};

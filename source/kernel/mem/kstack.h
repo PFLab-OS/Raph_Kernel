@@ -23,8 +23,6 @@
 #ifndef __RAPH_KERNEL_MEM_KSTACK_H__
 #define __RAPH_KERNEL_MEM_KSTACK_H__
 
-#define INITIAL_STACK_MAGIC 0x1234567890ABCDEF
-
 #ifndef ASM_FILE
 
 #include <raph.h>
@@ -35,11 +33,6 @@
 #include <_cpu.h>
 
 class KernelStackCtrl;
-class ThreadId {
-private:
-  friend KernelStackCtrl;
-  uint64_t _tid;
-};
 
 class KernelStackCtrl {
 public:
@@ -51,45 +44,12 @@ public:
     kassert(_is_initialized);
     return _ctrl;
   }
-  static void GetCurrentThreadId(ThreadId &tid) {
-    StackInfo *sinfo = GetCurrentStackInfoPtr();
-    kassert(sinfo->IsValidMagic());
-    tid._tid = sinfo->tid;
-  }
-  static CpuId GetCpuId() {
-    StackInfo *sinfo = GetCurrentStackInfoPtr();
-    kassert(sinfo->IsValidMagic());
-    return sinfo->cpuid;
-  }
   virt_addr AllocIntStack(CpuId cpuid);
   virt_addr AllocThreadStack(CpuId cpuid);
   void FreeThreadStack(virt_addr addr);
-  void CopyThreadStackFromCurrent(virt_addr addr);
   static const int kStackSize = PagingCtrl::kPageSize * 4;
 private:
-  struct StackInfo {
-    uint64_t magic;
-    uint64_t flag;
-    uint64_t tid;
-    CpuId cpuid;
-    bool IsValidMagic() {
-      return magic == kMagic;
-    }
-    static const uint64_t kMagic = 0xABCDEF0123456789;
-  };
-
   KernelStackCtrl() {
-  }
-  static StackInfo* GetCurrentStackInfoPtr() {
-    virt_addr rsp;
-    asm volatile("movq %%rsp, %0": "=r"(rsp));
-    return GetStackInfoPtr(rsp);
-  }
-  static StackInfo* GetStackInfoPtr(virt_addr rsp) {
-    int stack_block_size = kStackSize + PagingCtrl::kPageSize * 2;
-    extern int kKernelEndAddr;
-    virt_addr stack_top = reinterpret_cast<virt_addr>(&kKernelEndAddr) + 1 - (((reinterpret_cast<virt_addr>(&kKernelEndAddr) + 1 - rsp) / stack_block_size) * stack_block_size + PagingCtrl::kPageSize);
-    return reinterpret_cast<StackInfo *>(stack_top) - 1;
   }
   // initialize first kernel stack
   void InitFirstStack();
@@ -97,7 +57,6 @@ private:
   static bool _is_initialized;
   static KernelStackCtrl _ctrl;
   
-  uint64_t _next_tid = 0;
   virt_addr _stack_area_top;
 
   SpinLock _lock;

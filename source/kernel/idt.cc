@@ -210,7 +210,7 @@ void Idt::HandlePageFault(Regs *rs, void *arg) {
     gtty->ErrPrintf("\nwhile trying %s access on addr: 0x%llx (%spresent)",
       rs->ecode & ECodeRWBit ? "write" : "read", addr, rs->ecode & ECodePBit ? "" : "not ");
     gtty->ErrPrintf("\nfrom %s mode", (rs->ecode & ECodeSUBit) ? "user" : "kernel");
-    gtty->ErrPrintf("\nrip: %llx rbp: %llx", rs->rip, rs->rbp);
+    gtty->ErrPrintf("\nrip: %llx rsp: %llx rbp: %llx", rs->rip, rs->rsp, rs->rbp);
     gtty->ErrPrintf("\nrax: %llx rbx:%llx rcx:%llx rdx:%llx", rs->rax, rs->rbx, rs->rcx, rs->rdx);
     gtty->ErrPrintf("\nrsi:%llx r13: %llx cs:%x ss:%x ecode:%llx", rs->rsi, rs->r13, rs->cs, rs->ss, rs->ecode);
     uint64_t pml4e, pdpte, pde, pte;
@@ -232,7 +232,7 @@ void Idt::HandleGeneralProtectionFault(Regs *rs, void *arg) {
     int cpuid = cpu_ctrl->GetCpuId().GetRawId();
     gtty->DisablePrint();
     gtty->ErrPrintf("\nGeneral Protection fault (INT 0x%x) occured at cpuid %d!", rs->n, cpuid);
-    gtty->ErrPrintf("\nrip: %llx rbp: %llx", rs->rip, rs->rbp);
+    gtty->ErrPrintf("\nrip: %llx rsp:%llx rbp: %llx", rs->rip, rs->rsp, rs->rbp);
     gtty->ErrPrintf("\nrax: %llx rbx:%llx rcx:%llx rdx:%llx", rs->rax, rs->rbx, rs->rcx, rs->rdx);
     gtty->ErrPrintf("\nrsi:%llx r13: %llx cs:%x ss:%x ecode:%llx", rs->rsi, rs->r13, rs->cs, rs->ss, rs->ecode);
     gtty->ErrPrintf("\n");

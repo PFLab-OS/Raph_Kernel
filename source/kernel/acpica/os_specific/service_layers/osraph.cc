@@ -372,15 +372,15 @@ extern "C" {
     kassert(pci_ctrl != nullptr);
     switch(Width) {
     case 8: {
-      *(reinterpret_cast<uint8_t *>(Value)) = pci_ctrl->ReadReg<uint8_t>(PciId->Bus, PciId->Device, PciId->Function, Register);
+      *(reinterpret_cast<uint8_t *>(Value)) = pci_ctrl->ReadPciReg<uint8_t>(PciId->Bus, PciId->Device, PciId->Function, Register);
       break;
     }
     case 16: {
-      *(reinterpret_cast<uint16_t *>(Value)) = pci_ctrl->ReadReg<uint16_t>(PciId->Bus, PciId->Device, PciId->Function, Register);
+      *(reinterpret_cast<uint16_t *>(Value)) = pci_ctrl->ReadPciReg<uint16_t>(PciId->Bus, PciId->Device, PciId->Function, Register);
       break;
     }
     case 32: {
-      *(reinterpret_cast<uint32_t *>(Value)) = pci_ctrl->ReadReg<uint32_t>(PciId->Bus, PciId->Device, PciId->Function, Register);
+      *(reinterpret_cast<uint32_t *>(Value)) = pci_ctrl->ReadPciReg<uint32_t>(PciId->Bus, PciId->Device, PciId->Function, Register);
       break;
     }
     default: {
@@ -395,15 +395,15 @@ extern "C" {
     kassert(pci_ctrl != nullptr);
     switch(Width) {
     case 8: {
-      pci_ctrl->WriteReg<uint8_t>(PciId->Bus, PciId->Device, PciId->Function, Register, Value);
+      pci_ctrl->WritePciReg<uint8_t>(PciId->Bus, PciId->Device, PciId->Function, Register, Value);
       break;
     }
     case 16: {
-      pci_ctrl->WriteReg<uint16_t>(PciId->Bus, PciId->Device, PciId->Function, Register, Value);
+      pci_ctrl->WritePciReg<uint16_t>(PciId->Bus, PciId->Device, PciId->Function, Register, Value);
       break;
     }
     case 32: {
-      pci_ctrl->WriteReg<uint32_t>(PciId->Bus, PciId->Device, PciId->Function, Register, Value);
+      pci_ctrl->WritePciReg<uint32_t>(PciId->Bus, PciId->Device, PciId->Function, Register, Value);
       break;
     }
     default: {

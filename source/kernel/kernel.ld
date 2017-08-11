@@ -14,6 +14,7 @@ SECTIONS{
     boot/boot.o (.rodata*)
     boot/boot.o (.data*)
     boot/boot.o (.bss*)
+    . = ALIGN(0x1000);
   }
 
   . = 0x8000;

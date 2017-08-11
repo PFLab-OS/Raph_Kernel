@@ -1,6 +1,8 @@
 .PHONY: clean
 
 defalut:
+
+build:
 	$(MAKE) mkfs
 
 mkfs: mkfs.c

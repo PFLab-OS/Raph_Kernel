@@ -329,7 +329,7 @@ template<class S, int i>
 void func10(sptr<TaskWithStack> task) {
   func102<i, S, McsSpinLock>(task);
   func102<i, S, TicketSpinLock>(task);
-  func102<i, S, TtsSpinLock>(task);
+  func102<i, S, TtsBackoffSpinLock>(task);
 }
 
 template<class S, int i, int j, int... Num>

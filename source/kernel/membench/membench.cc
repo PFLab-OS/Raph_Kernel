@@ -25,13 +25,25 @@
 #include <cpu.h>
 #include "cache.h"
 #include <global.h>
+#include "sync.h"
+#include "membench.h"
 
-void membench4(sptr<TaskWithStack> task);
-void membench2(sptr<TaskWithStack> task);
-void membench3(sptr<TaskWithStack> task);
-void membench5(sptr<TaskWithStack> task);
+SyncLow sync_1={0};
+Sync2Low sync_2={0};
+Sync2Low sync_3={0};
+SyncLow sync_4={0};
+
+Uint64 f_array[256];
+volatile Uint64 monitor[37 * 8];
+
+
+#define bench_func(x) membench8(x)
+
+void bench_func(sptr<TaskWithStack> task);
 
 CacheCtrl *cache_ctrl;
+
+void beep(int argc, const char *argv[]);
 
 void register_membench2_callout() {
   for (int i = 0; i < cpu_ctrl->GetHowManyCpus(); i++) {
@@ -45,10 +57,10 @@ void register_membench2_callout() {
               cache_ctrl = new CacheCtrl;
               cache_ctrl->Init();
             }
-            // membench4(task);
-            membench2(task);
-            membench3(task);
-            //membench5(task);
+            bench_func(task);
+            if (raw_cpuid == 0) {
+              beep(0, nullptr);
+            }
           }, task_)));
     task_ctrl->Register(cpuid, task_);
   }

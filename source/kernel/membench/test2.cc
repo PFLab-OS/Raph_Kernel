@@ -293,14 +293,14 @@ static void func106(sptr<TaskWithStack> task) {
 template<bool mode, int kMax>
 static void func10(sptr<TaskWithStack> task) {
   func106<mode, McsSpinLock<64>>(task);
-  func106<mode, TtsSpinLock>(task);
+  func106<mode, TtsBackoffSpinLock>(task);
   func106<mode, TicketSpinLock>(task);
   func106<mode, AndersonSpinLock<1, 256>>(task);
   func106<mode, ClhSpinLock>(task);
   func106<mode, AndersonSpinLock<64, 256>>(task);
-  func106<mode, SimpleSpinLockR>(task);
+  func106<mode, TtsSpinLock>(task);
   func106<mode, HClhSpinLock>(task);
-  func106<mode, ExpSpinLock10<TtsSpinLock, ClhSpinLock, kMax>>(task);
+  func106<mode, ExpSpinLock10<TtsBackoffSpinLock, ClhSpinLock, kMax>>(task);
   func106<mode, ExpSpinLock10<ClhSpinLock, AndersonSpinLock<64, 256>, kMax>>(task);
   func106<mode, ExpSpinLock10<ClhSpinLock, ClhSpinLock, kMax>>(task);
   func106<mode, ExpSpinLock10<ClhSpinLock, McsSpinLock<64>, kMax>>(task);
