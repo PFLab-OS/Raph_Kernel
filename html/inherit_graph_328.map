@@ -1,3 +1,4 @@
 <map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
-<area shape="rect" id="node1" href="$class_socket_interface.html" title="SocketInterface" alt="" coords="5,5,120,32"/>
+<area shape="rect" id="node1" href="$class_spin_lock_interface.html" title="SpinLockInterface" alt="" coords="6,5,133,32"/>
+<area shape="rect" id="node2" href="$class_spin_lock.html" title="SpinLock" alt="" coords="182,5,258,32"/>
 </map>

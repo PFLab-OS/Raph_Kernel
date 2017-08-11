@@ -22,6 +22,7 @@ var searchData=
   ['ahcichannel',['AhciChannel',['../class_ahci_channel.html',1,'']]],
   ['ahcictrl',['AhciCtrl',['../class_ahci_ctrl.html',1,'']]],
   ['align',['Align',['../struct_physmem_ctrl_1_1_alloc_option_1_1_align.html',1,'PhysmemCtrl::AllocOption']]],
+  ['alloc',['Alloc',['../class_virtual_file_system_1_1_inode_ctrl.html#ab52f74b6d3baf638b0740be93fa4dbab',1,'VirtualFileSystem::InodeCtrl::Alloc()'],['../class_v6_file_system_1_1_block_ctrl.html#a469c304cd8020df447918fa3974e3e8a',1,'V6FileSystem::BlockCtrl::Alloc()']]],
   ['allocatedarea',['AllocatedArea',['../struct_physmem_ctrl_1_1_allocated_area.html',1,'PhysmemCtrl']]],
   ['allocator',['Allocator',['../class_allocator.html',1,'']]],
   ['allocator_3c_20physmemctrl_3a_3aallocatedarea_20_3e',['Allocator&lt; PhysmemCtrl::AllocatedArea &gt;',['../class_allocator.html',1,'']]],

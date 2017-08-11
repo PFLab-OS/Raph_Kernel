@@ -6,7 +6,6 @@ var searchData=
   ['_5fdev_5ftable',['_dev_table',['../class_net_dev_ctrl.html#a19becfb2a3e22512941a1bcf02efef3b',1,'NetDevCtrl']]],
   ['_5fdevice',['_device',['../class_protocol_stack.html#af4e09a68a6e2878e52edc7e879f17b81',1,'ProtocolStack']]],
   ['_5feth_5faddr',['_eth_addr',['../class_arp_layer.html#a243842d2ab42a9cb3c4cbd11fc1ac98a',1,'ArpLayer']]],
-  ['_5ffdid',['_FDID',['../struct___f_d_i_d.html',1,'']]],
   ['_5fid',['_id',['../class_ipv4_layer.html#ad0e2e4b19e64dba6d8179ccff8a269a7',1,'Ipv4Layer']]],
   ['_5fifname',['_ifname',['../class_socket.html#ae8ce381d0ed9273702b7254cb24bec11',1,'Socket']]],
   ['_5fipv4_5faddr',['_ipv4_addr',['../class_dev_ethernet.html#af255349b26271b28536617ca980b8920',1,'DevEthernet::_ipv4_addr()'],['../class_arp_socket.html#abe89fdcb6f24c9fb6df886809e8d9ab7',1,'ArpSocket::_ipv4_addr()'],['../class_arp_layer.html#a078f8d3202565138ae421afdd45fb2d9',1,'ArpLayer::_ipv4_addr()'],['../class_ipv4_layer.html#a8c81812c0d77eeaaca251f5c07dc4c03',1,'Ipv4Layer::_ipv4_addr()'],['../class_udp_socket.html#a1e20af17cd4ca2d4522001a45aa4834a',1,'UdpSocket::_ipv4_addr()']]],

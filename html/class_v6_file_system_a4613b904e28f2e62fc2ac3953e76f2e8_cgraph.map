@@ -1,0 +1,4 @@
+<map id="V6FileSystem::ReadDataFromInode" name="V6FileSystem::ReadDataFromInode">
+<area shape="rect" id="node2" href="$class_v6_file_system.html#a34f3fe17f6f1827d48f6693d6b3eafb8" title="map block to inode. if already mapped, return mapped address. " alt="" coords="256,12,427,39"/>
+<area shape="rect" id="node3" href="$class_v6_file_system_1_1_block_ctrl.html#a469c304cd8020df447918fa3974e3e8a" title="allocate block " alt="" coords="475,5,642,46"/>
+</map>

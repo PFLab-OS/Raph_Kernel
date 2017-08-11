@@ -1,9 +1,3 @@
 <map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
-<area shape="rect" id="node1" href="$class_generic_function.html" title="GenericFunction\&lt; Args...\&gt;" alt="" coords="5,172,181,199"/>
-<area shape="rect" id="node2" href="$class_class_function.html" title="ClassFunction\&lt; C, T1,\l Args \&gt;" alt="" coords="229,5,384,46"/>
-<area shape="rect" id="node3" href="$class_class_function2.html" title="ClassFunction2\&lt; C,\l T1, T2, Args \&gt;" alt="" coords="237,70,376,111"/>
-<area shape="rect" id="node4" href="$class_class_function3.html" title="ClassFunction3\&lt; C,\l T1, T2, T3, Args \&gt;" alt="" coords="237,135,376,177"/>
-<area shape="rect" id="node5" href="$class_function.html" title="Function\&lt; T, Args \&gt;" alt="" coords="237,201,376,228"/>
-<area shape="rect" id="node6" href="$class_function2.html" title="Function2\&lt; T1, T2,\l Args \&gt;" alt="" coords="240,253,373,294"/>
-<area shape="rect" id="node7" href="$class_function3.html" title="Function3\&lt; T1, T2,\l T3, Args \&gt;" alt="" coords="240,318,373,359"/>
+<area shape="rect" id="node1" href="$class_hash_map.html" title="HashMap\&lt; K, V, kHashMapTable\lSize, F \&gt;" alt="" coords="5,5,224,46"/>
 </map>

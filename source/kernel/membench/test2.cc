@@ -276,7 +276,7 @@ static void func107(sptr<TaskWithStack> task) {
         }, ltask_, task)));
   task_ctrl->Register(cpu_ctrl->GetCpuId(), ltask_);
 
-  task->Wait();
+  task->Wait(1);
 } 
 
 template<bool mode>

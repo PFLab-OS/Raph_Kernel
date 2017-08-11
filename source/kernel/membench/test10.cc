@@ -240,7 +240,7 @@ static void func107_sub(sptr<TaskWithStack> task) {
         }, ltask_, task)));
   task_ctrl->Register(cpu_ctrl->GetCpuId(), ltask_);
 
-  task->Wait();
+  task->Wait(1);
 }
 
 template<class L>

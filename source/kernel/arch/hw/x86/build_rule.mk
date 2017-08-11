@@ -49,16 +49,27 @@ qemuend:
 	-sudo pkill -KILL qemu
 
 $(BUILD_DIR)/script:
-	cp script $(BUILD_DIR)/script
+	cp script $@
 
 $(BUILD_DIR)/rump.bin:
 	cp rump.bin $(BUILD_DIR)/rump.bin
 
 $(BUILD_DIR)/init: $(INIT_FILE)
-	cp $(INIT_FILE) $(BUILD_DIR)/init
+	cp $^ $@
 
-bin_sub: $(BUILD_DIR)/script $(BUILD_DIR)/init $(BUILD_DIR)/rump.bin
-	$(MAKE_SUBDIR) ../
+../../../../../source/tool/mkfs:
+	$(MAKE_SUBDIR) ../../../../tool build
+
+README.md:
+	cp ../../../../../README.md README.md
+
+$(BUILD_DIR)/fs.img: ../../../../../source/tool/mkfs README.md
+	../../../../../source/tool/mkfs $@ README.md
+	rm README.md
+
+bin_sub: $(BUILD_DIR)/script $(BUILD_DIR)/init $(BUILD_DIR)/fs.img $(BUILD_DIR)/rump.bin
+	$(MAKE_SUBDIR) ../../../../kernel build
+	$(MAKE_SUBDIR) ../../../../testmodule build
 
 bin:
 	mkdir -p $(BUILD_DIR)
@@ -105,16 +116,18 @@ deldisk: umount
 
 clean: deldisk
 	-rm -rf $(BUILD_DIR)
-	$(MAKE_SUBDIR) ../ clean
+	$(MAKE_SUBDIR) ../../../../kernel clean
+	$(MAKE_SUBDIR) ../../../../testmodule clean
+	$(MAKE_SUBDIR) ../../../../tool clean
 
 diskclean: deldisk clean
 
 showerror:
-	$(MAKE) _image 2>&1 | egrep "In function|error:"
+	$(MAKE) image 2>&1 | egrep "In function|error:"
 
 numerror:
 	@echo -n "number of error: "
-	@$(MAKE) _image 2>&1 | egrep "error:" | wc -l
+	@$(MAKE) image 2>&1 | egrep "error:" | wc -l
 
 doc:
 	doxygen

@@ -23,5 +23,6 @@ var searchData=
   ['list_3c_20vendor_20_3e',['List&lt; Vendor &gt;',['../class_pci_data_1_1_list.html',1,'PciData']]],
   ['loadcontainer',['LoadContainer',['../struct_load_container.html',1,'']]],
   ['lock_5fobject',['lock_object',['../structlock__object.html',1,'']]],
-  ['locker',['Locker',['../class_locker.html',1,'']]]
+  ['locker',['Locker',['../class_locker.html',1,'']]],
+  ['lookupinodefrompath',['LookupInodeFromPath',['../class_virtual_file_system.html#a60ef4a9bbbe18b159974507b69cae631',1,'VirtualFileSystem']]]
 ];
