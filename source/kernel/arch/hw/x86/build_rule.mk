@@ -1,4 +1,4 @@
-include common.mk
+include ../../../../../common.mk
 
 MOUNT_DIR = /mnt/Raph_Kernel
 IMAGE = /tmp/$(IMAGEFILE)
@@ -19,13 +19,15 @@ endif
 
 doc: export PROJECT_NUMBER:=$(shell git rev-parse HEAD ; git diff-index --quiet HEAD || echo "(with uncommitted changes)")
 
-.PHONY: clean disk run image mount umount debugqemu showerror numerror doc
+.PHONY: clean all disk run image mount umount debugqemu showerror numerror doc
 
 default: image
 
 ###################################
 # for remote host (Vagrant)
 ###################################
+
+all: image
 
 run:
 	$(MAKE) qemuend

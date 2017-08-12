@@ -21,22 +21,6 @@
  */
 
 #ifndef __RAPH_LIB_MEM_VIRTMEM_H__
-#define __RAPH_LIB_MEM_VIRTMEM_H__
+#error "invalid inclusion"
+#endif /* __RAPH_LIB_MEM_VIRTMEM_H__ */
 
-#include <stdint.h>
-#include <string.h>
-#include <raph.h>
-#include <spinlock.h>
-
-typedef uint64_t virt_addr;
-template <typename ptr> inline virt_addr ptr2virtaddr(ptr *addr) {
-  return reinterpret_cast<virt_addr>(addr);
-}
-
-template <typename ptr> inline ptr *addr2ptr(virt_addr addr) {
-  return reinterpret_cast<ptr *>(addr);
-}
-
-#include <arch_virtmem.h>
-
-#endif // __RAPH_LIB_MEM_VIRTMEM_H__

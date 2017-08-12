@@ -22,7 +22,6 @@
  */
 
 //TODO:プロセスが死んだ後処理
-//TODO:ELFのロードを別のクラスで行う
 //TODO:確保した物理メモリの開放
 
 //procmem_ctrlすでに一部作っていたので，残しています
@@ -42,13 +41,8 @@
 #include <global.h>
 
 void Process::Init() {
-  //これもコンストラクタでやらせたい
-  task = make_sptr(new TaskWithStack(cpu_ctrl->GetCpuId()));
   task->Init();
-
   procmem_ctrl.Init();
-
-  
 }
 
 

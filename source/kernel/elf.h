@@ -16,32 +16,44 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
- * Author: hikalium
+ * Author: hikalium, Liva
  * 
  */
 
-#ifndef __RAPH_LIB_ELF_H__
-#define __RAPH_LIB_ELF_H__
+#pragma once
 
-#include <boot/multiboot2.h>
 #include <elfhead.h>
+#include <loader.h>
+#include <ptr.h>
+#include <array.h>
 
-class ElfLoader {
+class ElfObject {
 public:
-  static void Load(const void *ptr);
+  ElfObject(const void *ptr) : _head(reinterpret_cast<const uint8_t *>(ptr)), _ehdr(reinterpret_cast<const Elf64_Ehdr *>(ptr)) {
+  }
+  ElfObject() = delete;
+  void Init();
+  void Load() {
+    if (_entry != nullptr) {
+      _loader.Execute(_entry);
+    }
+  }
 private:
-  static bool IsElf(const Elf64_Ehdr *ehdr) {
-    return ehdr->e_ident[0] == ELFMAG0 && ehdr->e_ident[1] == ELFMAG1 && ehdr->e_ident[2] == ELFMAG2 && ehdr->e_ident[3] == ELFMAG3;
+  bool IsElf() {
+    return _ehdr->e_ident[0] == ELFMAG0 && _ehdr->e_ident[1] == ELFMAG1 && _ehdr->e_ident[2] == ELFMAG2 && _ehdr->e_ident[3] == ELFMAG3;
   }
-  static bool IsElf64(const Elf64_Ehdr *ehdr) {
-    return ehdr->e_ident[EI_CLASS] == ELFCLASS64;
+  bool IsElf64() {
+    return _ehdr->e_ident[EI_CLASS] == ELFCLASS64;
   }
-  static bool IsOsabiSysv(const Elf64_Ehdr *ehdr) {
-    return ehdr->e_ident[EI_OSABI] == ELFOSABI_SYSV;
+  bool IsOsabiSysv() {
+    return _ehdr->e_ident[EI_OSABI] == ELFOSABI_SYSV;
   }
-  static bool IsOsabiGnu(const Elf64_Ehdr *ehdr) {
-    return ehdr->e_ident[EI_OSABI] == ELFOSABI_GNU;
+  bool IsOsabiGnu() {
+    return _ehdr->e_ident[EI_OSABI] == ELFOSABI_GNU;
   }
+  const uint8_t *_head;
+  const Elf64_Ehdr *_ehdr;
+  Loader _loader;
+  FType _entry = nullptr;
 };
 
-#endif // __RAPH_LIB_ELF_H__

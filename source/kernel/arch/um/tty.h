@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2016 Raphine Project
+ * Copyright (c) 2017 Raphine Project
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -20,23 +20,27 @@
  * 
  */
 
-#ifndef __RAPH_LIB_MEM_VIRTMEM_H__
-#define __RAPH_LIB_MEM_VIRTMEM_H__
+#pragma once
+#include <stdio.h>
+#include <stdarg.h>
 
-#include <stdint.h>
-#include <string.h>
-#include <raph.h>
-#include <spinlock.h>
-
-typedef uint64_t virt_addr;
-template <typename ptr> inline virt_addr ptr2virtaddr(ptr *addr) {
-  return reinterpret_cast<virt_addr>(addr);
-}
-
-template <typename ptr> inline ptr *addr2ptr(virt_addr addr) {
-  return reinterpret_cast<ptr *>(addr);
-}
-
-#include <arch_virtmem.h>
-
-#endif // __RAPH_LIB_MEM_VIRTMEM_H__
+class Tty {
+public:
+  void Init() {
+  }
+  void Printf(const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    Vprintf(fmt, args);
+    va_end(args);
+  }
+  void ErrPrintf(const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    Vprintf(fmt, args);
+    va_end(args);
+  }
+  void Vprintf(const char *fmt, va_list args) {
+    vprintf(fmt, args);
+  }
+};

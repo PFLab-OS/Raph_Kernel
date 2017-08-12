@@ -21,8 +21,6 @@
  * 
  */
 
-//TODO
-//管理方法をリンクリストにする
 
 #pragma once
 
@@ -49,7 +47,7 @@ enum class ProcessStatus {
 class Process {
   friend class ProcessCtrl;
 public:
-  Process() {
+  Process() : task(make_sptr(new TaskWithStack(cpu_ctrl->GetCpuId()))){
   }
 
   void Init();
@@ -117,7 +115,7 @@ public:
 
   } procmem_ctrl;
 
-  static void  Resume(Process*);
+  static void Resume(Process*);
   static void ReturnToKernelJob(Process*);
   static void Exit(Process*);
   uint64_t* saved_rsp = nullptr;
