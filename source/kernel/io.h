@@ -32,4 +32,4 @@ enum class IoReturnState : int {
   kErrNotFound = 8,
 };
 
-#define RETURN_IF_IOSTATE_NOT_OK(x) if ((x) != IoReturnState::kOk) { return x; }
+#define RETURN_IF_IOSTATE_NOT_OK(x) do { IoReturnState err = (x); if ((err) != IoReturnState::kOk) { return err; }} while(0)

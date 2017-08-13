@@ -12,10 +12,8 @@ Vagrant.configure(2) do |config|
 
   # Every Vagrant development environment requires a box. You can search for
   # boxes at https://atlas.hashicorp.com/search.
-  config.vm.box = "ubuntu14.04"
+  config.vm.box = "ubuntu/xenial64"
   config.vm.box_check_update = false
-  config.vm.box_url = "https://cloud-images.ubuntu.com/vagrant/trusty/current/trusty-server-cloudimg-amd64-vagrant-disk1.box"
-  config.vm.provision :shell, :path => "bootstrap.sh", :privileged   => false
 
   # Disable automatic box update checking. If you disable this, then
   # boxes will only be checked for updates when the user runs

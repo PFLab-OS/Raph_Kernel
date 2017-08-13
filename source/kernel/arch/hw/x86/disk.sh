@@ -3,14 +3,16 @@ MOUNT_DIR_EFI="/mnt/efi"
 IMAGE="/tmp/disk.img"
 
 umount() {
-    sudo umount ${MOUNT_DIR}
-    sudo umount ${MOUNT_DIR_EFI}
+    sudo umount ${MOUNT_DIR} > /dev/null 2>&1
+    sudo umount ${MOUNT_DIR_EFI} > /dev/null 2>&1
     sudo kpartx -d ${IMAGE}
     sudo losetup -d /dev/loop[0-9] > /dev/null 2>&1 || return 0
+    sudo dmsetup remove_all
 }
 
 loopsetup() {
     set -- $(sudo kpartx -av ${IMAGE})
+    sleep 1
     LOOPDEVICE=${8}
     MAPPEDDEVICE_MBR=/dev/mapper/${3}
     MAPPEDDEVICE_EFI_PT=/dev/mapper/${12}

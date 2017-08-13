@@ -70,11 +70,9 @@ $(BUILD_DIR)/init: $(INIT_FILE)
 ../../../../../source/tool/mkfs:
 	$(MAKE_SUBDIR) ../../../../tool build
 
-README.md:
-	cp ../../../../../README.md README.md
-
-$(BUILD_DIR)/fs.img: ../../../../../source/tool/mkfs README.md
+$(BUILD_DIR)/fs.img: ../../../../../source/tool/mkfs
 	-rm $@
+	cp ../../../../../README.md README.md
 	../../../../../source/tool/mkfs $@ README.md
 	rm README.md
 
