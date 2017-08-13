@@ -23,7 +23,7 @@
  <tr style="height: 56px;">
   <td style="padding-left: 0.5em;">
    <div id="projectname">Raph_Kernel
-   &#160;<span id="projectnumber">99ba652f803bd0cdead302db6192d16cf9f936d9 (with uncommitted changes)</span>
+   &#160;<span id="projectnumber">1bcb0fd27ed9fac05599e47edba8c7345459a143 (with uncommitted changes)</span>
    </div>
   </td>
  </tr>
@@ -109,24 +109,30 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:ac2552abb8c8a378714bb2b590b96a7f0"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ac2552abb8c8a378714bb2b590b96a7f0"></a>
 &#160;</td><td class="memItemRight" valign="bottom"><b>StringBuffer</b> (const <a class="el" href="struct_frame_buffer_info.html">FrameBufferInfo</a> *info, const <a class="el" href="class_font.html">Font</a> *font)</td></tr>
 <tr class="separator:ac2552abb8c8a378714bb2b590b96a7f0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac56406ceaa09d819e953d4c48b819742"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ac56406ceaa09d819e953d4c48b819742"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>Write</b> (uint32_t index)</td></tr>
-<tr class="separator:ac56406ceaa09d819e953d4c48b819742"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad42a7beb145c9ac66f5c6b5ab6c29e4f"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ad42a7beb145c9ac66f5c6b5ab6c29e4f"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>Write</b> (char32_t c)</td></tr>
+<tr class="separator:ad42a7beb145c9ac66f5c6b5ab6c29e4f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a899024682fcfec7d17df4250fe56b543"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a899024682fcfec7d17df4250fe56b543"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>WriteSub</b> (char32_t c, uint32_t index)</td></tr>
+<tr class="separator:a899024682fcfec7d17df4250fe56b543"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
 <tr class="memitem:ae43c196ee8fbdb73147b88876eb63205"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ae43c196ee8fbdb73147b88876eb63205"></a>
 uint32_t&#160;</td><td class="memItemRight" valign="bottom"><b>_buffer</b> [1024]</td></tr>
 <tr class="separator:ae43c196ee8fbdb73147b88876eb63205"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7d90391c1d1c53c1b2059b516d47b987"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a7d90391c1d1c53c1b2059b516d47b987"></a>
+char32_t&#160;</td><td class="memItemRight" valign="bottom"><b>_cBuffer</b> [1024]</td></tr>
+<tr class="separator:a7d90391c1d1c53c1b2059b516d47b987"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8366a9f6861dbf4c755d6c91988ac903"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a8366a9f6861dbf4c755d6c91988ac903"></a>
 int&#160;</td><td class="memItemRight" valign="bottom"><b>_length</b> = 0</td></tr>
 <tr class="separator:a8366a9f6861dbf4c755d6c91988ac903"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab0024d89c01e3833c9f99b873f03a733"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ab0024d89c01e3833c9f99b873f03a733"></a>
 int&#160;</td><td class="memItemRight" valign="bottom"><b>_row</b> = 0</td></tr>
 <tr class="separator:ab0024d89c01e3833c9f99b873f03a733"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a54e4296c93c96311b23003d700c66c43"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a54e4296c93c96311b23003d700c66c43"></a>
-int&#160;</td><td class="memItemRight" valign="bottom"><b>_cur_width</b> = 0</td></tr>
-<tr class="separator:a54e4296c93c96311b23003d700c66c43"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aec60456a115ed06390475c52b01e37a5"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="aec60456a115ed06390475c52b01e37a5"></a>
+uint32_t&#160;</td><td class="memItemRight" valign="bottom"><b>_cur_width</b> = 0</td></tr>
+<tr class="separator:aec60456a115ed06390475c52b01e37a5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a494446f1957f7ad583437b7526ed851d"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="a494446f1957f7ad583437b7526ed851d"></a>
 <a class="el" href="class_frame_buffer_1_1_string_buffer.html">StringBuffer</a> *&#160;</td><td class="memItemRight" valign="bottom"><b>_next</b> = nullptr</td></tr>
 <tr class="separator:a494446f1957f7ad583437b7526ed851d"><td class="memSeparator" colspan="2">&#160;</td></tr>

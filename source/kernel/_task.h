@@ -51,7 +51,7 @@ public:
   virtual void Execute() {
     _func->Execute();
   }
-  virtual void Wait() {
+  virtual void Wait(int sig) {
     kernel_panic("Task", "unable to use blocking operation(use TaskWithStack instead)");
   }
   virtual void Kill() {

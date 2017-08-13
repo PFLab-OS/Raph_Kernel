@@ -26,19 +26,36 @@
 #include <loader.h>
 #include <ptr.h>
 #include <array.h>
+#include <bin.h>
 
-class ElfObject {
+class ElfObject : public BinObjectInterface {
 public:
-  ElfObject(const void *ptr) : _head(reinterpret_cast<const uint8_t *>(ptr)), _ehdr(reinterpret_cast<const Elf64_Ehdr *>(ptr)) {
+  ElfObject(Loader &loader, const void *ptr) : _head(reinterpret_cast<const uint8_t *>(ptr)), _ehdr(reinterpret_cast<const Elf64_Ehdr *>(ptr)), _membuffer(nullptr), _loader(loader) {
   }
   ElfObject() = delete;
-  void Init();
-  void Load() {
+  virtual ~ElfObject() {
+    free(_membuffer);
+  }
+  virtual ErrorState Init() override __attribute__((warn_unused_result));
+  void Execute() {
     if (_entry != nullptr) {
       _loader.Execute(_entry);
     }
   }
-private:
+  void Resume() {
+    if (_entry != nullptr) {
+      _loader.Resume();
+    }
+  }
+  //TODO:名前がおかしい?
+  void ReturnToKernelJob() {
+    _loader.ExitResume();
+  }
+  //TODO:クラスの依存関係が不自然なので詰める
+  void SetContext(Context* context) {
+    _loader.SetContext(context);
+  }
+protected:
   bool IsElf() {
     return _ehdr->e_ident[0] == ELFMAG0 && _ehdr->e_ident[1] == ELFMAG1 && _ehdr->e_ident[2] == ELFMAG2 && _ehdr->e_ident[3] == ELFMAG3;
   }
@@ -51,9 +68,31 @@ private:
   bool IsOsabiGnu() {
     return _ehdr->e_ident[EI_OSABI] == ELFOSABI_GNU;
   }
+  virtual ErrorState LoadMemory(bool page_mapping);
   const uint8_t *_head;
   const Elf64_Ehdr *_ehdr;
-  Loader _loader;
+  uint8_t *_membuffer;
+  Loader &_loader;
   FType _entry = nullptr;
+  static const bool kDebugOutput = false;
 };
 
+class RaphineRing0AppObject : public ElfObject {
+public:
+  RaphineRing0AppObject(Loader &loader, const void *ptr) : ElfObject(loader, ptr) {
+  }
+  RaphineRing0AppObject() = delete;
+  virtual ErrorState Init() override __attribute__((warn_unused_result));
+private:
+  virtual ErrorState LoadMemory(bool page_mapping) override;
+  struct Info {
+    uint64_t version;
+    void (*putc)(char c);
+  };
+  static void putc(char c);
+  static Info _info;
+  static const int kInfoSize = 4096;
+  static const uint64_t kMajorVersion = 1;
+  static const uint64_t kMinorVersion = 0;
+  static const uint64_t kVersion = (kMajorVersion << 32) + kMinorVersion;
+};

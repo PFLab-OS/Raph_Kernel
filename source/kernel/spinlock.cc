@@ -92,7 +92,7 @@ void SpinLock::Unlock() {
   enable_interrupt(_did_stop_interrupt);
 }
 
-int SpinLock::Trylock() {
+ReturnState SpinLock::Trylock() {
   volatile unsigned int flag = GetFlag();
   bool iflag = disable_interrupt();
   if (((flag % 2) == 0) && SetFlag(flag, flag + 1)) {
@@ -104,10 +104,10 @@ int SpinLock::Trylock() {
       _rip[i] = rbp[1];
       rbp = reinterpret_cast<size_t *>(rbp[0]);
     }
-    return 0;
+    return ReturnState::kOk;
   } else {
     enable_interrupt(iflag);
-    return -1;
+    return ReturnState::kError;
   }
 }
 

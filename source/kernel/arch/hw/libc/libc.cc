@@ -41,3 +41,9 @@ void *calloc (size_t n, size_t size) {
 void free (void *ptr) {
   virtmem_ctrl->Free(reinterpret_cast<virt_addr>(ptr));
 }
+
+int atexit(void (*function)(void)) {
+  // DUMMY
+  return 0;
+}
+

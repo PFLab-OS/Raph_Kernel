@@ -171,13 +171,15 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
     }
   case 329:
     {
+      //TODO;x86依存コード多し
       gtty->Printf("user program called context switch\n");
       gtty->Flush();
+      Context c;
       Process* p = process_ctrl->GetCurrentExecProcess();
       uint64_t stack_addr = syscall_handler_stack;
 
       //save contexts
-      p->context.rsp = syscall_handler_caller_stack;
+      c.rsp = syscall_handler_caller_stack;
       asm("movq %7,%%rax;"
           "subq $112,%%rax;"
           "movq 0(%%rax),%%rcx;"
@@ -194,8 +196,8 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
           "movq %%rcx,%5;"
           "movq 48(%%rax),%%rcx;"
           "movq %%rcx,%6;"
-        : "=m"(p->context.rip),"=m"(p->context.rflags),"=m"(p->context.rdi),"=m"(p->context.rsi),
-          "=m"(p->context.rdx),"=m"(p->context.r10),"=m"(p->context.r8)
+        : "=m"(c.rip),"=m"(c.rflags),"=m"(c.rdi),"=m"(c.rsi),
+          "=m"(c.rdx),"=m"(c.r10),"=m"(c.r8)
         : "m"(stack_addr)
         : "%rax","%rcx");
           
@@ -216,11 +218,13 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
           "movq 104(%%rax),%%rcx;"
           "movq %%rcx,%6;"
           "swapgs;"
-        : "=m"(p->context.r9),"=m"(p->context.rbx),"=m"(p->context.rbp),"=m"(p->context.r12),
-          "=m"(p->context.r13),"=m"(p->context.r14),"=m"(p->context.r15)
+        : "=m"(c.r9),"=m"(c.rbx),"=m"(c.rbp),"=m"(c.r12),
+          "=m"(c.r13),"=m"(c.r14),"=m"(c.r15)
         : "m"(stack_addr)
         : "%rax","%rcx");
-      p->context.rax = 1; //return value
+      c.rax = 1; //return value
+
+      p->elfobj->SetContext(&c);
 
       Process::ReturnToKernelJob(p);
 

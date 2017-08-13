@@ -28,6 +28,7 @@
 #include <task.h>
 #include <gdt.h>
 #include <mem/paging.h>
+#include <elf.h>
 #include <global.h>
 
 
@@ -50,6 +51,10 @@ public:
   Process() : task(make_sptr(new TaskWithStack(cpu_ctrl->GetCpuId()))){
   }
 
+  ~Process() {
+    delete elfobj;
+  }
+
   void Init();
 
   pid_t GetPid() {
@@ -68,38 +73,14 @@ public:
     task->SetFunc(func);
   }
 
-  //TODO:PIDは本当は他人からいじらせたくない
-  //今は配列管理だからできないが、リンクリスト形式で一つのオブジェクトが一つのプロセスしか表さないことにして
-  //Constメンバにする
-  //これはtaskも同様
-  pid_t  pid;
-
-  struct Context {
-    uint64_t rdi,rsi,rbp,rbx,rdx,rcx,rax;
-    uint64_t r8,r9,r10,r11,r12,r13,r14,r15;
-    uint64_t rflags = 0x200;
-
-    uint64_t gs =USER_DS;
-    const uint64_t fs = USER_DS;
-    const uint64_t es = USER_DS;
-    const uint64_t ds = USER_DS;
-    
-    uint64_t rip;
-    const uint64_t cs = USER_CS;
-
-    uint64_t rsp;
-    const uint64_t ss = USER_DS;
-  } context;
-
 
   class ProcmemCtrl {
   private:
+    virt_addr pt_mem;
     PageTable* GetPml4tAddr() {
-      //TODO:メモリリークしてるので修正
-      virt_addr t = virtmem_ctrl->Alloc(PagingCtrl::kPageSize*2);
-      return reinterpret_cast<PageTable*>((reinterpret_cast<uint64_t>(t) + PagingCtrl::kPageSize) & ~(PagingCtrl::kPageSize - 1));
+      pt_mem = virtmem_ctrl->Alloc(PagingCtrl::kPageSize*2);
+      return reinterpret_cast<PageTable*>((reinterpret_cast<uint64_t>(pt_mem) + PagingCtrl::kPageSize) & ~(PagingCtrl::kPageSize - 1));
     }
-    bool Map4KPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr pst_flag, phys_addr page_flag);
 
     SpinLock _lock;
 
@@ -107,25 +88,29 @@ public:
     ProcmemCtrl() :pml4t(GetPml4tAddr()) {
     }
 
-    void Init();
-    bool AllocUserSpace(virt_addr addr,size_t size);
+    ~ProcmemCtrl() {
+      virtmem_ctrl->Free(pt_mem);
+    }
 
+    void Init();
 
     PageTable* const pml4t;
 
   } procmem_ctrl;
 
-  static void Resume(Process*);
   static void ReturnToKernelJob(Process*);
   static void Exit(Process*);
   uint64_t* saved_rsp = nullptr;
+  //TODO:ElfObjectのスーパークラスとしてclass ExecutableObjectをつくりたい(将来サポートする実行形式を増やすため）
+  ElfObject* elfobj;
 
 private:
+  pid_t  pid;
   Process* parent;
-  sptr<TaskWithStack> task;
   ProcessStatus status = ProcessStatus::EMBRYO;
   Process* next;
   Process* prev;
+  sptr<TaskWithStack> task;
 };
 
 

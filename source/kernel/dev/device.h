@@ -27,6 +27,10 @@
 // 派生クラスはstatic void Attach(); を作成する事
 class Device {
  public:
+  Device() {
+  }
+  ~Device() {
+  }
   static void Attach() {} // dummy
 };
 

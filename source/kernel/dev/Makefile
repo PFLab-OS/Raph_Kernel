@@ -1,4 +1,4 @@
-SUB = usb nic disk fs
+SUB = usb nic storage
 OBJS = pci.o netdev.o 8042.o keyboard.o pciid.o pciid_table.o hpet.o framebuffer.o $(addsuffix .o,$(SUB))
 
 DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))

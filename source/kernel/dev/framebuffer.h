@@ -46,7 +46,7 @@ public:
     _fb_info.buffer = nullptr;
     ResetColor();
   }
-  void Setup();
+  virtual void Init();
   virtual int GetRow() override {
     return 0;
   }

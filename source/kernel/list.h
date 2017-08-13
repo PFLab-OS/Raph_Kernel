@@ -138,40 +138,38 @@ public:
     while(true) {
       // TODO this lock is conservative. fix it!
       trylock(_lock) {
-        if (!c_->_lock.Trylock()) {
-          break;
-        }
-        auto next = c_->_next;
-        auto prev = c_->_prev;
-        if (!next.IsNull() && !next->_lock.Trylock()) {
-          break;
-        }
-        if (!prev.IsNull() && !prev->_lock.Trylock()) {
-          break;
-        }
-        if (_first == c_) {
-          if (next.IsNull()) {
-            assert(_last == c_);
-            _first = make_sptr<Container>();
-            _last = make_sptr<Container>();
-          } else {
-            assert(_last != c_);
-            _first = c_->_next;
+        trylock(c_->_lock) {
+          auto next = c_->_next;
+          auto prev = c_->_prev;
+          if (!next.IsNull() && next->_lock.Trylock() != ReturnState::kOk) {
+            break;
           }
-        } else if (_last == make_sptr(c)) {
-          assert(!prev.IsNull());
-          _last = prev;
+          if (!prev.IsNull() && prev->_lock.Trylock() != ReturnState::kOk) {
+            break;
+          }
+          if (_first == c_) {
+            if (next.IsNull()) {
+              assert(_last == c_);
+              _first = make_sptr<Container>();
+              _last = make_sptr<Container>();
+            } else {
+              assert(_last != c_);
+              _first = c_->_next;
+            }
+          } else if (_last == make_sptr(c)) {
+            assert(!prev.IsNull());
+            _last = prev;
+          }
+          RemoveSub(c_);
+          auto ptr = make_wptr(next);
+          if (!next.IsNull()) {
+            next->_lock.Unlock();
+          }
+          if (!prev.IsNull()) {
+            prev->_lock.Unlock();
+          }
+          return ptr;
         }
-        RemoveSub(c_);
-        auto ptr = make_wptr(next);
-        if (!next.IsNull()) {
-          next->_lock.Unlock();
-        }
-        if (!prev.IsNull()) {
-          prev->_lock.Unlock();
-        }
-        c_->_lock.Unlock();
-        return ptr;
       }
     }
   }

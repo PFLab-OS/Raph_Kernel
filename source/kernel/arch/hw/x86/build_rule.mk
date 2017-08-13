@@ -36,7 +36,7 @@ run:
 	$(MAKE) qemuend
 
 qemurun: image
-	sudo qemu-system-x86_64 -drive if=pflash,readonly,file=$(OVMF_DIR)OVMF_CODE.fd,format=raw -drive if=pflash,file=$(OVMF_DIR)OVMF_VARS.fd,format=raw -cpu qemu64 -smp 8 -machine q35 -clock hpet -monitor telnet:127.0.0.1:1235,server,nowait -vnc 0.0.0.0:0,password $(IMAGE)&
+	sudo qemu-system-x86_64 -drive if=pflash,readonly,file=$(OVMF_DIR)OVMF_CODE.fd,format=raw -drive if=pflash,file=$(OVMF_DIR)OVMF_VARS.fd,format=raw -cpu qemu64 -smp 8 -m 2G -machine q35 -clock hpet -monitor telnet:127.0.0.1:1235,server,nowait -vnc 0.0.0.0:0,password $(IMAGE)&
 #	sudo qemu-system-x86_64 -cpu qemu64,+x2apic -smp 8 -machine q35 -monitor telnet:127.0.0.1:1235,server,nowait -vnc 0.0.0.0:0,password -net nic -net bridge,br=br0 -drive id=disk,file=$(IMAGE),if=virtio -usb -usbdevice keyboard &
 #	sudo qemu-system-x86_64 -cpu qemu64,+x2apic -smp 8 -machine q35 -monitor telnet:127.0.0.1:1235,server,nowait -vnc 0.0.0.0:0,password -net nic -net bridge,br=br0 -drive id=disk,file=$(IMAGE),if=none -device ahci,id=ahci -device ide-drive,drive=disk,bus=ahci.0 &
 	sleep 0.2s
@@ -49,13 +49,27 @@ qemuend:
 	-sudo pkill -KILL qemu
 
 $(BUILD_DIR)/script:
-	cp script $(BUILD_DIR)/script
+	cp script $@
+
+$(BUILD_DIR)/rump.bin:
+	cp rump.bin $(BUILD_DIR)/rump.bin
 
 $(BUILD_DIR)/init: $(INIT_FILE)
-	cp $(INIT_FILE) $(BUILD_DIR)/init
+	cp $^ $@
 
-bin_sub: $(BUILD_DIR)/script $(BUILD_DIR)/init
-	$(MAKE_SUBDIR) ../
+../../../../../source/tool/mkfs:
+	$(MAKE_SUBDIR) ../../../../tool build
+
+README.md:
+	cp ../../../../../README.md README.md
+
+$(BUILD_DIR)/fs.img: ../../../../../source/tool/mkfs README.md
+	../../../../../source/tool/mkfs $@ README.md
+	rm README.md
+
+bin_sub: $(BUILD_DIR)/script $(BUILD_DIR)/init $(BUILD_DIR)/fs.img $(BUILD_DIR)/rump.bin
+	$(MAKE_SUBDIR) ../../../../kernel build
+	$(MAKE_SUBDIR) ../../../../testmodule build
 
 bin:
 	mkdir -p $(BUILD_DIR)
@@ -102,16 +116,18 @@ deldisk: umount
 
 clean: deldisk
 	-rm -rf $(BUILD_DIR)
-	$(MAKE_SUBDIR) ../ clean
+	$(MAKE_SUBDIR) ../../../../kernel clean
+	$(MAKE_SUBDIR) ../../../../testmodule clean
+	$(MAKE_SUBDIR) ../../../../tool clean
 
 diskclean: deldisk clean
 
 showerror:
-	$(MAKE) _image 2>&1 | egrep "In function|error:"
+	$(MAKE) image 2>&1 | egrep "In function|error:"
 
 numerror:
 	@echo -n "number of error: "
-	@$(MAKE) _image 2>&1 | egrep "error:" | wc -l
+	@$(MAKE) image 2>&1 | egrep "error:" | wc -l
 
 doc:
 	doxygen

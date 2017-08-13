@@ -1,22 +1,13 @@
 var searchData=
 [
-  ['table',['Table',['../class_pci_data_1_1_table.html',1,'PciData']]],
-  ['task',['task',['../structtask.html',1,'task'],['../class_task.html',1,'Task']]],
-  ['taskcontainer',['TaskContainer',['../struct_task_container.html',1,'']]],
-  ['taskctrl',['TaskCtrl',['../class_task_ctrl.html',1,'']]],
-  ['taskstruct',['TaskStruct',['../class_task_ctrl_1_1_task_struct.html',1,'TaskCtrl']]],
-  ['taskthread',['TaskThread',['../class_task_with_stack_1_1_task_thread.html',1,'TaskWithStack']]],
-  ['taskwithstack',['TaskWithStack',['../class_task_with_stack.html',1,'']]],
-  ['tdcontainer',['TdContainer',['../struct_dev_uhci_1_1_td_container.html',1,'DevUhci']]],
-  ['tdcontainer',['TdContainer',['../struct_dev_ehci_1_1_td_container.html',1,'DevEhci']]],
-  ['threadid',['ThreadId',['../class_thread_id.html',1,'']]],
-  ['ticketspinlock',['TicketSpinLock',['../class_ticket_spin_lock.html',1,'']]],
-  ['timer',['Timer',['../class_timer.html',1,'']]],
-  ['transferdescriptor',['TransferDescriptor',['../class_dev_uhci_1_1_transfer_descriptor.html',1,'DevUhci']]],
-  ['transferdescriptor32',['TransferDescriptor32',['../class_dev_ehci_1_1_transfer_descriptor32.html',1,'DevEhci']]],
-  ['transferdescriptor64',['TransferDescriptor64',['../class_dev_ehci_1_1_transfer_descriptor64.html',1,'DevEhci']]],
-  ['trylocker',['TryLocker',['../class_try_locker.html',1,'']]],
-  ['tss',['Tss',['../struct_gdt_1_1_tss.html',1,'Gdt']]],
-  ['ttsspinlock',['TtsSpinLock',['../class_tts_spin_lock.html',1,'']]],
-  ['tty',['Tty',['../class_tty.html',1,'']]]
+  ['udplayer',['UdpLayer',['../class_udp_layer.html',1,'']]],
+  ['udpsocket',['UdpSocket',['../class_udp_socket.html',1,'']]],
+  ['uhcimanager',['UhciManager',['../class_dev_uhci_1_1_uhci_manager.html',1,'DevUhci']]],
+  ['uptr',['uptr',['../classuptr.html',1,'']]],
+  ['uptr_3c_20array_3c_20char_20_3e_20_3e',['uptr&lt; Array&lt; char &gt; &gt;',['../classuptr.html',1,'']]],
+  ['uptr_3c_20array_3c_20uint8_5ft_20_3e_20_3e',['uptr&lt; Array&lt; uint8_t &gt; &gt;',['../classuptr.html',1,'']]],
+  ['uptr_3c_20array_5b_5d_3e',['uptr&lt; Array[]&gt;',['../classuptr_3_01_array[]_4.html',1,'']]],
+  ['uptr_3c_20genericfunction_3c_20uptr_3c_20array_3c_20uint8_5ft_20_3e_20_3e_20_3e_20_3e',['uptr&lt; GenericFunction&lt; uptr&lt; Array&lt; uint8_t &gt; &gt; &gt; &gt;',['../classuptr.html',1,'']]],
+  ['uptr_3c_20genericfunction_3c_3e_20_3e',['uptr&lt; GenericFunction&lt;&gt; &gt;',['../classuptr.html',1,'']]],
+  ['usbctrl',['UsbCtrl',['../class_usb_ctrl.html',1,'']]]
 ];

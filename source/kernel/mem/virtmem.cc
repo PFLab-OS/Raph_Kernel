@@ -66,7 +66,7 @@ virt_addr VirtmemCtrl::Sbrk(int64_t increment) {
       virt_addr psize = new_heap_allocated_end - _heap_allocated_end;
     
       PhysAddr paddr;
-      physmem_ctrl->Alloc(paddr, psize);
+      physmem_ctrl->AllocNonRecursive(paddr, psize);
       kassert(paging_ctrl->MapPhysAddrToVirtAddr(_heap_allocated_end, paddr, psize, PDE_WRITE_BIT | PDE_USER_BIT, PTE_WRITE_BIT | PTE_GLOBAL_BIT | PTE_USER_BIT));
       _heap_allocated_end = new_heap_allocated_end;
     } else {
@@ -95,12 +95,12 @@ void *operator new[](size_t size) {
 void operator delete(void *p) {
   virtmem_ctrl->Free(reinterpret_cast<virt_addr>(p));
 }
- 
-void operator delete[](void *p) {
+
+void operator delete(void *p, size_t) {
   virtmem_ctrl->Free(reinterpret_cast<virt_addr>(p));
 }
 
-void operator delete(void *p, size_t) {
+void operator delete[](void *p) {
   virtmem_ctrl->Free(reinterpret_cast<virt_addr>(p));
 }
  

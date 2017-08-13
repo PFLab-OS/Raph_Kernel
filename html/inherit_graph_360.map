@@ -1,5 +1,5 @@
 <map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
-<area shape="rect" id="node1" href="$class_tty.html" title="Tty" alt="" coords="6,31,47,57"/>
-<area shape="rect" id="node2" href="$class_frame_buffer.html" title="FrameBuffer" alt="" coords="97,5,191,32"/>
-<area shape="rect" id="node3" href="$class_string_tty.html" title="StringTty" alt="" coords="107,56,181,83"/>
+<area shape="rect" id="node1" href="$class_timer.html" title="Timer" alt="" coords="6,31,61,57"/>
+<area shape="rect" id="node2" href="$class_acpi_pm_timer.html" title="AcpiPmTimer" alt="" coords="109,5,211,32"/>
+<area shape="rect" id="node3" href="$class_hpet.html" title="Hpet" alt="" coords="135,56,185,83"/>
 </map>

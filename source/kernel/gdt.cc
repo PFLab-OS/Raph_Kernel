@@ -27,14 +27,23 @@
 #include <mem/virtmem.h>
 #include <mem/paging.h>
 #include <mem/kstack.h>
+#include <cpu.h>
 
 void Gdt::SetupProc() {
   // re-setup GDT & setup 64bit TSS
   PhysAddr paddr;
   size_t gdt_size = sizeof(uint64_t) * kGdtEntryNum;
-  physmem_ctrl->Alloc(paddr, PagingCtrl::RoundUpAddrOnPageBoundary(gdt_size + sizeof(Tss)));
+  physmem_ctrl->Alloc(paddr, PagingCtrl::RoundUpAddrOnPageBoundary(gdt_size + sizeof(ContextInfo) + sizeof(Tss)));
   uint32_t *gdt_desc = reinterpret_cast<uint32_t *>(paddr.GetVirtAddr());
-  virt_addr tss_vaddr = paddr.GetVirtAddr() + gdt_size;
+  virt_addr context_info_vaddr = paddr.GetVirtAddr() + gdt_size;
+  virt_addr tss_vaddr = paddr.GetVirtAddr() + gdt_size + sizeof(ContextInfo);
+
+  assert(KERNEL_CS / 8 + 1 <= Gdt::kGdtEntryNum);
+  assert(KERNEL_DS / 8 + 1 <= Gdt::kGdtEntryNum);
+  assert(USER_CS / 8 + 1 <= Gdt::kGdtEntryNum);
+  assert(USER_DS / 8 + 1 <= Gdt::kGdtEntryNum);
+  assert(KERNEL_CPU / 8 + 1 <= Gdt::kGdtEntryNum);
+  assert(TSS / 8 + 2 <= Gdt::kGdtEntryNum);
 
   for (int i = 0; i < kGdtEntryNum * 2; i++) {
     gdt_desc[i] = 0;
@@ -48,6 +57,8 @@ void Gdt::SetupProc() {
   gdt_desc[(USER_DS / sizeof(uint32_t)) + 1] =   0x0000F200;
   gdt_desc[(USER_CS / sizeof(uint32_t))] =       0x00000000;
   gdt_desc[(USER_CS / sizeof(uint32_t)) + 1] =   0x0020FA00;
+  gdt_desc[(KERNEL_CPU / sizeof(uint32_t))] = 0;
+  gdt_desc[(KERNEL_CPU / sizeof(uint32_t)) + 1] = 0;
 
   gdt_desc[(TSS / sizeof(uint32_t))] =
     MASK((sizeof(Tss) - 1), 15, 0) |
@@ -61,6 +72,10 @@ void Gdt::SetupProc() {
     MASK(tss_vaddr, 31, 24);
   gdt_desc[(TSS / sizeof(uint32_t)) + 2] = tss_vaddr >> 32;
   gdt_desc[(TSS / sizeof(uint32_t)) + 3] = 0;
+
+  ContextInfo *context_info = reinterpret_cast<ContextInfo *>(context_info_vaddr);
+  context_info->info = context_info;
+  context_info->cpuid = cpu_ctrl->GetCpuId();
 
   Tss *tss = reinterpret_cast<Tss *>(tss_vaddr);
   CpuId cpuid = cpu_ctrl->GetCpuId();
@@ -101,4 +116,6 @@ void Gdt::SetupProc() {
 
   x86::lgdt(gdt_desc, kGdtEntryNum);
   asm volatile("ltr %0;"::"r"((uint16_t)TSS));
+  x86::wrmsr(MSR_IA32_FS_BASE, context_info_vaddr);
+  GetCurrentContextInfo();
 }

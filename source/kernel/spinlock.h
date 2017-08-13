@@ -26,6 +26,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <_cpu.h>
+#include <raph.h>
 
 class SpinLockInterface {
 public:
@@ -35,7 +36,7 @@ public:
   virtual CpuId GetProcId() = 0;
   virtual void Lock() = 0;
   virtual void Unlock() = 0;
-  virtual int Trylock() = 0;
+  virtual ReturnState Trylock() = 0;
   virtual bool IsLocked() = 0;
 };
 
@@ -53,7 +54,7 @@ public:
   }
   virtual void Lock() override;
   virtual void Unlock() override;
-  virtual int Trylock() override;
+  virtual ReturnState Trylock() override;
   virtual bool IsLocked() override {
     return ((_flag % 2) == 1);
   }
@@ -85,7 +86,15 @@ class Locker {
 // trylockマクロからのみ呼び出す事
 class TryLocker {
 public:
-  TryLocker(SpinLockInterface &lock) : _flag(lock.Trylock()), _lock(lock) {
+  TryLocker(SpinLockInterface &lock) : _lock(lock) {
+    switch (lock.Trylock()) {
+    case ReturnState::kOk:
+      _flag = true;
+      break;
+    case ReturnState::kError:
+      _flag = false;
+      break;
+    };
   }
   ~TryLocker() {
     if (_flag) {

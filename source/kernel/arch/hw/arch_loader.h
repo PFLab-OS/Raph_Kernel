@@ -28,11 +28,44 @@
 #include <mem/paging.h>
 #include <cpu.h>
 #include <mem/kstack.h>
+#include <gdt.h>
+#include <tty.h>
 
-extern "C" int execute_elf_binary(FType f, uint64_t *stack_addr);
+//TODO:fs/gsレジスタに関してよしなにする
+  
+//8*24 = 0xc0 
+struct Context {
+    uint64_t fs =USER_DS;
+    uint64_t gs = USER_DS;
+    uint64_t es = USER_DS;
+    uint64_t ds = USER_DS;
+
+    uint64_t rdi,rsi,rbp,rbx,rdx,rcx,rax;
+    uint64_t r8,r9,r10,r11,r12,r13,r14,r15;
+    uint64_t rflags = 0x200;
+    
+    uint64_t rip;
+    uint64_t cs = USER_CS;
+
+    uint64_t rsp;
+    uint64_t ss = USER_DS;
+} __attribute__ ((packed));
+
+extern "C" int execute_elf_binary(FType f, uint64_t *stack_addr, uint64_t cs, uint64_t ds);
+extern "C" int resume_elf_binary(Context* context,uint64_t* saved_rsp);
+extern "C" int execute_kernel_elf_binary(FType f, uint64_t *stack_addr);
 
 class Loader : public LoaderInterface {
 public:
+  Loader() {
+  }
+  Context context;
+  virtual void Map1GAddr(virt_addr start) override final {
+    assert((start % 0x40000000) == 0);
+    PhysAddr paddr;
+    physmem_ctrl->Alloc(paddr, 0x40000000, 0x40000000);
+    paging_ctrl->Map1GPageToVirtAddr(start, paddr, PML4E_WRITE_BIT | PML4E_USER_BIT, PDPTE_WRITE_BIT | PDPTE_GLOBAL_BIT | PDPTE_USER_BIT); // TODO check return value
+  }
   virtual void MapAddr(virt_addr start, virt_addr end) override final {
     start = PagingCtrl::RoundAddrOnPageBoundary(start);
     end = PagingCtrl::RoundUpAddrOnPageBoundary(end);
@@ -41,11 +74,15 @@ public:
     physmem_ctrl->Alloc(paddr, psize);
     paging_ctrl->MapPhysAddrToVirtAddr(start, paddr, psize, PDE_WRITE_BIT | PDE_USER_BIT, PTE_WRITE_BIT | PTE_GLOBAL_BIT | PTE_USER_BIT); // TODO check return value
   }
-  virtual void Execute(FType f) override final {
+  //x64の場合スタックを作る
+  //TODO:Execute()のためにstackのアドレスを返しているが,これをやめる
+  //設計を上手くどうにかする
+  virtual uint64_t* MakeExecuteEnvironment(FType entry) {
     // TODO : カーネルスタックで実行しない
     // TODO : 現在のカーネルスタックが破棄されるので、なんとかする
     uint64_t *stack_addr = reinterpret_cast<uint64_t *>(KernelStackCtrl::GetCtrl().AllocThreadStack(cpu_ctrl->GetCpuId()));
     gtty->Printf("stack addr: %llx\n", stack_addr);
+    //gtty->Printf("entry point: %llx\n", f);
 
     int argc = 1;
     const char *str[1] = {"123"};
@@ -79,10 +116,42 @@ public:
     *stack_addr = argc;
   
     gtty->Flush();
+
+    context.rip = reinterpret_cast<uint64_t>(entry);
+    context.rsp = context.rbp = reinterpret_cast<uint64_t>(stack_addr);
+
+    return stack_addr;
+  }
+  virtual void Execute(FType f) override final {
+    uint64_t* stack = MakeExecuteEnvironment(f);
   
-    int64_t rval = execute_elf_binary(f, stack_addr);
+    int64_t rval = ExecuteSub(f, stack);
 
     gtty->Printf("return value: %d\n", rval); 
-    gtty->Printf("%s Returned.\n", str);
+    //gtty->Printf("%s Returned.\n", str);
+  }
+  virtual void Resume() {
+    resume_elf_binary(&context,&saved_rsp);
+  } 
+  virtual void ExitResume() {
+    asm("movq %0,%%rsp;"
+        "ret"
+        ::"m"(saved_rsp));
+  }
+  virtual void SetContext(Context* _context) {
+    context = *_context;
+  }
+protected:
+  virtual int64_t ExecuteSub(FType f, uint64_t *stack_addr) {
+    return execute_elf_binary(f, stack_addr, USER_CS, USER_DS);
+  }
+private:
+  uint64_t saved_rsp;
+};
+
+class Ring0Loader : public Loader {
+private:
+  virtual int64_t ExecuteSub(FType f, uint64_t *stack_addr) override {
+    return execute_kernel_elf_binary(f, stack_addr);
   }
 };
