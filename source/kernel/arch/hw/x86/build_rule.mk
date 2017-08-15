@@ -4,7 +4,7 @@ MOUNT_DIR = /mnt/Raph_Kernel
 IMAGE = /tmp/$(IMAGEFILE)
 BUILD_DIR = ../../../../../build
 
-OVMF_DIR = /home/vagrant/edk2-UDK2017/
+OVMF_DIR = $(HOME)/edk2-UDK2017/
 
 MAKE_SUBDIR := $(MAKE) -C
 MAKE := $(MAKE) ARCH=$(ARCH) -f $(BUILD_RULE_FILE)

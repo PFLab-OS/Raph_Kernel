@@ -44,6 +44,8 @@ Vagrant.configure(2) do |config|
       "--paravirtprovider", "kvm",
       "--natdnsproxy1", "on",
       "--natdnshostresolver1", "on",
+      "--usb", "on",
+      "--usbxhci", "on"
     ]
     vb.customize [
       "guestproperty", "set", :id,

@@ -2,6 +2,7 @@ include common.mk
 
 ARCH ?= hw/x86
 export ARCH
+export SUBDIR
 
 VNC_PORT = 15900
 VDI = disk.vdi
