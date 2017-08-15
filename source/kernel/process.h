@@ -1,4 +1,3 @@
-
 /*
  *
  * Copyright (c) 2017 Raphine Project
@@ -33,8 +32,6 @@
 
 
 typedef uint32_t pid_t;
-class ProcmemCtrl;
-
 
 enum class ProcessStatus {
   EMBRYO,
@@ -73,31 +70,6 @@ public:
     task->SetFunc(func);
   }
 
-
-  class ProcmemCtrl {
-  private:
-    virt_addr pt_mem;
-    PageTable* GetPml4tAddr() {
-      pt_mem = virtmem_ctrl->Alloc(PagingCtrl::kPageSize*2);
-      return reinterpret_cast<PageTable*>((reinterpret_cast<uint64_t>(pt_mem) + PagingCtrl::kPageSize) & ~(PagingCtrl::kPageSize - 1));
-    }
-
-    SpinLock _lock;
-
-  public:
-    ProcmemCtrl() :pml4t(GetPml4tAddr()) {
-    }
-
-    ~ProcmemCtrl() {
-      virtmem_ctrl->Free(pt_mem);
-    }
-
-    void Init();
-
-    PageTable* const pml4t;
-
-  } procmem_ctrl;
-
   static void ReturnToKernelJob(Process*);
   static void Exit(Process*);
   uint64_t* saved_rsp = nullptr;
@@ -111,6 +83,7 @@ private:
   Process* next;
   Process* prev;
   sptr<TaskWithStack> task;
+  Procmem pmem;
 };
 
 

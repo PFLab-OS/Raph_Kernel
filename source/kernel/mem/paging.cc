@@ -31,7 +31,7 @@
 PagingCtrl::PagingCtrl() {
   extern PageTable initial_PML4T;
   phys_addr pml4t_addr = reinterpret_cast<phys_addr>(&initial_PML4T);
-  _pml4t = reinterpret_cast<PageTable *>(p2v(pml4t_addr));
+  _pml4t_kernel = _pml4t = reinterpret_cast<PageTable *>(p2v(pml4t_addr));
 }
 
 void PagingCtrl::MapAllPhysMemory() {
@@ -44,28 +44,26 @@ void PagingCtrl::MapAllPhysMemory() {
   }
 }
 
-void PagingCtrl::InitProcessMemoryPml4t(PageTable* pml4t) {
+void PagingCtrl::InitProcmem(Procmem* pmem) {
   //TODO:カーネルランド用仮想メモリのページディレクトリは予めすべて確保しておきたい
   for (int i = 0; i < 512; i++) {
-    pml4t->entry[i] = _pml4t->entry[i];
+    pmem->pml4t->entry[i] = _pml4t->entry[i];
   }
 }
 
-void PagingCtrl::SwitchToProcmemSpace(PageTable* pml4t) {
+void PagingCtrl::SetProcmem(Procmem* pmem) {
   for (int i = 256; i < 512; i++) {
-    pml4t->entry[i] = _pml4t->entry[i];
+    pmem->pml4t->entry[i] = _pml4t->entry[i];
   }
-  asm volatile("movq %0,%%cr3" : : "r" (k2p(ptr2virtaddr(pml4t))) :);
+  current_procmem = pmem;
+  _pml4t = pmem->pml4t;
+  asm volatile("movq %0,%%cr3" : : "r" (k2p(ptr2virtaddr(_pml4t))) :);
 }
 
-void PagingCtrl::SwitchToKermemSpace() {
-//  PageTable *pml4t;
-//  asm volatile("movq %%cr3,%%rax;" 
-//               "movq %%rax,%0" : "=m" (pml4t)::"rax");
+void PagingCtrl::ReleaseProcmem() {
+  _pml4t = _pml4t_kernel;
+  current_procmem = nullptr;
   asm volatile("movq %0,%%cr3" : : "r" (k2p(ptr2virtaddr(_pml4t))) :);
-//  for (int i = 256; i < 512; i++) {
-//    _pml4t->entry[i] = pml4t->entry[i];
-//  }
 }
 
 void PagingCtrl::ReleaseLowMemory() {
@@ -271,5 +269,5 @@ bool PagingCtrl::Map1GPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr
   }
   pdpt->entry[GetPDPTIndex(vaddr)] = paddr.GetAddr() | pst_flag | PDPTE_PRESENT_BIT | PDPTE_1GPAGE_BIT;
   return true;
-}
 
+}

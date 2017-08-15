@@ -93,6 +93,8 @@
 
 typedef uint64_t entry_type;
 
+class Procmem;
+
 struct PageTable {
   entry_type entry[512];
 };
@@ -102,9 +104,9 @@ class PagingCtrl {
   PagingCtrl();
   void MapAllPhysMemory();
   void ReleaseLowMemory();
-  void InitProcessMemoryPml4t(PageTable*);
-  void SwitchToKermemSpace();
-  void SwitchToProcmemSpace(PageTable*);
+  void InitProcmem(Procmem*);
+  void ReleaseProcmem();
+  void SetProcmem(Procmem*);
   void ConvertVirtMemToPhysMem(virt_addr vaddr, PhysAddr &paddr);
   bool IsVirtAddrMapped(virt_addr vaddr);
   void GetTranslationEntries(virt_addr vaddr, entry_type *pml4e, entry_type *pdpte, entry_type *pde, entry_type *pte);
@@ -210,6 +212,8 @@ private:
     return offset >= 0 && offset < 4096;
   }
   PageTable *_pml4t;
+  PageTable *_pml4t_kernel;
+  Procmem *current_procmem;
   SpinLock _lock;
 };
 
@@ -222,6 +226,29 @@ static inline phys_addr k2p(virt_addr addr) {
   // TODO : マップされてなかった時に落ちないようにする対応を
   return paddr.GetAddr();
 }
+
+class Procmem {
+private:
+  virt_addr pt_mem;
+  PageTable* GetPml4tAddr() {
+    pt_mem = virtmem_ctrl->Alloc(PagingCtrl::kPageSize*2);
+    return reinterpret_cast<PageTable*>((reinterpret_cast<uint64_t>(pt_mem) + PagingCtrl::kPageSize) & ~(PagingCtrl::kPageSize - 1));
+  }
+
+  SpinLock _lock;
+
+public:
+  Procmem() :pml4t(GetPml4tAddr()) {
+    kassert(pml4t);
+  }
+
+  ~Procmem() {
+    virtmem_ctrl->Free(pt_mem);
+  }
+
+  PageTable* const pml4t;
+
+};
 
 #endif // ! ASM_FILE
 

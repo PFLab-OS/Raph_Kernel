@@ -1,4 +1,3 @@
-
 /*
  *
  * Copyright (c) 2017 Raphine Project
@@ -41,7 +40,7 @@
 
 void Process::Init() {
   task->Init();
-  procmem_ctrl.Init();
+  paging_ctrl->InitProcmem(&pmem);
 }
 
 
@@ -56,14 +55,8 @@ void Process::Exit(Process* p) {
   process_ctrl->HaltProcess(p);
 }
 
-void Process::ProcmemCtrl::Init() {
-  kassert(pml4t);
-  paging_ctrl->InitProcessMemoryPml4t(pml4t);
-}
-
 void ProcessCtrl::Init() {
   {
-
     Locker locker(table_lock);
     Process* p = process_table.Init();
     CreateFirstProcess(p);
@@ -136,7 +129,8 @@ Process* ProcessCtrl::CreateFirstProcess(Process* process) {
 
   process->SetKernelJobFunc(make_uptr(new Function2<sptr<TaskWithStack>,Process*>([](sptr<TaskWithStack> task,Process* p) {
 
-    //paging_ctrl->SwitchToProcmemSpace(p->procmem_ctrl.pml4t);
+    paging_ctrl->SetProcmem(&(p->pmem));
+
 
     //TODO:すべての親になるプロセスとして test.elf は不適切
     Loader loader;
@@ -148,7 +142,7 @@ Process* ProcessCtrl::CreateFirstProcess(Process* process) {
     p->elfobj = obj;
 
     while(true) {
-      //paging_ctrl->SwitchToKermemSpace();
+      paging_ctrl->ReleaseProcmem();
       process_ctrl->SetStatus(p,ProcessStatus::RUNNABLE);
 
       gtty->Printf("Wait\n");
@@ -156,7 +150,7 @@ Process* ProcessCtrl::CreateFirstProcess(Process* process) {
 
       task->Wait(0);
 
-      //paging_ctrl->SwitchToProcmemSpace(p->procmem_ctrl.pml4t);
+      paging_ctrl->SetProcmem(&(p->pmem));
       process_ctrl->SetStatus(p,ProcessStatus::RUNNING);
 
       obj->Resume();
