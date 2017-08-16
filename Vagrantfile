@@ -12,8 +12,12 @@ Vagrant.configure(2) do |config|
 
   # Every Vagrant development environment requires a box. You can search for
   # boxes at https://atlas.hashicorp.com/search.
-  config.vm.box = "ubuntu/xenial64"
+  config.vm.box = "Raphine/001a"
+  config.vm.box_url = "https://drive.google.com/open?id=0BzboiC2yUBwnRG91cEpDWnNrMzA"
   config.vm.box_check_update = false
+
+  # base box
+  # config.vm.box = "ubuntu/xenial64"
 
   # Disable automatic box update checking. If you disable this, then
   # boxes will only be checked for updates when the user runs
