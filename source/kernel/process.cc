@@ -21,12 +21,8 @@
  */
 
 //TODO:プロセスが死んだ後処理
-//TODO:pml4tを変更処理
-//以前でprocmem_ctrlすでに一部作っていたので，残しています
-//問題があるようでしたら消して必要なコードをProcessクラス内に書きます
 
-
-#include <elfhead.h>
+#include <elf.h>
 #include <process.h>
 #include <task.h>
 #include <tty.h>
@@ -39,20 +35,14 @@
 #include <global.h>
 
 void Process::Init() {
+  task = make_sptr(new TaskWithStack(cpu_ctrl->GetCpuId()));
   task->Init();
-  paging_ctrl->InitProcmem(&pmem);
+  paging_ctrl->InitMemSpace(&pmem);
 }
 
 
 void Process::ReturnToKernelJob(Process* p) {
-  gtty->Printf("called ReturnToKernelJob()\n");
-  gtty->Flush();
-
   p->elfobj->ReturnToKernelJob();
-}
-
-void Process::Exit(Process* p) {
-  process_ctrl->HaltProcess(p);
 }
 
 void ProcessCtrl::Init() {
@@ -75,7 +65,13 @@ void ProcessCtrl::Init() {
 
     //誰がディスパッチ用のタスク（これ）をカーネルジョブに追加する？
     //プリエンプティブ・ノンプリエンプティブで異なるため要検討
-    if(p != nullptr && p->GetStatus() ==ProcessStatus::EMBRYO){
+    if(p != nullptr && p->GetStatus() == ProcessStatus::EMBRYO){
+      task_ctrl->Register(cpu_ctrl->GetCpuId(),ltask);
+    }
+    if(p != nullptr && p->GetStatus() == ProcessStatus::HALTED){
+      task_ctrl->Register(cpu_ctrl->GetCpuId(),ltask);
+    }
+    if(p != nullptr && p->GetStatus() == ProcessStatus::SLEEPING){
       task_ctrl->Register(cpu_ctrl->GetCpuId(),ltask);
     }
 
@@ -87,7 +83,6 @@ void ProcessCtrl::Init() {
 
 //TODO:ここでスケジューリングをする
 Process* ProcessCtrl::GetNextExecProcess() {
-
   {
     Locker locker(table_lock);
     current_exec_process = process_table.GetNextProcess();
@@ -96,28 +91,112 @@ Process* ProcessCtrl::GetNextExecProcess() {
 }
 
 //TODO:forkして実行可能になったプロセスを返す
-Process* ProcessCtrl::CreateProcess() { 
-  return nullptr;
+Process* ProcessCtrl::ForkProcess(Process* _parent) { 
   Process* process = process_table.AllocProcess();
   if(process == nullptr) {
     kernel_panic("ProcessCtrl","Could not alloc process space.");
   }
   process->Init();
+  process->parent = _parent;
 
-  process->SetKernelJobFunc(make_uptr(new Function2<sptr<TaskWithStack>,Process*>([](sptr<TaskWithStack> task,Process* p) {
-    
+  //TODO:設計考える
+  process->SetKernelJobFunc(make_uptr(new Function3<sptr<TaskWithStack>,Process*,Process*>
+          ([](sptr<TaskWithStack> task,Process* p,Process* parent) {
+    //この方式だと，以下の処理が走るタイミングが制御できない
+    //するとFork元のプロセスのメモリ空間やレジスタが変わってしまうため
+    paging_ctrl->SetMemSpace(&(parent->pmem));
+
+    //TODO:メモリ開放
+    Loader loader;
+    ElfObject* obj = new ElfObject(loader, parent->elfobj);
+
+    p->elfobj = obj;
+
+    MemSpace::CopyMemSapce(&(p->pmem),&(parent->pmem)); //TODO:時間かかる
+    //これはコンストラクタでできるのでは？
+    Loader::CopyContext(p->elfobj->GetContext(), parent->elfobj->GetContext());
+    p->elfobj->GetContext()->rax = 0; //fork syscall ret addr 
+
+    process_ctrl->SetStatus(parent,ProcessStatus::RUNNABLE);
+
+    paging_ctrl->SetMemSpace(&(p->pmem));
+
     while(true) {
-      //task->Wait(0);
+      paging_ctrl->ReleaseMemSpace();
+      switch (p->GetStatus()) {
+        case ProcessStatus::EMBRYO:
+        case ProcessStatus::RUNNING:
+          process_ctrl->SetStatus(p,ProcessStatus::RUNNABLE);
+          break;
+        default:
+          break;
+      }
 
-      gtty->Printf("Context Switch\n");
-      gtty->Flush();
+      task->Wait(0);
+
+      paging_ctrl->SetMemSpace(&(p->pmem));
+      process_ctrl->SetStatus(p,ProcessStatus::RUNNING);
+
+      p->elfobj->Resume();
 
     }
-  },process->GetKernelJob(),process)));
+  },process->GetKernelJob(), process, _parent)));
+
+  task_ctrl->Register(cpu_ctrl->GetCpuId(),process->GetKernelJob());
 
   return process;
 }
 
+Process* ProcessCtrl::ExecProcess(Process* process,void* _ptr) { 
+  if(process == nullptr) {
+    kernel_panic("ProcessCtrl","Could not alloc process space.");
+  }
+  //TODO:ホントにinitしていいの？
+  process->Init();
+
+  //paging_ctrl->InitMemSpace(&(process->pmem));
+
+  process->SetKernelJobFunc(make_uptr(new Function3<sptr<TaskWithStack>,Process*,void*>
+          ([](sptr<TaskWithStack> task,Process* p,void* ptr) {
+    gtty->Printf("Foekd Process Execution\n");
+    paging_ctrl->SetMemSpace(&(p->pmem));
+
+
+    //TODO:前のLoaderってメモリリークしてない?
+    Loader loader;
+    ElfObject* obj = new ElfObject(loader, ptr);
+    if (obj->Init() != BinObjectInterface::ErrorState::kOk) {
+      gtty->Printf("error while loading app\n");
+    }    
+
+    p->elfobj = obj;
+
+    while(true) {
+      paging_ctrl->ReleaseMemSpace();
+      switch (p->GetStatus()) {
+        case ProcessStatus::EMBRYO:
+        case ProcessStatus::RUNNING:
+          process_ctrl->SetStatus(p,ProcessStatus::RUNNABLE);
+          break;
+        default:
+          break;
+      }
+
+      task->Wait(0);
+
+      paging_ctrl->SetMemSpace(&(p->pmem));
+      process_ctrl->SetStatus(p,ProcessStatus::RUNNING);
+
+      p->elfobj->Resume();
+
+    }
+
+  },process->GetKernelJob(), process, _ptr)));
+
+  task_ctrl->Register(cpu_ctrl->GetCpuId(),process->GetKernelJob());
+
+  return process;
+}
 //プロセスはすべてfork/execで生成することを前提に設計していたが，
 //もし，それ以外の方法で生成するつもりならばこの関数の名前を適切なものに変えます．
 //すべての親となるプロセスを生成する
@@ -129,7 +208,7 @@ Process* ProcessCtrl::CreateFirstProcess(Process* process) {
 
   process->SetKernelJobFunc(make_uptr(new Function2<sptr<TaskWithStack>,Process*>([](sptr<TaskWithStack> task,Process* p) {
 
-    paging_ctrl->SetProcmem(&(p->pmem));
+    paging_ctrl->SetMemSpace(&(p->pmem));
 
 
     //TODO:すべての親になるプロセスとして test.elf は不適切
@@ -142,18 +221,23 @@ Process* ProcessCtrl::CreateFirstProcess(Process* process) {
     p->elfobj = obj;
 
     while(true) {
-      paging_ctrl->ReleaseProcmem();
-      process_ctrl->SetStatus(p,ProcessStatus::RUNNABLE);
-
-      gtty->Printf("Wait\n");
-      gtty->Flush();
+      paging_ctrl->ReleaseMemSpace();
+      //TODO:ここが正しいか？　正しいなら他の箇所にも移す
+      switch (p->GetStatus()) {
+        case ProcessStatus::EMBRYO:
+        case ProcessStatus::RUNNING:
+          process_ctrl->SetStatus(p,ProcessStatus::RUNNABLE);
+          break;
+        default:
+          break;
+      }
 
       task->Wait(0);
 
-      paging_ctrl->SetProcmem(&(p->pmem));
+      paging_ctrl->SetMemSpace(&(p->pmem));
       process_ctrl->SetStatus(p,ProcessStatus::RUNNING);
 
-      obj->Resume();
+      p->elfobj->Resume();
 
     }
 
@@ -184,9 +268,9 @@ Process* ProcessCtrl::ProcessTable::AllocProcess() {
   Process* cp = current_process;
 
   p->next = cp->next;
-  p->prev = current_process;
+  p->prev = cp;
   cp->next = p;
-  p->prev = p;
+  cp->next->prev = p;
 
   return p;
 }
@@ -203,15 +287,12 @@ Process* ProcessCtrl::ProcessTable::GetNextProcess() {
   while(true) { 
     Process* res = current_process->next;
     current_process = res;
+    //DBG
+    if (res->GetStatus() == ProcessStatus::ZOMBIE) continue;
     return res;
   }
   return nullptr;
 }
 
 
-//TODO:デバッグ用簡易実装
-//deleteとかなんとか
-void ProcessCtrl::HaltProcess(Process* p) {
-  p->GetKernelJob()->Wait(0);
-}
 

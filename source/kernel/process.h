@@ -32,6 +32,7 @@
 
 
 typedef uint32_t pid_t;
+#define INVALID_PID 0
 
 enum class ProcessStatus {
   EMBRYO,
@@ -39,13 +40,13 @@ enum class ProcessStatus {
   RUNNABLE, 
   RUNNING, 
   ZOMBIE, 
-  UNUSED, //配列管理のため
+  HALTED, //xv6には無い．Fork等でプロセスの実行を一時的に止めたい気持ちがあるとき
 };
 
 class Process {
   friend class ProcessCtrl;
 public:
-  Process() : task(make_sptr(new TaskWithStack(cpu_ctrl->GetCpuId()))){
+  Process() {
   }
 
   ~Process() {
@@ -71,50 +72,117 @@ public:
   }
 
   static void ReturnToKernelJob(Process*);
-  static void Exit(Process*);
+  //static void Exit(Process*);
   uint64_t* saved_rsp = nullptr;
   //TODO:ElfObjectのスーパークラスとしてclass ExecutableObjectをつくりたい(将来サポートする実行形式を増やすため）
   ElfObject* elfobj;
-
 private:
-  pid_t  pid;
   Process* parent;
+  pid_t  pid;
   ProcessStatus status = ProcessStatus::EMBRYO;
   Process* next;
   Process* prev;
   sptr<TaskWithStack> task;
-  Procmem pmem;
+  MemSpace pmem;
+  void* chan; //SLEEPING 終了条件
 };
-
-
 
 class ProcessCtrl {
   public:
     void Init();
-    Process* CreateProcess();
+    Process* ForkProcess(Process*);
+    Process* ExecProcess(Process*,void*);
     Process* CreateFirstProcess(Process*);
     Process* GetNextExecProcess();
     Process* GetCurrentExecProcess() {
       return current_exec_process;
     }
 
-
-    void SetStatus(Process* p,ProcessStatus _status) {
+    void SetStatus(Process* process,ProcessStatus _status) {
+      assert(process->status != ProcessStatus::SLEEPING);
+      assert(process->status != ProcessStatus::ZOMBIE);
       Locker locker(table_lock);
-      p->status = _status;
+      process->status = _status;
     }
-
     ProcessStatus GetStatus(Process* p) {
       return p->status;
     }
 
-    void HaltProcess(Process*);
+    bool MakeProcessSleep(Process* process, void* chan) {
+      assert(process->status != ProcessStatus::SLEEPING);
+      assert(process->status != ProcessStatus::ZOMBIE);
+      Locker locker(table_lock);
+      process->chan = chan;
+      process->status = ProcessStatus::SLEEPING;
+      return true;
+    }
+
+    void WakeupProcess(void* chan) {
+      Process* cp = current_exec_process;
+      Process* p = current_exec_process;
+      Locker locker(table_lock);
+      do {
+        p = p->next;
+        if (p->GetStatus() == ProcessStatus::SLEEPING && p->chan == chan) {
+          p->status = ProcessStatus::RUNNABLE;
+        }
+      } while (p != cp);
+    }
+
+    //TODO:工事中
+    void ExitProcess(Process* process) {
+      //Close Files 
+      WakeupProcess(process->parent);
+
+      {
+        Process* cp = current_exec_process;
+        Process* p = current_exec_process;
+        Locker locker(table_lock);
+        p->status = ProcessStatus::ZOMBIE;
+        do {
+          p = p->next;
+          if (p->parent == process) {
+            //p->parent = initcode;
+          }
+        } while (p != cp);
+        //WakeupProcess(initcode);
+      }
+
+      process->GetKernelJob()->Wait(0);
+    }
+
+    pid_t WaitProcess(Process* process) {
+      Process* cp = current_exec_process;
+      Process* p = current_exec_process;
+      Locker locker(table_lock);
+      do {
+        p = p->next;
+        if (p->parent == process && p->status == ProcessStatus::ZOMBIE) {
+          pid_t pid = p->GetPid();
+          process_table.FreeProcess(p);
+          return pid;
+        }
+      } while (p != cp);
+      return INVALID_PID;
+    }  
+
+    Process* FindProcessFromPid(pid_t pid) {
+      Process* cp = current_exec_process;
+      Process* p = current_exec_process;
+      Locker locker(table_lock);
+      do {
+        p = p->next;
+        if (p->GetPid() == pid) {
+          return p;
+        }
+      } while (p != cp);
+      return nullptr;
+    }
 
   private:
     Process* current_exec_process = nullptr;
     SpinLock table_lock;
 
-    //リンクリストで実装する
     class ProcessTable { 
     public:
       Process* Init();
@@ -122,11 +190,10 @@ class ProcessCtrl {
       void FreeProcess(Process*);
 
       Process* GetNextProcess();
+      Process* GetNextProcess(Process*);
 
     private:
       const static int max_process = 0x10;
-      //Process* list_head = nullptr;
-      //Process processes[max_process];
       pid_t next_pid = 1;
       Process* current_process = nullptr;
 

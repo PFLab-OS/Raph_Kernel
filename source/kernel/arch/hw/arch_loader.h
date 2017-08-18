@@ -35,7 +35,7 @@
   
 //8*24 = 0xc0 
 struct Context {
-    uint64_t fs =USER_DS;
+    uint64_t fs = USER_DS;
     uint64_t gs = USER_DS;
     uint64_t es = USER_DS;
     uint64_t ds = USER_DS;
@@ -60,6 +60,9 @@ public:
   Loader() {
   }
   Context context;
+  static void CopyContext(Context* dst, const Context* src) {
+    *dst = *src;
+  }
   virtual void Map1GAddr(virt_addr start) override final {
     assert((start % 0x40000000) == 0);
     PhysAddr paddr;
@@ -80,7 +83,11 @@ public:
   virtual uint64_t* MakeExecuteEnvironment(FType entry) {
     // TODO : カーネルスタックで実行しない
     // TODO : 現在のカーネルスタックが破棄されるので、なんとかする
-    uint64_t *stack_addr = reinterpret_cast<uint64_t *>(KernelStackCtrl::GetCtrl().AllocThreadStack(cpu_ctrl->GetCpuId()));
+    //uint64_t *stack_addr = reinterpret_cast<uint64_t *>(KernelStackCtrl::GetCtrl().AllocThreadStack(cpu_ctrl->GetCpuId()));
+    //TODO:なんとかする
+    uint64_t *stack_addr = reinterpret_cast<uint64_t *>(0xfffbc000);
+    //MapAddr(reinterpret_cast<virt_addr>(0xfff9b000),reinterpret_cast<virt_addr>(0xfffbc000));
+    MapAddr(0xfff9b000,0xfffbc000);
     gtty->Printf("stack addr: %llx\n", stack_addr);
     //gtty->Printf("entry point: %llx\n", f);
 

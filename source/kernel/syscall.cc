@@ -28,6 +28,7 @@
 #include <syscall.h>
 #include <gdt.h>
 #include <process.h>
+#include <multiboot.h> //for exec
 #include <global.h>
 
 extern "C" int64_t syscall_handler();
@@ -37,6 +38,51 @@ extern size_t syscall_handler_caller_stack;
 extern "C" int64_t syscall_handler_sub(SystemCallCtrl::Args *args, int index) {
   return SystemCallCtrl::Handler(args, index);
 }
+
+//TODO:なんとかする
+#define SaveContext(c) \
+    c.rsp = syscall_handler_caller_stack;\
+    asm("movq %7,%%rax;"\
+        "subq $112,%%rax;"\
+        "movq 0(%%rax),%%rcx;"\
+        "movq %%rcx,%0;"\
+        "movq 8(%%rax),%%rcx;"\
+        "movq %%rcx,%1;"\
+        "movq 16(%%rax),%%rcx;"\
+        "movq %%rcx,%2;" \
+        "movq 24(%%rax),%%rcx;"\
+        "movq %%rcx,%3;" \
+        "movq 32(%%rax),%%rcx;"\
+        "movq %%rcx,%4;"\
+        "movq 40(%%rax),%%rcx;"\
+        "movq %%rcx,%5;"\
+        "movq 48(%%rax),%%rcx;"\
+        "movq %%rcx,%6;"\
+      : "=m"(c.rip),"=m"(c.rflags),"=m"(c.rdi),"=m"(c.rsi),\
+        "=m"(c.rdx),"=m"(c.r10),"=m"(c.r8)\
+      : "m"(syscall_handler_stack)\
+      : "%rax","%rcx");\
+    asm("movq %7,%%rax;"\
+        "subq $112,%%rax;"\
+        "movq 56(%%rax),%%rcx;"\
+        "movq %%rcx,%0;"\
+        "movq 64(%%rax),%%rcx;"\
+        "movq %%rcx,%1;"\
+        "movq 72(%%rax),%%rcx;"\
+        "movq %%rcx,%2;"\
+        "movq 80(%%rax),%%rcx;"\
+        "movq %%rcx,%3;"\
+        "movq 88(%%rax),%%rcx;"\
+        "movq %%rcx,%4;"\
+        "movq 96(%%rax),%%rcx;"\
+        "movq %%rcx,%5;"\
+        "movq 104(%%rax),%%rcx;"\
+        "movq %%rcx,%6;"\
+        "swapgs;"\
+      : "=m"(c.r9),"=m"(c.rbx),"=m"(c.rbp),"=m"(c.r12),\
+        "=m"(c.r13),"=m"(c.r14),"=m"(c.r15)\
+      : "m"(syscall_handler_stack)\
+      : "%rax","%rcx");
 
 
 void SystemCallCtrl::Init() {
@@ -114,6 +160,55 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
       }
       break;
     }
+  case 57:
+    //fork
+    {
+      Context c;
+
+      Process* p = process_ctrl->GetCurrentExecProcess();
+      SaveContext(c);
+
+      Process* forkedp = process_ctrl->ForkProcess(p);
+      c.rax = forkedp->GetPid();
+      p->elfobj->SetContext(&c);
+
+      if (p->GetStatus() == ProcessStatus::HALTED) {
+        kernel_panic("syscall","fork");
+      }else {
+        process_ctrl->SetStatus(p,ProcessStatus::HALTED);
+      }
+      Process::ReturnToKernelJob(p);
+
+      while(true) {asm volatile("hlt;");}
+    }
+  case 59:
+    //execve TODO:本物のexecve
+    {
+      Process* p = process_ctrl->GetCurrentExecProcess();
+
+      process_ctrl->SetStatus(p,ProcessStatus::EMBRYO);
+      process_ctrl->ExecProcess(p,multiboot_ctrl->LoadFile("forked.elf")->GetRawPtr());
+
+      p->elfobj->ReturnToKernelJob();
+
+      while(true) {asm volatile("hlt;");}
+    }
+  case 61:
+    //本物のwait? TODO:要確認
+    //DBG
+    {
+      Context c;
+      Process* p = process_ctrl->GetCurrentExecProcess();
+
+      pid_t pid = process_ctrl->WaitProcess(p);
+      if (pid != INVALID_PID) return pid;
+
+      SaveContext(c);
+      p->elfobj->SetContext(&c);
+      assert(process_ctrl->MakeProcessSleep(p,p));
+      Process::ReturnToKernelJob(p);
+
+    }
   case 63:
     // uname
     {
@@ -165,69 +260,27 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
       gtty->Printf("user program called exit\n");
       gtty->Flush();
 
-      Process::Exit(process_ctrl->GetCurrentExecProcess());
+      process_ctrl->ExitProcess(process_ctrl->GetCurrentExecProcess());
 
       while(true) {asm volatile("hlt;");}
     }
   case 329:
     {
       //TODO;x86依存コード多し
-      gtty->Printf("user program called context switch\n");
-      gtty->Flush();
+      //gtty->Printf("user program called context switch\n");
+      //gtty->Flush();
       Context c;
       Process* p = process_ctrl->GetCurrentExecProcess();
-      uint64_t stack_addr = syscall_handler_stack;
+      //uint64_t stack_addr = syscall_handler_stack;
 
-      //save contexts
-      c.rsp = syscall_handler_caller_stack;
-      asm("movq %7,%%rax;"
-          "subq $112,%%rax;"
-          "movq 0(%%rax),%%rcx;"
-          "movq %%rcx,%0;"
-          "movq 8(%%rax),%%rcx;"
-          "movq %%rcx,%1;"
-          "movq 16(%%rax),%%rcx;"
-          "movq %%rcx,%2;" 
-          "movq 24(%%rax),%%rcx;"
-          "movq %%rcx,%3;" 
-          "movq 32(%%rax),%%rcx;"
-          "movq %%rcx,%4;"
-          "movq 40(%%rax),%%rcx;"
-          "movq %%rcx,%5;"
-          "movq 48(%%rax),%%rcx;"
-          "movq %%rcx,%6;"
-        : "=m"(c.rip),"=m"(c.rflags),"=m"(c.rdi),"=m"(c.rsi),
-          "=m"(c.rdx),"=m"(c.r10),"=m"(c.r8)
-        : "m"(stack_addr)
-        : "%rax","%rcx");
-          
-      asm("movq %7,%%rax;"
-          "subq $112,%%rax;"
-          "movq 56(%%rax),%%rcx;"
-          "movq %%rcx,%0;"
-          "movq 64(%%rax),%%rcx;"
-          "movq %%rcx,%1;"
-          "movq 72(%%rax),%%rcx;"
-          "movq %%rcx,%2;"
-          "movq 80(%%rax),%%rcx;"
-          "movq %%rcx,%3;"
-          "movq 88(%%rax),%%rcx;"
-          "movq %%rcx,%4;"
-          "movq 96(%%rax),%%rcx;"
-          "movq %%rcx,%5;"
-          "movq 104(%%rax),%%rcx;"
-          "movq %%rcx,%6;"
-          "swapgs;"
-        : "=m"(c.r9),"=m"(c.rbx),"=m"(c.rbp),"=m"(c.r12),
-          "=m"(c.r13),"=m"(c.r14),"=m"(c.r15)
-        : "m"(stack_addr)
-        : "%rax","%rcx");
+      SaveContext(c);
       c.rax = 1; //return value
 
       p->elfobj->SetContext(&c);
 
       Process::ReturnToKernelJob(p);
 
+      while(true) {asm volatile("hlt;");}
     }
   }
   gtty->DisablePrint();
