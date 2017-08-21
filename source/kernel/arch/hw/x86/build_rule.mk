@@ -107,7 +107,7 @@ $(IMAGE):
 
 hd: image
 	@if [ ! -e /dev/sdb ]; then echo "error: insert usb memory!"; exit -1; fi
-	sudo dd if=$(IMAGE) of=/dev/sdb
+	sudo dd if=$(IMAGE) of=/dev/sdb bs=1M
 
 disk:
 	$(MAKE) diskclean
