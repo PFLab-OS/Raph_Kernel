@@ -62,6 +62,9 @@ void PagingCtrl::SetMemSpace(MemSpace* mems) {
 }
 
 void PagingCtrl::ReleaseMemSpace() {
+  for (int i = 256; i < 512; i++) {
+    kernel_memspace->pml4t->entry[i] = current_memspace->pml4t->entry[i];
+  }
   current_memspace = kernel_memspace;
   asm volatile("movq %0,%%cr3" : : "r" (k2p(ptr2virtaddr(current_memspace->pml4t))) :);
 }

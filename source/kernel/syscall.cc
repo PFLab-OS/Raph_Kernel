@@ -186,7 +186,6 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
     {
       Process* p = process_ctrl->GetCurrentExecProcess();
 
-      process_ctrl->SetStatus(p,ProcessStatus::EMBRYO);
       process_ctrl->ExecProcess(p,multiboot_ctrl->LoadFile("forked.elf")->GetRawPtr());
 
       p->elfobj->ReturnToKernelJob();
