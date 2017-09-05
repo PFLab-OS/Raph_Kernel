@@ -173,7 +173,7 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
       p->elfobj->SetContext(&c);
 
       if (p->GetStatus() == ProcessStatus::HALTED) {
-        kernel_panic("syscall","fork");
+        kernel_panic("Syscall","Could not fork");
       }else {
         process_ctrl->SetStatus(p,ProcessStatus::HALTED);
       }
@@ -182,11 +182,11 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
       while(true) {asm volatile("hlt;");}
     }
   case 59:
-    //execve TODO:本物のexecve
+    //execve TODO:execveの引数に対応 int execve(const char * filename , char *const argv [], char *const envp []);
     {
       Process* p = process_ctrl->GetCurrentExecProcess();
 
-      process_ctrl->ExecProcess(p,multiboot_ctrl->LoadFile("forked.elf")->GetRawPtr());
+      process_ctrl->ExecProcess(p,"forked.elf");
 
       p->elfobj->ReturnToKernelJob();
 

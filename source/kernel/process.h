@@ -91,7 +91,7 @@ class ProcessCtrl {
   public:
     void Init();
     Process* ForkProcess(Process*);
-    Process* ExecProcess(Process*,void*);
+    Process* ExecProcess(Process*,const char*);
     Process* CreateFirstProcess(Process*);
     Process* GetNextExecProcess();
     Process* GetCurrentExecProcess() {
@@ -147,6 +147,9 @@ class ProcessCtrl {
         } while (p != cp);
         //WakeupProcess(initcode);
       }
+      delete process->elfobj;
+      //memory release 
+      //for paging
 
       process->GetKernelJob()->Wait(0);
     }

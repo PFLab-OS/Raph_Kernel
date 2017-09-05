@@ -31,9 +31,7 @@
 PagingCtrl::PagingCtrl() {
   extern PageTable initial_PML4T;
   phys_addr pml4t_addr = reinterpret_cast<phys_addr>(&initial_PML4T);
-  //_pml4t_kernel = _pml4t = reinterpret_cast<PageTable *>(p2v(pml4t_addr));
   kernel_memspace = current_memspace = new MemSpace(reinterpret_cast<PageTable *>(p2v(pml4t_addr)));
-  //kernel_memspace->pml4t = reinterpret_cast<PageTable *>(p2v(pml4t_addr));
 }
 
 void PagingCtrl::MapAllPhysMemory() {

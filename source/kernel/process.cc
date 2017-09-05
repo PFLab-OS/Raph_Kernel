@@ -55,31 +55,16 @@ void ProcessCtrl::Init() {
   auto lcallout_ = make_sptr(new Callout);
   lcallout_->Init(make_uptr(new Function<sptr<Callout>>([](sptr<Callout> lcallout) {
 
-    //TODO:デバッグ用簡易実装
     Process* p = process_ctrl->GetNextExecProcess();
-    if(p != nullptr && p->GetStatus() == ProcessStatus::RUNNABLE) {
-      //処理したいプロセスが存在すれば、それを追加
-      task_ctrl->Register(cpu_ctrl->GetCpuId(),p->GetKernelJob());
-      //task_ctrl->Register(cpu_ctrl->GetCpuId(),ltask);
-    } 
-
-    //誰がディスパッチ用のタスク（これ）をカーネルジョブに追加する？
-    //プリエンプティブ・ノンプリエンプティブで異なるため要検討
-    if(p != nullptr && p->GetStatus() == ProcessStatus::EMBRYO){
+    if (p != nullptr) {
       task_ctrl->Register(cpu_ctrl->GetCpuId(),p->GetKernelJob());
     }
-//    if(p != nullptr && p->GetStatus() == ProcessStatus::HALTED){
-//      task_ctrl->Register(cpu_ctrl->GetCpuId(),ltask);
-//    }
-//    if(p != nullptr && p->GetStatus() == ProcessStatus::SLEEPING){
-//      task_ctrl->Register(cpu_ctrl->GetCpuId(),ltask);
-//    }
+
     task_ctrl->RegisterCallout(lcallout,cpu_ctrl->GetCpuId(),30);
 
   },lcallout_)));
 
   task_ctrl->RegisterCallout(lcallout_,cpu_ctrl->GetCpuId(),30);
-  //task_ctrl->Register(cpu_ctrl->GetCpuId(),ltask_);
 
 }
 
@@ -109,21 +94,16 @@ Process* ProcessCtrl::ForkProcess(Process* _parent) {
   process->Init();
   process->parent = _parent;
 
-  //TODO:設計考える
   process->SetKernelJobFunc(make_uptr(new Function3<sptr<TaskWithStack>,Process*,Process*>
           ([](sptr<TaskWithStack> task,Process* p,Process* parent) {
-    //この方式だと，以下の処理が走るタイミングが制御できない
-    //するとFork元のプロセスのメモリ空間やレジスタが変わってしまうため
     paging_ctrl->SetMemSpace(&(parent->pmem));
 
-    //TODO:メモリ開放
     Loader loader;
     ElfObject* obj = new ElfObject(loader, parent->elfobj);
-
     p->elfobj = obj;
 
-    MemSpace::CopyMemSapce(&(p->pmem),&(parent->pmem)); //TODO:時間かかる
-    //これはコンストラクタでできるのでは？
+    MemSpace::CopyMemSapce(&(p->pmem),&(parent->pmem));
+    //TODO:これはコンストラクタでできるのでは？
     Loader::CopyContext(p->elfobj->GetContext(), parent->elfobj->GetContext());
     p->elfobj->GetContext()->rax = 0; //fork syscall ret addr 
 
@@ -152,41 +132,28 @@ Process* ProcessCtrl::ForkProcess(Process* _parent) {
     }
   },process->GetKernelJob(), process, _parent)));
 
-  //task_ctrl->Register(cpu_ctrl->GetCpuId(),process->GetKernelJob());
-
   return process;
 }
 
-Process* ProcessCtrl::ExecProcess(Process* process,void* _ptr) { 
+Process* ProcessCtrl::ExecProcess(Process* process,const char* _path) { 
   kassert(process);
-  //TODO:ホントにinitしていいの？
+  
   process->Init();
   process_ctrl->SetStatus(process,ProcessStatus::EMBRYO);
 
-  //paging_ctrl->InitMemSpace(&(process->pmem));
-
-  gtty->Printf("%p\n",_ptr);
-  gtty->Flush();
-
-  process->SetKernelJobFunc(make_uptr(new Function3<sptr<TaskWithStack>,Process*,void*>
-          ([](sptr<TaskWithStack> task,Process* p,void* ptr) {
+  process->SetKernelJobFunc(make_uptr(new Function3<sptr<TaskWithStack>,Process*,const char*>
+          ([](sptr<TaskWithStack> task,Process* p,const char* path) {
     gtty->Printf("Foekd Process Execution\n");
-    //paging_ctrl->SetMemSpace(&(p->pmem));
-    paging_ctrl->ReleaseMemSpace();
+    paging_ctrl->SetMemSpace(&(p->pmem));
 
 
-    //TODO:前のLoaderってメモリリークしてない?
-    //TODO:ptrが指しているアドレスちがう？
     Loader loader;
-    char *pptr = reinterpret_cast<char*>(ptr);
-    gtty->Printf("%x %x %x\n", pptr[0],pptr[1],pptr[2]);
-    gtty->Printf("%p\n",ptr);
-    gtty->Flush();
-    while(1) {asm("hlt");}
+    char *pptr = reinterpret_cast<char*>(multiboot_ctrl->LoadFile(path)->GetRawPtr());
     process_ctrl->SetStatus(p,ProcessStatus::EMBRYO);
-    ElfObject* obj = new ElfObject(loader, ptr);
+    ElfObject* obj = new ElfObject(loader, pptr);
     if (obj->Init() != BinObjectInterface::ErrorState::kOk) {
       gtty->Printf("error while loading app\n");
+      kernel_panic("ProcessCtrl","Could not load app in ExecProcess()");
     }
 
     p->elfobj = obj;
@@ -207,15 +174,10 @@ Process* ProcessCtrl::ExecProcess(Process* process,void* _ptr) {
       paging_ctrl->SetMemSpace(&(p->pmem));
       process_ctrl->SetStatus(p,ProcessStatus::RUNNING);
 
-      //gtty->Printf("execed process run \n");
-      //gtty->Flush();
       p->elfobj->Resume();
-
     }
 
-  },process->GetKernelJob(), process, _ptr)));
-
-  //task_ctrl->Register(cpu_ctrl->GetCpuId(),process->GetKernelJob());
+  },process->GetKernelJob(), process, _path)));
 
   return process;
 }
@@ -237,13 +199,13 @@ Process* ProcessCtrl::CreateFirstProcess(Process* process) {
     ElfObject* obj = new ElfObject(loader, multiboot_ctrl->LoadFile("test.elf")->GetRawPtr());
     if (obj->Init() != BinObjectInterface::ErrorState::kOk) {
       gtty->Printf("error while loading app\n");
+      kernel_panic("ProcessCtrl","Could not load app in ExecProcess()");
     }    
 
     p->elfobj = obj;
 
     while(true) {
       paging_ctrl->ReleaseMemSpace();
-      //TODO:ここが正しいか？　正しいなら他の箇所にも移す
       switch (p->GetStatus()) {
         case ProcessStatus::EMBRYO:
         case ProcessStatus::RUNNING:
@@ -263,8 +225,6 @@ Process* ProcessCtrl::CreateFirstProcess(Process* process) {
     }
 
   },process->GetKernelJob(),process)));
-
-  //task_ctrl->Register(cpu_ctrl->GetCpuId(),process->GetKernelJob());
 
   return process;
 }
