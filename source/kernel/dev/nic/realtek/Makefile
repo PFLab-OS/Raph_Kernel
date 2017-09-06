@@ -6,6 +6,8 @@ DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))
 .PHONY: clean
 
 default:
+
+build:
 	@$(foreach rule, $(SUB), $(MAKE) -C $(rule);)
 	@$(MAKE) ../realtek.o
 
