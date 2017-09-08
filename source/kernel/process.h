@@ -33,6 +33,7 @@
 
 typedef uint32_t pid_t;
 #define INVALID_PID 0
+#define INIT_PID  1
 
 enum class ProcessStatus {
   EMBRYO,
@@ -133,6 +134,7 @@ class ProcessCtrl {
     void ExitProcess(Process* process) {
       //Close Files 
       WakeupProcess(process->parent);
+      Process* init = FindProcessFromPid(INIT_PID);
 
       {
         Process* cp = current_exec_process;
@@ -142,14 +144,13 @@ class ProcessCtrl {
         do {
           p = p->next;
           if (p->parent == process) {
-            //p->parent = initcode;
+            p->parent = init;
           }
         } while (p != cp);
-        //WakeupProcess(initcode);
+        WakeupProcess(init);
       }
       delete process->elfobj;
-      //memory release 
-      //for paging
+      //TODO:paging memory release 
 
       process->GetKernelJob()->Wait(0);
     }

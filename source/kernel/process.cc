@@ -60,11 +60,11 @@ void ProcessCtrl::Init() {
       task_ctrl->Register(cpu_ctrl->GetCpuId(),p->GetKernelJob());
     }
 
-    task_ctrl->RegisterCallout(lcallout,cpu_ctrl->GetCpuId(),30);
+    task_ctrl->RegisterCallout(lcallout,cpu_ctrl->GetCpuId(),90);
 
   },lcallout_)));
 
-  task_ctrl->RegisterCallout(lcallout_,cpu_ctrl->GetCpuId(),30);
+  task_ctrl->RegisterCallout(lcallout_,cpu_ctrl->GetCpuId(),90);
 
 }
 
@@ -103,7 +103,6 @@ Process* ProcessCtrl::ForkProcess(Process* _parent) {
     p->elfobj = obj;
 
     MemSpace::CopyMemSapce(&(p->pmem),&(parent->pmem));
-    //TODO:これはコンストラクタでできるのでは？
     Loader::CopyContext(p->elfobj->GetContext(), parent->elfobj->GetContext());
     p->elfobj->GetContext()->rax = 0; //fork syscall ret addr 
 
@@ -194,9 +193,8 @@ Process* ProcessCtrl::CreateFirstProcess(Process* process) {
     paging_ctrl->SetMemSpace(&(p->pmem));
 
 
-    //TODO:すべての親になるプロセスとして test.elf は不適切
     Loader loader;
-    ElfObject* obj = new ElfObject(loader, multiboot_ctrl->LoadFile("test.elf")->GetRawPtr());
+    ElfObject* obj = new ElfObject(loader, multiboot_ctrl->LoadFile("init.elf")->GetRawPtr());
     if (obj->Init() != BinObjectInterface::ErrorState::kOk) {
       gtty->Printf("error while loading app\n");
       kernel_panic("ProcessCtrl","Could not load app in ExecProcess()");

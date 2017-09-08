@@ -273,51 +273,50 @@ bool PagingCtrl::Map1GPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr
 
 }
 
-//TODO: e1,e2の名前，リファクタリング
-void MemSpace::CopyMemSapceSub(entry_type* e2, const entry_type* e1, int depth) {
+void MemSpace::CopyMemSapceSub(entry_type* dst, const entry_type* src, int depth) {
   for (int i = 0; i < 512; i++) {
     switch (depth) {
       case 0://PDPTE 
-        if (!(e1[i] & PDPTE_PRESENT_BIT)) {
-          e2[i] = 0;
+        if (!(src[i] & PDPTE_PRESENT_BIT)) {
+          dst[i] = 0;
           break;
         }
-        if (e1[i] & PDPTE_1GPAGE_BIT) {
+        if (src[i] & PDPTE_1GPAGE_BIT) {
           PhysAddr tpaddr;
           physmem_ctrl->Alloc(tpaddr, PagingCtrl::kPageSize*512*512);
-          e2[i] = tpaddr.GetAddr() | (e1[i]^ PagingCtrl::GetPDPTEMaskedAddr(e1[i])); 
-          memcpy(reinterpret_cast<void*>(tpaddr.GetVirtAddr()), reinterpret_cast<entry_type*>(p2v(PagingCtrl::GetPDPTEMaskedAddr(e1[i]))), PagingCtrl::kPageSize*512*512);
+          dst[i] = tpaddr.GetAddr() | (src[i]^ PagingCtrl::GetPDPTEMaskedAddr(src[i])); 
+          memcpy(reinterpret_cast<void*>(tpaddr.GetVirtAddr()), reinterpret_cast<entry_type*>(p2v(PagingCtrl::GetPDPTEMaskedAddr(src[i]))), PagingCtrl::kPageSize*512*512);
         } else {
           PhysAddr tpaddr;
           physmem_ctrl->Alloc(tpaddr, PagingCtrl::kPageSize);
           bzero(reinterpret_cast<void *>(tpaddr.GetVirtAddr()), PagingCtrl::kPageSize);
-          e2[i] = tpaddr.GetAddr() | (e1[i]^ PagingCtrl::GetPDPTEMaskedAddr(e1[i])); 
-          CopyMemSapceSub(reinterpret_cast<entry_type*>(tpaddr.GetVirtAddr()), reinterpret_cast<entry_type*>(p2v(PagingCtrl::GetPDPTEMaskedAddr(e1[i]))), depth+1); 
+          dst[i] = tpaddr.GetAddr() | (src[i]^ PagingCtrl::GetPDPTEMaskedAddr(src[i])); 
+          CopyMemSapceSub(reinterpret_cast<entry_type*>(tpaddr.GetVirtAddr()), reinterpret_cast<entry_type*>(p2v(PagingCtrl::GetPDPTEMaskedAddr(src[i]))), depth+1); 
         }
         break;
       case 1://PDE
-        if (!(e1[i] & PDE_PRESENT_BIT)) {
-          e2[i] = 0;
+        if (!(src[i] & PDE_PRESENT_BIT)) {
+          dst[i] = 0;
           break;
         }
-        if (e1[i] & PDE_2MPAGE_BIT) {
+        if (src[i] & PDE_2MPAGE_BIT) {
           PhysAddr tpaddr;
           physmem_ctrl->Alloc(tpaddr, PagingCtrl::kPageSize*512);
-          memcpy(reinterpret_cast<entry_type*>(tpaddr.GetVirtAddr()), reinterpret_cast<entry_type*>(p2v(PagingCtrl::GetPDEMaskedAddr(e1[i]))), PagingCtrl::kPageSize*512*512);
+          memcpy(reinterpret_cast<entry_type*>(tpaddr.GetVirtAddr()), reinterpret_cast<entry_type*>(p2v(PagingCtrl::GetPDEMaskedAddr(src[i]))), PagingCtrl::kPageSize*512*512);
         } else {
           PhysAddr tpaddr;
           physmem_ctrl->Alloc(tpaddr, PagingCtrl::kPageSize);
           bzero(reinterpret_cast<void *>(tpaddr.GetVirtAddr()), PagingCtrl::kPageSize);
-          e2[i] = tpaddr.GetAddr() | (e1[i]^ PagingCtrl::GetPDEMaskedAddr(e1[i])); 
-          CopyMemSapceSub(reinterpret_cast<entry_type*>(tpaddr.GetVirtAddr()), reinterpret_cast<entry_type*>(p2v(PagingCtrl::GetPDEMaskedAddr(e1[i]))), depth+1); 
+          dst[i] = tpaddr.GetAddr() | (src[i]^ PagingCtrl::GetPDEMaskedAddr(src[i])); 
+          CopyMemSapceSub(reinterpret_cast<entry_type*>(tpaddr.GetVirtAddr()), reinterpret_cast<entry_type*>(p2v(PagingCtrl::GetPDEMaskedAddr(src[i]))), depth+1); 
         }
         break;
       case 2://PTE
-        if (e1[i] & PTE_PRESENT_BIT) {
+        if (src[i] & PTE_PRESENT_BIT) {
           PhysAddr tpaddr;
           physmem_ctrl->Alloc(tpaddr, PagingCtrl::kPageSize);
-          e2[i] = tpaddr.GetAddr() | (e1[i]^ PagingCtrl::GetPTEMaskedAddr(e1[i])); 
-          memcpy(reinterpret_cast<void*>(tpaddr.GetVirtAddr()), reinterpret_cast<entry_type*>(p2v(PagingCtrl::GetPDEMaskedAddr(e1[i]))), PagingCtrl::kPageSize);
+          dst[i] = tpaddr.GetAddr() | (src[i]^ PagingCtrl::GetPTEMaskedAddr(src[i])); 
+          memcpy(reinterpret_cast<void*>(tpaddr.GetVirtAddr()), reinterpret_cast<entry_type*>(p2v(PagingCtrl::GetPDEMaskedAddr(src[i]))), PagingCtrl::kPageSize);
         }
         break;
     }
