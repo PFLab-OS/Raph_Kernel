@@ -31,7 +31,7 @@
 PagingCtrl::PagingCtrl() {
   extern PageTable initial_PML4T;
   phys_addr pml4t_addr = reinterpret_cast<phys_addr>(&initial_PML4T);
-  kernel_memspace = current_memspace = new MemSpace(reinterpret_cast<PageTable *>(p2v(pml4t_addr)));
+  _kernel_memspace = _current_memspace = new MemSpace(reinterpret_cast<PageTable *>(p2v(pml4t_addr)));
 }
 
 void PagingCtrl::MapAllPhysMemory() {
@@ -47,36 +47,36 @@ void PagingCtrl::MapAllPhysMemory() {
 void PagingCtrl::InitMemSpace(MemSpace* mems) {
   //TODO:カーネルランド用仮想メモリのページディレクトリは予めすべて確保しておきたい
   for (int i = 0; i < 512; i++) {
-    mems->pml4t->entry[i] = kernel_memspace->pml4t->entry[i];
+    mems->_pml4t->entry[i] = _kernel_memspace->_pml4t->entry[i];
   }
 }
 
 void PagingCtrl::SetMemSpace(MemSpace* mems) {
   for (int i = 256; i < 512; i++) {
-    mems->pml4t->entry[i] = current_memspace->pml4t->entry[i];
+    mems->_pml4t->entry[i] = _current_memspace->_pml4t->entry[i];
   }
-  current_memspace = mems;
-  asm volatile("movq %0,%%cr3" : : "r" (k2p(ptr2virtaddr(current_memspace->pml4t))) :);
+  _current_memspace = mems;
+  asm volatile("movq %0,%%cr3" : : "r" (k2p(ptr2virtaddr(_current_memspace->_pml4t))) :);
 }
 
 void PagingCtrl::ReleaseMemSpace() {
   for (int i = 256; i < 512; i++) {
-    kernel_memspace->pml4t->entry[i] = current_memspace->pml4t->entry[i];
+    _kernel_memspace->_pml4t->entry[i] = _current_memspace->_pml4t->entry[i];
   }
-  current_memspace = kernel_memspace;
-  asm volatile("movq %0,%%cr3" : : "r" (k2p(ptr2virtaddr(current_memspace->pml4t))) :);
+  _current_memspace = _kernel_memspace;
+  asm volatile("movq %0,%%cr3" : : "r" (k2p(ptr2virtaddr(_current_memspace->_pml4t))) :);
 }
 
 void PagingCtrl::ReleaseLowMemory() {
   // release low address(1MB~) which is set in boot/boot.S
-  entry_type entry = current_memspace->pml4t->entry[GetPML4TIndex(0)];
+  entry_type entry = _current_memspace->_pml4t->entry[GetPML4TIndex(0)];
   assert((entry & PML4E_PRESENT_BIT) != 0);
-  current_memspace->pml4t->entry[GetPML4TIndex(0)] = 0;
+  _current_memspace->_pml4t->entry[GetPML4TIndex(0)] = 0;
 }
 
 void PagingCtrl::ConvertVirtMemToPhysMem(virt_addr vaddr, PhysAddr &paddr) {
   Locker locker(_lock);
-  entry_type entry = current_memspace->pml4t->entry[GetPML4TIndex(vaddr)];
+  entry_type entry = _current_memspace->_pml4t->entry[GetPML4TIndex(vaddr)];
   if ((entry & PML4E_PRESENT_BIT) == 0) {
     return;
   }
@@ -109,7 +109,7 @@ void PagingCtrl::ConvertVirtMemToPhysMem(virt_addr vaddr, PhysAddr &paddr) {
 
 bool PagingCtrl::IsVirtAddrMapped(virt_addr vaddr) {
   Locker locker(_lock);
-  entry_type entry = current_memspace->pml4t->entry[GetPML4TIndex(vaddr)];
+  entry_type entry = _current_memspace->_pml4t->entry[GetPML4TIndex(vaddr)];
   if ((entry & PML4E_PRESENT_BIT) == 0) {
     return false;
   }
@@ -140,7 +140,7 @@ bool PagingCtrl::IsVirtAddrMapped(virt_addr vaddr) {
 void PagingCtrl::GetTranslationEntries(virt_addr vaddr, entry_type *pml4e, entry_type *pdpte, entry_type *pde, entry_type *pte){
   Locker locker(_lock);
   // PML4
-  entry_type entry = current_memspace->pml4t->entry[GetPML4TIndex(vaddr)];
+  entry_type entry = _current_memspace->_pml4t->entry[GetPML4TIndex(vaddr)];
   if(pml4e) *pml4e = entry;
   if(!(entry & PML4E_PRESENT_BIT)){
     // 以降のエントリは存在しない
@@ -178,12 +178,12 @@ void PagingCtrl::GetTranslationEntries(virt_addr vaddr, entry_type *pml4e, entry
 
 bool PagingCtrl::Map4KPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr pst_flag, phys_addr page_flag) {
   Locker locker(_lock);
-  entry_type entry = current_memspace->pml4t->entry[GetPML4TIndex(vaddr)];
+  entry_type entry = _current_memspace->_pml4t->entry[GetPML4TIndex(vaddr)];
   if ((entry & PML4E_PRESENT_BIT) == 0) {
     PhysAddr tpaddr;
     physmem_ctrl->Alloc(tpaddr, kPageSize);
     bzero(reinterpret_cast<void *>(tpaddr.GetVirtAddr()), kPageSize);
-    entry = current_memspace->pml4t->entry[GetPML4TIndex(vaddr)] = tpaddr.GetAddr() | pst_flag | PML4E_PRESENT_BIT;
+    entry = _current_memspace->_pml4t->entry[GetPML4TIndex(vaddr)] = tpaddr.GetAddr() | pst_flag | PML4E_PRESENT_BIT;
   }
   PageTable *pdpt = reinterpret_cast<PageTable *>(p2v(GetPML4EMaskedAddr(entry)));
   entry = pdpt->entry[GetPDPTIndex(vaddr)];
@@ -219,13 +219,13 @@ bool PagingCtrl::Map4KPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr
 
 bool PagingCtrl::Map2MPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr pst_flag, phys_addr page_flag) {
   Locker locker(_lock);
-  entry_type entry = current_memspace->pml4t->entry[GetPML4TIndex(vaddr)];
+  entry_type entry = _current_memspace->_pml4t->entry[GetPML4TIndex(vaddr)];
   if ((entry & PML4E_PRESENT_BIT) == 0) {
     // まだメモリ上に存在していないPDPTに登録しようとしたので、PDPTをmallocしてから継続する。
     PhysAddr tpaddr;
     physmem_ctrl->Alloc(tpaddr, kPageSize);
     bzero(reinterpret_cast<void *>(tpaddr.GetVirtAddr()), kPageSize);
-    entry = current_memspace->pml4t->entry[GetPML4TIndex(vaddr)] = tpaddr.GetAddr() | pst_flag | PML4E_PRESENT_BIT;
+    entry = _current_memspace->_pml4t->entry[GetPML4TIndex(vaddr)] = tpaddr.GetAddr() | pst_flag | PML4E_PRESENT_BIT;
   }
   PageTable *pdpt = reinterpret_cast<PageTable *>(p2v(GetPML4EMaskedAddr(entry)));
   entry = pdpt->entry[GetPDPTIndex(vaddr)];
@@ -254,13 +254,13 @@ bool PagingCtrl::Map2MPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr
 bool PagingCtrl::Map1GPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr pst_flag, phys_addr page_flag) {
   Locker locker(_lock);
   assert((paddr.GetAddr() % 0x40000000) == 0);
-  entry_type entry = current_memspace->pml4t->entry[GetPML4TIndex(vaddr)];
+  entry_type entry = _current_memspace->_pml4t->entry[GetPML4TIndex(vaddr)];
   if ((entry & PML4E_PRESENT_BIT) == 0) {
     // まだメモリ上に存在していないPDPTに登録しようとしたので、PDPTをmallocしてから継続する。
     PhysAddr tpaddr;
     physmem_ctrl->Alloc(tpaddr, kPageSize);
     bzero(reinterpret_cast<void *>(tpaddr.GetVirtAddr()), kPageSize);
-    entry = current_memspace->pml4t->entry[GetPML4TIndex(vaddr)] = tpaddr.GetAddr() | pst_flag | PML4E_PRESENT_BIT;
+    entry = _current_memspace->_pml4t->entry[GetPML4TIndex(vaddr)] = tpaddr.GetAddr() | pst_flag | PML4E_PRESENT_BIT;
   }
   PageTable *pdpt = reinterpret_cast<PageTable *>(p2v(GetPML4EMaskedAddr(entry)));
   entry = pdpt->entry[GetPDPTIndex(vaddr)];
@@ -326,16 +326,16 @@ void MemSpace::CopyMemSapceSub(entry_type* dst, const entry_type* src, int depth
 void MemSpace::CopyMemSapce(MemSpace* mdst, const MemSpace* msrc) {
   //Kernel Memory
   for (int i = 256; i < 512; i++) {
-    mdst->pml4t->entry[i] = msrc->pml4t->entry[i];
+    mdst->_pml4t->entry[i] = msrc->_pml4t->entry[i];
   }
   //Process Memory
   PhysAddr tpaddr;
   for (int i = 0; i < 256; i++) {
-    if (msrc->pml4t->entry[i] & PML4E_PRESENT_BIT) {
+    if (msrc->_pml4t->entry[i] & PML4E_PRESENT_BIT) {
       physmem_ctrl->Alloc(tpaddr, PagingCtrl::kPageSize);
       bzero(reinterpret_cast<void *>(tpaddr.GetVirtAddr()), PagingCtrl::kPageSize);
-      mdst->pml4t->entry[i] = tpaddr.GetAddr() | (msrc->pml4t->entry[i]^ PagingCtrl::GetPML4EMaskedAddr(msrc->pml4t->entry[i])); 
-      CopyMemSapceSub(reinterpret_cast<entry_type*>(tpaddr.GetVirtAddr()), reinterpret_cast<entry_type*>(p2v(PagingCtrl::GetPML4EMaskedAddr(msrc->pml4t->entry[i]))), 0); 
+      mdst->_pml4t->entry[i] = tpaddr.GetAddr() | (msrc->_pml4t->entry[i]^ PagingCtrl::GetPML4EMaskedAddr(msrc->_pml4t->entry[i])); 
+      CopyMemSapceSub(reinterpret_cast<entry_type*>(tpaddr.GetVirtAddr()), reinterpret_cast<entry_type*>(p2v(PagingCtrl::GetPML4EMaskedAddr(msrc->_pml4t->entry[i]))), 0); 
     }
   }
 }

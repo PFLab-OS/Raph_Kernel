@@ -31,9 +31,7 @@
 #include <global.h>
 
 
-typedef uint32_t pid_t;
-#define INVALID_PID 0
-#define INIT_PID  1
+using pid_t = uint32_t;
 
 enum class ProcessStatus {
   EMBRYO,
@@ -51,41 +49,48 @@ public:
   }
 
   ~Process() {
-    delete elfobj;
+    delete _elfobj;
   }
 
   void Init();
 
   pid_t GetPid() {
-    return pid;
+    return _pid;
   }
 
   ProcessStatus GetStatus() {
-    return status;
+    return _status;
   };
 
   sptr<TaskWithStack> GetKernelJob() {
-    return task;
+    return _task;
   } 
 
   void SetKernelJobFunc(uptr<GenericFunction<>> func) {
-    task->SetFunc(func);
+    _task->SetFunc(func);
   }
 
-  static void ReturnToKernelJob(Process*);
-  //static void Exit(Process*);
-  uint64_t* saved_rsp = nullptr;
-  //TODO:ElfObjectのスーパークラスとしてclass ExecutableObjectをつくりたい(将来サポートする実行形式を増やすため）
-  ElfObject* elfobj;
+  static void ReturnToKernelJob(Process* p) {
+    p->_elfobj->ReturnToKernelJob();
+  }
+
+  static void SetContext(Process* p,Context* context) {
+    p->_elfobj->SetContext(context);
+  }
+
+  static const int kInvalidPid = 0;
+  static const int kInitPid = 1;
 private:
-  Process* parent;
-  pid_t  pid;
-  ProcessStatus status = ProcessStatus::EMBRYO;
-  Process* next;
-  Process* prev;
-  sptr<TaskWithStack> task;
-  MemSpace pmem;
-  void* chan; //SLEEPING 終了条件
+  //TODO:Implementing class ExecutableObject for super class of ElfObject
+  ElfObject* _elfobj;
+  Process* _parent;
+  pid_t  _pid;
+  ProcessStatus _status = ProcessStatus::EMBRYO;
+  Process* _next;
+  Process* _prev;
+  sptr<TaskWithStack> _task;
+  MemSpace _pmem;
+  void* _chan; //SLEEPING Finish Condition
 };
 
 class ProcessCtrl {
@@ -100,21 +105,21 @@ class ProcessCtrl {
     }
 
     void SetStatus(Process* process,ProcessStatus _status) {
-      assert(process->status != ProcessStatus::SLEEPING);
-      assert(process->status != ProcessStatus::ZOMBIE);
+      assert(process->_status != ProcessStatus::SLEEPING);
+      assert(process->_status != ProcessStatus::ZOMBIE);
       Locker locker(table_lock);
-      process->status = _status;
+      process->_status = _status;
     }
     ProcessStatus GetStatus(Process* p) {
-      return p->status;
+      return p->_status;
     }
 
     bool MakeProcessSleep(Process* process, void* chan) {
-      assert(process->status != ProcessStatus::SLEEPING);
-      assert(process->status != ProcessStatus::ZOMBIE);
+      assert(process->_status != ProcessStatus::SLEEPING);
+      assert(process->_status != ProcessStatus::ZOMBIE);
       Locker locker(table_lock);
-      process->chan = chan;
-      process->status = ProcessStatus::SLEEPING;
+      process->_chan = chan;
+      process->_status = ProcessStatus::SLEEPING;
       return true;
     }
 
@@ -123,33 +128,33 @@ class ProcessCtrl {
       Process* p = current_exec_process;
       Locker locker(table_lock);
       do {
-        p = p->next;
-        if (p->GetStatus() == ProcessStatus::SLEEPING && p->chan == chan) {
-          p->status = ProcessStatus::RUNNABLE;
+        p = p->_next;
+        if (p->GetStatus() == ProcessStatus::SLEEPING && p->_chan == chan) {
+          p->_status = ProcessStatus::RUNNABLE;
         }
       } while (p != cp);
     }
 
-    //TODO:工事中
+    //TODO:TBI
     void ExitProcess(Process* process) {
       //Close Files 
-      WakeupProcess(process->parent);
-      Process* init = FindProcessFromPid(INIT_PID);
+      WakeupProcess(process->_parent);
+      Process* init = FindProcessFromPid(Process::kInitPid);
 
       {
         Process* cp = current_exec_process;
         Process* p = current_exec_process;
         Locker locker(table_lock);
-        p->status = ProcessStatus::ZOMBIE;
+        p->_status = ProcessStatus::ZOMBIE;
         do {
-          p = p->next;
-          if (p->parent == process) {
-            p->parent = init;
+          p = p->_next;
+          if (p->_parent == process) {
+            p->_parent = init;
           }
         } while (p != cp);
         WakeupProcess(init);
       }
-      delete process->elfobj;
+      delete process->_elfobj;
       //TODO:paging memory release 
 
       process->GetKernelJob()->Wait(0);
@@ -160,14 +165,14 @@ class ProcessCtrl {
       Process* p = current_exec_process;
       Locker locker(table_lock);
       do {
-        p = p->next;
-        if (p->parent == process && p->status == ProcessStatus::ZOMBIE) {
+        p = p->_next;
+        if (p->_parent == process && p->_status == ProcessStatus::ZOMBIE) {
           pid_t pid = p->GetPid();
           process_table.FreeProcess(p);
           return pid;
         }
       } while (p != cp);
-      return INVALID_PID;
+      return Process::kInvalidPid;
     }  
 
     Process* FindProcessFromPid(pid_t pid) {
@@ -175,7 +180,7 @@ class ProcessCtrl {
       Process* p = current_exec_process;
       Locker locker(table_lock);
       do {
-        p = p->next;
+        p = p->_next;
         if (p->GetPid() == pid) {
           return p;
         }

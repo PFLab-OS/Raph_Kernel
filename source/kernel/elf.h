@@ -51,11 +51,10 @@ public:
       _loader.Resume();
     }
   }
-  //TODO:名前がおかしい?
   void ReturnToKernelJob() {
     _loader.ExitResume();
   }
-  //TODO:クラスの依存関係が不自然なので詰める
+  //TODO: redesigning
   void SetContext(Context* context) {
     _loader.SetContext(context);
   }

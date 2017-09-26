@@ -34,14 +34,9 @@
 #include <global.h>
 
 void Process::Init() {
-  task = make_sptr(new TaskWithStack(cpu_ctrl->GetCpuId()));
-  task->Init();
-  paging_ctrl->InitMemSpace(&pmem);
-}
-
-
-void Process::ReturnToKernelJob(Process* p) {
-  p->elfobj->ReturnToKernelJob();
+  _task = make_sptr(new TaskWithStack(cpu_ctrl->GetCpuId()));
+  _task->Init();
+  _pmem.Init();
 }
 
 void ProcessCtrl::Init() {
@@ -75,7 +70,7 @@ Process* ProcessCtrl::GetNextExecProcess() {
     Process* p = current_exec_process;
     Locker locker(table_lock);
     do {
-      p = p->next;
+      p = p->_next;
       if (p->GetStatus() == ProcessStatus::RUNNABLE || p->GetStatus() == ProcessStatus::EMBRYO) {
         current_exec_process = p;
         return current_exec_process;
@@ -85,30 +80,30 @@ Process* ProcessCtrl::GetNextExecProcess() {
   return nullptr;
 }
 
-//forkして実行可能になったプロセスを返す
-Process* ProcessCtrl::ForkProcess(Process* _parent) { 
+//This fucntion retrun Forked Executable Process 
+Process* ProcessCtrl::ForkProcess(Process* fp) { 
   Process* process = process_table.AllocProcess();
   if(process == nullptr) {
     kernel_panic("ProcessCtrl","Could not alloc process space.");
   }
   process->Init();
-  process->parent = _parent;
+  process->_parent = fp;
 
   process->SetKernelJobFunc(make_uptr(new Function3<sptr<TaskWithStack>,Process*,Process*>
-          ([](sptr<TaskWithStack> task,Process* p,Process* parent) {
-    paging_ctrl->SetMemSpace(&(parent->pmem));
+          ([](sptr<TaskWithStack> task,Process* p,Process* _parent) {
+    paging_ctrl->SetMemSpace(&(_parent->_pmem));
 
     Loader loader;
-    ElfObject* obj = new ElfObject(loader, parent->elfobj);
-    p->elfobj = obj;
+    ElfObject* obj = new ElfObject(loader, _parent->_elfobj);
+    p->_elfobj = obj;
 
-    MemSpace::CopyMemSapce(&(p->pmem),&(parent->pmem));
-    Loader::CopyContext(p->elfobj->GetContext(), parent->elfobj->GetContext());
-    p->elfobj->GetContext()->rax = 0; //fork syscall ret addr 
+    MemSpace::CopyMemSapce(&(p->_pmem),&(_parent->_pmem));
+    Loader::CopyContext(p->_elfobj->GetContext(), _parent->_elfobj->GetContext());
+    p->_elfobj->GetContext()->rax = 0; //fork syscall ret addr 
 
-    process_ctrl->SetStatus(parent,ProcessStatus::RUNNABLE);
+    process_ctrl->SetStatus(_parent,ProcessStatus::RUNNABLE);
 
-    paging_ctrl->SetMemSpace(&(p->pmem));
+    paging_ctrl->SetMemSpace(&(p->_pmem));
 
     while(true) {
       paging_ctrl->ReleaseMemSpace();
@@ -123,13 +118,13 @@ Process* ProcessCtrl::ForkProcess(Process* _parent) {
 
       task->Wait(0);
 
-      paging_ctrl->SetMemSpace(&(p->pmem));
+      paging_ctrl->SetMemSpace(&(p->_pmem));
       process_ctrl->SetStatus(p,ProcessStatus::RUNNING);
 
-      p->elfobj->Resume();
+      p->_elfobj->Resume();
 
     }
-  },process->GetKernelJob(), process, _parent)));
+  },process->GetKernelJob(), process, fp)));
 
   return process;
 }
@@ -143,7 +138,7 @@ Process* ProcessCtrl::ExecProcess(Process* process,const char* _path) {
   process->SetKernelJobFunc(make_uptr(new Function3<sptr<TaskWithStack>,Process*,const char*>
           ([](sptr<TaskWithStack> task,Process* p,const char* path) {
     gtty->Printf("Foekd Process Execution\n");
-    paging_ctrl->SetMemSpace(&(p->pmem));
+    paging_ctrl->SetMemSpace(&(p->_pmem));
 
 
     Loader loader;
@@ -155,7 +150,7 @@ Process* ProcessCtrl::ExecProcess(Process* process,const char* _path) {
       kernel_panic("ProcessCtrl","Could not load app in ExecProcess()");
     }
 
-    p->elfobj = obj;
+    p->_elfobj = obj;
 
     while(true) {
       paging_ctrl->ReleaseMemSpace();
@@ -170,10 +165,10 @@ Process* ProcessCtrl::ExecProcess(Process* process,const char* _path) {
 
       task->Wait(0);
 
-      paging_ctrl->SetMemSpace(&(p->pmem));
+      paging_ctrl->SetMemSpace(&(p->_pmem));
       process_ctrl->SetStatus(p,ProcessStatus::RUNNING);
 
-      p->elfobj->Resume();
+      p->_elfobj->Resume();
     }
 
   },process->GetKernelJob(), process, _path)));
@@ -190,7 +185,7 @@ Process* ProcessCtrl::CreateFirstProcess(Process* process) {
 
   process->SetKernelJobFunc(make_uptr(new Function2<sptr<TaskWithStack>,Process*>([](sptr<TaskWithStack> task,Process* p) {
 
-    paging_ctrl->SetMemSpace(&(p->pmem));
+    paging_ctrl->SetMemSpace(&(p->_pmem));
 
 
     Loader loader;
@@ -200,7 +195,7 @@ Process* ProcessCtrl::CreateFirstProcess(Process* process) {
       kernel_panic("ProcessCtrl","Could not load app in ExecProcess()");
     }    
 
-    p->elfobj = obj;
+    p->_elfobj = obj;
 
     while(true) {
       paging_ctrl->ReleaseMemSpace();
@@ -215,10 +210,10 @@ Process* ProcessCtrl::CreateFirstProcess(Process* process) {
 
       task->Wait(0);
 
-      paging_ctrl->SetMemSpace(&(p->pmem));
+      paging_ctrl->SetMemSpace(&(p->_pmem));
       process_ctrl->SetStatus(p,ProcessStatus::RUNNING);
 
-      p->elfobj->Resume();
+      p->_elfobj->Resume();
 
     }
 
@@ -229,9 +224,9 @@ Process* ProcessCtrl::CreateFirstProcess(Process* process) {
 
 Process* ProcessCtrl::ProcessTable::Init() {
   Process* p = new Process();
-  p->status = ProcessStatus::EMBRYO;
-  p->pid = next_pid++;
-  p->next = p->prev = p;
+  p->_status = ProcessStatus::EMBRYO;
+  p->_pid = next_pid++;
+  p->_next = p->_prev = p;
 
   current_process = p;
 
@@ -241,30 +236,29 @@ Process* ProcessCtrl::ProcessTable::Init() {
 
 Process* ProcessCtrl::ProcessTable::AllocProcess() { 
   Process* p = new Process();
-  p->status = ProcessStatus::EMBRYO;
-  p->pid = next_pid++;
+  p->_status = ProcessStatus::EMBRYO;
+  p->_pid = next_pid++;
 
   Process* cp = current_process;
 
-  p->next = cp->next;
-  p->prev = cp;
-  cp->next = p;
-  cp->next->prev = p;
+  p->_next = cp->_next;
+  p->_prev = cp;
+  cp->_next = p;
+  cp->_next->_prev = p;
 
   return p;
 }
 
 void ProcessCtrl::ProcessTable::FreeProcess(Process* p) {
-  p->prev = p->next;
-  p->next->prev = p->prev;
+  p->_prev = p->_next;
+  p->_next->_prev = p->_prev;
   delete p;
 }
 
-//TODO:デバッグ用簡易実装
-//どんな実装にするのか考える
+//TODO: TBI (now, super simple implemetation for debug) 
 Process* ProcessCtrl::ProcessTable::GetNextProcess() {
   while(true) { 
-    Process* res = current_process->next;
+    Process* res = current_process->_next;
     current_process = res;
     //DBG
     if (res->GetStatus() == ProcessStatus::ZOMBIE) continue;

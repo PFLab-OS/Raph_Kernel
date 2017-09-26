@@ -212,7 +212,7 @@ private:
   static bool IsPageOffset(int offset) {
     return offset >= 0 && offset < 4096;
   }
-  MemSpace *current_memspace,*kernel_memspace;
+  MemSpace *_current_memspace,*_kernel_memspace;
   SpinLock _lock;
 };
 
@@ -238,20 +238,24 @@ private:
   SpinLock _lock;
 
 public:
-  MemSpace() :pml4t(GetPml4tAddr()) {
-    kassert(pml4t);
+  MemSpace() :_pml4t(GetPml4tAddr()) {
+    kassert(_pml4t);
   }
 
-  MemSpace(PageTable* _pml4t) :pml4t(_pml4t) {
+  MemSpace(PageTable* pml4t) :_pml4t(pml4t) {
   }
 
   ~MemSpace() {
     virtmem_ctrl->Free(pt_mem);
   }
 
+  void Init() {
+    paging_ctrl->InitMemSpace(this);
+  }
+
   static void CopyMemSapce(MemSpace* mdst,const MemSpace* msrc);
 
-  PageTable* const pml4t;
+  PageTable* const _pml4t;
 
 };
 

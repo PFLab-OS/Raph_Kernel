@@ -51,53 +51,54 @@ struct Context {
     uint64_t ss = USER_DS;
 } __attribute__ ((packed));
 
-#define SaveContext(c) \
-    c.rsp = syscall_handler_caller_stack;\
-    asm("movq %7,%%rax;"\
-        "subq $112,%%rax;"\
-        "movq 0(%%rax),%%rcx;"\
-        "movq %%rcx,%0;"\
-        "movq 8(%%rax),%%rcx;"\
-        "movq %%rcx,%1;"\
-        "movq 16(%%rax),%%rcx;"\
-        "movq %%rcx,%2;" \
-        "movq 24(%%rax),%%rcx;"\
-        "movq %%rcx,%3;" \
-        "movq 32(%%rax),%%rcx;"\
-        "movq %%rcx,%4;"\
-        "movq 40(%%rax),%%rcx;"\
-        "movq %%rcx,%5;"\
-        "movq 48(%%rax),%%rcx;"\
-        "movq %%rcx,%6;"\
-      : "=m"(c.rip),"=m"(c.rflags),"=m"(c.rdi),"=m"(c.rsi),\
-        "=m"(c.rdx),"=m"(c.r10),"=m"(c.r8)\
-      : "m"(syscall_handler_stack)\
-      : "%rax","%rcx");\
-    asm("movq %7,%%rax;"\
-        "subq $112,%%rax;"\
-        "movq 56(%%rax),%%rcx;"\
-        "movq %%rcx,%0;"\
-        "movq 64(%%rax),%%rcx;"\
-        "movq %%rcx,%1;"\
-        "movq 72(%%rax),%%rcx;"\
-        "movq %%rcx,%2;"\
-        "movq 80(%%rax),%%rcx;"\
-        "movq %%rcx,%3;"\
-        "movq 88(%%rax),%%rcx;"\
-        "movq %%rcx,%4;"\
-        "movq 96(%%rax),%%rcx;"\
-        "movq %%rcx,%5;"\
-        "movq 104(%%rax),%%rcx;"\
-        "movq %%rcx,%6;"\
-        "swapgs;"\
-      : "=m"(c.r9),"=m"(c.rbx),"=m"(c.rbp),"=m"(c.r12),\
-        "=m"(c.r13),"=m"(c.r14),"=m"(c.r15)\
-      : "m"(syscall_handler_stack)\
+inline void SaveContext(Context* c,size_t stack) {
+    c->rsp = stack;
+    asm("movq %7,%%rax;"
+        "subq $112,%%rax;"
+        "movq 0(%%rax),%%rcx;"
+        "movq %%rcx,%0;"
+        "movq 8(%%rax),%%rcx;"
+        "movq %%rcx,%1;"
+        "movq 16(%%rax),%%rcx;"
+        "movq %%rcx,%2;" 
+        "movq 24(%%rax),%%rcx;"
+        "movq %%rcx,%3;" 
+        "movq 32(%%rax),%%rcx;"
+        "movq %%rcx,%4;"
+        "movq 40(%%rax),%%rcx;"
+        "movq %%rcx,%5;"
+        "movq 48(%%rax),%%rcx;"
+        "movq %%rcx,%6;"
+      : "=m"(c->rip),"=m"(c->rflags),"=m"(c->rdi),"=m"(c->rsi),
+        "=m"(c->rdx),"=m"(c->r10),"=m"(c->r8)
+      : "m"(stack)
       : "%rax","%rcx");
+    asm("movq %7,%%rax;"
+        "subq $112,%%rax;"
+        "movq 56(%%rax),%%rcx;"
+        "movq %%rcx,%0;"
+        "movq 64(%%rax),%%rcx;"
+        "movq %%rcx,%1;"
+        "movq 72(%%rax),%%rcx;"
+        "movq %%rcx,%2;"
+        "movq 80(%%rax),%%rcx;"
+        "movq %%rcx,%3;"
+        "movq 88(%%rax),%%rcx;"
+        "movq %%rcx,%4;"
+        "movq 96(%%rax),%%rcx;"
+        "movq %%rcx,%5;"
+        "movq 104(%%rax),%%rcx;"
+        "movq %%rcx,%6;"
+        "swapgs;"
+      : "=m"(c->r9),"=m"(c->rbx),"=m"(c->rbp),"=m"(c->r12),
+        "=m"(c->r13),"=m"(c->r14),"=m"(c->r15)
+      : "m"(stack)
+      : "%rax","%rcx");
+}
 
 
 extern "C" int execute_elf_binary(FType f, uint64_t *stack_addr, uint64_t cs, uint64_t ds);
-extern "C" int resume_elf_binary(Context* context,uint64_t* saved_rsp);
+extern "C" int resume_elf_binary(Context* context,uint64_t* _saved_rsp);
 extern "C" int execute_kernel_elf_binary(FType f, uint64_t *stack_addr);
 
 class Loader : public LoaderInterface {
@@ -126,15 +127,10 @@ public:
   //TODO:Execute()のためにstackのアドレスを返しているが,これをやめる
   //設計を上手くどうにかする
   virtual uint64_t* MakeExecuteEnvironment(FType entry) {
-    // TODO : カーネルスタックで実行しない
-    // TODO : 現在のカーネルスタックが破棄されるので、なんとかする
-    //uint64_t *stack_addr = reinterpret_cast<uint64_t *>(KernelStackCtrl::GetCtrl().AllocThreadStack(cpu_ctrl->GetCpuId()));
     //TODO:なんとかする
     uint64_t *stack_addr = reinterpret_cast<uint64_t *>(0xfffbc000);
-    //MapAddr(reinterpret_cast<virt_addr>(0xfff9b000),reinterpret_cast<virt_addr>(0xfffbc000));
     MapAddr(0xfff9b000,0xfffbc000);
     gtty->Printf("stack addr: %llx\n", stack_addr);
-    //gtty->Printf("entry point: %llx\n", f);
 
     int argc = 1;
     const char *str[1] = {"123"};
@@ -183,12 +179,12 @@ public:
     //gtty->Printf("%s Returned.\n", str);
   }
   virtual void Resume() {
-    resume_elf_binary(&context,&saved_rsp);
+    resume_elf_binary(&context,&_saved_rsp);
   } 
   virtual void ExitResume() {
     asm("movq %0,%%rsp;"
         "ret"
-        ::"m"(saved_rsp));
+        ::"m"(_saved_rsp));
   }
   virtual void SetContext(Context* _context) {
     context = *_context;
@@ -198,7 +194,7 @@ protected:
     return execute_elf_binary(f, stack_addr, USER_CS, USER_DS);
   }
 private:
-  uint64_t saved_rsp;
+  uint64_t _saved_rsp;
 };
 
 class Ring0Loader : public Loader {

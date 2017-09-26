@@ -120,11 +120,11 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
       Context c;
 
       Process* p = process_ctrl->GetCurrentExecProcess();
-      SaveContext(c);
+      SaveContext(&c,syscall_handler_caller_stack);
 
       Process* forkedp = process_ctrl->ForkProcess(p);
       c.rax = forkedp->GetPid();
-      p->elfobj->SetContext(&c);
+      p->SetContext(p,&c);
 
       if (p->GetStatus() == ProcessStatus::HALTED) {
         kernel_panic("Syscall","Could not fork");
@@ -136,28 +136,27 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
       while(true) {asm volatile("hlt;");}
     }
   case 59:
-    //execve TODO:execveの引数に対応 int execve(const char * filename , char *const argv [], char *const envp []);
-    //現状カーネルーユーザ間のメモリインターフェイスが曖昧なのでうまく実装できていない
+    //execve TODO: TBI 
     {
       Process* p = process_ctrl->GetCurrentExecProcess();
 
       process_ctrl->ExecProcess(p,"forked.elf");
 
-      p->elfobj->ReturnToKernelJob();
+      Process::ReturnToKernelJob(p);
 
       while(true) {asm volatile("hlt;");}
     }
   case 61:
-    //wait TODO:wait4とは異なるがこれはこれでいい？
+    //wait TODO: TBI
     {
       Context c;
       Process* p = process_ctrl->GetCurrentExecProcess();
 
       pid_t pid = process_ctrl->WaitProcess(p);
-      if (pid != INVALID_PID) return pid;
+      if (pid != Process::kInvalidPid) return pid;
 
-      SaveContext(c);
-      p->elfobj->SetContext(&c);
+      SaveContext(&c,syscall_handler_caller_stack);
+      p->SetContext(p,&c);
       assert(process_ctrl->MakeProcessSleep(p,p));
       Process::ReturnToKernelJob(p);
 
@@ -185,6 +184,7 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
       return 0;
     }
   case 158:
+    //arch_prctl
     {
       gtty->Printf("sys_arch_prctl code=%llx addr=%llx\n", args->arg1, args->arg2);
       switch(args->arg1){
@@ -223,10 +223,10 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
       Context c;
       Process* p = process_ctrl->GetCurrentExecProcess();
 
-      SaveContext(c);
+      SaveContext(&c,syscall_handler_caller_stack);
       c.rax = 1; //return value
 
-      p->elfobj->SetContext(&c);
+      p->SetContext(p,&c);
 
       Process::ReturnToKernelJob(p);
 
