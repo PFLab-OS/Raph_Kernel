@@ -71,13 +71,13 @@ private:
     static void CheckHwState(Rtl8139Ethernet*);
   private:
     Rtl8139 &_master;
-    uint32_t TxDescriptorStatus = 0b1111;
-    uint32_t currentTxDescriptor = 0;
-    PhysAddr TxBuffer[4];
-    PhysAddr RxBuffer;
-    uint32_t RxBufferOffset = 0;
+    uint32_t _TxDescriptorStatus = 0b1111;
+    uint32_t _currentTxDescriptor = 0;
+    PhysAddr _TxBuffer[4];
+    PhysAddr _RxBuffer;
+    uint32_t _RxBufferOffset = 0;
 
-    Callout *StatusCheckCallout;
+    Callout *_StatusCheckCallout;
 
 
     //Registers see datasheet p16
