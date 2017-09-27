@@ -150,7 +150,7 @@ void Rtl8139::Rtl8139Ethernet::PollingHandler(Rtl8139 *that){
   for(int i = 0;i < 4;i++){
     uint32_t tx_status = that->ReadReg<uint32_t>(kRegTxStatus + i*4);
     if(tx_status & (1 << 15)){
-      that->_eth.TxDescriptorStatus |= (1 << i);
+      that->_eth._TxDescriptorStatus |= (1 << i);
     }
   }
 
@@ -195,10 +195,10 @@ void Rtl8139::Rtl8139Ethernet::Transmit(void *buffer){
   uint32_t length = packet->len;
   uint8_t *buf = packet->GetBuffer();
 
-  uint32_t entry =_ currentTxDescriptor;
+  uint32_t entry = _currentTxDescriptor;
   _currentTxDescriptor = (_currentTxDescriptor + 1)%4;
 
-  if(!(TxDescriptorStatus & (1 << entry))){
+  if(!(_TxDescriptorStatus & (1 << entry))){
     //bit立ってない＝TxOKがまだ
     //なんか処理する
     return;
@@ -243,7 +243,7 @@ void Rtl8139::Rtl8139Ethernet::InterruptHandler(void *p){
       uint32_t tx_status = that->ReadReg<uint32_t>(kRegTxStatus + i*4);
       if(tx_status & (1 << 15)){
         //OWN bit, transmit to FIFO
-        that->_eth.TxDescriptorStatus |= (1 << i);
+        that->_eth._TxDescriptorStatus |= (1 << i);
       }
     }
   }
