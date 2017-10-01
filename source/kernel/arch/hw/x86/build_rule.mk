@@ -36,7 +36,8 @@ run:
 	$(MAKE) qemuend
 
 qemurun: image
-	sudo qemu-system-x86_64 -drive if=pflash,readonly,file=$(OVMF_DIR)OVMF_CODE.fd,format=raw -drive if=pflash,file=$(OVMF_DIR)OVMF_VARS.fd,format=raw -cpu qemu64 -smp 8 -m 2G -machine q35 -clock hpet -monitor telnet:127.0.0.1:1235,server,nowait -vnc 0.0.0.0:0,password $(IMAGE)&
+	sudo qemu-system-x86_64 -drive if=pflash,readonly,file=$(OVMF_DIR)OVMF_CODE.fd,format=raw -drive if=pflash,file=$(OVMF_DIR)OVMF_VARS.fd,format=raw -cpu qemu64 -smp 8 -machine q35 -clock hpet -monitor telnet:127.0.0.1:1235,server,nowait -vnc 0.0.0.0:0,password -net nic,model=rtl8139 -net bridge,br=br0 -net dump,file=./packet.pcap $(IMAGE)&
+#	sudo qemu-system-x86_64 -drive if=pflash,readonly,file=$(OVMF_DIR)OVMF_CODE.fd,format=raw -drive if=pflash,file=$(OVMF_DIR)OVMF_VARS.fd,format=raw -cpu qemu64 -smp 8 -machine q35 -clock hpet -monitor telnet:127.0.0.1:1235,server,nowait -vnc 0.0.0.0:0,password $(IMAGE)&
 #	sudo qemu-system-x86_64 -cpu qemu64,+x2apic -smp 8 -machine q35 -monitor telnet:127.0.0.1:1235,server,nowait -vnc 0.0.0.0:0,password -net nic -net bridge,br=br0 -drive id=disk,file=$(IMAGE),if=virtio -usb -usbdevice keyboard &
 #	sudo qemu-system-x86_64 -cpu qemu64,+x2apic -smp 8 -machine q35 -monitor telnet:127.0.0.1:1235,server,nowait -vnc 0.0.0.0:0,password -net nic -net bridge,br=br0 -drive id=disk,file=$(IMAGE),if=none -device ahci,id=ahci -device ide-drive,drive=disk,bus=ahci.0 &
 	sleep 0.2s

@@ -1,4 +1,4 @@
-SUB = intel realtek
+SUB = rtl8139
 OBJS = $(addsuffix .o,$(SUB))
 
 DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))
@@ -9,11 +9,11 @@ default:
 
 build:
 	@$(foreach rule, $(SUB), $(MAKE) -C $(rule) build;)
-	@$(MAKE) ../nic.o
+	@$(MAKE) ../realtek.o
 
 -include $(DEPS)
 
-../nic.o: $(OBJS)
+../realtek.o: $(OBJS)
 	ld -r $^ -o $@
 
 clean:
