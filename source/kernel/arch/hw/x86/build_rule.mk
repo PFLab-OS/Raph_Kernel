@@ -65,6 +65,7 @@ README.md:
 	cp ../../../../../README.md README.md
 
 $(BUILD_DIR)/fs.img: ../../../../../source/tool/mkfs README.md
+	-rm $@
 	../../../../../source/tool/mkfs $@ README.md
 	rm README.md
 
