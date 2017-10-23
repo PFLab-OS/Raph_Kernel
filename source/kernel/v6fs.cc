@@ -14,15 +14,17 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
- * 
+ *
  */
 
 #include "v6fs.h"
 
-V6FileSystem::V6FileSystem(Storage &storage) : _storage(storage), _inode_ctrl(storage, _sb), _block_ctrl(storage, _sb) {
+V6FileSystem::V6FileSystem(Storage &storage)
+    : _storage(storage), _inode_ctrl(storage, _sb), _block_ctrl(storage, _sb) {
   if (_storage.Read(_sb, kBlockSize) != IoReturnState::kOk) {
     kernel_panic("V6FS", "storage error");
   }
@@ -42,20 +44,23 @@ IoReturnState V6FileSystem::V6fsInodeCtrl::Alloc(InodeNumber &inum, Type type) {
   return IoReturnState::kErrNoHwResource;
 }
 
-void V6FileSystem::V6fsInode::GetStatOfInode(VirtualFileSystem::Stat &stat) {
+IoReturnState V6FileSystem::V6fsInode::GetStatOfInode(
+    VirtualFileSystem::Stat &stat) {
+  if (_st.type == Type::kFree) return IoReturnState::kErrNotFound;
   stat.type = ConvType(_st.type);
   stat.nlink = _st.nlink;
   stat.size = _st.size;
-  return;
+  return IoReturnState::kOk;
 }
 
 /**
  * @brief allocate block
- * @param index block index allocated by this function (returned by this function)
+ * @param index block index allocated by this function (returned by this
+ * function)
  */
 IoReturnState V6FileSystem::BlockCtrl::Alloc(BlockIndex &index) {
   Locker locker(_lock);
-  for (uint32_t b = 0; b < _sb.size; b+=8) {
+  for (uint32_t b = 0; b < _sb.size; b += 8) {
     uint8_t flag;
     _storage.Read(flag, _sb.bmapstart * kBlockSize + b / 8);
     for (int bi = 0; bi < 8; bi++) {
@@ -81,17 +86,18 @@ IoReturnState V6FileSystem::BlockCtrl::ClearBlock(BlockIndex index) {
   return _storage.Write(buf, index * kBlockSize);
 }
 
-
 /**
  * @brief read data from inode
  * @param buf buffer for storing data
  * @param inode target inode number
  * @param offset offset in target inode file
- * @param size size of the data to be read. This function overwrites the value with the actually size read.
- * 
+ * @param size size of the data to be read. This function overwrites the value
+ * with the actually size read.
+ *
  * Caller must allocate 'data'. The size of 'data' must be larger than 'size'.
  */
-IoReturnState V6FileSystem::ReadDataFromInode(uint8_t *buf, V6fsInode &inode, size_t offset, size_t &size) {
+IoReturnState V6FileSystem::ReadDataFromInode(uint8_t *buf, V6fsInode &inode,
+                                              size_t offset, size_t &size) {
   IoReturnState rstate;
   if (offset > inode._st.size || offset + size < offset) {
     return IoReturnState::kErrInvalid;
@@ -111,7 +117,8 @@ IoReturnState V6FileSystem::ReadDataFromInode(uint8_t *buf, V6fsInode &inode, si
     if (cur_size > size - total) {
       cur_size = size - total;
     }
-    rstate = _storage.Read(buf + total, addr * kBlockSize + offset % kBlockSize, cur_size);
+    rstate = _storage.Read(buf + total, addr * kBlockSize + offset % kBlockSize,
+                           cur_size);
     if (rstate != IoReturnState::kOk) {
       size = total;
       return rstate;
@@ -123,14 +130,15 @@ IoReturnState V6FileSystem::ReadDataFromInode(uint8_t *buf, V6fsInode &inode, si
 }
 
 /**
- * @brief map block to inode. if already mapped, return mapped address. 
+ * @brief map block to inode. if already mapped, return mapped address.
  * @param inode target inode
  * @param index block index of inode
  * @param addr mapped block address (returned by this function)
  *
  * Block address will be set to 'addr' if succeeds.
  */
-IoReturnState V6FileSystem::MapBlock(V6fsInode &inode, int index, uint32_t &addr) {
+IoReturnState V6FileSystem::MapBlock(V6fsInode &inode, int index,
+                                     uint32_t &addr) {
   if (index < kNumOfDirectBlocks) {
     addr = inode._st.addrs[index];
     if (addr == 0) {
@@ -170,16 +178,18 @@ IoReturnState V6FileSystem::MapBlock(V6fsInode &inode, int index, uint32_t &addr
  * @param offset offset of entry (returned by this function)
  * @param inode found inode (returned by this function)
  */
-IoReturnState V6FileSystem::DirLookup(V6fsInode &dinode, char *name, int &offset, InodeNumber &inode) {
+IoReturnState V6FileSystem::DirLookup(V6fsInode &dinode, char *name,
+                                      int &offset, InodeNumber &inode) {
   if (dinode._st.type != Type::kDirectory) {
     return IoReturnState::kErrInvalid;
   }
 
   DirEntry entry;
-  
+
   for (uint32_t i = 0; i < dinode._st.size; i += sizeof(DirEntry)) {
     size_t size = sizeof(DirEntry);
-    RETURN_IF_IOSTATE_NOT_OK(ReadDataFromInode(reinterpret_cast<uint8_t *>(&entry), dinode, i, size));
+    RETURN_IF_IOSTATE_NOT_OK(ReadDataFromInode(
+        reinterpret_cast<uint8_t *>(&entry), dinode, i, size));
     if (size != sizeof(DirEntry)) {
       return IoReturnState::kErrInvalid;
     }

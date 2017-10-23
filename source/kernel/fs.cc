@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
- * 
+ *
  */
 
 #include <string.h>
@@ -28,7 +29,8 @@
  * @param type type of inode
  * @param inode allocated inode (returned by this function)
  */
-IoReturnState VirtualFileSystem::InodeCtrl::Alloc(FileType type, InodeContainer &inode) {
+IoReturnState VirtualFileSystem::InodeCtrl::Alloc(FileType type,
+                                                  InodeContainer &inode) {
   InodeNumber inum;
   IoReturnState state1 = _dfs->AllocInode(inum, type);
   if (state1 != IoReturnState::kOk) {
@@ -38,7 +40,8 @@ IoReturnState VirtualFileSystem::InodeCtrl::Alloc(FileType type, InodeContainer 
   return state2;
 }
 
-IoReturnState VirtualFileSystem::InodeCtrl::Get(InodeContainer &icontainer, uint32_t inum) {
+IoReturnState VirtualFileSystem::InodeCtrl::Get(InodeContainer &icontainer,
+                                                uint32_t inum) {
   Locker locker(_lock);
   Inode *empty = nullptr;
   for (int i = 0; i < kNodesNum; i++) {
@@ -59,19 +62,20 @@ IoReturnState VirtualFileSystem::InodeCtrl::Get(InodeContainer &icontainer, uint
  * @brief get next path name from path
  * @param path path name
  * @param name next name
- * 
+ *
  * if no next path name, return nullptr.
  * the buffer size of 'name' must be 'kMaxDirectoryNameLength + 1'.
  */
-const char *VirtualFileSystem::GetNextPathNameFromPath(const char *path, char *name) {
-  while(*path == '/') {
+const char *VirtualFileSystem::GetNextPathNameFromPath(const char *path,
+                                                       char *name) {
+  while (*path == '/') {
     path++;
   }
   if (*path == '\0') {
     return nullptr;
   }
   const char *start = path;
-  while(*path != '/' && *path != '\0') {
+  while (*path != '/' && *path != '\0') {
     path++;
   }
   size_t len = path - start;
@@ -80,7 +84,7 @@ const char *VirtualFileSystem::GetNextPathNameFromPath(const char *path, char *n
   }
   memcpy(name, start, len);
   name[len] = '\0';
-  while(*path == '/') {
+  while (*path == '/') {
     path++;
   }
   return path;
@@ -91,15 +95,19 @@ const char *VirtualFileSystem::GetNextPathNameFromPath(const char *path, char *n
  * @param buf buffer for storing data
  * @param inode target inode
  * @param offset offset in target inode file
- * @param size size of the data to be read. This function overwrites the value with the actually size read.
- * 
+ * @param size size of the data to be read. This function overwrites the value
+ * with the actually size read.
+ *
  * Caller must allocate 'data'. The size of 'data' must be larger than 'size'.
  */
-IoReturnState VirtualFileSystem::ReadDataFromInode(uint8_t *data, InodeContainer &inode, size_t offset, size_t &size) {
+IoReturnState VirtualFileSystem::ReadDataFromInode(uint8_t *data,
+                                                   InodeContainer &inode,
+                                                   size_t offset,
+                                                   size_t &size) {
   Stat stat;
   RETURN_IF_IOSTATE_NOT_OK(inode.GetStatOfInode(stat));
   if (stat.type == FileType::kDevice) {
-    //TODO impl
+    // TODO impl
     kernel_panic("VFS", "needs implementation!");
   }
 
@@ -112,7 +120,11 @@ IoReturnState VirtualFileSystem::ReadDataFromInode(uint8_t *data, InodeContainer
  * @param path path to lookup
  * @param parent return parent inode if true
  */
-IoReturnState VirtualFileSystem::LookupInodeFromPath(InodeContainer &inode, const char *path, bool parent) {
+#include <tty.h>
+#include <libglobal.h>
+IoReturnState VirtualFileSystem::LookupInodeFromPath(InodeContainer &inode,
+                                                     const char *path,
+                                                     bool parent) {
   InodeContainer cinode;
   if (*path == '/') {
     RETURN_IF_IOSTATE_NOT_OK(_inode_ctrl.Get(cinode, _dfs->GetRootInodeNum()));
@@ -122,10 +134,22 @@ IoReturnState VirtualFileSystem::LookupInodeFromPath(InodeContainer &inode, cons
   }
 
   char name[kMaxDirectoryNameLength * 1];
-  while((path = GetNextPathNameFromPath(path, name)) != nullptr) {
+  int hikalium_cnt = 0;
+  while (1) {
+    // 2: OK
+    path = GetNextPathNameFromPath(path, name);
+    if (path == nullptr) {
+      // gtty->Printf("null\n");
+      break;
+    }
+
+    gtty->Printf("%s\n", name);  // <- this will fail
+    // gtty->Printf("me: %s\n", name);  // <- this will success
+
+    // if (hikalium_cnt == 1) return IoReturnState::kErrInvalid;
     Stat st;
     RETURN_IF_IOSTATE_NOT_OK(cinode.GetStatOfInode(st));
-
+    // OK
     if (st.type != FileType::kDirectory) {
       return IoReturnState::kErrInvalid;
     }
@@ -138,8 +162,11 @@ IoReturnState VirtualFileSystem::LookupInodeFromPath(InodeContainer &inode, cons
     InodeNumber inum;
     int offset;
     RETURN_IF_IOSTATE_NOT_OK(cinode.DirLookup(name, offset, inum));
+    // OK
 
     RETURN_IF_IOSTATE_NOT_OK(_inode_ctrl.Get(cinode, inum));
+    // OK
+    hikalium_cnt++;
   }
   if (parent) {
     return IoReturnState::kErrInvalid;
