@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
- * Author: Liva
+ * Author: Liva mumumu
  * 
  */
 
@@ -90,14 +90,24 @@
 #include "physmem.h"
 #include "virtmem.h"
 #include <spinlock.h>
+#include <string.h>
 
 typedef uint64_t entry_type;
+
+class MemSpace;
+
+struct PageTable {
+  entry_type entry[512];
+};
 
 class PagingCtrl {
  public:
   PagingCtrl();
   void MapAllPhysMemory();
   void ReleaseLowMemory();
+  void InitMemSpace(MemSpace*);
+  void ReleaseMemSpace();
+  void SetMemSpace(MemSpace*);
   void ConvertVirtMemToPhysMem(virt_addr vaddr, PhysAddr &paddr);
   bool IsVirtAddrMapped(virt_addr vaddr);
   void GetTranslationEntries(virt_addr vaddr, entry_type *pml4e, entry_type *pdpte, entry_type *pde, entry_type *pte);
@@ -202,10 +212,7 @@ private:
   static bool IsPageOffset(int offset) {
     return offset >= 0 && offset < 4096;
   }
-  struct PageTable {
-    entry_type entry[512];
-  };
-  PageTable *_pml4t;
+  MemSpace *_current_memspace,*_kernel_memspace;
   SpinLock _lock;
 };
 
@@ -218,6 +225,39 @@ static inline phys_addr k2p(virt_addr addr) {
   // TODO : マップされてなかった時に落ちないようにする対応を
   return paddr.GetAddr();
 }
+
+class MemSpace {
+private:
+  virt_addr pt_mem;
+  PageTable* GetPml4tAddr() {
+    pt_mem = virtmem_ctrl->Alloc(PagingCtrl::kPageSize*2);
+    return reinterpret_cast<PageTable*>((reinterpret_cast<uint64_t>(pt_mem) + PagingCtrl::kPageSize) & ~(PagingCtrl::kPageSize - 1));
+  }
+
+  static void CopyMemSapceSub(entry_type*, const entry_type*, int);
+  SpinLock _lock;
+
+public:
+  MemSpace() :_pml4t(GetPml4tAddr()) {
+    kassert(_pml4t);
+  }
+
+  MemSpace(PageTable* pml4t) :_pml4t(pml4t) {
+  }
+
+  ~MemSpace() {
+    virtmem_ctrl->Free(pt_mem);
+  }
+
+  void Init() {
+    paging_ctrl->InitMemSpace(this);
+  }
+
+  static void CopyMemSapce(MemSpace* mdst,const MemSpace* msrc);
+
+  PageTable* const _pml4t;
+
+};
 
 #endif // ! ASM_FILE
 

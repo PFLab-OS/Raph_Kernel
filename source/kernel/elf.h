@@ -32,6 +32,10 @@ class ElfObject : public BinObjectInterface {
 public:
   ElfObject(Loader &loader, const void *ptr) : _head(reinterpret_cast<const uint8_t *>(ptr)), _ehdr(reinterpret_cast<const Elf64_Ehdr *>(ptr)), _membuffer(nullptr), _loader(loader) {
   }
+  //TODO:Fork実装のために，ElfObjectをコピーしたい気持ちがある．
+  //とりあえずコンストラクタで実現しているが，設計上の問題がなる？
+  ElfObject(Loader &loader,ElfObject *elfobj) : _head(elfobj->_head), _ehdr(elfobj->_ehdr), _membuffer(elfobj->_membuffer), _loader(loader),  _entry(elfobj->_entry) {
+  }
   ElfObject() = delete;
   virtual ~ElfObject() {
     free(_membuffer);
@@ -41,6 +45,21 @@ public:
     if (_entry != nullptr) {
       _loader.Execute(_entry);
     }
+  }
+  void Resume() {
+    if (_entry != nullptr) {
+      _loader.Resume();
+    }
+  }
+  void ReturnToKernelJob() {
+    _loader.ExitResume();
+  }
+  //TODO: redesigning
+  void SetContext(Context* context) {
+    _loader.SetContext(context);
+  }
+  Context* GetContext() {
+    return &(_loader.context);
   }
 protected:
   bool IsElf() {

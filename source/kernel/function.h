@@ -112,6 +112,37 @@ private:
   T3 _arg3;
 };
 
+template<class T1, class T2, class T3, class T4, class... Args>
+class Function4 : public GenericFunction<Args...> {
+public:
+  Function4(void (*func)(T1, T2, T3, T4, Args...), T1 arg1, T2 arg2, T3 arg3, T4 arg4) {
+    _func = func;
+    _arg1 = arg1;
+    _arg2 = arg2;
+    _arg3 = arg3;
+    _arg4 = arg4;
+  }
+  virtual ~Function4() {
+  }
+  Function4(const Function4 &obj) {
+    _func = obj._func;
+    _arg1 = obj._arg1;
+    _arg2 = obj._arg2;
+    _arg3 = obj._arg3;
+    _arg4 = obj._arg4;
+  }
+  virtual void Execute(Args... args) override {
+    _func(_arg1, _arg2, _arg3, _arg4, args...);
+  }
+private:
+  Function4();
+  void (*_func)(T1, T2, T3, T4, Args...);
+  T1 _arg1;
+  T2 _arg2;
+  T3 _arg3;
+  T4 _arg4;
+};
+
 template <class C, class T1, class... Args>
 class ClassFunction : public GenericFunction<Args...> {
 public:

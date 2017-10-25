@@ -27,15 +27,17 @@
 #include <x86.h>
 #include <syscall.h>
 #include <gdt.h>
+#include <process.h>
+#include <multiboot.h> //for exec
 #include <global.h>
 
 extern "C" int64_t syscall_handler();
 extern size_t syscall_handler_stack; 
+extern size_t syscall_handler_caller_stack; 
 
 extern "C" int64_t syscall_handler_sub(SystemCallCtrl::Args *args, int index) {
   return SystemCallCtrl::Handler(args, index);
 }
-
 
 void SystemCallCtrl::Init() {
   // IA32_EFER.SCE = 1
@@ -112,6 +114,53 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
       }
       break;
     }
+  case 57:
+    //fork
+    {
+      Context c;
+
+      Process* p = process_ctrl->GetCurrentExecProcess();
+      SaveContext(&c,syscall_handler_caller_stack);
+
+      Process* forkedp = process_ctrl->ForkProcess(p);
+      c.rax = forkedp->GetPid();
+      p->SetContext(p,&c);
+
+      if (p->GetStatus() == ProcessStatus::HALTED) {
+        kernel_panic("Syscall","Could not fork");
+      }else {
+        process_ctrl->SetStatus(p,ProcessStatus::HALTED);
+      }
+      Process::ReturnToKernelJob(p);
+
+      while(true) {asm volatile("hlt;");}
+    }
+  case 59:
+    //execve TODO: TBI 
+    {
+      Process* p = process_ctrl->GetCurrentExecProcess();
+
+      process_ctrl->ExecProcess(p,"forked.elf");
+
+      Process::ReturnToKernelJob(p);
+
+      while(true) {asm volatile("hlt;");}
+    }
+  case 61:
+    //wait TODO: TBI
+    {
+      Context c;
+      Process* p = process_ctrl->GetCurrentExecProcess();
+
+      pid_t pid = process_ctrl->WaitProcess(p);
+      if (pid != Process::kInvalidPid) return pid;
+
+      SaveContext(&c,syscall_handler_caller_stack);
+      p->SetContext(p,&c);
+      assert(process_ctrl->MakeProcessSleep(p,p));
+      Process::ReturnToKernelJob(p);
+
+    }
   case 63:
     // uname
     {
@@ -135,6 +184,7 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
       return 0;
     }
   case 158:
+    //arch_prctl
     {
       gtty->Printf("sys_arch_prctl code=%llx addr=%llx\n", args->arg1, args->arg2);
       switch(args->arg1){
@@ -162,6 +212,24 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
       // exit group
       gtty->Printf("user program called exit\n");
       gtty->Flush();
+
+      process_ctrl->ExitProcess(process_ctrl->GetCurrentExecProcess());
+
+      while(true) {asm volatile("hlt;");}
+    }
+  case 329:
+    //context switch
+    {
+      Context c;
+      Process* p = process_ctrl->GetCurrentExecProcess();
+
+      SaveContext(&c,syscall_handler_caller_stack);
+      c.rax = 1; //return value
+
+      p->SetContext(p,&c);
+
+      Process::ReturnToKernelJob(p);
+
       while(true) {asm volatile("hlt;");}
     }
   }

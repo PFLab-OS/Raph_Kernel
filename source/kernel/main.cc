@@ -37,6 +37,7 @@
 #include <measure.h>
 #include <mem/kstack.h>
 #include <elf.h>
+#include <process.h>
 #include <syscall.h>
 
 #include <dev/hpet.h>
@@ -67,6 +68,7 @@ Idt *idt = nullptr;
 Shell *shell = nullptr;
 PciCtrl *pci_ctrl = nullptr;
 NetDevCtrl *netdev_ctrl = nullptr;
+ProcessCtrl *process_ctrl = nullptr;
 // ArpTable *arp_table = nullptr;
 
 MultibootCtrl _multiboot_ctrl;
@@ -84,6 +86,7 @@ FrameBuffer _framebuffer;
 Shell _shell;
 AcpicaPciCtrl _acpica_pci_ctrl;
 NetDevCtrl _netdev_ctrl;
+ProcessCtrl _process_ctrl;
 // ArpTable _arp_table;
 
 CpuId network_cpu;
@@ -865,6 +868,8 @@ extern "C" int main() {
 
   netdev_ctrl = new (&_netdev_ctrl) NetDevCtrl();
 
+  process_ctrl = new (&_process_ctrl) ProcessCtrl;
+
   // arp_table = new (&_arp_table) ArpTable();
 
   physmem_ctrl->Init();
@@ -931,6 +936,8 @@ extern "C" int main() {
 
   AttachDevices<PciCtrl, LegacyKeyboard, Ramdisk, Device>();
   
+  process_ctrl->Init();
+
   // arp_table->Setup();
 
   SystemCallCtrl::Init();
@@ -954,29 +961,29 @@ extern "C" int main() {
   shell->Register("arp_scan", arp_scan);
   shell->Register("membench", membench);
 
-  Storage *storage;
-  if (StorageCtrl::GetCtrl().GetDevice("ram0", storage) != IoReturnState::kOk) {
-    kernel_panic("storage", "not found");
-  }
-  V6FileSystem *v6fs = new V6FileSystem(*storage);
-  VirtualFileSystem *vfs = new VirtualFileSystem(v6fs);
-  vfs->Init();
-  {
-    InodeContainer inode;
-    if (vfs->LookupInodeFromPath(inode, "/README.md", false) == IoReturnState::kOk) {
-      VirtualFileSystem::Stat st;
-      auto x = inode.GetStatOfInode(st);
-      size_t s = st.size;
-      uint8_t buf[s];
-      auto y = inode.ReadData(buf, 0, s);
-      for(size_t i = 0; i < s; i++) {
-        gtty->Printf("%c",buf[i]);
-      }
-      gtty->Printf("\n");
-    } else {
-      gtty->Printf("file:not ok\n");
-    }
-  }
+//  Storage *storage;
+//  if (StorageCtrl::GetCtrl().GetDevice("ram0", storage) != IoReturnState::kOk) {
+//    kernel_panic("storage", "not found");
+//  }
+//  V6FileSystem *v6fs = new V6FileSystem(*storage);
+//  VirtualFileSystem *vfs = new VirtualFileSystem(v6fs);
+//  vfs->Init();
+//  {
+//    InodeContainer inode;
+//    if (vfs->LookupInodeFromPath(inode, "/README.md", false) == IoReturnState::kOk) {
+//      VirtualFileSystem::Stat st;
+//      auto x = inode.GetStatOfInode(st);
+//      size_t s = st.size;
+//      uint8_t buf[s];
+//      auto y = inode.ReadData(buf, 0, s);
+//      for(size_t i = 0; i < s; i++) {
+//        gtty->Printf("%c",buf[i]);
+//      }
+//      gtty->Printf("\n");
+//    } else {
+//      gtty->Printf("file:not ok\n");
+//    }
+//  }
 
   load_script(make_sptr(new LoadContainer(multiboot_ctrl->LoadFile("init.sh"))));
 

@@ -82,6 +82,8 @@ BinObjectInterface::ErrorState ElfObject::Init() {
 
   _entry = reinterpret_cast<FType>(_membuffer + _ehdr->e_entry);
 
+  //TODO:設計がおかしい気がする
+  _loader.MakeExecuteEnvironment(_entry);
   return ErrorState::kOk;
 }
 
