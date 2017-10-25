@@ -3,18 +3,25 @@ MOUNT_DIR_EFI="/mnt/efi"
 IMAGE="/tmp/disk.img"
 
 umount() {
-    sudo umount ${MOUNT_DIR}
-    sudo umount ${MOUNT_DIR_EFI}
+    sudo umount ${MOUNT_DIR} > /dev/null 2>&1
+    sudo umount ${MOUNT_DIR_EFI} > /dev/null 2>&1
     sudo kpartx -d ${IMAGE}
     sudo losetup -d /dev/loop[0-9] > /dev/null 2>&1 || return 0
+    sudo dmsetup remove_all
 }
 
 loopsetup() {
-    set -- $(sudo kpartx -av ${IMAGE})
-    LOOPDEVICE=${8}
-    MAPPEDDEVICE_MBR=/dev/mapper/${3}
-    MAPPEDDEVICE_EFI_PT=/dev/mapper/${12}
-    MAPPEDDEVICE_DATA_PT=/dev/mapper/${21}
+    umount
+    if [ -e /dev/mapper/loop0p1 ]; then
+	      echo "failed to cleanup"
+	      exit 1
+    fi
+    sudo kpartx -av ${IMAGE}
+    sleep 1
+    LOOPDEVICE=/dev/loop0
+    MAPPEDDEVICE_MBR=/dev/mapper/loop0p1
+    MAPPEDDEVICE_EFI_PT=/dev/mapper/loop0p2
+    MAPPEDDEVICE_DATA_PT=/dev/mapper/loop0p3
 }
 
 mount() {
@@ -32,11 +39,11 @@ if [ $1 = "umount" ]; then
 fi
 
 if [ $1 = "grub-install" ]; then
-    umount
     mount
     sudo grub-install --target=i386-pc --no-floppy ${LOOPDEVICE} --root-directory ${MOUNT_DIR}
     sudo grub-install --target=x86_64-efi --no-nvram --efi-directory=${MOUNT_DIR_EFI} --boot-directory=${MOUNT_DIR}/boot
-    sudo mv ${MOUNT_DIR_EFI}/EFI/ubuntu ${MOUNT_DIR_EFI}/EFI/boot
+    sudo grub-mkfont -o ${MOUNT_DIR}/boot/grub/fonts/unicode.pf2 /usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf
+    sudo mv ${MOUNT_DIR_EFI}/EFI/grub ${MOUNT_DIR_EFI}/EFI/boot
     sudo mv ${MOUNT_DIR_EFI}/EFI/boot/grubx64.efi ${MOUNT_DIR_EFI}/EFI/boot/bootx64.efi
     umount
 fi
