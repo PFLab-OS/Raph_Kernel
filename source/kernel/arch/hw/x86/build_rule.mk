@@ -4,7 +4,7 @@ MOUNT_DIR = /mnt/Raph_Kernel
 IMAGE = /tmp/$(IMAGEFILE)
 BUILD_DIR = ../../../../../build
 
-OVMF_DIR = /home/vagrant/edk2-UDK2017/
+OVMF_DIR = $(HOME)/edk2-UDK2017/
 
 MAKE_SUBDIR := $(MAKE) -C
 MAKE := $(MAKE) ARCH=$(ARCH) -f $(BUILD_RULE_FILE)
@@ -70,11 +70,9 @@ $(BUILD_DIR)/init: $(INIT_FILE)
 ../../../../../source/tool/mkfs:
 	$(MAKE_SUBDIR) ../../../../tool build
 
-README.md:
-	cp ../../../../../README.md README.md
-
-$(BUILD_DIR)/fs.img: ../../../../../source/tool/mkfs README.md
+$(BUILD_DIR)/fs.img: ../../../../../source/tool/mkfs
 	-rm $@
+	cp ../../../../../README.md README.md
 	../../../../../source/tool/mkfs $@ README.md
 	rm README.md
 
@@ -109,7 +107,7 @@ $(IMAGE):
 
 hd: image
 	@if [ ! -e /dev/sdb ]; then echo "error: insert usb memory!"; exit -1; fi
-	sudo dd if=$(IMAGE) of=/dev/sdb
+	sudo dd if=$(IMAGE) of=/dev/sdb bs=1M
 
 disk:
 	$(MAKE) diskclean

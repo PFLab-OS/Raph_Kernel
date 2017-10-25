@@ -12,10 +12,12 @@ Vagrant.configure(2) do |config|
 
   # Every Vagrant development environment requires a box. You can search for
   # boxes at https://atlas.hashicorp.com/search.
-  config.vm.box = "ubuntu14.04"
+  config.vm.box = "Raphine/001a"
+  config.vm.box_url = "http://pf.is.s.u-tokyo.ac.jp/~awamoto/Raphine/001a.box"
   config.vm.box_check_update = false
-  config.vm.box_url = "https://cloud-images.ubuntu.com/vagrant/trusty/current/trusty-server-cloudimg-amd64-vagrant-disk1.box"
-  config.vm.provision :shell, :path => "bootstrap.sh", :privileged   => false
+
+  # base box
+  # config.vm.box = "ubuntu/xenial64"
 
   # Disable automatic box update checking. If you disable this, then
   # boxes will only be checked for updates when the user runs
@@ -26,6 +28,7 @@ Vagrant.configure(2) do |config|
   # within the machine from a port on the host machine. In the example below,
   # accessing "localhost:8080" will access port 80 on the guest machine.
   config.vm.network "forwarded_port", guest: 5900, host: 15900 # for VNC
+  config.ssh.forward_x11 = true
 
   config.vm.provider :virtualbox do |vb|
     if ENV['VAGRANT_MEMORY']
@@ -46,6 +49,8 @@ Vagrant.configure(2) do |config|
       "--paravirtprovider", "kvm",
       "--natdnsproxy1", "on",
       "--natdnshostresolver1", "on",
+      "--usb", "on",
+      "--usbxhci", "on",
     ]
     vb.customize [
       "guestproperty", "set", :id,

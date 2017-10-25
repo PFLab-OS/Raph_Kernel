@@ -109,7 +109,6 @@ public:
   // 0より小さい場合はLegacyInterruptが存在しない
   virtual int GetLegacyIntNum(DevPci *device) = 0;
   int RegisterLegacyIntHandler(int irq, DevPci *device, Idt::EoiType type);
-  static const uint16_t kDevIdentifyReg = 0x2;
   static const uint16_t kVendorIDReg = 0x00;
   static const uint16_t kDeviceIDReg = 0x02;
   static const uint16_t kCommandReg = 0x04;
