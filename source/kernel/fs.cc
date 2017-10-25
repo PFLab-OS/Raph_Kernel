@@ -134,22 +134,14 @@ IoReturnState VirtualFileSystem::LookupInodeFromPath(InodeContainer &inode,
   }
 
   char name[kMaxDirectoryNameLength * 1];
-  int hikalium_cnt = 0;
   while (1) {
-    // 2: OK
     path = GetNextPathNameFromPath(path, name);
     if (path == nullptr) {
-      // gtty->Printf("null\n");
       break;
     }
 
-    gtty->Printf("%s\n", name);  // <- this will fail
-    // gtty->Printf("me: %s\n", name);  // <- this will success
-
-    // if (hikalium_cnt == 1) return IoReturnState::kErrInvalid;
     Stat st;
     RETURN_IF_IOSTATE_NOT_OK(cinode.GetStatOfInode(st));
-    // OK
     if (st.type != FileType::kDirectory) {
       return IoReturnState::kErrInvalid;
     }
@@ -162,11 +154,7 @@ IoReturnState VirtualFileSystem::LookupInodeFromPath(InodeContainer &inode,
     InodeNumber inum;
     int offset;
     RETURN_IF_IOSTATE_NOT_OK(cinode.DirLookup(name, offset, inum));
-    // OK
-
     RETURN_IF_IOSTATE_NOT_OK(_inode_ctrl.Get(cinode, inum));
-    // OK
-    hikalium_cnt++;
   }
   if (parent) {
     return IoReturnState::kErrInvalid;

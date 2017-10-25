@@ -875,7 +875,7 @@ static void membench(int argc, const char *argv[]) {
   register_membench2_callout();
 }
 
-bool testReadFile(VirtualFileSystem *vfs, const char *path) {
+bool catSub(VirtualFileSystem *vfs, const char *path) {
   InodeContainer inode;
   if (vfs->LookupInodeFromPath(inode, path, false) != IoReturnState::kOk)
     return false;
@@ -903,9 +903,9 @@ void cat(int argc, const char *argv[]) {
   V6FileSystem *v6fs = new V6FileSystem(*storage);
   VirtualFileSystem *vfs = new VirtualFileSystem(v6fs);
   vfs->Init();
-  gtty->Printf("test: %s\n", testReadFile(vfs, "/README.md") ? "PASS" : "FAIL");
-  gtty->Printf("test: %s\n",
-               !testReadFile(vfs, "/README.nd") ? "PASS" : "FAIL");
+  if (!catSub(vfs, argv[1])) {
+    gtty->Printf("cat: %s: No such file or directory\n", argv[1]);
+  }
 }
 
 void freebsd_main();

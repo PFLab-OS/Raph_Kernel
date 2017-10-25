@@ -70,12 +70,12 @@ $(BUILD_DIR)/init: $(INIT_FILE)
 ../../../../../source/tool/mkfs:
 	$(MAKE_SUBDIR) ../../../../tool build
 
-README.md:
-	cp ../../../../../README.md README.md
+readme.md:
+	cp ../../../../../README.md readme.md
 
-$(BUILD_DIR)/fs.img: ../../../../../source/tool/mkfs README.md
+$(BUILD_DIR)/fs.img: ../../../../../source/tool/mkfs readme.md
 	-rm $@
-	../../../../../source/tool/mkfs $@ README.md
+	../../../../../source/tool/mkfs $@ readme.md
 	rm README.md
 
 bin_sub: $(BUILD_DIR)/script $(BUILD_DIR)/init $(BUILD_DIR)/fs.img $(BUILD_DIR)/rump.bin
