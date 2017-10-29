@@ -72,9 +72,9 @@ $(BUILD_DIR)/init: $(INIT_FILE)
 
 $(BUILD_DIR)/fs.img: ../../../../../source/tool/mkfs
 	-rm $@
-	cp ../../../../../README.md README.md
-	../../../../../source/tool/mkfs $@ README.md
-	rm README.md
+	cp ../../../../../README.md readme.md
+	../../../../../source/tool/mkfs $@ readme.md
+	rm readme.md
 
 bin_sub: $(BUILD_DIR)/script $(BUILD_DIR)/init $(BUILD_DIR)/fs.img $(BUILD_DIR)/rump.bin
 	$(MAKE_SUBDIR) ../../../../kernel build
