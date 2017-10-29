@@ -28,7 +28,6 @@ Vagrant.configure(2) do |config|
   # within the machine from a port on the host machine. In the example below,
   # accessing "localhost:8080" will access port 80 on the guest machine.
   config.vm.network "forwarded_port", guest: 5900, host: 15900 # for VNC
-  config.ssh.forward_x11 = true
 
   config.vm.provider :virtualbox do |vb|
     if ENV['VAGRANT_MEMORY']

@@ -941,7 +941,6 @@ extern "C" int main() {
 
   // arp_table = new (&_arp_table) ArpTable();
 
-  // hikalium:OK
   physmem_ctrl->Init();
 
   multiboot_ctrl->Setup();
