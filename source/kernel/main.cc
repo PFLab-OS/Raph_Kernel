@@ -911,6 +911,7 @@ void cat(int argc, const char *argv[]) {
 void freebsd_main();
 
 extern "C" int main() {
+  assert(false);
   multiboot_ctrl = new (&_multiboot_ctrl) MultibootCtrl;
 
   acpi_ctrl = new (&_acpi_ctrl) AcpiCtrl;
