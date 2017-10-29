@@ -54,7 +54,8 @@ int Font::Load(uptr<Array<uint8_t>> buf, size_t len) {
 }
 
 void Font::GetData(char32_t c, int &width, bool *data) {
-  // return width of character into width
+  width = 0;
+  
   if (!_is_initialized) {
     return;
   }
