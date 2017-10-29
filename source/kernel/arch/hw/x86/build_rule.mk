@@ -11,10 +11,10 @@ MAKE := $(MAKE) ARCH=$(ARCH) -f $(BUILD_RULE_FILE)
 
 ifdef INIT
 	REMOTE_COMMAND += export INIT=$(INIT); 
-	INIT_FILE = init_$(INIT)
+	INIT_FILE = $(INIT)
 else
-	BRANCH_INIT_FILE = init_$(shell git rev-parse --abbrev-ref HEAD)
-	INIT_FILE = $(if $(shell ls | grep $(BRANCH_INIT_FILE)),$(BRANCH_INIT_FILE),init)
+	BRANCH_INIT_FILE = $(shell git rev-parse --abbrev-ref HEAD)
+	INIT_FILE = $(if $(shell ls init_script | grep -w $(BRANCH_INIT_FILE)),$(BRANCH_INIT_FILE),default)
 endif
 
 doc: export PROJECT_NUMBER:=$(shell git rev-parse HEAD ; git diff-index --quiet HEAD || echo "(with uncommitted changes)")
@@ -64,7 +64,9 @@ $(BUILD_DIR)/script:
 $(BUILD_DIR)/rump.bin:
 	cp rump.bin $(BUILD_DIR)/rump.bin
 
-$(BUILD_DIR)/init: $(INIT_FILE)
+$(BUILD_DIR)/init_script/$(INIT_FILE): init_script/$(INIT_FILE)
+	mkdir -p $(BUILD_DIR)/init_script/
+	pwd
 	cp $^ $@
 
 ../../../../../source/tool/mkfs:
@@ -76,7 +78,7 @@ $(BUILD_DIR)/fs.img: ../../../../../source/tool/mkfs
 	../../../../../source/tool/mkfs $@ readme.md
 	rm readme.md
 
-bin_sub: $(BUILD_DIR)/script $(BUILD_DIR)/init $(BUILD_DIR)/fs.img $(BUILD_DIR)/rump.bin
+bin_sub: $(BUILD_DIR)/script $(BUILD_DIR)/init_script/$(INIT_FILE) $(BUILD_DIR)/fs.img $(BUILD_DIR)/rump.bin
 	$(MAKE_SUBDIR) ../../../../kernel build
 	$(MAKE_SUBDIR) ../../../../testmodule build
 
@@ -88,7 +90,7 @@ image:
 	$(MAKE) mount
 	$(MAKE) bin
 	sudo cp memtest86+.bin $(MOUNT_DIR)/boot/memtest86+.bin
-	sudo cp grub.cfg $(MOUNT_DIR)/boot/grub/grub.cfg
+	sudo sh -c 'sed -e "s/\/core\/init_script\/default/\/core\/init_script\/$(INIT_FILE)/g" grub.cfg > $(MOUNT_DIR)/boot/grub/grub.cfg'
 	-sudo rm -rf $(MOUNT_DIR)/core
 	sudo cp -r $(BUILD_DIR) $(MOUNT_DIR)/core
 	$(MAKE) umount
