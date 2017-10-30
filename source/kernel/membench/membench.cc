@@ -28,6 +28,9 @@
 #include "sync.h"
 #include "membench.h"
 
+const char ip_addr[] = "192.168.12.11";
+const char port[] = "1234";
+
 SyncLow sync_1={0};
 Sync2Low sync_2={0};
 Sync2Low sync_3={0};

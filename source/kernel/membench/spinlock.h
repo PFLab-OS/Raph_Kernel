@@ -411,3 +411,80 @@ private:
   Status _top_locked[kSubStructNum];
 } __attribute__ ((aligned (64)));
 
+class TicketSpinLockA {
+public:
+  TicketSpinLockA() {
+    check_align(this);
+    check_align(&_flag);
+    check_align(&_cnt);
+  }
+  bool TryLock() {
+    assert(false);
+  }
+  bool Lock(uint32_t apicid) {
+    uint64_t x = __sync_fetch_and_add(&_cnt, 1);
+    while(_flag != x) {
+      for (uint64_t j = 0; j < x - _flag; j++) {
+        asm volatile("pause;":::"memory");
+      }
+      asm volatile("":::"memory");
+    }
+    return (_release_ticket + 1 == x);
+  }
+  void Fix() {
+    _release_ticket = _cnt;
+  }
+  bool Release(uint32_t apicid) {
+    bool f = (_release_ticket == _flag);
+    return f || IsNoOneWaiting(apicid);
+  }
+  void Unlock(uint32_t apicid) {
+    _flag++;
+  }
+  bool IsNoOneWaiting(uint32_t apicid) {
+    return _flag + 1 == _cnt;
+  }
+private:
+  uint64_t _flag __attribute__ ((aligned (64))) = 1;
+  uint64_t _cnt __attribute__ ((aligned (64))) = 1;
+  uint64_t _release_ticket = 0;
+} __attribute__ ((aligned (64)));
+
+
+template<class L1, class L2>
+class ExpSpinLock11 {
+public:
+  ExpSpinLock11() {
+    check_align(this);
+    check_align(&_top_lock);
+    check_align(_second_lock);
+    check_type_align<L1>();
+    check_type_align<L2>();
+  }
+  bool TryLock() {
+    assert(false);
+  }
+  void Lock(uint32_t apicid) {
+    uint32_t tileid = apicid / 8;
+    uint32_t threadid = apicid % 8;
+
+    if (_second_lock[tileid].Lock(threadid)) {
+      _top_lock.Lock(tileid);
+      _second_lock[tileid].Fix();
+    }
+  }
+  void Unlock(uint32_t apicid) {
+    uint32_t tileid = apicid / 8;
+    uint32_t threadid = apicid % 8;
+
+    if (_second_lock[tileid].Release(threadid)) {
+      _top_lock.Unlock(tileid);
+    }
+    _second_lock[tileid].Unlock(threadid);
+  }
+private:
+  static const int kSubStructNum = 37;
+  L1 _top_lock;
+  L2 _second_lock[kSubStructNum];
+} __attribute__ ((aligned (64)));
+

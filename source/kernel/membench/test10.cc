@@ -197,7 +197,7 @@ static __attribute__ ((noinline)) void func107_sub2(int cpunum, int work) {
     StringTty tty(200);
     tty.Printf("%d\t%d\t%d\t%d\n", kWorkloadB ? work : cpunum, avg.time, avg.fairness, variance);
     int argc = 4;
-    const char *argv[] = {"udpsend", "133.11.12.15", "1234", tty.GetRawPtr()};
+    const char *argv[] = {"udpsend", ip_addr, port, tty.GetRawPtr()};
     udpsend(argc, argv);
   }
 }
@@ -230,7 +230,7 @@ static void func107_sub(sptr<TaskWithStack> task) {
               StringTty tty(4);
               tty.Printf("\n");
               int argc = 4;
-              const char *argv[] = {"udpsend", "133.11.12.15", "1234", tty.GetRawPtr()};
+              const char *argv[] = {"udpsend", ip_addr, port, tty.GetRawPtr()};
               udpsend(argc, argv);
               flag = 0;
             }
@@ -250,7 +250,7 @@ static void func107(sptr<TaskWithStack> task, const char *name) {
     StringTty tty(100);
     tty.Printf("# %s\n", name);
     int argc = 4;
-    const char *argv[] = {"udpsend", "133.11.12.15", "1234", tty.GetRawPtr()};
+    const char *argv[] = {"udpsend", ip_addr, port, tty.GetRawPtr()};
     udpsend(argc, argv);
   }
   
@@ -274,7 +274,7 @@ void membench10(sptr<TaskWithStack> task) {
     StringTty tty(100);
     tty.Printf("# count(%s, %c)\n", __func__, kWorkloadB ? 'B' : 'A');
     int argc = 4;
-    const char *argv[] = {"udpsend", "133.11.12.15", "1234", tty.GetRawPtr()};
+    const char *argv[] = {"udpsend", ip_addr, port, tty.GetRawPtr()};
     udpsend(argc, argv);
 
     PhysAddr paddr;

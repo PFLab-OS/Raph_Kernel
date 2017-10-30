@@ -55,7 +55,8 @@
 #include <dev/netdev.h>
 #include <dev/eth.h>
 // #include <net/arp.h>
-#include <arpa/inet.h>
+#include <arp.h>
+#include <udp.h>
 
 AcpiCtrl *acpi_ctrl = nullptr;
 ApicCtrl *apic_ctrl = nullptr;
@@ -280,58 +281,9 @@ static void setflag(int argc, const char *argv[]) {
   }
 }
 
-class ArpTable {
- public:
-  void Set(uint32_t ip_addr, uint8_t *hw_addr, NetDev *dev) {
-    auto iter = arp_table.GetBegin();
-    while (!iter.IsNull()) {
-      if ((*iter)->ip_addr == ip_addr) {
-        memcpy((*iter)->hw_addr, hw_addr, 6);
-        (*iter)->dev = dev;
-        return;
-      }
-      iter = iter->GetNext();
-    }
-    arp_table.PushBack(ip_addr, hw_addr, dev);
-  }
-  NetDev *Search(uint32_t ip_addr, uint8_t *hw_addr) {
-    bool on_network = false;
-    NetDev *gateway = nullptr;
-    auto iter = arp_table.GetBegin();
-    while (!iter.IsNull()) {
-      if ((*iter)->ip_addr == ip_addr) {
-        memcpy(hw_addr, (*iter)->hw_addr, 6);
-        return (*iter)->dev;
-      }
-      if (((*iter)->ip_addr & 0x00ffffff) == (ip_addr & 0x00ffffff)) {
-        on_network = true;
-      }
-      if (((*iter)->ip_addr & 0xff000000) == 0x01000000) {
-        memcpy(hw_addr, (*iter)->hw_addr, 6);
-        gateway = (*iter)->dev;
-      }
-      iter = iter->GetNext();
-    }
-    if (on_network) {
-      return nullptr;
-    } else {
-      return gateway;
-    }
-  }
-
- private:
-  struct ArpEntry {
-    ArpEntry(uint32_t ip_addr_, uint8_t *hw_addr_, NetDev *dev_) {
-      ip_addr = ip_addr_;
-      memcpy(hw_addr, hw_addr_, 6);
-      dev = dev_;
-    }
-    uint32_t ip_addr;
-    uint8_t hw_addr[6];
-    NetDev *dev;
-  };
-  List<ArpEntry> arp_table;
-} * arp_table;
+static void udp_setup(int argc, const char *argv[]) {
+  UdpCtrl::GetCtrl().SetupServer();
+}
 
 static void arp_scan(int argc, const char *argv[]) {
   auto devices = netdev_ctrl->GetNamesOfAllDevices();
@@ -486,6 +438,8 @@ static void arp_scan(int argc, const char *argv[]) {
       3 * 1000 * 1000);
 }
 
+ArpTable *arp_table = nullptr;
+
 void udpsend(int argc, const char *argv[]) {
   if (argc != 4) {
     gtty->Printf("invalid argument.\n");
@@ -497,192 +451,7 @@ void udpsend(int argc, const char *argv[]) {
     gtty->Printf("invalid ip v4 addr.\n");
     return;
   }
-  uint32_t target_addr_int = (target_addr[3] << 24) | (target_addr[2] << 16) |
-                             (target_addr[1] << 8) | target_addr[0];
-
-  uint8_t target_mac[6];
-  NetDev *dev = arp_table->Search(target_addr_int, target_mac);
-  if (dev == nullptr) {
-    gtty->Printf("cannot solve mac address from ARP Table.\n");
-    return;
-  }
-
-  uint32_t my_addr_int;
-  assert(dev->GetIpv4Address(my_addr_int));
-  uint8_t my_addr[4];
-  my_addr[0] = (my_addr_int >> 0) & 0xff;
-  my_addr[1] = (my_addr_int >> 8) & 0xff;
-  my_addr[2] = (my_addr_int >> 16) & 0xff;
-  my_addr[3] = (my_addr_int >> 24) & 0xff;
-
-  uint8_t buf[1518];
-  int offset = 0;
-
-  //
-  // ethernet
-  //
-
-  // target MAC address
-  memcpy(buf + offset, target_mac, 6);
-  offset += 6;
-
-  // source MAC address
-  static_cast<DevEthernet *>(dev)->GetEthAddr(buf + offset);
-  offset += 6;
-
-  // type: IPv4
-  uint8_t type[2] = {0x08, 0x00};
-  memcpy(buf + offset, type, 2);
-  offset += 2;
-
-  //
-  // IPv4
-  //
-
-  int ipv4_header_start = offset;
-
-  // version & header length
-  buf[offset] = (0x4 << 4) | 0x5;
-  offset += 1;
-
-  // service type
-  buf[offset] = 0;
-  offset += 1;
-
-  // skip
-  int datagram_length_offset = offset;
-  offset += 2;
-
-  // ID field
-  buf[offset] = rand() & 0xff;
-  buf[offset + 1] = rand() & 0xff;
-  offset += 2;
-
-  // flag & flagment offset
-  uint16_t foffset = 0 | (1 << 15);
-  buf[offset] = foffset >> 8;
-  buf[offset + 1] = foffset;
-  offset += 2;
-
-  // ttl
-  buf[offset] = 0xff;
-  offset += 1;
-
-  // procol number;
-  buf[offset] = 17;
-  offset += 1;
-
-  // skip
-  int checksum_offset = offset;
-  buf[offset] = 0;
-  buf[offset + 1] = 0;
-  offset += 2;
-
-  // source address
-  memcpy(buf + offset, my_addr, 4);
-  offset += 4;
-
-  // target address
-  memcpy(buf + offset, target_addr, 4);
-  offset += 4;
-
-  int ipv4_header_end = offset;
-
-  //
-  // udp
-  //
-
-  int udp_header_start = offset;
-
-  // source port
-  uint8_t source_port[] = {0x4, 0xD2};  // 1234
-  memcpy(buf + offset, source_port, 2);
-  offset += 2;
-
-  // target port
-  // TODO analyze from argument
-  uint8_t target_port[] = {0x4, 0xD2};  // 1234
-  memcpy(buf + offset, target_port, 2);
-  offset += 2;
-
-  // skip
-  int udp_length_offset = offset;
-  offset += 2;
-
-  // skip
-  int udp_checksum_offset = offset;
-  buf[offset] = 0;
-  buf[offset + 1] = 0;
-  offset += 2;
-
-  // data
-  memcpy(buf + offset, argv[3], strlen(argv[3]) + 1);
-  offset += strlen(argv[3]) + 1;
-
-  // length
-  size_t udp_length = offset - udp_header_start;
-  buf[udp_length_offset] = udp_length >> 8;
-  buf[udp_length_offset + 1] = udp_length;
-
-  // checksum
-  {
-    uint32_t checksum = 0;
-    uint8_t pseudo_header[] = {
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 17, 0x00, 0x00,
-    };
-    memcpy(pseudo_header + 0, my_addr, 4);
-    memcpy(pseudo_header + 4, target_addr, 4);
-    pseudo_header[10] = udp_length >> 8;
-    pseudo_header[11] = udp_length;
-    for (int i = 0; i < 12; i += 2) {
-      checksum += (pseudo_header[i] << 8) + pseudo_header[i + 1];
-    }
-
-    if ((offset - udp_header_start) % 2 == 1) {
-      buf[offset] = 0x0;
-    }
-    for (int i = udp_header_start; i < offset; i += 2) {
-      checksum += (buf[i] << 8) + buf[i + 1];
-    }
-
-    while (checksum > 0xffff) {
-      checksum = (checksum >> 16) + (checksum & 0xffff);
-    }
-    checksum = ~checksum;
-
-    buf[udp_checksum_offset] = checksum >> 8;
-    buf[udp_checksum_offset + 1] = checksum;
-  }
-
-  // datagram length(IPv4)
-  size_t len = offset - ipv4_header_start;
-  buf[datagram_length_offset] = len >> 8;
-  buf[datagram_length_offset + 1] = len;
-
-  // checksum
-  {
-    uint32_t checksum = 0;
-    for (int i = ipv4_header_start; i < ipv4_header_end; i += 2) {
-      checksum += (buf[i] << 8) + buf[i + 1];
-    }
-
-    while (checksum > 0xffff) {
-      checksum = (checksum >> 16) + (checksum & 0xffff);
-    }
-    checksum = ~checksum;
-
-    buf[checksum_offset] = checksum >> 8;
-    buf[checksum_offset + 1] = checksum;
-  }
-
-  assert(offset < 1518);
-
-  NetDev::Packet *tpacket;
-  kassert(dev->GetTxPacket(tpacket));
-  memcpy(tpacket->GetBuffer(), buf, offset);
-  tpacket->len = offset;
-
-  dev->TransmitPacket(tpacket);
+  UdpCtrl::GetCtrl().SendStr(&target_addr, 1234, argv[3]);
 }
 
 static void show(int argc, const char *argv[]) {
@@ -963,7 +732,6 @@ extern "C" int main() {
     kernel_panic("timer", "HPET not supported.\n");
   }
 
-  // hikalium: OK
   apic_ctrl->Setup();
 
   cpu_ctrl->Init();
@@ -981,13 +749,13 @@ extern "C" int main() {
   apic_ctrl->BootBSP();
 
   gdt->SetupProc();
-  // hikalium: OK
+  
   // 各コアは最低限の初期化ののち、TaskCtrlに制御が移さなければならない
   // 特定のコアで専用の処理をさせたい場合は、TaskCtrlに登録したジョブとして
   // 実行する事
 
   apic_ctrl->StartAPs();
-  // hikalium: OK
+  
   paging_ctrl->ReleaseLowMemory();
 
   gtty->Setup();
@@ -1011,9 +779,9 @@ extern "C" int main() {
   SystemCallCtrl::Init();
 
   gtty->Printf("\n\n[kernel] info: initialization completed\n");
-  // hikalium: OK
+
   arp_table = new ArpTable;
-  // hikalium: BAD
+  UdpCtrl::Init();
 
   shell->Setup();
   shell->Register("halt", halt);
@@ -1022,15 +790,14 @@ extern "C" int main() {
   shell->Register("beep", beep);
   shell->Register("lspci", lspci);
   shell->Register("ifconfig", ifconfig);
-  // hikalium: BAD
   shell->Register("setip", setip);
   shell->Register("show", show);
   shell->Register("load", load);
   shell->Register("setflag", setflag);
   shell->Register("udpsend", udpsend);
   shell->Register("arp_scan", arp_scan);
+  shell->Register("udp_setup", udp_setup);
   shell->Register("membench", membench);
-  // hikalium: BAD
   shell->Register("cat", cat);
 
   /*

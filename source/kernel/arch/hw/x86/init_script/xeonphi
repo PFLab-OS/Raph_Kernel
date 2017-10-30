@@ -1,8 +1,11 @@
 show info
-setip ixgbe0 192.168.12.60
-wait_until_linkup ixgbe0
+wait 10
+setip lem0 192.168.12.9
+wait_until_linkup lem0
+udp_setup
 arp_scan
 beep
 wait 3
-membench
+udpsend 192.168.12.11 12345 Benchmark_Result>>>
+#membench
 
