@@ -325,8 +325,8 @@ static void	em_handle_link(void *context, int pending);
 static void	em_enable_vectors_82574(struct adapter *);
 #endif
 
-// static void	em_set_sysctl_value(struct adapter *, const char *,
-// 		    const char *, int *, int);
+static void	em_set_sysctl_value(struct adapter *, const char *,
+		    const char *, int *, int);
 // static int	em_set_flowcntl(SYSCTL_HANDLER_ARGS);
 // static int	em_sysctl_eee(SYSCTL_HANDLER_ARGS);
 
@@ -429,7 +429,7 @@ SYSCTL_INT(_hw_em, OID_AUTO, num_queues, CTLFLAG_RDTUN, &em_num_queues, 0,
 // static int em_last_bind_cpu = -1;
 
 /* How many packets rxeof tries to clean at a time */
-// static int em_rx_process_limit = 100;
+static int em_rx_process_limit = 100;
 // SYSCTL_INT(_hw_em, OID_AUTO, rx_process_limit, CTLFLAG_RDTUN,
 //     &em_rx_process_limit, 0,
 //     "Maximum number of received packets to process "
@@ -636,9 +636,9 @@ em_attach(device_t dev)
 	//     DEFAULT_ITR);
 
 	/* Sysctl for limiting the amount of work done in the taskqueue */
-	// em_set_sysctl_value(adapter, "rx_processing_limit",
-	//     "max number of rx packets to process", &adapter->rx_process_limit,
-	//     em_rx_process_limit);
+	em_set_sysctl_value(adapter, "rx_processing_limit",
+                      "max number of rx packets to process", (int *)&adapter->rx_process_limit,
+                      em_rx_process_limit);
 
 	/*
 	 * Validate number of transmit and receive descriptors. It
@@ -6057,15 +6057,15 @@ em_get_counter(if_t ifp, ift_counter cnt)
 // 	    info, 0, em_sysctl_int_delay, "I", description);
 // }
 
-// static void
-// em_set_sysctl_value(struct adapter *adapter, const char *name,
-// 	const char *description, int *limit, int value)
-// {
-// 	*limit = value;
-// 	SYSCTL_ADD_INT(device_get_sysctl_ctx(adapter->dev),
-// 	    SYSCTL_CHILDREN(device_get_sysctl_tree(adapter->dev)),
-// 	    OID_AUTO, name, CTLFLAG_RW, limit, value, description);
-// }
+static void
+em_set_sysctl_value(struct adapter *adapter, const char *name,
+	const char *description, int *limit, int value)
+{
+	*limit = value;
+	// SYSCTL_ADD_INT(device_get_sysctl_ctx(adapter->dev),
+	//     SYSCTL_CHILDREN(device_get_sysctl_tree(adapter->dev)),
+	//     OID_AUTO, name, CTLFLAG_RW, limit, value, description);
+}
 
 
 /*
