@@ -20,8 +20,7 @@
  * 
  */
 
-#ifndef __RAPH_LIB_CTYPE_H__
-#define __RAPH_LIB_CTYPE_H__
+#pragma once
 
 #ifdef __cplusplus
 extern "C" {
@@ -74,5 +73,3 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
-
-#endif /* __RAPH_LIB_CTYPE_H__ */

@@ -451,7 +451,7 @@ void udpsend(int argc, const char *argv[]) {
     gtty->Printf("invalid ip v4 addr.\n");
     return;
   }
-  UdpCtrl::GetCtrl().SendStr(&target_addr, 1234, argv[3]);
+  UdpCtrl::GetCtrl().SendStr(&target_addr, atoi(argv[2]), argv[3]);
 }
 
 static void show(int argc, const char *argv[]) {
