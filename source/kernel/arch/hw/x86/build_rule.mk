@@ -42,6 +42,7 @@ qemurun: image
 		-cpu qemu64 -smp 8 -machine q35 -clock hpet \
 		-monitor telnet:127.0.0.1:1235,server,nowait \
 		-vnc 0.0.0.0:0,password \
+		-s \
 		-net nic,model=rtl8139 \
 		-net bridge,br=br0 \
 		$(IMAGE)&
