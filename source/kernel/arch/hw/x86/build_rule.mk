@@ -66,7 +66,6 @@ $(BUILD_DIR)/rump.bin:
 
 $(BUILD_DIR)/init_script/$(INIT_FILE): init_script/$(INIT_FILE)
 	mkdir -p $(BUILD_DIR)/init_script/
-	pwd
 	cp $^ $@
 
 ../../../../../source/tool/mkfs:
