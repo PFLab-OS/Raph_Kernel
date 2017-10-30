@@ -19,7 +19,7 @@ endif
 
 doc: export PROJECT_NUMBER:=$(shell git rev-parse HEAD ; git diff-index --quiet HEAD || echo "(with uncommitted changes)")
 
-.PHONY: clean all disk run image mount umount debugqemu showerror numerror doc
+.PHONY: clean all disk run image mount umount debugqemu showerror numerror doc debug
 
 default: image
 
@@ -143,4 +143,4 @@ doc:
 	doxygen
 
 debug:
-	vagrant ssh -c "cd /vagrant/; gdb -x .gdbinit_for_kernel"
+	gdb -x .gdbinit_for_kernel

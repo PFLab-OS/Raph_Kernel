@@ -57,14 +57,11 @@ endef
 default:
 	$(call make_wrapper, all)
 
-.PHONY: vnc debug vboxrun vboxkill run_pxeserver pxeimg burn_ipxe burn_ipxe_remote
+.PHONY: vnc vboxrun vboxkill run_pxeserver pxeimg burn_ipxe burn_ipxe_remote
 vnc:
 	$(call check_guest)
 	@echo info: vnc password is "a"
 	$(call vnc)
-
-debug:
-	vagrant ssh -c "cd /vagrant/; gdb -x .gdbinit_for_kernel"
 
 vboxrun: vboxkill
 	$(call make_wrapper, cpimage)
