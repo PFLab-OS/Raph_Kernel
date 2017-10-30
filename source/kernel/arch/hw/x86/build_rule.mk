@@ -17,9 +17,13 @@ else
 	INIT_FILE = $(if $(shell ls init_script | grep -w $(BRANCH_INIT_FILE)),$(BRANCH_INIT_FILE),default)
 endif
 
+ifdef KERNEL_DEBUG
+	QEMU_OPTIONS += -s -S 
+endif
+
 doc: export PROJECT_NUMBER:=$(shell git rev-parse HEAD ; git diff-index --quiet HEAD || echo "(with uncommitted changes)")
 
-.PHONY: clean all disk run image mount umount debugqemu showerror numerror doc
+.PHONY: clean all disk run image mount umount debugqemu showerror numerror doc debug
 
 default: image
 
@@ -42,13 +46,13 @@ qemurun: image
 		-cpu qemu64 -smp 8 -machine q35 -clock hpet \
 		-monitor telnet:127.0.0.1:1235,server,nowait \
 		-vnc 0.0.0.0:0,password \
-		-net nic,model=rtl8139 \
+		-net nic \
 		-net bridge,br=br0 \
+		$(QEMU_OPTIONS) \
 		$(IMAGE)&
+#    -usb -usbdevice keyboard \
 # -net dump,file=./packet.pcap \
-#	sudo qemu-system-x86_64 -drive if=pflash,readonly,file=$(OVMF_DIR)OVMF_CODE.fd,format=raw -drive if=pflash,file=$(OVMF_DIR)OVMF_VARS.fd,format=raw -cpu qemu64 -smp 8 -machine q35 -clock hpet -monitor telnet:127.0.0.1:1235,server,nowait -vnc 0.0.0.0:0,password $(IMAGE)&
-#	sudo qemu-system-x86_64 -cpu qemu64,+x2apic -smp 8 -machine q35 -monitor telnet:127.0.0.1:1235,server,nowait -vnc 0.0.0.0:0,password -net nic -net bridge,br=br0 -drive id=disk,file=$(IMAGE),if=virtio -usb -usbdevice keyboard &
-#	sudo qemu-system-x86_64 -cpu qemu64,+x2apic -smp 8 -machine q35 -monitor telnet:127.0.0.1:1235,server,nowait -vnc 0.0.0.0:0,password -net nic -net bridge,br=br0 -drive id=disk,file=$(IMAGE),if=none -device ahci,id=ahci -device ide-drive,drive=disk,bus=ahci.0 &
+#	-drive id=disk,file=$(IMAGE),if=none -device ahci,id=ahci -device ide-drive,drive=disk,bus=ahci.0
 	sleep 0.2s
 	echo "set_password vnc a" | netcat 127.0.0.1 1235
 
@@ -100,8 +104,8 @@ cpimage: image
 $(IMAGE):
 	$(MAKE) umount
 	dd if=/dev/zero of=$(IMAGE) bs=1M count=200
-	sh disk.sh disk-setup
-	sh disk.sh grub-install
+	./disk.sh disk-setup
+	./disk.sh grub-install
 	$(MAKE) mount
 	sudo cp memtest86+.bin $(MOUNT_DIR)/boot/memtest86+.bin
 	$(MAKE) umount
@@ -116,10 +120,10 @@ disk:
 	$(MAKE) image
 
 mount: $(IMAGE)
-	sh disk.sh mount
+	./disk.sh mount
 
 umount:
-	sh disk.sh umount
+	./disk.sh umount
 
 deldisk: umount
 	-rm -f $(IMAGE)
@@ -143,4 +147,4 @@ doc:
 	doxygen
 
 debug:
-	vagrant ssh -c "cd /vagrant/; gdb -x .gdbinit_for_kernel"
+	gdb -x .gdbinit_for_kernel

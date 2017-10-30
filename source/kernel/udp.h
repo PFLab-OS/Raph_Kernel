@@ -22,17 +22,30 @@
 
 #pragma once
 
-struct Uint64 {
-  uint64_t i;
-} __attribute__ ((aligned (64)));
+#include <stdint.h>
+#include <raph.h>
+#include <ptr.h>
+#include <function.h>
+#include <string.h>
 
-extern SyncLow sync_1;
-extern Sync2Low sync_2;
-extern Sync2Low sync_3;
-extern SyncLow sync_4;
-
-extern Uint64 f_array[256];
-extern volatile Uint64 monitor[37 * 8];
-
-extern const char ip_addr[];
-extern const char port[];
+class UdpCtrl {
+public:
+  static void Init();
+  static UdpCtrl &GetCtrl() {
+    kassert(_udp_ctrl != nullptr);
+    return *_udp_ctrl;
+  }
+  void SetupServer();
+  void Send(uint8_t (*target_addr)[4], uint16_t target_port, const char *data, size_t len);
+  void SendStr(uint8_t (*target_addr)[4], uint16_t target_port, const char *data) {
+    Send(target_addr, target_port, data, strlen(data));
+  }
+  class Socket {
+  public:
+    uint16_t port;
+    GenericFunction<> func;
+  };
+private:
+  static UdpCtrl *_udp_ctrl;
+  uptr<Socket> _socket[10];
+};

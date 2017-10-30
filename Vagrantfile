@@ -40,6 +40,7 @@ Vagrant.configure(2) do |config|
       "modifyvm", :id,
       "--nictype1", "virtio",
       "--natdnshostresolver1", "on",
+      "--rtcuseutc", "on",
       "--hwvirtex", "on",
       "--nestedpaging", "on",
       "--largepages", "on",

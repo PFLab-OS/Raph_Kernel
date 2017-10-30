@@ -1,3 +1,4 @@
+#!/bin/sh -x
 MOUNT_DIR="/mnt/Raph_Kernel"
 MOUNT_DIR_EFI="/mnt/efi"
 IMAGE="/tmp/disk.img"

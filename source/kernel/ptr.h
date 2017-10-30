@@ -91,8 +91,8 @@ private:
   T *_obj;
 } __attribute__((__packed__));
 
-template<class Array>
-class uptr<Array []> {
+template<class Array, size_t N>
+class uptr<Array [N]> {
 public:
   template <class A>
   uptr(const uptr<A> &p) {
@@ -138,7 +138,7 @@ public:
     }
     return _obj;
   }
-  Array operator [](int n) {
+  Array &operator [](int n) {
     return _obj[n];
   }
   Array *GetRawPtr() {

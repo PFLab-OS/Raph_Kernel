@@ -254,10 +254,10 @@ static int 	lem_is_valid_ether_addr(u8 *);
 // static u32	lem_fill_descriptors (bus_addr_t address, u32 length,
 // 		    PDESC_ARRAY desc_array);
 // static int	lem_sysctl_int_delay(SYSCTL_HANDLER_ARGS);
-// static void	lem_add_int_delay_sysctl(struct adapter *, const char *,
-// 		    const char *, struct em_int_delay_info *, int, int);
-// static void	lem_set_flow_cntrl(struct adapter *, const char *,
-// 		    const char *, int *, int);
+static void	lem_add_int_delay_sysctl(struct adapter *, const char *,
+		    const char *, struct em_int_delay_info *, int, int);
+static void	lem_set_flow_cntrl(struct adapter *, const char *,
+		    const char *, int *, int);
 /* Management and WOL Support */
 static void	lem_init_manageability(struct adapter *);
 // static void	lem_release_manageability(struct adapter *);
@@ -272,8 +272,8 @@ static void	lem_intr(void *);
 static int	lem_irq_fast(void *);
 static void	lem_handle_rxtx(void *context, int pending);
 static void	lem_handle_link(void *context, int pending);
-// static void	lem_add_rx_process_limit(struct adapter *, const char *,
-// 		    const char *, int *, int);
+static void	lem_add_rx_process_limit(struct adapter *, const char *,
+		    const char *, int *, int);
 
 #ifdef DEVICE_POLLING
 static int lem_poll(if_t ifp);
@@ -313,10 +313,10 @@ static int lem_poll(if_t ifp);
 #define MAX_INTS_PER_SEC	8000
 #define DEFAULT_ITR		(1000000000/(MAX_INTS_PER_SEC * 256))
 
-// static int lem_tx_int_delay_dflt = EM_TICKS_TO_USECS(EM_TIDV);
-// static int lem_rx_int_delay_dflt = EM_TICKS_TO_USECS(EM_RDTR);
-// static int lem_tx_abs_int_delay_dflt = EM_TICKS_TO_USECS(EM_TADV);
-// static int lem_rx_abs_int_delay_dflt = EM_TICKS_TO_USECS(EM_RADV);
+static int lem_tx_int_delay_dflt = EM_TICKS_TO_USECS(EM_TIDV);
+static int lem_rx_int_delay_dflt = EM_TICKS_TO_USECS(EM_RDTR);
+static int lem_tx_abs_int_delay_dflt = EM_TICKS_TO_USECS(EM_TADV);
+static int lem_rx_abs_int_delay_dflt = EM_TICKS_TO_USECS(EM_RADV);
 /*
  * increase lem_rxd and lem_txd to at least 2048 in netmap mode
  * for better performance.
@@ -342,7 +342,7 @@ static int lem_use_legacy_irq = 1;
 TUNABLE_INT("hw.em.use_legacy_irq", &lem_use_legacy_irq);
 
 /* How many packets rxeof tries to clean at a time */
-// static int lem_rx_process_limit = 100;
+static int lem_rx_process_limit = 100;
 // TUNABLE_INT("hw.em.rx_process_limit", &lem_rx_process_limit);
 
 /* Flow control setting - default to FULL */
@@ -461,34 +461,34 @@ lem_attach(device_t dev)
 	e1000_get_bus_info(&adapter->hw);
 
 	/* Set up some sysctls for the tunable interrupt delays */
-	// lem_add_int_delay_sysctl(adapter, "rx_int_delay",
-	//     "receive interrupt delay in usecs", &adapter->rx_int_delay,
-	//     E1000_REGISTER(&adapter->hw, E1000_RDTR), lem_rx_int_delay_dflt);
-	// lem_add_int_delay_sysctl(adapter, "tx_int_delay",
-	//     "transmit interrupt delay in usecs", &adapter->tx_int_delay,
-	//     E1000_REGISTER(&adapter->hw, E1000_TIDV), lem_tx_int_delay_dflt);
-	// if (adapter->hw.mac.type >= e1000_82540) {
-	// 	lem_add_int_delay_sysctl(adapter, "rx_abs_int_delay",
-	// 	    "receive interrupt delay limit in usecs",
-	// 	    &adapter->rx_abs_int_delay,
-	// 	    E1000_REGISTER(&adapter->hw, E1000_RADV),
-	// 	    lem_rx_abs_int_delay_dflt);
-	// 	lem_add_int_delay_sysctl(adapter, "tx_abs_int_delay",
-	// 	    "transmit interrupt delay limit in usecs",
-	// 	    &adapter->tx_abs_int_delay,
-	// 	    E1000_REGISTER(&adapter->hw, E1000_TADV),
-	// 	    lem_tx_abs_int_delay_dflt);
-	// 	lem_add_int_delay_sysctl(adapter, "itr",
-	// 	    "interrupt delay limit in usecs/4",
-	// 	    &adapter->tx_itr,
-	// 	    E1000_REGISTER(&adapter->hw, E1000_ITR),
-	// 	    DEFAULT_ITR);
-	// }
+	lem_add_int_delay_sysctl(adapter, "rx_int_delay",
+	    "receive interrupt delay in usecs", &adapter->rx_int_delay,
+	    E1000_REGISTER(&adapter->hw, E1000_RDTR), lem_rx_int_delay_dflt);
+	lem_add_int_delay_sysctl(adapter, "tx_int_delay",
+	    "transmit interrupt delay in usecs", &adapter->tx_int_delay,
+	    E1000_REGISTER(&adapter->hw, E1000_TIDV), lem_tx_int_delay_dflt);
+	if (adapter->hw.mac.type >= e1000_82540) {
+		lem_add_int_delay_sysctl(adapter, "rx_abs_int_delay",
+		    "receive interrupt delay limit in usecs",
+		    &adapter->rx_abs_int_delay,
+		    E1000_REGISTER(&adapter->hw, E1000_RADV),
+		    lem_rx_abs_int_delay_dflt);
+		lem_add_int_delay_sysctl(adapter, "tx_abs_int_delay",
+		    "transmit interrupt delay limit in usecs",
+		    &adapter->tx_abs_int_delay,
+		    E1000_REGISTER(&adapter->hw, E1000_TADV),
+		    lem_tx_abs_int_delay_dflt);
+		lem_add_int_delay_sysctl(adapter, "itr",
+		    "interrupt delay limit in usecs/4",
+		    &adapter->tx_itr,
+		    E1000_REGISTER(&adapter->hw, E1000_ITR),
+		    DEFAULT_ITR);
+	}
 
 	/* Sysctls for limiting the amount of work done in the taskqueue */
-	// lem_add_rx_process_limit(adapter, "rx_processing_limit",
-	//     "max number of rx packets to process", &adapter->rx_process_limit,
-	//     lem_rx_process_limit);
+	lem_add_rx_process_limit(adapter, "rx_processing_limit",
+	    "max number of rx packets to process", &adapter->rx_process_limit,
+	    lem_rx_process_limit);
 
 #ifdef NIC_SEND_COMBINING
 	/* Sysctls to control mitigation */
@@ -505,9 +505,9 @@ lem_attach(device_t dev)
 #endif /* NIC_PARAVIRT */
 
   /* Sysctl for setting the interface flow control */
-	// lem_set_flow_cntrl(adapter, "flow_control",
-	//     "flow control setting",
-	//     &adapter->fc_setting, lem_fc_setting);
+	lem_set_flow_cntrl(adapter, "flow_control",
+	    "flow control setting",
+                     (int *)&adapter->fc_setting, lem_fc_setting);
 
 	/*
 	 * Validate number of transmit and receive descriptors. It
@@ -1351,7 +1351,7 @@ lem_poll(if_t ifp)
 {
   struct adapter *adapter = reinterpret_cast<struct adapter *>(if_getsoftc(ifp));
   lE1000 *e1000 = adapter->dev->GetMasterClass<lE1000>();
-  // u32		reg_icr;
+  u32		reg_icr;
   int rx_done = 0;
 
 	EM_CORE_LOCK(adapter);
@@ -1360,16 +1360,15 @@ lem_poll(if_t ifp)
 		return (rx_done);
 	}
 
-  // TODO : 要対応
 	// if (cmd == POLL_AND_CHECK_STATUS) {
-	// 	reg_icr = E1000_READ_REG(&adapter->hw, E1000_ICR);
-	// 	if (reg_icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC)) {
-	// 		callout_stop(&adapter->timer);
-	// 		adapter->hw.mac.get_link_status = 1;
-	// 		lem_update_link_status(adapter);
-	// 		callout_reset(&adapter->timer, hz,
-	// 		    lem_local_timer, adapter);
-	// 	}
+		reg_icr = E1000_READ_REG(&adapter->hw, E1000_ICR);
+		if (reg_icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC)) {
+			callout_stop(&adapter->timer);
+			adapter->hw.mac.get_link_status = 1;
+			lem_update_link_status(adapter);
+			callout_reset(&adapter->timer, hz,
+			    lem_local_timer, adapter);
+		}
 	// }
 	EM_CORE_UNLOCK(adapter);
 
@@ -4932,39 +4931,39 @@ lem_get_counter(if_t ifp, ift_counter cnt)
 // 	return (0);
 // }
 
-// static void
-// lem_add_int_delay_sysctl(struct adapter *adapter, const char *name,
-// 	const char *description, struct em_int_delay_info *info,
-// 	int offset, int value)
-// {
-// 	info->adapter = adapter;
-// 	info->offset = offset;
-// 	info->value = value;
-// 	SYSCTL_ADD_PROC(device_get_sysctl_ctx(adapter->dev),
-// 	    SYSCTL_CHILDREN(device_get_sysctl_tree(adapter->dev)),
-// 	    OID_AUTO, name, CTLTYPE_INT|CTLFLAG_RW,
-// 	    info, 0, lem_sysctl_int_delay, "I", description);
-// }
+static void
+lem_add_int_delay_sysctl(struct adapter *adapter, const char *name,
+	const char *description, struct em_int_delay_info *info,
+	int offset, int value)
+{
+	info->adapter = adapter;
+	info->offset = offset;
+	info->value = value;
+	// SYSCTL_ADD_PROC(device_get_sysctl_ctx(adapter->dev),
+	//     SYSCTL_CHILDREN(device_get_sysctl_tree(adapter->dev)),
+	//     OID_AUTO, name, CTLTYPE_INT|CTLFLAG_RW,
+	//     info, 0, lem_sysctl_int_delay, "I", description);
+}
 
-// static void
-// lem_set_flow_cntrl(struct adapter *adapter, const char *name,
-//         const char *description, int *limit, int value)
-// {
-// 	*limit = value;
-// 	SYSCTL_ADD_INT(device_get_sysctl_ctx(adapter->dev),
-// 	    SYSCTL_CHILDREN(device_get_sysctl_tree(adapter->dev)),
-// 	    OID_AUTO, name, CTLFLAG_RW, limit, value, description);
-// }
+static void
+lem_set_flow_cntrl(struct adapter *adapter, const char *name,
+        const char *description, int *limit, int value)
+{
+	*limit = value;
+	// SYSCTL_ADD_INT(device_get_sysctl_ctx(adapter->dev),
+	//     SYSCTL_CHILDREN(device_get_sysctl_tree(adapter->dev)),
+	//     OID_AUTO, name, CTLFLAG_RW, limit, value, description);
+}
 
-// static void
-// lem_add_rx_process_limit(struct adapter *adapter, const char *name,
-// 	const char *description, int *limit, int value)
-// {
-// 	*limit = value;
-// 	SYSCTL_ADD_INT(device_get_sysctl_ctx(adapter->dev),
-// 	    SYSCTL_CHILDREN(device_get_sysctl_tree(adapter->dev)),
-// 	    OID_AUTO, name, CTLFLAG_RW, limit, value, description);
-// }
+static void
+lem_add_rx_process_limit(struct adapter *adapter, const char *name,
+	const char *description, int *limit, int value)
+{
+	*limit = value;
+	// SYSCTL_ADD_INT(device_get_sysctl_ctx(adapter->dev),
+	//     SYSCTL_CHILDREN(device_get_sysctl_tree(adapter->dev)),
+	//     OID_AUTO, name, CTLFLAG_RW, limit, value, description);
+}
 
 /*
  *
