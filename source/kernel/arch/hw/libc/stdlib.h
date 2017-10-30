@@ -16,15 +16,15 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
- * Author: Levelfour
+ * Author: Liva, Levelfour
  * 
  */
 
-#ifndef __RAPH_LIB_STDLIB_H__
-#define __RAPH_LIB_STDLIB_H__
+#pragma once
 
 #include <stdint.h>
 #include <stddef.h>
+#include <ctype.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -39,8 +39,25 @@ extern "C" {
   void free(void *ptr);
 
   int atexit(void (*function)(void));
+
+
+  // originally from musl-libc
+  // Copyright © 2005-2014 Rich Felker, et al.
+  // Released under the MIT license
+  // https://opensource.org/licenses/mit-license.php
+  static int atoi(const char *s)
+  {
+    int n=0, neg=0;
+    while (isspace(*s)) s++;
+    switch (*s) {
+    case '-': neg=1;
+    case '+': s++;
+    }
+    /* Compute n as a negative number to avoid overflow on INT_MIN */
+    while (isdigit(*s))
+      n = 10*n - (*s++ - '0');
+    return neg ? n : -n;
+  }
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
-
-#endif // __RAPH_LIB_STDLIB_H__
