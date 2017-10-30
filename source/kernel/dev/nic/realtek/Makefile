@@ -8,7 +8,7 @@ DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))
 default:
 
 build:
-	@$(foreach rule, $(SUB), $(MAKE) -C $(rule) build;)
+	@$(foreach rule, $(SUB), $(MAKE) -C $(rule) build && ):
 	@$(MAKE) ../realtek.o
 
 -include $(DEPS)
@@ -17,5 +17,5 @@ build:
 	ld -r $^ -o $@
 
 clean:
-	@$(foreach rule, $(SUB), $(MAKE) -C $(rule) clean;)
+	@$(foreach rule, $(SUB), $(MAKE) -C $(rule) clean && ):
 	-rm -f $(OBJS) $(TEST_OBJS) $(DEPS) *.s *.ii

@@ -8,7 +8,7 @@ DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))
 default:
 
 build:
-	@$(foreach rule, $(SUB), $(MAKE) -C $(rule) build;)
+	@$(foreach rule, $(SUB), $(MAKE) -C $(rule) build && ):
 	@$(MAKE) ../dev.o
 
 -include $(DEPS)
@@ -26,6 +26,6 @@ pci.ids.formatted : pci.ids
 	sed 's/\("\|\?\|\\\)/\\\1/g' pci.ids > pci.ids.formatted
 
 clean:
-	@$(foreach rule, $(SUB), $(MAKE) -C $(rule) clean;)
+	@$(foreach rule, $(SUB), $(MAKE) -C $(rule) clean && ):
 	-rm -f $(OBJS) $(TEST_OBJS) $(DEPS) *.s *.ii
 	-rm -f pciid_table.cc pci.ids.formatted

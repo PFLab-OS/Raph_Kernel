@@ -24,7 +24,7 @@ export ASFLAGS
 default:
 
 build:
-	@$(foreach rule, $(SUB), $(MAKE) -C $(rule) build;)
+	@$(foreach rule, $(SUB), $(MAKE) -C $(rule) build && ):
 	@$(MAKE) -C arch/hw/libc
 	@$(MAKE) $(BUILD)$(KERNEL)
 
@@ -37,6 +37,6 @@ $(BUILD)$(KERNEL): $(OBJS) kernel.ld
 	@cat $(BUILD)timestamp
 
 clean:
-	@$(foreach rule, $(SUB), $(MAKE) -C $(rule) clean;)
+	@$(foreach rule, $(SUB), $(MAKE) -C $(rule) clean && ):
 	$(MAKE) -C arch/hw/libc clean
 	-rm -f $(OBJS) $(DEPS) *.s *.ii
