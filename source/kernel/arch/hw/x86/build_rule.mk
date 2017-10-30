@@ -100,8 +100,8 @@ cpimage: image
 $(IMAGE):
 	$(MAKE) umount
 	dd if=/dev/zero of=$(IMAGE) bs=1M count=200
-	sh disk.sh disk-setup
-	sh disk.sh grub-install
+	./disk.sh disk-setup
+	./disk.sh grub-install
 	$(MAKE) mount
 	sudo cp memtest86+.bin $(MOUNT_DIR)/boot/memtest86+.bin
 	$(MAKE) umount
@@ -116,10 +116,10 @@ disk:
 	$(MAKE) image
 
 mount: $(IMAGE)
-	sh disk.sh mount
+	./disk.sh mount
 
 umount:
-	sh disk.sh umount
+	./disk.sh umount
 
 deldisk: umount
 	-rm -f $(IMAGE)
