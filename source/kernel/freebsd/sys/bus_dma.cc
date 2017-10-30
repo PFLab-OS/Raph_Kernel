@@ -26,6 +26,7 @@
 #include <sys/mutex.h>
 #include <raph.h>
 #include <mem/paging.h>
+#include <string.h>
 
 extern "C" {
 
@@ -60,6 +61,7 @@ extern "C" {
                        bus_dmamap_t *mapp) {
     physmem_ctrl->Alloc(dmat->paddr, dmat->size);
     *vaddr = reinterpret_cast<void *>(p2v(dmat->paddr.GetAddr()));
+    memset(*vaddr, 0, dmat->size);
     return 0;
   }
 
