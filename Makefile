@@ -37,7 +37,7 @@ define check_guest
 endef
 
 define run_remote
-	$(if $(shell (($(CHECK_REMOTE)) & (for i in `seq 0 3`; do sleep 1 ; ps $$! > /dev/null 2>&1 || exit 0 ; done;  kill -9 $$! ; exit 1 ) && ($(CHECK_REMOTE))) || echo "no-guest"),
+	$(if $(shell (($(CHECK_REMOTE)) & (for i in `seq 0 5`; do sleep 1 ; ps $$! > /dev/null 2>&1 || exit 0 ; done;  kill -9 $$! ; exit 1 ) && ($(CHECK_REMOTE))) || echo "no-guest"),
 	rm -f .ssh_config
 	vagrant halt
 	vagrant up
