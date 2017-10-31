@@ -299,9 +299,12 @@ void membench9(sptr<TaskWithStack> task) {
   FUNC(task, TtsBackoffSpinLock);
   FUNC(task, TicketSpinLock);
   FUNC(task, AndersonSpinLock<64, 37>);
-  FUNC(task, AndersonSpinLock<64, 45>);
   FUNC(task, ClhSpinLock);
   FUNC(task, McsSpinLock<64>);
+  FUNC(task, HClhSpinLock);
+  FUNC(task, ExpSpinLock11<McsSpinLock<64>, TicketSpinLockA>);
+  FUNC(task, ExpSpinLock11<McsSpinLockA<64>, McsSpinLockA<64>>);
+  FUNC(task, ExpSpinLock11<TicketSpinLockA, McsSpinLockA<64>>);
   // FUNC(task, ExpSpinLock10<ClhSpinLock, ClhSpinLock, 8>);
   // FUNC(task, ExpSpinLock10<ClhSpinLock, TicketSpinLock, 8>);
   // FUNC(task, ExpSpinLock10<ClhSpinLock, AndersonSpinLock<64, 8>, 8>);

@@ -88,7 +88,7 @@ static __attribute__ ((noinline)) Pair func107_main(int cpunum, int work) {
   cache_ctrl->Clear(lock, sizeof(L));
   cache_ctrl->Clear(f_array, sizeof(Uint64) * 256);
   
-  uint64_t t1;
+  uint64_t t1 = 0;
   if (apicid == 0) {
     t1 = timer->ReadMainCnt();
   }
@@ -131,7 +131,9 @@ static __attribute__ ((noinline)) Pair func107_main(int cpunum, int work) {
       f_avg += f_array[x].i;
     }
     if (f_avg != kInitCnt) {
-      kernel_panic("membench", "bad spinlock");
+      StringTty tty(100);
+      tty.Printf("bad spin lock(%d/%d)", f_avg, kInitCnt);
+      kernel_panic("membench", tty.GetRawPtr());
     }
     f_avg /= cpunum;
     for (int x = 0; x < cpunum; x++) {
@@ -289,20 +291,21 @@ void membench8(sptr<TaskWithStack> task) {
   FUNC(task, ClhSpinLock);
   FUNC(task, McsSpinLock<64>);
   FUNC(task, HClhSpinLock);
-  FUNC(task, ExpSpinLock11<ClhSpinLock, TicketSpinLockA>);
   FUNC(task, ExpSpinLock11<McsSpinLock<64>, TicketSpinLockA>);
-  FUNC(task, ExpSpinLock10<ClhSpinLock, ClhSpinLock, 8>);
-  FUNC(task, ExpSpinLock10<ClhSpinLock, AndersonSpinLock<64, 8>, 8>);
-  FUNC(task, ExpSpinLock10<ClhSpinLock, McsSpinLock<64>, 8>);
-  FUNC(task, ExpSpinLock10<AndersonSpinLock<64, 37>, AndersonSpinLock<64, 8>, 8>); 
-  FUNC(task, ExpSpinLock10<AndersonSpinLock<64, 37>, McsSpinLock<64>, 8>);
-  FUNC(task, ExpSpinLock10<AndersonSpinLock<64, 37>, ClhSpinLock, 8>);
-  FUNC(task, ExpSpinLock10<AndersonSpinLock<64, 64>, AndersonSpinLock<64, 8>, 8>); 
-  FUNC(task, ExpSpinLock10<AndersonSpinLock<64, 64>, McsSpinLock<64>, 8>);
-  FUNC(task, ExpSpinLock10<AndersonSpinLock<64, 64>, ClhSpinLock, 8>);
-  FUNC(task, ExpSpinLock10<McsSpinLock<64>, McsSpinLock<64>, 8>);
-  FUNC(task, ExpSpinLock10<McsSpinLock<64>, ClhSpinLock, 8>);
-  FUNC(task, ExpSpinLock10<McsSpinLock<64>, AndersonSpinLock<64, 8>, 8>);
+  FUNC(task, ExpSpinLock11<McsSpinLockA<64>, McsSpinLockA<64>>);
+  FUNC(task, ExpSpinLock11<TicketSpinLockA, McsSpinLockA<64>>);
+  // FUNC(task, ExpSpinLock10<ClhSpinLock, ClhSpinLock, 8>);
+  // FUNC(task, ExpSpinLock10<ClhSpinLock, AndersonSpinLock<64, 8>, 8>);
+  // FUNC(task, ExpSpinLock10<ClhSpinLock, McsSpinLock<64>, 8>);
+  // FUNC(task, ExpSpinLock10<AndersonSpinLock<64, 37>, AndersonSpinLock<64, 8>, 8>); 
+  // FUNC(task, ExpSpinLock10<AndersonSpinLock<64, 37>, McsSpinLock<64>, 8>);
+  // FUNC(task, ExpSpinLock10<AndersonSpinLock<64, 37>, ClhSpinLock, 8>);
+  // FUNC(task, ExpSpinLock10<AndersonSpinLock<64, 64>, AndersonSpinLock<64, 8>, 8>); 
+  // FUNC(task, ExpSpinLock10<AndersonSpinLock<64, 64>, McsSpinLock<64>, 8>);
+  // FUNC(task, ExpSpinLock10<AndersonSpinLock<64, 64>, ClhSpinLock, 8>);
+  // FUNC(task, ExpSpinLock10<McsSpinLock<64>, McsSpinLock<64>, 8>);
+  // FUNC(task, ExpSpinLock10<McsSpinLock<64>, ClhSpinLock, 8>);
+  // FUNC(task, ExpSpinLock10<McsSpinLock<64>, AndersonSpinLock<64, 8>, 8>);
 
 
   if (cpuid == 0) {
