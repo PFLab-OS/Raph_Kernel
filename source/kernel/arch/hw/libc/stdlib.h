@@ -45,7 +45,7 @@ extern "C" {
   // Copyright © 2005-2014 Rich Felker, et al.
   // Released under the MIT license
   // https://opensource.org/licenses/mit-license.php
-  static int atoi(const char *s)
+  static inline int atoi(const char *s)
   {
     int n=0, neg=0;
     while (isspace(*s)) s++;

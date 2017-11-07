@@ -429,27 +429,96 @@ public:
       }
       asm volatile("":::"memory");
     }
-    return (_release_ticket + 1 == x);
-  }
-  void Fix() {
-    _release_ticket = _cnt;
+    bool f = (_release_cnt == 0) ? true : false;
+    _release_cnt = 8;
+    return f;
   }
   bool Release(uint32_t apicid) {
-    bool f = (_release_ticket == _flag);
-    return f || IsNoOneWaiting(apicid);
-  }
-  void Unlock(uint32_t apicid) {
-    _flag++;
+    _release_cnt--;
+    if (IsNoOneWaiting(apicid)) {
+      _release_cnt = 0;
+    }
+    return (_release_cnt == 0) ? true : false;
   }
   bool IsNoOneWaiting(uint32_t apicid) {
     return _flag + 1 == _cnt;
   }
+  void Unlock(uint32_t apicid) {
+    _flag++;
+  }
 private:
   uint64_t _flag __attribute__ ((aligned (64))) = 1;
   uint64_t _cnt __attribute__ ((aligned (64))) = 1;
-  uint64_t _release_ticket = 0;
+  int _release_cnt = 0;
 } __attribute__ ((aligned (64)));
 
+template<int align>
+class McsSpinLockA {
+public:
+  McsSpinLockA() {
+    check_align(this);
+    if (align == 64) {
+      check_type_align<QueueNode>();
+    }
+    check_align(_node);
+    check_align(&_tail);
+  }
+  bool TryLock(uint32_t apicid) {
+    auto qnode = &_node[apicid];
+    qnode->_next = nullptr;
+    return __sync_bool_compare_and_swap(&_tail, nullptr, qnode);
+  }
+  bool Lock(uint32_t apicid) {
+    auto qnode = &_node[apicid];
+    qnode->_next = nullptr;
+    auto pred = __sync_lock_test_and_set(&_tail, qnode);
+    if (pred != nullptr) {
+      qnode->_spin = 1;
+      pred->_next = qnode;
+      while(qnode->_spin == 1) {
+        asm volatile("":::"memory");
+      }
+    }
+    bool f = (_release_cnt == 0) ? true : false;
+    _release_cnt = 8;
+    return f;
+  }
+  bool Release(uint32_t apicid) {
+    _release_cnt--;
+    if (IsNoOneWaiting(apicid)) {
+      _release_cnt = 0;
+    }
+    return (_release_cnt == 0) ? true : false;
+  }
+  void Unlock(uint32_t apicid) {
+    auto qnode = &_node[apicid];
+    if (qnode->_next == nullptr) {
+      if (__sync_bool_compare_and_swap(&_tail, qnode, nullptr)) {
+        return;
+      }
+      while(qnode->_next == nullptr) {
+        asm volatile("":::"memory");
+      }
+    }
+    qnode->_next->_spin = 0;
+  }
+  bool IsNoOneWaiting(uint32_t apicid) {
+    auto qnode = &_node[apicid];
+    return qnode->_next == nullptr;
+  }
+private:
+  struct QueueNode {
+    QueueNode() {
+      _next = nullptr;
+      _spin = 0;
+    }
+    QueueNode *_next;
+    int _spin;
+  } __attribute__ ((aligned (align)));
+  QueueNode *__attribute__ ((aligned (64))) _tail = nullptr;
+  QueueNode _node[37 * 8];
+  int _release_cnt = 0;
+} __attribute__ ((aligned (64)));
 
 template<class L1, class L2>
 class ExpSpinLock11 {
@@ -470,7 +539,6 @@ public:
 
     if (_second_lock[tileid].Lock(threadid)) {
       _top_lock.Lock(tileid);
-      _second_lock[tileid].Fix();
     }
   }
   void Unlock(uint32_t apicid) {

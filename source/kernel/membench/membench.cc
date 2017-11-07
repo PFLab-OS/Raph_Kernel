@@ -29,7 +29,7 @@
 #include "membench.h"
 
 const char ip_addr[] = "192.168.12.11";
-const char port[] = "1234";
+const char port[] = "12345";
 
 SyncLow sync_1={0};
 Sync2Low sync_2={0};
@@ -40,7 +40,7 @@ Uint64 f_array[256];
 volatile Uint64 monitor[37 * 8];
 
 
-#define bench_func(x) membench8(x)
+#define bench_func(x) membench10(x)
 
 void bench_func(sptr<TaskWithStack> task);
 

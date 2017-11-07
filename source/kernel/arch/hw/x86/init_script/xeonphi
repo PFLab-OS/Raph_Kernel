@@ -5,6 +5,5 @@ udp_setup
 arp_scan
 beep
 wait 3
-udpsend 192.168.12.11 12345 Benchmark_Result>>>
 membench
 
