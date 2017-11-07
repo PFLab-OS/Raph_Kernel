@@ -188,9 +188,6 @@ void DevUsb::InterruptEndpoint::Setup(int num_td, uint8_t *buffer, uptr<GenericF
     assert(_obj_reserved.Push(make_uptr(new Array<uint8_t>(_ed->GetMaxPacketSize()))));
   }
 
-  if (_ed->GetInterval() <= 0) {
-    kernel_panic("DevUsb", "unknown interval");
-  }
   _manager = _dev->_controller->SetupInterruptTransfer(_ed->GetEndpointNumber(), _dev->_addr, _ed->GetInterval(), _ed->GetDirection(), _ed->GetMaxPacketSize(), num_td, buffer, func);
 }
 
