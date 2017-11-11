@@ -39,6 +39,7 @@
 #include <mem/kstack.h>
 #include <elf.h>
 #include <syscall.h>
+#include <kparam.h>
 
 #include <dev/hpet.h>
 #include <dev/pci.h>
@@ -750,6 +751,8 @@ extern "C" int main() {
 
   gdt->SetupProc();
   
+  KernelParamCtrl::GetCtrl().Init();
+
   // 各コアは最低限の初期化ののち、TaskCtrlに制御が移さなければならない
   // 特定のコアで専用の処理をさせたい場合は、TaskCtrlに登録したジョブとして
   // 実行する事

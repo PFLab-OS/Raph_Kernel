@@ -1,7 +1,7 @@
 KERNEL = kernel.elf
 
 SUB = dev freebsd acpica membench #net
-OBJS = boot/boot.o boot/bootap.o x86_asm.o x86.o main.o multiboot.o apic.o raph_acpi.o gdt.o idt.o int.o fs.o v6fs.o udp.o mem/virtmem.o shell.o mem/paging.o mem/physmem.o mem/dlmalloc.o mem/kstack.o task.o spinlock.o libglobal.o tty.o queue.o cpu.o elf.o elf_load.o syscall.o syscall_handler.o font.o netbench.o $(addsuffix .o,$(SUB)) arch/hw/libc/lib.o
+OBJS = boot/boot.o boot/bootap.o x86_asm.o x86.o main.o multiboot.o apic.o raph_acpi.o gdt.o idt.o int.o fs.o v6fs.o udp.o mem/virtmem.o shell.o mem/paging.o mem/physmem.o mem/dlmalloc.o mem/kstack.o task.o spinlock.o libglobal.o tty.o queue.o cpu.o elf.o elf_load.o syscall.o syscall_handler.o font.o netbench.o kparam.o $(addsuffix .o,$(SUB)) arch/hw/libc/lib.o
 
 BUILD = ../../build/
 DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))
