@@ -677,6 +677,24 @@ void cat(int argc, const char *argv[]) {
   }
 }
 
+void testfb(int argc, const char *argv[]) {
+  char s[2];
+  s[1] = 0;
+  /*
+  for (int i = 0; i < 1024; i++) {
+    gtty->Printf("a");
+  }
+  */
+
+  for (int i = 0; i < 256; i++) {
+    for (int k = 0; k <= i; k++) {
+      s[0] = 'A' + (k & 0xF);
+      gtty->Printf(s);
+    }
+    gtty->Printf("\n");
+  }
+}
+
 void freebsd_main();
 
 extern "C" int main() {
@@ -749,13 +767,12 @@ extern "C" int main() {
   apic_ctrl->BootBSP();
 
   gdt->SetupProc();
-  
+
   // 各コアは最低限の初期化ののち、TaskCtrlに制御が移さなければならない
   // 特定のコアで専用の処理をさせたい場合は、TaskCtrlに登録したジョブとして
   // 実行する事
-
   apic_ctrl->StartAPs();
-  
+
   paging_ctrl->ReleaseLowMemory();
 
   gtty->Setup();
@@ -773,8 +790,6 @@ extern "C" int main() {
   freebsd_main();
 
   AttachDevices<PciCtrl, LegacyKeyboard, Ramdisk, Device>();
-
-  // arp_table->Setup();
 
   SystemCallCtrl::Init();
 
@@ -799,21 +814,8 @@ extern "C" int main() {
   shell->Register("udp_setup", udp_setup);
   shell->Register("membench", membench);
   shell->Register("cat", cat);
+  shell->Register("testfb", testfb);
 
-  /*
-  Storage *storage;
-  if (StorageCtrl::GetCtrl().GetDevice("ram0", storage) != IoReturnState::kOk) {
-    kernel_panic("storage", "not found");
-  }
-  V6FileSystem *v6fs = new V6FileSystem(*storage);
-  VirtualFileSystem *vfs = new VirtualFileSystem(v6fs);
-  vfs->Init();
-  */
-  /*
-  gtty->Printf("test: %s\n", testReadFile(vfs, "/README.md") ? "PASS" : "FAIL");
-  gtty->Printf("test: %s\n",
-               !testReadFile(vfs, "/README.nd") ? "PASS" : "FAIL");
-*/
   load_script(
       make_sptr(new LoadContainer(multiboot_ctrl->LoadFile("init.sh"))));
 

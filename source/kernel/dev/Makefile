@@ -1,6 +1,8 @@
 SUB = usb nic storage
 OBJS = pci.o netdev.o 8042.o keyboard.o pciid.o pciid_table.o hpet.o framebuffer.o $(addsuffix .o,$(SUB))
 
+CXXFLAGSO2 := $(subst -O0,-O2,$(CXXFLAGS))
+
 DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))
 
 .PHONY: clean
@@ -24,6 +26,9 @@ pciid_table.cc: pci.ids.formatted pciid.py
 
 pci.ids.formatted : pci.ids
 	sed 's/\("\|\?\|\\\)/\\\1/g' pci.ids > pci.ids.formatted
+
+framebuffer.o : framebuffer.cc
+	g++ $(CXXFLAGSO2) -c framebuffer.cc
 
 clean:
 	@$(foreach rule, $(SUB), $(MAKE) -C $(rule) clean && ):
