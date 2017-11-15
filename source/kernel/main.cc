@@ -677,24 +677,6 @@ void cat(int argc, const char *argv[]) {
   }
 }
 
-void testfb(int argc, const char *argv[]) {
-  char s[2];
-  s[1] = 0;
-  /*
-  for (int i = 0; i < 1024; i++) {
-    gtty->Printf("a");
-  }
-  */
-
-  for (int i = 0; i < 256; i++) {
-    for (int k = 0; k <= i; k++) {
-      s[0] = 'A' + (k & 0xF);
-      gtty->Printf(s);
-    }
-    gtty->Printf("\n");
-  }
-}
-
 void freebsd_main();
 
 extern "C" int main() {
@@ -814,7 +796,6 @@ extern "C" int main() {
   shell->Register("udp_setup", udp_setup);
   shell->Register("membench", membench);
   shell->Register("cat", cat);
-  shell->Register("testfb", testfb);
 
   load_script(
       make_sptr(new LoadContainer(multiboot_ctrl->LoadFile("init.sh"))));
