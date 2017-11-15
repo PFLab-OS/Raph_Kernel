@@ -17,7 +17,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
  * USA.
  *
- * Author: Liva
+ * Author: Liva, hikalium
  *
  * graphic driver for framebuffer
  *
@@ -33,6 +33,7 @@ FrameBuffer::DrawInfo FrameBuffer::_d_info;
 void FrameBuffer::Init() {
   multiboot_ctrl->SetupFrameBuffer(&_fb_info);
   assert(_fb_info.bpp == 24 || _fb_info.bpp == 32);
+  _bytes_per_pixel = _fb_info.bpp / 8;
 
   // Load font for normal area
   {
@@ -55,17 +56,14 @@ void FrameBuffer::Init() {
   }
 
   _font_buffer = new bool[_font_normal.GetMaxh() * _font_normal.GetMaxw()];
-  _info_row =
-      (_fb_info.height / _font_normal.GetMaxh() - 1) * _font_normal.GetMaxh();
-
-  _info_buffer = new StringBuffer(&_fb_info, &_font_normal);
-
+  _str_buffer = new StringRingBuffer(&_fb_info, &_font_normal);
   _draw_cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority);
 }
 
 void FrameBuffer::Write(char c) {
   Locker locker(_lock);
-  _info_buffer->Write(c);
+  //_info_buffer->Write(c);
+  _str_buffer->Write(c);
   Refresh();
 }
 
@@ -145,11 +143,11 @@ void FrameBuffer::DrawScreen() {
 
   if (_shell_buffer) {
     // TODO consider overflow
-    for (int x = 0; x < strlen(_shell_buffer); x++) {
+    for (size_t x = 0; x < strlen(_shell_buffer); x++) {
       if (_shell_buffer[x] == '\0') {
         return;
       }
-      int width =
+      size_t width =
           _font_inverted.GetWidth(static_cast<char32_t>(_shell_buffer[x]));
       if (xoffset + width > _fb_info.width) {
         break;
@@ -171,80 +169,82 @@ void FrameBuffer::DrawScreen() {
 }
 
 void FrameBuffer::DrawScreenSub() {
-  int row = 0;
-  // count sum
-  do {
-    StringBuffer *buf = _info_buffer;
-    while (true) {
-      row += buf->_row * _font_normal.GetMaxh();
-      if (buf->_next == nullptr) {
-        if (buf->_buffer[buf->_length - 1] == StringBuffer::kNewLineSignature) {
-          row--;
+  uint8_t *vram = _fb_info.buffer;
+  size_t xsize = _fb_info.width;
+  size_t rowHeight = _font_normal.GetMaxh();
+  //
+  int rp = _str_buffer->GetReadPos();
+  size_t x = 0;
+  size_t y = 0;
+  char32_t c;
+  //
+  static int prevRowCount = 0;
+  int skipLineCount = 0;
+  //
+  if (prevRowCount == _str_buffer->GetScreenRows()) {
+    int scrollCount = _str_buffer->GetScrollCount();
+    _str_buffer->ResetScrollCount();
+    //
+    if (scrollCount > 0) {
+      // scroll screen
+      skipLineCount = _str_buffer->GetScreenRows() - scrollCount - 1;
+      if (skipLineCount <= 0) {
+        skipLineCount = 0;
+      } else {
+        // note: last row which already written in vram may have to update.
+        // So skipLineCount is a number of rows to be copied.
+        int offset = scrollCount * (xsize * _bytes_per_pixel * rowHeight);
+        int count = skipLineCount * (xsize * _bytes_per_pixel * rowHeight);
+        assert(((uint64_t)vram & 3) == 0);
+        assert(((uint64_t)(vram + offset) & 3) == 0);
+        assert((count & 3) == 0);
+
+        for (int i = 0; i < count / 8; i++) {
+          ((uint64_t *)vram)[i] = ((uint64_t *)vram)[i + offset / 8];
         }
-        break;
       }
-      buf = buf->_next;
+    } else {
+      // if there was no scroll, only last row should be updated.
+      skipLineCount = _str_buffer->GetRowCount() - 1;
     }
-  } while (0);
-
-  while (row - _info_buffer->_row * _font_normal.GetMaxh() >= _info_row) {
-    StringBuffer *buf = _info_buffer;
-    _info_buffer = buf->_next;
-    buf->_next = nullptr;
-    row -= buf->_row * _font_normal.GetMaxh();
-    delete buf;
+  } else {
+    skipLineCount = prevRowCount;
   }
-  // OK
+  prevRowCount = _str_buffer->GetRowCount();
 
-  // this??????????
-
-  StringBuffer *buf = _info_buffer;
-  int index = 0;
-  while (row >= _info_row) {
-    for (; index < buf->_length; index++) {
-      if (buf->_buffer[index] == StringBuffer::kNewLineSignature) {
-        row -= _font_normal.GetMaxh();
-        index++;
-        break;
-      }
+  // move forward to rows should be draw.
+  for (int i = 0; i < skipLineCount; i++) {
+    while ((c = _str_buffer->ReadNextChar(rp)) !=
+           StringRingBuffer::kEndMarker) {
+      if (c == '\n') break;
     }
   }
-  int y = 0;
-  int x = 0;
-  int bytes_per_pixel = _fb_info.bpp / 8;
-  while (buf != nullptr) {
-    for (; index < buf->_length; index++) {
-      uint32_t i = buf->_buffer[index];
-      char32_t c = buf->_cBuffer[index];
-      if (i == StringBuffer::kNewLineSignature) {
-        for (int py = y; py < y + _font_normal.GetMaxh(); py++) {
-          // assert(x >= 0 && x < _fb_info.width);
-          for (int px = x; px < _fb_info.width; px++) {
-            for (int p = 0; p < bytes_per_pixel; p++) {
-              _fb_info
-                  .buffer[(py * _fb_info.width + px) * bytes_per_pixel + p] = 0;
-            }
+  y = skipLineCount * rowHeight;
+
+  // draw
+  while ((c = _str_buffer->ReadNextChar(rp)) != StringRingBuffer::kEndMarker) {
+    if (c == '\n') {
+      for (size_t py = y; py < y + _font_normal.GetMaxh(); py++) {
+        for (size_t px = x; px < _fb_info.width; px++) {
+          for (size_t p = 0; p < _bytes_per_pixel; p++) {
+            vram[(py * xsize + px) * _bytes_per_pixel + p] = 0;
           }
         }
-        y += _font_normal.GetMaxh();
-        x = 0;
-      } else {
-        x += _font_normal.PrintChar(_fb_info.buffer, _fb_info.width, x, y, c);
+      }
+      x = 0;
+      y += rowHeight;
+    } else {
+      x += _font_normal.PrintChar(vram, xsize, x, y, c);
+    }
+  }
+  if (x < xsize && y < _fb_info.height) {
+    for (size_t py = y; py < y + _font_normal.GetMaxh(); py++) {
+      for (size_t px = x; px < _fb_info.width; px++) {
+        for (size_t p = 0; p < _bytes_per_pixel; p++) {
+          vram[(py * xsize + px) * _bytes_per_pixel + p] = 0;
+        }
       }
     }
-    buf = buf->_next;
-    index = 0;
-  }
-  if (y < _info_row) {
-    int ny = y + _font_normal.GetMaxh();
-    for (; y < ny; y++) {
-      bzero(_fb_info.buffer + (x + y * _fb_info.width) * (_fb_info.bpp / 8),
-            (_fb_info.width - x) * (_fb_info.bpp / 8));
-    }
-  } else if (y == _info_row) {
-    assert(x == 0);
-  } else {
-    assert(false);
   }
 }
 
