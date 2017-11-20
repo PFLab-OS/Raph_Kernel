@@ -22,25 +22,17 @@ RAPHCXXFLAGS = $(RAPHFLAGS) -std=c++1y -fno-exceptions -fno-rtti -fno-use-cxa-at
 CFLAGS += $(RAPHCFLAGS)
 CXXFLAGS += $(RAPHCXXFLAGS)
 ASFLAGS += $(RAPHFLAGS)
+RAPH_PROJECT_ROOT = $(realpath $(join $(shell pwd), /../../))
 export CFLAGS
 export CXXFLAGS
 export ASFLAGS
+export RAPH_PROJECT_ROOT
 
 .PHONY: build clean
 
+include $(RAPH_PROJECT_ROOT)/common_rules.mk
+
 default:
-
-%.o : %.cc Makefile
-	@echo "CXX $*.cc"
-	@$(CXX) $(RAPHCXXFLAGS) -c -o $@ $*.cc
-
-%.o : %.S Makefile
-	@echo "CC $*.S"
-	@$(CC) $(RAPHFLAGS) -c -o $@ $*.S
-
-%.o : %.c Makefile
-	@echo "CC $*.c"
-	@$(CC) $(RAPHCFLAGS) -c -o $@ $*.c
 
 build:
 	@$(foreach rule, $(SUB), $(MAKE) -C $(rule) build && ):
