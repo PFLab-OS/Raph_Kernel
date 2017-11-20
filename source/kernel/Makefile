@@ -35,8 +35,12 @@ default:
 	@$(CXX) $(RAPHCXXFLAGS) -c -o $@ $*.cc
 
 %.o : %.S Makefile
-	@echo "CXX $*.S"
-	@$(CXX) $(RAPHFLAGS) -c -o $@ $*.S
+	@echo "CC $*.S"
+	@$(CC) $(RAPHFLAGS) -c -o $@ $*.S
+
+%.o : %.c Makefile
+	@echo "CC $*.c"
+	@$(CC) $(RAPHCFLAGS) -c -o $@ $*.c
 
 build:
 	@$(foreach rule, $(SUB), $(MAKE) -C $(rule) build && ):

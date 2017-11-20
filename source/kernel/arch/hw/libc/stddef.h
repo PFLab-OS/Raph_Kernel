@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
- * 
+ *
  */
 
 #ifndef __RAPH_LIB_STDDEF_H__
@@ -28,13 +29,13 @@ extern "C" {
 #endif /* __cplusplus */
 
 typedef __SIZE_TYPE__ size_t;
+typedef long int ptrdiff_t;
 
 #ifdef __cplusplus
 #define NULL nullptr
 #else
 #define NULL ((void *)0)
 #endif /* __cplusplus */
-
 
 #ifdef __cplusplus
 }
