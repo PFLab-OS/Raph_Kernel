@@ -34,6 +34,10 @@ default:
 	@echo "CXX $*.cc"
 	@$(CXX) $(RAPHCXXFLAGS) -c -o $@ $*.cc
 
+%.o : %.S Makefile
+	@echo "CXX $*.S"
+	@$(CXX) $(RAPHFLAGS) -c -o $@ $*.S
+
 build:
 	@$(foreach rule, $(SUB), $(MAKE) -C $(rule) build && ):
 	@$(MAKE) -C arch/hw/libc
