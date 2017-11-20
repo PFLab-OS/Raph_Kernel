@@ -30,6 +30,10 @@ export ASFLAGS
 
 default:
 
+%.o : %.cc Makefile
+	@echo "CXX $*.cc"
+	@$(CXX) $(RAPHCXXFLAGS) -c -o $@ $*.cc
+
 build:
 	@$(foreach rule, $(SUB), $(MAKE) -C $(rule) build && ):
 	@$(MAKE) -C arch/hw/libc
