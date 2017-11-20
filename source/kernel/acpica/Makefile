@@ -13,7 +13,8 @@ build: ../acpica.o
 -include $(DEPS)
 
 ../acpica.o: $(OBJS)
-	ld -r $^ -o $@
+	@echo "Linking acpica.o..."
+	@ld -r $^ -o $@
 
 clean:
 	-rm -f $(OBJS) $(TEST_OBJS) $(DEPS) *.s *.ii

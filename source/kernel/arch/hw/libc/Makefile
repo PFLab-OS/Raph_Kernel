@@ -4,6 +4,8 @@ DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))
 
 .PHONY: clean
 
+include $(RAPH_PROJECT_ROOT)/common_rules.mk
+
 default: ./lib.o
 
 -include $(DEPS)
