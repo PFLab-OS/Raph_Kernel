@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
- * 
+ *
  */
 
 #pragma once
@@ -28,20 +29,18 @@
 // 固定長
 template <class T>
 class Array {
-public:
-  explicit Array(int len) {
+ public:
+  explicit Array(size_t len) {
     _array = new T[len];
     _len = len;
   }
-  ~Array() {
-    delete[] _array;
-  }
-  T& operator[](int n) {
-    kassert(0 <= n && n < _len);
+  ~Array() { delete[] _array; }
+  T &operator[](size_t n) {
+    kassert(n < _len);
     return _array[n];
   }
   template <class A>
-  Array& operator=(const Array<A> &a) {
+  Array &operator=(const Array<A> &a) {
     delete[] _array;
     _array = reinterpret_cast<T *>(a._array);
     _len = a._len;
@@ -50,7 +49,7 @@ public:
     a_->_len = 0;
     return (*this);
   }
-  T& operator=(const T &a) {
+  T &operator=(const T &a) {
     delete[] _array;
     _array = a._array;
     _len = a._len;
@@ -59,13 +58,10 @@ public:
     a->_len = 0;
     return (*this);
   }
-  T *GetRawPtr() {
-    return _array;
-  }
-  size_t GetLen() {
-    return _len;
-  }
-private:
+  T *GetRawPtr() { return _array; }
+  size_t GetLen() { return _len; }
+
+ private:
   template <typename A>
   friend class Array;
   Array();
