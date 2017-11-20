@@ -9,7 +9,14 @@ DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))
 GIT_BRANCH = $(shell git symbolic-ref --short HEAD)
 
 INCLUDE_PATH = -I$(realpath arch/hw/libc/) -I$(realpath arch/$(ARCH)/) -I$(realpath arch/hw/) -I$(realpath ./)  -I$(realpath ./freebsd/) -I$(realpath ./acpica/include/)
-RAPHFLAGS = -ggdb3 -O0 -Wall -Werror=return-type -Werror=switch -Werror=unused-result -Wshadow -nostdinc -nostdlib -ffreestanding -fno-builtin -mcmodel=large -mno-mmx -D__KERNEL__ -D_KERNEL -D__NO_LIBC__ -DARCH=$(ARCH) -Dbootverbose=0 $(INCLUDE_PATH) -MMD -MP
+RAPHFLAGS = -ggdb3 -O0 \
+			-Wall -Werror=return-type -Werror=switch -Werror=unused-result -Wshadow \
+			-nostdinc -nostdlib \
+			-ffreestanding -fno-builtin \
+			-mcmodel=large -mno-mmx \
+			-D__KERNEL__ -D_KERNEL -D__NO_LIBC__ \
+			-DARCH=$(ARCH) -Dbootverbose=0 $(INCLUDE_PATH) \
+			-MMD -MP
 RAPHCFLAGS = $(RAPHFLAGS) -std=c99
 RAPHCXXFLAGS = $(RAPHFLAGS) -std=c++1y -fno-exceptions -fno-rtti -fno-use-cxa-atexit -fno-threadsafe-statics
 CFLAGS += $(RAPHCFLAGS)
@@ -40,3 +47,6 @@ clean:
 	@$(foreach rule, $(SUB), $(MAKE) -C $(rule) clean && ):
 	$(MAKE) -C arch/hw/libc clean
 	-rm -f $(OBJS) $(DEPS) *.s *.ii
+
+.syntastic_cpp_config: Makefile
+	echo $(RAPHCXXFLAGS) > $@
