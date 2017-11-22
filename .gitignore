@@ -24,6 +24,7 @@ net/disk.img.gz
 .vagrant
 .ssh_config
 build/
+tags
 
 # Object files
 *.o

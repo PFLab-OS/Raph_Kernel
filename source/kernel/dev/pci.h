@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
- * 
+ *
  */
 
 #pragma once
@@ -45,28 +46,25 @@ struct MCFGSt {
 struct MCFG {
   ACPISDTHeader header;
   MCFGSt list[0];
-} __attribute__ ((packed));
+} __attribute__((packed));
 
 class DevPci;
 
 class PciCtrl : public Device {
-public:
+ public:
   enum class CapabilityId : uint8_t {
-   kMsi = 0x05,
-   kPcie = 0x10,
+    kMsi = 0x05,
+    kPcie = 0x10,
   };
   enum class IntPin : int {
     kInvalid = 0,
-      kIntA = 1,
-      kIntB = 2,
-      kIntC = 3,
-      kIntD = 4,
+    kIntA = 1,
+    kIntB = 2,
+    kIntC = 3,
+    kIntD = 4,
   };
-  PciCtrl() {
-    _irq_container = new IrqContainer();
-  }
-  virtual ~PciCtrl() {
-  }
+  PciCtrl() { _irq_container = new IrqContainer(); }
+  virtual ~PciCtrl() {}
   void Probe();
   static void Attach() {
     kassert(pci_ctrl != nullptr);
@@ -74,27 +72,32 @@ public:
   }
   DevPci *InitPciDevices(uint8_t bus, uint8_t device, uint8_t function);
   virt_addr GetVaddr(uint8_t bus, uint8_t device, uint8_t func, uint16_t reg) {
-    return _base_addr + ((bus & 0xff) << 20) + ((device & 0x1f) << 15) + ((func & 0x7) << 12) + (reg & 0xfff);
+    return _base_addr + ((bus & 0xff) << 20) + ((device & 0x1f) << 15) +
+           ((func & 0x7) << 12) + (reg & 0xfff);
   }
-  template<class T>
-    T ReadPciReg(uint8_t bus, uint8_t device, uint8_t func, uint16_t reg) {
+  template <class T>
+  T ReadPciReg(uint8_t bus, uint8_t device, uint8_t func, uint16_t reg) {
     return *(reinterpret_cast<T *>(GetVaddr(bus, device, func, reg)));
   }
-  template<class T>
-    void WritePciReg(uint8_t bus, uint8_t device, uint8_t func, uint16_t reg, T value) {
+  template <class T>
+  void WritePciReg(uint8_t bus, uint8_t device, uint8_t func, uint16_t reg,
+                   T value) {
     *(reinterpret_cast<T *>(GetVaddr(bus, device, func, reg))) = value;
   }
   // Capabilityへのオフセットを返す
   // 見つからなかった時は0
-  uint16_t FindCapability(uint8_t bus, uint8_t device, uint8_t func, CapabilityId id);
+  uint16_t FindCapability(uint8_t bus, uint8_t device, uint8_t func,
+                          CapabilityId id);
   int GetMsiCount(uint8_t bus, uint8_t device, uint8_t func) {
     uint16_t offset = FindCapability(bus, device, func, CapabilityId::kMsi);
     if (offset == 0) {
       return 0;
     }
 
-    uint16_t control = ReadPciReg<uint16_t>(bus, device, func, offset + kMsiCapRegControl);
-    uint16_t cap = (control & kMsiCapRegControlMultiMsgCapMask) >> kMsiCapRegControlMultiMsgCapOffset;
+    uint16_t control =
+        ReadPciReg<uint16_t>(bus, device, func, offset + kMsiCapRegControl);
+    uint16_t cap = (control & kMsiCapRegControlMultiMsgCapMask) >>
+                   kMsiCapRegControlMultiMsgCapOffset;
     int count = 1;
     for (; cap > 0; cap--) {
       count *= 2;
@@ -102,9 +105,11 @@ public:
     return count;
   }
   // 先にGetMsiCountでMsiが使えるか調べる事
-  void SetMsi(uint8_t bus, uint8_t device, uint8_t func, uint64_t addr, uint16_t data);
+  void SetMsi(uint8_t bus, uint8_t device, uint8_t func, uint64_t addr,
+              uint16_t data);
   IntPin GetLegacyIntPin(uint8_t bus, uint8_t device, uint8_t func) {
-    return static_cast<IntPin>(ReadPciReg<uint8_t>(bus, device, func, kIntPinReg));
+    return static_cast<IntPin>(
+        ReadPciReg<uint8_t>(bus, device, func, kIntPinReg));
   }
   // 0より小さい場合はLegacyInterruptが存在しない
   virtual int GetLegacyIntNum(DevPci *device) = 0;
@@ -143,7 +148,8 @@ public:
   // see PCI Local Bus Specification 6.8.1.3
   static const uint16_t kMsiCapRegControlMsiEnableFlag = 1 << 0;
   static const uint16_t kMsiCapRegControlMultiMsgCapOffset = 1;
-  static const uint16_t kMsiCapRegControlMultiMsgCapMask = 7 << kMsiCapRegControlMultiMsgCapOffset;
+  static const uint16_t kMsiCapRegControlMultiMsgCapMask =
+      7 << kMsiCapRegControlMultiMsgCapOffset;
   static const uint16_t kMsiCapRegControlMultiMsgEnableOffset = 4;
   static const uint16_t kMsiCapRegControlAddr64Flag = 1 << 7;
 
@@ -166,19 +172,22 @@ public:
   static const uint32_t kRegBaseAddrIsPrefetchable = 1 << 3;
   static const uint32_t kRegBaseAddrMaskMemAddr = 0xFFFFFFF0;
   static const uint32_t kRegBaseAddrMaskIoAddr = 0xFFFFFFFC;
-private:
+
+ private:
   MCFG *_mcfg = nullptr;
   virt_addr _base_addr = 0;
   CpuId _cpuid;
-  
+
   void _Attach();
-  template<class T>
-  static inline DevPci *_InitPciDevices(uint8_t bus, uint8_t device, uint8_t function) {
+  template <class T>
+  static inline DevPci *_InitPciDevices(uint8_t bus, uint8_t device,
+                                        uint8_t function) {
     return T::InitPci(bus, device, function);
   }
 
-  template<class T1, class T2, class... Rest>
-  static inline DevPci *_InitPciDevices(uint8_t bus, uint8_t device, uint8_t function) {
+  template <class T1, class T2, class... Rest>
+  static inline DevPci *_InitPciDevices(uint8_t bus, uint8_t device,
+                                        uint8_t function) {
     DevPci *dev = T1::InitPci(bus, device, function);
     if (dev == nullptr) {
       return _InitPciDevices<T2, Rest...>(bus, device, function);
@@ -190,20 +199,18 @@ private:
   List<DevPci *> _devices;
 
   class IntHandler {
-  public:
-    IntHandler() {
-      next = nullptr;
-    }
+   public:
+    IntHandler() { next = nullptr; }
     void Add(DevPci *device_) {
       kassert(next == nullptr);
-      next = virtmem_ctrl->New<IntHandler>();
+      next = new IntHandler();
       next->device = device_;
     }
     DevPci *device;
     IntHandler *next;
   };
   class IrqContainer {
-  public:
+   public:
     IrqContainer() {
       irq = -1;
       inthandler = nullptr;
@@ -211,23 +218,23 @@ private:
     }
     void Add(int irq_, int vector_) {
       kassert(next == nullptr);
-      next = virtmem_ctrl->New<IrqContainer>();
+      next = new IrqContainer();
       next->irq = irq_;
       next->vector = vector_;
-      next->inthandler = virtmem_ctrl->New<IntHandler>();
+      next->inthandler = new IntHandler();
     }
     void Handle();
     int irq;
     int vector;
     IntHandler *inthandler;
     IrqContainer *next;
-  } *_irq_container;
+  } * _irq_container;
   SpinLock _irq_container_lock;
   static void LegacyIntHandler(Regs *rs, void *arg) {
     PciCtrl *that = reinterpret_cast<PciCtrl *>(arg);
     Locker locker(that->_irq_container_lock);
     IrqContainer *ic = that->_irq_container;
-    while(ic->next != nullptr) {
+    while (ic->next != nullptr) {
       IrqContainer *nic = ic->next;
       if (nic->vector == static_cast<int>(rs->n)) {
         nic->Handle();
@@ -239,10 +246,10 @@ private:
 };
 
 class AcpicaPciCtrl : public PciCtrl {
-public:
-  virtual ~AcpicaPciCtrl() {
-  }
-private:
+ public:
+  virtual ~AcpicaPciCtrl() {}
+
+ private:
   virtual int GetLegacyIntNum(DevPci *device) override {
     return acpi_ctrl->GetPciIntNum(device);
   }
@@ -251,20 +258,21 @@ private:
 // !!! important !!!
 // 派生クラスはstatic DevPci *InitPci(uint8_t bus, uint8_t device); を作成する事
 class DevPci : public Device {
-public:
-  DevPci(uint8_t bus, uint8_t device, uint8_t function) : _bus(bus), _device(device), _function(function) {
-  }
-  virtual ~DevPci() {
-  }
+ public:
+  DevPci(uint8_t bus, uint8_t device, uint8_t function)
+      : _bus(bus), _device(device), _function(function) {}
+  virtual ~DevPci() {}
   static DevPci *InitPci(uint8_t bus, uint8_t device, uint8_t function) {
     return nullptr;
-  } // dummy
+  }  // dummy
   virtual void Attach() = 0;
-  template<class T> T ReadPciReg(uint16_t reg) {
+  template <class T>
+  T ReadPciReg(uint16_t reg) {
     kassert(pci_ctrl != nullptr);
     return pci_ctrl->ReadPciReg<T>(_bus, _device, _function, reg);
   }
-  template<class T> void WritePciReg(uint16_t reg, T value) {
+  template <class T>
+  void WritePciReg(uint16_t reg, T value) {
     kassert(pci_ctrl != nullptr);
     pci_ctrl->WritePciReg<T>(_bus, _device, _function, reg, value);
   }
@@ -274,23 +282,17 @@ public:
   }
   // MSIに割り当てられるメッセージの数を返す
   // 0の場合はMSIをサポートしていない
-  int GetMsiCount() {
-    return pci_ctrl->GetMsiCount(_bus, _device, _function);
-  }
+  int GetMsiCount() { return pci_ctrl->GetMsiCount(_bus, _device, _function); }
   // 先にGetMsiCountでMsiが使えるか調べる事
   void SetMsi(CpuId cpuid, int vector) {
     kassert(pci_ctrl != nullptr);
-    pci_ctrl->SetMsi(_bus, _device, _function, ApicCtrl::GetMsiAddr(apic_ctrl->GetApicIdFromCpuId(cpuid)), ApicCtrl::GetMsiData(vector));
+    pci_ctrl->SetMsi(_bus, _device, _function,
+                     ApicCtrl::GetMsiAddr(apic_ctrl->GetApicIdFromCpuId(cpuid)),
+                     ApicCtrl::GetMsiData(vector));
   }
-  const uint8_t GetBus() {
-    return _bus;
-  }
-  const uint8_t GetDevice() {
-    return _device;
-  }
-  const uint8_t GetFunction() {
-    return _function;
-  }
+  const uint8_t GetBus() { return _bus; }
+  const uint8_t GetDevice() { return _device; }
+  const uint8_t GetFunction() { return _function; }
   PciCtrl::IntPin GetLegacyIntPin() {
     return pci_ctrl->GetLegacyIntPin(_bus, _device, _function);
   }
@@ -313,7 +315,8 @@ public:
       _handler(_intarg);
     }
   }
-private:
+
+ private:
   DevPci();
   const uint8_t _bus;
   const uint8_t _device;

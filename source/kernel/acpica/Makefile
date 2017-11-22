@@ -4,6 +4,8 @@ DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))
 
 .PHONY: clean
 
+include $(RAPH_PROJECT_ROOT)/common_rules.mk
+
 default:
 
 build: ../acpica.o
@@ -11,7 +13,8 @@ build: ../acpica.o
 -include $(DEPS)
 
 ../acpica.o: $(OBJS)
-	ld -r $^ -o $@
+	@echo "Linking acpica.o..."
+	@ld -r $^ -o $@
 
 clean:
 	-rm -f $(OBJS) $(TEST_OBJS) $(DEPS) *.s *.ii

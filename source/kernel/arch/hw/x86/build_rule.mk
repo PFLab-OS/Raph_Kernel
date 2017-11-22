@@ -76,7 +76,7 @@ $(BUILD_DIR)/init_script/$(INIT_FILE): init_script/$(INIT_FILE)
 	$(MAKE_SUBDIR) ../../../../tool build
 
 $(BUILD_DIR)/fs.img: ../../../../../source/tool/mkfs
-	-rm $@
+	-rm $@ &> /dev/null
 	cp ../../../../../README.md readme.md
 	../../../../../source/tool/mkfs $@ readme.md
 	rm readme.md
@@ -104,8 +104,10 @@ cpimage: image
 $(IMAGE):
 	$(MAKE) umount
 	dd if=/dev/zero of=$(IMAGE) bs=1M count=200
-	./disk.sh disk-setup
-	./disk.sh grub-install
+	@echo "[disk.sh] disk-setup..."
+	@sh disk.sh disk-setup > /dev/null
+	@echo "[disk.sh] grub-install..."
+	@sh disk.sh grub-install > /dev/null
 	$(MAKE) mount
 	sudo cp memtest86+.bin $(MOUNT_DIR)/boot/memtest86+.bin
 	$(MAKE) umount
@@ -120,10 +122,12 @@ disk:
 	$(MAKE) image
 
 mount: $(IMAGE)
-	./disk.sh mount
+	@echo "[disk.sh] mount image..."
+	@sh disk.sh mount > /dev/null
 
 umount:
-	./disk.sh umount
+	@echo "[disk.sh] umount image......"
+	@sh disk.sh umount > /dev/null
 
 deldisk: umount
 	-rm -f $(IMAGE)

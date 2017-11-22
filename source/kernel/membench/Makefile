@@ -6,6 +6,8 @@ CXXFLAGS := $(subst -O0,-O2,$(subst -ggdb3,,$(CXXFLAGS)))
 
 .PHONY: clean
 
+include $(RAPH_PROJECT_ROOT)/common_rules.mk
+
 default:
 
 build:

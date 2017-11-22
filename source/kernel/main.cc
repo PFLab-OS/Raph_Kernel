@@ -649,10 +649,10 @@ bool catSub(VirtualFileSystem *vfs, const char *path) {
   if (vfs->LookupInodeFromPath(inode, path, false) != IoReturnState::kOk)
     return false;
   VirtualFileSystem::Stat st;
-  auto x = inode.GetStatOfInode(st);
+  if (inode.GetStatOfInode(st) != IoReturnState::kOk) return false;
   size_t s = st.size;
   uint8_t buf[s];
-  auto y = inode.ReadData(buf, 0, s);
+  if (inode.ReadData(buf, 0, s) != IoReturnState::kOk) return false;
   for (size_t i = 0; i < s; i++) {
     gtty->Printf("%c", buf[i]);
   }
