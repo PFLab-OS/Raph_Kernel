@@ -1,8 +1,8 @@
-include ../../../../../common.mk
+include $(RAPH_PROJECT_ROOT)/common.mk
 
 MOUNT_DIR = /mnt/Raph_Kernel
 IMAGE = /tmp/$(IMAGEFILE)
-BUILD_DIR = ../../../../../build
+BUILD_DIR = $(RAPH_PROJECT_ROOT)/build
 
 OVMF_DIR = $(HOME)/edk2-UDK2017/
 
@@ -60,7 +60,7 @@ debugqemu:
 	sudo gdb -x ./.gdbinit -p `ps aux | grep qemu | sed -n 2P | awk '{ print $$2 }'`
 
 qemuend:
-	-sudo pkill -KILL qemu
+	sudo pkill -KILL qemu || :
 
 $(BUILD_DIR)/script:
 	cp script $@
@@ -72,18 +72,19 @@ $(BUILD_DIR)/init_script/$(INIT_FILE): init_script/$(INIT_FILE)
 	mkdir -p $(BUILD_DIR)/init_script/
 	cp $^ $@
 
-../../../../../source/tool/mkfs:
-	$(MAKE_SUBDIR) ../../../../tool build
+$(RAPH_PROJECT_ROOT)/source/tool/mkfs:
+	$(MAKE_SUBDIR) $(RAPH_PROJECT_ROOT)/source/tool build
 
-$(BUILD_DIR)/fs.img: ../../../../../source/tool/mkfs
+$(BUILD_DIR)/fs.img: $(RAPH_PROJECT_ROOT)/source/tool/mkfs
 	-rm $@ &> /dev/null
-	cp ../../../../../README.md readme.md
-	../../../../../source/tool/mkfs $@ readme.md
+	cp $(RAPH_PROJECT_ROOT)/README.md readme.md
+	$(RAPH_PROJECT_ROOT)/source/tool/mkfs $@ readme.md
 	rm readme.md
 
 bin_sub: $(BUILD_DIR)/script $(BUILD_DIR)/init_script/$(INIT_FILE) $(BUILD_DIR)/fs.img $(BUILD_DIR)/rump.bin
-	$(MAKE_SUBDIR) ../../../../kernel build
-	$(MAKE_SUBDIR) ../../../../testmodule build
+	$(MAKE_SUBDIR) ../libc
+	$(MAKE_SUBDIR) $(RAPH_PROJECT_ROOT)/source/kernel build
+	$(MAKE_SUBDIR) $(RAPH_PROJECT_ROOT)/source/testmodule build
 
 bin:
 	mkdir -p $(BUILD_DIR)
@@ -134,9 +135,10 @@ deldisk: umount
 
 clean: deldisk
 	-rm -rf $(BUILD_DIR)
-	$(MAKE_SUBDIR) ../../../../kernel clean
-	$(MAKE_SUBDIR) ../../../../testmodule clean
-	$(MAKE_SUBDIR) ../../../../tool clean
+	$(MAKE_SUBDIR) ../libc clean
+	$(MAKE_SUBDIR) $(RAPH_PROJECT_ROOT)/source/kernel clean
+	$(MAKE_SUBDIR) $(RAPH_PROJECT_ROOT)/source/testmodule clean
+	$(MAKE_SUBDIR) $(RAPH_PROJECT_ROOT)/source/tool clean
 
 diskclean: deldisk clean
 

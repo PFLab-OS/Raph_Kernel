@@ -14,5 +14,5 @@ $(MODULE) : $(SRCS) Makefile
 	$(CC) -g0 -mcmodel=large -static -o $(MODULE) $(SRCS)
 
 clean:
-	-rm $(MODULE)
-	-rm *.o
+	-rm -f $(MODULE)
+	-rm -f *.o

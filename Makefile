@@ -2,7 +2,6 @@ include common.mk
 
 ARCH ?= hw/x86
 export ARCH
-export SUBDIR
 
 VNC_PORT = 15900
 VDI = disk.vdi
@@ -51,9 +50,9 @@ endef
 define make_wrapper
 	$(if $(shell if [ -e /etc/bootstrapped ]; then echo "guest"; fi), \
 	  # guest environment
-    cd /vagrant/source/kernel/arch/$(ARCH); $(MAKE) ARCH=$(ARCH) -f $(BUILD_RULE_FILE) $(1), \
+    cd /vagrant; $(MAKE) ARCH=$(ARCH) -f $(BUILD_RULE_FILE) $(1), \
 	  # host environment
-	  $(call run_remote, cd /vagrant/source/kernel/arch/$(ARCH); env MAKEFLAGS=$(MAKEFLAGS) make ARCH=$(ARCH) -f $(BUILD_RULE_FILE) $(1))
+	  $(call run_remote, cd /vagrant; env MAKEFLAGS=$(MAKEFLAGS) make ARCH=$(ARCH) -f $(BUILD_RULE_FILE) $(1))
 	)
 endef
 

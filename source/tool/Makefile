@@ -9,4 +9,4 @@ mkfs: mkfs.c
 	$(CC) $< -o $@
 
 clean:
-	-rm mkfs
+	-rm -f mkfs
