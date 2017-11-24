@@ -68,6 +68,9 @@ $(BUILD_DIR)/script:
 $(BUILD_DIR)/rump.bin:
 	cp rump.bin $(BUILD_DIR)/rump.bin
 
+$(BUILD_DIR)/bzImage:
+	cp bzImage $(BUILD_DIR)/bzImage
+
 $(BUILD_DIR)/init_script/$(INIT_FILE): init_script/$(INIT_FILE)
 	mkdir -p $(BUILD_DIR)/init_script/
 	cp $^ $@
@@ -81,7 +84,7 @@ $(BUILD_DIR)/fs.img: ../../../../../source/tool/mkfs
 	../../../../../source/tool/mkfs $@ readme.md
 	rm readme.md
 
-bin_sub: $(BUILD_DIR)/script $(BUILD_DIR)/init_script/$(INIT_FILE) $(BUILD_DIR)/fs.img $(BUILD_DIR)/rump.bin
+bin_sub: $(BUILD_DIR)/script $(BUILD_DIR)/init_script/$(INIT_FILE) $(BUILD_DIR)/fs.img $(BUILD_DIR)/rump.bin $(BUILD_DIR)/bzImage
 	$(MAKE_SUBDIR) ../../../../kernel build
 	$(MAKE_SUBDIR) ../../../../testmodule build
 
