@@ -14,7 +14,7 @@ ifdef INIT
 	INIT_FILE = $(INIT)
 else
 	BRANCH_INIT_FILE = $(shell git rev-parse --abbrev-ref HEAD)
-	INIT_FILE = $(if $(shell ls init_script | grep -w $(BRANCH_INIT_FILE)),$(BRANCH_INIT_FILE),default)
+	INIT_FILE = $(if $(shell if [ -e init_script/$(BRANCH_INIT_FILE) ] ; then echo "file exist"; fi),$(BRANCH_INIT_FILE),default)
 endif
 
 ifdef KERNEL_DEBUG
