@@ -91,8 +91,8 @@ bin:
 	$(MAKE) bin_sub
 
 image:
-	$(MAKE) mount
 	$(MAKE) bin
+	$(MAKE) mount
 	sudo cp memtest86+.bin $(MOUNT_DIR)/boot/memtest86+.bin
 	sudo sh -c 'sed -e "s/\/core\/init_script\/default/\/core\/init_script\/$(INIT_FILE)/g" grub.cfg > $(MOUNT_DIR)/boot/grub/grub.cfg'
 	-sudo rm -rf $(MOUNT_DIR)/core
