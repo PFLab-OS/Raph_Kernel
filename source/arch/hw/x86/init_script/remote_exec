@@ -1,0 +1,8 @@
+show info
+cat /readme.md
+setip em0 192.168.12.20
+wait_until_linkup em0
+udp_setup
+arp_scan
+wait 3
+remote_load test.elf

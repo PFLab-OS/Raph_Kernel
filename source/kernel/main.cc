@@ -613,6 +613,33 @@ static void load(int argc, const char *argv[]) {
   }
 }
 
+static void remote_load(int argc, const char *argv[]) {
+  if (argc != 2) {
+    gtty->Printf("invalid argument.\n");
+    return;
+  }
+  if (strcmp(argv[1], "test.elf") == 0) {
+    SystemCallCtrl::GetCtrl().SetMode(SystemCallCtrl::Mode::kRemote);
+    auto buf_ = multiboot_ctrl->LoadFile(argv[1]);
+    auto callout_ = make_sptr(new Callout);
+    callout_->Init(make_uptr(new Function2<wptr<Callout>, uptr<Array<uint8_t>>>(
+        [](wptr<Callout> callout, uptr<Array<uint8_t>> buf) {
+          Loader loader;
+          ElfObject obj(loader, buf->GetRawPtr());
+          if (obj.Init() != BinObjectInterface::ErrorState::kOk) {
+            gtty->Printf("error while loading app\n");
+          } else {
+            obj.Execute();
+          }
+        },
+        make_wptr(callout_), buf_)));
+    task_ctrl->RegisterCallout(callout_, 10);
+  } else {
+    gtty->Printf("invalid argument.\n");
+    return;
+  }
+}
+
 void beep(int argc, const char *argv[]) {
   CpuId beep_cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority);
   auto callout_ = make_sptr(new Callout);
@@ -790,6 +817,7 @@ extern "C" int main() {
   shell->Register("setip", setip);
   shell->Register("show", show);
   shell->Register("load", load);
+  shell->Register("remote_load", remote_load);
   shell->Register("setflag", setflag);
   shell->Register("udpsend", udpsend);
   shell->Register("arp_scan", arp_scan);

@@ -190,7 +190,7 @@ void UdpCtrl::SetupServer() {
 }
 
 void UdpCtrl::Send(uint8_t (*target_addr)[4], uint16_t target_port,
-                   const char *data, size_t len) {
+                   const uint8_t *data, size_t len) {
   uint32_t target_addr_int = ((*target_addr)[3] << 24) |
                              ((*target_addr)[2] << 16) |
                              ((*target_addr)[1] << 8) | (*target_addr)[0];

@@ -36,9 +36,9 @@ public:
     return *_udp_ctrl;
   }
   void SetupServer();
-  void Send(uint8_t (*target_addr)[4], uint16_t target_port, const char *data, size_t len);
+  void Send(uint8_t (*target_addr)[4], uint16_t target_port, const uint8_t *data, size_t len);
   void SendStr(uint8_t (*target_addr)[4], uint16_t target_port, const char *data) {
-    Send(target_addr, target_port, data, strlen(data));
+    Send(target_addr, target_port, reinterpret_cast<const uint8_t *>(data), strlen(data));
   }
   class Socket {
   public:

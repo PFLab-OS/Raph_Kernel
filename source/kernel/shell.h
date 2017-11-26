@@ -56,8 +56,8 @@ class Shell {
  private:
   void Exec(const char *name, int argc, const char **argv);
 
-  static const int kBufSize = 20;
-  static const int kNameSize = 10;
+  static const int kBufSize = 40;
+  static const int kNameSize = 15;
   int _next_buf = 0;
   struct NameFuncMapping {
     char name[kNameSize];
