@@ -29,7 +29,7 @@
 #include <syscall.h>
 #include <gdt.h>
 #include <global.h>
-#include <udp.h>
+#include <net/udp.h>
 
 SystemCallCtrl SystemCallCtrl::_ctrl;
 

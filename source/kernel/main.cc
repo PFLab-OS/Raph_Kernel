@@ -55,8 +55,8 @@
 #include <dev/netdev.h>
 #include <dev/eth.h>
 // #include <net/arp.h>
-#include <arp.h>
-#include <udp.h>
+#include <net/arp.h>
+#include <net/udp.h>
 
 AcpiCtrl *acpi_ctrl = nullptr;
 ApicCtrl *apic_ctrl = nullptr;

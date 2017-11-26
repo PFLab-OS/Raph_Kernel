@@ -22,8 +22,8 @@
  */
 
 #include <stdlib.h>
-#include <udp.h>
-#include <arp.h>
+#include "udp.h"
+#include <net/arp.h>
 #include <dev/netdev.h>
 #include <dev/eth.h>
 #include <tty.h>
