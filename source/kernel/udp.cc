@@ -51,7 +51,6 @@ void UdpCtrl::SetupServer() {
         make_uptr(new Function<NetDev *>(
             [](NetDev *eth) {
               NetDev::Packet *rpacket;
-              gtty->Printf("*");
               if (!eth->ReceivePacket(rpacket)) {
                 return;
               }
@@ -74,7 +73,6 @@ void UdpCtrl::SetupServer() {
                                              (rpacket->GetBuffer()[30] << 16) |
                                              (rpacket->GetBuffer()[29] << 8) |
                                              rpacket->GetBuffer()[28];
-                  gtty->Printf("arp %x\n", target_addr_int);
                   arp_table->Set(target_addr_int, rpacket->GetBuffer() + 22,
                                  eth);
                 }
