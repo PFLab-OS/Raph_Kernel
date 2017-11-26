@@ -34,6 +34,14 @@ void FrameBuffer::Init() {
   multiboot_ctrl->SetupFrameBuffer(&_fb_info);
   assert(_fb_info.bpp == 24 || _fb_info.bpp == 32);
   _bytes_per_pixel = _fb_info.bpp / 8;
+  
+  _back_buffer = new uint8_t[_fb_info.width * _fb_info.height * _bytes_per_pixel];
+  memset(_back_buffer, 0, _fb_info.width * _fb_info.height * _bytes_per_pixel);
+  
+  // check alignments
+  assert((reinterpret_cast<size_t>(_back_buffer) % sizeof(uint64_t)) == 0);
+  assert((reinterpret_cast<size_t>(_fb_info.buffer) % sizeof(uint64_t)) == 0);
+  assert(((_fb_info.width * _fb_info.height * _bytes_per_pixel) % sizeof(uint64_t)) == 0);
 
   // Load font for normal area
   {
@@ -115,7 +123,7 @@ void FrameBuffer::PrintShell(const char *str) {
 
 void FrameBuffer::DoPeriodicRefresh(void *) {
   Locker locker(_lock);
-  if (_needsRedraw) {
+  if (_needs_redraw) {
     DrawScreen();
   }
   ScheduleRefresh();
@@ -123,7 +131,7 @@ void FrameBuffer::DoPeriodicRefresh(void *) {
 
 void FrameBuffer::DisableTimeupDraw() {
   _timeup_draw = false;
-  _needsRedraw = true;
+  _needs_redraw = true;
 
   _refresh_callout = make_sptr(new Callout);
   _refresh_callout->Init(make_uptr(new ClassFunction<FrameBuffer, void *>(
@@ -132,13 +140,13 @@ void FrameBuffer::DisableTimeupDraw() {
 }
 
 void FrameBuffer::DrawScreen() {
-  _needsRedraw = false;
+  _needs_redraw = false;
   if (_disable_flag) return;
   //
   assert(_lock.IsLocked());
   // draw prompt
   int xoffset = _font_inverted.PrintChar(
-      _fb_info.buffer, _fb_info.width, 0,
+      _back_buffer, _fb_info.width, 0,
       _fb_info.height - _font_inverted.GetMaxh(), U'>');
 
   if (_shell_buffer) {
@@ -153,13 +161,13 @@ void FrameBuffer::DrawScreen() {
         break;
       }
       xoffset += _font_inverted.PrintChar(
-          _fb_info.buffer, _fb_info.width, xoffset,
+          _back_buffer, _fb_info.width, xoffset,
           _fb_info.height - _font_inverted.GetMaxh(), _shell_buffer[x]);
       ;
     }
   }
   for (int y = 0; y < _font_inverted.GetMaxh(); y++) {
-    memset(_fb_info.buffer +
+    memset(_back_buffer +
                (xoffset + (_fb_info.height - y - 1) * _fb_info.width) *
                    (_fb_info.bpp / 8),
            0xff, (_fb_info.width - xoffset) * (_fb_info.bpp / 8));
@@ -169,57 +177,54 @@ void FrameBuffer::DrawScreen() {
 }
 
 void FrameBuffer::DrawScreenSub() {
-  uint8_t *vram = _fb_info.buffer;
   size_t xsize = _fb_info.width;
-  size_t rowHeight = _font_normal.GetMaxh();
+  size_t row_height = _font_normal.GetMaxh();
   //
   int rp = _str_buffer->GetReadPos();
   size_t x = 0;
   size_t y = 0;
   char32_t c;
   //
-  static int prevRowCount = 0;
-  int skipLineCount = 0;
+  static int prev_row_count = 0;
+  int skip_line_count = 0;
   //
-  if (prevRowCount == _str_buffer->GetScreenRows()) {
-    int scrollCount = _str_buffer->GetScrollCount();
+  if (prev_row_count == _str_buffer->GetScreenRows()) {
+    int scroll_count = _str_buffer->GetScrollCount();
     _str_buffer->ResetScrollCount();
     //
-    if (scrollCount > 0) {
+    if (scroll_count > 0) {
       // scroll screen
-      skipLineCount = _str_buffer->GetScreenRows() - scrollCount - 1;
-      if (skipLineCount <= 0) {
-        skipLineCount = 0;
+      skip_line_count = _str_buffer->GetScreenRows() - scroll_count - 1;
+      if (skip_line_count <= 0) {
+        skip_line_count = 0;
       } else {
         // note: last row which already written in vram may have to update.
-        // So skipLineCount is a number of rows to be copied.
-        int offset = scrollCount * (xsize * _bytes_per_pixel * rowHeight);
-        int count = skipLineCount * (xsize * _bytes_per_pixel * rowHeight);
-        assert(((uint64_t)vram & 3) == 0);
-        assert(((uint64_t)(vram + offset) & 3) == 0);
+        // So skip_line_count is a number of rows to be copied.
+        int offset = scroll_count * (xsize * _bytes_per_pixel * row_height);
+        int count = skip_line_count * (xsize * _bytes_per_pixel * row_height);
         assert((count & 3) == 0);
 
         for (int i = 0; i < count / 8; i++) {
-          ((uint64_t *)vram)[i] = ((uint64_t *)vram)[i + offset / 8];
+          reinterpret_cast<uint64_t *>(_back_buffer)[i] = reinterpret_cast<uint64_t *>(_back_buffer)[i + offset / 8];
         }
       }
     } else {
       // if there was no scroll, only last row should be updated.
-      skipLineCount = _str_buffer->GetRowCount() - 1;
+      skip_line_count = _str_buffer->GetRowCount() - 1;
     }
   } else {
-    skipLineCount = prevRowCount;
+    skip_line_count = prev_row_count;
   }
-  prevRowCount = _str_buffer->GetRowCount();
+  prev_row_count = _str_buffer->GetRowCount();
 
   // move forward to rows should be draw.
-  for (int i = 0; i < skipLineCount; i++) {
+  for (int i = 0; i < skip_line_count; i++) {
     while ((c = _str_buffer->ReadNextChar(rp)) !=
            StringRingBuffer::kEndMarker) {
       if (c == '\n') break;
     }
   }
-  y = skipLineCount * rowHeight;
+  y = skip_line_count * row_height;
 
   // draw
   while ((c = _str_buffer->ReadNextChar(rp)) != StringRingBuffer::kEndMarker) {
@@ -227,24 +232,29 @@ void FrameBuffer::DrawScreenSub() {
       for (size_t py = y; py < y + _font_normal.GetMaxh(); py++) {
         for (size_t px = x; px < _fb_info.width; px++) {
           for (size_t p = 0; p < _bytes_per_pixel; p++) {
-            vram[(py * xsize + px) * _bytes_per_pixel + p] = 0;
+            _back_buffer[(py * xsize + px) * _bytes_per_pixel + p] = 0;
           }
         }
       }
       x = 0;
-      y += rowHeight;
+      y += row_height;
     } else {
-      x += _font_normal.PrintChar(vram, xsize, x, y, c);
+      x += _font_normal.PrintChar(_back_buffer, xsize, x, y, c);
     }
   }
   if (x < xsize && y < _fb_info.height) {
     for (size_t py = y; py < y + _font_normal.GetMaxh(); py++) {
       for (size_t px = x; px < _fb_info.width; px++) {
         for (size_t p = 0; p < _bytes_per_pixel; p++) {
-          vram[(py * xsize + px) * _bytes_per_pixel + p] = 0;
+          _back_buffer[(py * xsize + px) * _bytes_per_pixel + p] = 0;
         }
       }
     }
+  }
+
+  // copy back buffer to front buffer
+  for (size_t offset = 0; offset < (_fb_info.width * _fb_info.height * _bytes_per_pixel) / sizeof(uint64_t); offset++) {
+    reinterpret_cast<uint64_t *>(_fb_info.buffer)[offset] = reinterpret_cast<uint64_t *>(_back_buffer)[offset];
   }
 }
 

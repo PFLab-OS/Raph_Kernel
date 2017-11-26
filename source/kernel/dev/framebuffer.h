@@ -47,6 +47,9 @@ class FrameBuffer : public Tty {
     _fb_info.buffer = nullptr;
     ResetColor();
   }
+  ~FrameBuffer() {
+    delete _back_buffer;
+  }
   virtual void Init();
   virtual int GetRow() override { return 0; }
   virtual int GetColumn() override { return 0; }
@@ -215,7 +218,7 @@ class FrameBuffer : public Tty {
     if (_timeup_draw) {
       _last_time_refresh = timer->ReadMainCnt();
     } else {
-      _needsRedraw = false;
+      _needs_redraw = false;
     }
   }
   struct DrawInfo {
@@ -238,13 +241,13 @@ class FrameBuffer : public Tty {
         DisableTimeupDraw();
       } else {
         if (timer->IsTimePassed(
-                timer->GetCntAfterPeriod(_last_time_refresh, 100 * 1000))) {
+                timer->GetCntAfterPeriod(_last_time_refresh, 33 * 1000))) {
           DrawScreen();
           _last_time_refresh = timer->ReadMainCnt();
         }
       }
     } else {
-      _needsRedraw = true;
+      _needs_redraw = true;
     }
   }
   void DrawScreen();
@@ -252,7 +255,7 @@ class FrameBuffer : public Tty {
   void DoPeriodicRefresh(void *);
   void DisableTimeupDraw();
   void ScheduleRefresh() {
-    task_ctrl->RegisterCallout(_refresh_callout, _draw_cpuid, 10 * 1000);
+    task_ctrl->RegisterCallout(_refresh_callout, _draw_cpuid, 33 * 1000);
   }
   SpinLock _lock;
   FrameBufferInfo _fb_info;
@@ -276,8 +279,10 @@ class FrameBuffer : public Tty {
   // for checking if time is up
   uint64_t _last_time_refresh = 0;
 
+  uint8_t *_back_buffer;
+
   CpuId _draw_cpuid;
-  bool _needsRedraw =
+  bool _needs_redraw =
       false;  // if true, there are some changes should be display.
 
   sptr<Callout> _refresh_callout;
