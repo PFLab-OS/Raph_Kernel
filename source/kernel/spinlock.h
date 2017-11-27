@@ -28,30 +28,20 @@
 #include <_cpu.h>
 #include <raph.h>
 
-class SpinLockInterface {
+class LockInterface {
 public:
-  SpinLockInterface() {}
-  virtual ~SpinLockInterface() {}
-  virtual volatile unsigned int GetFlag() = 0;
-  virtual CpuId GetProcId() = 0;
+  LockInterface() {}
+  virtual ~LockInterface() {}
   virtual void Lock() = 0;
   virtual void Unlock() = 0;
   virtual ReturnState Trylock() = 0;
   virtual bool IsLocked() = 0;
 };
 
-
-// 割り込みハンドラ内でも使えるSpinLock
-class SpinLock : public SpinLockInterface {
+class SpinLock : public LockInterface final {
 public:
   SpinLock() {}
   virtual ~SpinLock() {}
-  virtual volatile unsigned int GetFlag() override {
-    return _flag;
-  }
-  virtual CpuId GetProcId() override {
-    return _cpuid;
-  }
   virtual void Lock() override;
   virtual void Unlock() override;
   virtual ReturnState Trylock() override;
