@@ -47,7 +47,7 @@ void SpinLock::Lock() {
   if (_spinlock_timeout && timer != nullptr && timer->DidSetup()) {
     t1 = timer->GetCntAfterPeriod(timer->ReadMainCnt(), 10 * 1000000); // 10s
   }
-  volatile unsigned int flag = GetFlag();
+  volatile unsigned int flag = _flag;
   while(true) {
     if ((flag % 2) != 1) {
       bool iflag = disable_interrupt();
@@ -70,7 +70,7 @@ void SpinLock::Lock() {
       }
       showed_timeout_warning = true;
     }
-    flag = GetFlag();
+    flag = _flag;
   }
   _cpuid = cpu_ctrl->GetCpuId();
   size_t *rbp;
@@ -93,7 +93,7 @@ void SpinLock::Unlock() {
 }
 
 ReturnState SpinLock::Trylock() {
-  volatile unsigned int flag = GetFlag();
+  volatile unsigned int flag = _flag;
   bool iflag = disable_interrupt();
   if (((flag % 2) == 0) && SetFlag(flag, flag + 1)) {
     _did_stop_interrupt = iflag;

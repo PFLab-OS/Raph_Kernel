@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2016 Raphine Project
+ * Copyright (c) 2017 Raphine Project
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -20,8 +20,7 @@
  * 
  */
 
-#ifndef __RAPH_LIB__QUEUE_H__
-#define __RAPH_LIB__QUEUE_H__
+#pragma once
 
 #include <spinlock.h>
 
@@ -35,7 +34,7 @@ class Queue {
   virtual ~Queue() {
   }
   void Push(void *data);
-  // 空の時はfalseが帰る
+  // return false when the queue is empty
   bool Pop(void *&data);
   bool IsEmpty() {
     return &_first == _last;
@@ -61,7 +60,7 @@ class Queue2 {
   virtual ~Queue2() {
   }
   void Push(T data);
-  // 空の時はfalseが帰る
+  // return false when the queue is empty
   bool Pop(T &data);
   bool IsEmpty() {
     return &_first == _last;
@@ -107,6 +106,7 @@ bool Queue2<T>::Pop(T &data) {
   return true;
 }
 
+// TODO replace Queue & Queue2 to IntQueue
 // class T must contain Container & inherit ContainerInterface
 template<class T>
 class IntQueue {
@@ -134,7 +134,7 @@ class IntQueue {
   virtual ~IntQueue() {
   }
   void Push(T *data);
-  // 空の時はfalseが帰る
+  // return false when the queue is empty
   bool Pop(T *&data);
   bool IsEmpty() {
     return &_first == _last;
@@ -175,4 +175,3 @@ bool IntQueue<T>::Pop(T *&data) {
   return true;
 }
 
-#endif // __RAPH_LIB__QUEUE_H__

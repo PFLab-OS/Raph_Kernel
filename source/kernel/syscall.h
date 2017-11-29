@@ -37,7 +37,20 @@ public:
     int64_t arg5;
     int64_t arg6;
   };
+  enum class Mode {
+    kLocal,
+    kRemote,
+  };
+  SystemCallCtrl() {
+    _mode = Mode::kLocal;
+  }
   static void Init();
+  static SystemCallCtrl &GetCtrl() {
+    return _ctrl;
+  }
+  void SetMode(Mode mode) {
+    _mode = mode;
+  }
   static int64_t Handler(Args *args, int index);
 private:
   enum MSRAddr : uint32_t {
@@ -73,6 +86,9 @@ private:
     void  *iov_base;    /* Starting address */
     size_t iov_len;     /* Number of bytes to transfer */
   };
+
+  static SystemCallCtrl _ctrl;
+  Mode _mode;
 };
 
 #endif // __RAPH_LIB_SYSCALL_H__

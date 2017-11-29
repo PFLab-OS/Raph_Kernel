@@ -1,10 +1,15 @@
-OBJS = pstack.o socket.o eth.o arp.o ip.o udp.o
+OBJS = udp.o 
 
 DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))
 
 .PHONY: clean
 
+include $(RAPH_PROJECT_ROOT)/common_rules.mk
+
 default:
+
+build:
+	@$(MAKE) ../net.o
 
 -include $(DEPS)
 

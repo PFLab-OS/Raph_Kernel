@@ -28,30 +28,20 @@
 #include <_cpu.h>
 #include <raph.h>
 
-class SpinLockInterface {
+class LockInterface {
 public:
-  SpinLockInterface() {}
-  virtual ~SpinLockInterface() {}
-  virtual volatile unsigned int GetFlag() = 0;
-  virtual CpuId GetProcId() = 0;
+  LockInterface() {}
+  virtual ~LockInterface() {}
   virtual void Lock() = 0;
   virtual void Unlock() = 0;
   virtual ReturnState Trylock() = 0;
   virtual bool IsLocked() = 0;
 };
 
-
-// 割り込みハンドラ内でも使えるSpinLock
-class SpinLock : public SpinLockInterface {
+class SpinLock final : public LockInterface {
 public:
   SpinLock() {}
   virtual ~SpinLock() {}
-  virtual volatile unsigned int GetFlag() override {
-    return _flag;
-  }
-  virtual CpuId GetProcId() override {
-    return _cpuid;
-  }
   virtual void Lock() override;
   virtual void Unlock() override;
   virtual ReturnState Trylock() override;
@@ -73,20 +63,20 @@ protected:
 // 関数からreturnする際に必ずunlockできるので、unlock忘れを防止する
 class Locker {
  public:
-  Locker(SpinLockInterface &lock) : _lock(lock) {
+  Locker(LockInterface &lock) : _lock(lock) {
     _lock.Lock();
   }
   ~Locker() {
     _lock.Unlock();
   }
  private:
-  SpinLockInterface &_lock;
+  LockInterface &_lock;
 };
 
 // trylockマクロからのみ呼び出す事
 class TryLocker {
 public:
-  TryLocker(SpinLockInterface &lock) : _lock(lock) {
+  TryLocker(LockInterface &lock) : _lock(lock) {
     switch (lock.Trylock()) {
     case ReturnState::kOk:
       _flag = true;
@@ -110,7 +100,7 @@ public:
   }
 private:
   bool _flag;
-  SpinLockInterface &_lock;
+  LockInterface &_lock;
 };
 
 #define trylock__(lock, l) for (TryLocker locker##l(lock); locker##l.Do(); locker##l.Unlock())
