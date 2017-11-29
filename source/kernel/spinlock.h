@@ -38,7 +38,7 @@ public:
   virtual bool IsLocked() = 0;
 };
 
-class SpinLock : public LockInterface final {
+class SpinLock final : public LockInterface {
 public:
   SpinLock() {}
   virtual ~SpinLock() {}
@@ -63,20 +63,20 @@ protected:
 // 関数からreturnする際に必ずunlockできるので、unlock忘れを防止する
 class Locker {
  public:
-  Locker(SpinLockInterface &lock) : _lock(lock) {
+  Locker(LockInterface &lock) : _lock(lock) {
     _lock.Lock();
   }
   ~Locker() {
     _lock.Unlock();
   }
  private:
-  SpinLockInterface &_lock;
+  LockInterface &_lock;
 };
 
 // trylockマクロからのみ呼び出す事
 class TryLocker {
 public:
-  TryLocker(SpinLockInterface &lock) : _lock(lock) {
+  TryLocker(LockInterface &lock) : _lock(lock) {
     switch (lock.Trylock()) {
     case ReturnState::kOk:
       _flag = true;
@@ -100,7 +100,7 @@ public:
   }
 private:
   bool _flag;
-  SpinLockInterface &_lock;
+  LockInterface &_lock;
 };
 
 #define trylock__(lock, l) for (TryLocker locker##l(lock); locker##l.Do(); locker##l.Unlock())
