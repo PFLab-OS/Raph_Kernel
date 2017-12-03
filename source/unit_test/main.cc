@@ -22,6 +22,7 @@
  */
 
 #include "test.h"
+#include <raph.h>
 #include <iostream>
 #include <string>
 #include <typeinfo>
@@ -52,7 +53,12 @@ int main(int argc, char *argv[]) {
       }
       return 0;
     }
-    bool rval = tests[i]->Test();
+    bool rval = false;
+    try {
+      rval = tests[i]->Test();
+    } catch (ExceptionAssertionFailure t) {
+      t.Show();
+    }
     if (rval) {
       passed++;
     }
@@ -69,12 +75,6 @@ int main(int argc, char *argv[]) {
         cout << name;
       } else {
         cout << "Unknown";
-      }
-      cout << " : ";
-      if (rval) {
-        cout << "passed!";
-      } else {
-        cout << "failed!";
       }
       cout << "\x1b[0m" << endl;
       free(name);

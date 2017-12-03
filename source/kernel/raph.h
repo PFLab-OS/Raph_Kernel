@@ -26,7 +26,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <libglobal.h>
-
+ 
 #ifdef __cplusplus
 template<class T, class U>
 static inline T align(T val, U base) {
@@ -47,15 +47,39 @@ inline void  operator delete[](void *, void *) throw() { };
 
 #endif /* __cplusplus */
 
+#undef kassert
+
+#ifndef __TEST__
+  
+  extern "C" [[noreturn]] void _kassert(const char *file, int line, const char *func);
+#define kassert(flag) if (!(flag)) { while(gtty == nullptr) { asm volatile("cli; nop; hlt;"); } _kassert(__FILE__, __LINE__, __func__); }
+  
+#else /* __TEST__ */
+  
+#include <iostream>
+  struct ExceptionAssertionFailure {
+    const char *file;
+    int line;
+    const char *func;
+    void Show() {
+      std::cout << "\x1b[31mAssertion failure at " << file << ":" << line << "(" << func << ")\x1b[0m" << std::endl;
+    }
+  };
+  static inline void _kassert(const char *file, int line, const char *func) {
+    ExceptionAssertionFailure t;
+    t.file = file;
+    t.line = line;
+    t.func = func;
+    throw t;
+  }
+#define kassert(flag) if(!(flag)) { _kassert(__FILE__, __LINE__, __func__); }
+  
+#endif /* __TEST__ */
+
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#undef kassert
-  
-  [[noreturn]] void _kassert(const char *file, int line, const char *func);
-#define kassert(flag) if (!(flag)) { while(gtty == nullptr) { asm volatile("cli; nop; hlt;"); } _kassert(__FILE__, __LINE__, __func__); }
-
 
 #define MASK(val, ebit, sbit) ((val) & (((1 << ((ebit) - (sbit) + 1)) - 1) << (sbit)))
   
@@ -67,6 +91,12 @@ extern "C" {
 #define CHECKPOINT _checkpoint(__func__, __LINE__)
 
   void show_backtrace(size_t *rbp);
+
+  enum class ReturnState {
+    kOk,
+    kError,
+  };
+
 
   static inline void outb(uint16_t pin, uint8_t data) {
     __asm__ volatile("outb %%al, %%dx;"::"d"(pin),"a"(data));
@@ -98,6 +128,7 @@ extern "C" {
     return data;
   }
 
+#ifdef __KERNEL__
   static inline bool disable_interrupt() {
     uint64_t if_flag;
     asm volatile("pushfq; popq %0; andq $0x200, %0;":"=r"(if_flag));
@@ -110,11 +141,14 @@ extern "C" {
       asm volatile("sti");
     }
   }
+#else /* __KERNEL__ */
+  static inline bool disable_interrupt() {
+    return true;
+  }
+  static inline void enable_interrupt(bool flag) {
+  }
+#endif /* __KERNEL__ */
 
-  enum class ReturnState {
-    kOk,
-    kError,
-  };
 #ifdef __cplusplus
 }
 #endif
