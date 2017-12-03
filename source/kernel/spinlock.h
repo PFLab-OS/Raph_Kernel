@@ -27,16 +27,7 @@
 #include <stdlib.h>
 #include <_cpu.h>
 #include <raph.h>
-
-class LockInterface {
-public:
-  LockInterface() {}
-  virtual ~LockInterface() {}
-  virtual void Lock() = 0;
-  virtual void Unlock() = 0;
-  virtual ReturnState Trylock() = 0;
-  virtual bool IsLocked() = 0;
-};
+#include <lock.h>
 
 class SpinLock final : public LockInterface {
 public:
@@ -58,54 +49,5 @@ protected:
   size_t _rip[3];
   bool _did_stop_interrupt = false;
 };
-
-// コンストラクタ、デストラクタでlock,unlockができるラッパー
-// 関数からreturnする際に必ずunlockできるので、unlock忘れを防止する
-class Locker {
- public:
-  Locker(LockInterface &lock) : _lock(lock) {
-    _lock.Lock();
-  }
-  ~Locker() {
-    _lock.Unlock();
-  }
- private:
-  LockInterface &_lock;
-};
-
-// trylockマクロからのみ呼び出す事
-class TryLocker {
-public:
-  TryLocker(LockInterface &lock) : _lock(lock) {
-    switch (lock.Trylock()) {
-    case ReturnState::kOk:
-      _flag = true;
-      break;
-    case ReturnState::kError:
-      _flag = false;
-      break;
-    };
-  }
-  ~TryLocker() {
-    if (_flag) {
-      _lock.Unlock();
-    }
-  }
-  bool Do() {
-    return _flag;
-  }
-  void Unlock() {
-    _lock.Unlock();
-    _flag = false; 
-  }
-private:
-  bool _flag;
-  LockInterface &_lock;
-};
-
-#define trylock__(lock, l) for (TryLocker locker##l(lock); locker##l.Do(); locker##l.Unlock())
-#define trylock_(lock, l) trylock__(lock, l)
-#define trylock(lock) trylock_(lock, __LINE__)
-
 
 #endif // __RAPH_KERNEL_SPINLOCK_H__

@@ -23,6 +23,7 @@
 #pragma once
 
 #include <spinlock.h>
+#include <_queue3.h>
 
 class Queue {
  public:
@@ -103,75 +104,6 @@ bool Queue2<T>::Pop(T &data) {
   }
   data = c->data;
   delete c;
-  return true;
-}
-
-// TODO replace Queue & Queue2 to IntQueue
-// class T must contain Container & inherit ContainerInterface
-template<class T>
-class IntQueue {
- public:
-  class Container {
-  public:
-    // obj must be set master class
-    Container(T *obj) {
-      _obj = obj;
-    }
-  private:
-    Container();
-    friend IntQueue<T>;
-    Container *_next;
-    T *_obj;
-  };
-  class ContainerInterface {
-  public:
-    virtual Container *GetIntQueueContainer() = 0;
-  };
-  IntQueue() : _first(nullptr) {
-    _last = &_first;
-    _first._next = nullptr;
-  }
-  virtual ~IntQueue() {
-  }
-  void Push(T *data);
-  // return false when the queue is empty
-  bool Pop(T *&data);
-  bool IsEmpty() {
-    return &_first == _last;
-  }
- private:
-  Container _first;
-  Container *_last;
-  SpinLock _lock;
-};
-
-template <class T>
-void IntQueue<T>::Push(T *data) {
-  ContainerInterface *i = data;
-  Container *c = i->GetIntQueueContainer();
-  c->_next = nullptr;
-  Locker locker(_lock);
-  kassert(_last->_next == nullptr);
-  _last->_next = c;
-  _last = c;
-}
-
-template<class T>
-bool IntQueue<T>::Pop(T *&data) {
-  Container *c;
-  {
-    Locker locker(_lock);
-    if (IsEmpty()) {
-      return false;
-    }
-    c = _first._next;
-    kassert(c != nullptr);
-    _first._next = c->_next;
-    if (_last == c) {
-      _last = &_first;
-    }
-  }
-  data = c->_obj;
   return true;
 }
 

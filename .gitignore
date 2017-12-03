@@ -70,6 +70,7 @@ source/kernel/dev/pciid_table.cc
 source/kernel/dev/pci.ids.formatted
 source/tool/mkfs
 source/kernel/arch/um/kernel
+source/unit_test/unit_test
 
 GPATH
 GRTAGS

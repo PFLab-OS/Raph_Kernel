@@ -35,5 +35,8 @@ public:
 private:
 };
 
+#define _OBJ(l) tester_obj##l
+#define OBJ(l) _OBJ(l)
+
 extern Tester *tests[Tester::kMaxTests];
 
