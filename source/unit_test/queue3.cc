@@ -30,68 +30,69 @@
 #include <stdexcept>
 using namespace std;
 
-class Element : public IntQueue<Element>::ContainerInterface {
+class Hoge {
 public:
-  Element() : _container(this) {
+  Hoge()
+  {
   }
-  IntQueue<Element>::Container *GetContainer() {
+};
+class QElement : public IntQueue<QElement>::ContainerInterface {
+public:
+  QElement() : _container(this) {
+  }
+  IntQueue<QElement>::Container *GetContainer() {
     return &_container;
   }
 private:
-  IntQueue<Element>::Container _container;
+  IntQueue<QElement>::Container _container;
 };
 
 class IntQueueTester_EmptyPop : public Tester {
 public:
   virtual bool Test() override {
-    Element *ele;
-    return _queue.Pop(ele) == false;
+    QElement *ele;
+    kassert(_queue.Pop(ele) == false);
+    return true;
   }
 private:
-  IntQueue<Element> _queue;
+  IntQueue<QElement> _queue;
 } static OBJ(__LINE__);
 
 class IntQueueTester_SinglePushPop : public Tester {
 public:
   virtual bool Test() override {
-    Element ele1;
+    QElement ele1;
+    Hoge h;
     _queue.Push(&ele1);
-    Element *ele = nullptr;
-    return (_queue.Pop(ele) && ele == &ele1);
+    QElement *ele = nullptr;
+    kassert(_queue.Pop(ele));
+    kassert(ele == &ele1);
+    kassert(!_queue.Pop(ele));
+    return true;
   }
 private:
-  IntQueue<Element> _queue;
+  IntQueue<QElement> _queue;
 } static OBJ(__LINE__);
 
 class IntQueueTester_TriplePushPop : public Tester {
 public:
   virtual bool Test() override {
-    Element ele1, ele2, ele3;
+    QElement ele1, ele2, ele3;
     _queue.Push(&ele1);
     _queue.Push(&ele2);
     _queue.Push(&ele3);
-    Element *ele;
-    return (_queue.Pop(ele) && ele == &ele1 && _queue.Pop(ele) && ele == &ele2 && _queue.Pop(ele) && ele == &ele3);
+    QElement *ele;
+    kassert(_queue.Pop(ele));
+    kassert(ele == &ele1);
+    kassert(_queue.Pop(ele));
+    kassert(ele == &ele2);
+    kassert(_queue.Pop(ele));
+    kassert(ele == &ele3);
+    kassert(!_queue.Pop(ele));
+    return true;
   }
 private:
-  IntQueue<Element> _queue;
-} static OBJ(__LINE__);
-
-class IntQueueTester_PushPopThenEmptyPop : public Tester {
-public:
-  virtual bool Test() override {
-    Element ele1, ele2, ele3;
-    _queue.Push(&ele1);
-    _queue.Push(&ele2);
-    _queue.Push(&ele3);
-    Element *ele;
-    _queue.Pop(ele);
-    _queue.Pop(ele);
-    _queue.Pop(ele);
-    return _queue.Pop(ele) == false;
-  }
-private:
-  IntQueue<Element> _queue;
+  IntQueue<QElement> _queue;
 } static OBJ(__LINE__);
 
 class IntQueueTester_ParallelPush : public Tester {
@@ -99,7 +100,7 @@ public:
   virtual bool Test() override {
     std::thread threads[kThreadNum];
     std::exception_ptr ep[kThreadNum];
-    _ele = new Element[kThreadNum * kElementNum];
+    _ele = new QElement[kThreadNum * kElementNum];
     for (int i = 0; i < kThreadNum; i++) {
       std::thread th(&IntQueueTester_ParallelPush::Producer, this, ep[i], i);
       threads[i].swap(th);
@@ -117,7 +118,7 @@ public:
       };
     }
     for (int i = 0; i < kThreadNum * kElementNum; i++) {
-      Element *ele;
+      QElement *ele;
       kassert(_queue.Pop(ele));
     }
     kassert(_queue.IsEmpty());
@@ -139,24 +140,24 @@ private:
     }
   }
   
-  IntQueue<Element> _queue;
-  Element *_ele;
+  IntQueue<QElement> _queue;
+  QElement *_ele;
   int _flag1;
   static const int kElementNum = 10000;
   static const int kThreadNum = 100;
 } static OBJ(__LINE__);
 
-class IntQueueTester_PopInParallel : public Tester {
+class IntQueueTester_ParallelPop : public Tester {
 public:
   virtual bool Test() override {
     std::thread threads[kThreadNum + 1];
     std::exception_ptr ep[kThreadNum + 1];
-    _ele = new Element[kThreadNum * kElementNum];
+    _ele = new QElement[kThreadNum * kElementNum];
     for (int i = 0; i < kThreadNum; i++) {
-      std::thread th(&IntQueueTester_PopInParallel::Producer, this, &ep[i], i);
+      std::thread th(&IntQueueTester_ParallelPop::Producer, this, &ep[i], i);
       threads[i].swap(th);
     }
-    std::thread th(&IntQueueTester_PopInParallel::Consumer, this, &ep[kThreadNum]);
+    std::thread th(&IntQueueTester_ParallelPop::Consumer, this, &ep[kThreadNum]);
     threads[kThreadNum].swap(th);
     
     bool rval = true;
@@ -198,7 +199,7 @@ private:
       }
       int cnt = 0;
       while (cnt < kElementNum * kThreadNum && !_error) {
-        Element *ele;
+        QElement *ele;
         if (_queue.Pop(ele)) {
           cnt++;
           __sync_fetch_and_add(&_pop_cnt, 1);
@@ -225,8 +226,8 @@ private:
     }
   }
   
-  IntQueue<Element> _queue;
-  Element *_ele;
+  IntQueue<QElement> _queue;
+  QElement *_ele;
   int _push_cnt = 0;
   int _pop_cnt = 0;
   bool _error = false;
@@ -236,17 +237,17 @@ private:
   static const int kThreadNum = 100;
 } static OBJ(__LINE__);
 
-class IntQueueTester_ReusePoppedElement : public Tester {
+class IntQueueTester_ReusePoppedQElement : public Tester {
 public:
   virtual bool Test() override {
     std::thread threads[kThreadNum + 1];
     std::exception_ptr ep[kThreadNum + 1];
-    _ele = new Element[kThreadNum * kElementNum];
+    _ele = new QElement[kThreadNum * kElementNum];
     for (int i = 0; i < kThreadNum; i++) {
-      std::thread th(&IntQueueTester_ReusePoppedElement::Producer, this, &ep[i], i);
+      std::thread th(&IntQueueTester_ReusePoppedQElement::Producer, this, &ep[i], i);
       threads[i].swap(th);
     }
-    std::thread th(&IntQueueTester_ReusePoppedElement::Consumer, this, &ep[kThreadNum]);
+    std::thread th(&IntQueueTester_ReusePoppedQElement::Consumer, this, &ep[kThreadNum]);
     threads[kThreadNum].swap(th);
     
     bool rval = true;
@@ -274,7 +275,7 @@ public:
       rval = false;
     };
     for (int i = 0; i < kThreadNum * kElementNum; i++) {
-      Element *ele;
+      QElement *ele;
       kassert(_queue.Pop(ele));
     }
     kassert(_queue.IsEmpty());
@@ -292,7 +293,7 @@ private:
       }
       int cnt = 0;
       while (cnt < kElementNum * kThreadNum && !_error) {
-        Element *ele;
+        QElement *ele;
         if (_queue.Pop(ele)) {
           cnt++;
           __sync_fetch_and_add(&_pop_cnt, 1);
@@ -320,8 +321,8 @@ private:
     }
   }
   
-  IntQueue<Element> _queue;
-  Element *_ele;
+  IntQueue<QElement> _queue;
+  QElement *_ele;
   int _push_cnt = 0;
   int _pop_cnt = 0;
   bool _error = false;
