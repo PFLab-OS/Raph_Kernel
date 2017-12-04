@@ -56,7 +56,7 @@ void TaskCtrl::Run() {
       ts->state = TaskQueueState::kRunning;
     }
     if (oldstate == TaskQueueState::kNotRunning) {
-      uint64_t time = timer->GetCntAfterPeriod(timer->ReadMainCnt(), kTaskExecutionInterval);
+      Time time = timer->ReadTime() + kTaskExecutionInterval;
       
       Locker locker1(ts->dlock);
       sptr<Callout> dt = ts->dtop;
@@ -66,7 +66,7 @@ void TaskCtrl::Run() {
         if (dtt.IsNull()) {
           break;
         }
-        if (timer->IsGreater(dtt->_time, time)) {
+        if (dtt->_time > time) {
           break;
         }
         {
@@ -129,11 +129,11 @@ void TaskCtrl::Run() {
         ts->bottom_sub = tmp;
       }
 
-      volatile uint64_t time = timer->GetCntAfterPeriod(timer->ReadMainCnt(), kTaskExecutionInterval);
+      Time time = timer->ReadTime() + kTaskExecutionInterval;
       {
         Locker locker(ts->dlock);
         sptr<Callout> dtt = ts->dtop->_next;
-        if (!dtt.IsNull() && timer->IsGreater(time, dtt->_time)) {
+        if (!dtt.IsNull() && time > dtt->_time) {
           ts->state = TaskQueueState::kNotRunning;
           break;
         }
@@ -293,7 +293,7 @@ void TaskCtrl::RegisterCallout(sptr<Callout> task, CpuId cpuid, int us) {
       	dt->_next = task;
       	break;
       }
-      if (timer->IsGreater(dtt->_time, task->_time)) {
+      if (dtt->_time > task->_time) {
         task->_state = Callout::CalloutState::kCalloutQueue;
         task->_next = dtt;
         dt->_next = task;
@@ -322,7 +322,7 @@ void TaskCtrl::RegisterCallout2(sptr<Callout> task, int us) {
       	dt->_next = task;
       	break;
       }
-      if (timer->IsGreater(dtt->_time, task->_time)) {
+      if (dtt->_time > task->_time) {
         task->_state = Callout::CalloutState::kCalloutQueue;
         task->_next = dtt;
         dt->_next = task;
@@ -402,7 +402,7 @@ void CountableTask::HandleSub(void *) {
 
 void Callout::SetHandler(sptr<Callout> callout, CpuId cpuid, int us) {
   Locker locker(_lock);
-  _time = timer->GetCntAfterPeriod(timer->ReadMainCnt(), us);
+  _time = timer->ReadTime() + us;
   _pending = true;
   _cpuid = cpuid;
   _task->SetFunc(make_uptr(new ClassFunction<Callout, sptr<Callout>>(this, &Callout::HandleSub, callout)));
@@ -414,7 +414,7 @@ void Callout::Cancel() {
 }
 
 void Callout::HandleSub2(sptr<Callout> callout) {
-  if (timer->IsTimePassed(_time)) {
+  if (timer->ReadTime() > _time) {
     {
       Locker locker(_lock);
       _pending = false;

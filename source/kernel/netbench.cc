@@ -27,7 +27,7 @@
 #include <global.h>
 #include <list.h>
 
-uint64_t cnt = 0;
+Time cnt;
 int64_t sum = 0;
 static const int stime = 7000;
 int time = stime, rtime = 0;
@@ -49,7 +49,7 @@ void setup_arp_reply(NetDev *dev) {
           my_addr[3] = (my_addr_int >> 24) & 0xff;
           // received packet
           if(rpacket->GetBuffer()[12] == 0x08 && rpacket->GetBuffer()[13] == 0x06 && rpacket->GetBuffer()[21] == 0x02) {
-            uint64_t l = ((uint64_t)(timer->ReadMainCnt() - cnt) * (uint64_t)timer->GetCntClkPeriod()) / 1000;
+            int64_t l = timer->ReadTime() - cnt;
             cnt = 0;
             sum += l;
             rtime++;
@@ -180,7 +180,7 @@ void send_arp_packet(NetDev *dev, uint8_t *ipaddr) {
               kassert(eth->GetTxPacket(tpacket));
               memcpy(tpacket->GetBuffer(), data, len);
               tpacket->len = len;
-              cnt = timer->ReadMainCnt();
+              cnt = timer->ReadTime();
               eth->TransmitPacket(tpacket);
               // gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
               time--;

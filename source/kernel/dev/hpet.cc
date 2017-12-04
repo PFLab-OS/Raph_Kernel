@@ -105,7 +105,7 @@ void Hpet::SetInt(CpuId cpuid, uint64_t cnt) {
 void Hpet::Handle(Regs *rs, void *arg) {
   int id = 0;
   Hpet *that = reinterpret_cast<Hpet *>(arg);
-  that->_reg[that->GetRegTmrOfN(id, kBaseRegTmrCmp)] = that->GetCntAfterPeriod(that->ReadMainCnt(), 1000 * 1000);
+  that->_reg[that->GetRegTmrOfN(id, kBaseRegTmrCmp)] = that->ConvertTimeToCnt(that->ReadTime() + 1000 * 1000);
   bool fsb_delivery = (that->_reg[GetRegTmrOfN(id, kBaseRegTmrConfigCap)] & kRegTmrConfigCapBaseFlagFsbIntDel) != 0;
   if (!fsb_delivery) {
     that->_reg[0x20 / sizeof(uint64_t)] |= 1;

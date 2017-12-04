@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2016 Raphine Project
+ * Copyright (c) 2017 Raphine Project
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -20,10 +20,65 @@
  * 
  */
 
-#ifndef __RAPH_KERNEL_TIMER_H__
-#define __RAPH_KERNEL_TIMER_H__
+#pragma once
 
 #include <stdint.h>
+
+class Time {
+public:
+  Time() : _time(0) {
+  }
+  Time(uint64_t us) : _time(us) {
+  }
+  bool operator < (const Time &t1) const {
+    if (_time < t1._time) {
+      return true;
+    } else if (t1._time < 0x1000000000000000 && _time > 0xF000000000000000) {
+      // TODO is this OK?
+      return true;
+    } else {
+      return false;
+    }
+  };
+  bool operator > (const Time &t1) const {
+    if (_time > t1._time) {
+      return true;
+    } else if (_time < 0x1000000000000000 && t1._time > 0xF000000000000000) {
+      // TODO is this OK?
+      return true;
+    } else {
+      return false;
+    }
+  };
+  bool operator >= (const Time &t1) const {
+    return !(*this < t1);
+  }
+  bool operator <= (const Time &t1) const {
+    return !(*this > t1);
+  }
+  bool operator == (const Time &t1) const {
+    return _time == t1._time;
+  }
+  bool operator != (const Time &t1) const {
+    return !(*this == t1);
+  }
+  const Time operator + (const int us) const {
+    Time t(_time + us);
+    return t;
+  }
+  const Time operator - (const int us) const {
+    Time t(_time - us);
+    return t;
+  }
+  const int64_t operator - (const Time& t) const {
+    return _time - t._time;
+  }
+  uint64_t GetRaw() {
+    return _time;
+  }
+private:
+  uint64_t _time;
+};
 
 class Timer {
 public:
@@ -35,44 +90,20 @@ public:
   bool DidSetup() {
     return _setup;
   }
-  virtual volatile uint64_t ReadMainCnt() = 0;
-  // us秒後のカウントを取得する
-  volatile uint64_t GetCntAfterPeriod(volatile uint64_t cur, int us) {
-    return cur + (static_cast<int64_t>(us) * 1000) / _cnt_clk_period;
+  Time ReadTime() {
+    return Time((ReadMainCnt() * _cnt_clk_period) / 1000);
   }
-  volatile bool IsGreater(uint64_t n1, uint64_t n2) {
-    if (n1 >= n2) {
-      return true;
-    } else if (n1 < 0x1000000000000000 && n2 > 0xF000000000000000) {
-      //TODO is this ok?
-      return true;
-    } else {
-      return false;
-    }
-  }
-  volatile bool IsTimePassed(volatile uint64_t time) {
-    volatile uint64_t cur = ReadMainCnt();
-    return IsGreater(cur, time);
-  }
-  // ビジーループタイムアウト
-  // 最適化回避のためにできるだけこの関数を使うべき
   void BusyUwait(int us) {
-    volatile uint64_t cur = ReadMainCnt();
-    volatile uint64_t end = GetCntAfterPeriod(cur, us);
-    while(true) {
-      volatile bool flag = IsTimePassed(end);
-      if (flag) {
-        break;
-      }
+    Time t = ReadTime() + us;
+    while(ReadTime() < t) {
+      asm volatile("":::"memory");
     }
-  }
-  uint64_t GetCntClkPeriod() {
-    return _cnt_clk_period;
-  }
-  uint64_t GetUsecFromCnt(uint64_t cnt) {
-    return (cnt * _cnt_clk_period) / 1000;
   }
 protected:
+  virtual volatile uint64_t ReadMainCnt() = 0;
+  uint64_t ConvertTimeToCnt(Time t) {
+    return (t.GetRaw() * 1000) / _cnt_clk_period;
+  }
   // １カウントが何ナノ秒か
   uint64_t _cnt_clk_period = 1;
   virtual bool SetupSub() = 0;
@@ -80,4 +111,3 @@ private:
   bool _setup = false;
 };
 
-#endif /* __RAPH_KERNEL_TIMER_H__ */

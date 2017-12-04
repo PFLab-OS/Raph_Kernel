@@ -239,16 +239,16 @@ void ApicCtrl::Lapic::Start(uint32_t apicId, uint64_t entryPoint) {
 void ApicCtrl::Lapic::SetupTimer(int interval) {
   WriteReg(RegisterOffset::kDivConfig, kDivVal16);
   WriteReg(RegisterOffset::kTimerInitCnt, 0xFFFFFFFF);
-  uint64_t timer1 = timer->ReadMainCnt();
+  Time time1 = timer->ReadTime();
   while(true) {
     volatile uint32_t cur = ReadReg(RegisterOffset::kTimerCurCnt);
     if (cur < 0xFFF00000) {
       break;
     }
   }
-  uint64_t timer2 = timer->ReadMainCnt();
-  kassert((timer2 - timer1) > 0);
-  uint32_t base_cnt = ((int64_t)interval * 1000 * 0xFFFFF) / ((timer2 - timer1) * timer->GetCntClkPeriod());
+  Time time2 = timer->ReadTime();
+  kassert((time2 - time1) > 0);
+  uint32_t base_cnt = ((int64_t)interval * 1000 * 0xFFFFF) / (time2 - time1);
   kassert(base_cnt > 0);
 
   kassert(idt != nullptr);
