@@ -91,9 +91,9 @@ static __attribute__((noinline)) Pair func107_main(int cpunum, int work) {
   cache_ctrl->Clear(lock, sizeof(L));
   cache_ctrl->Clear(f_array, sizeof(Uint64) * 256);
 
-  uint64_t t1 = 0;
+  Time t1 = 0;
   if (apicid == 0) {
-    t1 = timer->ReadMainCnt();
+    t1 = timer->ReadTime();
   }
 
   if (eflag) {
@@ -128,7 +128,7 @@ static __attribute__((noinline)) Pair func107_main(int cpunum, int work) {
   }
 
   if (apicid == 0) {
-    time = ((timer->ReadMainCnt() - t1) * timer->GetCntClkPeriod()) / 1000;
+    time = timer->ReadTime() - t1;
     uint64_t f_avg = 0;
     for (int x = 0; x < cpunum; x++) {
       f_avg += f_array[x].i;

@@ -43,9 +43,9 @@ void SpinLock::Lock() {
     kernel_panic("SpinLock", "self lock! need to solve deadlock.");
   }
   bool showed_timeout_warning = false;
-  uint64_t t1;
+  Time t1;
   if (_spinlock_timeout && timer != nullptr && timer->DidSetup()) {
-    t1 = timer->GetCntAfterPeriod(timer->ReadMainCnt(), 10 * 1000000); // 10s
+    t1 = timer->ReadTime() + 10 * 1000 * 1000; // 10s
   }
   volatile unsigned int flag = _flag;
   while(true) {
@@ -57,7 +57,7 @@ void SpinLock::Lock() {
       }
       enable_interrupt(iflag);
     }
-    if (_spinlock_timeout && !showed_timeout_warning && timer != nullptr && timer->DidSetup() && timer->IsTimePassed(t1)) {
+    if (_spinlock_timeout && !showed_timeout_warning && timer != nullptr && timer->DidSetup() && timer->ReadTime() > t1) {
       gtty->DisablePrint();
       gtty->ErrPrintf("[error]: unable to take SpinLock for a long time on cpuid %d.\nA deadlock may occur.\n", cpu_ctrl->GetCpuId().GetRawId());
       size_t *rbp;

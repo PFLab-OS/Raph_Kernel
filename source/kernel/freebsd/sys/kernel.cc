@@ -26,6 +26,6 @@
 
 extern "C" {
   int get_ticks() {
-    return timer->GetUsecFromCnt(timer->ReadMainCnt()) / reciprocal_of_hz;
+    return timer->ReadTime().GetRaw() / reciprocal_of_hz;
   }
 }

@@ -216,7 +216,7 @@ class FrameBuffer : public Tty {
     Locker locker(_lock);
     DrawScreen();
     if (_timeup_draw) {
-      _last_time_refresh = timer->ReadMainCnt();
+      _last_time_refresh = timer->ReadTime();
     } else {
       _needs_redraw = false;
     }
@@ -240,10 +240,9 @@ class FrameBuffer : public Tty {
           TaskCtrl::TaskQueueState::kNotStarted) {
         DisableTimeupDraw();
       } else {
-        if (timer->IsTimePassed(
-                timer->GetCntAfterPeriod(_last_time_refresh, 33 * 1000))) {
+        if (timer->ReadTime() >= _last_time_refresh + 33 * 1000) {
           DrawScreen();
-          _last_time_refresh = timer->ReadMainCnt();
+          _last_time_refresh = timer->ReadTime();
         }
       }
     } else {
@@ -277,7 +276,7 @@ class FrameBuffer : public Tty {
   // use this until TaskCtrl runs.
   bool _timeup_draw = true;
   // for checking if time is up
-  uint64_t _last_time_refresh = 0;
+  Time _last_time_refresh;
 
   uint8_t *_back_buffer;
 

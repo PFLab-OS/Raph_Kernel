@@ -767,7 +767,7 @@ extern "C" int main() {
 
   pstack_cpu = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kHighPerformance);
 
-  rnd_next = timer->ReadMainCnt();
+  rnd_next = timer->ReadTime().GetRaw();
 
   task_ctrl->Setup();
 

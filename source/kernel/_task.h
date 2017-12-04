@@ -141,7 +141,7 @@ private:
   }
   CpuId _cpuid;
   sptr<Task> _task;
-  uint64_t _time;
+  Time _time;
   sptr<Callout> _next;
   uptr<GenericFunction<>> _func;
   SpinLock _lock;

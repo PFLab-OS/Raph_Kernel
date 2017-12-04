@@ -126,8 +126,7 @@ ACPI_STATUS AcpiOsSignal(UINT32 Function, void *Info) {
 void AcpiOsWaitEventsComplete() { kassert(false); }
 
 UINT64 AcpiOsGetTimer() {
-  // fix this
-  return timer->GetUsecFromCnt(timer->ReadMainCnt()) * 10;
+  return timer->ReadTime().GetRaw() * 10;
 }
 
 void AcpiOsSleep(UINT64 Milliseconds) { timer->BusyUwait(Milliseconds * 1000); }
@@ -150,9 +149,8 @@ ACPI_STATUS AcpiOsAcquireMutex(ACPI_MUTEX Handle, UINT16 Timeout) {
   if (Timeout == 0) {
     return (lock->Trylock() == ReturnState::kOk) ? (AE_OK) : (AE_ERROR);
   } else if (Timeout > 0) {
-    uint64_t cnt =
-        timer->GetCntAfterPeriod(timer->ReadMainCnt(), Timeout * 1000);
-    while (!timer->IsTimePassed(cnt)) {
+    Time limit = timer->ReadTime() + Timeout * 1000;
+    while (timer->ReadTime() < limit) {
       if (lock->Trylock() == ReturnState::kOk) {
         return (AE_OK);
       }
@@ -188,9 +186,8 @@ ACPI_STATUS AcpiOsWaitSemaphore(ACPI_SEMAPHORE Handle, UINT32 Units,
   if (Timeout == 0) {
     return (semaphore->Tryacquire() == 0) ? (AE_OK) : (AE_ERROR);
   } else if (Timeout > 0) {
-    uint64_t cnt =
-        timer->GetCntAfterPeriod(timer->ReadMainCnt(), Timeout * 1000);
-    while (!timer->IsTimePassed(cnt)) {
+    Time limit = timer->ReadTime() + Timeout * 1000;
+    while (timer->ReadTime() < limit) {
       if (semaphore->Tryacquire() == 0) {
         return (AE_OK);
       }
