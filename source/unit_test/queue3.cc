@@ -30,12 +30,6 @@
 #include <stdexcept>
 using namespace std;
 
-class Hoge {
-public:
-  Hoge()
-  {
-  }
-};
 class QElement : public IntQueue<QElement>::ContainerInterface {
 public:
   QElement() : _container(this) {
@@ -62,7 +56,6 @@ class IntQueueTester_SinglePushPop : public Tester {
 public:
   virtual bool Test() override {
     QElement ele1;
-    Hoge h;
     _queue.Push(&ele1);
     QElement *ele = nullptr;
     kassert(_queue.Pop(ele));
