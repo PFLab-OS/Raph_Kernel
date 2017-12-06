@@ -26,7 +26,6 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <raph.h>
-#include <task.h>
 #include <dev/pci.h>
 #include <buf.h>
 #include <mem/virtmem.h>
