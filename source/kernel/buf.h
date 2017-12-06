@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2016 Raphine Project
+ * Copyright (c) 2017 Raphine Project
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -20,14 +20,12 @@
  *
  */
 
-#ifndef __RAPH_KERNEL_BUF_H__
-#define __RAPH_KERNEL_BUF_H__
+#pragma once
   
 #include <stddef.h>
 #include <raph.h>
 #include <global.h>
 #include <spinlock.h>
-#include <task.h>
 #include <functional.h>
 
 // The characteristic of RingBuffer is it doesn't allocate memory dynamically.
@@ -115,5 +113,3 @@ template<class T, int S>
   }
   RingBuffer<T, S> _buf;
 };
-
-#endif /* __RAPH_KERNEL_BUF_H__ */
