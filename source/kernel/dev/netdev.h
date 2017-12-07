@@ -189,7 +189,7 @@ public:
    */
   void InitTxPacketBuffer() {
     while(!_tx_reserved.IsFull()) {
-      Packet *packet_addr = reinterpret_cast<Packet *>(virtmem_ctrl->Alloc(sizeof(Packet)));
+      Packet *packet_addr = reinterpret_cast<Packet *>(kernel_virtmem_ctrl->KernelHeapAlloc(sizeof(Packet)));
       Packet *packet = new(packet_addr) Packet();
       kassert(_tx_reserved.Push(packet));
     }
@@ -200,7 +200,7 @@ public:
    */
   void InitRxPacketBuffer() {
     while(!_rx_reserved.IsFull()) {
-      Packet *packet_addr = reinterpret_cast<Packet *>(virtmem_ctrl->Alloc(sizeof(Packet)));
+      Packet *packet_addr = reinterpret_cast<Packet *>(kernel_virtmem_ctrl->KernelHeapAlloc(sizeof(Packet)));
       Packet *packet = new(packet_addr) Packet();
       kassert(_rx_reserved.Push(packet));
     }

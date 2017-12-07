@@ -25,20 +25,45 @@
 #error "invalid inclusion"
 #endif /* __RAPH_LIB_MEM_VIRTMEM_H__ */
 
-class VirtmemCtrl final {
+class PagingCtrl;
+
+class VirtmemCtrlInterface {
+public:
+  virtual virt_addr Sbrk(int64_t increment) = 0;
+  virtual void Switch() = 0;
+
+  //make protected
+  PagingCtrl *paging_ctrl;
+protected:
+  // For treating heap memory
+  virt_addr _heap_allocated_end;
+  virt_addr _brk_end;
+  virt_addr _heap_limit;
+};
+
+// In this class, paging_ctrl's cr3 Register variable is no meaning.
+// Because All processes share the same kernel memory space.
+class KernelVirtmemCtrl final : public VirtmemCtrlInterface {
  public:
-  VirtmemCtrl();
-  ~VirtmemCtrl() {}
+  KernelVirtmemCtrl();
+  ~KernelVirtmemCtrl() {
+  }
 
   // 新規に仮想メモリ領域を確保する。
   // 物理メモリが割り当てられていない領域の場合は物理メモリを割り当てる
-  virt_addr Alloc(size_t size);
-  // 仮想メモリ領域を解放するが、物理メモリは解放しない
-  void Free(virt_addr addr);
+  virt_addr KernelHeapAlloc(size_t size);
+  // This function releases virtual memory but does not release physical memory.
+  void KernelHeapFree(virt_addr addr);
 
-  // ０初期化版
-  virt_addr AllocZ(size_t size) {
-    virt_addr addr = Alloc(size);
+  //TODO: rename
+  void Init1();
+  void Init2();
+
+  void Switch();
+
+  // For Initialization 
+  virt_addr KernelHeapAllocZ(size_t size) {
+    virt_addr addr = KernelHeapAlloc(size);
     bzero(reinterpret_cast<void *>(addr), size);
     return addr;
   }
@@ -46,9 +71,25 @@ class VirtmemCtrl final {
   virt_addr GetHeapEnd() { return _brk_end; }
 
  private:
-  virt_addr _heap_allocated_end;
-  virt_addr _brk_end;
-  virt_addr _heap_limit;
   SpinLock _lock;
 };
 
+class VirtmemCtrl : public VirtmemCtrlInterface {
+public:
+  VirtmemCtrl();
+  VirtmemCtrl(const VirtmemCtrl* vmc);
+  virtual ~VirtmemCtrl() {
+  }
+
+  void Init() {
+  }
+
+  void Switch();
+  
+  //TODO:To be implemetation
+  virt_addr Sbrk(int64_t increment) {
+    return 0;
+  }
+private:
+  SpinLock _lock;
+};

@@ -28,7 +28,6 @@
 #include <idt.h>
 #include <multiboot.h>
 #include <mem/physmem.h>
-#include <mem/paging.h>
 #include <mem/virtmem.h>
 #include <raph_acpi.h>
 #include <thread.h>
@@ -61,9 +60,8 @@
 AcpiCtrl *acpi_ctrl = nullptr;
 ApicCtrl *apic_ctrl = nullptr;
 MultibootCtrl *multiboot_ctrl = nullptr;
-PagingCtrl *paging_ctrl = nullptr;
 PhysmemCtrl *physmem_ctrl = nullptr;
-VirtmemCtrl *virtmem_ctrl = nullptr;
+KernelVirtmemCtrl *kernel_virtmem_ctrl = nullptr;
 Gdt *gdt = nullptr;
 Idt *idt = nullptr;
 Shell *shell = nullptr;
@@ -77,7 +75,7 @@ ApicCtrl _apic_ctrl;
 CpuCtrl _cpu_ctrl;
 Gdt _gdt;
 Idt _idt;
-VirtmemCtrl _virtmem_ctrl;
+KernelVirtmemCtrl _kernel_virtmem_ctrl;
 PhysmemCtrl _physmem_ctrl;
 PagingCtrl _paging_ctrl;
 Hpet _htimer;
@@ -720,7 +718,7 @@ extern "C" int main() {
 
   idt = new (&_idt) Idt;
 
-  virtmem_ctrl = new (&_virtmem_ctrl) VirtmemCtrl;
+  kernel_virtmem_ctrl = new (&_kernel_virtmem_ctrl) KernelVirtmemCtrl;
 
   physmem_ctrl = new (&_physmem_ctrl) PhysmemCtrl;
 
@@ -737,14 +735,14 @@ extern "C" int main() {
   // arp_table = new (&_arp_table) ArpTable();
 
   physmem_ctrl->Init();
-
+  
   multiboot_ctrl->Setup();
+
+  kernel_virtmem_ctrl->Init1();
 
   gtty->Init();
 
   multiboot_ctrl->ShowMemoryInfo();
-
-  paging_ctrl->MapAllPhysMemory();
 
   KernelStackCtrl::Init();
 
@@ -781,7 +779,7 @@ extern "C" int main() {
   // 実行する事
   apic_ctrl->StartAPs();
 
-  paging_ctrl->ReleaseLowMemory();
+  kernel_virtmem_ctrl->Init2();
 
   gtty->Setup();
 
@@ -798,7 +796,7 @@ extern "C" int main() {
   freebsd_main();
 
   AttachDevices<PciCtrl, LegacyKeyboard, Ramdisk, Device>();
-
+  
   SystemCallCtrl::Init();
 
   gtty->Printf("\n\n[kernel] info: initialization completed\n");
