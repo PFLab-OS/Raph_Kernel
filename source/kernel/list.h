@@ -25,6 +25,7 @@
 #include <raph.h>
 #include <spinlock.h>
 #include <ptr.h>
+#include <assert.h>
 
 // deplecated
 template<class T>
