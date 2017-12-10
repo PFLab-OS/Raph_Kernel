@@ -28,6 +28,7 @@
 
 .globl syscall_handler
 .globl syscall_handler_stack
+.globl syscall_handler_caller_stack;
 syscall_handler:
   swapgs
   movq %rsp, (syscall_handler_caller_stack)

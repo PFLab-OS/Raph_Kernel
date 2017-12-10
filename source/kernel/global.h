@@ -38,6 +38,7 @@ class NetDevCtrl;
 class BsdDevPciCtrl;
 class ApicCtrl;
 class Shell;
+class ProcessCtrl;
 
 extern AcpiCtrl *acpi_ctrl;
 extern ApicCtrl *apic_ctrl;
@@ -47,6 +48,7 @@ extern Gdt *gdt;
 extern Idt *idt;
 extern PciCtrl *pci_ctrl;
 extern Shell *shell;
+extern ProcessCtrl *process_ctrl;
 
 /*
  * Network Controllers

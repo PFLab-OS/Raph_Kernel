@@ -34,3 +34,9 @@ class BinObjectInterface {
   };
   virtual ErrorState Init() __attribute__((warn_unused_result)) = 0;
 };
+
+class ExecutableObject: public BinObjectInterface {
+public:
+  virtual void Resume() = 0;
+  virtual ErrorState LoadMemory(bool) = 0;
+};

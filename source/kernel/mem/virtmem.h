@@ -95,7 +95,10 @@ class MemCtrl {
   bool IsVirtAddrMapped(virt_addr vaddr);
   void ConvertVirtMemToPhysMem(virt_addr vaddr, PhysAddr &paddr);
 
-  KernelVirtmemCtrl *GetKernelVirtmemCtrl() { return &_kvc; }
+  KernelVirtmemCtrl* GetKernelVirtmemCtrl() {
+    return &_kvc;
+  }
+  void Switch();
 
  private:
   PageTable *GetPml4tAddr();
@@ -106,7 +109,7 @@ class MemCtrl {
   // FIXME:Make static
   /*static*/ KernelVirtmemCtrl _kvc;
   UserVirtmemCtrl _uvc;
-  PagingCtrl *paging_ctrl;
+  PagingCtrl* _paging_ctrl;
 };
 
 template <typename ptr>
