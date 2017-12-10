@@ -1,7 +1,8 @@
 # Raph Kernel
 
-[Developer Zone](developer.md)
+[Developer Zone]()
 
+  * # Written in Japanese
   * [HOWTO](howto.md)
   * [Pull Request](pullrequest.md)
   * [Help](help.md)
