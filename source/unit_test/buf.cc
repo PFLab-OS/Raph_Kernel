@@ -87,7 +87,7 @@ public:
     std::exception_ptr ep[kThreadNum];
 
     for (int i = 0; i < kElementNum; i++) {
-      _buf.Push(i);
+      kassert(_buf.Push(i));
     }
     
     for (int i = 0; i < kThreadNum; i++) {

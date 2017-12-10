@@ -28,7 +28,7 @@
 #include <global.h>
 #include <raph.h>
 #include <tty.h>
-#include <task.h>
+#include <thread.h>
 #include <font.h>
 #include <stdint.h>
 #include <spinlock.h>
@@ -175,7 +175,7 @@ class FrameBuffer : public Tty {
   void DoPeriodicRefresh(void *);
   void DisableTimeupDraw();
   void ScheduleRefresh() {
-    task_ctrl->RegisterCallout(_refresh_callout, _draw_cpuid, 33 * 1000);
+    _refresh_thread->CreateOperator().Schedule(33 * 1000);
   }
   SpinLock _lock;
   FrameBufferInfo _fb_info;
@@ -205,5 +205,5 @@ class FrameBuffer : public Tty {
   bool _needs_redraw =
       false;  // if true, there are some changes should be display.
 
-  sptr<Callout> _refresh_callout;
+  uptr<Thread> _refresh_thread;
 };

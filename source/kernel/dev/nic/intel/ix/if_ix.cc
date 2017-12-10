@@ -5858,15 +5858,17 @@ void IxGbe::IxGbeBsdEthernet::PollingHandler(IxGbe *that) {
 
 void IxGbe::IxGbeBsdEthernet::CheckLinkHandler(void *) {
   UpdateLinkStatus();
-  
-  task_ctrl->RegisterCallout(_link_check_callout, cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), 1000);
+
+  _link_check_thread->CreateOperator().Schedule(1000);
 }
 
 void IxGbe::IxGbeBsdEthernet::ChangeHandleMethodToPolling() {
   _polling.Init(make_uptr(new Function<IxGbe *>(PollingHandler, &GetMasterClass())));
   _polling.Register(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kHighPerformance));
 
-  task_ctrl->RegisterCallout(_link_check_callout, cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), 1000);
+  _link_check_thread = ThreadCtrl::GetCtrl(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority)).AllocNewThread(Thread::StackState::kShared);
+  _link_check_thread->CreateOperator().SetFunc(make_uptr(new ClassFunction<IxGbeBsdEthernet, void *>(this, &IxGbeBsdEthernet::CheckLinkHandler, nullptr)));
+  _link_check_thread->CreateOperator().Schedule(1000);
   
   struct adapter *adapter = reinterpret_cast<struct adapter *>(GetMasterClass().softc);
   if_t ifp = adapter->ifp;
@@ -5878,8 +5880,8 @@ void IxGbe::IxGbeBsdEthernet::ChangeHandleMethodToPolling() {
 
 void IxGbe::IxGbeBsdEthernet::ChangeHandleMethodToInt() {
   _polling.Remove();
-
-  // TODO remove _link_check_callout
+  uptr<Thread> thread;
+  _link_check_thread = thread;
 
   struct adapter *adapter = reinterpret_cast<struct adapter *>(GetMasterClass().softc);
   if_t ifp = adapter->ifp;

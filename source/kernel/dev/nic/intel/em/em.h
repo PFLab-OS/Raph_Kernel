@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2016 Raphine Project
+ * Copyright (c) 2017 Raphine Project
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -20,8 +20,7 @@
  *
  */
 
-#ifndef __RAPH_KERNEL_E1000_EM_H__
-#define __RAPH_KERNEL_E1000_EM_H__
+#pragma once
 
 #include <stdint.h>
 #include <mem/physmem.h>
@@ -68,4 +67,3 @@ private:
   E1000BsdEthernet _bsd_eth;
 };
 
-#endif /* __RAPH_KERNEL_E1000_EM_H__ */

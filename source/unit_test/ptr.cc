@@ -32,7 +32,7 @@ public:
     __sync_fetch_and_add(&_cnt, 1);
   }
   ~PtrTestObject1() {
-    __sync_fetch_and_add(&_cnt, -1);
+    __sync_fetch_and_sub(&_cnt, 1);
   }
   void Func(){
   }
@@ -47,7 +47,7 @@ public:
     __sync_fetch_and_add(&_cnt1, 1);
   }
   ~PtrTestObject2() {
-    __sync_fetch_and_add(&_cnt1, -1);
+    __sync_fetch_and_sub(&_cnt1, 1);
   }
   void Func(){
   }

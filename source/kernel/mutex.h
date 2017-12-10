@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2016 Raphine Project 
+ * Copyright (c) 2017 Raphine Project
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -22,15 +22,22 @@
 
 #pragma once
 
-class CpuCtrlInterface;
-class Tty;
-class Timer;
-class VirtmemCtrl;
+#include <thread.h>
+#include <spinlock.h>
 
-extern CpuCtrlInterface *cpu_ctrl;
-extern Tty *gtty;
-extern Tty *gerr;
-extern Timer *timer;
-extern VirtmemCtrl *virtmem_ctrl;
-
-
+// do not use inside interrupt handlers
+class Mutex : public LockInterface final {
+public:
+  Mutex() {
+  }
+  virtual ~Mutex() {
+  }
+  virtual void Lock() = 0;
+  virtual void Unlock() = 0;
+  virtual ReturnState Trylock() = 0;
+  virtual bool IsLocked() override {
+    return ((_flag % 2) == 1);
+  }
+private:
+  volatile unsigned int _flag = 0;
+};

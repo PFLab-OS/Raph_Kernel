@@ -32,16 +32,17 @@
 #include <timer.h>
 #include <tty.h>
 #include <list.h>
+#include <thread.h>
 
 class DevEhci final : public DevPci {
 public:
-  DevEhci(uint8_t bus, uint8_t device, uint8_t function) : DevPci(bus, device, function), _int_task(new Task), _controller_dev(this) {
+  DevEhci(uint8_t bus, uint8_t device, uint8_t function) : DevPci(bus, device, function), _controller_dev(this) {
   }
   static DevPci *InitPci(uint8_t bus, uint8_t device, uint8_t function);
   void Init();
   virtual void Attach() override;
 private:
-  sptr<Task> _int_task;
+  uptr<Thread> _int_thread;
 
   class DevEhciSubBase {
   public:

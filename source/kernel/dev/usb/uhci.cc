@@ -126,7 +126,8 @@ void DevUhci::Init() {
     asm volatile("":::"memory");
   }
 
-  _int_task->SetFunc(make_uptr(new ClassFunction<DevUhci, void *>(this, &DevUhci::CheckQueuedTdIfCompleted, nullptr)));
+  _int_thread = ThreadCtrl::GetCtrl(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority)).AllocNewThread(Thread::StackState::kShared);
+  _int_thread->CreateOperator().SetFunc(make_uptr(new ClassFunction<DevUhci, void *>(this, &DevUhci::CheckQueuedTdIfCompleted, nullptr)));
   WriteControllerReg<uint16_t>(kCtrlRegStatus, kCtrlRegStatusFlagInt);
   WriteControllerReg<uint16_t>(kCtrlRegIntr, /*ReadControllerReg<uint16_t>(kCtrlRegIntr) | */kCtrlRegIntrFlagIoc);
   assert(HasLegacyInterrupt());
@@ -395,9 +396,7 @@ void DevUhci::HandlerSub() {
   WriteControllerReg<uint16_t>(kCtrlRegStatus, kCtrlRegStatusFlagInt);
   asm volatile("":::"memory");
 
-  if (!_int_task->IsRegistered()) {
-    task_ctrl->Register(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), _int_task);
-  }
+  _int_thread->CreateOperator().Schedule();
 }
 
 void DevUhci::CheckQueuedTdIfCompleted(void *) {

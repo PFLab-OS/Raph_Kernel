@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2016 Raphine Project
+ * Copyright (c) 2017 Raphine Project
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -23,8 +23,7 @@
 
 /*this shell-like program is substituted later*/
 
-#ifndef __RAPH_KERNEL_SHELL_H__
-#define __RAPH_KERNEL_SHELL_H__
+#pragma once
 
 #include <ptr.h>
 
@@ -41,7 +40,6 @@ class Shell {
     int argc;
     const char *argv[kArgumentMax + 1];
     Shell *shell;
-    Callout *c;
     ExecContainer(Shell *shell_) {
       argc = 0;
       shell = shell_;
@@ -78,4 +76,3 @@ class Shell {
     Shell *_shell;
   } _liner;
 };
-#endif //__RAPH_KERNEL_SHELL_H__

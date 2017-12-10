@@ -21,7 +21,7 @@
  */
 
 #include <raph.h>
-#include <task.h>
+#include <thread.h>
 #include <cpu.h>
 #include "cache.h"
 #include <global.h>
@@ -42,7 +42,7 @@ volatile Uint64 monitor[37 * 8];
 
 #define bench_func(x) membench10(x)
 
-void bench_func(sptr<TaskWithStack> task);
+void bench_func();
 
 CacheCtrl *cache_ctrl;
 
@@ -51,21 +51,24 @@ void beep(int argc, const char *argv[]);
 void register_membench2_callout() {
   for (int i = 0; i < cpu_ctrl->GetHowManyCpus(); i++) {
     CpuId cpuid(i);
-    
-    auto task_ = make_sptr(new TaskWithStack(cpuid));
-    task_->Init();
-    task_->SetFunc(make_uptr(new Function<sptr<TaskWithStack>>([](sptr<TaskWithStack> task){
-            int raw_cpuid = cpu_ctrl->GetCpuId().GetRawId();
-            if (raw_cpuid == 0) {
-              cache_ctrl = new CacheCtrl;
-              cache_ctrl->Init();
-            }
-            bench_func(task);
-            if (raw_cpuid == 0) {
-              beep(0, nullptr);
-            }
-          }, task_)));
-    task_ctrl->Register(cpuid, task_);
+
+    uptr<Thread> thread = ThreadCtrl::GetCtrl(cpuid).AllocNewThread(Thread::StackState::kIndependent);
+    do {
+      auto t_op = thread->CreateOperator();
+      t_op.SetFunc(make_uptr(new Function<void *>([](void *){
+              int raw_cpuid = cpu_ctrl->GetCpuId().GetRawId();
+              if (raw_cpuid == 0) {
+                cache_ctrl = new CacheCtrl;
+                cache_ctrl->Init();
+              }
+              bench_func();
+              if (raw_cpuid == 0) {
+                beep(0, nullptr);
+              }
+            }, nullptr)));
+      t_op.Schedule();
+    } while(0);
+    thread->Join();
   }
 }
 

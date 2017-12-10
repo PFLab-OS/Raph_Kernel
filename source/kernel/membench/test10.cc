@@ -208,47 +208,47 @@ static SyncLow sync_5 = {0};
 static SyncLow sync_6 = {0};
 
 template <class L>
-static void func107_sub(sptr<TaskWithStack> task) {
+static void func107_sub() {
   static volatile int flag = 0;
   __sync_fetch_and_add(&flag, 1);
 
-  auto ltask_ = make_sptr(new Task);
-  ltask_->SetFunc(make_uptr(new Function2<sptr<Task>, sptr<TaskWithStack>>(
-      [](sptr<Task> ltask, sptr<TaskWithStack> task_) {
-        if (flag != cpu_ctrl->GetHowManyCpus()) {
-          task_ctrl->Register(cpu_ctrl->GetCpuId(), ltask);
-        } else {
-          sync_5.Do();
-          if (kWorkloadB) {
-            for (int work = 1; work <= kPrivateWork; work += 500) {
-              func107_sub2<L>(8, work);
+  auto thread = ThreadCtrl::GetCurrentCtrl().AllocNewThread(Thread::StackState::kShared);
+  do {
+    auto t_op = thread->CreateOperator();
+    t_op.SetFunc(make_uptr(new Function<void *>([](void *) {
+            if (flag != cpu_ctrl->GetHowManyCpus()) {
+              ThreadCtrl::GetCurrentThreadOperator().Schedule();
+            } else {
+              sync_5.Do();
+              if (kWorkloadB) {
+                for (int work = 1; work <= kPrivateWork; work += 500) {
+                  func107_sub2<L>(8, work);
+                }
+              } else {
+                for (int cpunum = 1; cpunum <= 8; cpunum++) {
+                  func107_sub2<L>(cpunum, 0);
+                }
+              }
+              int apicid = cpu_ctrl->GetCpuId().GetApicId();
+              if (apicid == 0) {
+                StringTty tty(4);
+                tty.Printf("\n");
+                int argc = 4;
+                const char *argv[] = {"udpsend", ip_addr, port, tty.GetRawPtr()};
+                udpsend(argc, argv);
+                flag = 0;
+              }
+              sync_6.Do();
             }
-          } else {
-            for (int cpunum = 1; cpunum <= 8; cpunum++) {
-              func107_sub2<L>(cpunum, 0);
-            }
-          }
-          int apicid = cpu_ctrl->GetCpuId().GetApicId();
-          if (apicid == 0) {
-            StringTty tty(4);
-            tty.Printf("\n");
-            int argc = 4;
-            const char *argv[] = {"udpsend", ip_addr, port, tty.GetRawPtr()};
-            udpsend(argc, argv);
-            flag = 0;
-          }
-          sync_6.Do();
-          task_->Execute();
-        }
-      },
-      ltask_, task)));
-  task_ctrl->Register(cpu_ctrl->GetCpuId(), ltask_);
+          }, nullptr)));
+    t_op.Schedule();
+  } while(0);
 
-  task->Wait(1);
+  thread->Join();
 }
 
 template <class L>
-static void func107(sptr<TaskWithStack> task, const char *name) {
+static void func107(const char *name) {
   int cpuid = cpu_ctrl->GetCpuId().GetRawId();
   if (cpuid == 0) {
     StringTty tty(100);
@@ -258,13 +258,13 @@ static void func107(sptr<TaskWithStack> task, const char *name) {
     udpsend(argc, argv);
   }
 
-  func107_sub<L>(task);
+  func107_sub<L>();
 }
 
-#define FUNC(task, ...) func107<__VA_ARGS__>(task, #__VA_ARGS__);
+#define FUNC(...) func107<__VA_ARGS__>(#__VA_ARGS__);
 
 // タイル内計測
-void membench10(sptr<TaskWithStack> task) {
+void membench10() {
   int cpuid = cpu_ctrl->GetCpuId().GetRawId();
   if (cpuid == 0) {
     PhysAddr paddr2;
@@ -286,29 +286,29 @@ void membench10(sptr<TaskWithStack> task) {
     physmem_ctrl->Alloc(paddr, 1024 * 1024);
     lock_addr = paddr.GetVirtAddr();
   }
-  FUNC(task, SimpleSpinLock);
-  FUNC(task, TtsSpinLock);
-  FUNC(task, TtsBackoffSpinLock);
-  FUNC(task, TicketSpinLock);
-  FUNC(task, AndersonSpinLock<64, 8>);
-  FUNC(task, ClhSpinLock);
-  FUNC(task, McsSpinLock<64>);
-  FUNC(task, HClhSpinLock);
-  FUNC(task, ExpSpinLock11<McsSpinLock<64>, TicketSpinLockA>);
-  FUNC(task, ExpSpinLock11<McsSpinLockA<64>, McsSpinLockA<64>>);
-  FUNC(task, ExpSpinLock11<TicketSpinLockA, McsSpinLockA<64>>);
-  // FUNC(task, ExpSpinLock10<ClhSpinLock, ClhSpinLock, 8>);
-  // FUNC(task, ExpSpinLock10<ClhSpinLock, AndersonSpinLock<64, 8>, 8>);
-  // FUNC(task, ExpSpinLock10<ClhSpinLock, McsSpinLock<64>, 8>);
-  // FUNC(task, ExpSpinLock10<AndersonSpinLock<64, 37>, AndersonSpinLock<64, 8>,
-  // 8>); FUNC(task, ExpSpinLock10<AndersonSpinLock<64, 37>, McsSpinLock<64>,
-  // 8>); FUNC(task, ExpSpinLock10<AndersonSpinLock<64, 37>, ClhSpinLock, 8>);
-  // FUNC(task, ExpSpinLock10<AndersonSpinLock<64, 64>, AndersonSpinLock<64, 8>,
-  // 8>); FUNC(task, ExpSpinLock10<AndersonSpinLock<64, 64>, McsSpinLock<64>,
-  // 8>); FUNC(task, ExpSpinLock10<AndersonSpinLock<64, 64>, ClhSpinLock, 8>);
-  // FUNC(task, ExpSpinLock10<McsSpinLock<64>, McsSpinLock<64>, 8>);
-  // FUNC(task, ExpSpinLock10<McsSpinLock<64>, ClhSpinLock, 8>);
-  // FUNC(task, ExpSpinLock10<McsSpinLock<64>, AndersonSpinLock<64, 8>, 8>);
+  FUNC(SimpleSpinLock);
+  FUNC(TtsSpinLock);
+  FUNC(TtsBackoffSpinLock);
+  FUNC(TicketSpinLock);
+  FUNC(AndersonSpinLock<64, 8>);
+  FUNC(ClhSpinLock);
+  FUNC(McsSpinLock<64>);
+  FUNC(HClhSpinLock);
+  FUNC(ExpSpinLock11<McsSpinLock<64>, TicketSpinLockA>);
+  FUNC(ExpSpinLock11<McsSpinLockA<64>, McsSpinLockA<64>>);
+  FUNC(ExpSpinLock11<TicketSpinLockA, McsSpinLockA<64>>);
+  // FUNC(ExpSpinLock10<ClhSpinLock, ClhSpinLock, 8>);
+  // FUNC(ExpSpinLock10<ClhSpinLock, AndersonSpinLock<64, 8>, 8>);
+  // FUNC(ExpSpinLock10<ClhSpinLock, McsSpinLock<64>, 8>);
+  // FUNC(ExpSpinLock10<AndersonSpinLock<64, 37>, AndersonSpinLock<64, 8>,
+  // 8>); FUNC(ExpSpinLock10<AndersonSpinLock<64, 37>, McsSpinLock<64>,
+  // 8>); FUNC(ExpSpinLock10<AndersonSpinLock<64, 37>, ClhSpinLock, 8>);
+  // FUNC(ExpSpinLock10<AndersonSpinLock<64, 64>, AndersonSpinLock<64, 8>,
+  // 8>); FUNC(ExpSpinLock10<AndersonSpinLock<64, 64>, McsSpinLock<64>,
+  // 8>); FUNC(ExpSpinLock10<AndersonSpinLock<64, 64>, ClhSpinLock, 8>);
+  // FUNC(ExpSpinLock10<McsSpinLock<64>, McsSpinLock<64>, 8>);
+  // FUNC(ExpSpinLock10<McsSpinLock<64>, ClhSpinLock, 8>);
+  // FUNC(ExpSpinLock10<McsSpinLock<64>, AndersonSpinLock<64, 8>, 8>);
 
   if (cpuid == 0) {
     gtty->Printf("<<< end\n");

@@ -27,6 +27,7 @@
 // TODO replace Spinlock to Spinlock2
 // do not use inside interrupt handlers
 // do not lock huge area
+// assert these restrictions
 class SpinLock2 final : public LockInterface {
 public:
   SpinLock2() {}
@@ -36,11 +37,11 @@ public:
     while(my_ticket != _cur_ticket) {
       asm volatile("":::"memory");
     }
-    kassert(disable_interrupt());
+    _iflag = disable_interrupt();
   }
   virtual void Unlock() override {
     _cur_ticket++;
-    enable_interrupt(true);
+    enable_interrupt(_iflag);
   }
   virtual ReturnState Trylock() override {
     uint64_t my_ticket = _cur_ticket;
@@ -53,6 +54,7 @@ public:
     return _cur_ticket != _next_ticket;
   }
 private:
-  uint64_t _cur_ticket;
-  uint64_t _next_ticket;
+  bool _iflag;
+  uint64_t _cur_ticket = 0;
+  uint64_t _next_ticket = 0;
 };

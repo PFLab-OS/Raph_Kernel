@@ -131,12 +131,12 @@ void Rtl8139::Rtl8139Ethernet::PollingHandler(Rtl8139 *that){
     if(that->ReadReg<uint8_t>(kRegCommand) & kCmdRxBufEmpty){
         break;
     }
-    data = reinterpret_cast<uint8_t*>(that->_eth._RxBuffer.GetVirtAddr() + that->_eth._RxBufferOffset);
+    data = reinterpret_cast<uint8_t*>(that->_eth._rx_buffer.GetVirtAddr() + that->_eth._rx_buffer_offset);
     length = *(uint16_t*)(data + 2); // it contains CRC'S 4byte
     payload = data + 4;
 
-    that->_eth._RxBufferOffset = ((length + that->_eth._RxBufferOffset + 4 + 3) % (64 * 1024 + 16)) & ~0b11;
-    that->WriteReg<uint16_t>(kRegRxCAP,that->_eth._RxBufferOffset - 0x10);
+    that->_eth._rx_buffer_offset = ((length + that->_eth._rx_buffer_offset + 4 + 3) % (64 * 1024 + 16)) & ~0b11;
+    that->WriteReg<uint16_t>(kRegRxCAP,that->_eth._rx_buffer_offset - 0x10);
 
     if (that->_eth._rx_reserved.Pop(packet)) {
       memcpy(packet->GetBuffer(),payload,length);
@@ -150,7 +150,7 @@ void Rtl8139::Rtl8139Ethernet::PollingHandler(Rtl8139 *that){
   for(int i = 0;i < 4;i++){
     uint32_t tx_status = that->ReadReg<uint32_t>(kRegTxStatus + i*4);
     if(tx_status & (1 << 15)){
-      that->_eth._TxDescriptorStatus |= (1 << i);
+      that->_eth._tx_descriptor_status |= (1 << i);
     }
   }
 
@@ -195,18 +195,18 @@ void Rtl8139::Rtl8139Ethernet::Transmit(void *buffer){
   uint32_t length = packet->len;
   uint8_t *buf = packet->GetBuffer();
 
-  uint32_t entry = _currentTxDescriptor;
-  _currentTxDescriptor = (_currentTxDescriptor + 1)%4;
+  uint32_t entry = _current_tx_descriptor;
+  _current_tx_descriptor = (_current_tx_descriptor + 1)%4;
 
-  if(!(_TxDescriptorStatus & (1 << entry))){
+  if(!(_tx_descriptor_status & (1 << entry))){
     //bit立ってない＝TxOKがまだ
     //なんか処理する
     return;
   }
   //TxOK
-  memcpy(reinterpret_cast<uint8_t*>(_TxBuffer[entry].GetVirtAddr()),buf,length);
+  memcpy(reinterpret_cast<uint8_t*>(_tx_buffer[entry].GetVirtAddr()),buf,length);
   _master.WriteReg<uint32_t>(kRegTxStatus + entry*4,((256 << 11) & 0x003f0000) | length);  //256 means http://www.jbox.dk/sanos/source/sys/dev/rtl8139.c.html#:56
-  _TxDescriptorStatus = _TxDescriptorStatus & ~(1 << entry);
+  _tx_descriptor_status = _tx_descriptor_status & ~(1 << entry);
 
 }
 
@@ -222,7 +222,7 @@ void Rtl8139::Rtl8139Ethernet::InterruptHandler(void *p){
 
   if(status & kIsrRok){
     if(!(that->ReadReg<uint8_t>(kRegCommand) & kCmdRxBufEmpty)){
-      data = reinterpret_cast<uint8_t*>(that->_eth._RxBuffer.GetVirtAddr() + that->_eth._RxBufferOffset);
+      data = reinterpret_cast<uint8_t*>(that->_eth._rx_buffer.GetVirtAddr() + that->_eth._rx_buffer_offset);
       length = *(uint16_t*)(data + 2); // it contains CRC'S 4byte
       payload = data + 4; 
 
@@ -234,8 +234,8 @@ void Rtl8139::Rtl8139Ethernet::InterruptHandler(void *p){
         }
       }
 
-      that->_eth._RxBufferOffset = ((length + that->_eth._RxBufferOffset + 4 + 3) % (64 * 1024 + 16)) & ~0b11;
-      that->WriteReg<uint16_t>(kRegRxCAP,that->_eth._RxBufferOffset - 0x10);
+      that->_eth._rx_buffer_offset = ((length + that->_eth._rx_buffer_offset + 4 + 3) % (64 * 1024 + 16)) & ~0b11;
+      that->WriteReg<uint16_t>(kRegRxCAP,that->_eth._rx_buffer_offset - 0x10);
     }
   }
   if(status & kIsrTok){
@@ -243,7 +243,7 @@ void Rtl8139::Rtl8139Ethernet::InterruptHandler(void *p){
       uint32_t tx_status = that->ReadReg<uint32_t>(kRegTxStatus + i*4);
       if(tx_status & (1 << 15)){
         //OWN bit, transmit to FIFO
-        that->_eth._TxDescriptorStatus |= (1 << i);
+        that->_eth._tx_descriptor_status |= (1 << i);
       }
     }
   }
@@ -251,8 +251,8 @@ void Rtl8139::Rtl8139Ethernet::InterruptHandler(void *p){
 
 void Rtl8139::Rtl8139Ethernet::SetRxTxConfigRegs(){
   //受信バッファ設定
-  physmem_ctrl->Alloc(_RxBuffer,PagingCtrl::kPageSize * 17);
-  _master.WriteReg<uint32_t>(kRegRxAddr,_RxBuffer.GetAddr());
+  physmem_ctrl->Alloc(_rx_buffer,PagingCtrl::kPageSize * 17);
+  _master.WriteReg<uint32_t>(kRegRxAddr,_rx_buffer.GetAddr());
   //Receive Configuration Registerの設定
   //７bit目はwrapで最後にあふれた時に、リングの先頭に戻るか(０)、そのままはみでるか(１)
   //1にするなら余裕を持って確保すること
@@ -260,8 +260,8 @@ void Rtl8139::Rtl8139Ethernet::SetRxTxConfigRegs(){
   //0b11 means 64KB + 16 bytes 上ではwrap用の余分含めて66KB確保してある 
   
   for(int i = 0;i < 4;i++){
-    physmem_ctrl->Alloc(_TxBuffer[i],PagingCtrl::kPageSize);
-    _master.WriteReg<uint32_t>(kRegTxAddr + i*4,_TxBuffer[i].GetAddr());
+    physmem_ctrl->Alloc(_tx_buffer[i],PagingCtrl::kPageSize);
+    _master.WriteReg<uint32_t>(kRegTxAddr + i*4,_tx_buffer[i].GetAddr());
   }
   //CRCはハード側でつけてくれる
   _master.WriteReg<uint32_t>(kRegTxConfig,4 << 8);
@@ -294,9 +294,10 @@ void Rtl8139::Rtl8139Ethernet::Start(){
      SetStatus(LinkStatus::kUp);
   }
 
- _StatusCheckCallout = new Callout;
- _StatusCheckCallout->Init(make_uptr(new Function<Rtl8139Ethernet*>(Rtl8139::Rtl8139Ethernet::CheckHwState,this))); 
+  _status_check_thread = ThreadCtrl::GetCtrl(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority)).AllocNewThread(Thread::StackState::kShared);
+  _status_check_thread->CreateOperator().SetFunc(make_uptr(new Function<Rtl8139Ethernet*>(Rtl8139::Rtl8139Ethernet::CheckHwState,this))); 
 
+  _status_check_thread->CreateOperator().Schedule(1000 * 1000);
 }
 
 
@@ -308,6 +309,7 @@ void Rtl8139::Rtl8139Ethernet::CheckHwState(Rtl8139Ethernet *p){
   else {
     p->SetStatus(LinkStatus::kDown);
   }
+  p->_status_check_thread->CreateOperator().Schedule(1000 * 1000);
 }
 
 

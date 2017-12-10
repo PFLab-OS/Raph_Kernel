@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2016 Raphine Project
+ * Copyright (c) 2017 Raphine Project
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -20,19 +20,19 @@
  * 
  */
 
+#pragma once
+
 #include <sys/kernel.h>
 #include <sys/bus.h>
 #include <sys/types-raph.h>
 #include <sys/rman.h>
+#include <sys/thread-raph.h>
 #include <raph.h>
-#include <task.h>
+#include <thread.h>
 #include <idt.h>
 #include <apic.h>
 #include <global.h>
 #include <dev/pci.h>
-
-#ifndef __RAPH_KERNEL_FREEBSD_SYS_BUS_RAPH_H__
-#define __RAPH_KERNEL_FREEBSD_SYS_BUS_RAPH_H__
 
 class BsdDevBus : public BsdDevice {
 public:
@@ -74,7 +74,8 @@ public:
   class IntContainer {
   public:
     IntContainer() {
-      _ctask.SetFunc(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), make_uptr(new ClassFunction<IntContainer, void *>(this, &IntContainer::HandleSub, nullptr)));
+      _cthread.Init(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority));
+      _cthread.SetFunc(make_uptr(new ClassFunction<IntContainer, void *>(this, &IntContainer::HandleSub, nullptr)));
     }
     void SetVector(int vector) {
       _vector = vector;
@@ -86,7 +87,7 @@ public:
       }
       if (_ithread != nullptr) {
         apic_ctrl->MaskInt(_vector, true);
-        _ctask.Inc();
+        _cthread.Inc();
       }
     }
     void SetFilter(driver_filter_t filter, void *arg) {
@@ -101,12 +102,12 @@ public:
     void HandleSub(void *) {
       if (_ithread != nullptr) {
         _ithread(_iarg);
-        if (_ctask.GetCnt() == 0) {
+        if (_cthread.GetCnt() == 0) {
           apic_ctrl->MaskInt(_vector, false);
         }
       }
     }
-    CountableTask _ctask;
+    CountableThread _cthread;
     
     driver_filter_t _filter = nullptr;
     void *_farg;
@@ -253,4 +254,3 @@ private:
   IntContainer *_icontainer_list = nullptr;
 };
 
-#endif // __RAPH_KERNEL_FREEBSD_SYS_BUS_RAPH_H__

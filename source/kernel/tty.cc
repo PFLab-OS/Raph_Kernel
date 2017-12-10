@@ -24,7 +24,7 @@
 #include <mem/virtmem.h>
 #include <cpu.h>
 #include <global.h>
-#include <task.h>
+#include <thread.h>
 
 void Tty::Setup() {
   _cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority);
@@ -58,7 +58,8 @@ void Tty::PrintErrString(String *str) {
 }
 
 void Tty::DoString(String *str) {
-  if (_cpuid.IsValid() && task_ctrl->GetState(_cpuid) != TaskCtrl::TaskQueueState::kNotStarted) {
+  if (_cpuid.IsValid() && ThreadCtrl::IsInitialized() &&
+      ThreadCtrl::GetCtrl(_cpuid).GetState() != ThreadCtrl::QueueState::kNotStarted) {
     _queue.Push(str);
   } else {
     Locker locker(_lock);

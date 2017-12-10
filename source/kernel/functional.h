@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2016 Raphine Project
+ * Copyright (c) 2017 Raphine Project
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -22,7 +22,7 @@
 
 #pragma once
 
-#include <task.h>
+#include <thread.h>
 #include <functional.h>
 #include <raph.h>
 #include <_cpu.h>
@@ -33,12 +33,15 @@ class Functional {
     kFunctioning,
     kNotFunctioning,
   };
-  Functional() : _task(new Task) {
-    _task->SetFunc(make_uptr(new ClassFunction<Functional, void *>(this, &Functional::Handle, nullptr)));
+  Functional() {
   }
   virtual ~Functional() {
   }
-  void SetFunction(CpuId cpuid, uptr<GenericFunction<>> func);
+  void SetFunction(CpuId cpuid, uptr<GenericFunction<>> func) {
+    _thread = ThreadCtrl::GetCtrl(cpuid).AllocNewThread(Thread::StackState::kShared);
+    _thread->CreateOperator().SetFunc(make_uptr(new ClassFunction<Functional, void *>(this, &Functional::Handle, nullptr)));
+    _func = func;
+  }
  protected:
   void WakeupFunction();
   // check whether Functional needs to process function
@@ -46,30 +49,15 @@ class Functional {
 private:
   void Handle(void *);
   uptr<GenericFunction<>> _func;
-  sptr<Task> _task;
-  CpuId _cpuid;
-  SpinLock _lock;
+  uptr<Thread> _thread;
   FunctionState _state = FunctionState::kNotFunctioning;
 };
 
 inline void Functional::WakeupFunction() {
-  if (!_cpuid.IsValid()) {
-    // not initialized
-    return;
-  }
-
-  bool register_flag = false;
-  
-  {
-    Locker locker(_lock);
-    if (_state == FunctionState::kNotFunctioning) {
-      register_flag = true;
-      _state = FunctionState::kFunctioning;
+  if (__sync_lock_test_and_set(&_state, FunctionState::kFunctioning) == FunctionState::kNotFunctioning) {
+    if (!_thread.IsNull()) {
+      _thread->CreateOperator().Schedule();
     }
-  }
-
-  if (register_flag) {
-    task_ctrl->Register(_cpuid, _task);
   }
 }
 
@@ -84,27 +72,11 @@ inline void Functional::Handle(void *) {
     _func->Execute();
   }
 
-  assert(_state == FunctionState::kFunctioning);
+  kassert(_state == FunctionState::kFunctioning);
 
-  bool register_flag = false;
-  
-  {
-    Locker locker(_lock);
-    if (ShouldFunc()) {
-      register_flag = true;
-      _state = FunctionState::kFunctioning;
-    } else {
-      _state = FunctionState::kNotFunctioning;
-    }
-  }
-
-  if (register_flag) {
-    task_ctrl->Register(_cpuid, _task);
+  if (ShouldFunc()) {
+    _thread->CreateOperator().Schedule();
+  } else {
+    kassert(__sync_lock_test_and_set(&_state, FunctionState::kNotFunctioning) == FunctionState::kFunctioning);
   }
 }
-
-inline void Functional::SetFunction(CpuId cpuid, uptr<GenericFunction<>> func) {
-  _cpuid = cpuid;
-  _func = func;
-}
-

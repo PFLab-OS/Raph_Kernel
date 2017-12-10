@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2016 Raphine Project
+ * Copyright (c) 2017 Raphine Project
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -26,6 +26,8 @@
 #include <mem/physmem.h>
 #include <mem/virtmem.h>
 #include <global.h>
+#include <thread.h>
+#include <ptr.h>
 #include <dev/eth.h>
 #include <dev/pci.h>
 #include <freebsd/sys/types.h>
@@ -39,8 +41,6 @@ public:
   class IxGbeBsdEthernet : public BsdEthernet {
   public:
     IxGbeBsdEthernet(IxGbe &master) : _master(master) {
-      _link_check_callout = make_sptr(new Callout());
-      _link_check_callout->Init(make_uptr(new ClassFunction<IxGbeBsdEthernet, void *>(this, &IxGbeBsdEthernet::CheckLinkHandler, nullptr)));
     }
     
     static void PollingHandler(IxGbe *that);
@@ -57,7 +57,7 @@ public:
     }
   private:
     IxGbe &_master;
-    sptr<Callout> _link_check_callout;
+    uptr<Thread> _link_check_thread;
     
     IxGbeBsdEthernet();
     void CheckLinkHandler(void *);

@@ -193,8 +193,8 @@ void FrameBuffer::PrintShell(const char *str) {
 
 void FrameBuffer::Refresh() {
   if (_timeup_draw) {
-    if (task_ctrl->GetState(_draw_cpuid) !=
-        TaskCtrl::TaskQueueState::kNotStarted) {
+    if (ThreadCtrl::IsInitialized() &&
+        ThreadCtrl::GetCtrl(_draw_cpuid).GetState() != ThreadCtrl::QueueState::kNotStarted) {
       DisableTimeupDraw();
     } else {
       if (timer->ReadTime() >= _last_time_refresh + 33 * 1000) {
@@ -220,8 +220,8 @@ void FrameBuffer::DisableTimeupDraw() {
   _timeup_draw = false;
   _needs_redraw = true;
 
-  _refresh_callout = make_sptr(new Callout);
-  _refresh_callout->Init(make_uptr(new ClassFunction<FrameBuffer, void *>(
+  _refresh_thread = ThreadCtrl::GetCtrl(_draw_cpuid).AllocNewThread(Thread::StackState::kShared);
+  _refresh_thread->CreateOperator().SetFunc(make_uptr(new ClassFunction<FrameBuffer, void *>(
       this, &FrameBuffer::DoPeriodicRefresh, nullptr)));
   ScheduleRefresh();
 }

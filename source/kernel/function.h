@@ -40,15 +40,11 @@ public:
 template<class T, class... Args>
 class Function : public GenericFunction<Args...> {
 public:
-  Function(void (*func)(T, Args...), T arg) {
-    _func = func;
-    _arg = arg;
+  Function(void (*func)(T, Args...), T arg) : _func(func), _arg(arg) {
   }
   virtual ~Function() {
   }
-  Function(const Function &obj) {
-    _func = obj._func;
-    _arg = obj._arg;
+  Function(const Function &obj) : _func(obj._func), _arg(obj._arg) {
   }
   virtual void Execute(Args... args) override {
     _func(_arg, args...);
@@ -62,17 +58,11 @@ private:
 template<class T1, class T2, class... Args>
 class Function2 : public GenericFunction<Args...> {
 public:
-  Function2(void (*func)(T1, T2, Args...), T1 arg1, T2 arg2) {
-    _func = func;
-    _arg1 = arg1;
-    _arg2 = arg2;
+  Function2(void (*func)(T1, T2, Args...), T1 arg1, T2 arg2) : _func(func), _arg1(arg1), _arg2(arg2) {
   }
   virtual ~Function2() {
   }
-  Function2(const Function2 &obj) {
-    _func = obj._func;
-    _arg1 = obj._arg1;
-    _arg2 = obj._arg2;
+  Function2(const Function2 &obj) : _func(obj._func), _arg1(obj._arg1), _arg2(obj._arg2) {
   }
   virtual void Execute(Args... args) override {
     _func(_arg1, _arg2, args...);
@@ -87,19 +77,11 @@ private:
 template<class T1, class T2, class T3, class... Args>
 class Function3 : public GenericFunction<Args...> {
 public:
-  Function3(void (*func)(T1, T2, T3, Args...), T1 arg1, T2 arg2, T3 arg3) {
-    _func = func;
-    _arg1 = arg1;
-    _arg2 = arg2;
-    _arg3 = arg3;
+  Function3(void (*func)(T1, T2, T3, Args...), T1 arg1, T2 arg2, T3 arg3) : _func(func), _arg1(arg1), _arg2(arg2), _arg3(arg3) {
   }
   virtual ~Function3() {
   }
-  Function3(const Function3 &obj) {
-    _func = obj._func;
-    _arg1 = obj._arg1;
-    _arg2 = obj._arg2;
-    _arg3 = obj._arg3;
+  Function3(const Function3 &obj) : _func(obj._func), _arg1(obj._arg1), _arg2(obj._arg2), _arg3(obj._arg3) {
   }
   virtual void Execute(Args... args) override {
     _func(_arg1, _arg2, _arg3, args...);
@@ -112,18 +94,15 @@ private:
   T3 _arg3;
 };
 
+// Do not define Function4!
+// use struct as an alternative argument.
+
 template <class C, class T1, class... Args>
 class ClassFunction : public GenericFunction<Args...> {
 public:
-  ClassFunction(C *c, void (C::*func)(T1, Args... ), T1 arg) {
-    _c = c;
-    _func = func;
-    _arg = arg;
+  ClassFunction(C *c, void (C::*func)(T1, Args... ), T1 arg) : _c(c), _func(func), _arg(arg) {
   }
-  ClassFunction(const ClassFunction &obj) {
-    _c = obj._c;
-    _func = obj._func;
-    _arg = obj._arg;
+  ClassFunction(const ClassFunction &obj) : _c(obj._c), _func(obj._func), _arg(obj._arg) {
   }
   virtual ~ClassFunction() {
   }
@@ -140,17 +119,9 @@ private:
 template <class C, class T1, class T2, class... Args>
 class ClassFunction2 : public GenericFunction<Args...> {
 public:
-  ClassFunction2(C *c, void (C::*func)(T1, T2, Args...), T1 arg1, T2 arg2) {
-    _c = c;
-    _func = func;
-    _arg1 = arg1;
-    _arg2 = arg2;
+  ClassFunction2(C *c, void (C::*func)(T1, T2, Args...), T1 arg1, T2 arg2) : _c(c), _func(func), _arg1(arg1), _arg2(arg2) {
   }
-  ClassFunction2(const ClassFunction2 &obj) {
-    _c = obj._c;
-    _func = obj._func;
-    _arg1 = obj._arg1;
-    _arg2 = obj._arg2;
+  ClassFunction2(const ClassFunction2 &obj) : _c(obj._c), _func(obj._func), _arg1(obj._arg1), _arg2(obj._arg2) {
   }
   virtual ~ClassFunction2() {
   }
@@ -168,19 +139,9 @@ private:
 template <class C, class T1, class T2, class T3, class... Args>
 class ClassFunction3 : public GenericFunction<Args...> {
 public:
-  ClassFunction3(C *c, void (C::*func)(T1, T2, Args...), T1 arg1, T2 arg2, T3 arg3) {
-    _c = c;
-    _func = func;
-    _arg1 = arg1;
-    _arg2 = arg2;
-    _arg3 = arg3;
+  ClassFunction3(C *c, void (C::*func)(T1, T2, Args...), T1 arg1, T2 arg2, T3 arg3) : _c(c), _func(func), _arg1(arg1), _arg2(arg2), _arg3(arg3) {
   }
-  ClassFunction3(const ClassFunction3 &obj) {
-    _c = obj._c;
-    _func = obj._func;
-    _arg1 = obj._arg1;
-    _arg2 = obj._arg2;
-    _arg3 = obj._arg3;
+  ClassFunction3(const ClassFunction3 &obj) : _c(obj._c), _func(obj._func), _arg1(obj._arg1), _arg2(obj._arg2), _arg3(obj._arg3) {
   }
   virtual ~ClassFunction3() {
   }
@@ -196,3 +157,5 @@ private:
   T3 _arg3;
 };
 
+// Do not define ClassFunction4!
+// use struct as an alternative argument.

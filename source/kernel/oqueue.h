@@ -69,7 +69,7 @@ class OrderedQueue {
     return (c == nullptr) ? 0 : c->_order;
   }
 private:
-  Container *_first;
+  Container *_first = nullptr;
   SpinLock2 _lock;
 };
 
