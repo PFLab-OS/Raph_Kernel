@@ -21,7 +21,6 @@
  */
 
 #pragma once
-
 #include <raph.h>
 
 // replace RingBuffer to this
