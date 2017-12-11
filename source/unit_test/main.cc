@@ -58,6 +58,8 @@ int main(int argc, char *argv[]) {
       rval = tests[i]->Test();
     } catch (ExceptionAssertionFailure t) {
       t.Show();
+    } catch(...) {
+      cout << "\x1b[31munknown exception!\x1b[0m" << endl;
     }
     if (rval) {
       passed++;
