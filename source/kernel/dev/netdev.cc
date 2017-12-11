@@ -45,7 +45,7 @@ bool NetDevCtrl::RegisterDevice(NetDev *dev, const char *prefix) {
     _dev_table[_current_device_number].device = dev;
 
     // allocate protocol stack
-    // ProtocolStack *addr = reinterpret_cast<ProtocolStack*>(kernel_virtmem_ctrl->KernelHeapAlloc(sizeof(ProtocolStack)));
+    // ProtocolStack *addr = reinterpret_cast<ProtocolStack*>(kernel_virtmem_ctrl->Alloc(sizeof(ProtocolStack)));
     // ProtocolStack *ptcl_stack = new(addr) ProtocolStack();
     // ptcl_stack->Setup();
 

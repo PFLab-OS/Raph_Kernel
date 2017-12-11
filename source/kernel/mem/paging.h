@@ -245,16 +245,7 @@ static inline phys_addr k2p(virt_addr addr) {
 }
 
 class MemSpace {
-private:
-  virt_addr pt_mem;
-  PageTable* GetPml4tAddr() {
-    pt_mem = kernel_virtmem_ctrl->KernelHeapAlloc(PagingCtrl::kPageSize*2);
-    return reinterpret_cast<PageTable*>((reinterpret_cast<uint64_t>(pt_mem) + PagingCtrl::kPageSize) & ~(PagingCtrl::kPageSize - 1));
-  }
-
-  static void CopyMemSpaceSub(entry_type*, const entry_type*, int);
-  SpinLock _lock;
-
+  friend class PagingCtrl;
 public:
   MemSpace() :_pml4t(GetPml4tAddr()) {
     kassert(_pml4t);
@@ -264,7 +255,7 @@ public:
   }
 
   ~MemSpace() {
-    kernel_virtmem_ctrl->KernelHeapFree(pt_mem);
+    kernel_virtmem_ctrl->Free(_pt_mem);
   }
 
   void Init() {
@@ -273,8 +264,16 @@ public:
 
   static void CopyMemSpace(MemSpace* mdst,const MemSpace* msrc);
 
-  PageTable* const _pml4t;
+private:
+  virt_addr _pt_mem;
+  PageTable* GetPml4tAddr() {
+    _pt_mem = kernel_virtmem_ctrl->Alloc(PagingCtrl::kPageSize*2);
+    return reinterpret_cast<PageTable*>((reinterpret_cast<uint64_t>(_pt_mem) + PagingCtrl::kPageSize) & ~(PagingCtrl::kPageSize - 1));
+  }
 
+  static void CopyMemSpaceSub(entry_type*, const entry_type*, int);
+  SpinLock _lock;
+  PageTable* const _pml4t;
 };
 
 #endif // ! ASM_FILE

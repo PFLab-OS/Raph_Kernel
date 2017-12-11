@@ -59,22 +59,22 @@ KernelVirtmemCtrl::KernelVirtmemCtrl() {
 
 }
 
-void KernelVirtmemCtrl::Init1() {
+void KernelVirtmemCtrl::Init() {
   extern PageTable initial_PML4T;
   paging_ctrl = new PagingCtrl(reinterpret_cast<phys_addr>(&initial_PML4T));
   paging_ctrl->MapAllPhysMemory();
 }
 
-void KernelVirtmemCtrl::Init2() {
+void KernelVirtmemCtrl::ReleaseLowMemory() {
   paging_ctrl->ReleaseLowMemory();
 }
 
-virt_addr KernelVirtmemCtrl::KernelHeapAlloc(size_t size) {
+virt_addr KernelVirtmemCtrl::Alloc(size_t size) {
   Locker locker(_lock);
   return reinterpret_cast<virt_addr>(dlmalloc_wrapper(size));
 }
 
-void KernelVirtmemCtrl::KernelHeapFree(virt_addr addr) {
+void KernelVirtmemCtrl::Free(virt_addr addr) {
   Locker locker(_lock);
   dlfree(reinterpret_cast<void *>(addr));
 }
@@ -115,25 +115,25 @@ extern "C" void *sbrk(intptr_t increment) {
 }
 
 void *operator new(size_t size) {
-  return reinterpret_cast<void *>(kernel_virtmem_ctrl->KernelHeapAlloc(size));
+  return reinterpret_cast<void *>(kernel_virtmem_ctrl->Alloc(size));
 }
 
 void *operator new[](size_t size) {
-  return reinterpret_cast<void *>(kernel_virtmem_ctrl->KernelHeapAlloc(size));
+  return reinterpret_cast<void *>(kernel_virtmem_ctrl->Alloc(size));
 }
 
 void operator delete(void *p) {
-  kernel_virtmem_ctrl->KernelHeapFree(reinterpret_cast<virt_addr>(p));
+  kernel_virtmem_ctrl->Free(reinterpret_cast<virt_addr>(p));
 }
 
 void operator delete(void *p, size_t) {
-  kernel_virtmem_ctrl->KernelHeapFree(reinterpret_cast<virt_addr>(p));
+  kernel_virtmem_ctrl->Free(reinterpret_cast<virt_addr>(p));
 }
 
 void operator delete[](void *p) {
-  kernel_virtmem_ctrl->KernelHeapFree(reinterpret_cast<virt_addr>(p));
+  kernel_virtmem_ctrl->Free(reinterpret_cast<virt_addr>(p));
 }
 
 void operator delete[](void *p, size_t) {
-  kernel_virtmem_ctrl->KernelHeapFree(reinterpret_cast<virt_addr>(p));
+  kernel_virtmem_ctrl->Free(reinterpret_cast<virt_addr>(p));
 }

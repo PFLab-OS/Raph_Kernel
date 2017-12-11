@@ -31,14 +31,6 @@ class VirtmemCtrlInterface {
 public:
   virtual virt_addr Sbrk(int64_t increment) = 0;
   virtual void Switch() = 0;
-
-  //make protected
-  PagingCtrl *paging_ctrl;
-protected:
-  // For treating heap memory
-  virt_addr _heap_allocated_end;
-  virt_addr _brk_end;
-  virt_addr _heap_limit;
 };
 
 // In this class, paging_ctrl's cr3 Register variable is no meaning.
@@ -51,27 +43,33 @@ class KernelVirtmemCtrl final : public VirtmemCtrlInterface {
 
   // 新規に仮想メモリ領域を確保する。
   // 物理メモリが割り当てられていない領域の場合は物理メモリを割り当てる
-  virt_addr KernelHeapAlloc(size_t size);
+  virt_addr Alloc(size_t size);
   // This function releases virtual memory but does not release physical memory.
-  void KernelHeapFree(virt_addr addr);
+  void Free(virt_addr addr);
 
   //TODO: rename
-  void Init1();
-  void Init2();
+  void Init();
+  void ReleaseLowMemory();
 
   void Switch();
 
   // For Initialization 
-  virt_addr KernelHeapAllocZ(size_t size) {
-    virt_addr addr = KernelHeapAlloc(size);
+  virt_addr AllocZ(size_t size) {
+    virt_addr addr = Alloc(size);
     bzero(reinterpret_cast<void *>(addr), size);
     return addr;
   }
   virt_addr Sbrk(int64_t increment);
   virt_addr GetHeapEnd() { return _brk_end; }
 
+  //make protected
+  PagingCtrl *paging_ctrl;
  private:
   SpinLock _lock;
+  // For treating heap memory
+  virt_addr _heap_allocated_end;
+  virt_addr _brk_end;
+  virt_addr _heap_limit;
 };
 
 class VirtmemCtrl : public VirtmemCtrlInterface {
@@ -90,6 +88,8 @@ public:
   virt_addr Sbrk(int64_t increment) {
     return 0;
   }
+  //make protected
+  PagingCtrl *paging_ctrl;
 private:
   SpinLock _lock;
 };

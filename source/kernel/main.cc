@@ -738,7 +738,7 @@ extern "C" int main() {
   
   multiboot_ctrl->Setup();
 
-  kernel_virtmem_ctrl->Init1();
+  kernel_virtmem_ctrl->Init();
 
   gtty->Init();
 
@@ -779,7 +779,7 @@ extern "C" int main() {
   // 実行する事
   apic_ctrl->StartAPs();
 
-  kernel_virtmem_ctrl->Init2();
+  kernel_virtmem_ctrl->ReleaseLowMemory();
 
   gtty->Setup();
 

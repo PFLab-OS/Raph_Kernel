@@ -129,7 +129,7 @@ template <typename T>
 T *Allocator<T>::Extend(T *entry) {
   Container *tmp = nullptr;
   kassert(kernel_virtmem_ctrl != nullptr);
-  tmp = reinterpret_cast<Container *>(kernel_virtmem_ctrl->KernelHeapAlloc(sizeof(Container)));
+  tmp = reinterpret_cast<Container *>(kernel_virtmem_ctrl->Alloc(sizeof(Container)));
   tmp = new(tmp) Container;
   Locker locker(_lock);
   tmp->_next = _list;

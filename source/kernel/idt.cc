@@ -104,10 +104,10 @@ void Idt::SetupGeneric() {
   _idtr[4] = (idt_addr >> 48) & 0xffff;
   kassert(kernel_virtmem_ctrl != nullptr);
   kassert(apic_ctrl != nullptr);
-  _callback = reinterpret_cast<IntCallback **>(kernel_virtmem_ctrl->KernelHeapAlloc(sizeof(IntCallback *) * apic_ctrl->GetHowManyCpus()));
-  _handling_cnt = reinterpret_cast<int *>(kernel_virtmem_ctrl->KernelHeapAlloc(sizeof(int) * apic_ctrl->GetHowManyCpus()));
+  _callback = reinterpret_cast<IntCallback **>(kernel_virtmem_ctrl->Alloc(sizeof(IntCallback *) * apic_ctrl->GetHowManyCpus()));
+  _handling_cnt = reinterpret_cast<int *>(kernel_virtmem_ctrl->Alloc(sizeof(int) * apic_ctrl->GetHowManyCpus()));
   for (int i = 0; i < apic_ctrl->GetHowManyCpus(); i++) {
-    _callback[i] = reinterpret_cast<IntCallback *>(kernel_virtmem_ctrl->KernelHeapAlloc(sizeof(IntCallback) * 256));
+    _callback[i] = reinterpret_cast<IntCallback *>(kernel_virtmem_ctrl->Alloc(sizeof(IntCallback) * 256));
     _handling_cnt[i] = 0;
     for (int j = 0; j < 256; j++) {
       _callback[i][j].callback = nullptr;

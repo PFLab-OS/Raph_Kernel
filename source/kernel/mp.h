@@ -32,7 +32,7 @@ public:
   MultiProcCtrl() {
   }
   void Init() {
-    _containers = kernel_virtmem_ctrl->KernelHeapAlloc(sizeof(class Container) * apic_ctrl->GetHowManyCpus());
+    _containers = kernel_virtmem_ctrl->Alloc(sizeof(class Container) * apic_ctrl->GetHowManyCpus());
     for(int i = 0; i < apic_ctrl->GetHowManyCpus(); i++) {
       new(&_containers[i]) Container;
     }
