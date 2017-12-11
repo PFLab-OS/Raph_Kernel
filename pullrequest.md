@@ -24,9 +24,7 @@ Pull Request 確認事項
 ### コーディング規約
 * 則っていない → reject or 後から修正コミット
 
-規約：Google C++ Style Guide
-非公式日本語訳：https://ttsuki.github.io/styleguide/cppguide.ja.html
-（一部独自ルールあり、独自ルールの詳細はTODO）
+→参考：[コーディング規約](codingstyle.md)
 
 ### 適切なブランチにPull Requestを出しているか
 
