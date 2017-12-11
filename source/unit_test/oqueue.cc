@@ -213,7 +213,7 @@ private:
   int _pop_cnt = 0;
   bool _error = false;
   bool _no_more_produce = false;
-  int _flag1;
+  int _flag1 = 0;
   static const int kElementNum = 20;
   static const int kThreadNum = 100;
 } static OBJ(__LINE__);
