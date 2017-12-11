@@ -174,19 +174,22 @@ private:
       while(_flag1 != kThreadNum + 1) {
         asm volatile("":::"memory");
       }
-      int cnt = 0;
-      int order = 0;
-      while (cnt < kElementNum * kThreadNum && !_error) {
-        OqElement *ele;
-        if (!_queue.IsEmpty()) {
-          kassert(order <= _queue.GetTopOrder());
+      for(int i = 0; i < kElementNum; i++) {
+        for(int j = 0; j < kThreadNum; j++) {
+          OqElement *ele;
+          while(_queue.IsEmpty()) {
+            kassert(!_no_more_produce);
+          }
           kassert(_queue.Pop(ele));
-          cnt++;
           __sync_fetch_and_add(&_pop_cnt, 1);
-        } else {
-          kassert(!_no_more_produce);
-          order = 0;
+          if (_error) {
+            break;
+          }
         }
+        if (_error) {
+          break;
+        }
+        _flag2++;
       }
     } catch (...) {
       *ep = std::current_exception();
@@ -199,6 +202,9 @@ private:
         asm volatile("":::"memory");
       }
       for (int i = 0; i < kElementNum; i++) {
+        while(_flag2 < i) {
+          asm volatile("":::"memory");
+        }
         _queue.Push(&_ele[id * kElementNum + i], id * kElementNum + i);
         __sync_fetch_and_add(&_push_cnt, 1);
       }
@@ -214,6 +220,7 @@ private:
   bool _error = false;
   bool _no_more_produce = false;
   int _flag1 = 0;
-  static const int kElementNum = 20;
-  static const int kThreadNum = 100;
+  int _flag2 = 0;
+  static const int kElementNum = 10;
+  static const int kThreadNum = 50;
 } static OBJ(__LINE__);
