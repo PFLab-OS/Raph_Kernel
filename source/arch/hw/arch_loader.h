@@ -53,7 +53,7 @@ struct Context {
 
 inline void SaveContext(Context* c,size_t base,size_t stack) {
     c->rsp = stack;
-    asm("movq %7,%%rax;"
+    asm volatile("movq %7,%%rax;"
         "subq $112,%%rax;"
         "movq 0(%%rax),%%rcx;"
         "movq %%rcx,%0;"
@@ -73,7 +73,7 @@ inline void SaveContext(Context* c,size_t base,size_t stack) {
         "=m"(c->rdx),"=m"(c->r10),"=m"(c->r8)
       : "m"(base)
       : "%rax","%rcx");
-    asm("movq %7,%%rax;"
+    asm volatile("movq %7,%%rax;"
         "subq $112,%%rax;"
         "movq 56(%%rax),%%rcx;"
         "movq %%rcx,%0;"
@@ -211,7 +211,7 @@ public:
     resume_elf_binary(&context,&_saved_rsp);
   } 
   virtual void ExitResume() {
-    asm("movq %0,%%rsp;"
+    asm volatile("movq %0,%%rsp;"
         "ret"
         ::"m"(_saved_rsp));
   }

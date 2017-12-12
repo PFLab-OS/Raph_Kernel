@@ -272,7 +272,6 @@ private:
   }
 
   static void CopyMemSpaceSub(entry_type*, const entry_type*, int);
-  SpinLock _lock;
   PageTable* const _pml4t;
 };
 

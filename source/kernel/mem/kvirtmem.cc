@@ -36,15 +36,6 @@ extern int kHeapEndAddr;
 extern "C" {
 void *dlmalloc(size_t);
 void dlfree(void *);
-void *dlmalloc_wrapper(size_t size) {
-  void *addr = dlmalloc(size);
-  if (!addr) {
-    while (true) {
-      asm volatile("cli;hlt;");
-    }
-  }
-  return addr;
-}
 }
 
 KernelVirtmemCtrl::KernelVirtmemCtrl() {
@@ -71,7 +62,13 @@ void KernelVirtmemCtrl::ReleaseLowMemory() {
 
 virt_addr KernelVirtmemCtrl::Alloc(size_t size) {
   Locker locker(_lock);
-  return reinterpret_cast<virt_addr>(dlmalloc_wrapper(size));
+  void *addr = dlmalloc(size);
+  if (!addr) {
+    while (true) {
+      kernel_panic("KernelVirtmemCtrl","failed to allocate kernel heap memory");
+    }
+  }
+  return reinterpret_cast<virt_addr>(addr);
 }
 
 void KernelVirtmemCtrl::Free(virt_addr addr) {

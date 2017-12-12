@@ -65,6 +65,7 @@ class KernelVirtmemCtrl final : public VirtmemCtrlInterface {
   //make protected
   PagingCtrl *paging_ctrl;
  private:
+  //TODO: Check if this lock need on many core machine.
   SpinLock _lock;
   // For treating heap memory
   virt_addr _heap_allocated_end;
@@ -90,6 +91,4 @@ public:
   }
   //make protected
   PagingCtrl *paging_ctrl;
-private:
-  SpinLock _lock;
 };
