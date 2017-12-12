@@ -28,6 +28,7 @@
 // !!!Important!!!
 // Popping from multiple threads is prohibited!
 // do not use inside interrupt handlers
+// TODO assert these restrictions
 template<class T, class U>
 class OrderedQueue {
  public:

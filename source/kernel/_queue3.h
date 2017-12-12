@@ -28,6 +28,8 @@
 // class T must contain Container & inherit ContainerInterface
 // !!!Important!!!
 // Popping from multiple threads is prohibited!
+// Popping from interrupt handlers is prohibited!
+// TODO assert these restrictions
 template<class T>
 class IntQueue {
  public:
@@ -57,12 +59,12 @@ class IntQueue {
   }
   void Push(T *data);
   // return false when the queue is empty
-  bool Pop(T *&data);
+  bool Pop(T *&data) __attribute__((warn_unused_result));
   bool IsEmpty() {
     return _first == nullptr;
   }
 private:
-  Container *_first;
+  Container *_first = nullptr;
   Container *_last = nullptr;
 };
 
@@ -94,7 +96,7 @@ bool IntQueue<T>::Pop(T *&data) {
     return false;
   }
 
-  kassert(disable_interrupt());
+  bool iflag = disable_interrupt();
   if (c->_next == nullptr && _last == c && __sync_bool_compare_and_swap(&_last, c, nullptr)) {
     _first = nullptr;
   } else {
@@ -103,7 +105,7 @@ bool IntQueue<T>::Pop(T *&data) {
     }
     _first = c->_next;
   }
-  enable_interrupt(true);
+  enable_interrupt(iflag);
   
   kassert(c->_status == Container::Status::kQueued);
   c->_status = Container::Status::kOutOfQueue;
