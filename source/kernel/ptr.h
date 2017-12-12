@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2016 Raphine Project
+ * Copyright (c) 2017 Raphine Project
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -22,7 +22,46 @@
 
 #pragma once
 
-#include <assert.h>
+#include <raph.h>
+
+// https://www.ruche-home.net/boyaki/2011-09-14/b361cc6d    
+template<class TBase, class TDerived>
+class IsBaseOf
+{
+private:
+  typedef char                  Yes;
+  typedef struct { char v[2]; } No;
+
+  static Yes check(const TBase&);
+  static No  check(...);
+
+  static TDerived d;
+public:
+  static const bool value = (sizeof(check(d)) == sizeof(Yes));
+};
+
+class CustomPtrObjInterface {
+public:
+  virtual void Delete() = 0;
+};
+
+template <class T, bool = IsBaseOf<CustomPtrObjInterface, T>::value>
+class PtrObj {
+public:
+  static void Delete(T *obj) {
+    delete obj;
+  }
+};
+
+template <class T>
+class PtrObj<T, true> {
+public:
+  static void Delete(T *obj) {
+    if (obj != nullptr) {
+      obj->Delete();
+    }
+  }
+};
 
 template<class T>
 class uptr {
@@ -44,7 +83,7 @@ public:
   // to manage raw ptr
   // ptr 'obj' must be allocated by 'new'
   explicit uptr(T *obj) {
-    assert(obj != nullptr);
+    kassert(obj != nullptr);
     _obj = obj;
   }
   uptr &operator=(const uptr &p) {
@@ -52,7 +91,7 @@ public:
     return *this;
   }
   uptr &operator=(uptr &p) {
-    delete _obj;
+    PtrObj<T>::Delete(_obj);
 
     if (p._obj != nullptr) {
       _obj = p._obj;
@@ -64,21 +103,21 @@ public:
     return (*this);
   }
   ~uptr() {
-    delete _obj;
+    PtrObj<T>::Delete(_obj);
   }
-  T *operator&();
+  T *operator&() = delete;
   T &operator*() {
     return *_obj;
   }
   T *operator->() {
     if (_obj == nullptr) {
-      assert(false);
+      kassert(false);
     }
     return _obj;
   }
   T *GetRawPtr() {
     if (_obj == nullptr) {
-      assert(false);
+      kassert(false);
     }
     return _obj;
   }
@@ -130,11 +169,11 @@ public:
   ~uptr() {
     delete [] _obj;
   }
-  Array *operator&();
-  Array *operator*();
+  Array *operator&() = delete;
+  Array *operator*() = delete;
   Array *operator->() {
     if (_obj == nullptr) {
-      assert(false);
+      kassert(false);
     }
     return _obj;
   }
@@ -143,7 +182,7 @@ public:
   }
   Array *GetRawPtr() {
     if (_obj == nullptr) {
-      assert(false);
+      kassert(false);
     }
     return _obj;
   }
@@ -168,13 +207,13 @@ inline uptr<T> make_uptr() {
   return p;
 }
 
-class counter_helper {
+class CounterHelper {
 private:
   template<class A>
   friend class sptr;
   template<class A>
   friend class wptr;
-  counter_helper() {
+  CounterHelper() {
     weak_cnt = 1;
     shared_cnt = 1;
   }
@@ -234,9 +273,9 @@ public:
     }
   }
   explicit sptr(T *obj) {
-    assert(obj != nullptr);
+    kassert(obj != nullptr);
     _obj = obj;
-    _helper = new counter_helper();
+    _helper = new CounterHelper();
   }
   sptr() {
     _obj = nullptr;
@@ -269,7 +308,7 @@ public:
   T &operator*();
   T *operator->() {
     if (_obj == nullptr) {
-      assert(false);
+      kassert(false);
     }
     return _obj;
   }
@@ -281,7 +320,7 @@ public:
   }
   T *GetRawPtr() {
     if (_obj == nullptr) {
-      assert(false);
+      kassert(false);
     }
     return _obj;
   }
@@ -315,7 +354,7 @@ private:
   template <class A>
   friend class wptr;
   T *_obj;
-  counter_helper *_helper;
+  CounterHelper *_helper;
 } __attribute__((__packed__));
 
 template<class T>
@@ -394,7 +433,7 @@ public:
   }
   T *operator->() {
     if (_obj == nullptr) {
-      assert(false);
+      kassert(false);
     }
     return _obj;
   }
@@ -406,7 +445,7 @@ public:
   }
   T *GetRawPtr() {
     if (_obj == nullptr) {
-      assert(false);
+      kassert(false);
     }
     return _obj;
   }
@@ -436,7 +475,7 @@ private:
   template <typename A>
   friend class sptr;
   T *_obj;
-  counter_helper *_helper;
+  CounterHelper *_helper;
 } __attribute__((__packed__));
 template <class T>
 inline sptr<T> make_sptr(T *ptr) {
