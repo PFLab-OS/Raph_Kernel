@@ -54,8 +54,8 @@ private:
 };
 
 inline void Functional::WakeupFunction() {
-  if (__sync_lock_test_and_set(&_state, FunctionState::kFunctioning) == FunctionState::kNotFunctioning) {
-    if (!_thread.IsNull()) {
+  if (!_thread.IsNull()) {
+    if (__sync_lock_test_and_set(&_state, FunctionState::kFunctioning) == FunctionState::kNotFunctioning) {
       _thread->CreateOperator().Schedule();
     }
   }
