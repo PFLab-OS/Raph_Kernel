@@ -55,7 +55,7 @@ void Shell::Exec(const char *name, int argc, const char **argv) {
     }
   }
 
-  gtty->Printf("unknown command: %s\n", name);
+  gtty->Printf("unknown command: <%s>\n", name);
 }
 
 void Shell::ReadCh(char c) {
@@ -64,11 +64,7 @@ void Shell::ReadCh(char c) {
 
 void Shell::Execute(uptr<ExecContainer> ec) {
   if (ec->argc > 0) {
-    auto callout_ = make_sptr(new Callout);
-    callout_->Init(make_uptr(new Function2<wptr<Callout>, uptr<ExecContainer>>([](wptr<Callout> callout, uptr<ExecContainer> ec_) {
-            ec_->shell->Exec(ec_->name, ec_->argc, ec_->argv);
-          }, make_wptr(callout_), ec)));
-    task_ctrl->RegisterCallout(callout_, cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), 0);
+    ec->shell->Exec(ec->name, ec->argc, ec->argv);
   }
 }
 

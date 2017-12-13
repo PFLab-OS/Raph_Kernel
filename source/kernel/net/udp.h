@@ -27,25 +27,69 @@
 #include <ptr.h>
 #include <function.h>
 #include <string.h>
+#include <dev/netdev.h>
+#include <queue.h>
 
 class UdpCtrl {
 public:
+  struct Packet {
+    uint8_t dest_ip_addr[4];
+    uint16_t dest_port;
+    uint16_t source_port;
+    uptr<Array<uint8_t>> data;
+  };
+  struct RxPacket {
+    uint8_t dest_ip_addr[4];
+    uint8_t source_ip_addr[4];
+    uint16_t dest_port;
+    uint16_t source_port;
+    uptr<Array<uint8_t>> data;
+    NetDev *dev;
+  };
   static void Init();
   static UdpCtrl &GetCtrl() {
-    kassert(_udp_ctrl != nullptr);
-    return *_udp_ctrl;
+    return _udp_ctrl;
   }
   void SetupServer();
+  // Deprecated
   void Send(uint8_t (*target_addr)[4], uint16_t target_port, const uint8_t *data, size_t len);
   void SendStr(uint8_t (*target_addr)[4], uint16_t target_port, const char *data) {
     Send(target_addr, target_port, reinterpret_cast<const uint8_t *>(data), strlen(data));
   }
+  // TODO reimplement to queue based architecture
+  void Send(uptr<Packet> packet);
+  void SendBroadCast(uptr<Packet> packet, NetDev *dev);
+  class ProtocolInterface {
+  public:
+  protected:
+    friend class UdpCtrl;
+    virtual FunctionalQueue2<uptr<RxPacket>> &GetRxQueue() = 0;
+  };
+  void RegisterSocket(uint16_t port, ProtocolInterface *protocol) {
+    for (int i = 0; i < kSocketNum; i++) {
+      if (_socket[i].protocol == nullptr) {
+        _socket[i].protocol = protocol;
+        _socket[i].port = port;
+        return;
+      }
+    }
+    kernel_panic("UdpCtrl", "No software resource");
+  }
+private:
+  struct FullPacket {
+    uint8_t dest_mac_addr[6];
+    uint8_t source_ip_addr[4];
+    uptr<Packet> packet;
+    NetDev *dev;
+  };
+  void Send(uptr<FullPacket> full_packet);
+  void DummyServer(NetDev *dev);
+    
+  static UdpCtrl _udp_ctrl;
+  static const int kSocketNum = 10;
   class Socket {
   public:
-    uint16_t port;
-    GenericFunction<> func;
-  };
-private:
-  static UdpCtrl *_udp_ctrl;
-  uptr<Socket> _socket[10];
+    uint16_t port = 0;
+    ProtocolInterface *protocol = nullptr;
+  } _socket[kSocketNum];
 };

@@ -24,9 +24,12 @@
 
 #include <buf.h>
 #include <dev/device.h>
+#include <thread.h>
 
 class Keyboard : public Device {
 public:
+  Keyboard() {
+  }
   void Setup();
 protected:
   static const int kBufSize = 100;

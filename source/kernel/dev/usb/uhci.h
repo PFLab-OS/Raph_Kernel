@@ -29,16 +29,17 @@
 #include <buf.h>
 #include <dev/usb/usb.h>
 #include <list.h>
+#include <thread.h>
 
 class DevUhci final : public DevPci {
 public:
-  DevUhci(uint8_t bus, uint8_t device, uint8_t function) : DevPci(bus, device, function), _int_task(new Task), _controller_dev(this) {
+  DevUhci(uint8_t bus, uint8_t device, uint8_t function) : DevPci(bus, device, function), _controller_dev(this) {
   }
   static DevPci *InitPci(uint8_t bus, uint8_t device, uint8_t function);
   void Init();
   virtual void Attach() override;
 private:
-  sptr<Task> _int_task;
+  uptr<Thread> _int_thread;
 
   class QueueHead;
   

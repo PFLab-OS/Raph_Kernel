@@ -71,7 +71,8 @@ void DevEhci::Init() {
 
   _op_reg_base_addr[kOpRegOffsetCtrlDsSegment] = 0;
 
-  _int_task->SetFunc(make_uptr(new ClassFunction<DevEhci, void *>(this, &DevEhci::CheckQueuedTdIfCompleted, nullptr)));
+  _int_thread = ThreadCtrl::GetCtrl(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority)).AllocNewThread(Thread::StackState::kShared);
+  _int_thread->CreateOperator().SetFunc(make_uptr(new ClassFunction<DevEhci, void *>(this, &DevEhci::CheckQueuedTdIfCompleted, nullptr)));
   assert(HasLegacyInterrupt());
   SetLegacyInterrupt(Handler, reinterpret_cast<void *>(this), Idt::EoiType::kIoapic);
   _op_reg_base_addr[kOpRegOffsetUsbIntr] |= kOpRegUsbIntrFlagInterruptEnable;
@@ -200,10 +201,8 @@ void DevEhci::HandlerSub() {
     return;
   }
   _op_reg_base_addr[kOpRegOffsetUsbIntr] &= ~kOpRegUsbIntrFlagInterruptEnable;
-    
-  if (!_int_task->IsRegistered()) {
-    task_ctrl->Register(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), _int_task);
-  }
+
+  _int_thread->CreateOperator().Schedule();
 }
 
 template<class QueueHead, class TransferDescriptor>

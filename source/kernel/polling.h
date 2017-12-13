@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2016 Raphine Project
+ * Copyright (c) 2017 Raphine Project
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -20,12 +20,12 @@
  * 
  */
 
-#ifndef __RAPH_KERNEL_DEV_POLLING_H__
-#define __RAPH_KERNEL_DEV_POLLING_H__
+#pragma once
+
 #include <timer.h>
 #include <global.h>
 #include <raph.h>
-#include <task.h>
+#include <thread.h>
 #include <cpu.h>
 
 class Polling {
@@ -34,42 +34,40 @@ class Polling {
     kPolling,
     kStopped,
   };
-  Polling() : _task(new Task) {
-    _task->SetFunc(make_uptr(new ClassFunction<Polling, void *>(this, &Polling::HandleSub, nullptr)));
+  Polling() {
   }
   ~Polling() {
-    if (_state == PollingState::kPolling) {
-      // TODO implementation
-      kernel_panic("Polling", "unexpectedly deleted");
-    }
+    RemovePolling(); 
   }
   void RegisterPolling(CpuId cpuid) {
     if (_state == PollingState::kPolling) {
       return;
     }
-    _cpuid = cpuid;
     _state = PollingState::kPolling;
-    task_ctrl->Register(_cpuid, _task);
+    _thread = ThreadCtrl::GetCtrl(cpuid).AllocNewThread(Thread::StackState::kIndependent);
+    _thread->CreateOperator().SetFunc(make_uptr(new ClassFunction<Polling, void *>(this, &Polling::HandleSub, nullptr)));
+    _thread->CreateOperator().Schedule();
   }
   void RemovePolling() {
     if (_state == PollingState::kStopped) {
       return;
     }
     _state = PollingState::kStopped;
+    uptr<Thread> null_thread;
+    _thread = null_thread;
   }
   virtual void Handle() = 0;
  private:
   void HandleSub(void *) {
     if (_state == PollingState::kPolling) {
       Handle();
-      task_ctrl->Register(_cpuid, _task);
+      _thread->CreateOperator().Schedule();
     } else {
       RemovePolling();
     }
   }
   PollingState _state = PollingState::kStopped;
-  CpuId _cpuid;
-  sptr<Task> _task;
+  uptr<Thread> _thread;
 };
 
 class PollingFunc : public Polling {
@@ -93,4 +91,4 @@ class PollingFunc : public Polling {
   uptr<GenericFunction<>> _func;
 };
 
-#endif /* __RAPH_KERNEL_DEV_POLLING_H__ */
+

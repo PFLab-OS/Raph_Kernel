@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2016 Raphine Project
+ * Copyright (c) 2017 Raphine Project
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -20,19 +20,11 @@
  * 
  */
 
+#include "taskqueue.h"
 #include <raph.h>
-#include <task.h>
 #include <cpu.h>
 #include <ptr.h>
-#include "taskqueue.h"
-
-struct TaskContainer {
-public:
-  TaskContainer() : task(new CountableTask) {
-  }
-  sptr<CountableTask> task;
-private:
-};
+#include "thread-raph.h"
 
 extern "C" {
 
@@ -43,22 +35,23 @@ extern "C" {
     t->ta_pending++;
   }
 
-
   void _task_init(struct task *t, int priority, task_fn_t *func, void *context) {
-    t->ta_task = new TaskContainer();
-    t->ta_task->task->SetFunc(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), make_uptr(new Function<struct task *>(__taskqueue_handle, t)));
+    t->ta_thread = new CountableThread;
+    t->ta_thread->Init(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority));
+    t->ta_thread->SetFunc(make_uptr(new Function<struct task *>(__taskqueue_handle, t)));
     t->ta_pending = 0;
     t->ta_func = (func);
     t->ta_context = (context);
   }
 
-  int taskqueue_enqueue(struct taskqueue *queue, struct task *task) {
-    task->ta_task->task->Inc();
+  int taskqueue_enqueue(struct taskqueue *, struct task *task) {
+    task->ta_thread->Inc();
     return 0;
   }
 
-  void taskqueue_drain(struct taskqueue *queue, struct task *task) {
-    // TODO have to wait until task was finished
-    task->ta_task->task->Inc();
+  void taskqueue_drain(struct taskqueue *, struct task *task) {
+    while(task->ta_thread->GetState() == Thread::State::kRunning) {
+      asm volatile("":::"memory");
+    }
   }
 }

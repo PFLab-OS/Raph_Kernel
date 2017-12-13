@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2016 Raphine Project 
+ * Copyright (c) 2017 Raphine Project
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -22,15 +22,8 @@
 
 #pragma once
 
-class CpuCtrlInterface;
-class Tty;
-class Timer;
-class VirtmemCtrl;
-
-extern CpuCtrlInterface *cpu_ctrl;
-extern Tty *gtty;
-extern Tty *gerr;
-extern Timer *timer;
-extern VirtmemCtrl *virtmem_ctrl;
-
-
+class DhcpClient {
+public:
+  
+private:
+};

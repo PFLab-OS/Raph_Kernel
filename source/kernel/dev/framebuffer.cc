@@ -68,9 +68,79 @@ void FrameBuffer::Init() {
   _draw_cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority);
 }
 
+void FrameBuffer::StringRingBuffer::Write(char32_t c) {
+  assert(((_write_pos + 1) & _index_mask) != _read_pos);
+  assert(((_write_pos + 2) & _index_mask) != _read_pos);
+  if (c == '\n') {
+    _char_buffer[_write_pos] = c;
+    _write_pos = ((_write_pos + 1) & _index_mask);
+    _last_row_width_used = 0;
+    _row_count++;
+    if (_row_count > _screen_rows) {
+      // scroll
+      char32_t ch;
+      do {
+        ch = _char_buffer[_read_pos];
+        _read_pos = ((_read_pos + 1) & _index_mask);
+      } while (ch != '\n');
+      _row_count--;
+      _scroll_count++;
+    }
+  } else {
+    uint32_t fontIndex = _font->GetIndex(c);
+    size_t fontWidth = _font->GetWidth(fontIndex);
+    if (fontWidth + _last_row_width_used > _screen->width) {
+      // wrap line
+      Write('\n');
+    }
+    _char_buffer[_write_pos] = c;
+    _write_pos = ((_write_pos + 1) & _index_mask);
+    _last_row_width_used += fontWidth;
+  }
+}
+
+int FrameBuffer::CachedFont::PrintChar(uint8_t *vram, int vramXSize, int px, int py, char32_t c) {
+  if (!_is_initialized || _bytesPerPixel == 0) return 0;
+  uint8_t *font;
+  int fontWidth;
+
+  if (0 <= c && c < _cachedCount && _fontCache && _widthChache) {
+    // use cached font
+    fontWidth = _widthChache[c];
+    font = getFontCache(c);
+  } else {
+    // not in cache
+    GetPixels(c, _bytesPerPixel, GetMaxw(), _tmpFont, fontWidth, _fColor,
+              _bColor);
+    font = _tmpFont;
+  }
+
+  for (int y = 0; y < GetMaxh(); y++) {
+    memcpy(&vram[((y + py) * vramXSize + px) * _bytesPerPixel],
+           &font[(y * GetMaxw() + 0) * _bytesPerPixel],
+           _bytesPerPixel * fontWidth);
+  }
+  return fontWidth;
+}
+
+void FrameBuffer::CachedFont::UpdateCache() {
+  delete _tmpFont;
+  delete _widthChache;
+  delete _fontCache;
+  //
+  _tmpFont = new uint8_t[GetMaxh() * GetMaxw() * _bytesPerPixel];
+  _fontCache =
+    new uint8_t[GetMaxh() * GetMaxw() * _bytesPerPixel * _cachedCount];
+  _widthChache = new int[_cachedCount];
+  for (uint32_t k = 0; k < _cachedCount; k++) {
+    uint8_t *font = getFontCache(k);
+    GetPixels(k, _bytesPerPixel, GetMaxw(), font, _widthChache[k], _fColor,
+              _bColor);
+  }
+}
+
 void FrameBuffer::Write(char c) {
   Locker locker(_lock);
-  //_info_buffer->Write(c);
   _str_buffer->Write(c);
   Refresh();
 }
@@ -121,6 +191,23 @@ void FrameBuffer::PrintShell(const char *str) {
   Refresh();
 }
 
+void FrameBuffer::Refresh() {
+  if (_timeup_draw) {
+    if (ThreadCtrl::IsInitialized() &&
+        ThreadCtrl::GetCtrl(_draw_cpuid).GetState() != ThreadCtrl::QueueState::kNotStarted) {
+      DisableTimeupDraw();
+    } else {
+      if (timer->ReadTime() >= _last_time_refresh + 33 * 1000) {
+        DrawScreen();
+        _last_time_refresh = timer->ReadTime();
+      }
+    }
+  } else {
+    _needs_redraw = true;
+  }
+}
+
+
 void FrameBuffer::DoPeriodicRefresh(void *) {
   Locker locker(_lock);
   if (_needs_redraw) {
@@ -133,8 +220,8 @@ void FrameBuffer::DisableTimeupDraw() {
   _timeup_draw = false;
   _needs_redraw = true;
 
-  _refresh_callout = make_sptr(new Callout);
-  _refresh_callout->Init(make_uptr(new ClassFunction<FrameBuffer, void *>(
+  _refresh_thread = ThreadCtrl::GetCtrl(_draw_cpuid).AllocNewThread(Thread::StackState::kShared);
+  _refresh_thread->CreateOperator().SetFunc(make_uptr(new ClassFunction<FrameBuffer, void *>(
       this, &FrameBuffer::DoPeriodicRefresh, nullptr)));
   ScheduleRefresh();
 }

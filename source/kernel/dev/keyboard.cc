@@ -27,8 +27,7 @@
 #include <global.h>
 
 void Keyboard::Setup() {
-  CpuId cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority);
-  _buf.SetFunction(cpuid, make_uptr(new ClassFunction<Keyboard, void *>(this, &Keyboard::Handle, nullptr)));
+  _buf.SetFunction(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), make_uptr(new ClassFunction<Keyboard, void *>(this, &Keyboard::Handle, nullptr)));
   SetupSub();
 }
 

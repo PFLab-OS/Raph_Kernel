@@ -26,6 +26,7 @@
 #include <tty.h>
 #include <global.h>
 #include <list.h>
+#include <thread.h>
 
 Time cnt;
 int64_t sum = 0;
@@ -131,89 +132,92 @@ void send_arp_packet(NetDev *dev, uint8_t *ipaddr) {
     memcpy(target_addr, ipaddr, 4);
     cnt = 0;
     sum = 0;
-    auto callout_ = make_sptr(new Callout);
-    callout_->Init(make_uptr(new Function2<wptr<Callout>, NetDev *>([](wptr<Callout> callout, NetDev *eth){
-            if (!apic_ctrl->IsBootupAll()) {
-              task_ctrl->RegisterCallout(make_sptr(callout), 1000);
-              return;
-            }
-            eth->UpdateLinkStatus();
-            if (eth->GetStatus() != NetDev::LinkStatus::kUp) {
-              task_ctrl->RegisterCallout(make_sptr(callout), 1000);
-              return;
-            }
-            if (cnt != 0) {
-              task_ctrl->RegisterCallout(make_sptr(callout), 1000);
-              return;
-            }
-            for(int k = 0; k < 1; k++) {
-              if (time == 0) {
-                break;
+    auto thread = ThreadCtrl::GetCtrl(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority)).AllocNewThread(Thread::StackState::kShared);
+    do {
+      auto t_op = thread->CreateOperator();
+      t_op.SetFunc(make_uptr(new Function<NetDev *>([](NetDev *eth){
+              auto t_op2 = ThreadCtrl::GetCurrentThreadOperator();
+              if (!apic_ctrl->IsBootupAll()) {
+                t_op2.Schedule(1000);
+                return;
               }
-              uint8_t data[] = {
-                0xff, 0xff, 0xff, 0xff, 0xff, 0xff, // Target MAC Address
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source MAC Address
-                0x08, 0x06, // Type: ARP
-                // ARP Packet
-                0x00, 0x01, // HardwareType: Ethernet
-                0x08, 0x00, // ProtocolType: IPv4
-                0x06, // HardwareLength
-                0x04, // ProtocolLength
-                0x00, 0x01, // Operation: ARP Request
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source Hardware Address
-                0x00, 0x00, 0x00, 0x00, // Source Protocol Address
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
-                // Target Protocol Address
-                0x00, 0x00, 0x00, 0x00
-              };
-              static_cast<DevEthernet *>(eth)->GetEthAddr(data + 6);
-              memcpy(data + 22, data + 6, 6);
-              uint32_t my_addr;
-              assert(eth->GetIpv4Address(my_addr));
-              data[28] = (my_addr >> 0) & 0xff;
-              data[29] = (my_addr >> 8) & 0xff;
-              data[30] = (my_addr >> 16) & 0xff;
-              data[31] = (my_addr >> 24) & 0xff;
-              memcpy(data + 38, target_addr, 4);
-              uint32_t len = sizeof(data)/sizeof(uint8_t);
-              NetDev::Packet *tpacket;
-              kassert(eth->GetTxPacket(tpacket));
-              memcpy(tpacket->GetBuffer(), data, len);
-              tpacket->len = len;
-              cnt = timer->ReadTime();
-              eth->TransmitPacket(tpacket);
-              // gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
-              time--;
-            }
-            if (time != 0) {
-              task_ctrl->RegisterCallout(make_sptr(callout), 1000);
-            }
-          }, make_wptr(callout_), dev)));
-    if (callout_->IsRegistered()) {
-      task_ctrl->CancelCallout(callout_);
-    }
-    task_ctrl->RegisterCallout(callout_, cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), 1000);
+              eth->UpdateLinkStatus();
+              if (eth->GetStatus() != NetDev::LinkStatus::kUp) {
+                t_op2.Schedule(1000);
+                return;
+              }
+              if (cnt != 0) {
+                t_op2.Schedule(1000);
+                return;
+              }
+              for(int k = 0; k < 1; k++) {
+                if (time == 0) {
+                  break;
+                }
+                uint8_t data[] = {
+                  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, // Target MAC Address
+                  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source MAC Address
+                  0x08, 0x06, // Type: ARP
+                  // ARP Packet
+                  0x00, 0x01, // HardwareType: Ethernet
+                  0x08, 0x00, // ProtocolType: IPv4
+                  0x06, // HardwareLength
+                  0x04, // ProtocolLength
+                  0x00, 0x01, // Operation: ARP Request
+                  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Source Hardware Address
+                  0x00, 0x00, 0x00, 0x00, // Source Protocol Address
+                  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Target Hardware Address
+                  // Target Protocol Address
+                  0x00, 0x00, 0x00, 0x00
+                };
+                static_cast<DevEthernet *>(eth)->GetEthAddr(data + 6);
+                memcpy(data + 22, data + 6, 6);
+                uint32_t my_addr;
+                assert(eth->GetIpv4Address(my_addr));
+                data[28] = (my_addr >> 0) & 0xff;
+                data[29] = (my_addr >> 8) & 0xff;
+                data[30] = (my_addr >> 16) & 0xff;
+                data[31] = (my_addr >> 24) & 0xff;
+                memcpy(data + 38, target_addr, 4);
+                uint32_t len = sizeof(data)/sizeof(uint8_t);
+                NetDev::Packet *tpacket;
+                kassert(eth->GetTxPacket(tpacket));
+                memcpy(tpacket->GetBuffer(), data, len);
+                tpacket->len = len;
+                cnt = timer->ReadTime();
+                eth->TransmitPacket(tpacket);
+                // gtty->Printf("s", "[debug] info: Packet sent (length = ", "d", len, "s", ")\n");
+                time--;
+              }
+              if (time != 0) {
+                t_op2.Schedule(1000);
+              }
+            }, dev)));
+      t_op.Schedule(1000);
+    } while(0);
+    thread->Join();
   }
 
-  {
-    auto callout_ = make_sptr(new Callout);
-    callout_->Init(make_uptr(new Function2<wptr<Callout>, NetDev *>([](wptr<Callout> callout, NetDev *eth){
-            if (rtime > 0) {
-              gtty->Printf("ARP Reply average latency:%dus [%d/%d]\n", sum / rtime, rtime, stime);
-            } else {
-              if (eth->GetStatus() == NetDev::LinkStatus::kUp) {
-                gtty->Printf("Link is Up, but no ARP Reply\n");
+  do {
+    auto thread = ThreadCtrl::GetCtrl(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority)).AllocNewThread(Thread::StackState::kShared);
+    do {
+      auto t_op = thread->CreateOperator();
+      t_op.SetFunc(make_uptr(new Function<NetDev *>([](NetDev *eth){
+              if (rtime > 0) {
+                gtty->Printf("ARP Reply average latency:%dus [%d/%d]\n", sum / rtime, rtime, stime);
               } else {
-                gtty->Printf("Link is Down, please wait...\n");
+                if (eth->GetStatus() == NetDev::LinkStatus::kUp) {
+                  gtty->Printf("Link is Up, but no ARP Reply\n");
+                } else {
+                  gtty->Printf("Link is Down, please wait...\n");
+                }
               }
-            }
-            if (rtime != stime) {
-              task_ctrl->RegisterCallout(make_sptr(callout), 1000*1000*3);
-            }
-          }, make_wptr(callout_), dev)));
-    if (callout_->IsRegistered()) {
-      task_ctrl->CancelCallout(callout_);
-    }
-    task_ctrl->RegisterCallout(callout_, cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), 2000);
-  }
+              if (rtime != stime) {
+                ThreadCtrl::GetCurrentThreadOperator().Schedule(1000 * 1000 * 3);
+              }
+            }, dev)));
+      t_op.Schedule(2000);
+    } while(0);
+    thread->Join();
+  } while(0);
 }

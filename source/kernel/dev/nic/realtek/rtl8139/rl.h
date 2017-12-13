@@ -17,16 +17,14 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  * Author: mumumu
- * 
- */
-#pragma once
-/*
+ *
  * This code is a devece driver for rtl8139 which is old realtek NIC.
  * Tested Environment:
  *    Qemu Emulation(only)
- *
+ * 
  */
 
+#pragma once
 
 #include <polling.h>
 #include <mem/paging.h>
@@ -38,6 +36,7 @@
 #include <dev/pci.h>
 #include <global.h>
 #include <stdint.h>
+#include <thread.h>
 
 
 class Rtl8139 : public DevPci{
@@ -71,13 +70,13 @@ private:
     static void CheckHwState(Rtl8139Ethernet*);
   private:
     Rtl8139 &_master;
-    uint32_t _TxDescriptorStatus = 0b1111;
-    uint32_t _currentTxDescriptor = 0;
-    PhysAddr _TxBuffer[4];
-    PhysAddr _RxBuffer;
-    uint32_t _RxBufferOffset = 0;
+    uint32_t _tx_descriptor_status = 0b1111;
+    uint32_t _current_tx_descriptor = 0;
+    PhysAddr _tx_buffer[4];
+    PhysAddr _rx_buffer;
+    uint32_t _rx_buffer_offset = 0;
 
-    Callout *_StatusCheckCallout;
+    uptr<Thread> _status_check_thread;
 
 
     //Registers see datasheet p16

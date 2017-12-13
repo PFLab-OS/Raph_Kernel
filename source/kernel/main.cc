@@ -31,7 +31,7 @@
 #include <mem/paging.h>
 #include <mem/virtmem.h>
 #include <raph_acpi.h>
-#include <task.h>
+#include <thread.h>
 #include <timer.h>
 #include <tty.h>
 #include <shell.h>
@@ -54,9 +54,9 @@
 
 #include <dev/netdev.h>
 #include <dev/eth.h>
-// #include <net/arp.h>
 #include <net/arp.h>
 #include <net/udp.h>
+#include <net/dhcp.h>
 
 AcpiCtrl *acpi_ctrl = nullptr;
 ApicCtrl *apic_ctrl = nullptr;
@@ -80,7 +80,6 @@ Idt _idt;
 VirtmemCtrl _virtmem_ctrl;
 PhysmemCtrl _physmem_ctrl;
 PagingCtrl _paging_ctrl;
-TaskCtrl _task_ctrl;
 Hpet _htimer;
 FrameBuffer _framebuffer;
 Shell _shell;
@@ -164,7 +163,7 @@ static bool parse_ipaddr(const char *c, uint8_t *addr) {
 }
 
 static void setip(int argc, const char *argv[]) {
-  if (argc != 3) {
+  if (argc < 3) {
     gtty->Printf("invalid argument\n");
     return;
   }
@@ -176,13 +175,27 @@ static void setip(int argc, const char *argv[]) {
   NetDev *dev = info->device;
 
   uint8_t addr[4] = {0, 0, 0, 0};
-  if (!parse_ipaddr(argv[2], addr)) {
-    gtty->Printf("invalid ip v4 addr.\n");
+  if (!strcmp(argv[2], "static")) {
+    if (argc != 4) {
+      gtty->Printf("invalid argument\n");
+      return;
+    }
+    if (!parse_ipaddr(argv[3], addr)) {
+      gtty->Printf("invalid ip v4 addr.\n");
+      return;
+    }
+    dev->AssignIpv4Address(*(reinterpret_cast<uint32_t *>(addr)));
+  } else if (!strcmp(argv[2], "dhcp")) {
+    if (argc != 3) {
+      gtty->Printf("invalid argument\n");
+      return;
+    }
+
+    DhcpCtrl::GetCtrl().AssignAddr(dev);
+  } else {
+    gtty->Printf("invalid argument\n");
     return;
   }
-
-  dev->AssignIpv4Address((addr[3] << 24) | (addr[2] << 16) | (addr[1] << 8) |
-                         addr[0]);
 }
 
 static void ifconfig(int argc, const char *argv[]) {
@@ -367,75 +380,71 @@ static void arp_scan(int argc, const char *argv[]) {
     for (int j = 1; j < 255; j++) {
       uint32_t my_addr_int;
       assert(dev->GetIpv4Address(my_addr_int));
-      auto callout_ = make_sptr(new Callout);
-      struct Container {
-        wptr<Callout> callout;
-        NetDev *eth;
-        uint8_t target_addr[4];
-      };
-      auto container_ = make_uptr(new Container);
-      container_->callout = make_wptr(callout_);
-      container_->eth = dev;
-      container_->target_addr[0] = (my_addr_int >> 0) & 0xff;
-      container_->target_addr[1] = (my_addr_int >> 8) & 0xff;
-      container_->target_addr[2] = (my_addr_int >> 16) & 0xff;
-      container_->target_addr[3] = j;
-      callout_->Init(make_uptr(new Function<uptr<Container>>(
-          [](uptr<Container> container) {
-            uint8_t data[] = {
-                0xff, 0xff, 0xff, 0xff, 0xff, 0xff,  // Target MAC Address
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // Source MAC Address
-                0x08, 0x06,                          // Type: ARP
-                // ARP Packet
-                0x00, 0x01,                          // HardwareType: Ethernet
-                0x08, 0x00,                          // ProtocolType: IPv4
-                0x06,                                // HardwareLength
-                0x04,                                // ProtocolLength
-                0x00, 0x01,                          // Operation: ARP Request
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // Source Hardware Address
-                0x00, 0x00, 0x00, 0x00,              // Source Protocol Address
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // Target Hardware Address
-                // Target Protocol Address
-                0x00, 0x00, 0x00, 0x00};
-            static_cast<DevEthernet *>(container->eth)->GetEthAddr(data + 6);
-            memcpy(data + 22, data + 6, 6);
-            uint32_t my_addr;
-            assert(container->eth->GetIpv4Address(my_addr));
-            data[28] = (my_addr >> 0) & 0xff;
-            data[29] = (my_addr >> 8) & 0xff;
-            data[30] = (my_addr >> 16) & 0xff;
-            data[31] = (my_addr >> 24) & 0xff;
-            memcpy(data + 38, container->target_addr, 4);
-            uint32_t len = sizeof(data) / sizeof(uint8_t);
-            NetDev::Packet *tpacket;
-            kassert(container->eth->GetTxPacket(tpacket));
-            memcpy(tpacket->GetBuffer(), data, len);
-            tpacket->len = len;
-            container->eth->TransmitPacket(tpacket);
-          },
-          container_)));
-      if (callout_->IsRegistered()) {
-        task_ctrl->CancelCallout(callout_);
-      }
-      task_ctrl->RegisterCallout(
-          callout_, cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority),
-          1000);
+      uptr<Thread> thread = ThreadCtrl::GetCtrl(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority)).AllocNewThread(Thread::StackState::kShared);
+      do {
+        auto t_op = thread->CreateOperator();
+        struct Container {
+          NetDev *eth;
+          uint8_t target_addr[4];
+        };
+        auto container_ = make_uptr(new Container);
+        container_->eth = dev;
+        container_->target_addr[0] = (my_addr_int >> 0) & 0xff;
+        container_->target_addr[1] = (my_addr_int >> 8) & 0xff;
+        container_->target_addr[2] = (my_addr_int >> 16) & 0xff;
+        container_->target_addr[3] = j;
+        t_op.SetFunc(make_uptr(new Function<uptr<Container>>([](uptr<Container> container) {
+                uint8_t data[] = {
+                  0xff, 0xff, 0xff, 0xff, 0xff, 0xff,  // Target MAC Address
+                  0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // Source MAC Address
+                  0x08, 0x06,                          // Type: ARP
+                  // ARP Packet
+                  0x00, 0x01,                          // HardwareType: Ethernet
+                  0x08, 0x00,                          // ProtocolType: IPv4
+                  0x06,                                // HardwareLength
+                  0x04,                                // ProtocolLength
+                  0x00, 0x01,                          // Operation: ARP Request
+                  0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // Source Hardware Address
+                  0x00, 0x00, 0x00, 0x00,              // Source Protocol Address
+                  0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // Target Hardware Address
+                  // Target Protocol Address
+                  0x00, 0x00, 0x00, 0x00};
+                static_cast<DevEthernet *>(container->eth)->GetEthAddr(data + 6);
+                memcpy(data + 22, data + 6, 6);
+                uint32_t my_addr;
+                assert(container->eth->GetIpv4Address(my_addr));
+                data[28] = (my_addr >> 0) & 0xff;
+                data[29] = (my_addr >> 8) & 0xff;
+                data[30] = (my_addr >> 16) & 0xff;
+                data[31] = (my_addr >> 24) & 0xff;
+                memcpy(data + 38, container->target_addr, 4);
+                uint32_t len = sizeof(data) / sizeof(uint8_t);
+                NetDev::Packet *tpacket;
+                kassert(container->eth->GetTxPacket(tpacket));
+                memcpy(tpacket->GetBuffer(), data, len);
+                tpacket->len = len;
+                container->eth->TransmitPacket(tpacket);
+              },
+              container_)));
+        t_op.Schedule();
+      } while(0);
+      thread->Join();
     }
   }
-  auto callout_ = make_sptr(new Callout);
-  callout_->Init(make_uptr(new Function<void *>(
-      [](void *) {
-        auto devices_ = netdev_ctrl->GetNamesOfAllDevices();
-        for (size_t i = 0; i < devices_->GetLen(); i++) {
-          auto dev = netdev_ctrl->GetDeviceInfo((*devices_)[i])->device;
-          dev->SetReceiveCallback(network_cpu,
-                                  make_uptr(new GenericFunction<>()));
-        }
-      },
-      nullptr)));
-  task_ctrl->RegisterCallout(
-      callout_, cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority),
-      3 * 1000 * 1000);
+  uptr<Thread> thread = ThreadCtrl::GetCtrl(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority)).AllocNewThread(Thread::StackState::kShared);
+  do {
+    auto t_op = thread->CreateOperator();
+    t_op.SetFunc(make_uptr(new Function<void *>([](void *) {
+            auto devices_ = netdev_ctrl->GetNamesOfAllDevices();
+            for (size_t i = 0; i < devices_->GetLen(); i++) {
+              auto dev = netdev_ctrl->GetDeviceInfo((*devices_)[i])->device;
+              dev->SetReceiveCallback(network_cpu,
+                                      make_uptr(new GenericFunction<>()));
+            }
+          }, nullptr)));
+    t_op.Schedule(3 * 1000 * 1000);
+  } while(0);
+  thread->Join();
 }
 
 ArpTable *arp_table = nullptr;
@@ -477,96 +486,82 @@ static void show(int argc, const char *argv[]) {
   }
 }
 
-struct LoadContainer {
-  LoadContainer() = delete;
-  LoadContainer(uptr<Array<uint8_t>> data_) : data(data_) {}
-  uptr<Array<uint8_t>> data;
-  size_t i = 0;
-};
-
-static void wait_until_linkup(sptr<Callout> sh_task, int argc,
-                              const char *argv[]) {
+static void wait_until_linkup(int argc, const char *argv[]) {
   if (argc != 2) {
     gtty->Printf("invalid argument.\n");
-    task_ctrl->RegisterCallout(sh_task, 10);
     return;
   }
   NetDevCtrl::NetDevInfo *info = netdev_ctrl->GetDeviceInfo(argv[1]);
   if (info == nullptr) {
     gtty->Printf("no such device.\n");
-    task_ctrl->RegisterCallout(sh_task, 10);
     return;
   }
   NetDev *dev_ = info->device;
-  auto callout_ = make_sptr(new Callout);
-  callout_->Init(
-      make_uptr(new Function3<wptr<Callout>, sptr<Callout>, NetDev *>(
-          [](wptr<Callout> callout, sptr<Callout> sh_task_, NetDev *dev) {
-            if (dev->IsLinkUp()) {
-              task_ctrl->RegisterCallout(sh_task_, 10);
-            } else {
-              task_ctrl->RegisterCallout(make_sptr(callout), 1000 * 1000);
+  uptr<Thread> thread = ThreadCtrl::GetCtrl(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority)).AllocNewThread(Thread::StackState::kShared);
+  do {
+    Thread::Operator t_op = thread->CreateOperator();
+    t_op.SetFunc(make_uptr(new Function<NetDev *>([](NetDev *dev) {
+            if (!dev->IsLinkUp()) {
+              ThreadCtrl::GetCurrentThreadOperator().Schedule(1000 * 1000);
             }
-          },
-          make_wptr(callout_), sh_task, dev_)));
-  task_ctrl->RegisterCallout(callout_, 10);
+          }, dev_)));
+    t_op.Schedule();
+  } while(0);
+  thread->Join();
 }
 
-static void load_script(sptr<LoadContainer> container_) {
-  auto callout_ = make_sptr(new Callout);
-  callout_->Init(make_uptr(new Function2<wptr<Callout>, sptr<LoadContainer>>(
-      [](wptr<Callout> callout, sptr<LoadContainer> container) {
-        size_t i = container->i;
-        while (container->i <= container->data->GetLen()) {
-          if (container->i == container->data->GetLen() ||
-              (*container->data)[container->i] == '\n' ||
-              (*container->data)[container->i] == '\0') {
-            char buffer[container->i - i + 1];
-            memcpy(buffer,
-                   reinterpret_cast<char *>(container->data->GetRawPtr()) + i,
-                   container->i - i);
-            buffer[container->i - i] = '\0';
-            auto ec = make_uptr(new Shell::ExecContainer(shell));
-            ec = shell->Tokenize(ec, buffer);
-            int timeout = 10;
-            if (strlen(buffer) != 0) {
-              gtty->Printf("> %s\n", buffer);
-              if (strcmp(ec->argv[0], "wait") == 0) {
-                if (ec->argc == 2) {
-                  int t = 0;
-                  for (size_t l = 0; l < strlen(ec->argv[1]); l++) {
-                    if ('0' > ec->argv[1][l] || ec->argv[1][l] > '9') {
-                      gtty->Printf("invalid argument.\n");
-                      t = 0;
-                      break;
-                    }
-                    t = t * 10 + ec->argv[1][l] - '0';
-                  }
-                  timeout = t * 1000 * 1000;
-                } else {
+static void load_script(uptr<Array<uint8_t>> data) {
+  size_t old_index = 0;
+  size_t index = 0;
+  while (index <= data->GetLen()) {
+    if (index == data->GetLen() ||
+        (*data)[index] == '\r' ||
+        (*data)[index] == '\n' ||
+         (*data)[index] == '\0') {
+      if (old_index != index) {
+        char buffer[index - old_index + 1];
+        memcpy(buffer,
+               reinterpret_cast<char *>(data->GetRawPtr()) + old_index,
+               index - old_index);
+        buffer[index - old_index] = '\0';
+        auto ec = make_uptr(new Shell::ExecContainer(shell));
+        ec = shell->Tokenize(ec, buffer);
+        int timeout = 0;
+        if (strlen(buffer) != 0) {
+          gtty->Printf("> %s\n", buffer);
+          if (strcmp(ec->argv[0], "wait") == 0) {
+            if (ec->argc == 2) {
+              int t = 0;
+              for (size_t l = 0; l < strlen(ec->argv[1]); l++) {
+                if ('0' > ec->argv[1][l] || ec->argv[1][l] > '9') {
                   gtty->Printf("invalid argument.\n");
+                  t = 0;
+                  break;
                 }
-              } else if (strcmp(ec->argv[0], "wait_until_linkup") == 0) {
-                wait_until_linkup(make_sptr(callout), ec->argc, ec->argv);
-                return;
-              } else {
-                shell->Execute(ec);
+                t = t * 10 + ec->argv[1][l] - '0';
               }
+              timeout = t * 1000 * 1000;
+            } else {
+              gtty->Printf("invalid argument.\n");
             }
-            if (container->i < container->data->GetLen()) {
-              container->i++;
-              task_ctrl->RegisterCallout(make_sptr(callout), timeout);
-            }
-            return;
+          } else if (strcmp(ec->argv[0], "wait_until_linkup") == 0) {
+            wait_until_linkup(ec->argc, ec->argv);
+          } else {
+            shell->Execute(ec);
           }
-          if ((*container->data)[container->i] == '\0') {
-            break;
-          }
-          container->i++;
         }
-      },
-      make_wptr(callout_), container_)));
-  task_ctrl->RegisterCallout(callout_, 10);
+        if (timeout != 0) {
+          ThreadCtrl::GetCurrentThreadOperator().Schedule(timeout);
+          ThreadCtrl::WaitCurrentThread();
+        }
+      }
+      if (index == data->GetLen() - 1 || index == data->GetLen() || (*data)[index] == '\0') {
+        break;
+      }
+      old_index = index + 1;
+    }
+    index++;
+  }
 }
 
 static void load(int argc, const char *argv[]) {
@@ -575,38 +570,41 @@ static void load(int argc, const char *argv[]) {
     return;
   }
   if (strcmp(argv[1], "script.sh") == 0) {
-    load_script(
-        make_sptr(new LoadContainer(multiboot_ctrl->LoadFile(argv[1]))));
+    load_script(multiboot_ctrl->LoadFile(argv[1]));
   } else if (strcmp(argv[1], "test.elf") == 0) {
     auto buf_ = multiboot_ctrl->LoadFile(argv[1]);
-    auto callout_ = make_sptr(new Callout);
-    callout_->Init(make_uptr(new Function2<wptr<Callout>, uptr<Array<uint8_t>>>(
-        [](wptr<Callout> callout, uptr<Array<uint8_t>> buf) {
-          Loader loader;
-          ElfObject obj(loader, buf->GetRawPtr());
-          if (obj.Init() != BinObjectInterface::ErrorState::kOk) {
-            gtty->Printf("error while loading app\n");
-          } else {
-            obj.Execute();
-          }
-        },
-        make_wptr(callout_), buf_)));
-    task_ctrl->RegisterCallout(callout_, 10);
+    uptr<Thread> thread = ThreadCtrl::GetCtrl(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority)).AllocNewThread(Thread::StackState::kShared);
+    do {
+      auto t_op = thread->CreateOperator();
+      t_op.SetFunc(make_uptr(new Function<uptr<Array<uint8_t>>>([](uptr<Array<uint8_t>> buf) {
+              Loader loader;
+              ElfObject obj(loader, buf->GetRawPtr());
+              if (obj.Init() != BinObjectInterface::ErrorState::kOk) {
+                gtty->Printf("error while loading app\n");
+              } else {
+                obj.Execute();
+              }
+            }, buf_)));
+      t_op.Schedule();
+    } while(0);
+    thread->Join();
   } else if (strcmp(argv[1], "rump.bin") == 0) {
     auto buf_ = multiboot_ctrl->LoadFile(argv[1]);
-    auto callout_ = make_sptr(new Callout);
-    callout_->Init(make_uptr(new Function2<wptr<Callout>, uptr<Array<uint8_t>>>(
-        [](wptr<Callout> callout, uptr<Array<uint8_t>> buf) {
-          Ring0Loader loader;
-          RaphineRing0AppObject obj(loader, buf->GetRawPtr());
-          if (obj.Init() != BinObjectInterface::ErrorState::kOk) {
-            gtty->Printf("error while loading app\n");
-          } else {
-            obj.Execute();
-          }
-        },
-        make_wptr(callout_), buf_)));
-    task_ctrl->RegisterCallout(callout_, 10);
+    uptr<Thread> thread = ThreadCtrl::GetCtrl(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority)).AllocNewThread(Thread::StackState::kShared);
+    do {
+      auto t_op = thread->CreateOperator();
+      t_op.SetFunc(make_uptr(new Function<uptr<Array<uint8_t>>>([](uptr<Array<uint8_t>> buf) {
+              Ring0Loader loader;
+              RaphineRing0AppObject obj(loader, buf->GetRawPtr());
+              if (obj.Init() != BinObjectInterface::ErrorState::kOk) {
+                gtty->Printf("error while loading app\n");
+              } else {
+                obj.Execute();
+              }
+            }, buf_)));
+      t_op.Schedule();
+    } while(0);
+    thread->Join();
   } else {
     gtty->Printf("invalid argument.\n");
     return;
@@ -621,19 +619,21 @@ static void remote_load(int argc, const char *argv[]) {
   if (strcmp(argv[1], "test.elf") == 0) {
     SystemCallCtrl::GetCtrl().SetMode(SystemCallCtrl::Mode::kRemote);
     auto buf_ = multiboot_ctrl->LoadFile(argv[1]);
-    auto callout_ = make_sptr(new Callout);
-    callout_->Init(make_uptr(new Function2<wptr<Callout>, uptr<Array<uint8_t>>>(
-        [](wptr<Callout> callout, uptr<Array<uint8_t>> buf) {
-          Loader loader;
-          ElfObject obj(loader, buf->GetRawPtr());
-          if (obj.Init() != BinObjectInterface::ErrorState::kOk) {
-            gtty->Printf("error while loading app\n");
-          } else {
-            obj.Execute();
-          }
-        },
-        make_wptr(callout_), buf_)));
-    task_ctrl->RegisterCallout(callout_, 10);
+    uptr<Thread> thread = ThreadCtrl::GetCtrl(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority)).AllocNewThread(Thread::StackState::kShared);
+    do {
+      auto t_op = thread->CreateOperator();
+      t_op.SetFunc(make_uptr(new Function<uptr<Array<uint8_t>>>([](uptr<Array<uint8_t>> buf) {
+              Loader loader;
+              ElfObject obj(loader, buf->GetRawPtr());
+              if (obj.Init() != BinObjectInterface::ErrorState::kOk) {
+                gtty->Printf("error while loading app\n");
+              } else {
+                obj.Execute();
+              }
+            }, buf_)));
+      t_op.Schedule();
+    } while(0);
+    thread->Join();
   } else {
     gtty->Printf("invalid argument.\n");
     return;
@@ -641,30 +641,31 @@ static void remote_load(int argc, const char *argv[]) {
 }
 
 void beep(int argc, const char *argv[]) {
-  CpuId beep_cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority);
-  auto callout_ = make_sptr(new Callout);
-  callout_->Init(make_uptr(new Function<wptr<Callout>>(
-      [](wptr<Callout> callout) {
-        static int i = 0;
-        if (i < 6) {
-          uint16_t sound[6] = {905, 761, 452, 570, 508, 380};
-          uint8_t a = 0xb6;
-          outb(0x43, a);
-          uint8_t l = sound[i] & 0x00FF;
-          outb(0x42, l);
-          uint8_t h = (sound[i] >> 8) & 0x00FF;
-          outb(0x42, h);
-          uint8_t on = inb(0x61);
-          outb(0x61, (on | 0x03) & 0x0f);
-          i++;
-          task_ctrl->RegisterCallout(make_sptr(callout), 110000);
-        } else {
-          uint8_t off = inb(0x61);
-          outb(0x61, off & 0xd);
-        }
-      },
-      make_wptr(callout_))));
-  task_ctrl->RegisterCallout(callout_, beep_cpuid, 1);
+  uptr<Thread> thread = ThreadCtrl::GetCtrl(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority)).AllocNewThread(Thread::StackState::kShared);
+  do {
+    auto t_op = thread->CreateOperator();
+    t_op.SetFunc(make_uptr(new Function<void *>([](void *) {
+            static int i = 0;
+            if (i < 6) {
+              uint16_t sound[6] = {905, 761, 452, 570, 508, 380};
+              uint8_t a = 0xb6;
+              outb(0x43, a);
+              uint8_t l = sound[i] & 0x00FF;
+              outb(0x42, l);
+              uint8_t h = (sound[i] >> 8) & 0x00FF;
+              outb(0x42, h);
+              uint8_t on = inb(0x61);
+              outb(0x61, (on | 0x03) & 0x0f);
+              i++;
+              ThreadCtrl::GetCurrentThreadOperator().Schedule(110000);
+            } else {
+              uint8_t off = inb(0x61);
+              outb(0x61, off & 0xd);
+            }
+          }, nullptr)));
+    t_op.Schedule();
+  } while(0);
+  thread->Join();
 }
 
 static void membench(int argc, const char *argv[]) {
@@ -725,8 +726,6 @@ extern "C" int main() {
 
   paging_ctrl = new (&_paging_ctrl) PagingCtrl;
 
-  task_ctrl = new (&_task_ctrl) TaskCtrl;
-
   timer = new (&_htimer) Hpet;
 
   gtty = new (&_framebuffer) FrameBuffer;
@@ -769,7 +768,7 @@ extern "C" int main() {
 
   rnd_next = timer->ReadTime().GetRaw();
 
-  task_ctrl->Setup();
+  ThreadCtrl::Init();
 
   idt->SetupGeneric();
 
@@ -777,8 +776,8 @@ extern "C" int main() {
 
   gdt->SetupProc();
 
-  // 各コアは最低限の初期化ののち、TaskCtrlに制御が移さなければならない
-  // 特定のコアで専用の処理をさせたい場合は、TaskCtrlに登録したジョブとして
+  // 各コアは最低限の初期化ののち、ThreadCtrlに制御が移さなければならない
+  // 特定のコアで専用の処理をさせたい場合は、ThreadCtrlに登録したジョブとして
   // 実行する事
   apic_ctrl->StartAPs();
 
@@ -806,6 +805,7 @@ extern "C" int main() {
 
   arp_table = new ArpTable;
   UdpCtrl::Init();
+  DhcpCtrl::Init();
 
   shell->Setup();
   shell->Register("halt", halt);
@@ -825,10 +825,14 @@ extern "C" int main() {
   shell->Register("membench", membench);
   shell->Register("cat", cat);
 
-  load_script(
-      make_sptr(new LoadContainer(multiboot_ctrl->LoadFile("init.sh"))));
+  auto thread = ThreadCtrl::GetCtrl(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority)).AllocNewThread(Thread::StackState::kIndependent);
+  auto t_op = thread->CreateOperator();
+  t_op.SetFunc(make_uptr(new Function<void *>([](void *) {
+          load_script(multiboot_ctrl->LoadFile("init.sh"));
+        }, nullptr)));
+  t_op.Schedule();
 
-  task_ctrl->Run();
+  ThreadCtrl::GetCurrentCtrl().Run();
 
   return 0;
 }
@@ -841,43 +845,7 @@ extern "C" int main_of_others() {
   gdt->SetupProc();
   idt->SetupProc();
 
-// ループ性能測定用
-//#define LOOP_BENCHMARK
-#ifdef LOOP_BENCHMARK
-#define LOOP_BENCHMARK_CPU 4
-  PollingFunc p;
-  if (cpu_ctrl->GetCpuId().GetRawId() == LOOP_BENCHMARK_CPU) {
-    static int hoge = 0;
-    p.Init(make_uptr(new Function<void *>(
-        [](void *) {
-          int hoge2 = timer->GetUsecFromCnt(timer->ReadMainCnt()) - hoge;
-          gtty->Printf("%d ", hoge2);
-          hoge = timer->GetUsecFromCnt(timer->ReadMainCnt());
-        },
-        nullptr)));
-    p.Register();
-  }
-#endif
-
-// ワンショット性能測定用
-// #define ONE_SHOT_BENCHMARK
-#ifdef ONE_SHOT_BENCHMARK
-#define ONE_SHOT_BENCHMARK_CPU 5
-  if (cpu_ctrl->GetCpuId().GetRawId() == ONE_SHOT_BENCHMARK_CPU) {
-    auto callout_ = make_sptr(new Callout);
-    callout_->Init(make_uptr(new Function<wptr<Callout>>(
-        [](wptr<Callout> callout) {
-          if (!apic_ctrl->IsBootupAll()) {
-            task_ctrl->RegisterCallout(make_sptr(callout), 1000);
-            return;
-          }
-        },
-        make_wptr(callout_))));
-    task_ctrl->RegisterCallout(callout_, 10);
-  }
-#endif
-
-  task_ctrl->Run();
+  ThreadCtrl::GetCurrentCtrl().Run();
   return 0;
 }
 

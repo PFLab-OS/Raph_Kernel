@@ -59,7 +59,7 @@ class OrderedQueue {
   }
   void Push(T *data, U order);
   // return false when the queue is empty
-  bool Pop(T *&data);
+  bool Pop(T *&data) __attribute__((warn_unused_result));
   bool IsEmpty() {
     return _first == nullptr;
   }
@@ -69,7 +69,7 @@ class OrderedQueue {
     return (c == nullptr) ? 0 : c->_order;
   }
 private:
-  Container *_first;
+  Container *_first = nullptr;
   SpinLock2 _lock;
 };
 

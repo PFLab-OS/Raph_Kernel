@@ -1,0 +1,5 @@
+show info
+wait_until_linkup ixgbe1
+udp_setup
+setip ixgbe1 dhcp
+

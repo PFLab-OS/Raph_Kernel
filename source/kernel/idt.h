@@ -64,7 +64,7 @@ class Idt {
   // if 0, cpu is not handling interrupt
   volatile int GetHandlingCnt() {
     if (!_is_gen_initialized) {
-      return false;
+      return 0;
     }
     return _handling_cnt[cpu_ctrl->GetCpuId().GetRawId()];
   }

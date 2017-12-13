@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2016 Raphine Project
+ * Copyright (c) 2017 Raphine Project
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -20,8 +20,7 @@
  * 
  */
 
-#ifndef __RAPH_LIB_QUEUE_H__
-#define __RAPH_LIB_QUEUE_H__
+#pragma once
 
 #include <functional.h>
 #include "_queue.h"
@@ -72,29 +71,3 @@ class FunctionalQueue2 final : public Functional {
   }
   Queue2<T> _queue;
 };
-
-template <class T>
-class FunctionalIntQueue final : public Functional {
- public:
-  FunctionalIntQueue() {
-  }
-  ~FunctionalIntQueue() {
-  }
-  void Push(T data) {
-    _queue.Push(data);
-    WakeupFunction();
-  }
-  bool Pop(T &data) {
-    return _queue.Pop(data);
-  }
-  bool IsEmpty() {
-    return _queue.IsEmpty();
-  }
- private:
-  virtual bool ShouldFunc() override {
-    return !_queue.IsEmpty();
-  }
-  IntQueue<T> _queue;
-};
-
-#endif // __RAPH_LIB_QUEUE_H__

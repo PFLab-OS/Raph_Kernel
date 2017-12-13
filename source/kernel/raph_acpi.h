@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2015 Raphine Project
+ * Copyright (c) 2017 Raphine Project
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -20,12 +20,10 @@
  * 
  */
 
-#ifndef __RAPH_KERNEL_ACPI_H__
-#define __RAPH_KERNEL_ACPI_H__
+#pragma once
 
 #include <stdint.h>
 #include <string.h>
-#include <task.h>
 #include <global.h>
 #include <mem/physmem.h>
 #include <_raph_acpi.h>
@@ -56,4 +54,3 @@ private:
   void GlobalEventHandler(void *);
 };
 
-#endif /* __RAPH_KERNEL_ACPI_H__ */

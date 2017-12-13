@@ -38,7 +38,7 @@ extern "C" {
 #include <raph_acpi.h>
 #include <dev/pci.h>
 #include <tty.h>
-#include <task.h>
+#include <thread.h>
 #include <global.h>
 #include <mem/physmem.h>
 
@@ -126,21 +126,17 @@ FADT *AcpiCtrl::GetFADT() {
   return reinterpret_cast<FADT *>(table);
 }
 
-class Container {
- public:
-  Container() : task(new Task) {}
-  sptr<Task> task;
+class GlobalEventThreadContainer {
+public:
+  uptr<Thread> thread;
 
  private:
-};
+} static get_container;
 
 void AcpiGlobalEventHandler(UINT32 type, ACPI_HANDLE device, UINT32 num,
                             void *context) {
-  Container *container = reinterpret_cast<Container *>(context);
   if (num == ACPI_EVENT_POWER_BUTTON) {
-    task_ctrl->Register(
-        cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority),
-        container->task);
+    get_container.thread->CreateOperator().Schedule();
   }
 }
 
@@ -153,11 +149,12 @@ void AcpiCtrl::SetupAcpica() {
   kassert(!ACPI_FAILURE(AcpiInitializeObjects(ACPI_FULL_INITIALIZATION)));
   gtty->Flush();
 
-  Container *container = new Container();
-  container->task->SetFunc(make_uptr(new ClassFunction<AcpiCtrl, void *>(
+  new(&get_container) GlobalEventThreadContainer;
+
+  get_container.thread = ThreadCtrl::GetCtrl(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority)).AllocNewThread(Thread::StackState::kShared);
+  get_container.thread->CreateOperator().SetFunc(make_uptr(new ClassFunction<AcpiCtrl, void *>(
       this, &AcpiCtrl::GlobalEventHandler, nullptr)));
-  AcpiInstallGlobalEventHandler(AcpiGlobalEventHandler,
-                                reinterpret_cast<void *>(container));
+  AcpiInstallGlobalEventHandler(AcpiGlobalEventHandler, nullptr);
 
   // TODO should be executed within ApicCtrl
   acpi_ctrl->SetPicMode(AcpiCtrl::PicMode::kApic);

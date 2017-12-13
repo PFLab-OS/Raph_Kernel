@@ -1,4 +1,4 @@
-OBJS = udp.o 
+OBJS = eth.o udp.o dhcp.o
 
 DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))
 

@@ -28,7 +28,7 @@
 #include <global.h>
 #include <raph.h>
 #include <tty.h>
-#include <task.h>
+#include <thread.h>
 #include <font.h>
 #include <stdint.h>
 #include <spinlock.h>
@@ -80,36 +80,7 @@ class FrameBuffer : public Tty {
       readPos = ((readPos + 1) & _index_mask);
       return _char_buffer[prevPos];
     }
-    void Write(char32_t c) {
-      assert(((_write_pos + 1) & _index_mask) != _read_pos);
-      assert(((_write_pos + 2) & _index_mask) != _read_pos);
-      if (c == '\n') {
-        _char_buffer[_write_pos] = c;
-        _write_pos = ((_write_pos + 1) & _index_mask);
-        _last_row_width_used = 0;
-        _row_count++;
-        if (_row_count > _screen_rows) {
-          // scroll
-          char32_t ch;
-          do {
-            ch = _char_buffer[_read_pos];
-            _read_pos = ((_read_pos + 1) & _index_mask);
-          } while (ch != '\n');
-          _row_count--;
-          _scroll_count++;
-        }
-      } else {
-        uint32_t fontIndex = _font->GetIndex(c);
-        size_t fontWidth = _font->GetWidth(fontIndex);
-        if (fontWidth + _last_row_width_used > _screen->width) {
-          // wrap line
-          Write('\n');
-        }
-        _char_buffer[_write_pos] = c;
-        _write_pos = ((_write_pos + 1) & _index_mask);
-        _last_row_width_used += fontWidth;
-      }
-    }
+    void Write(char32_t c);
     int GetScrollCount() { return _scroll_count; }
     void ResetScrollCount() { _scroll_count = 0; }
     int GetScreenRows() { return _screen_rows; }
@@ -144,29 +115,7 @@ class FrameBuffer : public Tty {
       UpdateCache();
     }
 
-    int PrintChar(uint8_t *vram, int vramXSize, int px, int py, char32_t c) {
-      if (!_is_initialized || _bytesPerPixel == 0) return 0;
-      uint8_t *font;
-      int fontWidth;
-
-      if (0 <= c && c < _cachedCount && _fontCache && _widthChache) {
-        // use cached font
-        fontWidth = _widthChache[c];
-        font = getFontCache(c);
-      } else {
-        // not in cache
-        GetPixels(c, _bytesPerPixel, GetMaxw(), _tmpFont, fontWidth, _fColor,
-                  _bColor);
-        font = _tmpFont;
-      }
-
-      for (int y = 0; y < GetMaxh(); y++) {
-        memcpy(&vram[((y + py) * vramXSize + px) * _bytesPerPixel],
-               &font[(y * GetMaxw() + 0) * _bytesPerPixel],
-               _bytesPerPixel * fontWidth);
-      }
-      return fontWidth;
-    }
+    int PrintChar(uint8_t *vram, int vramXSize, int px, int py, char32_t c);
     void SetForegroundColor(uint8_t r, uint8_t g, uint8_t b) {
       _fColor[0] = b;
       _fColor[1] = g;
@@ -179,21 +128,7 @@ class FrameBuffer : public Tty {
       _bColor[2] = r;
       _bColor[3] = 0x00;
     }
-    void UpdateCache() {
-      delete _tmpFont;
-      delete _widthChache;
-      delete _fontCache;
-      //
-      _tmpFont = new uint8_t[GetMaxh() * GetMaxw() * _bytesPerPixel];
-      _fontCache =
-          new uint8_t[GetMaxh() * GetMaxw() * _bytesPerPixel * _cachedCount];
-      _widthChache = new int[_cachedCount];
-      for (uint32_t k = 0; k < _cachedCount; k++) {
-        uint8_t *font = getFontCache(k);
-        GetPixels(k, _bytesPerPixel, GetMaxw(), font, _widthChache[k], _fColor,
-                  _bColor);
-      }
-    }
+    void UpdateCache();
 
    private:
     int _bytesPerPixel = 0;
@@ -234,27 +169,13 @@ class FrameBuffer : public Tty {
     _d_info.buf_base[(y * _d_info.width + x) * (_d_info.bpp / 8) + 1] = c >> 8;
     _d_info.buf_base[(y * _d_info.width + x) * (_d_info.bpp / 8) + 2] = c >> 16;
   }
-  void Refresh() {
-    if (_timeup_draw) {
-      if (task_ctrl->GetState(_draw_cpuid) !=
-          TaskCtrl::TaskQueueState::kNotStarted) {
-        DisableTimeupDraw();
-      } else {
-        if (timer->ReadTime() >= _last_time_refresh + 33 * 1000) {
-          DrawScreen();
-          _last_time_refresh = timer->ReadTime();
-        }
-      }
-    } else {
-      _needs_redraw = true;
-    }
-  }
+  void Refresh();
   void DrawScreen();
   void DrawScreenSub();
   void DoPeriodicRefresh(void *);
   void DisableTimeupDraw();
   void ScheduleRefresh() {
-    task_ctrl->RegisterCallout(_refresh_callout, _draw_cpuid, 33 * 1000);
+    _refresh_thread->CreateOperator().Schedule(33 * 1000);
   }
   SpinLock _lock;
   FrameBufferInfo _fb_info;
@@ -284,5 +205,5 @@ class FrameBuffer : public Tty {
   bool _needs_redraw =
       false;  // if true, there are some changes should be display.
 
-  sptr<Callout> _refresh_callout;
+  uptr<Thread> _refresh_thread;
 };

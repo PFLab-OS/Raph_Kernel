@@ -24,74 +24,73 @@
 #include <sys/lock.h>
 #include <sys/mutex.h>
 #include <sys/kernel.h>
-#include <task.h>
+#include <thread.h>
 #include <cpu.h>
 #include <ptr.h>
 
 extern "C" {
 
+  // TODO release
   struct LckCalloutContainer {
-    sptr<LckCallout> callout;
-    LckCalloutContainer() : callout(make_sptr(new LckCallout)) {
+    LckCalloutContainer() {
     }
+    uptr<Thread> thread;
+    SpinLock *lock;
   };
   
   void _callout_init_lock(struct callout *c, struct lock_object *lock, int flags) {
     c->callout_container = new LckCalloutContainer();
-    c->callout_container->callout->SetLock(lock->lock);
+    c->callout_container->lock = lock->lock;
+    c->callout_container->thread = ThreadCtrl::GetCtrl(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority)).AllocNewThread(Thread::StackState::kShared);
   }
 
   int callout_stop(struct callout *c) {
-    return task_ctrl->CancelCallout(c->callout_container->callout);
+    return (c->callout_container->thread->CreateOperator().Stop() == Thread::State::kWaitingInQueue) ? 1 : 0;
   }
 
   int callout_drain(struct callout *c) {
     int r = callout_stop(c);
     while(true) {
-      volatile bool flag = c->callout_container->callout->IsHandling();
-      if (!flag) {
+      if (c->callout_container->thread->CreateOperator().GetState() == Thread::State::kRunning) {
         break;
       }
+      asm volatile("":::"memory");
     }
     return r;
   }
 
   int callout_reset(struct callout *c, int ticks, void func(void *), void *arg) {
-    bool pending = c->callout_container->callout->IsPending();
-    
-    task_ctrl->CancelCallout(c->callout_container->callout);
+    int r = (c->callout_container->thread->CreateOperator().Stop() == Thread::State::kWaitingInQueue) ? 1 : 0;
     if (ticks < 0) {
       ticks = 1;
     }
-    c->callout_container->callout->Init(make_uptr(new Function<void *>(func, arg)));
-    task_ctrl->RegisterCallout(c->callout_container->callout, cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), static_cast<uint32_t>(ticks) * reciprocal_of_hz);
+    c->callout_container->thread->CreateOperator().SetFunc(make_uptr(new Function<void *>(func, arg)));
+    c->callout_container->thread->CreateOperator().Schedule(static_cast<uint32_t>(ticks) * reciprocal_of_hz);
 
-    return pending ? 1 : 0;
+    return r;
   }
 
   int callout_reset_sbt(struct callout *c, sbintime_t sbt, sbintime_t precision, void ftn(void *), void *arg, int flags) {
-    bool pending = c->callout_container->callout->IsPending();
+    int r = (c->callout_container->thread->CreateOperator().Stop() == Thread::State::kWaitingInQueue) ? 1 : 0;
     
-    task_ctrl->CancelCallout(c->callout_container->callout);
     if (sbt < 0) {
       sbt = 1;
     }
-    c->callout_container->callout->Init(make_uptr(new Function<void *>(ftn, arg)));
-    task_ctrl->RegisterCallout(c->callout_container->callout, cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), sbt * static_cast<sbintime_t>(1000000) / SBT_1S);
+    c->callout_container->thread->CreateOperator().SetFunc(make_uptr(new Function<void *>(ftn, arg)));
+    c->callout_container->thread->CreateOperator().Schedule(sbt * static_cast<sbintime_t>(1000000) / SBT_1S);
 
-    return pending ? 1 : 0;
+    return r;
   }
 
   int	callout_schedule(struct callout *c, int ticks) {
-    bool pending = c->callout_container->callout->IsPending();
+    int r = (c->callout_container->thread->CreateOperator().Stop() == Thread::State::kWaitingInQueue) ? 1 : 0;
     
-    task_ctrl->CancelCallout(c->callout_container->callout);
     if (ticks < 0) {
       ticks = 1;
     }
-    task_ctrl->RegisterCallout(c->callout_container->callout, cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), static_cast<uint32_t>(ticks) * reciprocal_of_hz);
+    c->callout_container->thread->CreateOperator().Schedule(static_cast<uint32_t>(ticks) * reciprocal_of_hz);
 
-    return pending ? 1 : 0;
+    return r;
   }
     
 }

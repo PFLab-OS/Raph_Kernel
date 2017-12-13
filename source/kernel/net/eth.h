@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2016 Raphine Project 
+ * Copyright (c) 2017 Raphine Project
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -22,15 +22,20 @@
 
 #pragma once
 
-class CpuCtrlInterface;
-class Tty;
-class Timer;
-class VirtmemCtrl;
+#include <stdint.h>
 
-extern CpuCtrlInterface *cpu_ctrl;
-extern Tty *gtty;
-extern Tty *gerr;
-extern Timer *timer;
-extern VirtmemCtrl *virtmem_ctrl;
-
-
+class EthernetCtrl {
+public:
+  static void Init();
+  static EthernetCtrl &GetCtrl() {
+    return _eth_ctrl;
+  }
+  void SetupServer();
+  class Socket {
+  public:
+    uint16_t protocol;
+    
+  };
+private:
+  static EthernetCtrl _eth_ctrl;
+};

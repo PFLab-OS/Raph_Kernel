@@ -178,6 +178,9 @@ public:
     return _obj;
   }
   Array &operator [](int n) {
+    if (_obj == nullptr) {
+      kassert(false);
+    }
     return _obj[n];
   }
   Array *GetRawPtr() {
