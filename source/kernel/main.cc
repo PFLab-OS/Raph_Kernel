@@ -54,9 +54,9 @@
 
 #include <dev/netdev.h>
 #include <dev/eth.h>
-// #include <net/arp.h>
 #include <net/arp.h>
 #include <net/udp.h>
+#include <net/dhcp.h>
 
 AcpiCtrl *acpi_ctrl = nullptr;
 ApicCtrl *apic_ctrl = nullptr;
@@ -163,7 +163,7 @@ static bool parse_ipaddr(const char *c, uint8_t *addr) {
 }
 
 static void setip(int argc, const char *argv[]) {
-  if (argc != 3) {
+  if (argc < 3) {
     gtty->Printf("invalid argument\n");
     return;
   }
@@ -175,13 +175,27 @@ static void setip(int argc, const char *argv[]) {
   NetDev *dev = info->device;
 
   uint8_t addr[4] = {0, 0, 0, 0};
-  if (!parse_ipaddr(argv[2], addr)) {
-    gtty->Printf("invalid ip v4 addr.\n");
+  if (!strcmp(argv[2], "static")) {
+    if (argc != 4) {
+      gtty->Printf("invalid argument\n");
+      return;
+    }
+    if (!parse_ipaddr(argv[3], addr)) {
+      gtty->Printf("invalid ip v4 addr.\n");
+      return;
+    }
+    dev->AssignIpv4Address(*(reinterpret_cast<uint32_t *>(addr)));
+  } else if (!strcmp(argv[2], "dhcp")) {
+    if (argc != 3) {
+      gtty->Printf("invalid argument\n");
+      return;
+    }
+
+    DhcpCtrl::GetCtrl().AssignAddr(dev);
+  } else {
+    gtty->Printf("invalid argument\n");
     return;
   }
-
-  dev->AssignIpv4Address((addr[3] << 24) | (addr[2] << 16) | (addr[1] << 8) |
-                         addr[0]);
 }
 
 static void ifconfig(int argc, const char *argv[]) {
@@ -500,45 +514,48 @@ static void load_script(uptr<Array<uint8_t>> data) {
   size_t old_index = 0;
   size_t index = 0;
   while (index <= data->GetLen()) {
-    if ((index == data->GetLen() ||
+    if (index == data->GetLen() ||
+        (*data)[index] == '\r' ||
         (*data)[index] == '\n' ||
-         (*data)[index] == '\0') && old_index != index) {
-      char buffer[index - old_index + 1];
-      memcpy(buffer,
-             reinterpret_cast<char *>(data->GetRawPtr()) + old_index,
-             index - old_index);
-      buffer[index - old_index] = '\0';
-      auto ec = make_uptr(new Shell::ExecContainer(shell));
-      ec = shell->Tokenize(ec, buffer);
-      int timeout = 0;
-      if (strlen(buffer) != 0) {
-        gtty->Printf("> %s\n", buffer);
-        if (strcmp(ec->argv[0], "wait") == 0) {
-          if (ec->argc == 2) {
-            int t = 0;
-            for (size_t l = 0; l < strlen(ec->argv[1]); l++) {
-              if ('0' > ec->argv[1][l] || ec->argv[1][l] > '9') {
-                gtty->Printf("invalid argument.\n");
-                t = 0;
-                break;
+         (*data)[index] == '\0') {
+      if (old_index != index) {
+        char buffer[index - old_index + 1];
+        memcpy(buffer,
+               reinterpret_cast<char *>(data->GetRawPtr()) + old_index,
+               index - old_index);
+        buffer[index - old_index] = '\0';
+        auto ec = make_uptr(new Shell::ExecContainer(shell));
+        ec = shell->Tokenize(ec, buffer);
+        int timeout = 0;
+        if (strlen(buffer) != 0) {
+          gtty->Printf("> %s\n", buffer);
+          if (strcmp(ec->argv[0], "wait") == 0) {
+            if (ec->argc == 2) {
+              int t = 0;
+              for (size_t l = 0; l < strlen(ec->argv[1]); l++) {
+                if ('0' > ec->argv[1][l] || ec->argv[1][l] > '9') {
+                  gtty->Printf("invalid argument.\n");
+                  t = 0;
+                  break;
+                }
+                t = t * 10 + ec->argv[1][l] - '0';
               }
-              t = t * 10 + ec->argv[1][l] - '0';
+              timeout = t * 1000 * 1000;
+            } else {
+              gtty->Printf("invalid argument.\n");
             }
-            timeout = t * 1000 * 1000;
+          } else if (strcmp(ec->argv[0], "wait_until_linkup") == 0) {
+            wait_until_linkup(ec->argc, ec->argv);
           } else {
-            gtty->Printf("invalid argument.\n");
+            shell->Execute(ec);
           }
-        } else if (strcmp(ec->argv[0], "wait_until_linkup") == 0) {
-          wait_until_linkup(ec->argc, ec->argv);
-        } else {
-          shell->Execute(ec);
+        }
+        if (timeout != 0) {
+          ThreadCtrl::GetCurrentThreadOperator().Schedule(timeout);
+          ThreadCtrl::WaitCurrentThread();
         }
       }
-      if (timeout != 0) {
-        ThreadCtrl::GetCurrentThreadOperator().Schedule(timeout);
-        ThreadCtrl::WaitCurrentThread();
-      }
-      if ((*data)[index] == '\0' || index == data->GetLen() - 1) {
+      if (index == data->GetLen() - 1 || index == data->GetLen() || (*data)[index] == '\0') {
         break;
       }
       old_index = index + 1;
@@ -788,6 +805,7 @@ extern "C" int main() {
 
   arp_table = new ArpTable;
   UdpCtrl::Init();
+  DhcpCtrl::Init();
 
   shell->Setup();
   shell->Register("halt", halt);

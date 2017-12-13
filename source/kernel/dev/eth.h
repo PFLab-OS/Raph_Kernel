@@ -76,7 +76,7 @@ protected:
 
 private:
   /** IPv4 address */
-  uint32_t _ipv4_addr = 0;
+  uint32_t _ipv4_addr = 0xFFFFFFFF;
 };
 
 #endif /* __RAPH_KERNEL_DEV_ETH_H__ */
