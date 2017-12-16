@@ -107,6 +107,9 @@ public:
   }
   T *operator&() = delete;
   T &operator*() {
+    if (_obj == nullptr) {
+      kassert(false);
+    }
     return *_obj;
   }
   T *operator->() {
@@ -131,7 +134,7 @@ private:
 } __attribute__((__packed__));
 
 template<class Array, size_t N>
-class uptr<Array [N]> {
+class uptr<Array[N]> {
 public:
   template <class A>
   uptr(const uptr<A> &p) {

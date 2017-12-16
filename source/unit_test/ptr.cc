@@ -83,13 +83,33 @@ public:
       uptr<PtrTestObject1> p2 = p1;
       kassert(cnt == 1);
       p2->Func();
+      bool err = false;
       try {
         p1->Func();
-        kassert(false);
       } catch (ExceptionAssertionFailure t) {
+        err = true;
       };
+      kassert(err);
     } while(0);
     kassert(cnt == 0);
+    return true;
+  }
+private:
+} static OBJ(__LINE__);
+
+class PtrTester_UptrNull : public Tester {
+public:
+  virtual bool Test() override {
+    uptr<int> p1;
+    uptr<int[3]> p2;
+    bool err = false;
+    try {
+      *p1;
+      p2[0];
+    } catch (ExceptionAssertionFailure t) {
+      err = true;
+    };
+    kassert(err);
     return true;
   }
 private:
