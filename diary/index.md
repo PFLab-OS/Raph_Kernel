@@ -42,12 +42,13 @@ setip ixgbe1 static 192.168.12.1
 TaskCtrlをThreadCtrlに置き換え
 
 これまでのTaskCtrlの問題点
-* TaskCtrl::Runが複雑で処理がわかりづらい
+
+* TaskCtrl::Run()が複雑で処理がわかりづらい
 * CalloutとTaskで異なるインターフェースを呼び出す必要があり、煩雑
 * スマートポインタを用いて管理しようとすると、循環参照が発生してメモリリークせざるを得ない
 
 これらを解決するため、TaskCtrlを廃止し、新規設計したThreadCtrlにリプレースした。
 また、Join等のメソッドを新たに追加し、利便性を向上させた。
 
-ThreadCtrlの使い方は[ドキュメント](doc/kernel/thread.md)を参照。TaskCtrlとは大きく使い方が異なるので注意。
+ThreadCtrlの使い方は[ドキュメント](#!doc/kernel/thread.md)を参照。TaskCtrlとは大きく使い方が異なるので注意。
 

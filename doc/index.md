@@ -10,4 +10,4 @@ Index
 -----
 
 ### Kernel
-* [スレッド](doc/kernel/thread.md)
+* [スレッド](kernel/thread.md)
