@@ -5,9 +5,10 @@ CC = musl-gcc
 
 defalut:
 
-build:
-	$(MAKE) $(MODULE)
-	cp $(MODULE) ../../build/$(MODULE).elf
+build: ../../build/$(MODULE).elf
+
+../../build/$(MODULE).elf: $(MODULE)
+	cp $^ $@
 
 $(MODULE) : $(SRCS) Makefile
 #	g++ -nostdlib -fPIE -static -o $(MODULE) $(SRCS)

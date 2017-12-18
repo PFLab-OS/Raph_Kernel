@@ -17,13 +17,15 @@ else
 	INIT_FILE = $(if $(shell if [ -e init_script/$(BRANCH_INIT_FILE) ] ; then echo "file exist"; fi),$(BRANCH_INIT_FILE),default)
 endif
 
+GRUBCFG_COMMAND := sed -e "s/\/core\/init_script\/default/\/core\/init_script\/$(INIT_FILE)/g" grub.cfg
+
 ifdef KERNEL_DEBUG
 	QEMU_OPTIONS += -s -S 
 endif
 
 doc: export PROJECT_NUMBER:=$(shell git rev-parse HEAD ; git diff-index --quiet HEAD || echo "(with uncommitted changes)")
 
-.PHONY: clean all disk run image mount umount debugqemu showerror numerror doc debug
+.PHONY: clean all disk run image image_file_copy image_mount_and_file_copy mount umount debugqemu showerror numerror doc debug
 
 default: image
 
@@ -73,7 +75,7 @@ $(BUILD_DIR)/init_script/$(INIT_FILE): init_script/$(INIT_FILE)
 	cp $^ $@
 
 $(RAPH_PROJECT_ROOT)/source/tool/mkfs:
-	$(MAKE_SUBDIR) $(RAPH_PROJECT_ROOT)/source/tool build
+	@$(MAKE_SUBDIR) $(RAPH_PROJECT_ROOT)/source/tool build
 
 $(BUILD_DIR)/fs.img: $(RAPH_PROJECT_ROOT)/source/tool/mkfs
 	-rm $@ &> /dev/null
@@ -82,22 +84,32 @@ $(BUILD_DIR)/fs.img: $(RAPH_PROJECT_ROOT)/source/tool/mkfs
 	rm readme.md
 
 bin_sub: $(BUILD_DIR)/script $(BUILD_DIR)/init_script/$(INIT_FILE) $(BUILD_DIR)/fs.img $(BUILD_DIR)/rump.bin
-	$(MAKE_SUBDIR) ../libc
-	$(MAKE_SUBDIR) $(RAPH_PROJECT_ROOT)/source/kernel build
-	$(MAKE_SUBDIR) $(RAPH_PROJECT_ROOT)/source/testmodule build
+	@$(MAKE_SUBDIR) ../libc
+	@$(MAKE_SUBDIR) $(RAPH_PROJECT_ROOT)/source/kernel build
+	@$(MAKE_SUBDIR) $(RAPH_PROJECT_ROOT)/source/testmodule build
 
 bin:
 	mkdir -p $(BUILD_DIR)
 	$(MAKE) bin_sub
 
+$(MOUNT_DIR)/boot/memtest86+.bin: memtest86+.bin
+	sudo cp $^ $@
+
+image_file_copy: $(MOUNT_DIR)/boot/memtest86+.bin
+	@sudo mkdir -p $(MOUNT_DIR)/core
+	$(GRUBCFG_COMMAND) > /tmp/grub.cfg
+	sudo sh -c '$(GRUBCFG_COMMAND) > $(MOUNT_DIR)/boot/grub/grub.cfg'
+	sudo cp -ruv $(BUILD_DIR)/* $(MOUNT_DIR)/core/
+
+image_mount_and_file_copy:
+	$(MAKE) mount
+	$(MAKE) image_file_copy
+	$(MAKE) umount
+
 image:
 	$(MAKE) bin
-	$(MAKE) mount
-	sudo cp memtest86+.bin $(MOUNT_DIR)/boot/memtest86+.bin
-	sudo sh -c 'sed -e "s/\/core\/init_script\/default/\/core\/init_script\/$(INIT_FILE)/g" grub.cfg > $(MOUNT_DIR)/boot/grub/grub.cfg'
-	-sudo rm -rf $(MOUNT_DIR)/core
-	sudo cp -r $(BUILD_DIR) $(MOUNT_DIR)/core
-	$(MAKE) umount
+	@mkdir -p /tmp/img
+	@if [ -n "`cp -ruv $(BUILD_DIR)/* /tmp/img`" ] || [ ! -e /tmp/grub.cfg ] || [ "`$(GRUBCFG_COMMAND) | sum`" != "`sum /tmp/grub.cfg`" ]; then $(MAKE) image_mount_and_file_copy; fi
 
 cpimage: image
 	cp $(IMAGE) /vagrant/
@@ -109,9 +121,6 @@ $(IMAGE):
 	@sh disk.sh disk-setup > /dev/null
 	@echo "[disk.sh] grub-install..."
 	@sh disk.sh grub-install > /dev/null
-	$(MAKE) mount
-	sudo cp memtest86+.bin $(MOUNT_DIR)/boot/memtest86+.bin
-	$(MAKE) umount
 
 hd: image
 	@if [ ! -e /dev/sdb ]; then echo "error: insert usb memory!"; exit -1; fi
@@ -135,10 +144,10 @@ deldisk: umount
 
 clean: deldisk
 	-rm -rf $(BUILD_DIR)
-	$(MAKE_SUBDIR) ../libc clean
-	$(MAKE_SUBDIR) $(RAPH_PROJECT_ROOT)/source/kernel clean
-	$(MAKE_SUBDIR) $(RAPH_PROJECT_ROOT)/source/testmodule clean
-	$(MAKE_SUBDIR) $(RAPH_PROJECT_ROOT)/source/tool clean
+	@$(MAKE_SUBDIR) ../libc clean
+	@$(MAKE_SUBDIR) $(RAPH_PROJECT_ROOT)/source/kernel clean
+	@$(MAKE_SUBDIR) $(RAPH_PROJECT_ROOT)/source/testmodule clean
+	@$(MAKE_SUBDIR) $(RAPH_PROJECT_ROOT)/source/tool clean
 
 diskclean: deldisk clean
 

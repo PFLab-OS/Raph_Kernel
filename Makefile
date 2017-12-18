@@ -52,7 +52,7 @@ define make_wrapper
 	  # guest environment
     cd /vagrant; $(MAKE) ARCH=$(ARCH) -f $(BUILD_RULE_FILE) $(1), \
 	  # host environment
-	  $(call run_remote, cd /vagrant; env MAKEFLAGS=$(MAKEFLAGS) make ARCH=$(ARCH) -f $(BUILD_RULE_FILE) $(1))
+	  $(call run_remote, cd /vagrant; env MAKEFLAGS=\"$(MAKEFLAGS)\" make ARCH=$(ARCH) -f $(BUILD_RULE_FILE) $(1))
 	)
 endef
 
