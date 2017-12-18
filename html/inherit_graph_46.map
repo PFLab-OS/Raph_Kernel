@@ -1,7 +1,0 @@
-<map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
-<area shape="rect" id="node1" href="$class_bsd_device.html" title="BsdDevice" alt="" coords="6,31,93,57"/>
-<area shape="rect" id="node2" href="$class_bsd_dev_bus.html" title="BsdDevBus" alt="" coords="142,31,234,57"/>
-<area shape="rect" id="node3" href="$class_ahci_channel.html" title="AhciChannel" alt="" coords="283,5,379,32"/>
-<area shape="rect" id="node4" href="$class_bsd_dev_pci.html" title="BsdDevPci" alt="" coords="287,56,375,83"/>
-<area shape="rect" id="node5" href="$class_ahci_ctrl.html" title="AhciCtrl" alt="" coords="427,56,496,83"/>
-</map>

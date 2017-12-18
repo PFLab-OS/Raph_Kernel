@@ -1,5 +1,0 @@
-<map id="PciCtrl::IrqContainer" name="PciCtrl::IrqContainer">
-<area shape="rect" id="node2" href="$class_pci_ctrl_1_1_int_handler.html" title="PciCtrl::IntHandler" alt="" coords="9,173,139,200"/>
-<area shape="rect" id="node3" href="$class_dev_pci.html" title="DevPci" alt="" coords="42,83,107,109"/>
-<area shape="rect" id="node4" href="$class_device.html" title="Device" alt="" coords="43,5,105,32"/>
-</map>

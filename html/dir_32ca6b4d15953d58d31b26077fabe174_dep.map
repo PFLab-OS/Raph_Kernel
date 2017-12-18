@@ -1,8 +1,0 @@
-<map id="source/kernel/dev" name="source/kernel/dev">
-<area shape="rect" id="node2" href="dir_e685a60b5cca0dba307810b8985c0b3b.html" title="disk" alt="" coords="325,63,397,111"/>
-<area shape="rect" id="node3" href="dir_b590c212b768bd39f999803a2f837d7f.html" title="fs" alt="" coords="229,63,301,111"/>
-<area shape="rect" id="node4" href="dir_d7298cfb228eedb40c7f482633baca0a.html" title="storage" alt="" coords="133,63,205,111"/>
-<area shape="rect" id="node5" href="dir_beec0357dd14488dfbf83cccd2b7fe4e.html" title="usb" alt="" coords="37,63,109,111"/>
-<area shape="rect" id="clust2" href="dir_32ca6b4d15953d58d31b26077fabe174.html" alt="" coords="27,52,504,121"/>
-<area shape="rect" id="clust1" href="dir_1645b320da2d5ed022f940b59419d15d.html" title="kernel" alt="" coords="16,16,515,132"/>
-</map>

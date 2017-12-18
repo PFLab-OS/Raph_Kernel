@@ -1,6 +1,0 @@
-<map id="PciData::Device" name="PciData::Device">
-<area shape="rect" id="node2" href="$class_pci_data_1_1_list.html" title="PciData::List\&lt; Device \&gt;" alt="" coords="5,355,168,381"/>
-<area shape="rect" id="node3" href="$class_pci_data_1_1_base.html" title="PciData::Base" alt="" coords="24,5,131,32"/>
-<area shape="rect" id="node5" href="$class_pci_data_1_1_list.html" title="PciData::List\&lt; Subsystem \&gt;" alt="" coords="74,83,261,109"/>
-<area shape="rect" id="node4" href="$class_pci_data_1_1_subsystem.html" title="PciData::Subsystem" alt="" coords="74,173,216,200"/>
-</map>

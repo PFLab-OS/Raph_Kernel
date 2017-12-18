@@ -1,6 +1,0 @@
-<map id="DevPci" name="DevPci">
-<area shape="rect" id="node3" href="$class_bsd_dev_pci_1_1_bsd_dev_pci_sub.html" title="BsdDevPci::BsdDevPciSub" alt="" coords="5,155,189,181"/>
-<area shape="rect" id="node4" href="$class_dev_ehci.html" title="DevEhci" alt="" coords="215,155,287,181"/>
-<area shape="rect" id="node5" href="$class_dev_uhci.html" title="DevUhci" alt="" coords="311,155,384,181"/>
-<area shape="rect" id="node2" href="$class_device.html" title="Device" alt="" coords="219,5,281,32"/>
-</map>

@@ -1,7 +1,0 @@
-<map id="UsbCtrl" name="UsbCtrl">
-<area shape="rect" id="node2" href="$class_ring_buffer.html" title="RingBuffer\&lt; UsbCtrl\l::DeviceRequest *, 512 \&gt;" alt="" coords="57,187,228,229"/>
-<area shape="rect" id="node3" href="$class_usb_ctrl_1_1_device_request.html" title="UsbCtrl::DeviceRequest" alt="" coords="5,96,169,123"/>
-<area shape="rect" id="node4" href="$class_spin_lock.html" title="SpinLock" alt="" coords="195,96,271,123"/>
-<area shape="rect" id="node5" href="$class_spin_lock_interface.html" title="SpinLockInterface" alt="" coords="111,5,237,32"/>
-<area shape="rect" id="node6" href="$class_cpu_id.html" title="CpuId" alt="" coords="262,5,319,32"/>
-</map>

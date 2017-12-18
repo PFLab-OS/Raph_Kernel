@@ -1,8 +1,0 @@
-<map id="ArpSocket::Read" name="ArpSocket::Read">
-<area shape="rect" id="node2" href="$class_protocol_stack_layer.html#a9a5d2ea32d4eb2472df9a01a20d09491" title="ProtocolStackLayer\l::ReceivePacket" alt="" coords="176,70,312,111"/>
-<area shape="rect" id="node6" href="$class_protocol_stack_layer.html#a10617a840c21d396fad97834a2263793" title="ProtocolStackLayer\l::ReuseRxBuffer" alt="" coords="360,146,496,187"/>
-<area shape="rect" id="node3" href="$class_protocol_stack_layer.html#a024ca3d7ae4c71d24c7ac1b82144304e" title="ProtocolStackLayer\l::FilterPacket" alt="" coords="360,5,496,46"/>
-<area shape="rect" id="node4" href="$class_protocol_stack_layer.html#ae1adc0edb98b431580105c14d0b48048" title="ProtocolStackLayer\l::DetachProtocolHeader" alt="" coords="544,81,707,122"/>
-<area shape="rect" id="node5" href="$class_protocol_stack_layer.html#aaa356ad0a3af72bd0f9b0156307a4cca" title="ProtocolStackLayer\l::GetProtocolHeaderLength" alt="" coords="755,114,935,155"/>
-<area shape="rect" id="node7" href="$class_protocol_stack_layer.html#aff269bca21d3fb893ee68b1493500d8d" title="ProtocolStackLayer\l::AttachProtocolHeader" alt="" coords="546,146,705,187"/>
-</map>

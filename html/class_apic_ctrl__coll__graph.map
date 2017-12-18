@@ -1,8 +1,0 @@
-<map id="ApicCtrl" name="ApicCtrl">
-<area shape="rect" id="node2" href="$struct_m_a_d_t.html" title="MADT" alt="" coords="69,96,128,123"/>
-<area shape="rect" id="node3" href="$struct_a_c_p_i_s_d_t_header.html" title="ACPISDTHeader" alt="" coords="5,5,128,32"/>
-<area shape="rect" id="node4" href="$class_apic_ctrl_1_1_ioapic.html" title="ApicCtrl::Ioapic" alt="" coords="184,96,295,123"/>
-<area shape="rect" id="node5" href="$struct_apic_ctrl_1_1_ioapic_1_1_controller.html" title="ApicCtrl::Ioapic::Controller" alt="" coords="152,5,328,32"/>
-<area shape="rect" id="node6" href="$class_apic_ctrl_1_1_lapic.html" title="ApicCtrl::Lapic" alt="" coords="351,96,459,123"/>
-<area shape="rect" id="node7" href="$struct_apic_ctrl_1_1_lapic_1_1_apic_info.html" title="ApicCtrl::Lapic::ApicInfo" alt="" coords="353,5,516,32"/>
-</map>

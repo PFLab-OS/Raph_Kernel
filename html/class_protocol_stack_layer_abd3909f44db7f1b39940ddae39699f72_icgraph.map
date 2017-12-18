@@ -1,5 +1,0 @@
-<map id="ProtocolStackLayer::PreparePacket" name="ProtocolStackLayer::PreparePacket">
-<area shape="rect" id="node2" href="$class_protocol_stack_layer.html#a79ed42d647708775f978dfaa6d7f4607" title="ProtocolStackLayer\l::TransmitPacket" alt="" coords="189,29,325,70"/>
-<area shape="rect" id="node3" href="$class_arp_socket.html#a0365269665223867b97ebabd5c064e82" title="ArpSocket::Request" alt="" coords="374,11,514,37"/>
-<area shape="rect" id="node4" href="$class_arp_socket.html#a66de4fec744a67c1cfabc628df8e3904" title="ArpSocket::Reply" alt="" coords="381,61,507,88"/>
-</map>

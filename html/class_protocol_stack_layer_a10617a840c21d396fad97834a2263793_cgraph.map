@@ -1,5 +1,0 @@
-<map id="ProtocolStackLayer::ReuseRxBuffer" name="ProtocolStackLayer::ReuseRxBuffer">
-<area shape="rect" id="node2" href="$class_protocol_stack_layer.html#aff269bca21d3fb893ee68b1493500d8d" title="ProtocolStackLayer\l::AttachProtocolHeader" alt="" coords="191,5,350,46"/>
-<area shape="rect" id="node4" href="$class_protocol_stack_layer.html#ae1adc0edb98b431580105c14d0b48048" title="ProtocolStackLayer\l::DetachProtocolHeader" alt="" coords="189,70,352,111"/>
-<area shape="rect" id="node3" href="$class_protocol_stack_layer.html#aaa356ad0a3af72bd0f9b0156307a4cca" title="ProtocolStackLayer\l::GetProtocolHeaderLength" alt="" coords="401,38,581,79"/>
-</map>

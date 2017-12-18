@@ -1,6 +1,0 @@
-<map id="UdpSocket::BindPeer" name="UdpSocket::BindPeer">
-<area shape="rect" id="node2" href="$class_protocol_stack_layer.html#a9a5d2ea32d4eb2472df9a01a20d09491" title="ProtocolStackLayer\l::ReceivePacket" alt="" coords="202,5,339,44"/>
-<area shape="rect" id="node3" href="$class_protocol_stack_layer.html#a10617a840c21d396fad97834a2263793" title="ProtocolStackLayer\l::ReuseRxBuffer" alt="" coords="202,68,339,107"/>
-<area shape="rect" id="node4" href="$class_protocol_stack_layer.html#a1086c83b2809fd4071749422d1e49dba" title="ProtocolStackLayer\l::FetchTxBuffer" alt="" coords="202,131,339,169"/>
-<area shape="rect" id="node5" href="$class_protocol_stack_layer.html#a79ed42d647708775f978dfaa6d7f4607" title="ProtocolStackLayer\l::TransmitPacket" alt="" coords="202,193,339,232"/>
-</map>
