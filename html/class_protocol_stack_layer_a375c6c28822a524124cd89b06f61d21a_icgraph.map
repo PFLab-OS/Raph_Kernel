@@ -1,5 +1,0 @@
-<map id="ProtocolStackLayer::SetupSubclass" name="ProtocolStackLayer::SetupSubclass">
-<area shape="rect" id="node2" href="$class_protocol_stack_layer.html#a89bef3d242a99dce160a2406f3864906" title="ProtocolStackLayer\l::Setup" alt="" coords="189,23,325,65"/>
-<area shape="rect" id="node3" href="$class_arp_socket.html#a225562b1b7fb860036dedf763afde809" title="ArpSocket::Open" alt="" coords="376,5,499,32"/>
-<area shape="rect" id="node4" href="$class_udp_socket.html#a8f062c4dd1161ffeda79baae3a257317" title="UdpSocket::Open" alt="" coords="374,56,501,83"/>
-</map>

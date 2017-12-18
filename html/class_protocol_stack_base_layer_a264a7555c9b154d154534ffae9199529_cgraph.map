@@ -1,4 +1,0 @@
-<map id="ProtocolStackBaseLayer::FetchTxBuffer" name="ProtocolStackBaseLayer::FetchTxBuffer">
-<area shape="rect" id="node2" href="$class_protocol_stack.html#aa332d1ae721763de2f8b3dba4312d413" title="ProtocolStack::FetchTxBuffer" alt="" coords="221,12,416,39"/>
-<area shape="rect" id="node3" href="$class_net_dev.html#a269b6337bc3e63cad56e413394bc9d55" title="NetDev::GetTxPacket" alt="" coords="464,12,616,39"/>
-</map>

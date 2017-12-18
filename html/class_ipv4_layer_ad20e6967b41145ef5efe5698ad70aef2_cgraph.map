@@ -1,7 +1,0 @@
-<map id="Ipv4Layer::GetProtocolHeaderLength" name="Ipv4Layer::GetProtocolHeaderLength">
-<area shape="rect" id="node2" href="$class_ipv4_layer.html#a456235257d6feed8093fed31bafb1a84" title="Ipv4Layer::FilterPacket" alt="" coords="264,5,421,31"/>
-<area shape="rect" id="node3" href="$class_ipv4_layer.html#a3f7b4553cde966cbac2c052a45238b69" title="Ipv4Layer::PreparePacket" alt="" coords="255,55,430,80"/>
-<area shape="rect" id="node4" href="$class_ipv4_layer.html#ab0174f0f3f40cd5131d827c7e528a458" title="Ipv4Layer::CheckSum" alt="" coords="478,55,631,80"/>
-<area shape="rect" id="node5" href="$class_ipv4_layer.html#a8e955a66030fa454f345d6770b6c6325" title="Ipv4Layer::GetHardwareDestination\lAddress" alt="" coords="679,48,912,87"/>
-<area shape="rect" id="node6" href="$class_arp_table.html#a44ffbaf2a372295b45fbe0f441d2cc16" title="ArpTable::Find" alt="" coords="960,55,1067,80"/>
-</map>

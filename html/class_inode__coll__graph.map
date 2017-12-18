@@ -1,8 +1,0 @@
-<map id="Inode" name="Inode">
-<area shape="rect" id="node3" href="$class_virtual_file_system_1_1_inode_ctrl.html" title="VirtualFileSystem::\lInodeCtrl" alt="" coords="73,278,207,319"/>
-<area shape="rect" id="node2" href="$class_virtual_file_system.html" title="VirtualFileSystem" alt="" coords="77,384,203,411"/>
-<area shape="rect" id="node4" href="$class_disk_file_system.html" title="DiskFileSystem" alt="" coords="5,96,120,123"/>
-<area shape="rect" id="node5" href="$class_spin_lock.html" title="SpinLock" alt="" coords="150,96,225,123"/>
-<area shape="rect" id="node6" href="$class_spin_lock_interface.html" title="SpinLockInterface" alt="" coords="66,5,192,32"/>
-<area shape="rect" id="node7" href="$class_cpu_id.html" title="CpuId" alt="" coords="217,5,273,32"/>
-</map>

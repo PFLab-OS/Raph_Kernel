@@ -1,4 +1,0 @@
-<map id="DevEthernet::SetupNetInterface" name="DevEthernet::SetupNetInterface">
-<area shape="rect" id="node2" href="$class_net_dev_ctrl.html#a182186b3e26206cd1a2838dc82e48222" title="NetDevCtrl::RegisterDevice" alt="" coords="264,5,451,32"/>
-<area shape="rect" id="node3" href="$class_net_dev.html#ad20b2793923170facd523bcccbe2f5ba" title="NetDev::SetName" alt="" coords="499,5,629,32"/>
-</map>

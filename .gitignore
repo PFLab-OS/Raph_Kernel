@@ -25,6 +25,7 @@ net/disk.img.gz
 .ssh_config
 build/
 tags
+html/
 
 # Object files
 *.o

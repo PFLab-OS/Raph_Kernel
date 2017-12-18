@@ -1,4 +1,0 @@
-<map id="NetDev::ReceivePacket" name="NetDev::ReceivePacket">
-<area shape="rect" id="node2" href="$class_protocol_stack.html#a5606e90c9f77f311fc3a40638402fbdd" title="ProtocolStack::DeviceBuffer\lHandler" alt="" coords="219,5,407,46"/>
-<area shape="rect" id="node3" href="$class_protocol_stack.html#ad038e7cabc12b695c6b103f0b47f9bcc" title="ProtocolStack::SetDevice" alt="" coords="456,12,629,39"/>
-</map>

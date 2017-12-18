@@ -1,5 +1,0 @@
-<map id="Hpet" name="Hpet">
-<area shape="rect" id="node2" href="$class_timer.html" title="Timer" alt="" coords="5,96,59,123"/>
-<area shape="rect" id="node3" href="$struct_h_p_e_t_d_t.html" title="HPETDT" alt="" coords="83,96,159,123"/>
-<area shape="rect" id="node4" href="$struct_a_c_p_i_s_d_t_header.html" title="ACPISDTHeader" alt="" coords="60,5,183,32"/>
-</map>

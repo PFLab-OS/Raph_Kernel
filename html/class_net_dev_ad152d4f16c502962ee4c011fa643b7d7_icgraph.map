@@ -1,7 +1,0 @@
-<map id="NetDev::SetupNetInterface" name="NetDev::SetupNetInterface">
-<area shape="rect" id="node2" href="$class_net_dev.html#a6a3ed9c7eaa82e74cd217085786a2e36" title="NetDev::GetName" alt="" coords="234,57,364,83"/>
-<area shape="rect" id="node3" href="$class_net_dev_ctrl.html#ab114ca8e563c1d922e804e749e8f9f4b" title="NetDevCtrl::GetDeviceInfo" alt="" coords="416,29,595,55"/>
-<area shape="rect" id="node6" href="$class_net_dev_ctrl.html#adf96c69908bf2531ed83e3021f3afa02" title="NetDevCtrl::GetNamesOfAll\lDevices" alt="" coords="412,79,599,117"/>
-<area shape="rect" id="node4" href="$class_arp_socket.html#a225562b1b7fb860036dedf763afde809" title="ArpSocket::Open" alt="" coords="649,5,772,31"/>
-<area shape="rect" id="node5" href="$class_udp_socket.html#a8f062c4dd1161ffeda79baae3a257317" title="UdpSocket::Open" alt="" coords="647,55,773,80"/>
-</map>

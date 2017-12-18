@@ -1,8 +1,0 @@
-<map id="V6FileSystem::BlockCtrl" name="V6FileSystem::BlockCtrl">
-<area shape="rect" id="node2" href="$class_storage.html" title="Storage" alt="" coords="5,96,72,123"/>
-<area shape="rect" id="node3" href="$class_device.html" title="Device" alt="" coords="7,5,69,32"/>
-<area shape="rect" id="node4" href="$struct_v6_file_system_1_1_super_block.html" title="V6FileSystem::SuperBlock" alt="" coords="96,96,275,123"/>
-<area shape="rect" id="node5" href="$class_spin_lock.html" title="SpinLock" alt="" coords="299,96,375,123"/>
-<area shape="rect" id="node6" href="$class_spin_lock_interface.html" title="SpinLockInterface" alt="" coords="215,5,341,32"/>
-<area shape="rect" id="node7" href="$class_cpu_id.html" title="CpuId" alt="" coords="366,5,423,32"/>
-</map>

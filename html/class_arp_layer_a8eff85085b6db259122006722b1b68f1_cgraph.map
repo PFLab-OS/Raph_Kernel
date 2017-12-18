@@ -1,4 +1,0 @@
-<map id="ArpLayer::GetProtocolHeaderLength" name="ArpLayer::GetProtocolHeaderLength">
-<area shape="rect" id="node2" href="$class_protocol_stack_layer.html#a024ca3d7ae4c71d24c7ac1b82144304e" title="ProtocolStackLayer\l::FilterPacket" alt="" coords="250,5,387,44"/>
-<area shape="rect" id="node3" href="$class_protocol_stack_layer.html#abd3909f44db7f1b39940ddae39699f72" title="ProtocolStackLayer\l::PreparePacket" alt="" coords="250,68,387,107"/>
-</map>

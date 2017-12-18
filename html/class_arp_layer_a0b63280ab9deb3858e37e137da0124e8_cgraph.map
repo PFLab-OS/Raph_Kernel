@@ -1,7 +1,0 @@
-<map id="ArpLayer::FilterPacket" name="ArpLayer::FilterPacket">
-<area shape="rect" id="node2" href="$class_ethernet_layer.html#a8eb26ddb82f8d4646ca5726cbde8481d" title="EthernetLayer::CompareAddress" alt="" coords="206,5,418,32"/>
-<area shape="rect" id="node3" href="$class_arp_layer.html#a8eff85085b6db259122006722b1b68f1" title="ArpLayer::GetProtocolHeader\lLength" alt="" coords="215,57,409,98"/>
-<area shape="rect" id="node4" href="$class_arp_table.html#a148c7080d402ae9e00de10eb5bae8b49" title="ArpTable::Add" alt="" coords="259,123,365,149"/>
-<area shape="rect" id="node5" href="$class_arp_table.html#aa8fb0906f794b8c16572944072e75f00" title="ArpTable::Hash" alt="" coords="469,97,582,124"/>
-<area shape="rect" id="node6" href="$class_arp_table.html#ade7023ee9513770202bb9d98193646de" title="ArpTable::Probe" alt="" coords="467,148,583,175"/>
-</map>

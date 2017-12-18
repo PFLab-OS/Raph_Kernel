@@ -1,4 +1,0 @@
-<map id="EthernetLayer::CompareAddress" name="EthernetLayer::CompareAddress">
-<area shape="rect" id="node2" href="$class_arp_layer.html#a0b63280ab9deb3858e37e137da0124e8" title="ArpLayer::FilterPacket" alt="" coords="281,5,433,32"/>
-<area shape="rect" id="node3" href="$class_ethernet_layer.html#abb8d7264e25c36be31dc31805c9afda6" title="EthernetLayer::FilterPacket" alt="" coords="267,56,448,83"/>
-</map>

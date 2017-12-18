@@ -1,4 +1,0 @@
-<map id="ProtocolStackLayer::ReuseRxBuffer" name="ProtocolStackLayer::ReuseRxBuffer">
-<area shape="rect" id="node2" href="$class_arp_socket.html#a24a8c6ec95db23ca90f008b740dd8f87" title="ArpSocket::Read" alt="" coords="373,36,496,63"/>
-<area shape="rect" id="node3" href="$class_protocol_stack_layer.html#a9a5d2ea32d4eb2472df9a01a20d09491" title="ProtocolStackLayer\l::ReceivePacket" alt="" coords="189,70,325,111"/>
-</map>

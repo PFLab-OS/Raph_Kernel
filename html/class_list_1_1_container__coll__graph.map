@@ -1,7 +1,0 @@
-<map id="List&lt; T &gt;::Container" name="List&lt; T &gt;::Container">
-<area shape="rect" id="node2" href="$classsptr.html" title="sptr\&lt; List::Container \&gt;" alt="" coords="69,291,221,317"/>
-<area shape="rect" id="node3" href="$classcounter__helper.html" title="counter_helper" alt="" coords="5,187,112,213"/>
-<area shape="rect" id="node4" href="$class_spin_lock.html" title="SpinLock" alt="" coords="167,96,243,123"/>
-<area shape="rect" id="node5" href="$class_spin_lock_interface.html" title="SpinLockInterface" alt="" coords="85,5,211,32"/>
-<area shape="rect" id="node6" href="$class_cpu_id.html" title="CpuId" alt="" coords="235,5,292,32"/>
-</map>
