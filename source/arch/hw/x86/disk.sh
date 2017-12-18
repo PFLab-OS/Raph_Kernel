@@ -17,8 +17,7 @@ loopsetup() {
 	      echo "failed to cleanup"
 	      exit 1
     fi
-    sudo kpartx -av ${IMAGE}
-    sleep 1
+    sudo kpartx -avs ${IMAGE}
     LOOPDEVICE=/dev/loop0
     MAPPEDDEVICE_MBR=/dev/mapper/loop0p1
     MAPPEDDEVICE_EFI_PT=/dev/mapper/loop0p2

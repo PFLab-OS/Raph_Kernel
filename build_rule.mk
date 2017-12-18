@@ -31,11 +31,11 @@ export RAPH_PROJECT_ROOT
 export LANG=C
 
 test:
-	$(MAKE) -C source/unit_test test
+	@$(MAKE) -C source/unit_test test
 
 clean:
-	$(MAKE) -C source/unit_test clean
-	$(MAKE) -C source/arch/$(ARCH) -f $(BUILD_RULE_FILE) clean
+	@$(MAKE) -C source/unit_test clean
+	@$(MAKE) -C source/arch/$(ARCH) -f $(BUILD_RULE_FILE) clean
 
 %:
-	$(MAKE) -C source/arch/$(ARCH) -f $(BUILD_RULE_FILE) $@
+	@$(MAKE) -C source/arch/$(ARCH) -f $(BUILD_RULE_FILE) $@
