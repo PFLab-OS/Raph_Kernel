@@ -8,3 +8,7 @@
   * [Coding Style](codingstyle.md)
   * [Help](help.md)
 
+[開発日誌](diary/index.md)
+
+
+
