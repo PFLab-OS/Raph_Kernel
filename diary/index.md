@@ -8,6 +8,10 @@ About
 
 2017/12/18
 ----------
+[ca839fc](https://github.com/PFLab-OS/Raph_Kernel/commit/ca839fc57c533e562e6d02d0b57abfe822129a63)
+Doxygenによって生成されたhtmlファイルの削除
+htmlファイルは更新されていない & Doxygen向けのコメントも書かれていない & ルートディレクトリでのgrepを阻害する 等の理由により除去
+ソースコードの解説は、[ドキュメント](#!doc/index.md)に今後移行
 
 [85f4962](https://github.com/PFLab-OS/Raph_Kernel/commit/85f4962d34a25f79a17b88a94dcd6932d10cc0ff)
 makeの高速化。
