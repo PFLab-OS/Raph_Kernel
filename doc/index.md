@@ -1,5 +1,5 @@
-Code Documents
-==============
+Documents
+=========
 
 About
 -----
@@ -9,5 +9,6 @@ About
 Index
 -----
 
-### Kernel
+* [一般](kernel/general.md)
 * [スレッド](kernel/thread.md)
+* [ユニットテスト](kernel/test.md)
