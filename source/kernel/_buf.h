@@ -79,3 +79,4 @@ private:
   uint64_t _pop_ticket = 0;
   uint64_t _tail = 0;
 };
+

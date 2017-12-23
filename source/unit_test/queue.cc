@@ -21,6 +21,7 @@
  *
  */
 
+#include <stdio.h>
 #include <_queue3.h>
 #include "test.h"
 #include <iostream>
@@ -30,18 +31,18 @@
 #include <stdexcept>
 using namespace std;
 
-class QElement : public IntQueue<QElement>::ContainerInterface {
+class QElement : public NewQueue<QElement>::ContainerInterface {
 public:
   QElement() : _container(this) {
   }
-  IntQueue<QElement>::Container *GetContainer() {
+  NewQueue<QElement>::Container *GetContainer() {
     return &_container;
   }
 private:
-  IntQueue<QElement>::Container _container;
+  NewQueue<QElement>::Container _container;
 };
 
-class IntQueueTester_EmptyPop : public Tester {
+class NewQueueTester_EmptyPop : public Tester {
 public:
   virtual bool Test() override {
     QElement *ele;
@@ -49,10 +50,10 @@ public:
     return true;
   }
 private:
-  IntQueue<QElement> _queue;
+  NewQueue<QElement> _queue;
 } static OBJ(__LINE__);
 
-class IntQueueTester_SinglePushPop : public Tester {
+class NewQueueTester_SinglePushPop : public Tester {
 public:
   virtual bool Test() override {
     QElement ele1;
@@ -64,10 +65,10 @@ public:
     return true;
   }
 private:
-  IntQueue<QElement> _queue;
+  NewQueue<QElement> _queue;
 } static OBJ(__LINE__);
 
-class IntQueueTester_TriplePushPop : public Tester {
+class NewQueueTester_TriplePushPop : public Tester {
 public:
   virtual bool Test() override {
     QElement ele1, ele2, ele3;
@@ -85,17 +86,17 @@ public:
     return true;
   }
 private:
-  IntQueue<QElement> _queue;
+  NewQueue<QElement> _queue;
 } static OBJ(__LINE__);
 
-class IntQueueTester_ParallelPush : public Tester {
+class NewQueueTester_ParallelPush : public Tester {
 public:
   virtual bool Test() override {
     std::thread threads[kThreadNum];
     std::exception_ptr ep[kThreadNum];
     _ele = new QElement[kThreadNum * kElementNum];
     for (int i = 0; i < kThreadNum; i++) {
-      std::thread th(&IntQueueTester_ParallelPush::Producer, this, ep[i], i);
+      std::thread th(&NewQueueTester_ParallelPush::Producer, this, ep[i], i);
       threads[i].swap(th);
     }
     bool rval = true;
@@ -133,25 +134,88 @@ private:
     }
   }
   
-  IntQueue<QElement> _queue;
+  NewQueue<QElement> _queue;
   QElement *_ele;
   int _flag1 = 0;
   static const int kElementNum = 10000;
-  static const int kThreadNum = 100;
+  static const int kThreadNum = 50;
 } static OBJ(__LINE__);
 
-class IntQueueTester_ParallelPop : public Tester {
+class NewQueueTester_ParallelPop : public Tester {
 public:
   virtual bool Test() override {
-    std::thread threads[kThreadNum + 1];
-    std::exception_ptr ep[kThreadNum + 1];
+    std::thread threads[kThreadNum];
+    std::exception_ptr ep[kThreadNum];
     _ele = new QElement[kThreadNum * kElementNum];
+    for (int i = 0; i < kThreadNum * kElementNum; i++) {
+      _queue.Push(&_ele[i]);
+    }
+
     for (int i = 0; i < kThreadNum; i++) {
-      std::thread th(&IntQueueTester_ParallelPop::Producer, this, &ep[i], i);
+      std::thread th(&NewQueueTester_ParallelPop::Consumer, this, &ep[i]);
       threads[i].swap(th);
     }
-    std::thread th(&IntQueueTester_ParallelPop::Consumer, this, &ep[kThreadNum]);
-    threads[kThreadNum].swap(th);
+    
+    bool rval = true;
+    for (int i = 0; i < kThreadNum; i++) {
+      threads[i].join();
+      try {
+        if (ep[i]) {
+          _error = true;
+          std::rethrow_exception(ep[i]);
+        }
+      } catch (ExceptionAssertionFailure t) {
+        t.Show();
+        rval = false;
+      };
+    }
+    kassert(_pop_cnt == kThreadNum * kElementNum);
+    kassert(_queue.IsEmpty());
+    delete[] _ele;
+    return rval;
+  }
+private:
+  void Consumer(std::exception_ptr *ep) {
+    try {
+      __sync_fetch_and_add(&_flag1, 1);
+      while(_flag1 != kThreadNum) {
+        asm volatile("":::"memory");
+      }
+      int cnt = 0;
+      while (cnt < kElementNum && !_error) {
+        QElement *ele;
+        kassert(_queue.Pop(ele));
+        cnt++;
+        __sync_fetch_and_add(&_pop_cnt, 1);
+      }
+    } catch (...) {
+      *ep = std::current_exception();
+    }
+  }
+  
+  NewQueue<QElement> _queue;
+  QElement *_ele;
+  int _pop_cnt = 0;
+  bool _error = false;
+  int _flag1 = 0;
+  static const int kElementNum = 10000;
+  static const int kThreadNum = 50;
+} static OBJ(__LINE__);
+
+class NewQueueTester_ParallelPushPop : public Tester {
+public:
+  virtual bool Test() override {
+    std::thread threads[kThreadNum * 2];
+    std::exception_ptr ep[kThreadNum * 2];
+    _ele = new QElement[kThreadNum * kElementNum];
+    for (int i = 0; i < kThreadNum; i++) {
+      std::thread th(&NewQueueTester_ParallelPushPop::Producer, this, &ep[i], i);
+      threads[i].swap(th);
+    }
+    for (int i = kThreadNum; i < kThreadNum * 2; i++) {
+      std::thread th(&NewQueueTester_ParallelPushPop::Consumer, this, &ep[i], i);
+      threads[i].swap(th);
+    }
     
     bool rval = true;
     for (int i = 0; i < kThreadNum; i++) {
@@ -167,16 +231,19 @@ public:
       };
     }
     _no_more_produce = true;
-    threads[kThreadNum].join();
-    try {
-      if (ep[kThreadNum]) {
-        _error = true;
-        std::rethrow_exception(ep[kThreadNum]);
-      }
-    } catch (ExceptionAssertionFailure t) {
-      t.Show();
-      rval = false;
-    };
+    for (int i = kThreadNum; i < kThreadNum * 2; i++) {
+      threads[i].join();
+      try {
+        if (ep[i]) {
+          _error = true;
+          std::rethrow_exception(ep[i]);
+        }
+      } catch (ExceptionAssertionFailure t) {
+        t.Show();
+        rval = false;
+      };
+    }
+
     kassert(_queue.IsEmpty());
     kassert(_push_cnt == kThreadNum * kElementNum);
     kassert(_pop_cnt == kThreadNum * kElementNum);
@@ -184,14 +251,14 @@ public:
     return rval;
   }
 private:
-  void Consumer(std::exception_ptr *ep) {
+  void Consumer(std::exception_ptr *ep, int id) {
     try {
       __sync_fetch_and_add(&_flag1, 1);
-      while(_flag1 != kThreadNum + 1) {
+      while(_flag1 != kThreadNum * 2) {
         asm volatile("":::"memory");
       }
       int cnt = 0;
-      while (cnt < kElementNum * kThreadNum && !_error) {
+      while (cnt < kElementNum && !_error) {
         QElement *ele;
         if (_queue.Pop(ele)) {
           cnt++;
@@ -207,7 +274,7 @@ private:
   void Producer(std::exception_ptr *ep, int id) {
     try {
       __sync_fetch_and_add(&_flag1, 1);
-      while(_flag1 != kThreadNum + 1) {
+      while(_flag1 != kThreadNum * 2) {
         asm volatile("":::"memory");
       }
       for (int i = 0; i < kElementNum; i++) {
@@ -219,7 +286,7 @@ private:
     }
   }
   
-  IntQueue<QElement> _queue;
+  NewQueue<QElement> _queue;
   QElement *_ele;
   int _push_cnt = 0;
   int _pop_cnt = 0;
@@ -227,21 +294,23 @@ private:
   bool _no_more_produce = false;
   int _flag1 = 0;
   static const int kElementNum = 10000;
-  static const int kThreadNum = 100;
+  static const int kThreadNum = 50;
 } static OBJ(__LINE__);
 
-class IntQueueTester_ReusePoppedQElement : public Tester {
+class NewQueueTester_ReusePoppedQElement : public Tester {
 public:
   virtual bool Test() override {
-    std::thread threads[kThreadNum + 1];
-    std::exception_ptr ep[kThreadNum + 1];
+    std::thread threads[kThreadNum * 2];
+    std::exception_ptr ep[kThreadNum * 2];
     _ele = new QElement[kThreadNum * kElementNum];
     for (int i = 0; i < kThreadNum; i++) {
-      std::thread th(&IntQueueTester_ReusePoppedQElement::Producer, this, &ep[i], i);
+      std::thread th(&NewQueueTester_ReusePoppedQElement::Producer, this, &ep[i], i);
       threads[i].swap(th);
     }
-    std::thread th(&IntQueueTester_ReusePoppedQElement::Consumer, this, &ep[kThreadNum]);
-    threads[kThreadNum].swap(th);
+    for (int i = kThreadNum; i < kThreadNum * 2; i++) {
+      std::thread th(&NewQueueTester_ReusePoppedQElement::Consumer, this, &ep[i]);
+      threads[i].swap(th);
+    }
     
     bool rval = true;
     for (int i = 0; i < kThreadNum; i++) {
@@ -256,17 +325,18 @@ public:
         rval = false;
       };
     }
-    _no_more_produce = true;
-    threads[kThreadNum].join();
-    try {
-      if (ep[kThreadNum]) {
-        _error = true;
-        std::rethrow_exception(ep[kThreadNum]);
-      }
-    } catch (ExceptionAssertionFailure t) {
-      t.Show();
-      rval = false;
-    };
+    for (int i = kThreadNum; i < kThreadNum * 2; i++) {
+      threads[i].join();
+      try {
+        if (ep[i]) {
+          _error = true;
+          std::rethrow_exception(ep[i]);
+        }
+      } catch (ExceptionAssertionFailure t) {
+        t.Show();
+        rval = false;
+      };
+    }
     for (int i = 0; i < kThreadNum * kElementNum; i++) {
       QElement *ele;
       kassert(_queue.Pop(ele));
@@ -275,24 +345,23 @@ public:
     kassert(_push_cnt == kThreadNum * kElementNum);
     kassert(_pop_cnt == kThreadNum * kElementNum);
     delete[] _ele;
+
     return rval;
   }
 private:
   void Consumer(std::exception_ptr *ep) {
     try {
       __sync_fetch_and_add(&_flag1, 1);
-      while(_flag1 != kThreadNum + 1) {
+      while(_flag1 != kThreadNum * 2) {
         asm volatile("":::"memory");
       }
       int cnt = 0;
-      while (cnt < kElementNum * kThreadNum && !_error) {
+      while (cnt < kElementNum && !_error) {
         QElement *ele;
         if (_queue.Pop(ele)) {
           cnt++;
           __sync_fetch_and_add(&_pop_cnt, 1);
           _queue.Push(ele);
-        } else {
-          kassert(!_no_more_produce);
         }
       }
     } catch (...) {
@@ -302,7 +371,7 @@ private:
   void Producer(std::exception_ptr *ep, int id) {
     try {
       __sync_fetch_and_add(&_flag1, 1);
-      while(_flag1 != kThreadNum + 1) {
+      while(_flag1 != kThreadNum * 2) {
         asm volatile("":::"memory");
       }
       for (int i = 0; i < kElementNum; i++) {
@@ -314,13 +383,14 @@ private:
     }
   }
   
-  IntQueue<QElement> _queue;
+  NewQueue<QElement> _queue;
   QElement *_ele;
   int _push_cnt = 0;
   int _pop_cnt = 0;
   bool _error = false;
-  bool _no_more_produce = false;
   int _flag1 = 0;
   static const int kElementNum = 10000;
-  static const int kThreadNum = 100;
+  static const int kThreadNum = 50;
 } static OBJ(__LINE__);
+
+
