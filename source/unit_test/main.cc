@@ -27,6 +27,8 @@
 #include <string>
 #include <typeinfo>
 #include <cxxabi.h>
+#include <iomanip>
+#include <sys/time.h>
 
 using namespace std;
 
@@ -54,8 +56,11 @@ int main(int argc, char *argv[]) {
       return 0;
     }
     bool rval = false;
+    struct timeval s, e;
     try {
+      gettimeofday(&s, NULL);
       rval = tests[i]->Test();
+      gettimeofday(&e, NULL);
     } catch (ExceptionAssertionFailure t) {
       t.Show();
     } catch(...) {
@@ -74,13 +79,18 @@ int main(int argc, char *argv[]) {
         cout << "\x1b[31m";
       }
       if (stat == 0) {
-        cout << name;
+        cout << std::right << std::setw(50) << name;
       } else {
-        cout << "Unknown";
+        cout << std::right << std::setw(50) << "Unknown";
       }
-      cout << "\x1b[0m" << endl;
+      cout << "\x1b[0m";
+      if (rval) {
+        cout << " [" << (e.tv_sec - s.tv_sec) + (e.tv_usec - s.tv_usec)*1.0E-6 << "s]";
+      }
+      cout << endl;
       free(name);
     }
+    fflush(stdout);
   }
   cerr << "All tests have passed, but some tests were not executed..." << endl;
   return 1;

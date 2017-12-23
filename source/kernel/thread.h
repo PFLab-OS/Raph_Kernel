@@ -34,7 +34,7 @@
 
 class ThreadCtrl;
 
-class Thread final : public IntQueue<Thread>::ContainerInterface, public CustomPtrObjInterface {
+class Thread final : public NewQueue<Thread>::ContainerInterface, public CustomPtrObjInterface {
 public:
   enum class State {
     kRunning,
@@ -126,7 +126,7 @@ private:
   WaitQueueElement &GetWqElement() {
     return _wq_ele;
   }
-  virtual IntQueue<Thread>::Container *GetContainer() override {
+  virtual NewQueue<Thread>::Container *GetContainer() override {
     return &_container;
   }
   State SetState(State state) {
@@ -140,7 +140,7 @@ private:
   State _state = State::kDeleting;
   WaitQueueElement _wq_ele;
   ThreadCtrl * const _ctrl;
-  IntQueue<Thread>::Container _container;
+  NewQueue<Thread>::Container _container;
   Thread *_waiting_thread = nullptr;
 
   //
@@ -228,7 +228,7 @@ private:
   
   Thread **_threads;
   QueueState _state = QueueState::kNotStarted;
-  IntQueue<Thread> _run_queue;
+  NewQueue<Thread> _run_queue;
   OrderedQueue<Thread::WaitQueueElement, Time> _wait_queue;
   class IdleThreads {
   public:

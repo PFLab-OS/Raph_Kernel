@@ -150,7 +150,9 @@ public:
         rval = false;
       };
     }
-    _no_more_produce = true;
+
+    asm volatile("":::"memory");
+    
     threads[kThreadNum].join();
     try {
       if (ep[kThreadNum]) {
@@ -178,7 +180,6 @@ private:
         for(int j = 0; j < kThreadNum; j++) {
           OqElement *ele;
           while(_queue.IsEmpty()) {
-            kassert(!_no_more_produce);
           }
           kassert(_queue.Pop(ele));
           __sync_fetch_and_add(&_pop_cnt, 1);
@@ -218,7 +219,6 @@ private:
   int _push_cnt = 0;
   int _pop_cnt = 0;
   bool _error = false;
-  bool _no_more_produce = false;
   int _flag1 = 0;
   int _flag2 = 0;
   static const int kElementNum = 10;
