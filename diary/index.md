@@ -6,6 +6,16 @@ About
 大きな変更などがコミットされた時はこの日誌上で簡単に解説します。
 コミットログを追わなくても、ここさえ読んでおけば大体追いかけられる感じにできるといいなぁ、と。
 
+2017/12/23
+----------
+[7a69e92](https://github.com/PFLab-OS/Raph_Kernel/pull/158/commits/7a69e92da0cedc6ab4be79b6b525138c2a98d494)
+新しいスケーラブルなキュー(NewQueue)の実装
+スピンロックベースで遅い現状のキューのリプレースを視野に入れて、IntQueueが導入されたが、このキューは複数のスレッドからのPopが出来ない。
+これを補完する物として、複数スレッドがPopできる（が、特定のスレッドからしかPushできない）RingBuffer2が実装されており、プログラミングモデルとしてはこれで十分なはずだが、状況によってIntQueueを使ったり、RingBuffer2を使ったりと使い分けるのはあまりプログラマフレンドリーではないため、複数スレッドからのPush,Popに対応した新しいキューを実装した。
+
+NewQueueはIntQueueと比較するとPushの性能は低下するが、RingBuffer2と比較するとPop性能は大幅に向上し、かつバッファサイズ制限も無くなる。
+今後RingBufferやRingBuffer2はNewQueueに統合していく予定。
+
 2017/12/18
 ----------
 [ca839fc](https://github.com/PFLab-OS/Raph_Kernel/commit/ca839fc57c533e562e6d02d0b57abfe822129a63)
