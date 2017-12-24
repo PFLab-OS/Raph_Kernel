@@ -31,9 +31,9 @@
 #include <stdexcept>
 using namespace std;
 
-class QElement : public Queue<QElement>::Container {
+class QElement : public QueueContainer<QElement> {
 public:
-  QElement() : Queue<QElement>::Container(this) {
+  QElement() : QueueContainer<QElement>(this) {
   }
 private:
 };

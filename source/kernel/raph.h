@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2016 Raphine Project
+ * Copyright (c) 2017 Raphine Project
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -20,8 +20,7 @@
  * 
  */
 
-#ifndef __RAPH_KERNEL_RAPH_H__
-#define __RAPH_KERNEL_RAPH_H__
+#pragma once
 
 #include <stdint.h>
 #include <stddef.h>
@@ -37,6 +36,22 @@ template<class T, class U>
 static inline T alignUp(T val, U base) {
   return align(val + base - 1, base);
 }
+
+// https://www.ruche-home.net/boyaki/2011-09-14/b361cc6d    
+template<class TBase, class TDerived>
+class IsBaseOf
+{
+private:
+  typedef char                  Yes;
+  typedef struct { char v[2]; } No;
+
+  static Yes check(const TBase&);
+  static No  check(...);
+
+  static TDerived d;
+public:
+  static const bool value = (sizeof(check(d)) == sizeof(Yes));
+};
 
 #ifdef __NO_LIBC__
 inline void *operator new  (size_t, void *p)   throw() { return p; }
@@ -152,5 +167,3 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* __RAPH_KERNEL_RAPH_H__ */

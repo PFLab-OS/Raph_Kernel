@@ -35,7 +35,7 @@
 
 class AhciChannel;
 
-class PacketAtaio final : public Queue<PacketAtaio>::Container {
+class PacketAtaio final : public QueueContainer<PacketAtaio> {
 public:
   target_id_t	target_id;
   lun_id_t target_lun;
@@ -61,7 +61,7 @@ public:
   };
   Status proc_result;
 
-  PacketAtaio() : Queue<PacketAtaio>::Container(this) {
+  PacketAtaio() : QueueContainer<PacketAtaio>(this) {
   }
   virtual ~PacketAtaio() {
   }
