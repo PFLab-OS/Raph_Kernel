@@ -24,22 +24,6 @@
 
 #include <raph.h>
 
-// https://www.ruche-home.net/boyaki/2011-09-14/b361cc6d    
-template<class TBase, class TDerived>
-class IsBaseOf
-{
-private:
-  typedef char                  Yes;
-  typedef struct { char v[2]; } No;
-
-  static Yes check(const TBase&);
-  static No  check(...);
-
-  static TDerived d;
-public:
-  static const bool value = (sizeof(check(d)) == sizeof(Yes));
-};
-
 class CustomPtrObjInterface {
 public:
   virtual void Delete() = 0;

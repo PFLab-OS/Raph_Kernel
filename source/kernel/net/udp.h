@@ -38,7 +38,7 @@ public:
     uint16_t source_port;
     uptr<Array<uint8_t>> data;
   };
-  class RxPacket : public Queue<uptr<RxPacket>>::Container {
+  class RxPacket : public QueueContainer<RxPacket> {
   public:
     uint8_t dest_ip_addr[4];
     uint8_t source_ip_addr[4];
@@ -46,7 +46,7 @@ public:
     uint16_t source_port;
     uptr<Array<uint8_t>> data;
     NetDev *dev;
-    RxPacket() : Queue<uptr<RxPacket>>::Container(this) {
+    RxPacket() : QueueContainer<RxPacket>(this) {
     }
   };
   static void Init();

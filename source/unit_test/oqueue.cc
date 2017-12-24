@@ -30,9 +30,9 @@
 #include <stdexcept>
 using namespace std;
 
-class OqElement : public OrderedQueue<OqElement, int>::Container {
+class OqElement : public OrderedQueueContainer<OqElement, int> {
 public:
-  OqElement() : OrderedQueue<OqElement, int>::Container(this) {
+  OqElement() : OrderedQueueContainer<OqElement, int>(this) {
   }
 private:
 };

@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2016 Raphine Project
+ * Copyright (c) 2017 Raphine Project
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -20,8 +20,7 @@
  *
  */
 
-#ifndef __RAPH_KERNEL_MEM_KSTACK_H__
-#define __RAPH_KERNEL_MEM_KSTACK_H__
+#pragma once
 
 #ifndef ASM_FILE
 
@@ -49,9 +48,9 @@ public:
   void FreeThreadStack(virt_addr addr);
   static const int kStackSize = PagingCtrl::kPageSize * 4;
 private:
-  class FreedAddr : public Queue<FreedAddr>::Container {
+  class FreedAddr : public QueueContainer<FreedAddr> {
   public:
-    FreedAddr() : Queue<FreedAddr>::Container(this) {
+    FreedAddr() : QueueContainer<FreedAddr>(this) {
     }
     virt_addr addr;
   };
@@ -73,4 +72,3 @@ private:
 
 #endif // ! ASM_FILE
 
-#endif // __RAPH_KERNEL_MEM_KSTACK_H__

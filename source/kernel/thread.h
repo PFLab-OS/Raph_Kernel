@@ -34,7 +34,7 @@
 
 class ThreadCtrl;
 
-class Thread final : public Queue<Thread>::Container, public CustomPtrObjInterface {
+class Thread final : public QueueContainer<Thread>, public CustomPtrObjInterface {
 public:
   enum class State {
     kRunning,
@@ -50,7 +50,7 @@ public:
     kShared,
   };
   Thread() = delete;
-  Thread(ThreadCtrl *ctrl) : Queue<Thread>::Container(this), _op_obj(this), _wq_ele(this), _ctrl(ctrl), _stack_state(StackState::kShared) {
+  Thread(ThreadCtrl *ctrl) : QueueContainer<Thread>(this), _op_obj(this), _wq_ele(this), _ctrl(ctrl), _stack_state(StackState::kShared) {
   }
   virtual ~Thread() {
     kassert(_state == State::kOutOfQueue);
@@ -108,10 +108,10 @@ private:
   //
   void Init(StackState sstate);
   void Execute();
-  class WaitQueueElement final : public OrderedQueue<WaitQueueElement, Time>::Container {
+  class WaitQueueElement final : public OrderedQueueContainer<WaitQueueElement, Time> {
   public:
     WaitQueueElement() = delete;
-    WaitQueueElement(Thread *thread) : OrderedQueue<WaitQueueElement, Time>::Container(this), _thread(thread) {
+    WaitQueueElement(Thread *thread) : OrderedQueueContainer<WaitQueueElement, Time>(this), _thread(thread) {
     }
     Thread *GetThread() {
       return _thread;

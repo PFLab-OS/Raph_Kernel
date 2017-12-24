@@ -123,14 +123,14 @@ class Tty {
  private:
   class String;
   using StringBuffer = RingBuffer<String *, 64>;
-  class String final : public Queue<String>::Container {
+  class String final : public QueueContainer<String> {
   public:
     enum class Type {
       kSingle,
       kQueue,
       kBuffered,
     } type;
-    String() : Queue<String>::Container(this) {
+    String() : QueueContainer<String>(this) {
       type = Type::kSingle;
       offset = 0;
       next = nullptr;
