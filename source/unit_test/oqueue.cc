@@ -30,15 +30,11 @@
 #include <stdexcept>
 using namespace std;
 
-class OqElement : public OrderedQueue<OqElement, int>::ContainerInterface {
+class OqElement : public OrderedQueue<OqElement, int>::Container {
 public:
-  OqElement() : _container(this) {
-  }
-  OrderedQueue<OqElement, int>::Container *GetContainer() {
-    return &_container;
+  OqElement() : OrderedQueue<OqElement, int>::Container(this) {
   }
 private:
-  OrderedQueue<OqElement, int>::Container _container;
 };
 
 class OrderedQueueTester_EmptyPop : public Tester {

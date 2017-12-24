@@ -22,7 +22,7 @@
  */
 
 #include <stdio.h>
-#include <_queue3.h>
+#include <_queue.h>
 #include "test.h"
 #include <iostream>
 #include <pthread.h>
@@ -31,18 +31,14 @@
 #include <stdexcept>
 using namespace std;
 
-class QElement : public NewQueue<QElement>::ContainerInterface {
+class QElement : public Queue<QElement>::Container {
 public:
-  QElement() : _container(this) {
-  }
-  NewQueue<QElement>::Container *GetContainer() {
-    return &_container;
+  QElement() : Queue<QElement>::Container(this) {
   }
 private:
-  NewQueue<QElement>::Container _container;
 };
 
-class NewQueueTester_EmptyPop : public Tester {
+class QueueTester_EmptyPop : public Tester {
 public:
   virtual bool Test() override {
     QElement *ele;
@@ -50,10 +46,10 @@ public:
     return true;
   }
 private:
-  NewQueue<QElement> _queue;
+  Queue<QElement> _queue;
 } static OBJ(__LINE__);
 
-class NewQueueTester_SinglePushPop : public Tester {
+class QueueTester_SinglePushPop : public Tester {
 public:
   virtual bool Test() override {
     QElement ele1;
@@ -65,10 +61,10 @@ public:
     return true;
   }
 private:
-  NewQueue<QElement> _queue;
+  Queue<QElement> _queue;
 } static OBJ(__LINE__);
 
-class NewQueueTester_TriplePushPop : public Tester {
+class QueueTester_TriplePushPop : public Tester {
 public:
   virtual bool Test() override {
     QElement ele1, ele2, ele3;
@@ -86,17 +82,17 @@ public:
     return true;
   }
 private:
-  NewQueue<QElement> _queue;
+  Queue<QElement> _queue;
 } static OBJ(__LINE__);
 
-class NewQueueTester_ParallelPush : public Tester {
+class QueueTester_ParallelPush : public Tester {
 public:
   virtual bool Test() override {
     std::thread threads[kThreadNum];
     std::exception_ptr ep[kThreadNum];
     _ele = new QElement[kThreadNum * kElementNum];
     for (int i = 0; i < kThreadNum; i++) {
-      std::thread th(&NewQueueTester_ParallelPush::Producer, this, ep[i], i);
+      std::thread th(&QueueTester_ParallelPush::Producer, this, ep[i], i);
       threads[i].swap(th);
     }
     bool rval = true;
@@ -134,14 +130,14 @@ private:
     }
   }
   
-  NewQueue<QElement> _queue;
+  Queue<QElement> _queue;
   QElement *_ele;
   int _flag1 = 0;
   static const int kElementNum = 10000;
   static const int kThreadNum = 50;
 } static OBJ(__LINE__);
 
-class NewQueueTester_ParallelPop : public Tester {
+class QueueTester_ParallelPop : public Tester {
 public:
   virtual bool Test() override {
     std::thread threads[kThreadNum];
@@ -152,7 +148,7 @@ public:
     }
 
     for (int i = 0; i < kThreadNum; i++) {
-      std::thread th(&NewQueueTester_ParallelPop::Consumer, this, &ep[i]);
+      std::thread th(&QueueTester_ParallelPop::Consumer, this, &ep[i]);
       threads[i].swap(th);
     }
     
@@ -193,7 +189,7 @@ private:
     }
   }
   
-  NewQueue<QElement> _queue;
+  Queue<QElement> _queue;
   QElement *_ele;
   int _pop_cnt = 0;
   bool _error = false;
@@ -202,18 +198,18 @@ private:
   static const int kThreadNum = 50;
 } static OBJ(__LINE__);
 
-class NewQueueTester_ParallelPushPop : public Tester {
+class QueueTester_ParallelPushPop : public Tester {
 public:
   virtual bool Test() override {
     std::thread threads[kThreadNum * 2];
     std::exception_ptr ep[kThreadNum * 2];
     _ele = new QElement[kThreadNum * kElementNum];
     for (int i = 0; i < kThreadNum; i++) {
-      std::thread th(&NewQueueTester_ParallelPushPop::Producer, this, &ep[i], i);
+      std::thread th(&QueueTester_ParallelPushPop::Producer, this, &ep[i], i);
       threads[i].swap(th);
     }
     for (int i = kThreadNum; i < kThreadNum * 2; i++) {
-      std::thread th(&NewQueueTester_ParallelPushPop::Consumer, this, &ep[i], i);
+      std::thread th(&QueueTester_ParallelPushPop::Consumer, this, &ep[i], i);
       threads[i].swap(th);
     }
     
@@ -286,7 +282,7 @@ private:
     }
   }
   
-  NewQueue<QElement> _queue;
+  Queue<QElement> _queue;
   QElement *_ele;
   int _push_cnt = 0;
   int _pop_cnt = 0;
@@ -297,18 +293,18 @@ private:
   static const int kThreadNum = 50;
 } static OBJ(__LINE__);
 
-class NewQueueTester_ReusePoppedQElement : public Tester {
+class QueueTester_ReusePoppedQElement : public Tester {
 public:
   virtual bool Test() override {
     std::thread threads[kThreadNum * 2];
     std::exception_ptr ep[kThreadNum * 2];
     _ele = new QElement[kThreadNum * kElementNum];
     for (int i = 0; i < kThreadNum; i++) {
-      std::thread th(&NewQueueTester_ReusePoppedQElement::Producer, this, &ep[i], i);
+      std::thread th(&QueueTester_ReusePoppedQElement::Producer, this, &ep[i], i);
       threads[i].swap(th);
     }
     for (int i = kThreadNum; i < kThreadNum * 2; i++) {
-      std::thread th(&NewQueueTester_ReusePoppedQElement::Consumer, this, &ep[i]);
+      std::thread th(&QueueTester_ReusePoppedQElement::Consumer, this, &ep[i]);
       threads[i].swap(th);
     }
     
@@ -383,7 +379,7 @@ private:
     }
   }
   
-  NewQueue<QElement> _queue;
+  Queue<QElement> _queue;
   QElement *_ele;
   int _push_cnt = 0;
   int _pop_cnt = 0;

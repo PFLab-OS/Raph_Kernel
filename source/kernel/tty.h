@@ -123,18 +123,20 @@ class Tty {
  private:
   class String;
   using StringBuffer = RingBuffer<String *, 64>;
-  class String {
+  class String final : public Queue<String>::Container {
   public:
     enum class Type {
       kSingle,
       kQueue,
       kBuffered,
     } type;
-    String() {
+    String() : Queue<String>::Container(this) {
       type = Type::kSingle;
       offset = 0;
       next = nullptr;
-    } 
+    }
+    virtual ~String() {
+    }
     static String *New();
     static void Init(StringBuffer &buf);
     static String *Get(StringBuffer &buf) {
@@ -174,11 +176,11 @@ class Tty {
     uint8_t str[length];
     int offset;
     String *next;
+  private:
   };
   void Handle(void *){
-    void *s;
-    while(_queue.Pop(s)) {
-      String *str = reinterpret_cast<String *>(s);
+    String *str;
+    while(_queue.Pop(str)) {
       {
         Locker locker(_lock);
         PrintString(str);
@@ -190,7 +192,7 @@ class Tty {
   void PrintString(String *str);
   void PrintErrString(String *str);
   void DoString(String *str);
-  FunctionalQueue _queue;
+  FunctionalQueue<String> _queue;
   SpinLock _lock;
   CpuId _cpuid;
   StringBuffer _str_buffer;

@@ -23,7 +23,7 @@
 #pragma once
 
 #include <raph.h>
-#include <_queue3.h>
+#include <_queue.h>
 #include <oqueue.h>
 #include <_buf.h>
 #include <ptr.h>
@@ -34,7 +34,7 @@
 
 class ThreadCtrl;
 
-class Thread final : public NewQueue<Thread>::ContainerInterface, public CustomPtrObjInterface {
+class Thread final : public Queue<Thread>::Container, public CustomPtrObjInterface {
 public:
   enum class State {
     kRunning,
@@ -50,7 +50,7 @@ public:
     kShared,
   };
   Thread() = delete;
-  Thread(ThreadCtrl *ctrl) : _op_obj(this), _wq_ele(this), _ctrl(ctrl), _container(this), _stack_state(StackState::kShared) {
+  Thread(ThreadCtrl *ctrl) : Queue<Thread>::Container(this), _op_obj(this), _wq_ele(this), _ctrl(ctrl), _stack_state(StackState::kShared) {
   }
   virtual ~Thread() {
     kassert(_state == State::kOutOfQueue);
@@ -108,26 +108,19 @@ private:
   //
   void Init(StackState sstate);
   void Execute();
-  class WaitQueueElement final : public OrderedQueue<WaitQueueElement, Time>::ContainerInterface {
+  class WaitQueueElement final : public OrderedQueue<WaitQueueElement, Time>::Container {
   public:
     WaitQueueElement() = delete;
-    WaitQueueElement(Thread *thread) : _container(this), _thread(thread) {
-    }
-    virtual OrderedQueue<WaitQueueElement, Time>::Container *GetContainer() override {
-      return &_container;
+    WaitQueueElement(Thread *thread) : OrderedQueue<WaitQueueElement, Time>::Container(this), _thread(thread) {
     }
     Thread *GetThread() {
       return _thread;
     }
   private:
-    OrderedQueue<WaitQueueElement, Time>::Container _container;
     Thread *_thread;
   };
   WaitQueueElement &GetWqElement() {
     return _wq_ele;
-  }
-  virtual NewQueue<Thread>::Container *GetContainer() override {
-    return &_container;
   }
   State SetState(State state) {
     return __sync_lock_test_and_set(&_state, state);
@@ -140,7 +133,6 @@ private:
   State _state = State::kDeleting;
   WaitQueueElement _wq_ele;
   ThreadCtrl * const _ctrl;
-  NewQueue<Thread>::Container _container;
   Thread *_waiting_thread = nullptr;
 
   //
@@ -228,7 +220,7 @@ private:
   
   Thread **_threads;
   QueueState _state = QueueState::kNotStarted;
-  NewQueue<Thread> _run_queue;
+  Queue<Thread> _run_queue;
   OrderedQueue<Thread::WaitQueueElement, Time> _wait_queue;
   class IdleThreads {
   public:

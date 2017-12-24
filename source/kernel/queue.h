@@ -22,20 +22,22 @@
 
 #pragma once
 
-#include <functional.h>
 #include "_queue.h"
+#include <functional.h>
+#include <ptr.h>
 
+template <class T>
 class FunctionalQueue final : public Functional {
  public:
   FunctionalQueue() {
   }
   ~FunctionalQueue() {
   }
-  void Push(void *data) {
+  void Push(T *data) {
     _queue.Push(data);
     WakeupFunction();
   }
-  bool Pop(void *&data) {
+  bool Pop(T *&data) {
     return _queue.Pop(data);
   }
   bool IsEmpty() {
@@ -45,22 +47,22 @@ class FunctionalQueue final : public Functional {
   virtual bool ShouldFunc() override {
     return !_queue.IsEmpty();
   }
-  Queue _queue;
+  Queue<T> _queue;
 };
 
-template <class T>
-class FunctionalQueue2 final : public Functional {
+template <class U>
+class FunctionalQueue<uptr<U>> final : public Functional {
  public:
-  FunctionalQueue2() {
+  FunctionalQueue() {
   }
-  ~FunctionalQueue2() {
+  ~FunctionalQueue() {
   }
-  void Push(T data) {
+  void Push(uptr<U> data) {
     _queue.Push(data);
     WakeupFunction();
   }
-  bool Pop(T &data) {
-    return _queue.Pop(data);
+  uptr<U> Pop() {
+    return _queue.Pop();
   }
   bool IsEmpty() {
     return _queue.IsEmpty();
@@ -69,5 +71,5 @@ class FunctionalQueue2 final : public Functional {
   virtual bool ShouldFunc() override {
     return !_queue.IsEmpty();
   }
-  Queue2<T> _queue;
+  Queue<uptr<U>> _queue;
 };

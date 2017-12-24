@@ -35,7 +35,7 @@
 
 class AhciChannel;
 
-class PacketAtaio {
+class PacketAtaio final : public Queue<PacketAtaio>::Container {
 public:
   target_id_t	target_id;
   lun_id_t target_lun;
@@ -60,6 +60,11 @@ public:
     kSuccess,
   };
   Status proc_result;
+
+  PacketAtaio() : Queue<PacketAtaio>::Container(this) {
+  }
+  virtual ~PacketAtaio() {
+  }
 
   static PacketAtaio *XptAlloc() {
     return new PacketAtaio();
@@ -145,7 +150,7 @@ public:
       Locker locker(lock);
       return (freeze == 0) && !_queue.IsEmpty();
     }
-    Queue2<PacketAtaio *> _queue;
+    Queue<PacketAtaio> _queue;
     int freeze = 0;
     SpinLock lock;
   };
@@ -160,8 +165,8 @@ public:
   static AhciChannel *Init(AhciCtrl *ctrl);
   DevQueue	devq;
   PacketAtaio	*frozen = nullptr;
-  Queue2<PacketAtaio *>	doneq;
-  Queue2<PacketAtaio *>	tmp_doneq;
+  Queue<PacketAtaio>	doneq;
+  Queue<PacketAtaio>	tmp_doneq;
   bool IsChannelReady() {
     return (ident_data.capabilities1 & (ATA_SUPPORT_DMA | ATA_SUPPORT_LBA)) != 0;
   }
