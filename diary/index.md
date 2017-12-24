@@ -6,6 +6,11 @@ About
 大きな変更などがコミットされた時はこの日誌上で簡単に解説します。
 コミットログを追わなくても、ここさえ読んでおけば大体追いかけられる感じにできるといいなぁ、と。
 
+2017/12/24
+----------
+[a8e9f4f](https://github.com/PFLab-OS/Raph_Kernel/commit/a8e9f4f648c176e4e69f91ae1a5ee5542d35228a)
+Queueを全てNewQueueでリプレースし、NewQueueをQueueへ改名
+
 2017/12/23
 ----------
 [7a69e92](https://github.com/PFLab-OS/Raph_Kernel/pull/158/commits/7a69e92da0cedc6ab4be79b6b525138c2a98d494)
