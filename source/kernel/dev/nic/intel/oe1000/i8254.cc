@@ -122,7 +122,7 @@ void DevGbeI8254::SetupRx() {
   // initialize rx desc ring buffer
   for(int i = 0; i < kRxdescNumber; i++) {
     E1000RxDesc *rxdesc = &rx_desc_buf_[i];
-    virt_addr tmp = kernel_virtmem_ctrl->Alloc(kBufSize);
+    virt_addr tmp = system_memory_space->kvc.Alloc(kBufSize);
     rxdesc->bufAddr = k2p(tmp);
     rxdesc->vlanTag = 0;
     rxdesc->errors = 0;
@@ -150,7 +150,7 @@ void DevGbeI8254::SetupTx() {
   // (see the definition of E1000 class)
 
   // set base address of ring buffer
-  virt_addr tx_desc_buf_addr = ((kernel_virtmem_ctrl->Alloc(sizeof(E1000TxDesc) * kTxdescNumber + 15) + 15) / 16) * 16;
+  virt_addr tx_desc_buf_addr = ((system_memory_space->kvc.Alloc(sizeof(E1000TxDesc) * kTxdescNumber + 15) + 15) / 16) * 16;
   tx_desc_buf_ = reinterpret_cast<E1000TxDesc *>(tx_desc_buf_addr);
 
   _mmioAddr[kRegTdbal] = k2p(tx_desc_buf_addr) & 0xffffffff;
@@ -168,7 +168,7 @@ void DevGbeI8254::SetupTx() {
   // initialize the tx desc registers (TDBAL, TDBAH, TDL, TDH, TDT)
   for(int i = 0; i < kTxdescNumber; i++) {
     volatile E1000TxDesc *txdesc = &tx_desc_buf_[i];
-    txdesc->bufAddr = k2p(kernel_virtmem_ctrl->Alloc(kBufSize));
+    txdesc->bufAddr = k2p(system_memory_space->kvc.Alloc(kBufSize));
     txdesc->special = 0;
     txdesc->css = 0;
     txdesc->sta = 0;

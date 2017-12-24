@@ -696,7 +696,7 @@ em_attach(device_t dev)
 	/* Allocate multicast array memory. */
 	// adapter->mta = malloc(sizeof(u8) * ETH_ADDR_LEN *
 	//     MAX_NUM_MULTICAST_ADDRESSES, M_DEVBUF, M_NOWAIT);
-  adapter->mta = reinterpret_cast<u8 *>(kernel_virtmem_ctrl->Alloc(sizeof(u8) * ETH_ADDR_LEN *
+  adapter->mta = reinterpret_cast<u8 *>(system_memory_space->kvc.Alloc(sizeof(u8) * ETH_ADDR_LEN *
                                                             MAX_NUM_MULTICAST_ADDRESSES));
 	if (adapter->mta == NULL) {
 		device_printf(dev, "Can not allocate multicast setup array\n");
@@ -3411,7 +3411,7 @@ em_allocate_queues(struct adapter *adapter)
 
 	/* Allocate the TX ring struct memory */
 	if (!(adapter->tx_rings =
-        (struct tx_ring *)reinterpret_cast<u8 *>(kernel_virtmem_ctrl->AllocZ(sizeof(struct tx_ring) * adapter->num_queues))
+        (struct tx_ring *)reinterpret_cast<u8 *>(system_memory_space->kvc.AllocZ(sizeof(struct tx_ring) * adapter->num_queues))
         /* malloc(sizeof(struct tx_ring) *
            adapter->num_queues, M_DEVBUF, M_NOWAIT | M_ZERO) */)) {
 		device_printf(dev, "Unable to allocate TX ring memory\n");
@@ -3421,7 +3421,7 @@ em_allocate_queues(struct adapter *adapter)
 
 	/* Now allocate the RX */
 	if (!(adapter->rx_rings =
-        (struct rx_ring *)reinterpret_cast<u8 *>(kernel_virtmem_ctrl->AllocZ(sizeof(struct rx_ring) *adapter->num_queues))
+        (struct rx_ring *)reinterpret_cast<u8 *>(system_memory_space->kvc.AllocZ(sizeof(struct rx_ring) *adapter->num_queues))
         /*malloc(sizeof(struct rx_ring) *
           adapter->num_queues, M_DEVBUF, M_NOWAIT | M_ZERO)*/)) {
 		device_printf(dev, "Unable to allocate RX ring memory\n");
@@ -3555,7 +3555,7 @@ em_allocate_transmit_buffers(struct tx_ring *txr)
 	}
 
 	if (!(txr->tx_buffers =
-        reinterpret_cast<struct em_buffer *>(kernel_virtmem_ctrl->AllocZ(sizeof(struct em_buffer) * adapter->num_tx_desc))
+        reinterpret_cast<struct em_buffer *>(system_memory_space->kvc.AllocZ(sizeof(struct em_buffer) * adapter->num_tx_desc))
         /*(struct em_buffer *) malloc(sizeof(struct em_buffer) *
           adapter->num_tx_desc, M_DEVBUF, M_NOWAIT | M_ZERO)*/)) {
 		device_printf(dev, "Unable to allocate tx_buffer memory\n");
@@ -4314,7 +4314,7 @@ em_allocate_receive_buffers(struct rx_ring *rxr)
 	int			error;
   E1000 *e1000 = adapter->dev->GetMasterClass<E1000>();
 
-	rxr->rx_buffers = reinterpret_cast<struct em_buffer *>(kernel_virtmem_ctrl->AllocZ(sizeof(struct em_buffer) * adapter->num_rx_desc));
+	rxr->rx_buffers = reinterpret_cast<struct em_buffer *>(system_memory_space->kvc.AllocZ(sizeof(struct em_buffer) * adapter->num_rx_desc));
 	// rxr->rx_buffers = malloc(sizeof(struct em_buffer) *
 	//     adapter->num_rx_desc, M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (rxr->rx_buffers == NULL) {

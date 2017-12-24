@@ -25,12 +25,12 @@
 class CpuCtrlInterface;
 class Tty;
 class Timer;
-class KernelVirtmemCtrl;
+class MemCtrl;
 
 extern CpuCtrlInterface *cpu_ctrl;
 extern Tty *gtty;
 extern Tty *gerr;
 extern Timer *timer;
-extern KernelVirtmemCtrl *kernel_virtmem_ctrl;
+extern MemCtrl *system_memory_space;
 
 

@@ -36,19 +36,19 @@ bool oE1000::InitPCI(uint16_t vid, uint16_t did, uint8_t bus, uint8_t device, bo
     switch(did) {
     case kI8254x:
       {
-        DevGbeI8254 *addr = reinterpret_cast<DevGbeI8254 *>(kernel_virtmem_ctrl->Alloc(sizeof(DevGbeI8254)));
+        DevGbeI8254 *addr = reinterpret_cast<DevGbeI8254 *>(system_memory_space->kvc.Alloc(sizeof(DevGbeI8254)));
         e1000 = new(addr) DevGbeI8254(bus, device, mf);
       }
       break;
     case kI8257x:
       {
-        DevGbeI8257 *addr = reinterpret_cast<DevGbeI8257 *>(kernel_virtmem_ctrl->Alloc(sizeof(DevGbeI8257)));
+        DevGbeI8257 *addr = reinterpret_cast<DevGbeI8257 *>(system_memory_space->kvc.Alloc(sizeof(DevGbeI8257)));
         e1000 = new(addr) DevGbeI8257(bus, device, mf);
       }
       break;
     case 0x153A:
       {
-        DevGbeIch8 *addr = reinterpret_cast<DevGbeIch8 *>(kernel_virtmem_ctrl->Alloc(sizeof(DevGbeIch8)));
+        DevGbeIch8 *addr = reinterpret_cast<DevGbeIch8 *>(system_memory_space->kvc.Alloc(sizeof(DevGbeIch8)));
         e1000 = new(addr) DevGbeIch8(bus, device, mf);
       }
       break;

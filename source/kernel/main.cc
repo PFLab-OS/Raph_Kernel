@@ -61,7 +61,7 @@ AcpiCtrl *acpi_ctrl = nullptr;
 ApicCtrl *apic_ctrl = nullptr;
 MultibootCtrl *multiboot_ctrl = nullptr;
 PhysmemCtrl *physmem_ctrl = nullptr;
-KernelVirtmemCtrl *kernel_virtmem_ctrl = nullptr;
+MemCtrl *system_memory_space = nullptr;
 Gdt *gdt = nullptr;
 Idt *idt = nullptr;
 Shell *shell = nullptr;
@@ -75,14 +75,13 @@ ApicCtrl _apic_ctrl;
 CpuCtrl _cpu_ctrl;
 Gdt _gdt;
 Idt _idt;
-KernelVirtmemCtrl _kernel_virtmem_ctrl;
 PhysmemCtrl _physmem_ctrl;
-PagingCtrl _paging_ctrl;
 Hpet _htimer;
 FrameBuffer _framebuffer;
 Shell _shell;
 AcpicaPciCtrl _acpica_pci_ctrl;
 NetDevCtrl _netdev_ctrl;
+MemCtrl _system_memory_space;
 // ArpTable _arp_table;
 
 CpuId network_cpu;
@@ -706,6 +705,8 @@ void cat(int argc, const char *argv[]) {
 void freebsd_main();
 
 extern "C" int main() {
+  _system_memory_space.kvc.Init();
+
   multiboot_ctrl = new (&_multiboot_ctrl) MultibootCtrl;
 
   acpi_ctrl = new (&_acpi_ctrl) AcpiCtrl;
@@ -718,11 +719,11 @@ extern "C" int main() {
 
   idt = new (&_idt) Idt;
 
-  kernel_virtmem_ctrl = new (&_kernel_virtmem_ctrl) KernelVirtmemCtrl;
+  system_memory_space = new (&_system_memory_space) MemCtrl;
+
+  system_memory_space->kvc = _system_memory_space.kvc;
 
   physmem_ctrl = new (&_physmem_ctrl) PhysmemCtrl;
-
-  paging_ctrl = new (&_paging_ctrl) PagingCtrl;
 
   timer = new (&_htimer) Hpet;
 
@@ -738,7 +739,9 @@ extern "C" int main() {
   
   multiboot_ctrl->Setup();
 
-  kernel_virtmem_ctrl->Init();
+  InitKernelMemorySpace();
+
+  system_memory_space->Init();
 
   gtty->Init();
 
@@ -779,7 +782,7 @@ extern "C" int main() {
   // 実行する事
   apic_ctrl->StartAPs();
 
-  kernel_virtmem_ctrl->ReleaseLowMemory();
+  ReleaseLowMemory();
 
   gtty->Setup();
 

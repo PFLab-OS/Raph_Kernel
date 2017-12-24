@@ -29,7 +29,6 @@
 
 class AcpiCtrl;
 class MultibootCtrl;
-class KernelVirtmemCtrl;
 class PhysmemCtrl;
 class Gdt;
 class Idt;
@@ -38,12 +37,10 @@ class NetDevCtrl;
 class BsdDevPciCtrl;
 class ApicCtrl;
 class Shell;
-class ProcessCtrl;
 
 extern AcpiCtrl *acpi_ctrl;
 extern ApicCtrl *apic_ctrl;
 extern MultibootCtrl *multiboot_ctrl;
-extern KernelVirtmemCtrl *kernel_virtmem_ctrl;
 extern PhysmemCtrl *physmem_ctrl;
 extern Gdt *gdt;
 extern Idt *idt;

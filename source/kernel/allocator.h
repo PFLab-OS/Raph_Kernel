@@ -128,8 +128,8 @@ T *Allocator<T>::Alloc() {
 template <typename T>
 T *Allocator<T>::Extend(T *entry) {
   Container *tmp = nullptr;
-  kassert(kernel_virtmem_ctrl != nullptr);
-  tmp = reinterpret_cast<Container *>(kernel_virtmem_ctrl->Alloc(sizeof(Container)));
+  kassert(system_memory_space != nullptr);
+  tmp = reinterpret_cast<Container *>(system_memory_space->kvc.Alloc(sizeof(Container)));
   tmp = new(tmp) Container;
   Locker locker(_lock);
   tmp->_next = _list;
