@@ -124,6 +124,9 @@ public:
     }
     return _obj;
   }
+  void Release() {
+    _obj = nullptr;
+  }
   bool IsNull() {
     return _obj == nullptr;
   }

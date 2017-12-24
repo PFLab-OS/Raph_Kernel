@@ -49,10 +49,6 @@ class OrderedQueue {
       kOutOfQueue,
     } _status = Status::kOutOfQueue;
   };
-  class ContainerInterface {
-  public:
-    virtual Container *GetContainer() = 0;
-  };
   OrderedQueue() {
   }
   virtual ~OrderedQueue() {
@@ -75,8 +71,7 @@ private:
 
 template <class T, class U>
 void OrderedQueue<T, U>::Push(T *data, U order) {
-  ContainerInterface *i = data;
-  Container *c = i->GetContainer();
+  Container *c = data;
   kassert(c->_status == Container::Status::kOutOfQueue);
   c->_status = Container::Status::kQueued;
   c->_order = order;

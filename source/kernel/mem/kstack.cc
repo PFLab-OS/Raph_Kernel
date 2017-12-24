@@ -59,8 +59,9 @@ void KernelStackCtrl::InitFirstStack() {
 }
 
 virt_addr KernelStackCtrl::AllocThreadStack(CpuId cpuid) {
+  FreedAddr *fac;
   virt_addr addr;
-  if (!_freed.Pop(addr)) {
+  if (!_freed.Pop(fac)) {
     Locker locker(_lock);
 
     _stack_area_top -= kStackSize + PagingCtrl::kPageSize * 2;
@@ -70,13 +71,18 @@ virt_addr KernelStackCtrl::AllocThreadStack(CpuId cpuid) {
     physmem_ctrl->Alloc(paddr, kStackSize);
     kassert(paging_ctrl->MapPhysAddrToVirtAddr(_stack_area_top + PagingCtrl::kPageSize, paddr, kStackSize, PDE_WRITE_BIT, PTE_WRITE_BIT | PTE_GLOBAL_BIT | PTE_USER_BIT));
     bzero(reinterpret_cast<void *>(_stack_area_top + PagingCtrl::kPageSize), PagingCtrl::kPageSize);
+  } else {
+    addr = fac->addr;
+    delete fac;
   }
 
   return addr;
 }
 
 void KernelStackCtrl::FreeThreadStack(virt_addr addr) {
-  _freed.Push(addr);
+  FreedAddr *fac = new FreedAddr;
+  fac->addr = addr;
+  _freed.Push(fac);
 }
 
 virt_addr KernelStackCtrl::AllocIntStack(CpuId cpuid) {

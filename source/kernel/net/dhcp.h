@@ -56,7 +56,7 @@ private:
   } __attribute__((__packed__));
   static_assert(sizeof(Packet) == 548, "");
 
-  virtual FunctionalQueue2<uptr<UdpCtrl::RxPacket>> &GetRxQueue() override {
+  virtual FunctionalQueue<uptr<UdpCtrl::RxPacket>> &GetRxQueue() override {
     return _rx_queue;
   }
 
@@ -67,7 +67,7 @@ private:
   void SendRequest(NetDev *dev, uint32_t siaddr, uint32_t yiaddr);
 
   static DhcpCtrl _dhcp_ctrl;
-  FunctionalQueue2<uptr<UdpCtrl::RxPacket>> _rx_queue;
+  FunctionalQueue<uptr<UdpCtrl::RxPacket>> _rx_queue;
 
   static const uint32_t kMagicCookie = 0x63825363;
 

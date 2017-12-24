@@ -49,6 +49,13 @@ public:
   void FreeThreadStack(virt_addr addr);
   static const int kStackSize = PagingCtrl::kPageSize * 4;
 private:
+  class FreedAddr : public Queue<FreedAddr>::Container {
+  public:
+    FreedAddr() : Queue<FreedAddr>::Container(this) {
+    }
+    virt_addr addr;
+  };
+  
   KernelStackCtrl() {
   }
   // initialize first kernel stack
@@ -61,7 +68,7 @@ private:
 
   SpinLock _lock;
 
-  Queue2<virt_addr> _freed;
+  Queue<FreedAddr> _freed;
 };
 
 #endif // ! ASM_FILE

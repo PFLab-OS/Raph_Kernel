@@ -96,8 +96,8 @@ void DhcpCtrl::AssignAddr(NetDev *dev) {
 }
 
 void DhcpCtrl::Handle(void *) {
-  uptr<UdpCtrl::RxPacket> upacket;
-  if (!_rx_queue.Pop(upacket)) {
+  uptr<UdpCtrl::RxPacket> upacket = _rx_queue.Pop();
+  if (upacket.IsNull()) {
     return;
   }
 
