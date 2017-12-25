@@ -13,9 +13,3 @@ Just simply run "make". It will create a complete disk image.
 
 ## how to debug kernel
 "make run" will launch qemu and show qemu console debugger. Open a new terminal and run "make vnc", you can see the display via VNC.
-
-## generate vim-syntastic config
-Run following commands in the project root.
-```
-make -C source/kernel .syntastic_cpp_config
-```
