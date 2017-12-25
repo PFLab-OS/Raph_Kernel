@@ -8,13 +8,12 @@ umount() {
     sudo umount ${MOUNT_DIR_EFI} > /dev/null 2>&1
     sudo kpartx -d ${IMAGE}
     sudo losetup -d /dev/loop[0-9] > /dev/null 2>&1 || return 0
-    sudo dmsetup remove_all
 }
 
 loopsetup() {
     umount
     if [ -e /dev/mapper/loop0p1 ]; then
-	      echo "failed to cleanup"
+	      echo "Failed to cleanup. Please reset enviroment with 'vagrant reload'."
 	      exit 1
     fi
     sudo kpartx -avs ${IMAGE}
