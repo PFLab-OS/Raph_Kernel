@@ -47,3 +47,10 @@ DHCPでアドレスが変更されると動かなくなる事に注意。
 ```
 
 ソースコードを変更する度にしなければいけない操作は3のみ。
+
+generate vim-syntastic config
+-----------------------------
+Run following commands in the project root.
+```
+make -C source/kernel .syntastic_cpp_config
+```
