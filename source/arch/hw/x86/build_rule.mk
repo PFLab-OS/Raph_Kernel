@@ -43,13 +43,13 @@ run:
 
 qemurun: image
 	sudo qemu-system-x86_64 \
-		-drive if=pflash,readonly,file=$(OVMF_DIR)OVMF_CODE.fd,format=raw \
-		-drive if=pflash,file=$(OVMF_DIR)OVMF_VARS.fd,format=raw \
 		-cpu qemu64 -smp 8 -machine q35 -clock hpet \
 		-monitor telnet:127.0.0.1:1235,server,nowait \
 		-vnc 0.0.0.0:0,password \
 		-net nic \
 		-net bridge,br=br0 \
+		-drive if=pflash,readonly,file=$(OVMF_DIR)OVMF_CODE.fd,format=raw \
+		-drive if=pflash,file=$(OVMF_DIR)OVMF_VARS.fd,format=raw \
 		$(QEMU_OPTIONS) \
 		$(IMAGE)&
 #    -usb -usbdevice keyboard \
@@ -140,7 +140,7 @@ umount:
 	@sh disk.sh umount > /dev/null
 
 deldisk: umount
-	-rm -f $(IMAGE)
+	-rm -rf $(IMAGE) /tmp/img /tmp/grub.cfg
 
 clean: deldisk
 	-rm -rf $(BUILD_DIR)
