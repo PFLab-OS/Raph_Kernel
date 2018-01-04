@@ -31,12 +31,9 @@ public:
   virtual ~Tester() {
   }
   virtual bool Test() = 0;
-  static const int kMaxTests = 100;
 private:
 };
 
 #define _OBJ(l) tester_obj##l
 #define OBJ(l) _OBJ(l)
-
-extern Tester *tests[Tester::kMaxTests];
 

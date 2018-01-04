@@ -28,49 +28,45 @@
 #include <typeinfo>
 #include <cxxabi.h>
 #include <iomanip>
+#include <thread>
+#include <vector>
+#include <future>
 #include <sys/time.h>
 
 using namespace std;
 
-Tester *tests[Tester::kMaxTests] = {};
+vector<Tester *> tests __attribute__((init_priority(101)));
 
 Tester::Tester() {
-  for (int i = 0; i < kMaxTests; i++) {
-    if (tests[i] == nullptr) {
-      tests[i] = this;
-      return;
-    }
-  }
-  std::cerr << "Not enough test slots!!" << std::endl;
+  tests.push_back(this);
 }
 
 int main(int argc, char *argv[]) {
-  int passed = 0;
-  for (int i = 0; i < Tester::kMaxTests; i++) {
-    if (tests[i] == nullptr) {
-      if (passed == i) {
-        cout << "\x1b[32mAll tests have passed!! [" << passed << "/" << i << "]\x1b[0m" << endl;
-        return 0;
-      } else {
-        cout << "\x1b[31mSome tests have failed!! [" << passed << "/" << i << "]\x1b[0m" << endl;
-        return 1;
-      }
-    }
+  uint32_t passed = 0;
+  for(auto test = tests.begin(); test != tests.end(); ++test) {
     bool rval = false;
+    bool timeout = false;
     struct timeval s, e;
-    try {
-      gettimeofday(&s, NULL);
-      rval = tests[i]->Test();
-      gettimeofday(&e, NULL);
-    } catch (ExceptionAssertionFailure t) {
-      t.Show();
-    } catch(...) {
-      cout << "\x1b[31munknown exception!\x1b[0m" << endl;
+    std::thread th([&]{
+        try {
+          gettimeofday(&s, NULL);
+          rval = (*test)->Test();
+          gettimeofday(&e, NULL);
+        } catch (ExceptionAssertionFailure t) {
+          t.Show();
+        } catch(...) {
+          cout << "\x1b[31munknown exception!\x1b[0m" << endl;
+        }
+      });
+    auto future = std::async(std::launch::async, &std::thread::join, &th);
+    if (future.wait_for(chrono::seconds(10)) == future_status::timeout) {
+      timeout = true;
+      rval = false;
     }
     if (rval) {
       passed++;
     }
-    const type_info& id = typeid(*tests[i]);
+    const type_info& id = typeid(**test);
     int stat;
     char *name = abi::__cxa_demangle(id.name(),0,0,&stat);
     if (name != nullptr) {
@@ -80,19 +76,37 @@ int main(int argc, char *argv[]) {
         cout << "\x1b[31m";
       }
       if (stat == 0) {
-        cout << std::right << std::setw(50) << name;
+        cout << right << setw(50) << name;
       } else {
-        cout << std::right << std::setw(50) << "Unknown";
+        cout << right << setw(50) << "Unknown";
       }
-      cout << "\x1b[0m";
       if (rval) {
-        cout << " [" << (e.tv_sec - s.tv_sec) + (e.tv_usec - s.tv_usec)*1.0E-6 << "s]";
+        cout << "\x1b[0m [" << (e.tv_sec - s.tv_sec) + (e.tv_usec - s.tv_usec)*1.0E-6 << "s]";
+      } else {
+        if (timeout) {
+          cout << "\x1b[31m [timeout]";
+        } else {
+          cout << "\x1b[31m [---]";
+        }
       }
       cout << endl;
       free(name);
     }
     fflush(stdout);
+    if (timeout) {
+      cout << "\x1b[31mStop tests due to timeout. [" << passed << "/" << tests.size() << "]\x1b[0m" << endl << endl;
+      fflush(stdout);
+      std::terminate();
+      return 1;
+    }
   }
-  cerr << "All tests have passed, but some tests were not executed..." << endl;
-  return 1;
+  if (passed == tests.size()) {
+    cout << "\x1b[32mAll tests have passed!! [" << passed << "/" << tests.size() << "]\x1b[0m" << endl << endl;
+    return 0;
+  } else {
+    cout << "\x1b[31mSome tests have failed!! [" << passed << "/" << tests.size() << "]\x1b[0m" << endl << endl;
+    fflush(stdout);
+    std::terminate();
+    return 1;
+  }
 }
