@@ -1,8 +1,20 @@
-dependencies:
-  pre:
-    - sudo apt-get update; sudo apt-get install musl-tools
-    
-test:
-  override:
-    - ./test.sh
+version: 2
+jobs:
+   build:
+     docker:
+       - image: ubuntu:16.04
+     steps:
+       - run:
+          name: install dependencies
+          command: apt-get update; apt-get install -y git make g++ python musl-tools
+       - checkout
+       - run:
+          name: check if debug code remains
+          command: sh -c '! grep -R "RAPH""_DEBUG" * || ( echo "debug code still remains"; exit 1 )'
+       - run:
+          name: run test codes
+          command: make ARCH=hw/x86 -f build_rule.mk test
+       - run:
+          name: build kernel
+          command: make ARCH=hw/x86 -f build_rule.mk bin
     
