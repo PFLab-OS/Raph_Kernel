@@ -206,7 +206,7 @@ private:
     _flag3 = 1;
   }
   static const int kElementNum = 100;
-  static const int kThreadNum = 10;
+  static const int kThreadNum = 70;  // TODO 100
   RingBuffer2<int, kElementNum> _buf;
   bool _popped[kElementNum * kThreadNum];
   int _flag1 = 0;

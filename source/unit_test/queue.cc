@@ -289,7 +289,7 @@ private:
   bool _error = false;
   bool _no_more_produce = false;
   int _flag1 = 0;
-  static const int kElementNum = 1000;
+  static const int kElementNum = 1000; // TODO 10000
   static const int kThreadNum = 50;
 } static OBJ(__LINE__);
 
@@ -385,7 +385,7 @@ private:
   int _pop_cnt = 0;
   bool _error = false;
   int _flag1 = 0;
-  static const int kElementNum = 10000;
+  static const int kElementNum = 1000; // TODO 10000
   static const int kThreadNum = 50;
 } static OBJ(__LINE__);
 
