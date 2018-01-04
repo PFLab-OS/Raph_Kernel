@@ -31,7 +31,17 @@ public:
   virtual ~Tester() {
   }
   virtual bool Test() = 0;
+  virtual bool UseThread() {
+    return false;
+  }
 private:
+};
+
+class ThreadTester : public Tester{
+public:
+  virtual bool UseThread() override final {
+    return true;
+  }
 };
 
 #define _OBJ(l) tester_obj##l

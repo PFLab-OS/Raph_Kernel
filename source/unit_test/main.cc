@@ -41,27 +41,39 @@ Tester::Tester() {
   tests.push_back(this);
 }
 
+#ifdef __CI_ENV__
+static const int kCiEnv = true;
+#else /* __CI_ENV__ */
+static const int kCiEnv = false;
+#endif /* __CI_ENV__ */
+
 int main(int argc, char *argv[]) {
   uint32_t passed = 0;
   for(auto test = tests.begin(); test != tests.end(); ++test) {
     bool rval = false;
     bool timeout = false;
+    bool skipped = false;
     struct timeval s, e;
-    std::thread th([&]{
-        try {
-          gettimeofday(&s, NULL);
-          rval = (*test)->Test();
-          gettimeofday(&e, NULL);
-        } catch (ExceptionAssertionFailure t) {
-          t.Show();
-        } catch(...) {
-          cout << "\x1b[31munknown exception!\x1b[0m" << endl;
-        }
-      });
-    auto future = std::async(std::launch::async, &std::thread::join, &th);
-    if (future.wait_for(chrono::seconds(10)) == future_status::timeout) {
-      timeout = true;
-      rval = false;
+    if ((*test)->UseThread() && kCiEnv) {
+      skipped = true;
+      rval = true;
+    } else {
+      std::thread th([&]{
+          try {
+            gettimeofday(&s, NULL);
+            rval = (*test)->Test();
+            gettimeofday(&e, NULL);
+          } catch (ExceptionAssertionFailure t) {
+            t.Show();
+          } catch(...) {
+            cout << "\x1b[31munknown exception!\x1b[0m" << endl;
+          }
+        });
+      auto future = std::async(std::launch::async, &std::thread::join, &th);
+      if (future.wait_for(chrono::seconds(30)) == future_status::timeout) {
+        timeout = true;
+        rval = false;
+      }
     }
     if (rval) {
       passed++;
@@ -81,7 +93,11 @@ int main(int argc, char *argv[]) {
         cout << right << setw(50) << "Unknown";
       }
       if (rval) {
-        cout << "\x1b[0m [" << (e.tv_sec - s.tv_sec) + (e.tv_usec - s.tv_usec)*1.0E-6 << "s]";
+        if (skipped) {
+          cout << "\x1b[0m [skipped]";
+        } else {
+          cout << "\x1b[0m [" << (e.tv_sec - s.tv_sec) + (e.tv_usec - s.tv_usec)*1.0E-6 << "s]";
+        }
       } else {
         if (timeout) {
           cout << "\x1b[31m [timeout]";

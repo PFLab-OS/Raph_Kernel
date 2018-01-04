@@ -120,7 +120,7 @@ private:
   OrderedQueue<OqElement, int> _queue;
 } static OBJ(__LINE__);
 
-class OrderedQueueTester_ParallelPop : public Tester {
+class OrderedQueueTester_ParallelPop : public ThreadTester {
 public:
   virtual bool Test() override {
     std::thread threads[kThreadNum + 1];
