@@ -24,7 +24,6 @@
 #include <_buf.h>
 #include "test.h"
 #include <iostream>
-#include <pthread.h>
 #include <thread>
 
 class RingBuffer2_EmptyPop : public Tester {
