@@ -6,7 +6,7 @@ jobs:
      steps:
        - run:
           name: install dependencies
-          command: apt-get update; apt-get install -y git make g++ musl-tools
+          command: apt-get update; apt-get install -y git make g++ python musl-tools
        - checkout
        - run:
           name: check if debug code remains
