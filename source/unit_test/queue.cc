@@ -85,7 +85,7 @@ private:
   Queue<QElement> _queue;
 } static OBJ(__LINE__);
 
-class QueueTester_ParallelPush : public Tester {
+class QueueTester_ParallelPush : public ThreadTester {
 public:
   virtual bool Test() override {
     std::thread threads[kThreadNum];
@@ -137,7 +137,7 @@ private:
   static const int kThreadNum = 50;
 } static OBJ(__LINE__);
 
-class QueueTester_ParallelPop : public Tester {
+class QueueTester_ParallelPop : public ThreadTester {
 public:
   virtual bool Test() override {
     std::thread threads[kThreadNum];
@@ -198,7 +198,7 @@ private:
   static const int kThreadNum = 50;
 } static OBJ(__LINE__);
 
-class QueueTester_ParallelPushPop : public Tester {
+class QueueTester_ParallelPushPop : public ThreadTester {
 public:
   virtual bool Test() override {
     std::thread threads[kThreadNum * 2];
@@ -290,10 +290,10 @@ private:
   bool _no_more_produce = false;
   int _flag1 = 0;
   static const int kElementNum = 10000;
-  static const int kThreadNum = 10; // TODO 50
+  static const int kThreadNum = 50;
 } static OBJ(__LINE__);
 
-class QueueTester_ReusePoppedQElement : public Tester {
+class QueueTester_ReusePoppedQElement : public ThreadTester {
 public:
   virtual bool Test() override {
     std::thread threads[kThreadNum * 2];
@@ -386,7 +386,7 @@ private:
   bool _error = false;
   int _flag1 = 0;
   static const int kElementNum = 10000;
-  static const int kThreadNum = 10; // TODO 50
+  static const int kThreadNum = 50;
 } static OBJ(__LINE__);
 
 
