@@ -59,7 +59,7 @@ int main(int argc, char *argv[]) {
         }
       });
     auto future = std::async(std::launch::async, &std::thread::join, &th);
-    if (future.wait_for(chrono::seconds(10)) == future_status::timeout) {
+    if (future.wait_for(chrono::seconds(30)) == future_status::timeout) {
       timeout = true;
       rval = false;
     }
