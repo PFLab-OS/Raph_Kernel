@@ -94,17 +94,17 @@ int main(int argc, char *argv[]) {
     }
     fflush(stdout);
     if (timeout) {
-      cout << "\x1b[31mStop tests due to timeout. [" << passed << "/" << tests.size() << "]\x1b[0m" << endl;
+      cout << "\x1b[31mStop tests due to timeout. [" << passed << "/" << tests.size() << "]\x1b[0m" << endl << endl;
       fflush(stdout);
       std::terminate();
       return 1;
     }
   }
   if (passed == tests.size()) {
-    cout << "\x1b[32mAll tests have passed!! [" << passed << "/" << tests.size() << "]\x1b[0m" << endl;
+    cout << "\x1b[32mAll tests have passed!! [" << passed << "/" << tests.size() << "]\x1b[0m" << endl << endl;
     return 0;
   } else {
-    cout << "\x1b[31mSome tests have failed!! [" << passed << "/" << tests.size() << "]\x1b[0m" << endl;
+    cout << "\x1b[31mSome tests have failed!! [" << passed << "/" << tests.size() << "]\x1b[0m" << endl << endl;
     fflush(stdout);
     std::terminate();
     return 1;

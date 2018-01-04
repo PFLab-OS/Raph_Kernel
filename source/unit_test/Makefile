@@ -1,5 +1,6 @@
-OBJS = $(subst .cc,.o, $(wildcard *.cc))
-
+SRCS = $(filter-out main.cc, $(wildcard *.cc))
+OBJS = $(subst .cc,.o, $(SRCS))
+BINS = $(subst .cc,.bin, $(SRCS))
 DEPS = $(filter %.d, $(subst .o,.d, $(OBJS)))
 
 CFLAGS = $(RAPH_CFLAGS) -pthread -D__TEST__
@@ -12,13 +13,13 @@ include $(RAPH_PROJECT_ROOT)/common_rules.mk
 
 default:
 
-test: ./unit_test
-	@./unit_test
-
-./unit_test: $(OBJS)
-	@g++ $^ -pthread -lpthread -o $@
+test: $(BINS)
 	@echo "Test start!"
+	@$(foreach app, $(BINS), ./$(app) && ):
+
+%.bin: %.o main.o
+	g++ $^ -pthread -lpthread -o $@
 
 clean:
 	-rm -f unit_test
-	-rm -f $(OBJS) $(DEPS)
+	-rm -f $(OBJS) $(BINS) $(DEPS)
