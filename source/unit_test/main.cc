@@ -50,10 +50,11 @@ int main(int argc, char *argv[]) {
     if (tests[i] == nullptr) {
       if (passed == i) {
         cout << "\x1b[32mAll tests have passed!! [" << passed << "/" << i << "]\x1b[0m" << endl;
+        return 0;
       } else {
         cout << "\x1b[31mSome tests have failed!! [" << passed << "/" << i << "]\x1b[0m" << endl;
+        return 1;
       }
-      return 0;
     }
     bool rval = false;
     struct timeval s, e;
