@@ -13,7 +13,7 @@ jobs:
           command: sh -c '! grep -R "RAPH""_DEBUG" * || ( echo "debug code still remains"; exit 1 )'
        - run:
           name: run test codes
-          command: make ARCH=hw/x86 -f build_rule.mk test
+          command: make ARCH=hw/x86 -f build_rule.mk test & (for i in `seq 0 10`; do sleep 1 ; ps $$! > /dev/null 2>&1 || exit 0 ; done;  kill -9 $$! ; exit 1 )
        - run:
           name: build kernel
           command: make ARCH=hw/x86 -f build_rule.mk bin
