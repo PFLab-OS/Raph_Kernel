@@ -71,7 +71,7 @@ kassert(err);
 
 スレッドを使う場合
 -----------------
-ユニットテストにおいては、POSIXスレッドを用いて並行処理を行う事ができるが、kassertのハンドリングが面倒になる場合があるので注意する事。
+ユニットテストにおいては、スレッドを用いて並行処理を行う事ができるが、kassertのハンドリングが面倒になる場合があるので注意する事。
 
 スレッド内で発生したassertion failureを親スレッドで検知したい場合は以下のようなコードを書けば良い。
 ```c++
@@ -80,7 +80,7 @@ kassert(err);
 #include <exception>
 #include <stdexcept>
 
-class TestA : public Tester {
+class TestA : public ThreadTester {
 public:
   virtual bool Test() override {
     std::exception_ptr ep;
@@ -110,3 +110,4 @@ private:
 複数のスレッドを実行している場合、ある子スレッドがassertionで落ちたら、他の子スレッドも終了させる必要があり、上のようにして親スレッドに通知しなければならない。
 assertion失敗時のメッセージはExceptionAssertionFailure::Show()によって行われる。また、ExceptionAssertionFailureをキャッチしてしまうと、assertionに失敗した事がテストクラス呼び出し元に伝わらないので、TestA::Test()の戻り値としてfalseを返している。
 
+また、継承クラスがTesterではなく、ThreadTesterである事に注意する事。ThreadTesterはCI環境下でのテストの実行をスキップする。（Circle CI環境のマルチスレッド性能が貧弱であると推測されるため）
