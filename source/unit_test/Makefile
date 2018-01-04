@@ -2,8 +2,8 @@ OBJS = $(subst .cc,.o, $(wildcard *.cc))
 
 DEPS = $(filter %.d, $(subst .o,.d, $(OBJS)))
 
-CFLAGS = $(RAPH_CFLAGS) -D__TEST__
-CXXFLAGS = $(RAPH_CXXFLAGS) -D__TEST__
+CFLAGS = $(RAPH_CFLAGS) -pthread -D__TEST__
+CXXFLAGS = $(RAPH_CXXFLAGS) -pthread -D__TEST__
 
 .PHONY: test
 
@@ -16,7 +16,7 @@ test: ./unit_test
 	@./unit_test
 
 ./unit_test: $(OBJS)
-	@g++ $^ -lpthread -o $@
+	@g++ $^ -pthread -lpthread -o $@
 	@echo "Test start!"
 
 clean:
