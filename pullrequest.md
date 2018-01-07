@@ -43,3 +43,14 @@ Pull Request 確認事項
 ### 割り込みハンドラ内で重い処理をしていないか
 * している → reject。Threadをスケジュールして割り込みハンドラの外で遅延処理するように変更
 * していない → 問題なし
+
+レビュー時メモ
+--------------
+
+### 手元に取り込む
+
+```
+git fetch origin pull/XXX/head:prXXX
+git checkout prXXX
+```
+
