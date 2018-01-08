@@ -20,8 +20,7 @@
  * 
  */
 
-#ifndef __RAPH_KERNEL_MEM_PHYSMEM_H__
-#define __RAPH_KERNEL_MEM_PHYSMEM_H__
+#pragma once
 
 #include <_raph_acpi.h>
 #include <stdint.h>
@@ -94,11 +93,12 @@ struct SratStructLx2apic {
   static const uint32_t kFlagEnabled = 1;
 } __attribute__ ((packed));
 
+// physical page allocator
+// all arguments (address, size) must be aligned on an page boundary.
 class PhysmemCtrl {
  public:
   PhysmemCtrl();
   void Init();
-  // Allocate,Free,Reserveでは、ページサイズに拡張したsizeを渡す事
   void Alloc(PhysAddr &paddr, size_t size) {
     kassert(_is_able_to_allocate);
     AllocOption option = {1, false, nullptr};
@@ -108,23 +108,17 @@ class PhysmemCtrl {
     AllocOption option = {align, false, nullptr};
     AllocSub(paddr, size, option);
   }
+  // Alloc() allocates virtual memory internally.
+  // use this method instead if it is inconvenient.
   void AllocNonRecursive(PhysAddr &paddr, size_t size) {
     AllocOption option = {1, true, nullptr};
     AllocSub(paddr, size, option);
   }
-  // void Alloc(PhysAddr &paddr, size_t size, phys_addr start, phys_addr end) {
-  //   AllocOption option = {1, {start, end}};
-  //   AllocSub(paddr, size, option);
-  // }
   void Free(PhysAddr &paddr, size_t size);
-  // addrはページサイズにアラインされている事
   void Reserve(phys_addr addr, size_t size) {
     Locker locker(_lock);
     ReserveSub(addr, size);
   }
-  // Alloc内部で再度Allocが呼ばれるような場合を回避するための処理
-  // page structure table用なので、4Kメモリしか割り当てられない
-  void AllocFromBuffer(PhysAddr &paddr);
   void SetSrat(Srat *srat) {
     _srat = srat;
   }
@@ -163,15 +157,15 @@ template <typename ptr> static inline phys_addr ptr2physaddr(ptr *addr) {
   return reinterpret_cast<phys_addr>(addr);
 }
 
-// リニアマップされた仮想アドレスを物理アドレスから取得する
+// convert physical memory to straight mapped virtual memory
 static inline virt_addr p2v(phys_addr addr) {
   return reinterpret_cast<virt_addr>(PhysmemCtrl::kLinearMapOffset + addr);
 }
 
-// ストレートマップド仮想メモリを物理メモリに変換する
-// カーネル仮想メモリ等は変換できないのでk2pを使う
+// convert straight mapped virtual memory to physical memory
+// do not use for kernel virtual memory. use k2p instead.
 static inline phys_addr v2p(virt_addr addr) {
-  //TODO 上限
+  //TODO check upper limit
   kassert(addr >= PhysmemCtrl::kLinearMapOffset);
   return reinterpret_cast<phys_addr>(addr - PhysmemCtrl::kLinearMapOffset);
 }
@@ -210,5 +204,3 @@ private:
   bool _is_initialized;
   phys_addr _addr;
 };
-
-#endif // __RAPH_KERNEL_MEM_PHYSMEM_H__
