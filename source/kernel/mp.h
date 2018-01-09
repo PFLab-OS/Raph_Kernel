@@ -32,7 +32,7 @@ public:
   MultiProcCtrl() {
   }
   void Init() {
-    _containers = system_memory_space->kvc.Alloc(sizeof(class Container) * apic_ctrl->GetHowManyCpus());
+    _containers = system_memory_space->GetKernelVirtmemCtrl()->Alloc(sizeof(class Container) * apic_ctrl->GetHowManyCpus());
     for(int i = 0; i < apic_ctrl->GetHowManyCpus(); i++) {
       new(&_containers[i]) Container;
     }

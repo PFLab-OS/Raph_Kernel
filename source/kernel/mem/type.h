@@ -26,7 +26,7 @@
 
 typedef uint64_t entry_type;
 struct PageTable {
-  entry_type entry[512];
+  entry_type entry[4096/sizeof(uint64_t)];
 };
 
 typedef uint64_t virt_addr;

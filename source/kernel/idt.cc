@@ -23,7 +23,6 @@
 #include <idt.h>
 #include <mem/virtmem.h>
 #include <mem/physmem.h>
-#include <mem/paging.h>
 #include <apic.h>
 #include <mem/kstack.h>
 #include <gdt.h>
@@ -104,10 +103,10 @@ void Idt::SetupGeneric() {
   _idtr[4] = (idt_addr >> 48) & 0xffff;
   kassert(system_memory_space != nullptr);
   kassert(apic_ctrl != nullptr);
-  _callback = reinterpret_cast<IntCallback **>(system_memory_space->kvc.Alloc(sizeof(IntCallback *) * apic_ctrl->GetHowManyCpus()));
-  _handling_cnt = reinterpret_cast<int *>(system_memory_space->kvc.Alloc(sizeof(int) * apic_ctrl->GetHowManyCpus()));
+  _callback = reinterpret_cast<IntCallback **>(system_memory_space->GetKernelVirtmemCtrl()->Alloc(sizeof(IntCallback *) * apic_ctrl->GetHowManyCpus()));
+  _handling_cnt = reinterpret_cast<int *>(system_memory_space->GetKernelVirtmemCtrl()->Alloc(sizeof(int) * apic_ctrl->GetHowManyCpus()));
   for (int i = 0; i < apic_ctrl->GetHowManyCpus(); i++) {
-    _callback[i] = reinterpret_cast<IntCallback *>(system_memory_space->kvc.Alloc(sizeof(IntCallback) * 256));
+    _callback[i] = reinterpret_cast<IntCallback *>(system_memory_space->GetKernelVirtmemCtrl()->Alloc(sizeof(IntCallback) * 256));
     _handling_cnt[i] = 0;
     for (int j = 0; j < 256; j++) {
       _callback[i][j].callback = nullptr;
@@ -214,7 +213,7 @@ void Idt::HandlePageFault(Regs *rs, void *arg) {
     gtty->ErrPrintf("\nrax: %llx rbx:%llx rcx:%llx rdx:%llx", rs->rax, rs->rbx, rs->rcx, rs->rdx);
     gtty->ErrPrintf("\nrsi:%llx r13: %llx cs:%x ss:%x ecode:%llx", rs->rsi, rs->r13, rs->cs, rs->ss, rs->ecode);
     uint64_t pml4e, pdpte, pde, pte;
-    system_memory_space->paging_ctrl->GetTranslationEntries(addr, &pml4e, &pdpte, &pde, &pte);
+    system_memory_space->GetTranslationEntries(addr, &pml4e, &pdpte, &pde, &pte);
     ShowPagingEntry("PML4E", pml4e);
     ShowPagingEntry("PDPTE", pdpte);
     ShowPagingEntry("PDE  ", pde);

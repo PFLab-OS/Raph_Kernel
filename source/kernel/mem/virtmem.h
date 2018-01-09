@@ -47,10 +47,16 @@ public:
   virt_addr AllocZ(size_t size);
   void Free(virt_addr addr);
   virtual virt_addr Sbrk(int64_t);
+
+
+  void InitKernelMemorySpace();
+  void ReleaseLowMemory();
+
+  static const int kKernelPml4tEntryNum = 256;
 protected:
   //FIXME: make static
   //Physical address of pml4t's kernel entry
-  /*static*/ entry_type pml4t_entry[256];
+  /*static*/ entry_type pml4t_entry[kKernelPml4tEntryNum];
   // For treating heap memory
   virt_addr _heap_allocated_end;
   virt_addr _brk_end;
@@ -61,13 +67,19 @@ protected:
 
 class UserVirtmemCtrl {
   friend MemCtrl;
+public:
+  static const int kUserPml4tEntryNum = 256;
 protected:
   //virtual virt_addr Sbrk(int64_t);
-  entry_type entry[256];
+  entry_type entry[kUserPml4tEntryNum];
 };
+
+static_assert((UserVirtmemCtrl::kUserPml4tEntryNum + KernelVirtmemCtrl::kKernelPml4tEntryNum) 
+    == 4096/sizeof(uint64_t),"Error: Invalid number of Pml4t entry.");
 
 // Processing Pml4t 
 class PagingCtrl;
+class PhysAddr;
 class MemCtrl {
 public:
   MemCtrl() : _pml4t(GetPml4tAddr()) {
@@ -77,19 +89,26 @@ public:
   }
   void Init();
 
-  //FIXME:Make static
-  /*static*/ KernelVirtmemCtrl kvc;
-  UserVirtmemCtrl uvc;
-  static const int kKernelPml4tEntryNum = 256;
-  static const int kUserPml4tEntryNum = 256;
+  void GetTranslationEntries(virt_addr vaddr, entry_type *pml4e, entry_type *pdpte, entry_type *pde, entry_type *pte);
+  bool Map1GPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr pst_flag, phys_addr page_flag);
+  bool MapPhysAddrToVirtAddr(virt_addr vaddr, PhysAddr &paddr, size_t size, phys_addr pst_flag, phys_addr page_flag);
+  bool IsVirtAddrMapped(virt_addr vaddr);
+  void ConvertVirtMemToPhysMem(virt_addr vaddr, PhysAddr &paddr);
 
-  //privateにする
-  PagingCtrl* paging_ctrl;
+  KernelVirtmemCtrl* GetKernelVirtmemCtrl() {
+    return &kvc;
+  }
+
 private:
   PageTable* GetPml4tAddr();
   PageTable* const _pml4t;
   //This variable save the memory addr used to get pml4t addr.
   virt_addr _pt_mem;
+
+  //FIXME:Make static
+  /*static*/ KernelVirtmemCtrl kvc;
+  UserVirtmemCtrl uvc;
+  PagingCtrl* paging_ctrl;
 };
 
 template <typename ptr> inline virt_addr ptr2virtaddr(ptr *addr) {

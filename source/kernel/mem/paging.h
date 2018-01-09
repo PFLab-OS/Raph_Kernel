@@ -212,7 +212,7 @@ private:
 // v2pを使った方が早い
 static inline phys_addr k2p(virt_addr addr) {
   PhysAddr paddr;
-  system_memory_space->paging_ctrl->ConvertVirtMemToPhysMem(addr, paddr);
+  system_memory_space->ConvertVirtMemToPhysMem(addr, paddr);
   // TODO : マップされてなかった時に落ちないようにする対応を
   return paddr.GetAddr();
 }

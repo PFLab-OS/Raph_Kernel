@@ -705,7 +705,7 @@ void cat(int argc, const char *argv[]) {
 void freebsd_main();
 
 extern "C" int main() {
-  _system_memory_space.kvc.Init();
+  _system_memory_space.GetKernelVirtmemCtrl()->Init();
 
   multiboot_ctrl = new (&_multiboot_ctrl) MultibootCtrl;
 
@@ -720,8 +720,6 @@ extern "C" int main() {
   idt = new (&_idt) Idt;
 
   system_memory_space = new (&_system_memory_space) MemCtrl;
-
-  system_memory_space->kvc = _system_memory_space.kvc;
 
   physmem_ctrl = new (&_physmem_ctrl) PhysmemCtrl;
 
@@ -739,7 +737,7 @@ extern "C" int main() {
   
   multiboot_ctrl->Setup();
 
-  InitKernelMemorySpace();
+  system_memory_space->GetKernelVirtmemCtrl()->InitKernelMemorySpace();
 
   system_memory_space->Init();
 
@@ -782,7 +780,7 @@ extern "C" int main() {
   // 実行する事
   apic_ctrl->StartAPs();
 
-  ReleaseLowMemory();
+  system_memory_space->GetKernelVirtmemCtrl()->ReleaseLowMemory();
 
   gtty->Setup();
 

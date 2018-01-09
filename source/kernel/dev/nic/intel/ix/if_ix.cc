@@ -5529,7 +5529,7 @@ ixgbe_init_iov(device_t dev, u16 num_vfs, const nvlist_t *config)
 
 	IXGBE_CORE_LOCK(adapter);
 
-	adapter->vfs = system_memory_space->kvc.AllocZ(sizeof(*adapter->vfs) * num_vfs/*, M_IXGBE,
+	adapter->vfs = system_memory_space->GetKernelVirtmemCtrl()->AllocZ(sizeof(*adapter->vfs) * num_vfs/*, M_IXGBE,
                                                          M_NOWAIT | M_ZERO*/);
 
 	if (adapter->vfs == NULL) {

@@ -51,14 +51,14 @@ int atoi(const char *s) {
 #include <libglobal.h>
 
 void *malloc(size_t size) {
-  return reinterpret_cast<void *>(system_memory_space->kvc.Alloc(size));
+  return reinterpret_cast<void *>(system_memory_space->GetKernelVirtmemCtrl()->Alloc(size));
 }
 
 void *calloc(size_t n, size_t size) {
-  return reinterpret_cast<void *>(system_memory_space->kvc.AllocZ(n * size));
+  return reinterpret_cast<void *>(system_memory_space->GetKernelVirtmemCtrl()->AllocZ(n * size));
 }
 
-void free(void *ptr) { system_memory_space->kvc.Free(reinterpret_cast<virt_addr>(ptr)); }
+void free(void *ptr) { system_memory_space->GetKernelVirtmemCtrl()->Free(reinterpret_cast<virt_addr>(ptr)); }
 
 int atexit(void (*function)(void)) {
   // DUMMY
