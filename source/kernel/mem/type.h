@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2016 Raphine Project
+ * Copyright (c) 2017 Raphine Project
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -16,34 +16,19 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
- * Author: Liva
+ * Author: mumumu
  * 
  */
 
-#ifndef __RAPH_KERNEL_MP_H__
-#define __RAPH_KERNEL_MP_H__
+#pragma once
 
-#include <mem/virtmem.h>
-#include <global.h>
-#include <apic.h>
+#include <assert.h>
 
-class MultiProcCtrl {
-public:
-  MultiProcCtrl() {
-  }
-  void Init() {
-    _containers = system_memory_space->GetKernelVirtmemCtrl()->Alloc(sizeof(class Container) * apic_ctrl->GetHowManyCpus());
-    for(int i = 0; i < apic_ctrl->GetHowManyCpus(); i++) {
-      new(&_containers[i]) Container;
-    }
-  }
-private:
-  class Container {
-  public:
-    Container() {
-    }
-  };
-  Container *_containers;
+typedef uint64_t entry_type;
+struct PageTable {
+  entry_type entry[4096/sizeof(uint64_t)];
 };
 
-#endif // __RAPH_KERNEL_MP_H__
+typedef uint64_t virt_addr;
+typedef uint64_t phys_addr;
+

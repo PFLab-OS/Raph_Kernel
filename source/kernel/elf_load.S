@@ -27,7 +27,9 @@
   #define ASM_FILE
 
 .globl execute_elf_binary  
+.globl resume_elf_binary  
 .globl execute_kernel_elf_binary  
+#TODO:Context構造体を受け取るようにする
 execute_elf_binary:
   mov %cx, %ds
   mov %cx, %es
@@ -45,3 +47,71 @@ execute_kernel_elf_binary:
   mov %rsi, %rsp
   jmp *%rdi
   ret
+
+resume_elf_binary:
+  mov %ds, %ax
+  pushq %rax
+  mov %es, %ax
+  pushq %rax
+  pushfq
+  pushq %rbx
+  pushq %r12
+  pushq %r13
+  pushq %r14
+  pushq %r15
+  pushq %rbp
+  jmp _returner
+_saver:
+  movq %rsp, (%rsi)
+  
+#コンテキスト復旧
+  subq $0xc0, %rsp
+  movq %rdi, %rsi
+  movq %rsp, %rdi
+  movq $0xc0, %rcx
+  rep movsb
+
+  popq %rax
+  #mov %ax,%fs
+  popq %rax
+  #mov %ax,%gs
+  popq %rax
+  mov %ax,%es
+  popq %rax
+  mov %ax,%ds
+
+  popq %rdi
+  popq %rsi
+  popq %rbp
+  popq %rbx
+  popq %rdx
+  popq %rcx
+  popq %rax
+  popq %r8
+  popq %r9
+  popq %r10
+  popq %r11
+  popq %r12
+  popq %r13
+  popq %r14
+  popq %r15
+  popfq
+  lretq
+
+_returner:
+  callq _saver
+  popq %rbp
+  popq %r15
+  popq %r14
+  popq %r13
+  popq %r12
+  popq %rbx
+  popfq
+  popq %rax
+  mov %ax,%es
+  popq %rax
+  mov %ax,%ds
+  ret
+
+
+

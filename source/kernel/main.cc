@@ -28,7 +28,6 @@
 #include <idt.h>
 #include <multiboot.h>
 #include <mem/physmem.h>
-#include <mem/paging.h>
 #include <mem/virtmem.h>
 #include <raph_acpi.h>
 #include <thread.h>
@@ -61,9 +60,8 @@
 AcpiCtrl *acpi_ctrl = nullptr;
 ApicCtrl *apic_ctrl = nullptr;
 MultibootCtrl *multiboot_ctrl = nullptr;
-PagingCtrl *paging_ctrl = nullptr;
 PhysmemCtrl *physmem_ctrl = nullptr;
-VirtmemCtrl *virtmem_ctrl = nullptr;
+MemCtrl *system_memory_space = nullptr;
 Gdt *gdt = nullptr;
 Idt *idt = nullptr;
 Shell *shell = nullptr;
@@ -77,14 +75,13 @@ ApicCtrl _apic_ctrl;
 CpuCtrl _cpu_ctrl;
 Gdt _gdt;
 Idt _idt;
-VirtmemCtrl _virtmem_ctrl;
 PhysmemCtrl _physmem_ctrl;
-PagingCtrl _paging_ctrl;
 Hpet _htimer;
 FrameBuffer _framebuffer;
 Shell _shell;
 AcpicaPciCtrl _acpica_pci_ctrl;
 NetDevCtrl _netdev_ctrl;
+MemCtrl _system_memory_space;
 // ArpTable _arp_table;
 
 CpuId network_cpu;
@@ -708,6 +705,8 @@ void cat(int argc, const char *argv[]) {
 void freebsd_main();
 
 extern "C" int main() {
+  _system_memory_space.GetKernelVirtmemCtrl()->Init();
+
   multiboot_ctrl = new (&_multiboot_ctrl) MultibootCtrl;
 
   acpi_ctrl = new (&_acpi_ctrl) AcpiCtrl;
@@ -720,11 +719,9 @@ extern "C" int main() {
 
   idt = new (&_idt) Idt;
 
-  virtmem_ctrl = new (&_virtmem_ctrl) VirtmemCtrl;
+  system_memory_space = new (&_system_memory_space) MemCtrl;
 
   physmem_ctrl = new (&_physmem_ctrl) PhysmemCtrl;
-
-  paging_ctrl = new (&_paging_ctrl) PagingCtrl;
 
   timer = new (&_htimer) Hpet;
 
@@ -737,14 +734,16 @@ extern "C" int main() {
   // arp_table = new (&_arp_table) ArpTable();
 
   physmem_ctrl->Init();
-
+  
   multiboot_ctrl->Setup();
+
+  system_memory_space->GetKernelVirtmemCtrl()->InitKernelMemorySpace();
+
+  system_memory_space->Init();
 
   gtty->Init();
 
   multiboot_ctrl->ShowMemoryInfo();
-
-  paging_ctrl->MapAllPhysMemory();
 
   KernelStackCtrl::Init();
 
@@ -781,7 +780,7 @@ extern "C" int main() {
   // 実行する事
   apic_ctrl->StartAPs();
 
-  paging_ctrl->ReleaseLowMemory();
+  system_memory_space->GetKernelVirtmemCtrl()->ReleaseLowMemory();
 
   gtty->Setup();
 
@@ -798,7 +797,7 @@ extern "C" int main() {
   freebsd_main();
 
   AttachDevices<PciCtrl, LegacyKeyboard, Ramdisk, Device>();
-
+  
   SystemCallCtrl::Init();
 
   gtty->Printf("\n\n[kernel] info: initialization completed\n");

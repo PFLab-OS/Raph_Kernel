@@ -29,7 +29,6 @@
 
 class AcpiCtrl;
 class MultibootCtrl;
-class PagingCtrl;
 class PhysmemCtrl;
 class Gdt;
 class Idt;
@@ -42,7 +41,6 @@ class Shell;
 extern AcpiCtrl *acpi_ctrl;
 extern ApicCtrl *apic_ctrl;
 extern MultibootCtrl *multiboot_ctrl;
-extern PagingCtrl *paging_ctrl;
 extern PhysmemCtrl *physmem_ctrl;
 extern Gdt *gdt;
 extern Idt *idt;

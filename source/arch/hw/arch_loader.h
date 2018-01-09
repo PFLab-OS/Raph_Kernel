@@ -41,7 +41,7 @@ public:
     assert((start % 0x40000000) == 0);
     PhysAddr paddr;
     physmem_ctrl->Alloc(paddr, 0x40000000, 0x40000000);
-    paging_ctrl->Map1GPageToVirtAddr(start, paddr, PML4E_WRITE_BIT | PML4E_USER_BIT, PDPTE_WRITE_BIT | PDPTE_GLOBAL_BIT | PDPTE_USER_BIT); // TODO check return value
+    system_memory_space->Map1GPageToVirtAddr(start, paddr, PML4E_WRITE_BIT | PML4E_USER_BIT, PDPTE_WRITE_BIT | PDPTE_GLOBAL_BIT | PDPTE_USER_BIT); // TODO check return value
   }
   virtual void MapAddr(virt_addr start, virt_addr end) override final {
     start = PagingCtrl::RoundAddrOnPageBoundary(start);
@@ -49,7 +49,7 @@ public:
     size_t psize = PagingCtrl::ConvertNumToPageSize(end - start);
     PhysAddr paddr;
     physmem_ctrl->Alloc(paddr, psize);
-    paging_ctrl->MapPhysAddrToVirtAddr(start, paddr, psize, PDE_WRITE_BIT | PDE_USER_BIT, PTE_WRITE_BIT | PTE_GLOBAL_BIT | PTE_USER_BIT); // TODO check return value
+    system_memory_space->MapPhysAddrToVirtAddr(start, paddr, psize, PDE_WRITE_BIT | PDE_USER_BIT, PTE_WRITE_BIT | PTE_GLOBAL_BIT | PTE_USER_BIT); // TODO check return value
   }
   virtual void Execute(FType f) override final {
     // TODO : カーネルスタックで実行しない

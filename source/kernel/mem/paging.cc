@@ -28,12 +28,6 @@
 #include "virtmem.h"
 #include "physmem.h"
 
-PagingCtrl::PagingCtrl() {
-  extern PageTable initial_PML4T;
-  phys_addr pml4t_addr = reinterpret_cast<phys_addr>(&initial_PML4T);
-  _pml4t = reinterpret_cast<PageTable *>(p2v(pml4t_addr));
-}
-
 void PagingCtrl::MapAllPhysMemory() {
   for (virt_addr vaddr = 0; vaddr < multiboot_ctrl->GetPhysMemoryEnd(); vaddr += 0x200000) {
     if (IsVirtAddrMapped(PhysmemCtrl::kLinearMapOffset + vaddr)) continue;

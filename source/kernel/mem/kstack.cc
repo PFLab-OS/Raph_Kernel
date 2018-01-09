@@ -36,16 +36,16 @@ extern int kKernelEndAddr;
 
 void KernelStackCtrl::Init() {
   // initial stack is 1 page (allocated at boot/boot.S)
-  kassert(!paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (PagingCtrl::kPageSize * 0)));
-  kassert(paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (PagingCtrl::kPageSize * 1)));
-  kassert(!paging_ctrl->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (PagingCtrl::kPageSize * 2)));
+  kassert(!system_memory_space->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (PagingCtrl::kPageSize * 0)));
+  kassert(system_memory_space->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (PagingCtrl::kPageSize * 1)));
+  kassert(!system_memory_space->IsVirtAddrMapped(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (PagingCtrl::kPageSize * 2)));
 
   if (PagingCtrl::kPageSize < kStackSize) {
     // expand initial stack(1 page) to default stack size(4 page)
     int size = kStackSize - PagingCtrl::kPageSize;
     PhysAddr paddr;
     physmem_ctrl->Alloc(paddr, size);
-    kassert(paging_ctrl->MapPhysAddrToVirtAddr(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (kStackSize + PagingCtrl::kPageSize) + 1, paddr, size, PDE_WRITE_BIT | PDE_USER_BIT, PTE_WRITE_BIT | PTE_GLOBAL_BIT | PTE_USER_BIT));
+    kassert(system_memory_space->MapPhysAddrToVirtAddr(reinterpret_cast<virt_addr>(&kKernelEndAddr) - (kStackSize + PagingCtrl::kPageSize) + 1, paddr, size, PDE_WRITE_BIT | PDE_USER_BIT, PTE_WRITE_BIT | PTE_GLOBAL_BIT | PTE_USER_BIT));
   }
 
   new (&_ctrl) KernelStackCtrl();
@@ -69,7 +69,7 @@ virt_addr KernelStackCtrl::AllocThreadStack(CpuId cpuid) {
   
     PhysAddr paddr;
     physmem_ctrl->Alloc(paddr, kStackSize);
-    kassert(paging_ctrl->MapPhysAddrToVirtAddr(_stack_area_top + PagingCtrl::kPageSize, paddr, kStackSize, PDE_WRITE_BIT, PTE_WRITE_BIT | PTE_GLOBAL_BIT | PTE_USER_BIT));
+    kassert(system_memory_space->MapPhysAddrToVirtAddr(_stack_area_top + PagingCtrl::kPageSize, paddr, kStackSize, PDE_WRITE_BIT, PTE_WRITE_BIT | PTE_GLOBAL_BIT | PTE_USER_BIT));
     bzero(reinterpret_cast<void *>(_stack_area_top + PagingCtrl::kPageSize), PagingCtrl::kPageSize);
   } else {
     addr = fac->addr;
@@ -92,7 +92,7 @@ virt_addr KernelStackCtrl::AllocIntStack(CpuId cpuid) {
   
   PhysAddr paddr;
   physmem_ctrl->Alloc(paddr, kStackSize);
-  kassert(paging_ctrl->MapPhysAddrToVirtAddr(_stack_area_top + PagingCtrl::kPageSize, paddr, kStackSize, PDE_WRITE_BIT | PDE_USER_BIT, PTE_WRITE_BIT | PTE_GLOBAL_BIT | PTE_USER_BIT));
+  kassert(system_memory_space->MapPhysAddrToVirtAddr(_stack_area_top + PagingCtrl::kPageSize, paddr, kStackSize, PDE_WRITE_BIT | PDE_USER_BIT, PTE_WRITE_BIT | PTE_GLOBAL_BIT | PTE_USER_BIT));
 
   return _stack_area_top + kStackSize + PagingCtrl::kPageSize;
 }

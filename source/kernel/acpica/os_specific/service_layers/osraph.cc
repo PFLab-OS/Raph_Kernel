@@ -93,11 +93,11 @@ ACPI_STATUS AcpiOsGetPhysicalAddress(void *LogicalAddress,
 }
 
 void *AcpiOsAllocate(ACPI_SIZE Size) {
-  return reinterpret_cast<void *>(virtmem_ctrl->Alloc(Size));
+  return reinterpret_cast<void *>(system_memory_space->GetKernelVirtmemCtrl()->Alloc(Size));
 }
 
 void AcpiOsFree(void *Memory) {
-  virtmem_ctrl->Free(reinterpret_cast<virt_addr>(Memory));
+  system_memory_space->GetKernelVirtmemCtrl()->Free(reinterpret_cast<virt_addr>(Memory));
 }
 
 BOOLEAN AcpiOsReadable(void *Memory, ACPI_SIZE Length) {

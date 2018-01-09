@@ -631,7 +631,7 @@ lem_attach(device_t dev)
 	/* Allocate multicast array memory. */
 	// adapter->mta = malloc(sizeof(u8) * ETH_ADDR_LEN *
 	//     MAX_NUM_MULTICAST_ADDRESSES, M_DEVBUF, M_NOWAIT);
-  adapter->mta = reinterpret_cast<u8 *>(virtmem_ctrl->Alloc(sizeof(u8) * ETH_ADDR_LEN *
+  adapter->mta = reinterpret_cast<u8 *>(system_memory_space->GetKernelVirtmemCtrl()->Alloc(sizeof(u8) * ETH_ADDR_LEN *
                                                             MAX_NUM_MULTICAST_ADDRESSES));
 	if (adapter->mta == NULL) {
 		device_printf(dev, "Can not allocate multicast setup array\n");
@@ -2772,7 +2772,7 @@ lem_allocate_transmit_structures(struct adapter *adapter)
 		goto fail;
 	}
 
-	adapter->tx_buffer_area = reinterpret_cast<struct em_buffer *>(virtmem_ctrl->AllocZ(sizeof(struct em_buffer) * adapter->num_tx_desc));
+	adapter->tx_buffer_area = reinterpret_cast<struct em_buffer *>(system_memory_space->GetKernelVirtmemCtrl()->AllocZ(sizeof(struct em_buffer) * adapter->num_tx_desc));
 
 	// adapter->tx_buffer_area = malloc(sizeof(struct em_buffer) *
 	//     adapter->num_tx_desc, M_DEVBUF, M_NOWAIT | M_ZERO);
@@ -3339,7 +3339,7 @@ lem_allocate_receive_structures(struct adapter *adapter)
 	int i, error;
   lE1000 *e1000 = adapter->dev->GetMasterClass<lE1000>();
 
-	adapter->rx_buffer_area = reinterpret_cast<struct em_buffer *>(virtmem_ctrl->AllocZ(sizeof(struct em_buffer) * adapter->num_rx_desc));
+	adapter->rx_buffer_area = reinterpret_cast<struct em_buffer *>(system_memory_space->GetKernelVirtmemCtrl()->AllocZ(sizeof(struct em_buffer) * adapter->num_rx_desc));
 	// adapter->rx_buffer_area = malloc(sizeof(struct em_buffer) *
 	//     adapter->num_rx_desc, M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (adapter->rx_buffer_area == NULL) {

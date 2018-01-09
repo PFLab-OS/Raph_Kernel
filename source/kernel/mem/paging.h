@@ -91,11 +91,12 @@
 #include "virtmem.h"
 #include <spinlock.h>
 
-typedef uint64_t entry_type;
 
 class PagingCtrl {
  public:
-  PagingCtrl();
+  PagingCtrl() = delete;
+  PagingCtrl(PageTable* pt) : _pml4t(pt) {
+  }
   void MapAllPhysMemory();
   void ReleaseLowMemory();
   void ConvertVirtMemToPhysMem(virt_addr vaddr, PhysAddr &paddr);
@@ -202,9 +203,6 @@ private:
   static bool IsPageOffset(int offset) {
     return offset >= 0 && offset < 4096;
   }
-  struct PageTable {
-    entry_type entry[512];
-  };
   PageTable *_pml4t;
   SpinLock _lock;
 };
@@ -214,7 +212,7 @@ private:
 // v2pを使った方が早い
 static inline phys_addr k2p(virt_addr addr) {
   PhysAddr paddr;
-  paging_ctrl->ConvertVirtMemToPhysMem(addr, paddr);
+  system_memory_space->ConvertVirtMemToPhysMem(addr, paddr);
   // TODO : マップされてなかった時に落ちないようにする対応を
   return paddr.GetAddr();
 }

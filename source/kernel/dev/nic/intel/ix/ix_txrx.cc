@@ -553,7 +553,7 @@ ixgbe_allocate_transmit_buffers(struct tx_ring *txr)
 	}
 
 	if (!(txr->tx_buffers =
-	    (struct ixgbe_tx_buf *) virtmem_ctrl->AllocZ(sizeof(struct ixgbe_tx_buf) *
+	    (struct ixgbe_tx_buf *) system_memory_space->GetKernelVirtmemCtrl()->AllocZ(sizeof(struct ixgbe_tx_buf) *
                                                    adapter->num_tx_desc/*, M_DEVBUF, M_NOWAIT | M_ZERO*/))) {
 		device_printf(dev, "Unable to allocate tx_buffer memory\n");
 		error = ENOMEM;
@@ -1431,7 +1431,7 @@ ixgbe_allocate_receive_buffers(struct rx_ring *rxr)
 
 	bsize = sizeof(struct ixgbe_rx_buf) * rxr->num_desc;
 	if (!(rxr->rx_buffers =
-	    (struct ixgbe_rx_buf *) virtmem_ctrl->AllocZ(bsize
+	    (struct ixgbe_rx_buf *) system_memory_space->GetKernelVirtmemCtrl()->AllocZ(bsize
 							  /*, M_DEVBUF, M_NOWAIT | M_ZERO*/))) {
 		 device_printf(dev, "Unable to allocate rx_buffer memory\n");
 		 error = ENOMEM;
@@ -2222,7 +2222,7 @@ ixgbe_allocate_queues(struct adapter *adapter)
 
         /* First allocate the top level queue structs */
         if (!(adapter->queues =
-            (struct ix_queue *) virtmem_ctrl->AllocZ(sizeof(struct ix_queue) *
+            (struct ix_queue *) system_memory_space->GetKernelVirtmemCtrl()->AllocZ(sizeof(struct ix_queue) *
                                                      adapter->num_queues/*, M_DEVBUF, M_NOWAIT | M_ZERO*/))) {
                 device_printf(dev, "Unable to allocate queue memory\n");
                 error = ENOMEM;
@@ -2231,7 +2231,7 @@ ixgbe_allocate_queues(struct adapter *adapter)
 
 	/* First allocate the TX ring struct memory */
 	if (!(adapter->tx_rings =
-	    (struct tx_ring *) virtmem_ctrl->AllocZ(sizeof(struct tx_ring) *
+	    (struct tx_ring *) system_memory_space->GetKernelVirtmemCtrl()->AllocZ(sizeof(struct tx_ring) *
                                               adapter->num_queues/*, M_DEVBUF, M_NOWAIT | M_ZERO*/))) {
 		device_printf(dev, "Unable to allocate TX ring memory\n");
 		error = ENOMEM;
@@ -2240,7 +2240,7 @@ ixgbe_allocate_queues(struct adapter *adapter)
 
 	/* Next allocate the RX */
 	if (!(adapter->rx_rings =
-	    (struct rx_ring *) virtmem_ctrl->AllocZ(sizeof(struct rx_ring) *
+	    (struct rx_ring *) system_memory_space->GetKernelVirtmemCtrl()->AllocZ(sizeof(struct rx_ring) *
                                               adapter->num_queues/*, M_DEVBUF, M_NOWAIT | M_ZERO*/))) {
 		device_printf(dev, "Unable to allocate RX ring memory\n");
 		error = ENOMEM;
