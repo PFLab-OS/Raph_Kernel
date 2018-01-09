@@ -36,7 +36,6 @@
 class MemCtrl;
 
 class KernelVirtmemCtrl {
-  friend MemCtrl;
 public:
   void Init();
   virt_addr Alloc(size_t size);
@@ -50,6 +49,7 @@ public:
 
   static const int kKernelPml4tEntryNum = 256;
 private:
+  friend MemCtrl;
   //FIXME: make static
   //Physical address of pml4t's kernel entry
   /*static*/ entry_type pml4t_entry[kKernelPml4tEntryNum];
@@ -62,10 +62,10 @@ private:
 };
 
 class UserVirtmemCtrl {
-  friend MemCtrl;
 public:
   static const int kUserPml4tEntryNum = 256;
-protected:
+private:
+  friend MemCtrl;
   //virtual virt_addr Sbrk(int64_t);
   entry_type entry[kUserPml4tEntryNum];
 };
