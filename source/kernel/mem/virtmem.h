@@ -33,14 +33,10 @@
 // pml4t 0-255    : User Memory Space (this is different from each process.)
 // pml4t 256-511  : Kernel Memory Space (this is the same as each process.)
 
-void InitKernelMemorySpace();
-void ReleaseLowMemory();
-
 class MemCtrl;
 
 class KernelVirtmemCtrl {
   friend MemCtrl;
-  friend void InitKernelMemorySpace();
 public:
   void Init();
   virt_addr Alloc(size_t size);
@@ -53,7 +49,7 @@ public:
   void ReleaseLowMemory();
 
   static const int kKernelPml4tEntryNum = 256;
-protected:
+private:
   //FIXME: make static
   //Physical address of pml4t's kernel entry
   /*static*/ entry_type pml4t_entry[kKernelPml4tEntryNum];
@@ -85,7 +81,7 @@ public:
   MemCtrl() : _pml4t(GetPml4tAddr()) {
   }
   ~MemCtrl() {
-    MemCtrl::kvc.Free(_pt_mem);
+    MemCtrl::_kvc.Free(_pt_mem);
   }
   void Init();
 
@@ -96,7 +92,7 @@ public:
   void ConvertVirtMemToPhysMem(virt_addr vaddr, PhysAddr &paddr);
 
   KernelVirtmemCtrl* GetKernelVirtmemCtrl() {
-    return &kvc;
+    return &_kvc;
   }
 
 private:
@@ -106,8 +102,8 @@ private:
   virt_addr _pt_mem;
 
   //FIXME:Make static
-  /*static*/ KernelVirtmemCtrl kvc;
-  UserVirtmemCtrl uvc;
+  /*static*/ KernelVirtmemCtrl _kvc;
+  UserVirtmemCtrl _uvc;
   PagingCtrl* paging_ctrl;
 };
 

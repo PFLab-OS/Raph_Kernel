@@ -40,13 +40,13 @@ void MemCtrl::Init() {
   //TODO
   //Copy Kernel Memory's pdpt address to new pml4t.
   // for(int i = 1; i <= KernelVirtmemCtrl::kKernelPml4tEntryNum; i++) {
-  //   _pml4t->entry[UserVirtmemCtrl::kUserPml4tEntryNum + i] = kvc.pml4t_entry[i];
+  //   _pml4t->entry[UserVirtmemCtrl::kUserPml4tEntryNum + i] = _kvc.pml4t_entry[i];
   // }
   paging_ctrl = new PagingCtrl(_pml4t);
 
   //FIXME: make satic
   if(system_memory_space != nullptr) {
-    kvc = system_memory_space->kvc;
+    _kvc = system_memory_space->_kvc;
   }
 }
 
