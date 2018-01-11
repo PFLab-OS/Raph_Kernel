@@ -19,11 +19,10 @@ include $(RAPH_PROJECT_ROOT)/common_rules.mk
 default:
 
 test: $(BINS)
-	@echo "Test start!"
-	@$(foreach app, $(BINS), ./$(app) && ):
 
 %.bin: %.o main.o
 	g++ $^ -pthread -lpthread -o $@
+	./$@
 
 clean:
 	-rm -f unit_test
