@@ -26,12 +26,18 @@
 #pragma once
 
 #include <ptr.h>
+#include <buf.h>
+#include <thread.h>
 
 class Shell {
  public:
   void Setup();
   void Register(const char *name, void (*func)(int argc, const char *argv[]));
-  void ReadCh(char c);
+  void PushCh(char c) {
+    if (!_com_buf.Push(c)) {
+      // show warning
+    }
+  }
 
   static const int kCommandSize = 100;
   static const int kArgumentMax = 10;
@@ -52,11 +58,21 @@ class Shell {
   }
   void Execute(uptr<ExecContainer> ec);
  private:
+  void HandleComBuf(void *);
   void Exec(const char *name, int argc, const char **argv);
+  void HandleChar(void *) {
+    _liner.ReadCh(_c);
+    _com_buf.UnBlock();
+  }
 
   static const int kBufSize = 40;
   static const int kNameSize = 15;
   int _next_buf = 0;
+  static const int kComBufSize = 32;
+  FunctionalRingBuffer2<char, kComBufSize> _com_buf;
+  char _c;
+  uptr<Thread> _main_thread;
+  
   struct NameFuncMapping {
     char name[kNameSize];
     void (*func)(int argc, const char *argv[]);

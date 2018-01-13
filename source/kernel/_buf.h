@@ -107,7 +107,7 @@ public:
     _ptail = cindex;
     return true;
   }
-  bool Empty() {
+  bool IsEmpty() {
     return _head == _tail;
   }
 private:
@@ -137,4 +137,3 @@ private:
   int _pop_resource_cnt = 0;
   int _push_resource_cnt = S;
 };
-

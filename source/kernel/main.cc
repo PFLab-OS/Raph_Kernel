@@ -570,7 +570,7 @@ static void load(int argc, const char *argv[]) {
     load_script(multiboot_ctrl->LoadFile(argv[1]));
   } else if (strcmp(argv[1], "test.elf") == 0) {
     auto buf_ = multiboot_ctrl->LoadFile(argv[1]);
-    uptr<Thread> thread = ThreadCtrl::GetCtrl(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority)).AllocNewThread(Thread::StackState::kShared);
+    uptr<Thread> thread = ThreadCtrl::GetCtrl(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority)).AllocNewThread(Thread::StackState::kIndependent);
     do {
       auto t_op = thread->CreateOperator();
       t_op.SetFunc(make_uptr(new Function<uptr<Array<uint8_t>>>([](uptr<Array<uint8_t>> buf) {
@@ -587,7 +587,7 @@ static void load(int argc, const char *argv[]) {
     thread->Join();
   } else if (strcmp(argv[1], "rump.bin") == 0) {
     auto buf_ = multiboot_ctrl->LoadFile(argv[1]);
-    uptr<Thread> thread = ThreadCtrl::GetCtrl(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority)).AllocNewThread(Thread::StackState::kShared);
+    uptr<Thread> thread = ThreadCtrl::GetCtrl(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority)).AllocNewThread(Thread::StackState::kIndependent);
     do {
       auto t_op = thread->CreateOperator();
       t_op.SetFunc(make_uptr(new Function<uptr<Array<uint8_t>>>([](uptr<Array<uint8_t>> buf) {

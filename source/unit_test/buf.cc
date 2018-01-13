@@ -72,7 +72,7 @@ public:
       kassert(_buf.Pop(j));
       kassert(i == j);
     }
-    kassert(_buf.Empty());
+    kassert(_buf.IsEmpty());
     return true;
   }
 private:
@@ -108,7 +108,7 @@ public:
     for (int i = 0; i < kElementNum; i++) {
       kassert(_popped[i]);
     }
-    kassert(_buf.Empty());
+    kassert(_buf.IsEmpty());
     return rval;
   }
 private:
@@ -177,7 +177,7 @@ public:
     for (int i = 0; i < kElementNum * kThreadNum; i++) {
       kassert(_popped[i]);
     }
-    kassert(_buf.Empty());
+    kassert(_buf.IsEmpty());
     return rval;
   }
 private:

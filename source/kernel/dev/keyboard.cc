@@ -36,5 +36,5 @@ void Keyboard::Handle(void *) {
   if(!_buf.Pop(data)){
     return;
   }
-  shell->ReadCh(data);
+  shell->PushCh(data);
 }
