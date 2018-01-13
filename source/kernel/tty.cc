@@ -81,7 +81,9 @@ void Tty::String::Init(StringBuffer &buf) {
     str->type = Type::kBuffered;
     str->offset = 0;
     str->next = nullptr;
-    buf.Push(str);
+    if (!buf.Push(str)) {
+      // TODO show warning
+    }
   }
 }
 

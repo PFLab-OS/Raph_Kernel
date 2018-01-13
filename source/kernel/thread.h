@@ -225,12 +225,12 @@ private:
   class IdleThreads {
   public:
     void Init() {
-      _buf = new RingBuffer2<Thread *, kMaxThreadNum>;
+      _buf = new RingBuffer<Thread *, kMaxThreadNum>;
     }
     void Push(Thread *t);
     void Pop(Thread *&t);
   private:
-    RingBuffer2<Thread *, kMaxThreadNum> *_buf;
+    RingBuffer<Thread *, kMaxThreadNum> *_buf;
   } _idle_threads;
   Thread *_current_thread = nullptr;
 };

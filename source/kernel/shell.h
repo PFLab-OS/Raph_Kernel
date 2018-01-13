@@ -69,7 +69,7 @@ class Shell {
   static const int kNameSize = 15;
   int _next_buf = 0;
   static const int kComBufSize = 32;
-  FunctionalRingBuffer2<char, kComBufSize> _com_buf;
+  FunctionalRingBuffer<char, kComBufSize> _com_buf;
   char _c;
   uptr<Thread> _main_thread;
   

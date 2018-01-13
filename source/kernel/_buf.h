@@ -23,17 +23,23 @@
 #pragma once
 #include <raph.h>
 
-// replace RingBuffer to this
+// The characteristic of RingBuffer is it doesn't allocate memory dynamically.
+//
+// T should be primitive data type(int or pointer).
+// If you want to contain struct (or class) in RingBuffer,
+// you should allocate struct array to different place and
+// manage this array by RingBuffer. In this case, T must be
+// a pointer to the struct.
 template<class T, int S>
-class RingBuffer2 {
+class RingBuffer {
 public:
-  RingBuffer2() {
+  RingBuffer() {
     for (int i = 0; i < S; i++) {
       _push_flags[i] = 0;
       _pop_flags[i] = 0;
     }
   }
-  virtual ~RingBuffer2() {
+  virtual ~RingBuffer() {
   }
   // return false if full
   bool Push(T data) __attribute__((warn_unused_result)) {
@@ -109,6 +115,12 @@ public:
   }
   bool IsEmpty() {
     return _head == _tail;
+  }
+  bool IsFull() {
+    return _tail + S == _head;
+  }
+  constexpr static int GetBufSize() {
+    return S;
   }
 private:
   bool CheckCnt(int &cnt) {

@@ -354,7 +354,9 @@ sptr<DevUsbController::Manager> DevEhci::DevEhciSub<QueueHead, TransferDescripto
       goto retry;
     }
     for (int i = 0; i < num_td; i++) {
-      _td_buf.Pop(tmp_td[i]);
+      if (!_td_buf.Pop(tmp_td[i])) {
+        // TODO show warning
+      }
     }
 
     qh = tmp_qh;

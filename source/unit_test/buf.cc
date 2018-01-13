@@ -26,7 +26,7 @@
 #include <iostream>
 #include <thread>
 
-class RingBuffer2_EmptyPop : public Tester {
+class RingBuffer_EmptyPop : public Tester {
 public:
   virtual bool Test() override {
     int i;
@@ -34,10 +34,10 @@ public:
     return true;
   }
 private:
-  RingBuffer2<int, 2> _buf;
+  RingBuffer<int, 2> _buf;
 } static OBJ(__LINE__);
 
-class RingBuffer2_OnePush : public Tester {
+class RingBuffer_OnePush : public Tester {
 public:
   virtual bool Test() override {
     int i = 0;
@@ -45,10 +45,10 @@ public:
     return true;
   }
 private:
-  RingBuffer2<int, 2> _buf;
+  RingBuffer<int, 2> _buf;
 } static OBJ(__LINE__);
 
-class RingBuffer2_FullPush : public Tester {
+class RingBuffer_FullPush : public Tester {
 public:
   virtual bool Test() override {
     int i = 0;
@@ -58,10 +58,10 @@ public:
     return true;
   }
 private:
-  RingBuffer2<int, 2> _buf;
+  RingBuffer<int, 2> _buf;
 } static OBJ(__LINE__);
 
-class RingBuffer2_SinglePushPop : public Tester {
+class RingBuffer_SinglePushPop : public Tester {
 public:
   virtual bool Test() override {
     for (int i = 0; i < 10; i++) {
@@ -76,10 +76,10 @@ public:
     return true;
   }
 private:
-  RingBuffer2<int, 10> _buf;
+  RingBuffer<int, 10> _buf;
 } static OBJ(__LINE__);
 
-class RingBuffer2_ParallelPop : public Tester {
+class RingBuffer_ParallelPop : public Tester {
 public:
   virtual bool Test() override {
     std::thread threads[kThreadNum];
@@ -90,7 +90,7 @@ public:
     }
     
     for (int i = 0; i < kThreadNum; i++) {
-      std::thread th(&RingBuffer2_ParallelPop::Consumer, this, ep[i], i);
+      std::thread th(&RingBuffer_ParallelPop::Consumer, this, ep[i], i);
       threads[i].swap(th);
     }
     bool rval = true;
@@ -133,12 +133,12 @@ private:
   }
   static const int kElementNum = 1000;
   static const int kThreadNum = 1000;
-  RingBuffer2<int, kElementNum> _buf;
+  RingBuffer<int, kElementNum> _buf;
   bool _popped[kElementNum];
   int _flag1 = 0;
 } static OBJ(__LINE__);
 
-class RingBuffer2_ParallelPushPop : public ThreadTester {
+class RingBuffer_ParallelPushPop : public ThreadTester {
 public:
   virtual bool Test() override {
     std::thread threads[kThreadNum * 2];
@@ -150,12 +150,12 @@ public:
     }
 
     for (int i = 0; i < kThreadNum; i++) {
-      std::thread th(&RingBuffer2_ParallelPushPop::Producer, this, ep[i], i);
+      std::thread th(&RingBuffer_ParallelPushPop::Producer, this, ep[i], i);
       threads[i].swap(th);
     }
 
     for (int i = kThreadNum; i < kThreadNum * 2; i++) {
-      std::thread th(&RingBuffer2_ParallelPushPop::Consumer, this, ep[i], i);
+      std::thread th(&RingBuffer_ParallelPushPop::Consumer, this, ep[i], i);
       threads[i].swap(th);
     }
     
@@ -236,7 +236,7 @@ private:
   }
   static const int kElementNum = 1000;
   static const int kThreadNum = 200;
-  RingBuffer2<int, 100> _buf;
+  RingBuffer<int, 100> _buf;
   uint64_t _popped[kElementNum * kThreadNum];
   uint64_t _pushed[kElementNum * kThreadNum];
   int _flag1 = 0;

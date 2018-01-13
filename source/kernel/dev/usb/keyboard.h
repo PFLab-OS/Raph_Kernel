@@ -38,7 +38,9 @@ private:
   class KeyboardSub : public Keyboard {
   public:
     void Push(char c) {
-      _buf.Push(c);
+      if (!_buf.Push(c)) {
+        // TODO show warning
+      }
     }
   } _dev;
   static const int kTdNum = 32; // TODO is this ok?
