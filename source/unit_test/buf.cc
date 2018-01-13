@@ -79,7 +79,7 @@ private:
   RingBuffer2<int, 10> _buf;
 } static OBJ(__LINE__);
 
-class RingBuffer2_ParallelPop : public ThreadTester {
+class RingBuffer2_ParallelPop : public Tester {
 public:
   virtual bool Test() override {
     std::thread threads[kThreadNum];
@@ -131,8 +131,8 @@ private:
       ep = std::current_exception();
     }
   }
-  static const int kElementNum = 10;
-  static const int kThreadNum = 100;
+  static const int kElementNum = 1000;
+  static const int kThreadNum = 1000;
   RingBuffer2<int, kElementNum> _buf;
   bool _popped[kElementNum];
   int _flag1 = 0;
@@ -141,27 +141,26 @@ private:
 class RingBuffer2_ParallelPushPop : public ThreadTester {
 public:
   virtual bool Test() override {
-    std::thread threads[kThreadNum];
-    std::exception_ptr ep[kThreadNum];
+    std::thread threads[kThreadNum * 2];
+    std::exception_ptr ep[kThreadNum * 2];
 
     for (int i = 0; i < kThreadNum; i++) {
+      _popped[i] = false;
+      _pushed[i] = false;
+    }
+
+    for (int i = 0; i < kThreadNum; i++) {
+      std::thread th(&RingBuffer2_ParallelPushPop::Producer, this, ep[i], i);
+      threads[i].swap(th);
+    }
+
+    for (int i = kThreadNum; i < kThreadNum * 2; i++) {
       std::thread th(&RingBuffer2_ParallelPushPop::Consumer, this, ep[i], i);
       threads[i].swap(th);
     }
     
-    __sync_fetch_and_add(&_flag1, 1);
-    while(_flag1 != kThreadNum + 1) {
-      asm volatile("":::"memory");
-    }
-    for (int i = 0; i < kElementNum * kThreadNum; i++) {
-      while(_flag3 != 1 && !_buf.Push(i)) {
-      }
-    }
-                           
-    _flag2 = 1;
-    
     bool rval = true;
-    for (int i = 0; i < kThreadNum; i++) {
+    for (int i = 0; i < kThreadNum * 2; i++) {
       threads[i].join();
       try {
         if (ep[i]) {
@@ -171,6 +170,9 @@ public:
         t.Show();
         rval = false;
       };
+    }
+    if (_err) {
+      return false;
     }
     for (int i = 0; i < kElementNum * kThreadNum; i++) {
       kassert(_popped[i]);
@@ -182,34 +184,62 @@ private:
   void Consumer(std::exception_ptr ep, int id) {
     try {
       __sync_fetch_and_add(&_flag1, 1);
-      while(_flag1 != kThreadNum + 1) {
+      while(_flag1 != kThreadNum * 2) {
         asm volatile("":::"memory");
       }
-      while(true) {
+      while(!_err) {
         int j;
         if (!_buf.Pop(j)) {
-          if (_flag2 == 1) {
+          if (_flag2 == kThreadNum) {
             break;
           } else {
             continue;
           }
         }
         kassert(j >= 0 && j < kElementNum * kThreadNum);
-        kassert(!_popped[j]);
+        kassert(_popped[j] == 0);
         _popped[j] = true;
       }
+      return;
     } catch (ExceptionAssertionFailure t) {
       t.Show();
     } catch (...) {
       ep = std::current_exception();
     }
-    _flag3 = 1;
+    _err = true;
   }
-  static const int kElementNum = 100;
-  static const int kThreadNum = 100;
-  RingBuffer2<int, kElementNum> _buf;
-  bool _popped[kElementNum * kThreadNum];
+  void Producer(std::exception_ptr ep, int id) {
+    try {
+      __sync_fetch_and_add(&_flag1, 1);
+      while(_flag1 != kThreadNum * 2) {
+        asm volatile("":::"memory");
+      }
+      for (int i = 0; i < kElementNum; i++) {
+        if (_err) {
+          return;
+        }
+        int j = i + id * kElementNum;
+        while(!_buf.Push(j)) {
+        }
+        kassert(j >= 0 && j < kElementNum * kThreadNum);
+        kassert(!_pushed[j]);
+        _pushed[j] = true;
+      }
+      __sync_fetch_and_add(&_flag2, 1);
+      return;
+    } catch (ExceptionAssertionFailure t) {
+      t.Show();
+    } catch (...) {
+      ep = std::current_exception();
+    }
+    _err = true;
+  }
+  static const int kElementNum = 1000;
+  static const int kThreadNum = 200;
+  RingBuffer2<int, 100> _buf;
+  uint64_t _popped[kElementNum * kThreadNum];
+  uint64_t _pushed[kElementNum * kThreadNum];
   int _flag1 = 0;
   int _flag2 = 0;
-  int _flag3 = 0;
+  bool _err = false;
 } static OBJ(__LINE__);

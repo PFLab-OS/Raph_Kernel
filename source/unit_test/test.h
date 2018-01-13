@@ -37,7 +37,7 @@ public:
 private:
 };
 
-class ThreadTester : public Tester{
+class ThreadTester : public Tester {
 public:
   virtual bool UseThread() override final {
     return true;

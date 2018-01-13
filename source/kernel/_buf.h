@@ -24,59 +24,117 @@
 #include <raph.h>
 
 // replace RingBuffer to this
-// !!!Important!!!
-// pushing from multiple threads is prohibited!
-// popping from interrupt handlers is prohibited!
-// TODO assert these restrictions
 template<class T, int S>
 class RingBuffer2 {
 public:
   RingBuffer2() {
+    for (int i = 0; i < S; i++) {
+      _push_flags[i] = 0;
+      _pop_flags[i] = 0;
+    }
   }
   virtual ~RingBuffer2() {
   }
   // return false if full
   bool Push(T data) __attribute__((warn_unused_result)) {
-    if (_tail + S == _head) {
+    if (!CheckCnt(_push_resource_cnt)) {
       return false;
     }
+
     kassert(_head < _tail + S);
-    uint64_t index = _head;
-    _buffer[index % S] = data;
-    kassert(index == __sync_fetch_and_add(&_head, 1));
+    uint64_t index = __sync_fetch_and_add(&_head, 1);
+    _buffer[GetArrayIndex(index)] = data;
+
+    kassert(_phead <= index);
+    if (_phead < index) {
+      if (_push_flags[GetArrayIndex(index)] == 0 &&
+          __sync_lock_test_and_set(&_push_flags[GetArrayIndex(index)], 1) == 0) {
+        return true;
+      }
+      while(_phead != index) {
+        asm volatile("":::"memory");
+      }
+    }
+    kassert(_phead == index);
+    _push_flags[GetArrayIndex(index)] = 0;
+    
+    uint64_t cindex;
+    for (cindex = index + 1; cindex < index + S; cindex++) {
+      if (_push_flags[GetArrayIndex(cindex)] == 0 &&
+          __sync_lock_test_and_set(&_push_flags[GetArrayIndex(cindex)], 1) == 0) {
+        break;
+      }
+      _push_flags[GetArrayIndex(cindex)] = 0;
+    }
+    kassert(__sync_add_and_fetch(&_pop_resource_cnt, cindex - index) <= S);
+    
+    _phead = cindex;
     return true;
   }
   // return false if empty
   bool Pop(T &data) __attribute__((warn_unused_result)) {
-    uint64_t index;
-    bool iflag;
-    while(true) {
-      index = _pop_ticket;
+    if (!CheckCnt(_pop_resource_cnt)) {
+      return false;
+    }
 
-      if (_pop_ticket == _head) {
-        return false;
+    kassert(_tail < _head);
+    uint64_t index = __sync_fetch_and_add(&_tail, 1);
+    data = _buffer[GetArrayIndex(index)];
+
+    kassert(_ptail <= index);
+    if (_ptail < index) {
+      if (_pop_flags[GetArrayIndex(index)] == 0 &&
+          __sync_lock_test_and_set(&_pop_flags[GetArrayIndex(index)], 1) == 0) {
+        return true;
       }
-      
-      if (_pop_ticket == index && __sync_bool_compare_and_swap(&_pop_ticket, index, index + 1)) {
-        iflag = disable_interrupt();
+      while(_ptail != index) {
+        asm volatile("":::"memory");
+      }
+    }
+    kassert(_ptail == index);
+    _pop_flags[GetArrayIndex(index)] = 0;
+    
+    uint64_t cindex;
+    for (cindex = index + 1; cindex < index + S; cindex++) {
+      if (_pop_flags[GetArrayIndex(cindex)] == 0 &&
+          __sync_lock_test_and_set(&_pop_flags[GetArrayIndex(cindex)], 1) == 0) {
         break;
       }
+      _pop_flags[GetArrayIndex(cindex)] = 0;
     }
-    data = _buffer[index % S];
-    while(_tail != index) {
-      asm volatile("":::"memory");
-    }
-    _tail++;
-    enable_interrupt(iflag);
+    kassert(__sync_add_and_fetch(&_push_resource_cnt, cindex - index) <= S);
+    
+    _ptail = cindex;
     return true;
   }
   bool Empty() {
     return _head == _tail;
   }
 private:
+  bool CheckCnt(int &cnt) {
+    while(true) {
+      int x = cnt;
+      if (x <= 0) {
+        return false;
+      }
+      if (cnt == x && __sync_bool_compare_and_swap(&cnt, x, x - 1)) {
+        return true;
+      }
+    }
+  }
+  static uint64_t GetArrayIndex(uint64_t index) {
+    return index % S;
+  }
+
+  static_assert(S > 0, "");
   T _buffer[S];
+  int _push_flags[S];
+  int _pop_flags[S];
   uint64_t _head = 0;
-  uint64_t _pop_ticket = 0;
+  uint64_t _phead = 0;
   uint64_t _tail = 0;
+  uint64_t _ptail = 0;
+  int _pop_resource_cnt = 0;
+  int _push_resource_cnt = S;
 };
 
