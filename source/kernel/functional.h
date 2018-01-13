@@ -23,7 +23,6 @@
 #pragma once
 
 #include <thread.h>
-#include <functional.h>
 #include <raph.h>
 #include <_cpu.h>
 
@@ -39,10 +38,17 @@ class Functional {
   }
   void SetFunction(CpuId cpuid, uptr<GenericFunction<>> func) {
     _thread = ThreadCtrl::GetCtrl(cpuid).AllocNewThread(Thread::StackState::kShared);
-    _thread->CreateOperator().SetFunc(make_uptr(new ClassFunction<Functional, void *>(this, &Functional::Handle, nullptr)));
+    auto t_op = _thread->CreateOperator();
+    t_op.SetFunc(make_uptr(new ClassFunction<Functional, void *>(this, &Functional::Handle, nullptr)));
     _func = func;
   }
- protected:
+  void Block() {
+    _block_flag = true;
+  }
+  void UnBlock() {
+    _block_flag = false;
+  }
+protected:
   void WakeupFunction();
   // check whether Functional needs to process function
   virtual bool ShouldFunc() = 0;
@@ -51,6 +57,7 @@ private:
   uptr<GenericFunction<>> _func;
   uptr<Thread> _thread;
   FunctionState _state = FunctionState::kNotFunctioning;
+  bool _block_flag = false;
 };
 
 inline void Functional::WakeupFunction() {
@@ -66,7 +73,7 @@ inline void Functional::Handle(void *) {
     // not to loop infidentry
     // it will lock cpu and inhibit other tasks
     
-    if (!ShouldFunc()) {
+    if (!ShouldFunc() || _block_flag) {
       break;
     }
     _func->Execute();
@@ -74,7 +81,7 @@ inline void Functional::Handle(void *) {
 
   kassert(_state == FunctionState::kFunctioning);
 
-  if (ShouldFunc()) {
+  if (ShouldFunc() && !_block_flag) {
     _thread->CreateOperator().Schedule();
   } else {
     kassert(__sync_lock_test_and_set(&_state, FunctionState::kNotFunctioning) == FunctionState::kFunctioning);

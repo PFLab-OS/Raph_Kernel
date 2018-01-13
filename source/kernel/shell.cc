@@ -29,6 +29,9 @@
 #include <cpu.h>
 
 void Shell::Setup() {
+  _com_buf.SetFunction(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), make_uptr(new ClassFunction<Shell, void *>(this, &Shell::HandleComBuf, nullptr)));
+  _main_thread = ThreadCtrl::GetCtrl(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority)).AllocNewThread(Thread::StackState::kIndependent);
+  _main_thread->CreateOperator().SetFunc(make_uptr(new ClassFunction<Shell, void *>(this, &Shell::HandleChar, nullptr)));
   _liner.Setup(this);
 }
 
@@ -58,8 +61,13 @@ void Shell::Exec(const char *name, int argc, const char **argv) {
   gtty->Printf("unknown command: <%s>\n", name);
 }
 
-void Shell::ReadCh(char c) {
-  _liner.ReadCh(c);
+void Shell::HandleComBuf(void *) {
+  char c;
+  if (_com_buf.Pop(c)) {
+    _com_buf.Block();
+    _c = c;
+    _main_thread->CreateOperator().Schedule();
+  }
 }
 
 void Shell::Execute(uptr<ExecContainer> ec) {

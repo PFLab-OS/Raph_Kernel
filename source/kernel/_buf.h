@@ -107,7 +107,7 @@ public:
     _ptail = cindex;
     return true;
   }
-  bool Empty() {
+  bool IsEmpty() {
     return _head == _tail;
   }
 private:

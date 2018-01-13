@@ -69,11 +69,13 @@ void Thread::Execute() {
     _func->Execute();
   }
   if (__sync_fetch_and_sub(&_op_obj._cnt, 1) == 1) {
-    kassert(GetState() == Thread::State::kRunning);
-    // TODO no referrence to this thread. show warning.
+    // no operator referrence to this thread.
     if (_waiting_thread != nullptr) {
+      kassert(GetState() == Thread::State::kRunning);
       _waiting_thread->Schedule();
       _waiting_thread = nullptr;
+    } else {
+      // TODO show warning?
     }
   }
 }

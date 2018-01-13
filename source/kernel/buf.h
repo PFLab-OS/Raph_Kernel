@@ -121,12 +121,12 @@ template<class T, int S>
   }
   ~FunctionalRingBuffer2() {
   }
-  bool Push(T data) {
+  bool Push(T data) __attribute__((warn_unused_result)) {
     bool flag = _buf.Push(data);
     Functional::WakeupFunction();
     return flag;
   }
-  bool Pop(T &data) {
+  bool Pop(T &data) __attribute__((warn_unused_result)) {
     return _buf.Pop(data);
   }
   bool IsFull() {
