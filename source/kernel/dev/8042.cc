@@ -42,7 +42,9 @@ void LegacyKeyboard::Handler(Regs *reg, void *arg) {
   auto that = reinterpret_cast<LegacyKeyboard *>(arg);
   uint8_t data = inb(kDataPort);
   if (data < (1 << 7)) {
-    that->_buf.Push(kScanCode[data]);
+    if (!that->_buf.Push(kScanCode[data])) {
+      // TODO show warning
+    }
   }
 }
 

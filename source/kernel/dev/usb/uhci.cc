@@ -256,7 +256,9 @@ bool DevUhci::SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr dat
   }
   for (size_t offset = 0; offset < data_size; offset += 8) {
     if (td_array[offset / 8] != nullptr) {
-      _td_buf.Push(td_array[offset / 8]);
+      if (!_td_buf.Push(td_array[offset / 8])) {
+        // TODO show warning
+      }
     }
   }
   
