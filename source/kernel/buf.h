@@ -113,3 +113,31 @@ template<class T, int S>
   }
   RingBuffer<T, S> _buf;
 };
+
+template<class T, int S>
+  class FunctionalRingBuffer2 final : public Functional {
+ public:
+  FunctionalRingBuffer2() {
+  }
+  ~FunctionalRingBuffer2() {
+  }
+  bool Push(T data) {
+    bool flag = _buf.Push(data);
+    Functional::WakeupFunction();
+    return flag;
+  }
+  bool Pop(T &data) {
+    return _buf.Pop(data);
+  }
+  bool IsFull() {
+    return _buf.IsFull();
+  }
+  bool IsEmpty() {
+    return _buf.IsEmpty();
+  }
+ private:
+  virtual bool ShouldFunc() override {
+    return !_buf.IsEmpty();
+  }
+  RingBuffer2<T, S> _buf;
+};

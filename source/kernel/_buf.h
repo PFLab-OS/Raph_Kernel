@@ -137,4 +137,3 @@ private:
   int _pop_resource_cnt = 0;
   int _push_resource_cnt = S;
 };
-
