@@ -138,7 +138,6 @@ public:
       threads[i].join();
       try {
         if (ep[i]) {
-          _error = true;
           std::rethrow_exception(ep[i]);
         }
       } catch (ExceptionAssertionFailure t) {
@@ -189,6 +188,7 @@ private:
         _flag2++;
       }
     } catch (...) {
+      _error = true;
       *ep = std::current_exception();
     }
   }
@@ -206,6 +206,7 @@ private:
         __sync_fetch_and_add(&_push_cnt, 1);
       }
     } catch (...) {
+      _error = true;
       *ep = std::current_exception();
     }
   }
