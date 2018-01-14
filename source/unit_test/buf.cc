@@ -200,13 +200,10 @@ private:
         kassert(_popped[j] == 0);
         _popped[j] = true;
       }
-      return;
-    } catch (ExceptionAssertionFailure t) {
-      t.Show();
     } catch (...) {
+      _err = true;
       ep = std::current_exception();
     }
-    _err = true;
   }
   void Producer(std::exception_ptr ep, int id) {
     try {
@@ -226,13 +223,10 @@ private:
         _pushed[j] = true;
       }
       __sync_fetch_and_add(&_flag2, 1);
-      return;
-    } catch (ExceptionAssertionFailure t) {
-      t.Show();
     } catch (...) {
+      _err = true;
       ep = std::current_exception();
     }
-    _err = true;
   }
   static const int kElementNum = 1000;
   static const int kThreadNum = 200;
