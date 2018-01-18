@@ -37,11 +37,19 @@ extern "C" {
     uptr<Thread> thread;
     SpinLock *lock;
   };
+
+  static void _callout_handle(struct callout *c) {
+    if (c->func != nullptr) {
+      c->func(c->arg);
+    }
+  }
   
   void _callout_init_lock(struct callout *c, struct lock_object *lock, int flags) {
     c->callout_container = new LckCalloutContainer();
     c->callout_container->lock = lock->lock;
     c->callout_container->thread = ThreadCtrl::GetCtrl(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority)).AllocNewThread(Thread::StackState::kShared);
+    c->callout_container->thread->CreateOperator().SetFunc(make_uptr(new Function<struct callout *>(_callout_handle, c)));
+    c->func = nullptr;
   }
 
   int callout_stop(struct callout *c) {
@@ -64,7 +72,8 @@ extern "C" {
     if (ticks < 0) {
       ticks = 1;
     }
-    c->callout_container->thread->CreateOperator().SetFunc(make_uptr(new Function<void *>(func, arg)));
+    c->func = func;
+    c->arg = arg;
     c->callout_container->thread->CreateOperator().Schedule(static_cast<uint32_t>(ticks) * reciprocal_of_hz);
 
     return r;
@@ -76,7 +85,8 @@ extern "C" {
     if (sbt < 0) {
       sbt = 1;
     }
-    c->callout_container->thread->CreateOperator().SetFunc(make_uptr(new Function<void *>(ftn, arg)));
+    c->func = ftn;
+    c->arg = arg;
     c->callout_container->thread->CreateOperator().Schedule(sbt * static_cast<sbintime_t>(1000000) / SBT_1S);
 
     return r;

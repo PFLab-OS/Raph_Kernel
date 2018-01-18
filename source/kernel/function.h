@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include <raph.h>
 #include <global.h>
 #include <mem/virtmem.h>
 #include <ptr.h>
@@ -43,16 +44,20 @@ public:
   Function(void (*func)(T, Args...), T arg) : _func(func), _arg(arg) {
   }
   virtual ~Function() {
+    kassert(_ref == 0);
   }
   Function(const Function &obj) : _func(obj._func), _arg(obj._arg) {
   }
   virtual void Execute(Args... args) override {
+    __sync_fetch_and_add(&_ref, 1);
     _func(_arg, args...);
+    __sync_fetch_and_sub(&_ref, 1);
   }
 private:
   Function();
   void (*_func)(T, Args...);
   T _arg;
+  int _ref = 0;
 };
 
 template<class T1, class T2, class... Args>
@@ -61,17 +66,21 @@ public:
   Function2(void (*func)(T1, T2, Args...), T1 arg1, T2 arg2) : _func(func), _arg1(arg1), _arg2(arg2) {
   }
   virtual ~Function2() {
+    kassert(_ref == 0);
   }
   Function2(const Function2 &obj) : _func(obj._func), _arg1(obj._arg1), _arg2(obj._arg2) {
   }
   virtual void Execute(Args... args) override {
+    __sync_fetch_and_add(&_ref, 1);
     _func(_arg1, _arg2, args...);
+    __sync_fetch_and_sub(&_ref, 1);
   }
 private:
   Function2();
   void (*_func)(T1, T2, Args...);
   T1 _arg1;
   T2 _arg2;
+  int _ref = 0;
 };
 
 template<class T1, class T2, class T3, class... Args>
@@ -80,11 +89,14 @@ public:
   Function3(void (*func)(T1, T2, T3, Args...), T1 arg1, T2 arg2, T3 arg3) : _func(func), _arg1(arg1), _arg2(arg2), _arg3(arg3) {
   }
   virtual ~Function3() {
+    kassert(_ref == 0);
   }
   Function3(const Function3 &obj) : _func(obj._func), _arg1(obj._arg1), _arg2(obj._arg2), _arg3(obj._arg3) {
   }
   virtual void Execute(Args... args) override {
+    __sync_fetch_and_add(&_ref, 1);
     _func(_arg1, _arg2, _arg3, args...);
+    __sync_fetch_and_sub(&_ref, 1);
   }
 private:
   Function3();
@@ -92,6 +104,7 @@ private:
   T1 _arg1;
   T2 _arg2;
   T3 _arg3;
+  int _ref = 0;
 };
 
 // Do not define Function4!
@@ -105,15 +118,19 @@ public:
   ClassFunction(const ClassFunction &obj) : _c(obj._c), _func(obj._func), _arg(obj._arg) {
   }
   virtual ~ClassFunction() {
+    kassert(_ref == 0);
   }
   virtual void Execute(Args... args) override {
+    __sync_fetch_and_add(&_ref, 1);
     (_c->*_func)(_arg, args...);
+    __sync_fetch_and_sub(&_ref, 1);
   }
 private:
   ClassFunction();
   C *_c;
   void (C::*_func)(T1, Args...);
   T1 _arg;
+  int _ref = 0;
 };
 
 template <class C, class T1, class T2, class... Args>
@@ -126,7 +143,9 @@ public:
   virtual ~ClassFunction2() {
   }
   virtual void Execute(Args... args) override {
+    __sync_fetch_and_add(&_ref, 1);
     (_c->*_func)(_arg1, _arg2, args...);
+    __sync_fetch_and_sub(&_ref, 1);
   }
 private:
   ClassFunction2();
@@ -134,6 +153,7 @@ private:
   void (C::*_func)(T1, T2, Args...);
   T1 _arg1;
   T2 _arg2;
+  int _ref = 0;
 };
 
 template <class C, class T1, class T2, class T3, class... Args>
@@ -144,9 +164,12 @@ public:
   ClassFunction3(const ClassFunction3 &obj) : _c(obj._c), _func(obj._func), _arg1(obj._arg1), _arg2(obj._arg2), _arg3(obj._arg3) {
   }
   virtual ~ClassFunction3() {
+    kassert(_ref == 0);
   }
   virtual void Execute(Args... args) override {
+    __sync_fetch_and_add(&_ref, 1);
     (_c->*_func)(_arg1, _arg2, _arg3, args...);
+    __sync_fetch_and_sub(&_ref, 1);
   }
 private:
   ClassFunction3();
@@ -155,6 +178,7 @@ private:
   T1 _arg1;
   T2 _arg2;
   T3 _arg3;
+  int _ref = 0;
 };
 
 // Do not define ClassFunction4!
