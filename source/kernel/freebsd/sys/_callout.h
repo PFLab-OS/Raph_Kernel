@@ -42,6 +42,8 @@ struct LckCalloutContainer;
 
 struct callout {
   struct LckCalloutContainer *callout_container;
+  void (*func)(void *);
+  void *arg;
 };
 
 #endif
