@@ -49,7 +49,7 @@ void ProcessCtrl::Init() {
 
   _scheduler_thread = ThreadCtrl::GetCtrl(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority)).AllocNewThread(Thread::StackState::kIndependent);
   auto t_op = _scheduler_thread->CreateOperator();
-  t_op.SetFunc(make_uptr(new Function<void*>([](void*) {
+  t_op.SetFunc(make_uptr(new Function0<void>([]() {
 
     Process* p = process_ctrl->GetNextExecProcess();
     if (p != nullptr) {
@@ -58,7 +58,7 @@ void ProcessCtrl::Init() {
 
     ThreadCtrl::GetCurrentThreadOperator().Schedule(90);
 
-  },nullptr)));
+  })));
 
   t_op.Schedule();
 }
@@ -72,7 +72,7 @@ Process* ProcessCtrl::GetNextExecProcess() {
     Locker locker(_table_lock);
     do {
       p = p->_next;
-      if (p->GetStatus() == ProcessStatus::RUNNABLE || p->GetStatus() == ProcessStatus::EMBRYO) {
+      if (p->GetStatus() == ProcessStatus::kRunnable || p->GetStatus() == ProcessStatus::kEmbryo) {
         _current_exec_process = p;
         return _current_exec_process;
       }
@@ -89,7 +89,7 @@ Process* ProcessCtrl::CreateFirstProcess(Process* process) {
   process->Init();
 
   auto t_op = process->_thread->CreateOperator();
-  t_op.SetFunc(make_uptr(new Function<Process *>([](Process *p){
+  t_op.SetFunc(make_uptr(new Function1<void,Process *>([](Process *p){
       p->_mem_ctrl->Init();
 
       p->_mem_ctrl->Switch();
@@ -108,9 +108,9 @@ Process* ProcessCtrl::CreateFirstProcess(Process* process) {
       while(true) {
         system_memory_space->Switch();
         switch (p->GetStatus()) {
-          case ProcessStatus::EMBRYO:
-          case ProcessStatus::RUNNING:
-            process_ctrl->SetStatus(p,ProcessStatus::RUNNABLE);
+          case ProcessStatus::kEmbryo:
+          case ProcessStatus::kRunning:
+            process_ctrl->SetStatus(p,ProcessStatus::kRunnable);
             break;
           default:
             break;
@@ -121,7 +121,7 @@ Process* ProcessCtrl::CreateFirstProcess(Process* process) {
         p->_raw_cpuid = cpu_ctrl->GetCpuId().GetRawId();
 
         p->_mem_ctrl->Switch();
-        process_ctrl->SetStatus(p,ProcessStatus::RUNNING);
+        process_ctrl->SetStatus(p,ProcessStatus::kRunning);
 
         p->_elfobj->Resume();
 
@@ -132,46 +132,46 @@ Process* ProcessCtrl::CreateFirstProcess(Process* process) {
   return process;
 }
 
-Process* ProcessCtrl::ProcessTable::Init() {
-  Process* p = new Process();
-  p->_status = ProcessStatus::EMBRYO;
-  p->_pid = _next_pid++;
-  p->_next = p->_prev = p;
-
-  _current_process = p;
-
-  return p;
-}
-
-Process* ProcessCtrl::ProcessTable::AllocProcess() {
-  Process* p = new Process();
-  p->_status = ProcessStatus::EMBRYO;
-  p->_pid = _next_pid++;
-
-  Process* cp = _current_process;
-
-  p->_next = cp->_next;
-  p->_prev = cp;
-  cp->_next = p;
-  cp->_next->_prev = p;
-
-  return p;
-}
-
-void ProcessCtrl::ProcessTable::FreeProcess(Process* p) {
-  p->_prev = p->_next;
-  p->_next->_prev = p->_prev;
-  delete p;
-}
-
-//TODO: impl (now, super simple implemetation for debug) 
-Process* ProcessCtrl::ProcessTable::GetNextProcess() {
-  while(true) { 
-    Process* res = _current_process->_next;
-    _current_process = res;
-    //DBG
-    if (res->GetStatus() == ProcessStatus::ZOMBIE) continue;
-    return res;
-  }
-  return nullptr;
-}
+ Process* ProcessCtrl::ProcessTable::Init() {
+   Process* p = new Process();
+   p->_status = ProcessStatus::kEmbryo;
+   p->_pid = _next_pid++;
+   p->_next = p->_prev = p;
+ 
+   _current_process = p;
+ 
+   return p;
+ }
+ 
+ Process* ProcessCtrl::ProcessTable::AllocProcess() {
+   Process* p = new Process();
+   p->_status = ProcessStatus::kEmbryo;
+   p->_pid = _next_pid++;
+ 
+   Process* cp = _current_process;
+ 
+   p->_next = cp->_next;
+   p->_prev = cp;
+   cp->_next = p;
+   cp->_next->_prev = p;
+ 
+   return p;
+ }
+ 
+ void ProcessCtrl::ProcessTable::FreeProcess(Process* p) {
+   p->_prev = p->_next;
+   p->_next->_prev = p->_prev;
+   delete p;
+ }
+ 
+ //TODO: impl (now, super simple implemetation for debug) 
+ Process* ProcessCtrl::ProcessTable::GetNextProcess() {
+   while(true) { 
+     Process* res = _current_process->_next;
+     _current_process = res;
+     //DBG
+     if (res->GetStatus() == ProcessStatus::kZombie) continue;
+     return res;
+   }
+   return nullptr;
+ }

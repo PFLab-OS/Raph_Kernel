@@ -34,11 +34,11 @@
 using pid_t = uint32_t;
 
 enum class ProcessStatus {
-  EMBRYO,
-  SLEEPING,
-  RUNNABLE,
-  RUNNING,
-  ZOMBIE,
+  kEmbryo,
+  kSleeping,
+  kRunning,
+  kRunnable,
+  kZombie,
 };
 
 class Process {
@@ -76,11 +76,11 @@ private:
   ElfObject* _elfobj;
   Process* _parent;
   pid_t  _pid;
-  ProcessStatus _status = ProcessStatus::EMBRYO;
+  ProcessStatus _status = ProcessStatus::kEmbryo;
   Process* _next;
   Process* _prev;
   uptr<Thread> _thread;
-  void* _chan; //SLEEPING Finish Condition
+  void* _chan; //kSleeping Finish Condition
   sptr<MemCtrl> _mem_ctrl;
   int _raw_cpuid = CpuId::kCpuIdNotFound;
 };
@@ -97,7 +97,7 @@ class ProcessCtrl {
       Process* p = _current_exec_process;
       do {
         p = p->_next;
-        if (p->_raw_cpuid == cpuid.GetRawId() && p->GetStatus() == ProcessStatus::RUNNING) {
+        if (p->_raw_cpuid == cpuid.GetRawId() && p->GetStatus() == ProcessStatus::kRunning) {
           return p;
         }
       } while (p != cp);
@@ -105,8 +105,8 @@ class ProcessCtrl {
     }
 
     void SetStatus(Process* process,ProcessStatus _status) {
-      assert(process->_status != ProcessStatus::SLEEPING);
-      assert(process->_status != ProcessStatus::ZOMBIE);
+      assert(process->_status != ProcessStatus::kSleeping);
+      assert(process->_status != ProcessStatus::kZombie);
       Locker locker(_table_lock);
       process->_status = _status;
     }
@@ -115,11 +115,11 @@ class ProcessCtrl {
     }
 
     bool MakeProcessSleep(Process* process, void* chan) {
-      assert(process->_status != ProcessStatus::SLEEPING);
-      assert(process->_status != ProcessStatus::ZOMBIE);
+      assert(process->_status != ProcessStatus::kSleeping);
+      assert(process->_status != ProcessStatus::kZombie);
       Locker locker(_table_lock);
       process->_chan = chan;
-      process->_status = ProcessStatus::SLEEPING;
+      process->_status = ProcessStatus::kSleeping;
       return true;
     }
 
@@ -128,8 +128,8 @@ class ProcessCtrl {
       Process* p = _current_exec_process;
       do {
         p = p->_next;
-        if (p->GetStatus() == ProcessStatus::SLEEPING && p->_chan == chan) {
-          p->_status = ProcessStatus::RUNNABLE;
+        if (p->GetStatus() == ProcessStatus::kSleeping && p->_chan == chan) {
+          p->_status = ProcessStatus::kRunnable;
         }
       } while (p != cp);
     }
@@ -149,7 +149,7 @@ class ProcessCtrl {
         Process* cp = _current_exec_process;
         Process* p = _current_exec_process;
         Locker locker(_table_lock);
-        p->_status = ProcessStatus::ZOMBIE;
+        p->_status = ProcessStatus::kZombie;
         do {
           p = p->_next;
           if (p->_parent == process) {
@@ -171,7 +171,7 @@ class ProcessCtrl {
       Locker locker(_table_lock);
       do {
         p = p->_next;
-        if (p->_parent == process && p->_status == ProcessStatus::ZOMBIE) {
+        if (p->_parent == process && p->_status == ProcessStatus::kZombie) {
           pid_t pid = p->GetPid();
           _process_table.FreeProcess(p);
           return pid;
@@ -208,9 +208,7 @@ class ProcessCtrl {
       Process* GetNextProcess(Process*);
 
     private:
-      const static int _max_process = 0x10;
       pid_t _next_pid = 1;
       Process* _current_process = nullptr;
     } _process_table;
-
 };

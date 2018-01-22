@@ -29,7 +29,6 @@
 #include <syscall.h>
 #include <gdt.h>
 #include <process.h>
-#include <multiboot.h> //for exec
 #include <global.h>
 #include <net/udp.h>
 
@@ -165,17 +164,9 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
         }
         return 0;
       }
-      case 231: {
-        // exit group
-        gtty->Printf("user program called exit\n");
-        gtty->Flush();
-        while (true) {
-          asm volatile("hlt;");
-        }
-      }
       case 231: 
-      // exit group
       {
+      // exit group
         gtty->Printf("user program called exit\n");
         gtty->Flush();
 
