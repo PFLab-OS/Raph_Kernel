@@ -47,11 +47,11 @@ void UdpCtrl::SetupServer() {
 }
 
 void UdpCtrl::Send(uptr<UdpCtrl::Packet> packet) {
-  uptr<UdpCtrl::FullPacket> full_packet;
-  full_packet->packet = packet;
+  auto full_packet = make_uptr(new UdpCtrl::FullPacket);
   uint32_t dest_addr_int = ((packet->dest_ip_addr)[3] << 24) |
     ((packet->dest_ip_addr)[2] << 16) |
     ((packet->dest_ip_addr)[1] << 8) | (packet->dest_ip_addr)[0];
+  full_packet->packet = packet;
   full_packet->dev = arp_table->Search(dest_addr_int, full_packet->dest_mac_addr);
   if (full_packet->dev == nullptr) {
     gtty->Printf("cannot solve mac address from ARP Table.\n");
@@ -59,10 +59,7 @@ void UdpCtrl::Send(uptr<UdpCtrl::Packet> packet) {
   }
   uint32_t source_addr_int;
   assert(full_packet->dev->GetIpv4Address(source_addr_int));
-  full_packet->source_ip_addr[0] = (source_addr_int >> 0) & 0xff;
-  full_packet->source_ip_addr[1] = (source_addr_int >> 8) & 0xff;
-  full_packet->source_ip_addr[2] = (source_addr_int >> 16) & 0xff;
-  full_packet->source_ip_addr[3] = (source_addr_int >> 24) & 0xff;
+  *(reinterpret_cast<uint32_t *>(full_packet->source_ip_addr)) = source_addr_int;
   Send(full_packet);
 }
 

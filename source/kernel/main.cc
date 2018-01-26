@@ -304,11 +304,13 @@ static void arp_scan(int argc, const char *argv[]) {
       continue;
     }
     uint32_t my_addr_int_;
-    if (!dev->GetIpv4Address(my_addr_int_) || my_addr_int_ == 0) {
+    if (!dev->GetIpv4Address(my_addr_int_) || my_addr_int_ == 0xFFFFFFFF) {
       gtty->Printf("skip %s (no IP)\n", (*devices)[i]);
       continue;
     }
-    gtty->Printf("ARP scan with %s\n", (*devices)[i]);
+    uint8_t ipaddr[4];
+    *(reinterpret_cast<uint32_t *>(ipaddr)) = my_addr_int_;
+    gtty->Printf("ARP scan with %s(%d.%d.%d.%d)\n", (*devices)[i], ipaddr[0], ipaddr[1], ipaddr[2], ipaddr[3]);
     dev->SetReceiveCallback(
         network_cpu,
         make_uptr(new Function<NetDev *>(
@@ -320,10 +322,7 @@ static void arp_scan(int argc, const char *argv[]) {
               uint32_t my_addr_int;
               assert(eth->GetIpv4Address(my_addr_int));
               uint8_t my_addr[4];
-              my_addr[0] = (my_addr_int >> 0) & 0xff;
-              my_addr[1] = (my_addr_int >> 8) & 0xff;
-              my_addr[2] = (my_addr_int >> 16) & 0xff;
-              my_addr[3] = (my_addr_int >> 24) & 0xff;
+              *(reinterpret_cast<uint32_t *>(my_addr)) = my_addr_int;
               // received packet
               if (rpacket->GetBuffer()[12] == 0x08 &&
                   rpacket->GetBuffer()[13] == 0x06 &&
@@ -386,9 +385,7 @@ static void arp_scan(int argc, const char *argv[]) {
         };
         auto container_ = make_uptr(new Container);
         container_->eth = dev;
-        container_->target_addr[0] = (my_addr_int >> 0) & 0xff;
-        container_->target_addr[1] = (my_addr_int >> 8) & 0xff;
-        container_->target_addr[2] = (my_addr_int >> 16) & 0xff;
+        *(reinterpret_cast<uint32_t *>(container_->target_addr)) = my_addr_int;
         container_->target_addr[3] = j;
         t_op.SetFunc(make_uptr(new Function<uptr<Container>>([](uptr<Container> container) {
                 uint8_t data[] = {
@@ -410,10 +407,7 @@ static void arp_scan(int argc, const char *argv[]) {
                 memcpy(data + 22, data + 6, 6);
                 uint32_t my_addr;
                 assert(container->eth->GetIpv4Address(my_addr));
-                data[28] = (my_addr >> 0) & 0xff;
-                data[29] = (my_addr >> 8) & 0xff;
-                data[30] = (my_addr >> 16) & 0xff;
-                data[31] = (my_addr >> 24) & 0xff;
+                *(reinterpret_cast<uint32_t *>(data)) = my_addr;
                 memcpy(data + 38, container->target_addr, 4);
                 uint32_t len = sizeof(data) / sizeof(uint8_t);
                 NetDev::Packet *tpacket;
