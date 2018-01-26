@@ -28,23 +28,13 @@ define vnc
 endef
 endif
 
-CHECK_REMOTE = ssh -F .ssh_config default "exit"
-
 define check_guest
 	$(if $(shell if [ -e /etc/bootstrapped ]; then echo "guest"; fi), \
 	  @echo "error: run this command on the host environment."; exit 1)
 endef
 
 define run_remote
-	$(if $(shell if [ ! -e .ssh_config ]; then echo "no_config"; fi),
-	vagrant halt
-	vagrant up
-	vagrant ssh-config > .ssh_config; )
-	$(if $(shell (($(CHECK_REMOTE)) & (for i in `seq 0 3`; do sleep 1 ; ps $$! > /dev/null 2>&1 || exit 0 ; done;  kill -9 $$! ; exit 1 ) && ($(CHECK_REMOTE))) || echo "no-guest"),
-	@echo "error: Could not ssh to build environment."
-	@echo "Please run 'vagrant reload' to restart your VM."
-	@exit 1)
-	ssh -F .ssh_config default "$(1)"
+	vagrant ssh -c 'trap "make qemuend; exit 1" SIGINT; $(1)'
 endef
 
 define make_wrapper
@@ -52,12 +42,13 @@ define make_wrapper
 	  # guest environment
     cd /vagrant; $(MAKE) ARCH=$(ARCH) -f $(BUILD_RULE_FILE) $(1), \
 	  # host environment
-	  $(call run_remote, cd /vagrant; env MAKEFLAGS=\"$(MAKEFLAGS)\" make ARCH=$(ARCH) -f $(BUILD_RULE_FILE) $(1))
+	  @echo Running \"make $(1)\" on the remote build environment.
+	  @$(call run_remote, cd /vagrant; env MAKEFLAGS="$(MAKEFLAGS)" make ARCH=$(ARCH) -f $(BUILD_RULE_FILE) $(1))
 	)
 endef
 
 default:
-	$(call make_wrapper, all)
+	$(call make_wrapper,all)
 
 .PHONY: vnc vboxrun vboxkill run_pxeserver pxeimg burn_ipxe burn_ipxe_remote
 vnc:
@@ -66,7 +57,7 @@ vnc:
 	$(call vnc)
 
 vboxrun: vboxkill
-	$(call make_wrapper, cpimage)
+	$(call make_wrapper,cpimage)
 	-vboxmanage unregistervm RK_Test --delete
 	-rm $(VDI)
 	vboxmanage createvm --name RK_Test --register
@@ -85,7 +76,7 @@ run_pxeserver:
 	cd net; python -m SimpleHTTPServer 8080
 
 pxeimg:
-	$(call make_wrapper, cpimage)
+	$(call make_wrapper,cpimage)
 	gzip $(IMAGEFILE)
 	mv $(IMAGEFILE).gz net/
 
@@ -100,4 +91,4 @@ burn_ipxe_remote:
 	$(call run_remote, cd ipxe/src; make bin-x86_64-pcbios/ipxe.usb EMBED=/vagrant/load.cfg; if [ ! -e /dev/sdb ]; then echo 'error: insert usb memory!'; exit -1; fi; sudo dd if=bin-x86_64-pcbios/ipxe.usb of=/dev/sdb)
 
 %:
-	$(call make_wrapper, $@)
+	$(call make_wrapper,$@)
