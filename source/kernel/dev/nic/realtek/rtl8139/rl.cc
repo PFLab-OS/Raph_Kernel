@@ -190,11 +190,7 @@ void Rtl8139::Rtl8139Ethernet::ChangeHandleMethodToInt(){
   _master.SetLegacyInterrupt(InterruptHandler,reinterpret_cast<void*>(&_master),Idt::EoiType::kIoapic);
 }
 
-void Rtl8139::Rtl8139Ethernet::Transmit(void *buffer){
-  Packet *packet = reinterpret_cast<Packet*>(buffer);
-  uint32_t length = packet->len;
-  uint8_t *buf = packet->GetBuffer();
-
+void Rtl8139::Rtl8139Ethernet::Transmit(void *){
   uint32_t entry = _current_tx_descriptor;
   _current_tx_descriptor = (_current_tx_descriptor + 1)%4;
 
@@ -204,10 +200,17 @@ void Rtl8139::Rtl8139Ethernet::Transmit(void *buffer){
     return;
   }
   //TxOK
+  Packet *packet;
+  if (!_tx_buffered.Pop(packet)) {
+    return;
+  }
+  uint32_t length = packet->len;
+  uint8_t *buf = packet->GetBuffer();
   memcpy(reinterpret_cast<uint8_t*>(_tx_buffer[entry].GetVirtAddr()),buf,length);
   _master.WriteReg<uint32_t>(kRegTxStatus + entry*4,((256 << 11) & 0x003f0000) | length);  //256 means http://www.jbox.dk/sanos/source/sys/dev/rtl8139.c.html#:56
   _tx_descriptor_status = _tx_descriptor_status & ~(1 << entry);
 
+  kassert(_tx_reserved.Push(packet));
 }
 
 void Rtl8139::Rtl8139Ethernet::InterruptHandler(void *p){
@@ -282,7 +285,7 @@ void Rtl8139::Rtl8139Ethernet::Setup(){
   InitTxPacketBuffer();
   InitRxPacketBuffer();
 
-  
+  SetupNetInterface("rtl");
 
 }
 
