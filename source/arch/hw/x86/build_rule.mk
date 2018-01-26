@@ -42,6 +42,7 @@ run:
 	$(MAKE) qemuend
 
 qemurun: image
+	sudo service networking restart
 	sudo qemu-system-x86_64 \
 		-cpu qemu64 -smp 8 -machine q35 -clock hpet \
 		-monitor telnet:127.0.0.1:1235,server,nowait \
