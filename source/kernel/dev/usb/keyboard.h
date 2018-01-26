@@ -37,8 +37,8 @@ public:
 private:
   class KeyboardSub : public Keyboard {
   public:
-    void Push(char c) {
-      if (!_buf.Push(c)) {
+    void Push(KeyInfo &ki) {
+      if (!_buf.Push(ki)) {
         // TODO show warning
       }
     }

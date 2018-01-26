@@ -27,6 +27,7 @@
 #include <string.h>
 #include <shell.h>
 #include <cpu.h>
+#include <dev/keyboard.h>
 
 void Shell::Setup() {
   _com_buf.SetFunction(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), make_uptr(new ClassFunction<Shell, void *>(this, &Shell::HandleComBuf, nullptr)));
@@ -77,24 +78,35 @@ void Shell::Execute(uptr<ExecContainer> ec) {
 }
 
 void Shell::Liner::ReadCh(char c) {
-  if (c == '\n') {
+  switch(c) {
+  case static_cast<char>(Keyboard::SpecialKey::kEnter): {
     auto ec = make_uptr(new ExecContainer(_shell));
     ec = Tokenize(ec, _command);
     gtty->Printf("> %s\n", _command);
     _shell->Execute(ec);
     Reset();
-  } else if (c == '\b') {
+    break;
+  }
+  case static_cast<char>(Keyboard::SpecialKey::kBackSpace): {
     // backspace
     if (_next_command > 0) {
       _next_command--;
       _command[_next_command] = '\0';
       gtty->PrintShell(_command);
     }
-  } else if (_next_command != kCommandSize - 1) {
-    _command[_next_command] = c;
-    _next_command++;
-    _command[_next_command] = '\0';
-    gtty->PrintShell(_command);
+    break;
+  }
+  case static_cast<char>(Keyboard::SpecialKey::kDelete):
+    // TODO impl
+    break;
+  default: {
+    if (_next_command != kCommandSize - 1) {
+      _command[_next_command] = c;
+      _next_command++;
+      _command[_next_command] = '\0';
+      gtty->PrintShell(_command);
+    }
+  }
   }
 }
 

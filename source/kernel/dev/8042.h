@@ -22,20 +22,25 @@
 
 #pragma once
 
+#include <string.h>
 #include <dev/device.h>
 #include <dev/keyboard.h>
 
 class LegacyKeyboard : Keyboard {
  public:
+  LegacyKeyboard() {
+    memset(_pushed_keys, 0, kKeyBufSize);
+  }
   static void Attach();
   virtual ~LegacyKeyboard() {
   }
  private:
-  static const char kScanCode[256];
+  static const char kScanCode[128];
   static const int kDataPort = 0x60;
   void SetupSub() override;
   void Write(uint8_t &code) {
   }
   static void Handler (Regs *reg, void *arg);
+  char _pushed_keys[kKeyBufSize];
 };
 

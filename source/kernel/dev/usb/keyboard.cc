@@ -104,7 +104,14 @@ void DevUsbKeyboard::Handle(void *, uptr<Array<uint8_t>> buf) {
         }
       }
       if (same || !exist) {
-        _dev.Push(kScanCode[c]);
+        // TODO support multiple input
+        // TODO support special keys
+        Keyboard::KeyInfo ki;
+        for (int k = 0; k < Keyboard::kKeyBufSize; k++) {
+          ki.c[k] = 0;
+        }
+        ki.c[0] = kScanCode[c];
+        _dev.Push(ki);
       }
     }
   } 
