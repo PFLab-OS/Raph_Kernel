@@ -41,28 +41,72 @@ void LegacyKeyboard::SetupSub() {
 void LegacyKeyboard::Handler(Regs *reg, void *arg) {
   auto that = reinterpret_cast<LegacyKeyboard *>(arg);
   uint8_t data = inb(kDataPort);
-  if (data < (1 << 7)) {
-    if (!that->_buf.Push(kScanCode[data])) {
+  if (data < 0x80) {
+    data = kScanCode[data];
+    int i;
+    bool pushed = false;
+    switch(data) {
+    case static_cast<const char>(SpecialKey::kShift):
+    case static_cast<const char>(SpecialKey::kCtrl):
+    case static_cast<const char>(SpecialKey::kAlt): {
+      for (i = 0; i < kKeyBufSize; i++) {
+        if (that->_pushed_keys[i] == data) {
+          break;
+        }
+      }
+    if (i == kKeyBufSize) {
+      for (i = 0; i < kKeyBufSize; i++) {
+        if (that->_pushed_keys[i] == 0) {
+          break;
+        }
+      }
+      if (i != kKeyBufSize) {
+        that->_pushed_keys[i] = data;
+        pushed = true;
+      }
+    }
+    }
+    }
+    KeyInfo ki;
+    memcpy(ki.c, that->_pushed_keys, kKeyBufSize);
+    if (!pushed) {
+      for (i = 0; i < kKeyBufSize; i++) {
+        if (ki.c[i] == 0) {
+          ki.c[i] = data;
+          break;
+        }
+      }
+    }
+    if (!that->_buf.Push(ki)) {
       // TODO show warning
+    }
+  } else {
+    data -= 0x80;
+    data = kScanCode[data];
+    for (int i = 0; i < kKeyBufSize; i++) {
+      if (that->_pushed_keys[i] == data) {
+        that->_pushed_keys[i] = 0;
+      }
     }
   }
 }
 
-const char LegacyKeyboard::kScanCode[256] = {
-    '!','!','1','2','3','4','5','6',
-    '7','8','9','0','-','=','\b','\t',
-    'q','w','e','r','t','y','u','i',
-    'o','p','[',']','\n','!','a','s',
-    'd','f','g','h','j','k','l',';',
-    '"','^','!','\\','z','x','c','v',
-    'b','n','m',',','.','/','!','!',
-    '!',' ','!','!','!','!','!','!',
-    '!','!','!','!','!','!','!','!',
-    '!','!','!','!','!','!','!','!',
-    '!','!','!','!','!','!','!','!',
-    '!','!','!','!','!','!','!','!',
-    '!','!','!','!','!','!','!','!',
-    '!','!','!','!','!','!','!','!',
-    '!','!','!','!','!','!','!','!',
-    '!','!','!','!','!','!','!','!',
+const char LegacyKeyboard::kScanCode[128] = {
+  0x0,0x0,'1','2','3','4','5','6',
+  '7','8','9','0','-','=',static_cast<const char>(SpecialKey::kBackSpace),static_cast<const char>(SpecialKey::kTab),
+  'q','w','e','r','t','y','u','i',
+  'o','p','[',']',static_cast<const char>(SpecialKey::kEnter),0x0,'a','s',
+  'd','f','g','h','j','k','l',';',
+  '\'','`',static_cast<const char>(SpecialKey::kShift),'\\','z','x','c','v',
+  'b','n','m',',','.','/',static_cast<const char>(SpecialKey::kShift),0x0,
+  0x0,' ',0x0,0x0,0x0,0x0,0x0,0x0,
+  0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,
+  0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,
+  0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,
+  0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,
+  0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,
+  0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,
+  0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,
+  0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,
 };
+

@@ -31,9 +31,24 @@ public:
   Keyboard() {
   }
   void Setup();
+  static const int kKeyBufSize = 8;
+  struct KeyInfo {
+    static const int kBufSize = 8;
+    char c[kBufSize];
+  };
+  enum class SpecialKey : char {
+    kNull = 0,
+    kShift = 1,
+    kCtrl = 2,
+    kAlt = 3,
+    kBackSpace = 8,
+    kTab = 9,
+    kEnter = 12,
+    kDelete = 127,
+  };
 protected:
-  static const int kBufSize = 100;
-  FunctionalRingBuffer<char, kBufSize> _buf;
+  FunctionalRingBuffer<KeyInfo, kKeyBufSize> _buf;
+  static const char kUpperChar[128];
   virtual void SetupSub() {
   }
   void Handle(void *);

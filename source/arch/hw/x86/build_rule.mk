@@ -42,6 +42,7 @@ run:
 	$(MAKE) qemuend
 
 qemurun: image
+	sudo service networking restart
 	sudo qemu-system-x86_64 \
 		-cpu qemu64 -smp 8 -machine q35 -clock hpet \
 		-monitor telnet:127.0.0.1:1235,server,nowait \
@@ -62,7 +63,9 @@ debugqemu:
 	sudo gdb -x ./.gdbinit -p `ps aux | grep qemu | sed -n 2P | awk '{ print $$2 }'`
 
 qemuend:
-	sudo pkill -KILL qemu || :
+	(echo "quit" | netcat 127.0.0.1 1235) || :
+	sleep 0.2s
+	(sudo pkill -KILL qemu && echo "force killing QEMU") || :
 
 $(BUILD_DIR)/script:
 	cp script $@
