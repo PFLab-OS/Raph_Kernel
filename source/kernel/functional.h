@@ -43,10 +43,15 @@ class Functional {
     _func = func;
   }
   void Block() {
+    kassert(!_block_flag);
     _block_flag = true;
   }
   void UnBlock() {
+    kassert(_block_flag);
     _block_flag = false;
+    if (ShouldFunc()) {
+      WakeupFunction();
+    }
   }
 protected:
   void WakeupFunction();
