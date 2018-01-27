@@ -63,9 +63,10 @@ debugqemu:
 	sudo gdb -x ./.gdbinit -p `ps aux | grep qemu | sed -n 2P | awk '{ print $$2 }'`
 
 qemuend:
-	(echo "quit" | netcat 127.0.0.1 1235) || :
-	sleep 0.2s
-	(sudo pkill -KILL qemu && echo "force killing QEMU") || :
+	@echo "Sending 'quit' command to QEMU..." 
+	@((echo "quit" | netcat 127.0.0.1 1235) & (for i in `seq 0 3`; do sleep 1 ; ps $$! > /dev/null 2>&1 || exit 0 ; done; kill -9 $$! )) || :
+	@sleep 0.2s
+	@(sudo pkill -KILL qemu && echo "force killing QEMU") || :
 
 $(BUILD_DIR)/script:
 	cp script $@
