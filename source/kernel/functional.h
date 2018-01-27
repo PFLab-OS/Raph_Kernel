@@ -38,8 +38,7 @@ class Functional {
   }
   void SetFunction(CpuId cpuid, uptr<GenericFunction<>> func) {
     _thread = ThreadCtrl::GetCtrl(cpuid).AllocNewThread(Thread::StackState::kShared);
-    auto t_op = _thread->CreateOperator();
-    t_op.SetFunc(make_uptr(new ClassFunction<Functional, void *>(this, &Functional::Handle, nullptr)));
+    _thread->CreateOperator().SetFunc(make_uptr(new ClassFunction<Functional, void *>(this, &Functional::Handle, nullptr)));
     _func = func;
   }
   void Block() {
@@ -76,7 +75,7 @@ inline void Functional::WakeupFunction() {
 inline void Functional::Handle(void *) {
   for (int i = 0; i < 10; i++) {
     // not to loop infidentry
-    // it will lock cpu and inhibit other tasks
+    // it will lock cpu and block other tasks
     
     if (!ShouldFunc() || _block_flag) {
       break;
