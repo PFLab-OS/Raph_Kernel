@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash
 
 function setup() {
     sed -e "s/HOST/$1/g" memdisk.cfg > load.cfg

@@ -34,7 +34,7 @@ define check_guest
 endef
 
 define run_remote
-	vagrant ssh -c 'trap "make qemuend; exit 1" SIGINT; $(1)'
+	vagrant ssh -c "trap \"cd /vagrant; make ARCH=$(ARCH) -f $(BUILD_RULE_FILE) qemuend; exit 1\" SIGINT; $(1)"
 endef
 
 define make_wrapper
