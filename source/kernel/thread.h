@@ -210,7 +210,7 @@ private:
   ThreadCtrl() {
   }
   ~ThreadCtrl();
-  void InitSub();
+  void InitSub(CpuId id);
 
   static ThreadCtrl *_thread_ctrl;
   static bool _is_initialized;
@@ -233,6 +233,7 @@ private:
     RingBuffer<Thread *, kMaxThreadNum> *_buf;
   } _idle_threads;
   Thread *_current_thread = nullptr;
+  CpuId _cpuid;
 };
 
 inline Thread::Operator Thread::CreateOperator() {

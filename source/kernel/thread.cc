@@ -55,7 +55,10 @@ void Thread::InitBuffer() {
     // return back to Thread::Init()
   } else {
     // call from Thread::SwitchTo()
-    _func->Execute();
+    do {
+      auto dummy_op = CreateOperator(); // increment op count during executing the function
+      _func->Execute();
+    } while(0);
     ReleaseReturnBuf();
     longjmp(_return_buf, 1);
   }
@@ -93,6 +96,7 @@ Thread::State Thread::Stop() {
     switch(state) {
     case State::kWaitingInQueue:
       if (CompareAndSetState(state, State::kStopping)) {
+        __sync_fetch_and_sub(&_op_obj._cnt, 1);
         return state;
       }
       break;
@@ -117,10 +121,10 @@ void Thread::Wait() {
 }
 
 void Thread::Delete() {
-  kassert(_op_obj._cnt == 0);
   if (_state == State::kRunning || _state == State::kWaitingInQueue) {
     Stop();
   }
+  kassert(_op_obj._cnt == 0);
   while(true) {
     switch(_state) {
     case State::kStopping:
@@ -175,12 +179,14 @@ ThreadCtrl::~ThreadCtrl() {
 void ThreadCtrl::Init() {
   _thread_ctrl = new ThreadCtrl[cpu_ctrl->GetHowManyCpus()];
   for (int i = 0; i < cpu_ctrl->GetHowManyCpus(); i++) {
-    _thread_ctrl[i].InitSub();
+    CpuId id(i);
+    _thread_ctrl[i].InitSub(id);
   }
   _is_initialized = true;
 }
 
-void ThreadCtrl::InitSub() {
+void ThreadCtrl::InitSub(CpuId id) {
+  _cpuid = id;
   _idle_threads.Init();
   _threads = new Thread*[kMaxThreadNum];
   for (int i = 0; i < kMaxThreadNum; i++) {
