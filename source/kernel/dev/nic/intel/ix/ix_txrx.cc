@@ -241,7 +241,9 @@ ixgbe_mq_start_locked(struct ifnet *ifp, struct tx_ring *txr)
 	/* Process the queue */
 	while(!ixgbe->GetNetInterface()._tx_buffered.IsEmpty()) {
         BsdEthernet::Packet* packet;
-        kassert(ixgbe->GetNetInterface()._tx_buffered.Pop(packet));
+        if (!ixgbe->GetNetInterface()._tx_buffered.Pop(packet)) {
+          break;
+        }
         ixgbe_xmit(txr, packet);
         ixgbe->GetNetInterface().ReuseTxBuffer(packet);
 
