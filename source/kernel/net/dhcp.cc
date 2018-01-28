@@ -220,7 +220,7 @@ void DhcpCtrl::HandleAck(uptr<UdpCtrl::RxPacket> upacket, Packet *packet) {
     upacket->dev->AssignIpv4Address(packet->yiaddr);
     uint8_t yiaddr[4];
     memcpy(yiaddr, &packet->yiaddr, 4);
-    gtty->Printf("DHCP: assigned ip v4 addr %d.%d.%d.%d to %s", yiaddr[0],
+    gtty->Printf("DHCP: assigned ip v4 addr %d.%d.%d.%d to %s\n", yiaddr[0],
                  yiaddr[1], yiaddr[2], yiaddr[3], upacket->dev->GetName());
   }
 }
