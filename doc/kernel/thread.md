@@ -76,6 +76,7 @@ ThreadCtrlのqueueにThreadを投入する。
 Thread::Operator::Stop()
 -----------------------
 queue上のThreadを除去する。既に実行中の場合は、実行が終了した時点で（再投入されても）除去される。
+<span style="color:red">注意：Stop()は既に実行中の関数を強制停止する事は無い。そのため、Stop()が返ったからといって、Thread内で仕様するリソースを開放してはならない。基本的にThreadが扱うリソースの所有権はThreadに持たせるのが良い。</span>
 
 ThreadCtrl::GetCtrl()
 ---------------------
