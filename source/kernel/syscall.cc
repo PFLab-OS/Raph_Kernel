@@ -30,8 +30,15 @@
 #include <gdt.h>
 #include <global.h>
 #include <net/udp.h>
+#include <dev/eth.h>
+#include <net/usersocket.h>
 
+extern CpuId network_cpu;
+/*
+void CapturePort() { UdpCtrl::GetCtrl().RegisterSocket(5621, &_dhcp_ctrl); }
+*/
 SystemCallCtrl SystemCallCtrl::_ctrl;
+UserSocket _socket;
 
 extern "C" int64_t syscall_handler();
 extern size_t syscall_handler_stack;

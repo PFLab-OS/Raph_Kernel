@@ -14,13 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
- * Author: Liva
- * 
- * reference:
- * RFC 2131 Dynamic Host Configuration Protocol
- * RFC 2132 DHCP Options and BOOTP Vendor Extensions
+ * Author: hikalium
+ *
  */
 
 #pragma once
@@ -29,14 +27,28 @@
 #include <net/udp.h>
 #include <stdint.h>
 
-class DhcpCtrl : public UdpCtrl::ProtocolInterface {
-public:
-  static void Init();
-  static DhcpCtrl &GetCtrl() {
-    return _dhcp_ctrl;
+extern CpuId network_cpu;
+
+class UserSocket : public UdpCtrl::ProtocolInterface {
+ public:
+  void Listen(uint16_t port) {
+    this->_rx_queue.SetFunction(network_cpu,
+                                make_uptr(new ClassFunction<UserSocket, void *>(
+                                    this, &UserSocket::Handle, nullptr)));
+    UdpCtrl::GetCtrl().RegisterSocket(port, this);
+    gtty->Printf("sock Listen started. port: %d\n", port);
   }
-  void AssignAddr(NetDev *dev);
-private:
+
+ private:
+  void Handle(void *) {
+    gtty->Printf("Receive!\n");
+
+    uptr<UdpCtrl::RxPacket> upacket = _rx_queue.Pop();
+    if (upacket.IsNull()) {
+      return;
+    }
+  }
+  /*
   struct Packet {
     uint8_t op;
     uint8_t htype;
@@ -55,31 +67,9 @@ private:
     uint8_t options[312 - 4];
   } __attribute__((__packed__));
   static_assert(sizeof(Packet) == 548, "");
-
+  */
   virtual FunctionalQueue<uptr<UdpCtrl::RxPacket>> &GetRxQueue() override {
     return _rx_queue;
   }
-
-  void Handle(void *);
-  void HandleOffer(uptr<UdpCtrl::RxPacket> upacket, Packet *packet);
-  void HandleAck(uptr<UdpCtrl::RxPacket> upacket, Packet *packet);
-
-  void SendRequest(NetDev *dev, uint32_t siaddr, uint32_t yiaddr);
-
-  static DhcpCtrl _dhcp_ctrl;
   FunctionalQueue<uptr<UdpCtrl::RxPacket>> _rx_queue;
-
-  static const uint32_t kMagicCookie = 0x63825363;
-
-  static const int kMaxInfo = 10;
-  struct Info {
-    NetDev *dev = nullptr;
-    enum class State {
-      kNull,
-      kSendDiscover,
-      kReceiveOffer,
-      kReceivePack,
-    } state;
-    uint32_t siaddr;
-  } _info[kMaxInfo];
 };

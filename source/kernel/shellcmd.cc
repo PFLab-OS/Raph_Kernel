@@ -34,6 +34,8 @@
 #include <net/udp.h>
 #include <net/dhcp.h>
 
+#include <net/usersocket.h>
+
 //
 // misc func
 //
@@ -662,6 +664,12 @@ void cat(int argc, const char *argv[]) {
   if (!cat_sub(vfs, argv[1])) {
     gtty->Printf("cat: %s: No such file or directory\n", argv[1]);
   }
+  // TODO: Free v6fs, vfs?
+}
+
+void mksock(int argc, const char *argv[]) {
+  UserSocket *sock = new UserSocket();
+  sock->Listen(5621);
 }
 
 void RegisterDefaultShellCommands() {
@@ -680,4 +688,5 @@ void RegisterDefaultShellCommands() {
   shell->Register("beep", beep);
   shell->Register("membench", membench);
   shell->Register("cat", cat);
+  shell->Register("mksock", mksock);
 }

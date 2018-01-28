@@ -376,9 +376,12 @@ void UdpCtrl::DummyServer(NetDev *dev) {
 
         packet->dev = dev;
 
+        gtty->Printf("UDP Receive\n");
+
         for (int i = 0; i < kSocketNum; i++) {
           if (_socket[i].protocol != nullptr &&
               _socket[i].port == packet->dest_port) {
+            gtty->Printf("Sock %d port %d pushed\n", i, packet->dest_port);
             _socket[i].protocol->GetRxQueue().Push(packet);
             break;
           }
