@@ -6,6 +6,9 @@ export ARCH
 VNC_PORT = 15900
 VDI = disk.vdi
 
+#PXE_IPV4_ADDR <- able to override 
+PXE_HTTP_PORT ?= 8080
+
 UNAME = ${shell uname}
 ifeq ($(OS),Windows_NT)
 define vnc
@@ -50,7 +53,7 @@ endef
 default:
 	$(call make_wrapper,all)
 
-.PHONY: vnc vboxrun vboxkill run_pxeserver pxeimg burn_ipxe burn_ipxe_remote
+.PHONY: vnc vboxrun vboxkill run_pxeserver pxeimg burn_ipxe net/ipxe.conf
 vnc:
 	$(call check_guest)
 	@echo info: vnc password is "a"
@@ -70,7 +73,11 @@ vboxrun: vboxkill
 vboxkill:
 	-vboxmanage controlvm RK_Test poweroff
 
-run_pxeserver:
+net/ipxe.conf:
+	$(call check_guest)
+	sed -e "s/HOST/$(if $(PXE_IPV4_ADDR),$(PXE_IPV4_ADDR),$(shell ./lan.sh | cut -f 2))/g" -e "s/PORT/$(PXE_HTTP_PORT)/g" memdisk.cfg > $@
+
+run_pxeserver: net/ipxe.conf
 	make pxeimg
 	@echo info: allow port 8080 in your firewall settings
 	cd net; python -m SimpleHTTPServer 8080
@@ -80,15 +87,9 @@ pxeimg:
 	gzip $(IMAGEFILE)
 	mv $(IMAGEFILE).gz net/
 
-burn_ipxe:
+burn_ipxe: net/ipxe.conf
 	$(call check_guest)
-	./lan.sh local
-	$(call run_remote, cd ipxe/src; make bin-x86_64-pcbios/ipxe.usb EMBED=/vagrant/load.cfg; if [ ! -e /dev/sdb ]; then echo 'error: insert usb memory!'; exit -1; fi; sudo dd if=bin-x86_64-pcbios/ipxe.usb of=/dev/sdb)
-
-burn_ipxe_remote:
-	$(call check_guest)
-	./lan.sh remote
-	$(call run_remote, cd ipxe/src; make bin-x86_64-pcbios/ipxe.usb EMBED=/vagrant/load.cfg; if [ ! -e /dev/sdb ]; then echo 'error: insert usb memory!'; exit -1; fi; sudo dd if=bin-x86_64-pcbios/ipxe.usb of=/dev/sdb)
+	$(call run_remote, cd ipxe/src; make bin-x86_64-pcbios/ipxe.usb EMBED=/vagrant/$^; if [ ! -e /dev/sdb ]; then echo 'error: insert usb memory!'; exit -1; fi; sudo dd if=bin-x86_64-pcbios/ipxe.usb of=/dev/sdb)
 
 %:
 	$(call make_wrapper,$@)
