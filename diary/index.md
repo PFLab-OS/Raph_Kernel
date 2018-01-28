@@ -13,6 +13,9 @@ RingBuffer2の改良
 RingBuffer2を書き直し、制約（マルチスレッドでのPush、割り込みハンドラ内からのPop）を撤廃
 これにより、RingBufferはいかなる状況下でも使えるデータ構造となる。
 
+[d2eaa4c](https://github.com/PFLab-OS/Raph_Kernel/commit/d2eaa4c0fd96d8485779c38d8655498c3b595e6e)
+RingBufferをRingBufferで置き換え
+
 2018/01/05
 ----------
 [0dd8ca7](https://github.com/PFLab-OS/Raph_Kernel/commit/0dd8ca7af894adc02c779cd7695649a692d30019)
