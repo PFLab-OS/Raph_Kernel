@@ -70,8 +70,20 @@ vboxrun: vboxkill
 vboxkill:
 	-vboxmanage controlvm RK_Test poweroff
 
+PXE_IPV4_ADDR = $(shell ifconfig | grep "inet " | grep -v "127.0.0.1" | cut -d ' ' -f 2)
+PXE_HTTP_PORT = 8080
+net/ipxe.conf:
+	@echo "using $(PXE_IPV4_ADDR) as Host IPv4 Addr in $@."
+	@echo "#!ipxe" > $@
+	@echo "dhcp" >> $@
+	@echo "kernel http://$(PXE_IPV4_ADDR):$(PXE_HTTP_PORT)/memdisk" >> $@
+	@echo "initrd http://$(PXE_IPV4_ADDR):$(PXE_HTTP_PORT)/disk.img.gz" >> $@
+	@echo "boot" >> $@
+
 run_pxeserver:
 	make pxeimg
+	-rm net/ipxe.conf
+	make net/ipxe.conf
 	@echo info: allow port 8080 in your firewall settings
 	cd net; python -m SimpleHTTPServer 8080
 

@@ -21,6 +21,7 @@ load.cfg
 disk.img
 disk.vdi
 net/disk.img.gz
+net/ipxe.conf
 .vagrant
 .ssh_config
 build/
