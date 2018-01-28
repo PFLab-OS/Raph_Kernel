@@ -257,10 +257,6 @@ static void setflag(int argc, const char *argv[]) {
   }
 }
 
-static void udp_setup(int argc, const char *argv[]) {
-  UdpCtrl::GetCtrl().SetupServer();
-}
-
 static void arp_scan_on_device(const char *dev_name, uint32_t base_ipv4_addr,
                                int range) {
   auto dev = netdev_ctrl->GetDeviceInfo(dev_name)->device;
@@ -268,75 +264,6 @@ static void arp_scan_on_device(const char *dev_name, uint32_t base_ipv4_addr,
     gtty->Printf("skip %s (Link Down)\n", dev_name);
     return;
   }
-
-  dev->SetReceiveCallback(
-      network_cpu,
-      make_uptr(new Function<NetDev *>(
-          [](NetDev *eth) {
-            NetDev::Packet *rpacket;
-            if (!eth->ReceivePacket(rpacket)) {
-              return;
-            }
-            uint32_t my_addr_int_;
-            assert(eth->GetIpv4Address(my_addr_int_));
-            uint8_t my_addr[4];
-            *(reinterpret_cast<uint32_t *>(my_addr)) = my_addr_int_;
-            // received packet
-            if (rpacket->GetBuffer()[12] == 0x08 &&
-                rpacket->GetBuffer()[13] == 0x06 &&
-                rpacket->GetBuffer()[21] == 0x02) {
-              // ARP Reply
-              union {
-                uint8_t bytes[4];
-                uint32_t uint32;
-              } responder_ipv4_addr;
-              memcpy(responder_ipv4_addr.bytes, &rpacket->GetBuffer()[28], 4);
-              gtty->Printf(
-                  "ARP reply from %d.%d.%d.%d\n", responder_ipv4_addr.bytes[0],
-                  responder_ipv4_addr.bytes[1], responder_ipv4_addr.bytes[2],
-                  responder_ipv4_addr.bytes[3]);
-              arp_table->Set(responder_ipv4_addr.uint32,
-                             rpacket->GetBuffer() + 22, eth);
-            }
-            if (rpacket->GetBuffer()[12] == 0x08 &&
-                rpacket->GetBuffer()[13] == 0x06 &&
-                rpacket->GetBuffer()[21] == 0x01 &&
-                (memcmp(rpacket->GetBuffer() + 38, my_addr, 4) == 0)) {
-              // ARP Request
-              uint8_t data[] = {
-                  0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // Target MAC Address
-                  0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // Source MAC Address
-                  0x08, 0x06,                          // Type: ARP
-                  // ARP Packet
-                  0x00, 0x01,  // HardwareType: Ethernet
-                  0x08, 0x00,  // ProtocolType: IPv4
-                  0x06,        // HardwareLength
-                  0x04,        // ProtocolLength
-                  0x00, 0x02,  // Operation: ARP Reply
-                  0x00, 0x00, 0x00, 0x00, 0x00,
-                  0x00,                    // Source Hardware Address
-                  0x00, 0x00, 0x00, 0x00,  // Source Protocol Address
-                  0x00, 0x00, 0x00, 0x00, 0x00,
-                  0x00,                    // Target Hardware Address
-                  0x00, 0x00, 0x00, 0x00,  // Target Protocol Address
-              };
-              memcpy(data, rpacket->GetBuffer() + 6, 6);
-              static_cast<DevEthernet *>(eth)->GetEthAddr(data + 6);
-              memcpy(data + 22, data + 6, 6);
-              memcpy(data + 28, my_addr, 4);
-              memcpy(data + 32, rpacket->GetBuffer() + 22, 6);
-              memcpy(data + 38, rpacket->GetBuffer() + 28, 4);
-
-              uint32_t len = sizeof(data) / sizeof(uint8_t);
-              NetDev::Packet *tpacket;
-              kassert(eth->GetTxPacket(tpacket));
-              memcpy(tpacket->GetBuffer(), data, len);
-              tpacket->len = len;
-              eth->TransmitPacket(tpacket);
-            }
-            eth->ReuseRxBuffer(rpacket);
-          },
-          dev)));
 
   gtty->Printf("ARP scan with %s\n", dev_name);
   for (int i = 0; i < (1 << range); i++) {
@@ -457,14 +384,7 @@ static void arp_scan(int argc, const char *argv[]) {
   do {
     auto t_op = thread->CreateOperator();
     t_op.SetFunc(make_uptr(new Function<void *>(
-        [](void *) {
-          auto devices_ = netdev_ctrl->GetNamesOfAllDevices();
-          for (size_t i = 0; i < devices_->GetLen(); i++) {
-            auto dev = netdev_ctrl->GetDeviceInfo((*devices_)[i])->device;
-            dev->SetReceiveCallback(network_cpu,
-                                    make_uptr(new GenericFunction<>()));
-          }
-        },
+        [](void *) {},
         nullptr)));
     t_op.Schedule(3 * 1000 * 1000);
   } while (0);
@@ -754,7 +674,6 @@ void RegisterDefaultShellCommands() {
   shell->Register("ifconfig", ifconfig);
   shell->Register("bench", bench);
   shell->Register("setflag", setflag);
-  shell->Register("udp_setup", udp_setup);
   shell->Register("arp_scan", arp_scan);
   shell->Register("udpsend", udpsend);
   shell->Register("show", show);
