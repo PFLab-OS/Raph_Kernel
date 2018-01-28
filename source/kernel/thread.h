@@ -58,7 +58,10 @@ class Thread final : public QueueContainer<Thread>,
         _wq_ele(this),
         _ctrl(ctrl),
         _stack_state(StackState::kShared) {}
-  virtual ~Thread() { kassert(_state == State::kOutOfQueue); }
+  virtual ~Thread() {
+    kassert(_state == State::kOutOfQueue);
+    kassert(false);
+  }
   void Join();
 
   class OperatorObj;
