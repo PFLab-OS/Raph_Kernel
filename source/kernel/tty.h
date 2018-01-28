@@ -142,7 +142,7 @@ class Tty {
     }
     void Delete(StringBuffer &buf);
     void Write(const char c, StringBuffer &buf) {
-      if (offset == length) {
+      if (offset == kLength) {
         if (next == nullptr) {
           if (type == Type::kQueue) {
             String *s = New();
@@ -162,8 +162,8 @@ class Tty {
       }
     }
     void Exit(StringBuffer &buf) { Write('\0', buf); }
-    static const int length = 100;
-    uint8_t str[length];
+    static const int kLength = 128;
+    uint8_t str[kLength];
     int offset;
     String *next;
 

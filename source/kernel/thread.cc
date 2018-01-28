@@ -25,12 +25,13 @@
 #include <cpu.h>
 #include <setjmp.h>
 #include <apic.h>
+#include <tty.h>
 #include <mem/kstack.h>
 
 ThreadCtrl *ThreadCtrl::_thread_ctrl;
 bool ThreadCtrl::_is_initialized = false;
 
-void Thread::Init(Thread::StackState sstate) {
+void Thread::Init(Thread::StackState sstate, const char *file, int line) {
   _stack_state = sstate;
   kassert(_op_obj._cnt == 0);
   kassert(_waiting_thread == nullptr);
@@ -47,6 +48,8 @@ void Thread::Init(Thread::StackState sstate) {
       // return from Thread::InitBuffer()
     }
   }
+  _file = file;
+  _line = line;
 }
 
 void Thread::InitBuffer() {
@@ -58,8 +61,10 @@ void Thread::InitBuffer() {
   } else {
     // call from Thread::SwitchTo()
     do {
-      auto dummy_op =
-          CreateOperator();  // increment op count during executing the function
+      // increment op count during executing the function
+      // the purpose of this is not to return back to Join()
+      // while the function is running.
+      auto dummy_op = CreateOperator();
       _func->Execute();
     } while (0);
     ReleaseReturnBuf();
@@ -74,15 +79,17 @@ void Thread::Execute() {
   } else {
     _func->Execute();
   }
-  if (__sync_fetch_and_sub(&_op_obj._cnt, 1) == 1) {
-    // no operator referrence to this thread.
-    if (_waiting_thread != nullptr) {
-      kassert(GetState() == Thread::State::kRunning);
-      _waiting_thread->Schedule();
-      _waiting_thread = nullptr;
-    } else {
-      // TODO show warning?
+  int cnt = __sync_fetch_and_sub(&_op_obj._cnt, 1);
+  kassert(cnt >= 1);
+  if (cnt == 1 && _waiting_thread != nullptr) {
+    // no operator reference to this thread.
+    // return back to Join
+    if (GetState() != Thread::State::kRunning) {
+      ShowErr(
+          "no operator reference but the thread is queued. the bug of Thread?");
     }
+    _waiting_thread->Schedule();
+    _waiting_thread = nullptr;
   }
 }
 
@@ -100,7 +107,7 @@ Thread::State Thread::Stop() {
     switch (state) {
       case State::kWaitingInQueue:
         if (CompareAndSetState(state, State::kStopping)) {
-          __sync_fetch_and_sub(&_op_obj._cnt, 1);
+          kassert(__sync_fetch_and_sub(&_op_obj._cnt, 1) >= 1);
           return state;
         }
         break;
@@ -117,7 +124,11 @@ Thread::State Thread::Stop() {
 
 // TODO show warning if no one refers this thread
 void Thread::Wait() {
-  kassert(_stack_state == StackState::kIndependent);
+  if (_stack_state != StackState::kIndependent) {
+    ShowErr(
+        "The StackState of a thread which calls Wait()/Join() must be "
+        "'Independent'.");
+  }
   if (setjmp(_buf) == 0) {
     ReleaseReturnBuf();
     longjmp(_return_buf, 1);
@@ -128,7 +139,9 @@ void Thread::Delete() {
   if (_state == State::kRunning || _state == State::kWaitingInQueue) {
     Stop();
   }
-  kassert(_op_obj._cnt == 0);
+  if (_op_obj._cnt != 0) {
+    ShowErr("tried to delete a thread unless Thread Operators remain.");
+  }
   while (true) {
     switch (_state) {
       case State::kStopping:
@@ -148,6 +161,12 @@ void Thread::Delete() {
         kassert(false);
     }
   }
+}
+
+void Thread::ShowErr(const char *str) {
+  gtty->DisablePrint();
+  gtty->ErrPrintf("Thread Info: allocated at %s:%d\n", _file, _line);
+  kernel_panic("Thread", str);
 }
 
 int Thread::SwitchTo() {
@@ -198,10 +217,11 @@ void ThreadCtrl::InitSub(CpuId id) {
   }
 }
 
-uptr<Thread> ThreadCtrl::AllocNewThread(Thread::StackState sstate) {
+uptr<Thread> ThreadCtrl::AllocNewThread_(Thread::StackState sstate,
+                                         const char *file, int line) {
   Thread *t;
   _idle_threads.Pop(t);
-  t->Init(sstate);
+  t->Init(sstate, file, line);
   return make_uptr(t);
 }
 
@@ -233,7 +253,9 @@ bool ThreadCtrl::ScheduleRunQueue(Thread *thread) {
 }
 
 bool ThreadCtrl::ScheduleWaitQueue(Thread *thread, int us) {
-  kassert(us != 0);
+  if (us == 0) {
+    thread->ShowErr("us of ScheduleWaitQueue() must be greater than zero.");
+  }
   auto state = thread->SetState(Thread::State::kWaitingInQueue);
   switch (state) {
     case Thread::State::kOutOfQueue:

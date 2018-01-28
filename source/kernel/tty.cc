@@ -36,7 +36,7 @@ void Tty::Setup() {
 }
 
 void Tty::PrintString(String *str) {
-  for (int i = 0; i < String::length; i++) {
+  for (int i = 0; i < String::kLength; i++) {
     if (str->str[i] == '\0') {
       return;
     }
@@ -48,7 +48,7 @@ void Tty::PrintString(String *str) {
 }
 
 void Tty::PrintErrString(String *str) {
-  for (int i = 0; i < String::length; i++) {
+  for (int i = 0; i < String::kLength; i++) {
     if (str->str[i] == '\0') {
       return;
     }

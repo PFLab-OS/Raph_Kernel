@@ -196,6 +196,8 @@ extern "C" int main() {
   UdpCtrl::Init();
   DhcpCtrl::Init();
 
+  UdpCtrl::GetCtrl().SetupServer();
+
   shell->Setup();
   RegisterDefaultShellCommands();
 
