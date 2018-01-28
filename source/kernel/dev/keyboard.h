@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
- * 
+ *
  */
 
 #pragma once
@@ -27,9 +28,8 @@
 #include <thread.h>
 
 class Keyboard : public Device {
-public:
-  Keyboard() {
-  }
+ public:
+  Keyboard() {}
   void Setup();
   static const int kKeyBufSize = 8;
   struct KeyInfo {
@@ -46,10 +46,10 @@ public:
     kEnter = 12,
     kDelete = 127,
   };
-protected:
+
+ protected:
   FunctionalRingBuffer<KeyInfo, kKeyBufSize> _buf;
   static const char kUpperChar[128];
-  virtual void SetupSub() {
-  }
+  virtual void SetupSub() {}
   void Handle(void *);
 };

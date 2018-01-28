@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
- * 
+ *
  */
 
 #ifndef __RAPH_KERNEL_MEM_PAGING_H__
@@ -42,46 +43,45 @@
 
   ページングによって変換される、リニアアドレスの構造:
     bit 47-39 ( 9 bits): PML4中のPML4Eのindex. PML4EはPDPTの物理アドレスを保持。
-    bit 38-30 ( 9 bits): 
-  
+    bit 38-30 ( 9 bits):
+
 */
 
-#define PML4E_PRESENT_BIT          (1<<0)
-#define PML4E_WRITE_BIT            (1<<1)
-#define PML4E_USER_BIT             (1<<2)
-#define PML4E_WRITETHROUGH_BIT     (1<<3)
-#define PML4E_CACHEDISABLE_BIT     (1<<4)
-#define PML4E_ACCESSED_BIT         (1<<5)
+#define PML4E_PRESENT_BIT (1 << 0)
+#define PML4E_WRITE_BIT (1 << 1)
+#define PML4E_USER_BIT (1 << 2)
+#define PML4E_WRITETHROUGH_BIT (1 << 3)
+#define PML4E_CACHEDISABLE_BIT (1 << 4)
+#define PML4E_ACCESSED_BIT (1 << 5)
 
-#define PDPTE_PRESENT_BIT          (1<<0)
-#define PDPTE_WRITE_BIT            (1<<1)
-#define PDPTE_USER_BIT             (1<<2)
-#define PDPTE_WRITETHROUGH_BIT     (1<<3)
-#define PDPTE_CACHEDISABLE_BIT     (1<<4)
-#define PDPTE_ACCESSED_BIT         (1<<5)
-#define PDPTE_DIRTY_BIT            (1<<6)  // 1GPAGE_BIT==1の時のみ
-#define PDPTE_1GPAGE_BIT           (1<<7)
-#define PDPTE_GLOBAL_BIT           (1<<8)  // 1GPAGE_BIT==1の時のみ
+#define PDPTE_PRESENT_BIT (1 << 0)
+#define PDPTE_WRITE_BIT (1 << 1)
+#define PDPTE_USER_BIT (1 << 2)
+#define PDPTE_WRITETHROUGH_BIT (1 << 3)
+#define PDPTE_CACHEDISABLE_BIT (1 << 4)
+#define PDPTE_ACCESSED_BIT (1 << 5)
+#define PDPTE_DIRTY_BIT (1 << 6)  // 1GPAGE_BIT==1の時のみ
+#define PDPTE_1GPAGE_BIT (1 << 7)
+#define PDPTE_GLOBAL_BIT (1 << 8)  // 1GPAGE_BIT==1の時のみ
 
-#define PDE_PRESENT_BIT            (1<<0)
-#define PDE_WRITE_BIT              (1<<1)
-#define PDE_USER_BIT               (1<<2)
-#define PDE_WRITETHROUGH_BIT       (1<<3)
-#define PDE_CACHEDISABLE_BIT       (1<<4)
-#define PDE_ACCESSED_BIT           (1<<5)
-#define PDE_DIRTY_BIT              (1<<6)  // valid when 2MPAGE_BIT==1
-#define PDE_2MPAGE_BIT             (1<<7)
-#define PDE_GLOBAL_BIT             (1<<8)  // valid when 2MPAGE_BIT==1
+#define PDE_PRESENT_BIT (1 << 0)
+#define PDE_WRITE_BIT (1 << 1)
+#define PDE_USER_BIT (1 << 2)
+#define PDE_WRITETHROUGH_BIT (1 << 3)
+#define PDE_CACHEDISABLE_BIT (1 << 4)
+#define PDE_ACCESSED_BIT (1 << 5)
+#define PDE_DIRTY_BIT (1 << 6)  // valid when 2MPAGE_BIT==1
+#define PDE_2MPAGE_BIT (1 << 7)
+#define PDE_GLOBAL_BIT (1 << 8)  // valid when 2MPAGE_BIT==1
 
-#define PTE_PRESENT_BIT            (1<<0)
-#define PTE_WRITE_BIT              (1<<1)
-#define PTE_USER_BIT               (1<<2)
-#define PTE_WRITETHROUGH_BIT       (1<<3)
-#define PTE_CACHEDISABLE_BIT       (1<<4)
-#define PTE_ACCESSED_BIT           (1<<5)
-#define PTE_DIRTY_BIT              (1<<6)
-#define PTE_GLOBAL_BIT             (1<<8)
-
+#define PTE_PRESENT_BIT (1 << 0)
+#define PTE_WRITE_BIT (1 << 1)
+#define PTE_USER_BIT (1 << 2)
+#define PTE_WRITETHROUGH_BIT (1 << 3)
+#define PTE_CACHEDISABLE_BIT (1 << 4)
+#define PTE_ACCESSED_BIT (1 << 5)
+#define PTE_DIRTY_BIT (1 << 6)
+#define PTE_GLOBAL_BIT (1 << 8)
 
 #ifndef ASM_FILE
 
@@ -91,17 +91,17 @@
 #include "virtmem.h"
 #include <spinlock.h>
 
-
 class PagingCtrl {
  public:
   PagingCtrl() = delete;
-  PagingCtrl(PageTable* pt) : _pml4t(pt) {
-  }
+  PagingCtrl(PageTable *pt) : _pml4t(pt) {}
   void MapAllPhysMemory();
   void ReleaseLowMemory();
   void ConvertVirtMemToPhysMem(virt_addr vaddr, PhysAddr &paddr);
   bool IsVirtAddrMapped(virt_addr vaddr);
-  void GetTranslationEntries(virt_addr vaddr, entry_type *pml4e, entry_type *pdpte, entry_type *pde, entry_type *pte);
+  void GetTranslationEntries(virt_addr vaddr, entry_type *pml4e,
+                             entry_type *pdpte, entry_type *pde,
+                             entry_type *pte);
   // 4Kページを仮想メモリにマッピングする
   // 既にマッピングされていた場合はfalseを返す
   // 物理メモリの確保はPhysmemCtrlで事前に行っておくこと（PaginCtrlは物理メモリを管理しない）
@@ -113,10 +113,14 @@ class PagingCtrl {
   //   page_flag: page entryに立てるフラグの指定
   //
   // write_bitを立てるのを忘れないように
-  bool Map4KPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr pst_flag, phys_addr page_flag);
-  bool Map2MPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr pst_flag, phys_addr page_flag);
-  bool Map1GPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr pst_flag, phys_addr page_flag);
-  bool MapPhysAddrToVirtAddr(virt_addr vaddr, PhysAddr &paddr, size_t size, phys_addr pst_flag, phys_addr page_flag) {
+  bool Map4KPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr pst_flag,
+                           phys_addr page_flag);
+  bool Map2MPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr pst_flag,
+                           phys_addr page_flag);
+  bool Map1GPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr pst_flag,
+                           phys_addr page_flag);
+  bool MapPhysAddrToVirtAddr(virt_addr vaddr, PhysAddr &paddr, size_t size,
+                             phys_addr pst_flag, phys_addr page_flag) {
     kassert(vaddr == align(vaddr, kPageSize));
     kassert(size == align(size, kPageSize));
     phys_addr addr = paddr.GetAddr();
@@ -135,7 +139,7 @@ class PagingCtrl {
   }
   void UnmapVirtAddr(virt_addr addr);
   // kHeapEndAddr以降から空き領域を探す
-  //virt_addr SearchUnmappedArea(size_t size);
+  // virt_addr SearchUnmappedArea(size_t size);
   // align up size to page boundary
   static size_t ConvertNumToPageSize(size_t size) {
     return ((size + kPageSize - 1) / kPageSize) * kPageSize;
@@ -188,21 +192,25 @@ class PagingCtrl {
     return addr & ((1 << 12) - 1);
   }
   static const int kPageSize = 0x1000;
-private:
+
+ private:
   // page structure tablesのindex情報を元に仮想アドレスを算出する
-  static virt_addr CalcVirtAddrFromStructureTableOffset(int pml4_index, int pdpt_index, int pd_index, int pt_index, int offset) {
+  static virt_addr CalcVirtAddrFromStructureTableOffset(
+      int pml4_index, int pdpt_index, int pd_index, int pt_index, int offset) {
     kassert(IsPageStructureTableIndex(pml4_index));
     kassert(IsPageStructureTableIndex(pdpt_index));
     kassert(IsPageStructureTableIndex(pd_index));
     kassert(IsPageStructureTableIndex(pt_index));
-    return (static_cast<virt_addr>(pml4_index) << 39) | (static_cast<virt_addr>(pdpt_index) << 30) | (static_cast<virt_addr>(pd_index) << 21) << (static_cast<virt_addr>(pt_index) << 12) | offset;
+    return (static_cast<virt_addr>(pml4_index) << 39) |
+           (static_cast<virt_addr>(pdpt_index) << 30) |
+           (static_cast<virt_addr>(pd_index) << 21)
+               << (static_cast<virt_addr>(pt_index) << 12) |
+           offset;
   }
   static bool IsPageStructureTableIndex(int index) {
     return index >= 0 && index < 512;
   }
-  static bool IsPageOffset(int offset) {
-    return offset >= 0 && offset < 4096;
-  }
+  static bool IsPageOffset(int offset) { return offset >= 0 && offset < 4096; }
   PageTable *_pml4t;
   SpinLock _lock;
 };
@@ -217,6 +225,6 @@ static inline phys_addr k2p(virt_addr addr) {
   return paddr.GetAddr();
 }
 
-#endif // ! ASM_FILE
+#endif  // ! ASM_FILE
 
-#endif // __RAPH_KERNEL_MEM_PAGING_H__
+#endif  // __RAPH_KERNEL_MEM_PAGING_H__

@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
- * 
+ *
  * reference:
  * RFC 2131 Dynamic Host Configuration Protocol
  * RFC 2132 DHCP Options and BOOTP Vendor Extensions
@@ -30,13 +31,12 @@
 #include <stdint.h>
 
 class DhcpCtrl : public UdpCtrl::ProtocolInterface {
-public:
+ public:
   static void Init();
-  static DhcpCtrl &GetCtrl() {
-    return _dhcp_ctrl;
-  }
+  static DhcpCtrl &GetCtrl() { return _dhcp_ctrl; }
   void AssignAddr(NetDev *dev);
-private:
+
+ private:
   struct Packet {
     uint8_t op;
     uint8_t htype;

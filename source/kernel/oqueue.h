@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
- * 
+ *
  */
 
 #pragma once
@@ -25,18 +26,17 @@
 #include <raph.h>
 #include <spinlock2.h>
 
-template<class T, class U>
+template <class T, class U>
 class OrderedQueue;
 
-template<class T, class U>
+template <class T, class U>
 class OrderedQueueContainer {
-public:
+ public:
   // obj must be set master class
-  OrderedQueueContainer(T *obj) {
-    _obj = obj;
-  }
+  OrderedQueueContainer(T *obj) { _obj = obj; }
   OrderedQueueContainer() = delete;
-private:
+
+ private:
   friend OrderedQueue<T, U>;
   OrderedQueueContainer<T, U> *_next;
   T *_obj;
@@ -51,26 +51,24 @@ private:
 // Popping from multiple threads is prohibited!
 // do not use inside interrupt handlers
 // TODO assert these restrictions
-template<class T, class U>
+template <class T, class U>
 class OrderedQueue {
-public:
-  static_assert(IsBaseOf<OrderedQueueContainer<T, U>, T>::value, "T of OrderedQueue<T, U> must be child of QueueContainer<T>");
-  OrderedQueue() {
-  }
-  virtual ~OrderedQueue() {
-  }
+ public:
+  static_assert(IsBaseOf<OrderedQueueContainer<T, U>, T>::value,
+                "T of OrderedQueue<T, U> must be child of QueueContainer<T>");
+  OrderedQueue() {}
+  virtual ~OrderedQueue() {}
   void Push(T *data, U order);
   // return false when the queue is empty
   bool Pop(T *&data) __attribute__((warn_unused_result));
-  bool IsEmpty() {
-    return _first == nullptr;
-  }
+  bool IsEmpty() { return _first == nullptr; }
   // should not call when empty
   U GetTopOrder() {
     OrderedQueueContainer<T, U> *c = _first;
     return (c == nullptr) ? 0 : c->_order;
   }
-private:
+
+ private:
   OrderedQueueContainer<T, U> *_first = nullptr;
   SpinLock2 _lock;
 };
@@ -94,14 +92,14 @@ void OrderedQueue<T, U>::Push(T *data, U order) {
     return;
   }
   OrderedQueueContainer<T, U> *d = _first;
-  while(d->_next != nullptr && d->_next->_order <= order) {
+  while (d->_next != nullptr && d->_next->_order <= order) {
     d = d->_next;
   }
   c->_next = d->_next;
   d->_next = c;
 }
 
-template<class T, class U>
+template <class T, class U>
 bool OrderedQueue<T, U>::Pop(T *&data) {
   Locker locker(_lock);
   OrderedQueueContainer<T, U> *c = _first;
@@ -109,7 +107,7 @@ bool OrderedQueue<T, U>::Pop(T *&data) {
     return false;
   }
   _first = c->_next;
-  
+
   kassert((c->_status == OrderedQueueContainer<T, U>::Status::kQueued));
   c->_status = OrderedQueueContainer<T, U>::Status::kOutOfQueue;
   data = c->_obj;

@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
- * 
+ *
  */
 
 #include "physmem.h"
@@ -41,41 +42,44 @@ PhysmemCtrl::PhysmemCtrl() {
 
 void PhysmemCtrl::Init() {
   if (_srat != nullptr) {
-    for(uint32_t offset = 0; offset < _srat->header.Length - sizeof(Srat);) {
+    for (uint32_t offset = 0; offset < _srat->header.Length - sizeof(Srat);) {
       virt_addr ptr = ptr2virtaddr(_srat->table) + offset;
       SratStruct *srat_st = reinterpret_cast<SratStruct *>(ptr);
       switch (srat_st->type) {
-      case SratStructType::kLocalApicAffinity:
-        {
-          // SratStructLapic *srat_st_lapic = reinterpret_cast<SratStructLapic *>(ptr);
-          // gtty->Printf("(APIC(%d), domain:%d)", srat_st_lapic->lapic_id, (srat_st_lapic->proximity_domain_high << 24) | (srat_st_lapic->proximity_domain_middle << 16) | srat_st_lapic->proximity_domain_low);
-        }
-        break;
-      case SratStructType::kLocalX2ApicAffinity:
-        {
-          // SratStructLx2apic *srat_st_lapic = reinterpret_cast<SratStructLx2apic *>(ptr);
-          // gtty->Printf("(APIC(%d), domain:%d)", srat_st_lapic->lapic_id, srat_st_lapic->proximity_domain);
-        }
-        break;
-      case SratStructType::kMemoryAffinity:
-        {
-          SratStructMemAffinity *srat_st_mem = reinterpret_cast<SratStructMemAffinity *>(ptr);
+        case SratStructType::kLocalApicAffinity: {
+          // SratStructLapic *srat_st_lapic = reinterpret_cast<SratStructLapic
+          // *>(ptr); gtty->Printf("(APIC(%d), domain:%d)",
+          // srat_st_lapic->lapic_id, (srat_st_lapic->proximity_domain_high <<
+          // 24) | (srat_st_lapic->proximity_domain_middle << 16) |
+          // srat_st_lapic->proximity_domain_low);
+        } break;
+        case SratStructType::kLocalX2ApicAffinity: {
+          // SratStructLx2apic *srat_st_lapic =
+          // reinterpret_cast<SratStructLx2apic *>(ptr);
+          // gtty->Printf("(APIC(%d), domain:%d)", srat_st_lapic->lapic_id,
+          // srat_st_lapic->proximity_domain);
+        } break;
+        case SratStructType::kMemoryAffinity: {
+          SratStructMemAffinity *srat_st_mem =
+              reinterpret_cast<SratStructMemAffinity *>(ptr);
           if ((srat_st_mem->flags & SratStructMemAffinity::kFlagEnabled) != 0) {
-            gtty->Printf("(Mem domain:%d, base:%llx, length:%llx)\n", srat_st_mem->proximity_domain, srat_st_mem->base_addr, srat_st_mem->length);
+            gtty->Printf("(Mem domain:%d, base:%llx, length:%llx)\n",
+                         srat_st_mem->proximity_domain, srat_st_mem->base_addr,
+                         srat_st_mem->length);
           }
-        }
-        break;
-      default:
-        break;
+        } break;
+        default:
+          break;
       }
       offset += srat_st->length;
     }
   }
-  
+
   _is_initialized = true;
 }
 
-void PhysmemCtrl::AllocSub(PhysAddr &paddr, size_t size, PhysmemCtrl::AllocOption &option) {
+void PhysmemCtrl::AllocSub(PhysAddr &paddr, size_t size,
+                           PhysmemCtrl::AllocOption &option) {
   kassert(_is_initialized);
   kassert(size > 0);
   kassert(size % PagingCtrl::kPageSize == 0);
@@ -88,19 +92,21 @@ void PhysmemCtrl::AllocSub(PhysAddr &paddr, size_t size, PhysmemCtrl::AllocOptio
   {
     Locker lock(_lock);
     allocated_area = _allocated_area;
-    while(allocated_area->next) {
+    while (allocated_area->next) {
       if (fraged_area == nullptr &&
           allocated_area->next->start_addr == allocated_area->end_addr) {
         fraged_area = allocated_area;
       }
-      if (allocated_area->next->start_addr - alignUp(allocated_area->end_addr, option.align)
-          >= static_cast<phys_addr>(size)) {
+      if (allocated_area->next->start_addr -
+              alignUp(allocated_area->end_addr, option.align) >=
+          static_cast<phys_addr>(size)) {
         break;
       }
       allocated_area = allocated_area->next;
     }
-    
-    if (alignUp(allocated_area->end_addr, option.align) != allocated_area->end_addr) {
+
+    if (alignUp(allocated_area->end_addr, option.align) !=
+        allocated_area->end_addr) {
       allocated_addr = alignUp(allocated_area->end_addr, option.align);
       AllocatedArea *newarea = _allocated_area_buffer.Alloc();
       newarea->next = allocated_area->next;
@@ -115,7 +121,7 @@ void PhysmemCtrl::AllocSub(PhysAddr &paddr, size_t size, PhysmemCtrl::AllocOptio
     if (allocated_area->end_addr >= multiboot_ctrl->GetPhysMemoryEnd()) {
       kernel_panic("PhysmemCtrl", "no physical memory");
     }
-    
+
     // 断片化された領域を結合する
     if (fraged_area != nullptr) {
       AllocatedArea *remove_area = fraged_area->next;
@@ -142,7 +148,7 @@ void PhysmemCtrl::Free(PhysAddr &paddr, size_t size) {
   {
     Locker locker(_lock);
     allocated_area = _allocated_area;
-    while(allocated_area) {
+    while (allocated_area) {
       if (allocated_area->start_addr <= addr &&
           addr + size <= allocated_area->end_addr) {
         break;
@@ -186,7 +192,7 @@ void PhysmemCtrl::ReserveSub(phys_addr addr, size_t size) {
     ReserveSub2(allocated_area, addr, size);
     return;
   }
-  while(allocated_area->next) {
+  while (allocated_area->next) {
     if (fraged_area == nullptr &&
         allocated_area->next->start_addr == allocated_area->end_addr) {
       fraged_area = allocated_area;
@@ -201,7 +207,8 @@ void PhysmemCtrl::ReserveSub(phys_addr addr, size_t size) {
         break;
       }
       allocated_area->end_addr = allocated_area->next->start_addr;
-      ReserveSub(allocated_area->next->start_addr, addr + size - allocated_area->next->start_addr);
+      ReserveSub(allocated_area->next->start_addr,
+                 addr + size - allocated_area->next->start_addr);
       return;
     }
     if (allocated_area->next->start_addr >= addr) {
@@ -224,7 +231,7 @@ void PhysmemCtrl::ReserveSub(phys_addr addr, size_t size) {
       break;
     }
   }
-    
+
   // 断片化された領域を結合する
   if (fraged_area != nullptr) {
     AllocatedArea *remove_area = fraged_area->next;
@@ -235,7 +242,8 @@ void PhysmemCtrl::ReserveSub(phys_addr addr, size_t size) {
   }
 }
 
-void PhysmemCtrl::ReserveSub2(AllocatedArea *allocated_area, phys_addr addr, size_t size) {
+void PhysmemCtrl::ReserveSub2(AllocatedArea *allocated_area, phys_addr addr,
+                              size_t size) {
   if (allocated_area->end_addr > addr) {
     if (allocated_area->end_addr < addr + size) {
       allocated_area->end_addr = addr + size;
@@ -251,8 +259,9 @@ void PhysmemCtrl::ReserveSub2(AllocatedArea *allocated_area, phys_addr addr, siz
 
 void PhysmemCtrl::Show() {
   AllocatedArea *allocated_area = _allocated_area;
-  while(allocated_area) {
-    gtty->Printf(">> %llx, %llx\n", allocated_area->start_addr, allocated_area->end_addr);
+  while (allocated_area) {
+    gtty->Printf(">> %llx, %llx\n", allocated_area->start_addr,
+                 allocated_area->end_addr);
     allocated_area = allocated_area->next;
   }
 }

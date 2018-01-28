@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
- * 
+ *
  */
 
 #pragma once
@@ -25,17 +26,17 @@
 #include <raph.h>
 #include <ptr.h>
 
-template<class T>
+template <class T>
 class QueueBase;
-template<class T>
+template <class T>
 class QueueContainer;
 
-template<class T>
+template <class T>
 class Queue : public QueueBase<T> {
-public:
+ public:
   void Push(T *data) {
     QueueContainer<T> *c = data;
-    QueueBase<T>::Push(c);  
+    QueueBase<T>::Push(c);
   }
   // return false when the queue is empty
   bool Pop(T *&data) __attribute__((warn_unused_result)) {
@@ -47,12 +48,13 @@ public:
       return false;
     }
   }
-private:
+
+ private:
 };
 
-template<class U>
+template <class U>
 class Queue<uptr<U>> : public QueueBase<U> {
-public:
+ public:
   void Push(uptr<U> data) {
     QueueContainer<U> *c = data.GetRawPtr();
     data.Release();
@@ -68,18 +70,18 @@ public:
       return ptr;
     }
   }
-private:
+
+ private:
 };
 
-template<class T>
+template <class T>
 class QueueContainer {
-public:
+ public:
   // obj must be set master class
-  QueueContainer(T *obj) {
-    _obj = obj;
-  }
+  QueueContainer(T *obj) { _obj = obj; }
   QueueContainer() = delete;
-private:
+
+ private:
   friend Queue<T>;
   friend Queue<uptr<T>>;
   friend QueueBase<T>;
@@ -95,20 +97,21 @@ private:
 // !!!Important!!!
 // Popping from interrupt handlers is prohibited!
 // TODO assert this restrictions
-template<class T>
+template <class T>
 class QueueBase {
-public:
-  static_assert(IsBaseOf<QueueContainer<T>, T>::value, "T of Queue<T> must be child of QueueContainer<T>");
-  bool IsEmpty() {
-    return _push_first == nullptr;
-  }
-protected:
+ public:
+  static_assert(IsBaseOf<QueueContainer<T>, T>::value,
+                "T of Queue<T> must be child of QueueContainer<T>");
+  bool IsEmpty() { return _push_first == nullptr; }
+
+ protected:
   void Push(QueueContainer<T> *ct);
   // return false when the queue is empty
   bool Pop(QueueContainer<T> *&ct) __attribute__((warn_unused_result));
-private:
+
+ private:
   class PopQueueContainer {
-  public:
+   public:
     QueueContainer<T> *_ptr = nullptr;
     PopQueueContainer *_next = nullptr;
     int _flag = 0;
@@ -119,7 +122,7 @@ private:
   int _cnt = 0;
 };
 
-template<class T>
+template <class T>
 void QueueBase<T>::Push(QueueContainer<T> *ct) {
   kassert(ct->_status == QueueContainer<T>::Status::kOutOfQueue);
   ct->_status = QueueContainer<T>::Status::kQueued;
@@ -128,15 +131,15 @@ void QueueBase<T>::Push(QueueContainer<T> *ct) {
   bool iflag = disable_interrupt();
   QueueContainer<T> *pred = __sync_lock_test_and_set(&_push_last, ct);
   if (pred == nullptr) {
-    while(_push_first != nullptr) {
-      asm volatile("":::"memory");
+    while (_push_first != nullptr) {
+      asm volatile("" ::: "memory");
     }
     _push_first = ct;
   } else {
     pred->_next = ct;
   }
   enable_interrupt(iflag);
-  
+
   __sync_fetch_and_add(&_cnt, 1);
 }
 
@@ -159,8 +162,8 @@ bool QueueBase<T>::Pop(QueueContainer<T> *&ct) {
   PopQueueContainer *ppred = __sync_lock_test_and_set(&_pop_last, &pc);
   if (ppred != nullptr) {
     ppred->_next = &pc;
-    while(pc._ptr == nullptr) {
-      asm volatile("":::"memory");
+    while (pc._ptr == nullptr) {
+      asm volatile("" ::: "memory");
     }
     c = pc._ptr;
   } else {
@@ -170,26 +173,28 @@ bool QueueBase<T>::Pop(QueueContainer<T> *&ct) {
   kassert(c != nullptr);
 
   bool next_flag = false;
-  
+
   if (pc._next != nullptr) {
     if (pc._flag == 0) {
       next_flag = true;
     }
   } else {
     kassert(pc._flag == 0);
-    if (_push_last == c && __sync_bool_compare_and_swap(&_push_last, c, nullptr)) {
+    if (_push_last == c &&
+        __sync_bool_compare_and_swap(&_push_last, c, nullptr)) {
       kassert(c->_next == nullptr);
       _push_first = nullptr;
     } else {
-      while(c->_next == nullptr) {
-        asm volatile("":::"memory");
+      while (c->_next == nullptr) {
+        asm volatile("" ::: "memory");
       }
       _push_first = c->_next;
     }
 
-    if (_pop_last != &pc || !__sync_bool_compare_and_swap(&_pop_last, &pc, nullptr)) {
-      while(pc._next == nullptr) {
-        asm volatile("":::"memory");
+    if (_pop_last != &pc ||
+        !__sync_bool_compare_and_swap(&_pop_last, &pc, nullptr)) {
+      while (pc._next == nullptr) {
+        asm volatile("" ::: "memory");
       }
       next_flag = true;
     } else {
@@ -200,7 +205,7 @@ bool QueueBase<T>::Pop(QueueContainer<T> *&ct) {
   if (next_flag) {
     PopQueueContainer *pc_cur = pc._next;
     QueueContainer<T> *c_cur = c->_next;
-    while(pc_cur != nullptr) {
+    while (pc_cur != nullptr) {
       kassert(c_cur != nullptr);
       PopQueueContainer *pc_tmp = pc_cur->_next;
       QueueContainer<T> *c_tmp = c_cur->_next;
@@ -214,10 +219,9 @@ bool QueueBase<T>::Pop(QueueContainer<T> *&ct) {
   }
 
   enable_interrupt(iflag);
-  
+
   kassert(c->_status == QueueContainer<T>::Status::kQueued);
   c->_status = QueueContainer<T>::Status::kOutOfQueue;
   ct = c;
   return true;
 }
-

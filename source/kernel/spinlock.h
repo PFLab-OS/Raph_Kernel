@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
- * 
+ *
  */
 
 #ifndef __RAPH_KERNEL_SPINLOCK_H__
@@ -30,17 +31,16 @@
 #include <lock.h>
 
 class SpinLock final : public LockInterface {
-public:
+ public:
   SpinLock() {}
   virtual ~SpinLock() {}
   virtual void Lock() override;
   virtual void Unlock() override;
   virtual ReturnState Trylock() override;
-  virtual bool IsLocked() override {
-    return ((_flag % 2) == 1);
-  }
+  virtual bool IsLocked() override { return ((_flag % 2) == 1); }
   static bool _spinlock_timeout;
-protected:
+
+ protected:
   bool SetFlag(unsigned int old_flag, unsigned int new_flag) {
     return __sync_bool_compare_and_swap(&_flag, old_flag, new_flag);
   }
@@ -50,4 +50,4 @@ protected:
   bool _did_stop_interrupt = false;
 };
 
-#endif // __RAPH_KERNEL_SPINLOCK_H__
+#endif  // __RAPH_KERNEL_SPINLOCK_H__

@@ -30,7 +30,20 @@ export ASFLAGS
 export RAPH_PROJECT_ROOT
 export LANG=C
 
+format:
+	@echo "Formatting with clang-format. Please wait..."
+	@git ls-files source/kernel/ \
+		| grep -v source/kernel/freebsd \
+		| grep -v source/kernel/acpica \
+		| grep -v source/kernel/dev/storage/ahci/ \
+		| grep -v source/kernel/dev/nic/intel/ \
+		| grep -E ".*\.cc$$|.*\.h$$" \
+		| xargs -n 1 clang-format -i
+	@echo "Done."
+
 test:
+	@$(MAKE) -f build_rule.mk format
+	git diff --quiet
 	@$(MAKE) -C source/unit_test test
 
 clean:

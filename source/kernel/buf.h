@@ -14,7 +14,8 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
  *
@@ -25,13 +26,11 @@
 #include <_buf.h>
 #include <functional.h>
 
-template<class T, int S>
-  class FunctionalRingBuffer final : public Functional {
+template <class T, int S>
+class FunctionalRingBuffer final : public Functional {
  public:
-  FunctionalRingBuffer() {
-  }
-  ~FunctionalRingBuffer() {
-  }
+  FunctionalRingBuffer() {}
+  ~FunctionalRingBuffer() {}
   bool Push(T data) __attribute__((warn_unused_result)) {
     bool flag = _buf.Push(data);
     Functional::WakeupFunction();
@@ -40,15 +39,10 @@ template<class T, int S>
   bool Pop(T &data) __attribute__((warn_unused_result)) {
     return _buf.Pop(data);
   }
-  bool IsFull() {
-    return _buf.IsFull();
-  }
-  bool IsEmpty() {
-    return _buf.IsEmpty();
-  }
+  bool IsFull() { return _buf.IsFull(); }
+  bool IsEmpty() { return _buf.IsEmpty(); }
+
  private:
-  virtual bool ShouldFunc() override {
-    return !_buf.IsEmpty();
-  }
+  virtual bool ShouldFunc() override { return !_buf.IsEmpty(); }
   RingBuffer<T, S> _buf;
 };

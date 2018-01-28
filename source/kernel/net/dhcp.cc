@@ -33,7 +33,9 @@ DhcpCtrl DhcpCtrl::_dhcp_ctrl;
 
 void DhcpCtrl::Init() {
   new (&_dhcp_ctrl) DhcpCtrl;
-  _dhcp_ctrl._rx_queue.SetFunction(network_cpu, make_uptr(new ClassFunction<DhcpCtrl, void *>(&_dhcp_ctrl, &DhcpCtrl::Handle, nullptr)));
+  _dhcp_ctrl._rx_queue.SetFunction(
+      network_cpu, make_uptr(new ClassFunction<DhcpCtrl, void *>(
+                       &_dhcp_ctrl, &DhcpCtrl::Handle, nullptr)));
   UdpCtrl::GetCtrl().RegisterSocket(68, &_dhcp_ctrl);
 }
 
@@ -62,9 +64,9 @@ void DhcpCtrl::AssignAddr(NetDev *dev) {
   dhcp_packet->giaddr = 0;
   static_cast<DevEthernet *>(dev)->GetEthAddr(dhcp_packet->chaddr);
   dhcp_packet->magic_cookie = __builtin_bswap32(kMagicCookie);
-  
+
   size_t offset = 0;
-  
+
   // DHCP Message Type
   dhcp_packet->options[offset++] = 53;
   dhcp_packet->options[offset++] = 1;
@@ -73,10 +75,10 @@ void DhcpCtrl::AssignAddr(NetDev *dev) {
   // Parameter Request List
   dhcp_packet->options[offset++] = 50;
   dhcp_packet->options[offset++] = 4;
-  dhcp_packet->options[offset++] = 1; // Subnet Mask
-  dhcp_packet->options[offset++] = 3; // Router
-  dhcp_packet->options[offset++] = 6; // Domain Name Server
-  dhcp_packet->options[offset++] = 15; // Domain Name
+  dhcp_packet->options[offset++] = 1;   // Subnet Mask
+  dhcp_packet->options[offset++] = 3;   // Router
+  dhcp_packet->options[offset++] = 6;   // Domain Name Server
+  dhcp_packet->options[offset++] = 15;  // Domain Name
 
   // Endmark
   dhcp_packet->options[offset++] = 255;
@@ -91,7 +93,7 @@ void DhcpCtrl::AssignAddr(NetDev *dev) {
       kernel_panic("DhcpCtrl", "No software resource");
     }
   }
-  
+
   UdpCtrl::GetCtrl().SendBroadCast(packet, dev);
 }
 
@@ -111,10 +113,10 @@ void DhcpCtrl::Handle(void *) {
   if (packet->magic_cookie != __builtin_bswap32(kMagicCookie)) {
     return;
   }
-  
+
   size_t max_options_len = max_len - __builtin_offsetof(Packet, options);
 
-  for(size_t i = 0; i < max_options_len; i++) {
+  for (size_t i = 0; i < max_options_len; i++) {
     if (packet->options[i] == 53) {
       if (++i >= max_options_len) {
         return;
@@ -125,22 +127,22 @@ void DhcpCtrl::Handle(void *) {
       if (++i >= max_options_len) {
         return;
       }
-      switch(packet->options[i]) {
-      case 2:
-        // DHCP Offer
-        HandleOffer(upacket, packet);
-        break;
-      case 5:
-        // DHCP Ack
-        HandleAck(upacket, packet);
-        break;
-      case 6:
-        // DHCP Nak
-        // TODO implement
-        kernel_panic("DhcpCtrl", "DHCP Request was not acknowledged.");
-        break;
-      default:
-        return;
+      switch (packet->options[i]) {
+        case 2:
+          // DHCP Offer
+          HandleOffer(upacket, packet);
+          break;
+        case 5:
+          // DHCP Ack
+          HandleAck(upacket, packet);
+          break;
+        case 6:
+          // DHCP Nak
+          // TODO implement
+          kernel_panic("DhcpCtrl", "DHCP Request was not acknowledged.");
+          break;
+        default:
+          return;
       }
     } else {
       if (++i >= max_options_len) {
@@ -154,7 +156,8 @@ void DhcpCtrl::Handle(void *) {
 void DhcpCtrl::HandleOffer(uptr<UdpCtrl::RxPacket> upacket, Packet *packet) {
   int info_index = -1;
   for (int i = 0; i < kMaxInfo; i++) {
-    if (_info[i].state != DhcpCtrl::Info::State::kNull && _info[i].dev == upacket->dev) {
+    if (_info[i].state != DhcpCtrl::Info::State::kNull &&
+        _info[i].dev == upacket->dev) {
       info_index = i;
       break;
     }
@@ -168,7 +171,7 @@ void DhcpCtrl::HandleOffer(uptr<UdpCtrl::RxPacket> upacket, Packet *packet) {
 
     // get DHCP server address
     uint32_t siaddr;
-    for(size_t i = 0; i < max_options_len; i++) {
+    for (size_t i = 0; i < max_options_len; i++) {
       if (packet->options[i] == 54) {
         if (++i >= max_options_len) {
           return;
@@ -195,14 +198,16 @@ void DhcpCtrl::HandleOffer(uptr<UdpCtrl::RxPacket> upacket, Packet *packet) {
 
     _info[info_index].siaddr = siaddr;
     _info[info_index].state = DhcpCtrl::Info::State::kReceiveOffer;
-    SendRequest(_info[info_index].dev, _info[info_index].siaddr, packet->yiaddr);
+    SendRequest(_info[info_index].dev, _info[info_index].siaddr,
+                packet->yiaddr);
   }
 }
 
 void DhcpCtrl::HandleAck(uptr<UdpCtrl::RxPacket> upacket, Packet *packet) {
   int info_index = -1;
   for (int i = 0; i < kMaxInfo; i++) {
-    if (_info[i].state != DhcpCtrl::Info::State::kNull && _info[i].dev == upacket->dev) {
+    if (_info[i].state != DhcpCtrl::Info::State::kNull &&
+        _info[i].dev == upacket->dev) {
       info_index = i;
       break;
     }
@@ -215,7 +220,8 @@ void DhcpCtrl::HandleAck(uptr<UdpCtrl::RxPacket> upacket, Packet *packet) {
     upacket->dev->AssignIpv4Address(packet->yiaddr);
     uint8_t yiaddr[4];
     memcpy(yiaddr, &packet->yiaddr, 4);
-    gtty->Printf("DHCP: assigned ip v4 addr %d.%d.%d.%d to %s", yiaddr[0], yiaddr[1], yiaddr[2], yiaddr[3], upacket->dev->GetName());
+    gtty->Printf("DHCP: assigned ip v4 addr %d.%d.%d.%d to %s", yiaddr[0],
+                 yiaddr[1], yiaddr[2], yiaddr[3], upacket->dev->GetName());
   }
 }
 
@@ -244,9 +250,9 @@ void DhcpCtrl::SendRequest(NetDev *dev, uint32_t siaddr, uint32_t yiaddr) {
   dhcp_packet->giaddr = 0;
   static_cast<DevEthernet *>(dev)->GetEthAddr(dhcp_packet->chaddr);
   dhcp_packet->magic_cookie = __builtin_bswap32(kMagicCookie);
-  
+
   size_t offset = 0;
-  
+
   // DHCP Message Type
   dhcp_packet->options[offset++] = 53;
   dhcp_packet->options[offset++] = 1;
@@ -255,17 +261,19 @@ void DhcpCtrl::SendRequest(NetDev *dev, uint32_t siaddr, uint32_t yiaddr) {
   // Requested IP Address
   dhcp_packet->options[offset++] = 50;
   dhcp_packet->options[offset++] = 4;
-  memcpy(reinterpret_cast<uint32_t *>(dhcp_packet->options + offset), &yiaddr, 4);
+  memcpy(reinterpret_cast<uint32_t *>(dhcp_packet->options + offset), &yiaddr,
+         4);
   offset += 4;
 
   // DHCP server
   dhcp_packet->options[offset++] = 54;
   dhcp_packet->options[offset++] = 4;
-  memcpy(reinterpret_cast<uint32_t *>(dhcp_packet->options + offset), &siaddr, 4);
+  memcpy(reinterpret_cast<uint32_t *>(dhcp_packet->options + offset), &siaddr,
+         4);
   offset += 4;
 
   // Endmark
   dhcp_packet->options[offset++] = 255;
-  
+
   UdpCtrl::GetCtrl().SendBroadCast(packet, dev);
 }

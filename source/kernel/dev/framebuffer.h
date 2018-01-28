@@ -47,9 +47,7 @@ class FrameBuffer : public Tty {
     _fb_info.buffer = nullptr;
     ResetColor();
   }
-  ~FrameBuffer() {
-    delete _back_buffer;
-  }
+  ~FrameBuffer() { delete _back_buffer; }
   virtual void Init();
   virtual int GetRow() override { return 0; }
   virtual int GetColumn() override { return 0; }

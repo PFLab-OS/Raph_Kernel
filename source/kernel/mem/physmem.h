@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
- * 
+ *
  */
 
 #pragma once
@@ -39,7 +40,7 @@ struct Srat {
   uint32_t reserved1;
   uint64_t reserved2;
   uint8_t table[0];
-} __attribute__ ((packed));
+} __attribute__((packed));
 
 enum class SratStructType : uint8_t {
   kLocalApicAffinity = 0,
@@ -50,7 +51,7 @@ enum class SratStructType : uint8_t {
 struct SratStruct {
   SratStructType type;
   uint8_t length;
-} __attribute__ ((packed));
+} __attribute__((packed));
 
 struct SratStructLapic {
   SratStruct st;
@@ -64,7 +65,7 @@ struct SratStructLapic {
 
   // const values
   static const uint32_t kFlagEnabled = 1;
-} __attribute__ ((packed));
+} __attribute__((packed));
 
 struct SratStructMemAffinity {
   SratStruct st;
@@ -78,7 +79,7 @@ struct SratStructMemAffinity {
 
   // const values
   static const uint32_t kFlagEnabled = 1;
-} __attribute__ ((packed));
+} __attribute__((packed));
 
 struct SratStructLx2apic {
   SratStruct st;
@@ -88,10 +89,10 @@ struct SratStructLx2apic {
   uint32_t flags;
   uint32_t clock_domain;
   uint32_t reserved2;
-  
+
   // const values
   static const uint32_t kFlagEnabled = 1;
-} __attribute__ ((packed));
+} __attribute__((packed));
 
 // physical page allocator
 // all arguments (address, size) must be aligned on an page boundary.
@@ -119,15 +120,14 @@ class PhysmemCtrl {
     Locker locker(_lock);
     ReserveSub(addr, size);
   }
-  void SetSrat(Srat *srat) {
-    _srat = srat;
-  }
+  void SetSrat(Srat *srat) { _srat = srat; }
   static const virt_addr kLinearMapOffset = 0xffff800000000000;
-  void Show(); // for debug
+  void Show();  // for debug
   void EnableToAllocate() {
     kassert(!_is_able_to_allocate);
-    _is_able_to_allocate = true;    
+    _is_able_to_allocate = true;
   }
+
  private:
   struct AllocOption {
     size_t align;
@@ -135,14 +135,14 @@ class PhysmemCtrl {
     struct Region {
       phys_addr start;
       phys_addr end;
-    } *region;
+    } * region;
   };
   void AllocSub(PhysAddr &paddr, size_t size, AllocOption &option);
   struct AllocatedArea {
     phys_addr start_addr;
     phys_addr end_addr;
     AllocatedArea *next;
-  } *_allocated_area;
+  } * _allocated_area;
   void ReserveSub(phys_addr addr, size_t size);
   void ReserveSub2(AllocatedArea *allocated_area, phys_addr addr, size_t size);
   Allocator<AllocatedArea> _allocated_area_buffer;
@@ -153,7 +153,8 @@ class PhysmemCtrl {
   Srat *_srat = nullptr;
 };
 
-template <typename ptr> static inline phys_addr ptr2physaddr(ptr *addr) {
+template <typename ptr>
+static inline phys_addr ptr2physaddr(ptr *addr) {
   return reinterpret_cast<phys_addr>(addr);
 }
 
@@ -165,20 +166,19 @@ static inline virt_addr p2v(phys_addr addr) {
 // convert straight mapped virtual memory to physical memory
 // do not use for kernel virtual memory. use k2p instead.
 static inline phys_addr v2p(virt_addr addr) {
-  //TODO check upper limit
+  // TODO check upper limit
   kassert(addr >= PhysmemCtrl::kLinearMapOffset);
   return reinterpret_cast<phys_addr>(addr - PhysmemCtrl::kLinearMapOffset);
 }
 
-template <typename ptr> static inline ptr *p2v(ptr *addr) {
+template <typename ptr>
+static inline ptr *p2v(ptr *addr) {
   return reinterpret_cast<ptr *>(p2v(reinterpret_cast<phys_addr>(addr)));
 }
 
 class PhysAddr {
-public:
-  PhysAddr() {
-    Reset();
-  }
+ public:
+  PhysAddr() { Reset(); }
   PhysAddr(phys_addr addr) {
     Reset();
     SetAddr(addr);
@@ -193,14 +193,11 @@ public:
     kassert(_is_initialized);
     return _addr;
   }
-  void Reset() {
-    _is_initialized = false;
-  }
+  void Reset() { _is_initialized = false; }
   // ストレートマップド仮想メモリを返す
-  virt_addr GetVirtAddr() {
-    return p2v(_addr);
-  }
-private:
+  virt_addr GetVirtAddr() { return p2v(_addr); }
+
+ private:
   bool _is_initialized;
   phys_addr _addr;
 };

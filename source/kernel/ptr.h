@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
- * 
+ *
  */
 
 #pragma once
@@ -25,21 +26,19 @@
 #include <raph.h>
 
 class CustomPtrObjInterface {
-public:
+ public:
   virtual void Delete() = 0;
 };
 
 template <class T, bool = IsBaseOf<CustomPtrObjInterface, T>::value>
 class PtrObj {
-public:
-  static void Delete(T *obj) {
-    delete obj;
-  }
+ public:
+  static void Delete(T *obj) { delete obj; }
 };
 
 template <class T>
 class PtrObj<T, true> {
-public:
+ public:
   static void Delete(T *obj) {
     if (obj != nullptr) {
       obj->Delete();
@@ -47,9 +46,9 @@ public:
   }
 };
 
-template<class T>
+template <class T>
 class uptr {
-public:
+ public:
   template <class A>
   uptr(const uptr<A> &p) {
     _obj = reinterpret_cast<T *>(p._obj);
@@ -61,9 +60,7 @@ public:
     uptr *p_ = const_cast<uptr *>(&p);
     p_->_obj = nullptr;
   }
-  uptr() {
-    _obj = nullptr;
-  }
+  uptr() { _obj = nullptr; }
   // to manage raw ptr
   // ptr 'obj' must be allocated by 'new'
   explicit uptr(T *obj) {
@@ -86,9 +83,7 @@ public:
 
     return (*this);
   }
-  ~uptr() {
-    PtrObj<T>::Delete(_obj);
-  }
+  ~uptr() { PtrObj<T>::Delete(_obj); }
   T *operator&() = delete;
   T &operator*() {
     if (_obj == nullptr) {
@@ -108,21 +103,18 @@ public:
     }
     return _obj;
   }
-  void Release() {
-    _obj = nullptr;
-  }
-  bool IsNull() {
-    return _obj == nullptr;
-  }
-private:
+  void Release() { _obj = nullptr; }
+  bool IsNull() { return _obj == nullptr; }
+
+ private:
   template <typename A>
   friend class uptr;
   T *_obj;
 } __attribute__((__packed__));
 
-template<class Array, size_t N>
+template <class Array, size_t N>
 class uptr<Array[N]> {
-public:
+ public:
   template <class A>
   uptr(const uptr<A> &p) {
     _obj = p._obj;
@@ -134,17 +126,13 @@ public:
     uptr *p_ = const_cast<uptr *>(&p);
     p_->_obj = nullptr;
   }
-  uptr() {
-    _obj = nullptr;
-  }
+  uptr() { _obj = nullptr; }
   // to manage raw ptr
   // ptr 'obj' must be allocated by 'new'
-  explicit uptr(Array *obj) {
-    _obj = obj;
-  }
+  explicit uptr(Array *obj) { _obj = obj; }
   uptr &operator=(const uptr &p) = delete;
   uptr &operator=(uptr &p) {
-    delete [] _obj;
+    delete[] _obj;
 
     if (p._obj != nullptr) {
       _obj = p._obj;
@@ -156,9 +144,7 @@ public:
 
     return (*this);
   }
-  ~uptr() {
-    delete [] _obj;
-  }
+  ~uptr() { delete[] _obj; }
   Array *operator&() = delete;
   Array *operator*() = delete;
   Array *operator->() {
@@ -167,7 +153,7 @@ public:
     }
     return _obj;
   }
-  Array &operator [](int n) {
+  Array &operator[](int n) {
     if (_obj == nullptr) {
       kassert(false);
     }
@@ -179,10 +165,9 @@ public:
     }
     return _obj;
   }
-  bool IsNull() {
-    return _obj == nullptr;
-  }
-private:
+  bool IsNull() { return _obj == nullptr; }
+
+ private:
   template <class A>
   friend class uptr;
   Array *_obj;
@@ -201,10 +186,10 @@ inline uptr<T> make_uptr() {
 }
 
 class CounterHelper {
-private:
-  template<class A>
+ private:
+  template <class A>
   friend class sptr;
-  template<class A>
+  template <class A>
   friend class wptr;
   CounterHelper() {
     weak_cnt = 1;
@@ -214,13 +199,13 @@ private:
   int shared_cnt;
 } __attribute__((__packed__));
 
-template<class T>
+template <class T>
 class wptr;
 
-template<class T>
+template <class T>
 class sptr {
-public:
-  template<class A>
+ public:
+  template <class A>
   sptr(const sptr<A> &p) {
     if (p._obj == nullptr) {
       _obj = nullptr;
@@ -229,7 +214,8 @@ public:
       _obj = p._obj;
       _helper = p._helper;
       int tmp = _helper->shared_cnt;
-      while(!__sync_bool_compare_and_swap(&_helper->shared_cnt, tmp, tmp + 1)) {
+      while (
+          !__sync_bool_compare_and_swap(&_helper->shared_cnt, tmp, tmp + 1)) {
         tmp = _helper->shared_cnt;
       }
     }
@@ -242,7 +228,8 @@ public:
       _obj = p._obj;
       _helper = p._helper;
       int tmp = _helper->shared_cnt;
-      while(!__sync_bool_compare_and_swap(&_helper->shared_cnt, tmp, tmp + 1)) {
+      while (
+          !__sync_bool_compare_and_swap(&_helper->shared_cnt, tmp, tmp + 1)) {
         tmp = _helper->shared_cnt;
       }
     }
@@ -255,7 +242,8 @@ public:
       _obj = p._obj;
       _helper = p._helper;
       int tmp = _helper->shared_cnt;
-      while(tmp != 0 && !__sync_bool_compare_and_swap(&_helper->shared_cnt, tmp, tmp + 1)) {
+      while (tmp != 0 && !__sync_bool_compare_and_swap(&_helper->shared_cnt,
+                                                       tmp, tmp + 1)) {
         tmp = _helper->shared_cnt;
       }
       if (tmp == 0) {
@@ -270,16 +258,14 @@ public:
     _obj = obj;
     _helper = new CounterHelper();
   }
-  sptr() {
-    _obj = nullptr;
-  }
+  sptr() { _obj = nullptr; }
   sptr &operator=(const sptr &p) {
     *this = const_cast<sptr &>(p);
     return *this;
   }
   sptr &operator=(sptr &p) {
     release();
-    
+
     if (p._obj == nullptr) {
       _obj = nullptr;
       _helper = nullptr;
@@ -287,16 +273,15 @@ public:
       _obj = p._obj;
       _helper = p._helper;
       int tmp = _helper->shared_cnt;
-      while(!__sync_bool_compare_and_swap(&_helper->shared_cnt, tmp, tmp + 1)) {
+      while (
+          !__sync_bool_compare_and_swap(&_helper->shared_cnt, tmp, tmp + 1)) {
         tmp = _helper->shared_cnt;
       }
     }
 
     return (*this);
   }
-  ~sptr() {
-    release();
-  }
+  ~sptr() { release(); }
   T *operator&();
   T &operator*();
   T *operator->() {
@@ -305,35 +290,30 @@ public:
     }
     return _obj;
   }
-  bool operator==(const sptr& rhs) const {
-    return _obj == rhs._obj;
-  }
-  bool operator!=(const sptr& rhs) const {
-    return _obj != rhs._obj;
-  }
+  bool operator==(const sptr &rhs) const { return _obj == rhs._obj; }
+  bool operator!=(const sptr &rhs) const { return _obj != rhs._obj; }
   T *GetRawPtr() {
     if (_obj == nullptr) {
       kassert(false);
     }
     return _obj;
   }
-  bool IsNull() {
-    return _obj == nullptr;
-  }
-  int GetCnt() {
-    return _helper->shared_cnt;
-  }
-private:
+  bool IsNull() { return _obj == nullptr; }
+  int GetCnt() { return _helper->shared_cnt; }
+
+ private:
   void release() {
     if (_obj != nullptr) {
       int tmp = _helper->shared_cnt;
-      while(!__sync_bool_compare_and_swap(&_helper->shared_cnt, tmp, tmp - 1)) {
+      while (
+          !__sync_bool_compare_and_swap(&_helper->shared_cnt, tmp, tmp - 1)) {
         tmp = _helper->shared_cnt;
       }
       if (tmp == 1) {
         delete _obj;
         int tmp2 = _helper->weak_cnt;
-        while(!__sync_bool_compare_and_swap(&_helper->weak_cnt, tmp2, tmp2 - 1)) {
+        while (
+            !__sync_bool_compare_and_swap(&_helper->weak_cnt, tmp2, tmp2 - 1)) {
           tmp2 = _helper->weak_cnt;
         }
         if (tmp2 == 1) {
@@ -350,10 +330,10 @@ private:
   CounterHelper *_helper;
 } __attribute__((__packed__));
 
-template<class T>
+template <class T>
 class wptr {
-public:
-  template<class A>
+ public:
+  template <class A>
   wptr(const wptr<A> &p) {
     if (p._obj == nullptr) {
       _obj = nullptr;
@@ -362,7 +342,8 @@ public:
       _obj = p._obj;
       _helper = p._helper;
       int tmp2 = _helper->weak_cnt;
-      while(!__sync_bool_compare_and_swap(&_helper->weak_cnt, tmp2, tmp2 + 1)) {
+      while (
+          !__sync_bool_compare_and_swap(&_helper->weak_cnt, tmp2, tmp2 + 1)) {
         tmp2 = _helper->weak_cnt;
       }
     }
@@ -375,14 +356,13 @@ public:
       _obj = p._obj;
       _helper = p._helper;
       int tmp2 = _helper->weak_cnt;
-      while(!__sync_bool_compare_and_swap(&_helper->weak_cnt, tmp2, tmp2 + 1)) {
+      while (
+          !__sync_bool_compare_and_swap(&_helper->weak_cnt, tmp2, tmp2 + 1)) {
         tmp2 = _helper->weak_cnt;
       }
     }
   }
-  wptr() {
-    _obj = nullptr;
-  }
+  wptr() { _obj = nullptr; }
   explicit wptr(sptr<T> &p) {
     if (p._obj == nullptr) {
       _obj = nullptr;
@@ -391,7 +371,8 @@ public:
       _obj = p._obj;
       _helper = p._helper;
       int tmp2 = _helper->weak_cnt;
-      while(!__sync_bool_compare_and_swap(&_helper->weak_cnt, tmp2, tmp2 + 1)) {
+      while (
+          !__sync_bool_compare_and_swap(&_helper->weak_cnt, tmp2, tmp2 + 1)) {
         tmp2 = _helper->weak_cnt;
       }
     }
@@ -402,7 +383,7 @@ public:
   }
   wptr &operator=(wptr &p) {
     release();
-    
+
     if (p._obj == nullptr) {
       _obj = nullptr;
       _helper = nullptr;
@@ -410,52 +391,45 @@ public:
       _obj = p._obj;
       _helper = p._helper;
       int tmp2 = _helper->weak_cnt;
-      while(!__sync_bool_compare_and_swap(&_helper->weak_cnt, tmp2, tmp2 + 1)) {
+      while (
+          !__sync_bool_compare_and_swap(&_helper->weak_cnt, tmp2, tmp2 + 1)) {
         tmp2 = _helper->weak_cnt;
       }
     }
 
     return (*this);
   }
-  ~wptr() {
-    release();
-  }
+  ~wptr() { release(); }
   T *operator&();
-  T &operator*() {
-    return *_obj;
-  }
+  T &operator*() { return *_obj; }
   T *operator->() {
     if (_obj == nullptr) {
       kassert(false);
     }
     return _obj;
   }
-  bool operator==(const wptr& rhs) const {
-    return _obj == rhs._obj;
-  }
-  bool operator!=(const wptr& rhs) const {
-    return _obj != rhs._obj;
-  }
+  bool operator==(const wptr &rhs) const { return _obj == rhs._obj; }
+  bool operator!=(const wptr &rhs) const { return _obj != rhs._obj; }
   T *GetRawPtr() {
     if (_obj == nullptr) {
       kassert(false);
     }
     return _obj;
   }
-  bool IsNull() {
-    return _obj == nullptr;
-  }
+  bool IsNull() { return _obj == nullptr; }
   bool IsObjReleased() {
     if (_helper == nullptr) {
       return true;
     }
     return _helper->shared_cnt == 0;
   }
-private:
+
+ private:
   void release() {
     if (_obj != nullptr) {
       int tmp2 = _helper->weak_cnt;
-      while(!__sync_bool_compare_and_swap(&_helper->weak_cnt, tmp2, tmp2 - 1)) {
+      while (
+          !__sync_bool_compare_and_swap(&_helper->weak_cnt, tmp2, tmp2 - 1)) {
         tmp2 = _helper->weak_cnt;
       }
       if (tmp2 == 1) {
@@ -480,7 +454,7 @@ inline sptr<T> make_sptr(wptr<T> &ptr) {
   sptr<T> p(ptr);
   return p;
 }
-template<class T>
+template <class T>
 inline sptr<T> make_sptr() {
   sptr<T> p;
   return p;

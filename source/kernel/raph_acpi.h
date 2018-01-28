@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
- * 
+ *
  */
 
 #pragma once
@@ -34,7 +35,7 @@ struct HPETDT;
 class DevPci;
 
 class AcpiCtrl {
-public:
+ public:
   AcpiCtrl() {}
   void Setup();
   MCFG *GetMCFG();
@@ -48,9 +49,9 @@ public:
     kApic,
   };
   void SetPicMode(PicMode mode);
-private:
+
+ private:
   friend class AcpicaPciCtrl;
   int GetPciIntNum(DevPci *device);
   void GlobalEventHandler(void *);
 };
-

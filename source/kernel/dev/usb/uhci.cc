@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
- * 
+ *
  */
 
 #include "uhci.h"
@@ -40,7 +41,6 @@ DevPci *DevUhci::InitPci(uint8_t bus, uint8_t device, uint8_t function) {
 }
 
 void DevUhci::Init() {
-
   // allocate frame list
   assert(sizeof(FrameList) == PagingCtrl::kPageSize);
   PhysAddr frame_base_addr;
@@ -49,13 +49,15 @@ void DevUhci::Init() {
   if (frame_base_addr.GetAddr() > 0xFFFFFFFF) {
     kernel_panic("DevUhci", "cannot allocate 32bit phys memory");
   }
-  
+
   constexpr int td_buf_size = _td_buf.GetBufSize();
   PhysAddr td_buf_paddr;
-  static_assert(td_buf_size * sizeof(TransferDescriptor) <= PagingCtrl::kPageSize, "");
+  static_assert(
+      td_buf_size * sizeof(TransferDescriptor) <= PagingCtrl::kPageSize, "");
   physmem_ctrl->Alloc(td_buf_paddr, PagingCtrl::kPageSize);
   assert(td_buf_paddr.GetAddr() <= 0xFFFFFFFF);
-  TransferDescriptor *td_array = addr2ptr<TransferDescriptor>(td_buf_paddr.GetVirtAddr());
+  TransferDescriptor *td_array =
+      addr2ptr<TransferDescriptor>(td_buf_paddr.GetVirtAddr());
   for (int i = 0; i < td_buf_size; i++) {
     new (&td_array[i]) TransferDescriptor;
     kassert(_td_buf.Push(&td_array[i]));
@@ -68,7 +70,7 @@ void DevUhci::Init() {
   assert(qh_buf_paddr.GetAddr() <= 0xFFFFFFFF);
   QueueHead *qh_array = addr2ptr<QueueHead>(qh_buf_paddr.GetVirtAddr());
   for (int i = 2; i < qh_buf_size; i++) {
-    new(&qh_array[i]) QueueHead;
+    new (&qh_array[i]) QueueHead;
     kassert(_qh_buf.Push(&qh_array[i]));
   }
 
@@ -76,9 +78,12 @@ void DevUhci::Init() {
   _qh_cb->InitEmpty();
 
   PhysAddr qh_int_array_paddr;
-  physmem_ctrl->Alloc(qh_int_array_paddr, PagingCtrl::ConvertNumToPageSize(kFrameListEntryNum * sizeof(QueueHead)));
+  physmem_ctrl->Alloc(
+      qh_int_array_paddr,
+      PagingCtrl::ConvertNumToPageSize(kFrameListEntryNum * sizeof(QueueHead)));
   assert(qh_int_array_paddr.GetAddr() <= 0xFFFFFFFF);
-  QueueHead *qh_int_array = addr2ptr<QueueHead>(qh_int_array_paddr.GetVirtAddr());
+  QueueHead *qh_int_array =
+      addr2ptr<QueueHead>(qh_int_array_paddr.GetVirtAddr());
   for (int i = 0; i < kFrameListEntryNum; i++) {
     _qh_int[i] = &qh_int_array[i];
     _qh_int[i]->InitEmpty();
@@ -88,50 +93,72 @@ void DevUhci::Init() {
 
   // legacy support
   WritePciReg<uint16_t>(0xC0, 0x2000);
-  
+
   _base_addr = ReadPciReg<uint32_t>(kBaseAddressReg);
   if ((_base_addr & 1) == 0) {
     kernel_panic("Uhci", "cannot get valid base address.");
   }
   _base_addr &= 0xFFE0;
-  WritePciReg<uint16_t>(PciCtrl::kCommandReg, ReadPciReg<uint16_t>(PciCtrl::kCommandReg) | PciCtrl::kCommandRegBusMasterEnableFlag);
+  WritePciReg<uint16_t>(PciCtrl::kCommandReg,
+                        ReadPciReg<uint16_t>(PciCtrl::kCommandReg) |
+                            PciCtrl::kCommandRegBusMasterEnableFlag);
 
   // halt controller
-  WriteControllerReg<uint16_t>(kCtrlRegCmd, ReadControllerReg<uint16_t>(kCtrlRegCmd) & ~kCtrlRegCmdFlagRunStop);
-  
-  while((ReadControllerReg<uint16_t>(kCtrlRegStatus) & kCtrlRegStatusFlagHalted) == 0) {
-    asm volatile("":::"memory");
+  WriteControllerReg<uint16_t>(
+      kCtrlRegCmd,
+      ReadControllerReg<uint16_t>(kCtrlRegCmd) & ~kCtrlRegCmdFlagRunStop);
+
+  while ((ReadControllerReg<uint16_t>(kCtrlRegStatus) &
+          kCtrlRegStatusFlagHalted) == 0) {
+    asm volatile("" ::: "memory");
   }
 
   // global reset
-  WriteControllerReg<uint16_t>(kCtrlRegCmd, ReadControllerReg<uint16_t>(kCtrlRegCmd) | kCtrlRegCmdFlagGlobalReset);
+  WriteControllerReg<uint16_t>(
+      kCtrlRegCmd,
+      ReadControllerReg<uint16_t>(kCtrlRegCmd) | kCtrlRegCmdFlagGlobalReset);
 
-  timer->BusyUwait(10 * 1000); // 10ms wait
+  timer->BusyUwait(10 * 1000);  // 10ms wait
 
-  WriteControllerReg<uint16_t>(kCtrlRegCmd, ReadControllerReg<uint16_t>(kCtrlRegCmd) & ~kCtrlRegCmdFlagGlobalReset);
+  WriteControllerReg<uint16_t>(
+      kCtrlRegCmd,
+      ReadControllerReg<uint16_t>(kCtrlRegCmd) & ~kCtrlRegCmdFlagGlobalReset);
 
   // reset controller
-  WriteControllerReg<uint16_t>(kCtrlRegCmd, ReadControllerReg<uint16_t>(kCtrlRegCmd) | kCtrlRegCmdFlagHcReset);
-  
-  while((ReadControllerReg<uint16_t>(kCtrlRegCmd) & kCtrlRegCmdFlagHcReset) != 0) {
-    asm volatile("":::"memory");
-  }  
-  
+  WriteControllerReg<uint16_t>(
+      kCtrlRegCmd,
+      ReadControllerReg<uint16_t>(kCtrlRegCmd) | kCtrlRegCmdFlagHcReset);
+
+  while ((ReadControllerReg<uint16_t>(kCtrlRegCmd) & kCtrlRegCmdFlagHcReset) !=
+         0) {
+    asm volatile("" ::: "memory");
+  }
+
   uint32_t frame_base_phys_addr = frame_base_addr.GetAddr();
   WriteControllerReg<uint32_t>(kCtrlRegFlBaseAddr, frame_base_phys_addr);
   WriteControllerReg<uint16_t>(kCtrlRegFrNum, 0);
 
-  WriteControllerReg<uint16_t>(kCtrlRegCmd, ReadControllerReg<uint16_t>(kCtrlRegCmd) | kCtrlRegCmdFlagRunStop | kCtrlRegCmdFlagMaxPacket);
-  while((ReadControllerReg<uint16_t>(kCtrlRegStatus) & kCtrlRegStatusFlagHalted) != 0) {
-    asm volatile("":::"memory");
+  WriteControllerReg<uint16_t>(
+      kCtrlRegCmd, ReadControllerReg<uint16_t>(kCtrlRegCmd) |
+                       kCtrlRegCmdFlagRunStop | kCtrlRegCmdFlagMaxPacket);
+  while ((ReadControllerReg<uint16_t>(kCtrlRegStatus) &
+          kCtrlRegStatusFlagHalted) != 0) {
+    asm volatile("" ::: "memory");
   }
 
-  _int_thread = ThreadCtrl::GetCtrl(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority)).AllocNewThread(Thread::StackState::kShared);
-  _int_thread->CreateOperator().SetFunc(make_uptr(new ClassFunction<DevUhci, void *>(this, &DevUhci::CheckQueuedTdIfCompleted, nullptr)));
+  _int_thread = ThreadCtrl::GetCtrl(
+                    cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority))
+                    .AllocNewThread(Thread::StackState::kShared);
+  _int_thread->CreateOperator().SetFunc(
+      make_uptr(new ClassFunction<DevUhci, void *>(
+          this, &DevUhci::CheckQueuedTdIfCompleted, nullptr)));
   WriteControllerReg<uint16_t>(kCtrlRegStatus, kCtrlRegStatusFlagInt);
-  WriteControllerReg<uint16_t>(kCtrlRegIntr, /*ReadControllerReg<uint16_t>(kCtrlRegIntr) | */kCtrlRegIntrFlagIoc);
+  WriteControllerReg<uint16_t>(
+      kCtrlRegIntr,
+      /*ReadControllerReg<uint16_t>(kCtrlRegIntr) | */ kCtrlRegIntrFlagIoc);
   assert(HasLegacyInterrupt());
-  SetLegacyInterrupt(Handler, reinterpret_cast<void *>(this), Idt::EoiType::kIoapic);
+  SetLegacyInterrupt(Handler, reinterpret_cast<void *>(this),
+                     Idt::EoiType::kIoapic);
 
   for (int i = 0; i < 2; i++) {
     DisablePort(i);
@@ -140,13 +167,14 @@ void DevUhci::Init() {
 
 void DevUhci::Attach() {
   for (int i = 0; i < 2; i++) {
-    if ((ReadControllerReg<uint16_t>(kCtrlRegPortBase + i * 2) & kCtrlRegPortFlagCurrentConnectStatus) != 0) {
+    if ((ReadControllerReg<uint16_t>(kCtrlRegPortBase + i * 2) &
+         kCtrlRegPortFlagCurrentConnectStatus) != 0) {
       ResetPort(i);
       // TODO
       // horrible device address. fix it
       int dev = i + 1;
       bool retry = true;
-      while(retry) {
+      while (retry) {
         UsbCtrl::DeviceRequest *request = nullptr;
 
         do {
@@ -161,8 +189,8 @@ void DevUhci::Attach() {
           }
 
           retry = false;
-        } while(0);
-        
+        } while (0);
+
         if (request != nullptr) {
           assert(UsbCtrl::GetCtrl().ReuseDeviceRequest(request));
         }
@@ -172,7 +200,9 @@ void DevUhci::Attach() {
   }
 }
 
-bool DevUhci::SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) {
+bool DevUhci::SendControlTransfer(UsbCtrl::DeviceRequest *request,
+                                  virt_addr data, size_t data_size,
+                                  int device_addr) {
   bool success = false;
   QueueHead *qh1 = nullptr;
   TransferDescriptor *td1 = nullptr;
@@ -205,7 +235,8 @@ bool DevUhci::SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr dat
       td1->SetNext(td_array[0], true);
     }
     td1->SetStatus(false, false, true, false);
-    td1->SetToken(UsbCtrl::PacketIdentification::kSetup, device_addr, 0, false, 8);
+    td1->SetToken(UsbCtrl::PacketIdentification::kSetup, device_addr, 0, false,
+                  8);
     td1->SetBuffer(ptr2virtaddr(request), 0);
 
     for (size_t offset = 0; offset < data_size; offset += 8) {
@@ -223,7 +254,8 @@ bool DevUhci::SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr dat
 
     td2->SetNext(true);
     td2->SetStatus(false, false, true, false);
-    td2->SetToken(UsbCtrl::ReversePacketIdentification(direction), device_addr, 0, true, 8);
+    td2->SetToken(UsbCtrl::ReversePacketIdentification(direction), device_addr,
+                  0, true, 8);
     td2->SetBuffer();
 
     qh1->SetHorizontalNext();
@@ -231,11 +263,11 @@ bool DevUhci::SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr dat
 
     _qh_cb->InsertHorizontalNext(qh1);
 
-    while(td2->IsActiveOfStatus()) {
+    while (td2->IsActiveOfStatus()) {
       if (td1->IsStalledOfStatus() || td1->IsCrcErrorOfStatus()) {
         break;
       }
-      asm volatile("":::"memory");
+      asm volatile("" ::: "memory");
     }
     if (td1->IsStalledOfStatus() || td1->IsCrcErrorOfStatus()) {
       break;
@@ -243,7 +275,7 @@ bool DevUhci::SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr dat
     // TODO remove qh1
 
     success = true;
-  } while(0);
+  } while (0);
 
   if (td1 != nullptr) {
     assert(_td_buf.Push(td1));
@@ -261,15 +293,17 @@ bool DevUhci::SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr dat
       }
     }
   }
-  
+
   return success;
 }
 
-sptr<DevUsbController::Manager> DevUhci::SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer, uptr<GenericFunction<uptr<Array<uint8_t>>>> func) {
-
+sptr<DevUsbController::Manager> DevUhci::SetupInterruptTransfer(
+    uint8_t endpt_address, int device_addr, int interval,
+    UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td,
+    uint8_t *buffer, uptr<GenericFunction<uptr<Array<uint8_t>>>> func) {
   {
     int i = 0;
-    while(interval != 1) {
+    while (interval != 1) {
       i++;
       interval >>= 1;
     }
@@ -282,7 +316,7 @@ sptr<DevUsbController::Manager> DevUhci::SetupInterruptTransfer(uint8_t endpt_ad
   TransferDescriptor *td[num_td];
   TdContainer container_array[num_td];
 
-  while(true) {
+  while (true) {
     QueueHead *tmp_qh = nullptr;
     TransferDescriptor *tmp_td[num_td];
     bool retry = true;
@@ -307,7 +341,7 @@ sptr<DevUsbController::Manager> DevUhci::SetupInterruptTransfer(uint8_t endpt_ad
       }
 
       retry = false;
-    } while(0);
+    } while (0);
 
     if (!retry) {
       break;
@@ -336,20 +370,21 @@ sptr<DevUsbController::Manager> DevUhci::SetupInterruptTransfer(uint8_t endpt_ad
     }
     bool toggle = (i % 2) == 0;
     TdContainer tmp = {
-      .interrupt_on_complete = true,
-      .isochronous = false,
-      .low_speed = true,
-      .short_packet = false,
-      .pid = direction,
-      .device_address = device_addr,
-      .endpoint = endpt_address,
-      .data_toggle = toggle,
-      .total_bytes = max_packetsize,
-      .buf = buffer,
+        .interrupt_on_complete = true,
+        .isochronous = false,
+        .low_speed = true,
+        .short_packet = false,
+        .pid = direction,
+        .device_address = device_addr,
+        .endpoint = endpt_address,
+        .data_toggle = toggle,
+        .total_bytes = max_packetsize,
+        .buf = buffer,
     };
     container_array[i] = tmp;
     td[i]->SetContainer(container_array[i]);
-    td[i]->SetFunc(make_uptr(new Function2<wptr<DevUhci::UhciManager>, int>(&DevUhci::UhciManager::HandleInterrupt, make_wptr(manager), i)));
+    td[i]->SetFunc(make_uptr(new Function2<wptr<DevUhci::UhciManager>, int>(
+        &DevUhci::UhciManager::HandleInterrupt, make_wptr(manager), i)));
     _queueing_td_buf.PushBack(td[i]);
     buffer += max_packetsize;
   }
@@ -388,21 +423,23 @@ void DevUhci::UhciManager::HandleInterruptSub(int index) {
 }
 
 void DevUhci::HandlerSub() {
-  if ((ReadControllerReg<uint16_t>(kCtrlRegStatus) & kCtrlRegStatusFlagInt) == 0) {
+  if ((ReadControllerReg<uint16_t>(kCtrlRegStatus) & kCtrlRegStatusFlagInt) ==
+      0) {
     return;
   }
 
-  WriteControllerReg<uint16_t>(kCtrlRegIntr, ReadControllerReg<uint16_t>(kCtrlRegIntr) & ~kCtrlRegIntrFlagIoc);
-  
+  WriteControllerReg<uint16_t>(
+      kCtrlRegIntr,
+      ReadControllerReg<uint16_t>(kCtrlRegIntr) & ~kCtrlRegIntrFlagIoc);
+
   // tell controller to acknowledge interrupt
   WriteControllerReg<uint16_t>(kCtrlRegStatus, kCtrlRegStatusFlagInt);
-  asm volatile("":::"memory");
+  asm volatile("" ::: "memory");
 
   _int_thread->CreateOperator().Schedule();
 }
 
 void DevUhci::CheckQueuedTdIfCompleted(void *) {
-
   auto iter = _queueing_td_buf.GetBegin();
   int i = 0;
   while (!iter.IsNull()) {
@@ -415,9 +452,12 @@ void DevUhci::CheckQueuedTdIfCompleted(void *) {
       iter = iter->GetNext();
     }
   }
-  
-  // TODO check not only TDs but also all interrupt sources before enable interrupt
+
+  // TODO check not only TDs but also all interrupt sources before enable
+  // interrupt
 
   // enable new interrupt
-  WriteControllerReg<uint16_t>(kCtrlRegIntr, ReadControllerReg<uint16_t>(kCtrlRegIntr) | kCtrlRegIntrFlagIoc);
+  WriteControllerReg<uint16_t>(
+      kCtrlRegIntr,
+      ReadControllerReg<uint16_t>(kCtrlRegIntr) | kCtrlRegIntrFlagIoc);
 }

@@ -37,42 +37,49 @@ void dlfree(void *);
 }
 
 void MemCtrl::Init() {
-  //TODO
-  //Copy Kernel Memory's pdpt address to new pml4t.
+  // TODO
+  // Copy Kernel Memory's pdpt address to new pml4t.
   // for(int i = 1; i <= KernelVirtmemCtrl::kKernelPml4tEntryNum; i++) {
-  //   _pml4t->entry[UserVirtmemCtrl::kUserPml4tEntryNum + i] = _kvc.pml4t_entry[i];
+  //   _pml4t->entry[UserVirtmemCtrl::kUserPml4tEntryNum + i] =
+  //   _kvc.pml4t_entry[i];
   // }
   paging_ctrl = new PagingCtrl(_pml4t);
 
-  //FIXME: make satic
-  if(system_memory_space != nullptr) {
+  // FIXME: make satic
+  if (system_memory_space != nullptr) {
     _kvc = system_memory_space->_kvc;
   }
 }
 
-PageTable* MemCtrl::GetPml4tAddr() {
-  if(system_memory_space == nullptr){
+PageTable *MemCtrl::GetPml4tAddr() {
+  if (system_memory_space == nullptr) {
     extern PageTable initial_PML4T;
     phys_addr pml4t_addr = reinterpret_cast<phys_addr>(&initial_PML4T);
     return reinterpret_cast<PageTable *>(p2v(pml4t_addr));
   }
 
   PhysAddr tpaddr;
-  physmem_ctrl->Alloc(tpaddr,PagingCtrl::kPageSize);
-  //This tpaddr is aligned in 4K bytes.
-  return reinterpret_cast<PageTable*>(tpaddr.GetVirtAddr());
+  physmem_ctrl->Alloc(tpaddr, PagingCtrl::kPageSize);
+  // This tpaddr is aligned in 4K bytes.
+  return reinterpret_cast<PageTable *>(tpaddr.GetVirtAddr());
 }
 
-void MemCtrl::GetTranslationEntries(virt_addr vaddr, entry_type *pml4e, entry_type *pdpte, entry_type *pde, entry_type *pte) {
-  paging_ctrl->GetTranslationEntries(vaddr,pml4e,pdpte,pde,pte);
+void MemCtrl::GetTranslationEntries(virt_addr vaddr, entry_type *pml4e,
+                                    entry_type *pdpte, entry_type *pde,
+                                    entry_type *pte) {
+  paging_ctrl->GetTranslationEntries(vaddr, pml4e, pdpte, pde, pte);
 }
 
-bool MemCtrl::Map1GPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr pst_flag, phys_addr page_flag) {
-  return paging_ctrl->Map1GPageToVirtAddr(vaddr,paddr,pst_flag,page_flag);
+bool MemCtrl::Map1GPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr,
+                                  phys_addr pst_flag, phys_addr page_flag) {
+  return paging_ctrl->Map1GPageToVirtAddr(vaddr, paddr, pst_flag, page_flag);
 }
 
-bool MemCtrl::MapPhysAddrToVirtAddr(virt_addr vaddr, PhysAddr &paddr, size_t size, phys_addr pst_flag, phys_addr page_flag) {
-  return paging_ctrl->MapPhysAddrToVirtAddr(vaddr,paddr,size,pst_flag,page_flag);
+bool MemCtrl::MapPhysAddrToVirtAddr(virt_addr vaddr, PhysAddr &paddr,
+                                    size_t size, phys_addr pst_flag,
+                                    phys_addr page_flag) {
+  return paging_ctrl->MapPhysAddrToVirtAddr(vaddr, paddr, size, pst_flag,
+                                            page_flag);
 }
 
 bool MemCtrl::IsVirtAddrMapped(virt_addr vaddr) {
@@ -80,7 +87,7 @@ bool MemCtrl::IsVirtAddrMapped(virt_addr vaddr) {
 }
 
 void MemCtrl::ConvertVirtMemToPhysMem(virt_addr vaddr, PhysAddr &paddr) {
-  paging_ctrl->ConvertVirtMemToPhysMem(vaddr,paddr);
+  paging_ctrl->ConvertVirtMemToPhysMem(vaddr, paddr);
 }
 
 void KernelVirtmemCtrl::Init() {
@@ -89,7 +96,7 @@ void KernelVirtmemCtrl::Init() {
   // 6MB allocated by boot.S
   _brk_end = reinterpret_cast<virt_addr>(&kLinearAddrOffset) +
              reinterpret_cast<virt_addr>(&phys_memory_end);
-  //TODO: Check Heap Size
+  // TODO: Check Heap Size
   _heap_allocated_end =
       reinterpret_cast<virt_addr>(&kLinearAddrOffset) + 0x600000;
   kassert(_brk_end < _heap_allocated_end);
@@ -99,7 +106,7 @@ virt_addr KernelVirtmemCtrl::Alloc(size_t size) {
   Locker locker(_lock);
   void *addr = dlmalloc(size);
   if (addr == nullptr) {
-    kernel_panic("KernelVirtmemCtrl","failed to allocate kernel heap memory");
+    kernel_panic("KernelVirtmemCtrl", "failed to allocate kernel heap memory");
   }
   return reinterpret_cast<virt_addr>(addr);
 }
@@ -108,7 +115,7 @@ virt_addr KernelVirtmemCtrl::AllocZ(size_t size) {
   Locker locker(_lock);
   void *addr = dlmalloc(size);
   if (addr == nullptr) {
-    kernel_panic("KernelVirtmemCtrl","failed to allocate kernel heap memory");
+    kernel_panic("KernelVirtmemCtrl", "failed to allocate kernel heap memory");
   }
   bzero(addr, size);
   return reinterpret_cast<virt_addr>(addr);
@@ -144,8 +151,9 @@ virt_addr KernelVirtmemCtrl::Sbrk(int64_t increment) {
 
 void KernelVirtmemCtrl::InitKernelMemorySpace() {
   extern PageTable initial_PML4T;
-  for(int i = 0; i < KernelVirtmemCtrl::kKernelPml4tEntryNum; i++) {
-    system_memory_space->GetKernelVirtmemCtrl()->pml4t_entry[i] = initial_PML4T.entry[UserVirtmemCtrl::kUserPml4tEntryNum + i];
+  for (int i = 0; i < KernelVirtmemCtrl::kKernelPml4tEntryNum; i++) {
+    system_memory_space->GetKernelVirtmemCtrl()->pml4t_entry[i] =
+        initial_PML4T.entry[UserVirtmemCtrl::kUserPml4tEntryNum + i];
   }
 }
 
@@ -165,25 +173,31 @@ extern "C" void *sbrk(intptr_t increment) {
 }
 
 void *operator new(size_t size) {
-  return reinterpret_cast<void *>(system_memory_space->GetKernelVirtmemCtrl()->Alloc(size));
+  return reinterpret_cast<void *>(
+      system_memory_space->GetKernelVirtmemCtrl()->Alloc(size));
 }
 
 void *operator new[](size_t size) {
-  return reinterpret_cast<void *>(system_memory_space->GetKernelVirtmemCtrl()->Alloc(size));
+  return reinterpret_cast<void *>(
+      system_memory_space->GetKernelVirtmemCtrl()->Alloc(size));
 }
 
 void operator delete(void *p) {
-  system_memory_space->GetKernelVirtmemCtrl()->Free(reinterpret_cast<virt_addr>(p));
+  system_memory_space->GetKernelVirtmemCtrl()->Free(
+      reinterpret_cast<virt_addr>(p));
 }
 
 void operator delete(void *p, size_t) {
-  system_memory_space->GetKernelVirtmemCtrl()->Free(reinterpret_cast<virt_addr>(p));
+  system_memory_space->GetKernelVirtmemCtrl()->Free(
+      reinterpret_cast<virt_addr>(p));
 }
 
 void operator delete[](void *p) {
-  system_memory_space->GetKernelVirtmemCtrl()->Free(reinterpret_cast<virt_addr>(p));
+  system_memory_space->GetKernelVirtmemCtrl()->Free(
+      reinterpret_cast<virt_addr>(p));
 }
 
 void operator delete[](void *p, size_t) {
-  system_memory_space->GetKernelVirtmemCtrl()->Free(reinterpret_cast<virt_addr>(p));
+  system_memory_space->GetKernelVirtmemCtrl()->Free(
+      reinterpret_cast<virt_addr>(p));
 }

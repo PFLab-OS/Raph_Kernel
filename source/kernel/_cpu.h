@@ -14,40 +14,35 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva, hikalium
- * 
+ *
  */
 
 #ifndef __RAPH_LIB__CPU_H__
 #define __RAPH_LIB__CPU_H__
 
 class CpuId {
-public:
+ public:
   static const int kCpuIdNotFound = -1;
   static const int kCpuIdBootProcessor = 0;
-  CpuId() {
-    Init(kCpuIdNotFound);
-  }
+  CpuId() { Init(kCpuIdNotFound); }
   explicit CpuId(int newid) {
     Init(newid);
     CheckIfValid();
   }
-  bool operator==(const CpuId& id) const {
-    return _rawid == id._rawid;
-  }
-  bool operator!=(const CpuId& id) const
-	{
-		return !(*this == id);
-	}
+  bool operator==(const CpuId& id) const { return _rawid == id._rawid; }
+  bool operator!=(const CpuId& id) const { return !(*this == id); }
   int GetRawId() {
     CheckIfValid();
     return _rawid;
   }
   uint32_t GetApicId();
   bool IsValid();
-private:
+
+ private:
   void CheckIfValid() {
     if (!IsValid()) {
       Error();
@@ -55,10 +50,7 @@ private:
   }
   void Error();
   int _rawid;
-  void Init(int newid) {
-    _rawid = newid;
-  }
+  void Init(int newid) { _rawid = newid; }
 };
 
-
-#endif // __RAPH_LIB__CPU_H__
+#endif  // __RAPH_LIB__CPU_H__

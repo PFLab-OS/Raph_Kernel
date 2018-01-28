@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
- * 
+ *
  */
 
 #pragma once
@@ -26,7 +27,7 @@
 
 template <class L, int kListEntryNum>
 class LinkedList {
-public:
+ public:
   LinkedList() {
     for (int j = 0; j < kListEntryNum; j++) {
       _first.i[j] = 0;
@@ -74,13 +75,14 @@ public:
     Container *next;
     int i[kListEntryNum];
   };
-private:
+
+ private:
   L _lock;
-  Container _first; // 番兵
+  Container _first;  // 番兵
   Container *_last;
 };
 
-template<int kListEntryNum>
+template <int kListEntryNum>
 struct Container {
   Container *next;
   int i[kListEntryNum];
@@ -112,7 +114,7 @@ struct Container {
 
 template <class L, int kListEntryNum>
 class LinkedList2 {
-public:
+ public:
   LinkedList2() {
     for (int j = 0; j < kListEntryNum; j++) {
       _first.i[j] = 0;
@@ -147,21 +149,18 @@ public:
     _last->next = c;
     _last = c;
   }
-  bool Acquire() {
-    return _lock.TryLock();
-  }
-  void Release() {
-    _lock.Unlock(0);
-  }
-private:
+  bool Acquire() { return _lock.TryLock(); }
+  void Release() { _lock.Unlock(0); }
+
+ private:
   L _lock;
-  Container<kListEntryNum> _first; // 番兵
+  Container<kListEntryNum> _first;  // 番兵
   Container<kListEntryNum> *_last;
 };
 
 template <int kListEntryNum>
 class LinkedList3 {
-public:
+ public:
   LinkedList3() {
     for (int j = 0; j < kListEntryNum; j++) {
       _first.i[j] = 0;
@@ -198,7 +197,7 @@ public:
         }
       }
     }
-    
+
     return c;
   }
   void Push(Container<kListEntryNum> *c, int i) {
@@ -212,9 +211,10 @@ public:
     _last = c;
     _lock.Unlock(0);
   }
-private:
+
+ private:
   SimpleSpinLock _lock;
   LinkedList2<SimpleSpinLock, kListEntryNum> _list[37];
-  Container<kListEntryNum> _first; // 番兵
+  Container<kListEntryNum> _first;  // 番兵
   Container<kListEntryNum> *_last;
 };

@@ -127,7 +127,7 @@ FADT *AcpiCtrl::GetFADT() {
 }
 
 class GlobalEventThreadContainer {
-public:
+ public:
   uptr<Thread> thread;
 
  private:
@@ -149,11 +149,14 @@ void AcpiCtrl::SetupAcpica() {
   kassert(!ACPI_FAILURE(AcpiInitializeObjects(ACPI_FULL_INITIALIZATION)));
   gtty->Flush();
 
-  new(&get_container) GlobalEventThreadContainer;
+  new (&get_container) GlobalEventThreadContainer;
 
-  get_container.thread = ThreadCtrl::GetCtrl(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority)).AllocNewThread(Thread::StackState::kShared);
-  get_container.thread->CreateOperator().SetFunc(make_uptr(new ClassFunction<AcpiCtrl, void *>(
-      this, &AcpiCtrl::GlobalEventHandler, nullptr)));
+  get_container.thread = ThreadCtrl::GetCtrl(cpu_ctrl->RetainCpuIdForPurpose(
+                                                 CpuPurpose::kLowPriority))
+                             .AllocNewThread(Thread::StackState::kShared);
+  get_container.thread->CreateOperator().SetFunc(
+      make_uptr(new ClassFunction<AcpiCtrl, void *>(
+          this, &AcpiCtrl::GlobalEventHandler, nullptr)));
   AcpiInstallGlobalEventHandler(AcpiGlobalEventHandler, nullptr);
 
   // TODO should be executed within ApicCtrl

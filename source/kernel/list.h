@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
- * 
+ *
  */
 
 #pragma once
@@ -28,21 +29,18 @@
 #include <assert.h>
 
 // deplecated
-template<class T>
+template <class T>
 class ObjectList {
-public:
+ public:
   struct Container {
-    template<class... Arg>
+    template <class... Arg>
     Container(Arg... args) : obj(args...) {
       next = nullptr;
     }
-    Container *GetNext() {
-      return next;
-    }
-    T *GetObject() {
-      return &obj;
-    }
-  private:
+    Container *GetNext() { return next; }
+    T *GetObject() { return &obj; }
+
+   private:
     T obj;
     Container *next;
     friend ObjectList;
@@ -52,9 +50,8 @@ public:
     _first.obj = nullptr;
     _first.next = nullptr;
   }
-  ~ObjectList() {
-  }
-  template<class... Arg>
+  ~ObjectList() {}
+  template <class... Arg>
   Container *PushBack(Arg... args) {
     Container *c = new Container(args...);
     Locker locker(_lock);
@@ -64,42 +61,32 @@ public:
     return c;
   }
   // 帰るコンテナは番兵なので、オブジェクトを格納していない
-  Container *GetBegin() {
-    return &_first;
-  }
-  bool IsEmpty() {
-    return &_first == _last;
-  }
-private:
+  Container *GetBegin() { return &_first; }
+  bool IsEmpty() { return &_first == _last; }
+
+ private:
   Container _first;
   Container *_last;
   SpinLock _lock;
 };
 
-template<class T>
+template <class T>
 class List {
-public:
+ public:
   class Container {
-  public:
-    ~Container() {
-    }
-    T &operator*() {
-      return _obj;
-    }
-    T *operator&() {
-      return &_obj;
-    }
-    T *operator->() {
-      return &_obj;
-    }
+   public:
+    ~Container() {}
+    T &operator*() { return _obj; }
+    T *operator&() { return &_obj; }
+    T *operator->() { return &_obj; }
     wptr<Container> GetNext() {
       Locker locker(_lock);
       return make_wptr(_next);
     }
-  private:
-    template<class... Arg>
-    Container(Arg... args) : _obj(args...) {
-    }
+
+   private:
+    template <class... Arg>
+    Container(Arg... args) : _obj(args...) {}
     Container();
     T _obj;
     SpinLock _lock;
@@ -107,18 +94,17 @@ public:
     sptr<Container> _prev;
     friend List;
   };
-  List() {
-  }
+  List() {}
   ~List() {
     auto iter = GetBegin();
-    while(!iter.IsNull()) {
+    while (!iter.IsNull()) {
       iter = Remove(iter);
     }
   }
-  template<class... Arg>
+  template <class... Arg>
   wptr<Container> PushBack(Arg... args) {
     auto c = make_sptr(new Container(args...));
-    while(true) {
+    while (true) {
       // TODO this lock is conservative. fix it!
       trylock(_lock) {
         if (_first.IsNull()) {
@@ -136,7 +122,7 @@ public:
   }
   wptr<Container> Remove(wptr<Container> c) {
     auto c_ = make_sptr(c);
-    while(true) {
+    while (true) {
       // TODO this lock is conservative. fix it!
       trylock(_lock) {
         trylock(c_->_lock) {
@@ -182,7 +168,8 @@ public:
     Locker locker(_lock);
     return _first.IsNull();
   }
-private:
+
+ private:
   void SetFirst(sptr<Container> c) {
     assert(_first.IsNull());
     assert(_last.IsNull());
@@ -215,5 +202,3 @@ private:
   sptr<Container> _last;
   SpinLock _lock;
 };
-
-  
