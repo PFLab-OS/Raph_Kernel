@@ -15,6 +15,7 @@ Vagrant.configure(2) do |config|
   config.vm.box = "Raphine/001a"
   config.vm.box_url = "http://pf.is.s.u-tokyo.ac.jp/~awamoto/Raphine/001a.box"
   config.vm.box_check_update = false
+  config.vm.provision "shell", :path => "setup.sh", :privileged => true
 
   # base box
   # config.vm.box = "ubuntu/xenial64"

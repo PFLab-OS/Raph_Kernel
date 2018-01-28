@@ -539,7 +539,7 @@ void load_script(uptr<Array<uint8_t>> data) {
         auto ec = make_uptr(new Shell::ExecContainer(shell));
         ec = shell->Tokenize(ec, buffer);
         int timeout = 0;
-        if (strlen(buffer) != 0) {
+        if (ec->argc != 0) {
           gtty->Printf("> %s\n", buffer);
           if (strcmp(ec->argv[0], "wait") == 0) {
             if (ec->argc == 2) {
