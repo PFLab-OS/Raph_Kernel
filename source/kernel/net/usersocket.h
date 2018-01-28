@@ -38,15 +38,51 @@ class UserSocket : public UdpCtrl::ProtocolInterface {
     UdpCtrl::GetCtrl().RegisterSocket(port, this);
     gtty->Printf("sock Listen started. port: %d\n", port);
   }
+  void ReceiveSync() {
+    gtty->Printf("Entering busy wait\n");
+    uptr<Thread> thread = ThreadCtrl::GetCtrl(network_cpu)
+                              .AllocNewThread(Thread::StackState::kIndependent);
+    do {
+      auto t_op = thread->CreateOperator();
+      t_op.SetFunc(make_uptr(new Function<void *>(
+          [](void *arg) {
+            static int cnt = 0;
+            cnt++;
+            FunctionalQueue<uptr<UdpCtrl::RxPacket>> *rxq =
+                reinterpret_cast<FunctionalQueue<uptr<UdpCtrl::RxPacket>> *>(
+                    arg);
+            if (cnt < 1000 && rxq->IsEmpty()) {
+              ThreadCtrl::GetCurrentThreadOperator().Schedule(1000);
+            }
+          },
+          &_rx_queue)));
+      t_op.Schedule();
+    } while (0);
+    thread->Join();
+    //
+    gtty->Printf("Exited busy wait\n");
+    if (_rx_queue.IsEmpty()) {
+      gtty->Printf("Timeout\n");
+    }
+    uptr<UdpCtrl::RxPacket> upacket = _rx_queue.Pop();
+    gtty->Printf("Receive via socket from ");
+    gtty->Printf("%d.%d.%d.%d\n", upacket->source_ip_addr[0],
+                 upacket->source_ip_addr[1], upacket->source_ip_addr[2],
+                 upacket->source_ip_addr[3]);
+  }
 
  private:
   void Handle(void *) {
-    gtty->Printf("Receive!\n");
-
+    /*
     uptr<UdpCtrl::RxPacket> upacket = _rx_queue.Pop();
     if (upacket.IsNull()) {
       return;
     }
+    gtty->Printf("Receive via socket from ");
+    gtty->Printf("%d.%d.%d.%d\n", upacket->source_ip_addr[0],
+                 upacket->source_ip_addr[1], upacket->source_ip_addr[2],
+                 upacket->source_ip_addr[3]);
+                 */
   }
   /*
   struct Packet {

@@ -670,6 +670,7 @@ void cat(int argc, const char *argv[]) {
 void mksock(int argc, const char *argv[]) {
   UserSocket *sock = new UserSocket();
   sock->Listen(5621);
+  sock->ReceiveSync();
 }
 
 void RegisterDefaultShellCommands() {

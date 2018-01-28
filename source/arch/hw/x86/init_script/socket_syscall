@@ -2,6 +2,6 @@ ifconfig
 wait_until_linkup em0
 ifconfig
 udp_setup
-setip em0 dhcp
-#setip em0 static 10.10.10.77
+#setip em0 dhcp
+setip em0 static 10.10.10.77
 mksock
