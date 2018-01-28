@@ -383,9 +383,7 @@ static void arp_scan(int argc, const char *argv[]) {
                             .AllocNewThread(Thread::StackState::kShared);
   do {
     auto t_op = thread->CreateOperator();
-    t_op.SetFunc(make_uptr(new Function<void *>(
-        [](void *) {},
-        nullptr)));
+    t_op.SetFunc(make_uptr(new Function<void *>([](void *) {}, nullptr)));
     t_op.Schedule(3 * 1000 * 1000);
   } while (0);
   thread->Join();

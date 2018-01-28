@@ -179,7 +179,8 @@ class ThreadCtrl {
     kSleeping,
   };
   QueueState GetState() { return _state; }
-  uptr<Thread> AllocNewThread_(Thread::StackState sstate, const char *file, int line);
+  uptr<Thread> AllocNewThread_(Thread::StackState sstate, const char *file,
+                               int line);
   static Thread::Operator GetCurrentThreadOperator() {
     Thread *thread = GetCtrl(cpu_ctrl->GetCpuId())._current_thread;
     kassert(thread != nullptr);
@@ -267,7 +268,9 @@ inline Thread::Operator::Operator(const Thread::Operator &op) : _obj(op._obj) {
   __sync_fetch_and_add(&_obj._cnt, 1);
 }
 
-inline Thread::Operator::~Operator() { kassert(__sync_fetch_and_sub(&_obj._cnt, 1) >= 0); }
+inline Thread::Operator::~Operator() {
+  kassert(__sync_fetch_and_sub(&_obj._cnt, 1) >= 0);
+}
 
 inline Thread::Operator::Operator(Thread::OperatorObj &obj) : _obj(obj) {
   __sync_fetch_and_add(&_obj._cnt, 1);

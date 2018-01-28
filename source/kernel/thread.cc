@@ -64,8 +64,7 @@ void Thread::InitBuffer() {
       // increment op count during executing the function
       // the purpose of this is not to return back to Join()
       // while the function is running.
-      auto dummy_op =
-          CreateOperator();
+      auto dummy_op = CreateOperator();
       _func->Execute();
     } while (0);
     ReleaseReturnBuf();
@@ -86,7 +85,8 @@ void Thread::Execute() {
     // no operator reference to this thread.
     // return back to Join
     if (GetState() != Thread::State::kRunning) {
-      ShowErr("no operator reference but the thread is queued. the bug of Thread?");
+      ShowErr(
+          "no operator reference but the thread is queued. the bug of Thread?");
     }
     _waiting_thread->Schedule();
     _waiting_thread = nullptr;
@@ -125,7 +125,9 @@ Thread::State Thread::Stop() {
 // TODO show warning if no one refers this thread
 void Thread::Wait() {
   if (_stack_state != StackState::kIndependent) {
-    ShowErr("The StackState of a thread which calls Wait()/Join() must be 'Independent'.");
+    ShowErr(
+        "The StackState of a thread which calls Wait()/Join() must be "
+        "'Independent'.");
   }
   if (setjmp(_buf) == 0) {
     ReleaseReturnBuf();
@@ -215,10 +217,11 @@ void ThreadCtrl::InitSub(CpuId id) {
   }
 }
 
-uptr<Thread> ThreadCtrl::AllocNewThread_(Thread::StackState sstate, const char *file, int line) {
+uptr<Thread> ThreadCtrl::AllocNewThread_(Thread::StackState sstate,
+                                         const char *file, int line) {
   Thread *t;
   _idle_threads.Pop(t);
-  t->Init(sstate, file ,line);
+  t->Init(sstate, file, line);
   return make_uptr(t);
 }
 
@@ -251,7 +254,7 @@ bool ThreadCtrl::ScheduleRunQueue(Thread *thread) {
 
 bool ThreadCtrl::ScheduleWaitQueue(Thread *thread, int us) {
   if (us == 0) {
-      thread->ShowErr("us of ScheduleWaitQueue() must be greater than zero.");
+    thread->ShowErr("us of ScheduleWaitQueue() must be greater than zero.");
   }
   auto state = thread->SetState(Thread::State::kWaitingInQueue);
   switch (state) {

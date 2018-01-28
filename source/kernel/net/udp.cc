@@ -270,8 +270,7 @@ void UdpCtrl::DummyServer(NetDev *dev) {
       // ARP Reply
       IpV4Addr responder_addr;
       memcpy(responder_addr.bytes, &rpacket->GetBuffer()[28], 4);
-      gtty->Printf(
-                   "ARP reply from %d.%d.%d.%d\n", responder_addr.bytes[0],
+      gtty->Printf("ARP reply from %d.%d.%d.%d\n", responder_addr.bytes[0],
                    responder_addr.bytes[1], responder_addr.bytes[2],
                    responder_addr.bytes[3]);
       arp_table->Set(responder_addr.uint32, rpacket->GetBuffer() + 22, dev);
@@ -384,7 +383,8 @@ void UdpCtrl::DummyServer(NetDev *dev) {
             break;
           }
           if (i == kSocketNum - 1) {
-            gtty->Printf("received unknown udp(%d) packet\n", packet->dest_port);
+            gtty->Printf("received unknown udp(%d) packet\n",
+                         packet->dest_port);
           }
         }
       }
