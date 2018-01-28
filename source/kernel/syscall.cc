@@ -57,6 +57,18 @@ void SystemCallCtrl::Init() {
       KernelStackCtrl::GetCtrl().AllocThreadStack(cpu_ctrl->GetCpuId());
 }
 
+struct in_addr {
+  uint8_t s_addr[4];  // big endian
+};
+
+struct sockaddr_in {
+  uint8_t sin_len;
+  uint8_t sin_family;
+  uint8_t sin_port[2];  // big endian
+  in_addr sin_addr;
+  uint8_t sin_zero[8];
+};
+
 int64_t SystemCallCtrl::Handler(Args *args, int index) {
   if (GetCtrl()._mode == Mode::kLocal) {
     switch (index) {
@@ -96,8 +108,8 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
       case 20:
         // writev
         {
-          if (args->arg1 == 1) {
-            // stdout
+          if (args->arg1 == 1 || args->arg1 == 2) {
+            // stdout, stderr
             iovec *iv_array = reinterpret_cast<iovec *>(args->arg2);
             int rval = 0;
             for (int i = 0; i < args->arg3; i++) {
@@ -115,6 +127,64 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
             kernel_panic("Sysctrl", "unknown fd(writev)");
           }
           break;
+        }
+      case 41:
+        // socket
+        {
+          const int PF_INET = 2;
+          const int SOCK_DGRAM = 2;
+          const int IPPROTO_UDP = 17;
+          if (args->arg1 == PF_INET && args->arg2 == SOCK_DGRAM &&
+              args->arg3 == IPPROTO_UDP) {
+            return 1;
+          } else {
+            gtty->DisablePrint();
+            gtty->ErrPrintf("%d %d %d", args->arg1, args->arg2, args->arg3);
+            kernel_panic("socket", "not impl");
+          }
+        }
+        break;
+      case 45:
+        // recvfrom
+        {
+          int fd = args->arg1;
+          void *ubuf = reinterpret_cast<void *>(args->arg2);
+          size_t size = args->arg2;
+          unsigned flags = args->arg3;
+          sockaddr_in *addr = reinterpret_cast<sockaddr_in *>(args->arg4);
+          int *addr_len = reinterpret_cast<int *>(args->arg5);
+          const int SOCK_DGRAM = 2;
+          const int IPPROTO_UDP = 17;
+          if (fd == 1) {
+            return 1;
+          } else {
+            gtty->DisablePrint();
+            gtty->ErrPrintf("%d %d %d", args->arg1, args->arg2, args->arg3);
+            kernel_panic("socket", "not impl");
+          }
+        }
+        break;
+      case 49:
+        // bind
+        {
+          int fd = args->arg1;
+          sockaddr_in *addr = reinterpret_cast<sockaddr_in *>(args->arg2);
+          // arg3
+          if (fd == 1) {
+            /*
+            gtty->DisablePrint();
+            gtty->ErrPrintf("port: %d, ip: %d.%d.%d.%d",
+                            (addr->sin_port[0] << 8) | addr->sin_port[1],
+                            addr->sin_addr.s_addr[0], addr->sin_addr.s_addr[1],
+                            addr->sin_addr.s_addr[2], addr->sin_addr.s_addr[3]);
+            kernel_panic("bind", "not impl");
+            */
+            return 0;
+          } else {
+            gtty->DisablePrint();
+            gtty->ErrPrintf("%d %d %d", args->arg1, args->arg2, args->arg3);
+            kernel_panic("bind", "not impl");
+          }
         }
       case 63:
         // uname

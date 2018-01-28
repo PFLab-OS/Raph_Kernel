@@ -1,0 +1,6 @@
+ifconfig
+wait_until_linkup em0
+ifconfig
+setip em0 static 10.10.10.77
+udp_setup
+

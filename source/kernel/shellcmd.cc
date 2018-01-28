@@ -514,7 +514,7 @@ static void load(int argc, const char *argv[]) {
   }
   if (strcmp(argv[1], "script.sh") == 0) {
     load_script(multiboot_ctrl->LoadFile(argv[1]));
-  } else if (strcmp(argv[1], "test.elf") == 0) {
+  } else if (strcmp(argv[1], "testmodule.elf") == 0) {
     auto buf_ = multiboot_ctrl->LoadFile(argv[1]);
     uptr<Thread> thread = ThreadCtrl::GetCtrl(cpu_ctrl->RetainCpuIdForPurpose(
                                                   CpuPurpose::kLowPriority))

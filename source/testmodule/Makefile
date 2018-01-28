@@ -1,9 +1,10 @@
 MODULE = testmodule
 #SRCS = testmodule.cc stubstart.S
-SRCS = testmodule.cc
+#SRCS = testmodule.cc
+SRCS = udpecho.cc
 CC = musl-gcc
 
-defalut:
+defalut: $(MODULE)
 
 build: ../../build/$(MODULE).elf
 
