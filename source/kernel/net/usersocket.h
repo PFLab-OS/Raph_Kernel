@@ -38,7 +38,10 @@ class UserSocket : public UdpCtrl::ProtocolInterface {
     UdpCtrl::GetCtrl().RegisterSocket(port, this);
     gtty->Printf("sock Listen started. port: %d\n", port);
   }
-  void ReceiveSync() {
+  int ReceiveSync(uint8_t *buf, size_t buf_size, uint8_t dst_ip_addr[4],
+                  uint8_t src_ip_addr[4], uint16_t *dst_port,
+                  uint16_t *src_port) {
+    // returns size read, -1 if error.
     gtty->Printf("Entering busy wait\n");
     uptr<Thread> thread = ThreadCtrl::GetCtrl(network_cpu)
                               .AllocNewThread(Thread::StackState::kIndependent);
@@ -63,12 +66,18 @@ class UserSocket : public UdpCtrl::ProtocolInterface {
     gtty->Printf("Exited busy wait\n");
     if (_rx_queue.IsEmpty()) {
       gtty->Printf("Timeout\n");
+      return -1;
     }
     uptr<UdpCtrl::RxPacket> upacket = _rx_queue.Pop();
-    gtty->Printf("Receive via socket from ");
-    gtty->Printf("%d.%d.%d.%d\n", upacket->source_ip_addr[0],
-                 upacket->source_ip_addr[1], upacket->source_ip_addr[2],
-                 upacket->source_ip_addr[3]);
+    //
+    size_t trans_size =
+        buf_size < upacket->data->GetLen() ? buf_size : upacket->data->GetLen();
+    memcpy(buf, upacket->data->GetRawPtr(), trans_size);
+    memcpy(dst_ip_addr, upacket->dest_ip_addr, 4);
+    memcpy(src_ip_addr, upacket->source_ip_addr, 4);
+    *dst_port = upacket->dest_port;
+    *src_port = upacket->source_port;
+    return trans_size;
   }
 
  private:
@@ -79,9 +88,9 @@ class UserSocket : public UdpCtrl::ProtocolInterface {
       return;
     }
     gtty->Printf("Receive via socket from ");
-    gtty->Printf("%d.%d.%d.%d\n", upacket->source_ip_addr[0],
-                 upacket->source_ip_addr[1], upacket->source_ip_addr[2],
-                 upacket->source_ip_addr[3]);
+    gtty->Printf("%d.%d.%d.%d\n", upacket->src_ip_addr[0],
+                 upacket->src_ip_addr[1], upacket->src_ip_addr[2],
+                 upacket->src_ip_addr[3]);
                  */
   }
   /*
