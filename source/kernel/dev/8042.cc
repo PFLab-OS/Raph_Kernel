@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Yuchiki
- * 
+ *
  */
 
 #include <cpu.h>
@@ -34,8 +35,11 @@ void LegacyKeyboard::Attach() {
 
 void LegacyKeyboard::SetupSub() {
   CpuId cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority);
-  int vector = idt->SetIntCallback(cpuid, LegacyKeyboard::Handler, reinterpret_cast<void *>(this), Idt::EoiType::kLapic);
-  apic_ctrl->SetupIoInt(ApicCtrl::kIrqKeyboard, cpuid.GetApicId(), vector, true, true);
+  int vector =
+      idt->SetIntCallback(cpuid, LegacyKeyboard::Handler,
+                          reinterpret_cast<void *>(this), Idt::EoiType::kLapic);
+  apic_ctrl->SetupIoInt(ApicCtrl::kIrqKeyboard, cpuid.GetApicId(), vector, true,
+                        true);
 }
 
 void LegacyKeyboard::Handler(Regs *reg, void *arg) {
@@ -45,27 +49,27 @@ void LegacyKeyboard::Handler(Regs *reg, void *arg) {
     data = kScanCode[data];
     int i;
     bool pushed = false;
-    switch(data) {
-    case static_cast<const char>(SpecialKey::kShift):
-    case static_cast<const char>(SpecialKey::kCtrl):
-    case static_cast<const char>(SpecialKey::kAlt): {
-      for (i = 0; i < kKeyBufSize; i++) {
-        if (that->_pushed_keys[i] == data) {
-          break;
+    switch (data) {
+      case static_cast<const char>(SpecialKey::kShift):
+      case static_cast<const char>(SpecialKey::kCtrl):
+      case static_cast<const char>(SpecialKey::kAlt): {
+        for (i = 0; i < kKeyBufSize; i++) {
+          if (that->_pushed_keys[i] == data) {
+            break;
+          }
+        }
+        if (i == kKeyBufSize) {
+          for (i = 0; i < kKeyBufSize; i++) {
+            if (that->_pushed_keys[i] == 0) {
+              break;
+            }
+          }
+          if (i != kKeyBufSize) {
+            that->_pushed_keys[i] = data;
+            pushed = true;
+          }
         }
       }
-    if (i == kKeyBufSize) {
-      for (i = 0; i < kKeyBufSize; i++) {
-        if (that->_pushed_keys[i] == 0) {
-          break;
-        }
-      }
-      if (i != kKeyBufSize) {
-        that->_pushed_keys[i] = data;
-        pushed = true;
-      }
-    }
-    }
     }
     KeyInfo ki;
     memcpy(ki.c, that->_pushed_keys, kKeyBufSize);
@@ -92,21 +96,132 @@ void LegacyKeyboard::Handler(Regs *reg, void *arg) {
 }
 
 const char LegacyKeyboard::kScanCode[128] = {
-  0x0,0x0,'1','2','3','4','5','6',
-  '7','8','9','0','-','=',static_cast<const char>(SpecialKey::kBackSpace),static_cast<const char>(SpecialKey::kTab),
-  'q','w','e','r','t','y','u','i',
-  'o','p','[',']',static_cast<const char>(SpecialKey::kEnter),0x0,'a','s',
-  'd','f','g','h','j','k','l',';',
-  '\'','`',static_cast<const char>(SpecialKey::kShift),'\\','z','x','c','v',
-  'b','n','m',',','.','/',static_cast<const char>(SpecialKey::kShift),0x0,
-  0x0,' ',0x0,0x0,0x0,0x0,0x0,0x0,
-  0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,
-  0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,
-  0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,
-  0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,
-  0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,
-  0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,
-  0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,
-  0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,
+    0x0,
+    0x0,
+    '1',
+    '2',
+    '3',
+    '4',
+    '5',
+    '6',
+    '7',
+    '8',
+    '9',
+    '0',
+    '-',
+    '=',
+    static_cast<const char>(SpecialKey::kBackSpace),
+    static_cast<const char>(SpecialKey::kTab),
+    'q',
+    'w',
+    'e',
+    'r',
+    't',
+    'y',
+    'u',
+    'i',
+    'o',
+    'p',
+    '[',
+    ']',
+    static_cast<const char>(SpecialKey::kEnter),
+    0x0,
+    'a',
+    's',
+    'd',
+    'f',
+    'g',
+    'h',
+    'j',
+    'k',
+    'l',
+    ';',
+    '\'',
+    '`',
+    static_cast<const char>(SpecialKey::kShift),
+    '\\',
+    'z',
+    'x',
+    'c',
+    'v',
+    'b',
+    'n',
+    'm',
+    ',',
+    '.',
+    '/',
+    static_cast<const char>(SpecialKey::kShift),
+    0x0,
+    0x0,
+    ' ',
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
+    0x0,
 };
-

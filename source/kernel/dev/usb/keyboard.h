@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
- * 
+ *
  */
 
 #pragma once
@@ -27,23 +28,23 @@
 #include <dev/keyboard.h>
 
 class DevUsbKeyboard : public DevUsb {
-public:
-  DevUsbKeyboard(DevUsbController *controller, int addr) : DevUsb(controller, addr) {
-  }
-  virtual ~DevUsbKeyboard() {
-  }
+ public:
+  DevUsbKeyboard(DevUsbController *controller, int addr)
+      : DevUsb(controller, addr) {}
+  virtual ~DevUsbKeyboard() {}
   static DevUsb *InitUsb(DevUsbController *controller, int addr);
   virtual void InitSub() override;
-private:
+
+ private:
   class KeyboardSub : public Keyboard {
-  public:
+   public:
     void Push(KeyInfo &ki) {
       if (!_buf.Push(ki)) {
         // TODO show warning
       }
     }
   } _dev;
-  static const int kTdNum = 32; // TODO is this ok?
+  static const int kTdNum = 32;  // TODO is this ok?
   static const int kMaxPacketSize = 8;
   static const char kScanCode[256];
   char _prev_buf[8];

@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
- * 
+ *
  */
 
 #pragma once
@@ -29,95 +30,81 @@
 static const int kFastMeasurement = true;
 
 #define check_align(ptr) assert(reinterpret_cast<size_t>(ptr) % 64 == 0)
-#define check_align2(ptr, num) assert(reinterpret_cast<size_t>(ptr) % (num) == 0)
+#define check_align2(ptr, num) \
+  assert(reinterpret_cast<size_t>(ptr) % (num) == 0)
 
-template<class T>
+template <class T>
 static inline void check_type_align() {
   assert(sizeof(T) % 64 == 0);
 }
 
 // 単純
 class SimpleSpinLock {
-public:
-  SimpleSpinLock() {
-  }
-  bool TryLock() {
-    assert(false);
-  }
+ public:
+  SimpleSpinLock() {}
+  bool TryLock() { assert(false); }
   void Lock(uint32_t apicid) {
-    while(__sync_lock_test_and_set(&_flag, 1) != 0) {
-      asm volatile("":::"memory");
+    while (__sync_lock_test_and_set(&_flag, 1) != 0) {
+      asm volatile("" ::: "memory");
     }
   }
-  void Unlock(uint32_t apicid) {
-    _flag = 0;
-  }
-private:
-  volatile unsigned int _flag __attribute__ ((aligned (64))) = 0;
-} __attribute__ ((aligned (64)));
+  void Unlock(uint32_t apicid) { _flag = 0; }
+
+ private:
+  volatile unsigned int _flag __attribute__((aligned(64))) = 0;
+} __attribute__((aligned(64)));
 
 class TtsBackoffSpinLock {
-public:
-  TtsBackoffSpinLock() {
-  }
-  bool TryLock() {
-    assert(false);
-  }
+ public:
+  TtsBackoffSpinLock() {}
+  bool TryLock() { assert(false); }
   void Lock(uint32_t apicid) {
     uint16_t delay = 1;
-    while(_flag == 1 || __sync_lock_test_and_set(&_flag, 1) != 0) {
-      while(_flag == 1) {
-        asm volatile("":::"memory");
+    while (_flag == 1 || __sync_lock_test_and_set(&_flag, 1) != 0) {
+      while (_flag == 1) {
+        asm volatile("" ::: "memory");
       }
       for (int j = 0; j < delay; j++) {
-        asm volatile("pause;":::"memory");
+        asm volatile("pause;" ::: "memory");
       }
       delay *= 2;
-      asm volatile("":::"memory");
+      asm volatile("" ::: "memory");
     }
   }
-  void Unlock(uint32_t apicid) {
-    _flag = 0;
-  }
-  bool IsNoOneWaiting(uint32_t apicid) {
-    return false;
-  }
-private:
-  volatile unsigned int _flag __attribute__ ((aligned (64))) = 0;
-} __attribute__ ((aligned (64)));
+  void Unlock(uint32_t apicid) { _flag = 0; }
+  bool IsNoOneWaiting(uint32_t apicid) { return false; }
+
+ private:
+  volatile unsigned int _flag __attribute__((aligned(64))) = 0;
+} __attribute__((aligned(64)));
 
 class TicketSpinLock {
-public:
+ public:
   TicketSpinLock() {
     check_align(this);
     check_align(&_flag);
     check_align(&_cnt);
   }
-  bool TryLock() {
-    assert(false);
-  }
+  bool TryLock() { assert(false); }
   void Lock(uint32_t apicid) {
     uint64_t x = __sync_fetch_and_add(&_cnt, 1);
-    while(_flag != x) {
+    while (_flag != x) {
       for (uint64_t j = 0; j < x - _flag; j++) {
-        asm volatile("pause;":::"memory");
+        asm volatile("pause;" ::: "memory");
       }
-      asm volatile("":::"memory");
+      asm volatile("" ::: "memory");
     }
   }
-  void Unlock(uint32_t apicid) {
-    _flag++;
-  }
-  bool IsNoOneWaiting(uint32_t apicid) {
-    return _flag + 1 == _cnt;
-  }
-private:
-  uint64_t _flag __attribute__ ((aligned (64))) = 0;
-  uint64_t _cnt __attribute__ ((aligned (64))) = 0;
-} __attribute__ ((aligned (64)));
+  void Unlock(uint32_t apicid) { _flag++; }
+  bool IsNoOneWaiting(uint32_t apicid) { return _flag + 1 == _cnt; }
+
+ private:
+  uint64_t _flag __attribute__((aligned(64))) = 0;
+  uint64_t _cnt __attribute__((aligned(64))) = 0;
+} __attribute__((aligned(64)));
 
 class ClhSpinLock {
-public:
+ public:
   ClhSpinLock() {
     check_align(this);
     check_type_align<QueueNode>();
@@ -137,30 +124,29 @@ public:
     auto qnode = _node[apicid];
     qnode->locked = 1;
     _pred[apicid] = __sync_lock_test_and_set(&_tail, qnode);
-    while(_pred[apicid]->locked == 1) {
-      asm volatile("":::"memory");
+    while (_pred[apicid]->locked == 1) {
+      asm volatile("" ::: "memory");
     }
   }
   void Unlock(uint32_t apicid) {
     _node[apicid]->locked = 0;
     _node[apicid] = _pred[apicid];
   }
-  bool IsNoOneWaiting(uint32_t apicid) {
-    return _tail == _node[apicid];
-  }
-private:
+  bool IsNoOneWaiting(uint32_t apicid) { return _tail == _node[apicid]; }
+
+ private:
   struct QueueNode {
     int locked = 0;
-  } __attribute__ ((aligned (64)));
+  } __attribute__((aligned(64)));
   QueueNode *_tail;
   QueueNode _tmp;
-  QueueNode _nodes[37*8];
-  QueueNode *_node[37*8];
-  QueueNode *_pred[37*8];
-} __attribute__ ((aligned (64)));
+  QueueNode _nodes[37 * 8];
+  QueueNode *_node[37 * 8];
+  QueueNode *_pred[37 * 8];
+} __attribute__((aligned(64)));
 
 class HClhSpinLock {
-public:
+ public:
   HClhSpinLock() {
     check_align(this);
     check_type_align<QueueNode>();
@@ -186,23 +172,25 @@ public:
     qnode->tileid = tileid;
     qnode->locked = 1;
     qnode->tail_when_spliced = 0;
-    
+
     do {
       _pred[apicid] = _local_queue[tileid];
-    } while(!__sync_bool_compare_and_swap(&_local_queue[tileid], _pred[apicid], qnode));
+    } while (!__sync_bool_compare_and_swap(&_local_queue[tileid], _pred[apicid],
+                                           qnode));
 
     if (_pred[apicid] != nullptr) {
-      while(true) {
+      while (true) {
         if (_pred[apicid]->tileid != tileid) {
           break;
         }
         if (_pred[apicid]->tail_when_spliced == 1) {
           break;
         }
-        if (_pred[apicid]->tileid == tileid && _pred[apicid]->locked == 0 && _pred[apicid]->tail_when_spliced == 0) {
+        if (_pred[apicid]->tileid == tileid && _pred[apicid]->locked == 0 &&
+            _pred[apicid]->tail_when_spliced == 0) {
           return;
         }
-        asm volatile("":::"memory");
+        asm volatile("" ::: "memory");
       }
     }
 
@@ -214,77 +202,76 @@ public:
     do {
       _pred[apicid] = _global_queue;
       local_tail = _local_queue[tileid];
-    } while(!__sync_bool_compare_and_swap(&_global_queue, _pred[apicid], local_tail));
-    
+    } while (!__sync_bool_compare_and_swap(&_global_queue, _pred[apicid],
+                                           local_tail));
+
     local_tail->tail_when_spliced = 1;
 
-    while(_pred[apicid]->locked == 1) {
-      asm volatile("":::"memory");
+    while (_pred[apicid]->locked == 1) {
+      asm volatile("" ::: "memory");
     }
   }
   void Unlock(uint32_t apicid) {
     _node[apicid]->locked = 0;
     _node[apicid] = _pred[apicid];
   }
-private:
+
+ private:
   struct QueueNode {
     int locked = 0;
     int tail_when_spliced = 0;
     uint32_t tileid = 0xFFFFFFFF;
-  } __attribute__ ((aligned (64)));
-  QueueNode _nodes[37*8];
-  QueueNode *_node[37*8];
-  QueueNode *_pred[37*8];
+  } __attribute__((aligned(64)));
+  QueueNode _nodes[37 * 8];
+  QueueNode *_node[37 * 8];
+  QueueNode *_pred[37 * 8];
   QueueNode _global_tmp;
-  QueueNode __attribute__ ((aligned (64))) *_local_queue[37];
-  QueueNode *__attribute__ ((aligned (64))) _global_queue;
-} __attribute__ ((aligned (64)));
+  QueueNode __attribute__((aligned(64))) * _local_queue[37];
+  QueueNode *__attribute__((aligned(64))) _global_queue;
+} __attribute__((aligned(64)));
 
-template<int align, int arraysize>
+template <int align, int arraysize>
 class AndersonSpinLock {
-public:
+ public:
   AndersonSpinLock() {
     check_align(this);
     if (align == 64) {
       check_type_align<Flag>();
-      check_align(_flag); 
+      check_align(_flag);
     }
     check_align(&_last);
     check_align(&_cur);
-   _flag[0].i = 1;
+    _flag[0].i = 1;
     for (int i = 1; i < arraysize; i++) {
       _flag[i].i = 0;
     }
   }
-  bool TryLock() {
-    assert(false);
-  }
+  bool TryLock() { assert(false); }
   void Lock(uint32_t apicid) {
     uint64_t cur = __sync_fetch_and_add(&_last, 1) % arraysize;
     while (_flag[cur].i == 0) {
-      asm volatile("":::"memory");
+      asm volatile("" ::: "memory");
     }
     _flag[cur].i = 0;
     _cur = cur;
   }
-  void Unlock(uint32_t apicid) {
-    _flag[(_cur + 1) % arraysize].i = 1;
-  }
+  void Unlock(uint32_t apicid) { _flag[(_cur + 1) % arraysize].i = 1; }
   bool IsNoOneWaiting(uint32_t apicid) {
     return (_cur + 1) % arraysize == _last % arraysize;
   }
+
  private:
   struct Flag {
     int i;
-  } __attribute__ ((aligned (align)));
-  uint64_t _last __attribute__ ((aligned (64))) = 0;
-  uint64_t _cur __attribute__ ((aligned (64))) = 0;
+  } __attribute__((aligned(align)));
+  uint64_t _last __attribute__((aligned(64))) = 0;
+  uint64_t _cur __attribute__((aligned(64))) = 0;
   Flag _flag[arraysize];
-} __attribute__ ((aligned (64)));
+} __attribute__((aligned(64)));
 
-template<int align>
+template <int align>
 class McsSpinLock {
-public:
+ public:
   McsSpinLock() {
     check_align(this);
     if (align == 64) {
@@ -305,8 +292,8 @@ public:
     if (pred != nullptr) {
       qnode->_spin = 1;
       pred->_next = qnode;
-      while(qnode->_spin == 1) {
-        asm volatile("":::"memory");
+      while (qnode->_spin == 1) {
+        asm volatile("" ::: "memory");
       }
     }
   }
@@ -316,8 +303,8 @@ public:
       if (__sync_bool_compare_and_swap(&_tail, qnode, nullptr)) {
         return;
       }
-      while(qnode->_next == nullptr) {
-        asm volatile("":::"memory");
+      while (qnode->_next == nullptr) {
+        asm volatile("" ::: "memory");
       }
     }
     qnode->_next->_spin = 0;
@@ -326,7 +313,8 @@ public:
     auto qnode = &_node[apicid];
     return qnode->_next == nullptr;
   }
-private:
+
+ private:
   struct QueueNode {
     QueueNode() {
       _next = nullptr;
@@ -334,13 +322,13 @@ private:
     }
     QueueNode *_next;
     int _spin;
-  } __attribute__ ((aligned (align)));
-  QueueNode *__attribute__ ((aligned (64))) _tail = nullptr;
+  } __attribute__((aligned(align)));
+  QueueNode *__attribute__((aligned(64))) _tail = nullptr;
   QueueNode _node[37 * 8];
-} __attribute__ ((aligned (64)));
+} __attribute__((aligned(64)));
 
 class TtsSpinLock {
-public:
+ public:
   TtsSpinLock() {
     check_align(this);
     check_align(&_flag);
@@ -352,20 +340,19 @@ public:
     return __sync_bool_compare_and_swap(&_flag, 0, 1);
   }
   void Lock(uint32_t apicid) {
-    while(_flag == 1 || __sync_lock_test_and_set(&_flag, 1) != 0) {
-      asm volatile("":::"memory");
+    while (_flag == 1 || __sync_lock_test_and_set(&_flag, 1) != 0) {
+      asm volatile("" ::: "memory");
     }
   }
-  void Unlock(uint32_t apicid) {
-    _flag = 0;
-  }
-private:
-  volatile unsigned int _flag __attribute__ ((aligned (64))) = 0;
-} __attribute__ ((aligned (64)));
+  void Unlock(uint32_t apicid) { _flag = 0; }
 
-template<class L1, class L2, int kMax>
+ private:
+  volatile unsigned int _flag __attribute__((aligned(64))) = 0;
+} __attribute__((aligned(64)));
+
+template <class L1, class L2, int kMax>
 class ExpSpinLock10 {
-public:
+ public:
   ExpSpinLock10() {
     check_align(this);
     check_align(&_top_lock);
@@ -375,9 +362,7 @@ public:
     check_align(_top_locked);
     check_type_align<Status>();
   }
-  bool TryLock() {
-    assert(false);
-  }
+  bool TryLock() { assert(false); }
   void Lock(uint32_t apicid) {
     uint32_t tileid = apicid / 8;
     uint32_t threadid = apicid % 8;
@@ -393,41 +378,43 @@ public:
     uint32_t threadid = apicid % 8;
 
     _top_locked[tileid].i--;
-    if (_top_locked[tileid].i == 0 && !_second_lock[tileid].IsNoOneWaiting(threadid) && _top_lock.IsNoOneWaiting(tileid)) {
+    if (_top_locked[tileid].i == 0 &&
+        !_second_lock[tileid].IsNoOneWaiting(threadid) &&
+        _top_lock.IsNoOneWaiting(tileid)) {
       _top_locked[tileid].i = kMax;
-    } else if (_top_locked[tileid].i == 0 || _second_lock[tileid].IsNoOneWaiting(threadid)) {
+    } else if (_top_locked[tileid].i == 0 ||
+               _second_lock[tileid].IsNoOneWaiting(threadid)) {
       _top_locked[tileid].i = 0;
       _top_lock.Unlock(tileid);
     }
     _second_lock[tileid].Unlock(threadid);
   }
-private:
+
+ private:
   static const int kSubStructNum = 37;
   L1 _top_lock;
   L2 _second_lock[kSubStructNum];
   struct Status {
     int i = 0;
-  } __attribute__ ((aligned (64)));
+  } __attribute__((aligned(64)));
   Status _top_locked[kSubStructNum];
-} __attribute__ ((aligned (64)));
+} __attribute__((aligned(64)));
 
 class TicketSpinLockA {
-public:
+ public:
   TicketSpinLockA() {
     check_align(this);
     check_align(&_flag);
     check_align(&_cnt);
   }
-  bool TryLock() {
-    assert(false);
-  }
+  bool TryLock() { assert(false); }
   bool Lock(uint32_t apicid) {
     uint64_t x = __sync_fetch_and_add(&_cnt, 1);
-    while(_flag != x) {
+    while (_flag != x) {
       for (uint64_t j = 0; j < x - _flag; j++) {
-        asm volatile("pause;":::"memory");
+        asm volatile("pause;" ::: "memory");
       }
-      asm volatile("":::"memory");
+      asm volatile("" ::: "memory");
     }
     bool f = (_release_cnt == 0) ? true : false;
     _release_cnt = 8;
@@ -440,21 +427,18 @@ public:
     }
     return (_release_cnt == 0) ? true : false;
   }
-  bool IsNoOneWaiting(uint32_t apicid) {
-    return _flag + 1 == _cnt;
-  }
-  void Unlock(uint32_t apicid) {
-    _flag++;
-  }
-private:
-  uint64_t _flag __attribute__ ((aligned (64))) = 1;
-  uint64_t _cnt __attribute__ ((aligned (64))) = 1;
-  int _release_cnt = 0;
-} __attribute__ ((aligned (64)));
+  bool IsNoOneWaiting(uint32_t apicid) { return _flag + 1 == _cnt; }
+  void Unlock(uint32_t apicid) { _flag++; }
 
-template<int align>
+ private:
+  uint64_t _flag __attribute__((aligned(64))) = 1;
+  uint64_t _cnt __attribute__((aligned(64))) = 1;
+  int _release_cnt = 0;
+} __attribute__((aligned(64)));
+
+template <int align>
 class McsSpinLockA {
-public:
+ public:
   McsSpinLockA() {
     check_align(this);
     if (align == 64) {
@@ -475,8 +459,8 @@ public:
     if (pred != nullptr) {
       qnode->_spin = 1;
       pred->_next = qnode;
-      while(qnode->_spin == 1) {
-        asm volatile("":::"memory");
+      while (qnode->_spin == 1) {
+        asm volatile("" ::: "memory");
       }
     }
     bool f = (_release_cnt == 0) ? true : false;
@@ -496,8 +480,8 @@ public:
       if (__sync_bool_compare_and_swap(&_tail, qnode, nullptr)) {
         return;
       }
-      while(qnode->_next == nullptr) {
-        asm volatile("":::"memory");
+      while (qnode->_next == nullptr) {
+        asm volatile("" ::: "memory");
       }
     }
     qnode->_next->_spin = 0;
@@ -506,7 +490,8 @@ public:
     auto qnode = &_node[apicid];
     return qnode->_next == nullptr;
   }
-private:
+
+ private:
   struct QueueNode {
     QueueNode() {
       _next = nullptr;
@@ -514,15 +499,15 @@ private:
     }
     QueueNode *_next;
     int _spin;
-  } __attribute__ ((aligned (align)));
-  QueueNode *__attribute__ ((aligned (64))) _tail = nullptr;
+  } __attribute__((aligned(align)));
+  QueueNode *__attribute__((aligned(64))) _tail = nullptr;
   QueueNode _node[37 * 8];
   int _release_cnt = 0;
-} __attribute__ ((aligned (64)));
+} __attribute__((aligned(64)));
 
-template<class L1, class L2>
+template <class L1, class L2>
 class ExpSpinLock11 {
-public:
+ public:
   ExpSpinLock11() {
     check_align(this);
     check_align(&_top_lock);
@@ -530,9 +515,7 @@ public:
     check_type_align<L1>();
     check_type_align<L2>();
   }
-  bool TryLock() {
-    assert(false);
-  }
+  bool TryLock() { assert(false); }
   void Lock(uint32_t apicid) {
     uint32_t tileid = apicid / 8;
     uint32_t threadid = apicid % 8;
@@ -550,9 +533,9 @@ public:
     }
     _second_lock[tileid].Unlock(threadid);
   }
-private:
+
+ private:
   static const int kSubStructNum = 37;
   L1 _top_lock;
   L2 _second_lock[kSubStructNum];
-} __attribute__ ((aligned (64)));
-
+} __attribute__((aligned(64)));

@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva, hikalium
- * 
+ *
  */
 
 #ifndef __RAPH_LIB_CPU_H__
@@ -39,12 +40,11 @@ enum class CpuPurpose {
 };
 
 class CpuCtrlInterface {
-public:
+ public:
   const int kCpuIdNotFound = -1;
   const int kCpuIdBootProcessor = 0;
-  
-  virtual ~CpuCtrlInterface() {
-  }
+
+  virtual ~CpuCtrlInterface() {}
   virtual void Init() = 0;
   virtual bool IsInitialized() = 0;
   virtual CpuId GetCpuId() = 0;
@@ -57,13 +57,10 @@ public:
 #include <mem/kstack.h>
 
 class CpuCtrl final : public CpuCtrlInterface {
-public:
-  CpuCtrl() {
-  }
+ public:
+  CpuCtrl() {}
   virtual void Init() override;
-  virtual bool IsInitialized() override {
-    return _is_initialized;
-  }
+  virtual bool IsInitialized() override { return _is_initialized; }
   virtual CpuId GetCpuId() override {
     if (!Gdt::IsInitializedPerCpuStruct()) {
       CpuId cpuid(apic_ctrl->GetCpuId());
@@ -71,43 +68,43 @@ public:
     }
     return Gdt::GetCpuId();
   }
-  virtual int GetHowManyCpus() override {
-    return apic_ctrl->GetHowManyCpus();
-  }
-  virtual CpuId RetainCpuIdForPurpose(CpuPurpose p) override; 
+  virtual int GetHowManyCpus() override { return apic_ctrl->GetHowManyCpus(); }
+  virtual CpuId RetainCpuIdForPurpose(CpuPurpose p) override;
   virtual void ReleaseCpuId(CpuId cpuid) override {
     int raw_cpu_id = cpuid.GetRawId();
-    if(_cpu_purpose_count[raw_cpu_id] > 0) _cpu_purpose_count[raw_cpu_id]--;
-    if(_cpu_purpose_count[raw_cpu_id] == 0) {
+    if (_cpu_purpose_count[raw_cpu_id] > 0) _cpu_purpose_count[raw_cpu_id]--;
+    if (_cpu_purpose_count[raw_cpu_id] == 0) {
       _cpu_purpose_map[raw_cpu_id] = CpuPurpose::kNone;
     }
   }
   virtual void AssignCpusNotAssignedToGeneralPurpose() override {
     int len = GetHowManyCpus();
-    for(int i = 0; i < len; i++) {
-      if(_cpu_purpose_map[i] == CpuPurpose::kNone) {
+    for (int i = 0; i < len; i++) {
+      if (_cpu_purpose_map[i] == CpuPurpose::kNone) {
         RetainCpuId(i, CpuPurpose::kGeneralPurpose);
       }
     }
   }
-private:
+
+ private:
   bool _is_initialized = false;
   CpuPurpose *_cpu_purpose_map;
   int *_cpu_purpose_count;
-  // do not count for cpuid:0 (boot processor is always assigned to kLowPriority)
-  int GetCpuIdNotAssigned(){
+  // do not count for cpuid:0 (boot processor is always assigned to
+  // kLowPriority)
+  int GetCpuIdNotAssigned() {
     int len = GetHowManyCpus();
-    for(int i = 0; i < len; i++){
-      if(_cpu_purpose_map[i] == CpuPurpose::kNone) return i;
+    for (int i = 0; i < len; i++) {
+      if (_cpu_purpose_map[i] == CpuPurpose::kNone) return i;
     }
     return kCpuIdNotFound;
   }
   int GetCpuIdLessAssignedFor(CpuPurpose p) {
     int minCount = -1, minId = kCpuIdNotFound;
     int len = GetHowManyCpus();
-    for(int i = 0; i < len; i++) {
-      if(_cpu_purpose_map[i] == p &&
-         (minCount == -1 || _cpu_purpose_count[i] < minCount)){
+    for (int i = 0; i < len; i++) {
+      if (_cpu_purpose_map[i] == p &&
+          (minCount == -1 || _cpu_purpose_count[i] < minCount)) {
         minCount = _cpu_purpose_count[i];
         minId = i;
       }
@@ -115,7 +112,7 @@ private:
     return minId;
   }
   void RetainCpuId(int cpuid, CpuPurpose p) {
-    if(_cpu_purpose_map[cpuid] != p) {
+    if (_cpu_purpose_map[cpuid] != p) {
       _cpu_purpose_map[cpuid] = p;
       _cpu_purpose_count[cpuid] = 0;
     }
@@ -124,7 +121,8 @@ private:
 };
 
 inline bool CpuId::IsValid() {
-  return _rawid >= 0 && (!cpu_ctrl->IsInitialized() || _rawid < cpu_ctrl->GetHowManyCpus());
+  return _rawid >= 0 &&
+         (!cpu_ctrl->IsInitialized() || _rawid < cpu_ctrl->GetHowManyCpus());
 }
 
 inline uint32_t CpuId::GetApicId() {

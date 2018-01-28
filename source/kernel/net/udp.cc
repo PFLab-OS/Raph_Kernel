@@ -32,34 +32,34 @@
 UdpCtrl UdpCtrl::_udp_ctrl;
 extern CpuId network_cpu;
 
-void UdpCtrl::Init() {
-  new (&_udp_ctrl) UdpCtrl;
-}
+void UdpCtrl::Init() { new (&_udp_ctrl) UdpCtrl; }
 
 void UdpCtrl::SetupServer() {
   auto devices = netdev_ctrl->GetNamesOfAllDevices();
   for (size_t i = 0; i < devices->GetLen(); i++) {
     auto dev = netdev_ctrl->GetDeviceInfo((*devices)[i])->device;
-    dev->SetReceiveCallback
-      (network_cpu,
-       make_uptr(new ClassFunction<UdpCtrl, NetDev *>(this, &UdpCtrl::DummyServer, dev)));
+    dev->SetReceiveCallback(network_cpu,
+                            make_uptr(new ClassFunction<UdpCtrl, NetDev *>(
+                                this, &UdpCtrl::DummyServer, dev)));
   }
 }
 
 void UdpCtrl::Send(uptr<UdpCtrl::Packet> packet) {
   auto full_packet = make_uptr(new UdpCtrl::FullPacket);
-  uint32_t dest_addr_int = ((packet->dest_ip_addr)[3] << 24) |
-    ((packet->dest_ip_addr)[2] << 16) |
-    ((packet->dest_ip_addr)[1] << 8) | (packet->dest_ip_addr)[0];
+  uint32_t dest_addr_int =
+      ((packet->dest_ip_addr)[3] << 24) | ((packet->dest_ip_addr)[2] << 16) |
+      ((packet->dest_ip_addr)[1] << 8) | (packet->dest_ip_addr)[0];
   full_packet->packet = packet;
-  full_packet->dev = arp_table->Search(dest_addr_int, full_packet->dest_mac_addr);
+  full_packet->dev =
+      arp_table->Search(dest_addr_int, full_packet->dest_mac_addr);
   if (full_packet->dev == nullptr) {
     gtty->Printf("cannot solve mac address from ARP Table.\n");
     return;
   }
   uint32_t source_addr_int;
   assert(full_packet->dev->GetIpv4Address(source_addr_int));
-  *(reinterpret_cast<uint32_t *>(full_packet->source_ip_addr)) = source_addr_int;
+  *(reinterpret_cast<uint32_t *>(full_packet->source_ip_addr)) =
+      source_addr_int;
   Send(full_packet);
 }
 
@@ -173,7 +173,8 @@ void UdpCtrl::Send(uptr<UdpCtrl::FullPacket> full_packet) {
   offset += 2;
 
   // data
-  memcpy(buf + offset, full_packet->packet->data->GetRawPtr(), full_packet->packet->data->GetLen());
+  memcpy(buf + offset, full_packet->packet->data->GetRawPtr(),
+         full_packet->packet->data->GetLen());
   offset += full_packet->packet->data->GetLen();
 
   // length
@@ -266,40 +267,36 @@ void UdpCtrl::DummyServer(NetDev *dev) {
   my_addr[2] = (my_addr_int >> 16) & 0xff;
   my_addr[3] = (my_addr_int >> 24) & 0xff;
 
-  if (rpacket->GetBuffer()[12] == 0x08 &&
-      rpacket->GetBuffer()[13] == 0x06) {
+  if (rpacket->GetBuffer()[12] == 0x08 && rpacket->GetBuffer()[13] == 0x06) {
     // ARP
 
     // received packet
     if (rpacket->GetBuffer()[21] == 0x02) {
       // ARP Reply
       uint32_t target_addr_int =
-        (rpacket->GetBuffer()[31] << 24) |
-        (rpacket->GetBuffer()[30] << 16) |
-        (rpacket->GetBuffer()[29] << 8) |
-        rpacket->GetBuffer()[28];
-      arp_table->Set(target_addr_int, rpacket->GetBuffer() + 22,
-                     dev);
+          (rpacket->GetBuffer()[31] << 24) | (rpacket->GetBuffer()[30] << 16) |
+          (rpacket->GetBuffer()[29] << 8) | rpacket->GetBuffer()[28];
+      arp_table->Set(target_addr_int, rpacket->GetBuffer() + 22, dev);
     }
     if (rpacket->GetBuffer()[21] == 0x01 &&
         (memcmp(rpacket->GetBuffer() + 38, my_addr, 4) == 0)) {
       // ARP Request
       uint8_t data[] = {
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // Target MAC Address
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // Source MAC Address
-        0x08, 0x06,                          // Type: ARP
-        // ARP Packet
-        0x00, 0x01,  // HardwareType: Ethernet
-        0x08, 0x00,  // ProtocolType: IPv4
-        0x06,        // HardwareLength
-        0x04,        // ProtocolLength
-        0x00, 0x02,  // Operation: ARP Reply
-        0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00,                    // Source Hardware Address
-        0x00, 0x00, 0x00, 0x00,  // Source Protocol Address
-        0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00,                    // Target Hardware Address
-        0x00, 0x00, 0x00, 0x00,  // Target Protocol Address
+          0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // Target MAC Address
+          0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // Source MAC Address
+          0x08, 0x06,                          // Type: ARP
+          // ARP Packet
+          0x00, 0x01,  // HardwareType: Ethernet
+          0x08, 0x00,  // ProtocolType: IPv4
+          0x06,        // HardwareLength
+          0x04,        // ProtocolLength
+          0x00, 0x02,  // Operation: ARP Reply
+          0x00, 0x00, 0x00, 0x00, 0x00,
+          0x00,                    // Source Hardware Address
+          0x00, 0x00, 0x00, 0x00,  // Source Protocol Address
+          0x00, 0x00, 0x00, 0x00, 0x00,
+          0x00,                    // Target Hardware Address
+          0x00, 0x00, 0x00, 0x00,  // Target Protocol Address
       };
       memcpy(data, rpacket->GetBuffer() + 6, 6);
       static_cast<DevEthernet *>(dev)->GetEthAddr(data + 6);
@@ -318,8 +315,7 @@ void UdpCtrl::DummyServer(NetDev *dev) {
   }
 
   uint8_t *eth_data = rpacket->GetBuffer() + 14;
-  if (rpacket->GetBuffer()[12] == 0x08 &&
-      rpacket->GetBuffer()[13] == 0x00) {
+  if (rpacket->GetBuffer()[12] == 0x08 && rpacket->GetBuffer()[13] == 0x00) {
     // IPv4
 
     do {
@@ -364,7 +360,8 @@ void UdpCtrl::DummyServer(NetDev *dev) {
       daddress[3] = eth_data[19];
 
       uint8_t broadcast[4] = {0xFF, 0xFF, 0xFF, 0xFF};
-      if (!memcmp(daddress, my_addr, 4) == 0 && !memcmp(daddress, broadcast, 4) == 0) {
+      if (!memcmp(daddress, my_addr, 4) == 0 &&
+          !memcmp(daddress, broadcast, 4) == 0) {
         break;
       }
 
@@ -389,7 +386,8 @@ void UdpCtrl::DummyServer(NetDev *dev) {
         packet->dev = dev;
 
         for (int i = 0; i < kSocketNum; i++) {
-          if (_socket[i].protocol != nullptr && _socket[i].port == packet->dest_port) {
+          if (_socket[i].protocol != nullptr &&
+              _socket[i].port == packet->dest_port) {
             _socket[i].protocol->GetRxQueue().Push(packet);
             break;
           }

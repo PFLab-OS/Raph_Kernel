@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
- * 
+ *
  */
 
 #pragma once
@@ -29,13 +30,13 @@
 // do not lock huge area
 // assert these restrictions
 class SpinLock2 final : public LockInterface {
-public:
+ public:
   SpinLock2() {}
   virtual ~SpinLock2() {}
   virtual void Lock() override {
     uint64_t my_ticket = __sync_fetch_and_add(&_next_ticket, 1);
-    while(my_ticket != _cur_ticket) {
-      asm volatile("":::"memory");
+    while (my_ticket != _cur_ticket) {
+      asm volatile("" ::: "memory");
     }
     _iflag = disable_interrupt();
   }
@@ -48,12 +49,13 @@ public:
     if (_next_ticket != _cur_ticket) {
       return ReturnState::kError;
     }
-    return __sync_bool_compare_and_swap(&_next_ticket, my_ticket, my_ticket + 1) ? ReturnState::kOk : ReturnState::kError;
+    return __sync_bool_compare_and_swap(&_next_ticket, my_ticket, my_ticket + 1)
+               ? ReturnState::kOk
+               : ReturnState::kError;
   }
-  virtual bool IsLocked() override {
-    return _cur_ticket != _next_ticket;
-  }
-private:
+  virtual bool IsLocked() override { return _cur_ticket != _next_ticket; }
+
+ private:
   bool _iflag;
   uint64_t _cur_ticket = 0;
   uint64_t _next_ticket = 0;

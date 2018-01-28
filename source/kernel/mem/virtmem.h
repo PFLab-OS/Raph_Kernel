@@ -36,81 +36,85 @@
 class MemCtrl;
 
 class KernelVirtmemCtrl {
-public:
+ public:
   void Init();
   virt_addr Alloc(size_t size);
   virt_addr AllocZ(size_t size);
   void Free(virt_addr addr);
   virtual virt_addr Sbrk(int64_t);
 
-
   void InitKernelMemorySpace();
   void ReleaseLowMemory();
 
   static const int kKernelPml4tEntryNum = 256;
-private:
+
+ private:
   friend MemCtrl;
-  //FIXME: make static
-  //Physical address of pml4t's kernel entry
+  // FIXME: make static
+  // Physical address of pml4t's kernel entry
   /*static*/ entry_type pml4t_entry[kKernelPml4tEntryNum];
   // For treating heap memory
   virt_addr _heap_allocated_end;
   virt_addr _brk_end;
   virt_addr _heap_limit;
-  //TODO: Check if this lock need on many core machine.
+  // TODO: Check if this lock need on many core machine.
   SpinLock _lock;
 };
 
 class UserVirtmemCtrl {
-public:
+ public:
   static const int kUserPml4tEntryNum = 256;
-private:
+
+ private:
   friend MemCtrl;
-  //virtual virt_addr Sbrk(int64_t);
+  // virtual virt_addr Sbrk(int64_t);
   entry_type entry[kUserPml4tEntryNum];
 };
 
-static_assert((UserVirtmemCtrl::kUserPml4tEntryNum + KernelVirtmemCtrl::kKernelPml4tEntryNum) 
-    == 4096/sizeof(uint64_t),"Error: Invalid number of Pml4t entry.");
+static_assert((UserVirtmemCtrl::kUserPml4tEntryNum +
+               KernelVirtmemCtrl::kKernelPml4tEntryNum) ==
+                  4096 / sizeof(uint64_t),
+              "Error: Invalid number of Pml4t entry.");
 
-// Processing Pml4t 
+// Processing Pml4t
 class PagingCtrl;
 class PhysAddr;
 class MemCtrl {
-public:
-  MemCtrl() : _pml4t(GetPml4tAddr()) {
-  }
-  ~MemCtrl() {
-    MemCtrl::_kvc.Free(_pt_mem);
-  }
+ public:
+  MemCtrl() : _pml4t(GetPml4tAddr()) {}
+  ~MemCtrl() { MemCtrl::_kvc.Free(_pt_mem); }
   void Init();
 
-  void GetTranslationEntries(virt_addr vaddr, entry_type *pml4e, entry_type *pdpte, entry_type *pde, entry_type *pte);
-  bool Map1GPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr pst_flag, phys_addr page_flag);
-  bool MapPhysAddrToVirtAddr(virt_addr vaddr, PhysAddr &paddr, size_t size, phys_addr pst_flag, phys_addr page_flag);
+  void GetTranslationEntries(virt_addr vaddr, entry_type *pml4e,
+                             entry_type *pdpte, entry_type *pde,
+                             entry_type *pte);
+  bool Map1GPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr pst_flag,
+                           phys_addr page_flag);
+  bool MapPhysAddrToVirtAddr(virt_addr vaddr, PhysAddr &paddr, size_t size,
+                             phys_addr pst_flag, phys_addr page_flag);
   bool IsVirtAddrMapped(virt_addr vaddr);
   void ConvertVirtMemToPhysMem(virt_addr vaddr, PhysAddr &paddr);
 
-  KernelVirtmemCtrl* GetKernelVirtmemCtrl() {
-    return &_kvc;
-  }
+  KernelVirtmemCtrl *GetKernelVirtmemCtrl() { return &_kvc; }
 
-private:
-  PageTable* GetPml4tAddr();
-  PageTable* const _pml4t;
-  //This variable save the memory addr used to get pml4t addr.
+ private:
+  PageTable *GetPml4tAddr();
+  PageTable *const _pml4t;
+  // This variable save the memory addr used to get pml4t addr.
   virt_addr _pt_mem;
 
-  //FIXME:Make static
+  // FIXME:Make static
   /*static*/ KernelVirtmemCtrl _kvc;
   UserVirtmemCtrl _uvc;
-  PagingCtrl* paging_ctrl;
+  PagingCtrl *paging_ctrl;
 };
 
-template <typename ptr> inline virt_addr ptr2virtaddr(ptr *addr) {
+template <typename ptr>
+inline virt_addr ptr2virtaddr(ptr *addr) {
   return reinterpret_cast<virt_addr>(addr);
 }
 
-template <typename ptr> inline ptr *addr2ptr(virt_addr addr) {
+template <typename ptr>
+inline ptr *addr2ptr(virt_addr addr) {
   return reinterpret_cast<ptr *>(addr);
 }

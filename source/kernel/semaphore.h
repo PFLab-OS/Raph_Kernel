@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
- * 
+ *
  */
 
 #ifndef __RAPH_KERNEL_SEMAPHORE_H__
@@ -27,15 +28,13 @@
 #include <spinlock.h>
 
 class Semaphore {
-public:
-  Semaphore(uint32_t max) : _max(max) {
-    _cur = _max;
-  }
+ public:
+  Semaphore(uint32_t max) : _max(max) { _cur = _max; }
   Semaphore(uint32_t max, uint32_t cur) : _max(max), _cur(cur) {
     kassert(_max >= _cur);
   }
   void Acquire() {
-    while(true) {
+    while (true) {
       Locker locker(_lock);
       if (_cur > 0) {
         _cur--;
@@ -57,9 +56,9 @@ public:
     kassert(_cur < _max);
     _cur++;
   }
-  virtual ~Semaphore() {
-  }
-private:
+  virtual ~Semaphore() {}
+
+ private:
   Semaphore();
   SpinLock _lock;
   const uint32_t _max;

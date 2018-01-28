@@ -14,7 +14,8 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
  *
@@ -30,17 +31,16 @@
 // you should allocate struct array to different place and
 // manage this array by RingBuffer. In this case, T must be
 // a pointer to the struct.
-template<class T, int S>
+template <class T, int S>
 class RingBuffer {
-public:
+ public:
   RingBuffer() {
     for (int i = 0; i < S; i++) {
       _push_flags[i] = 0;
       _pop_flags[i] = 0;
     }
   }
-  virtual ~RingBuffer() {
-  }
+  virtual ~RingBuffer() {}
   // return false if full
   bool Push(T data) __attribute__((warn_unused_result)) {
     if (!CheckCnt(_push_resource_cnt)) {
@@ -54,26 +54,28 @@ public:
     kassert(_phead <= index);
     if (_phead < index) {
       if (_push_flags[GetArrayIndex(index)] == 0 &&
-          __sync_lock_test_and_set(&_push_flags[GetArrayIndex(index)], 1) == 0) {
+          __sync_lock_test_and_set(&_push_flags[GetArrayIndex(index)], 1) ==
+              0) {
         return true;
       }
-      while(_phead != index) {
-        asm volatile("":::"memory");
+      while (_phead != index) {
+        asm volatile("" ::: "memory");
       }
     }
     kassert(_phead == index);
     _push_flags[GetArrayIndex(index)] = 0;
-    
+
     uint64_t cindex;
     for (cindex = index + 1; cindex < index + S; cindex++) {
       if (_push_flags[GetArrayIndex(cindex)] == 0 &&
-          __sync_lock_test_and_set(&_push_flags[GetArrayIndex(cindex)], 1) == 0) {
+          __sync_lock_test_and_set(&_push_flags[GetArrayIndex(cindex)], 1) ==
+              0) {
         break;
       }
       _push_flags[GetArrayIndex(cindex)] = 0;
     }
     kassert(__sync_add_and_fetch(&_pop_resource_cnt, cindex - index) <= S);
-    
+
     _phead = cindex;
     return true;
   }
@@ -93,38 +95,34 @@ public:
           __sync_lock_test_and_set(&_pop_flags[GetArrayIndex(index)], 1) == 0) {
         return true;
       }
-      while(_ptail != index) {
-        asm volatile("":::"memory");
+      while (_ptail != index) {
+        asm volatile("" ::: "memory");
       }
     }
     kassert(_ptail == index);
     _pop_flags[GetArrayIndex(index)] = 0;
-    
+
     uint64_t cindex;
     for (cindex = index + 1; cindex < index + S; cindex++) {
       if (_pop_flags[GetArrayIndex(cindex)] == 0 &&
-          __sync_lock_test_and_set(&_pop_flags[GetArrayIndex(cindex)], 1) == 0) {
+          __sync_lock_test_and_set(&_pop_flags[GetArrayIndex(cindex)], 1) ==
+              0) {
         break;
       }
       _pop_flags[GetArrayIndex(cindex)] = 0;
     }
     kassert(__sync_add_and_fetch(&_push_resource_cnt, cindex - index) <= S);
-    
+
     _ptail = cindex;
     return true;
   }
-  bool IsEmpty() {
-    return _head == _tail;
-  }
-  bool IsFull() {
-    return _tail + S == _head;
-  }
-  constexpr static int GetBufSize() {
-    return S;
-  }
-private:
+  bool IsEmpty() { return _head == _tail; }
+  bool IsFull() { return _tail + S == _head; }
+  constexpr static int GetBufSize() { return S; }
+
+ private:
   bool CheckCnt(int &cnt) {
-    while(true) {
+    while (true) {
       int x = cnt;
       if (x <= 0) {
         return false;
@@ -134,9 +132,7 @@ private:
       }
     }
   }
-  static uint64_t GetArrayIndex(uint64_t index) {
-    return index % S;
-  }
+  static uint64_t GetArrayIndex(uint64_t index) { return index % S; }
 
   static_assert(S > 0, "");
   T _buffer[S];

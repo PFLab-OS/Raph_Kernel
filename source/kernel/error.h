@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
- * 
+ *
  */
 
 #ifndef __RAPH_LIB_ERROR_H__
@@ -25,49 +26,41 @@
 
 #include <raph.h>
 
-template<class T>
+template <class T>
 class ErrorContainer {
-public:
+ public:
   ErrorContainer(T &data) {
     _data = data;
     _error = false;
   }
-  ErrorContainer() {
-    _error = true;
-  }
+  ErrorContainer() { _error = true; }
   T &GetValue() {
     if (_error) {
       kernel_panic("ErrorContainer", "failed to get value.");
     }
     return _data;
   }
-  bool IsError() {
-    return _error;
-  }
-private:
+  bool IsError() { return _error; }
+
+ private:
   T _data;
   bool _error;
 };
 
-template<class T>
+template <class T>
 class ErrorContainer<T *> {
-public:
-  ErrorContainer(T *data) {
-    _data = data;
-  }
-  ErrorContainer() {
-    _data = nullptr;
-  }
+ public:
+  ErrorContainer(T *data) { _data = data; }
+  ErrorContainer() { _data = nullptr; }
   T *GetValue() {
     if (_data == nullptr) {
       kernel_panic("ErrorContainer", "failed to get value.");
     }
     return _data;
   }
-  bool IsError() {
-    return (_data == nullptr);
-  }
-private:
+  bool IsError() { return (_data == nullptr); }
+
+ private:
   T *_data;
 };
 

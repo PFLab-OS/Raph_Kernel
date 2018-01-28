@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
- * 
+ *
  */
 
 #pragma once
@@ -32,13 +33,14 @@ class Functional {
     kFunctioning,
     kNotFunctioning,
   };
-  Functional() {
-  }
-  virtual ~Functional() {
-  }
+  Functional() {}
+  virtual ~Functional() {}
   void SetFunction(CpuId cpuid, uptr<GenericFunction<>> func) {
-    _thread = ThreadCtrl::GetCtrl(cpuid).AllocNewThread(Thread::StackState::kShared);
-    _thread->CreateOperator().SetFunc(make_uptr(new ClassFunction<Functional, void *>(this, &Functional::Handle, nullptr)));
+    _thread =
+        ThreadCtrl::GetCtrl(cpuid).AllocNewThread(Thread::StackState::kShared);
+    _thread->CreateOperator().SetFunc(
+        make_uptr(new ClassFunction<Functional, void *>(
+            this, &Functional::Handle, nullptr)));
     _func = func;
   }
   void Block() {
@@ -52,11 +54,13 @@ class Functional {
       WakeupFunction();
     }
   }
-protected:
+
+ protected:
   void WakeupFunction();
   // check whether Functional needs to process function
   virtual bool ShouldFunc() = 0;
-private:
+
+ private:
   void Handle(void *);
   uptr<GenericFunction<>> _func;
   uptr<Thread> _thread;
@@ -66,7 +70,8 @@ private:
 
 inline void Functional::WakeupFunction() {
   if (!_thread.IsNull()) {
-    if (__sync_lock_test_and_set(&_state, FunctionState::kFunctioning) == FunctionState::kNotFunctioning) {
+    if (__sync_lock_test_and_set(&_state, FunctionState::kFunctioning) ==
+        FunctionState::kNotFunctioning) {
       _thread->CreateOperator().Schedule();
     }
   }
@@ -76,7 +81,7 @@ inline void Functional::Handle(void *) {
   for (int i = 0; i < 10; i++) {
     // not to loop infidentry
     // it will lock cpu and block other tasks
-    
+
     if (!ShouldFunc() || _block_flag) {
       break;
     }
@@ -88,6 +93,7 @@ inline void Functional::Handle(void *) {
   if (ShouldFunc() && !_block_flag) {
     _thread->CreateOperator().Schedule();
   } else {
-    kassert(__sync_lock_test_and_set(&_state, FunctionState::kNotFunctioning) == FunctionState::kFunctioning);
+    kassert(__sync_lock_test_and_set(&_state, FunctionState::kNotFunctioning) ==
+            FunctionState::kFunctioning);
   }
 }

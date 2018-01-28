@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Yuchiki, LEDiA
- * 
+ *
  */
 
 #pragma once
@@ -28,19 +29,15 @@
 
 class LegacyKeyboard : Keyboard {
  public:
-  LegacyKeyboard() {
-    memset(_pushed_keys, 0, kKeyBufSize);
-  }
+  LegacyKeyboard() { memset(_pushed_keys, 0, kKeyBufSize); }
   static void Attach();
-  virtual ~LegacyKeyboard() {
-  }
+  virtual ~LegacyKeyboard() {}
+
  private:
   static const char kScanCode[128];
   static const int kDataPort = 0x60;
   void SetupSub() override;
-  void Write(uint8_t &code) {
-  }
-  static void Handler (Regs *reg, void *arg);
+  void Write(uint8_t &code) {}
+  static void Handler(Regs *reg, void *arg);
   char _pushed_keys[kKeyBufSize];
 };
-

@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
- * 
+ *
  */
 
 #ifndef __RAPH_KERNEL_MP_H__
@@ -28,22 +29,22 @@
 #include <apic.h>
 
 class MultiProcCtrl {
-public:
-  MultiProcCtrl() {
-  }
+ public:
+  MultiProcCtrl() {}
   void Init() {
-    _containers = system_memory_space->GetKernelVirtmemCtrl()->Alloc(sizeof(class Container) * apic_ctrl->GetHowManyCpus());
-    for(int i = 0; i < apic_ctrl->GetHowManyCpus(); i++) {
-      new(&_containers[i]) Container;
+    _containers = system_memory_space->GetKernelVirtmemCtrl()->Alloc(
+        sizeof(class Container) * apic_ctrl->GetHowManyCpus());
+    for (int i = 0; i < apic_ctrl->GetHowManyCpus(); i++) {
+      new (&_containers[i]) Container;
     }
   }
-private:
+
+ private:
   class Container {
-  public:
-    Container() {
-    }
+   public:
+    Container() {}
   };
   Container *_containers;
 };
 
-#endif // __RAPH_KERNEL_MP_H__
+#endif  // __RAPH_KERNEL_MP_H__

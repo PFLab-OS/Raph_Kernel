@@ -34,14 +34,16 @@ void FrameBuffer::Init() {
   multiboot_ctrl->SetupFrameBuffer(&_fb_info);
   assert(_fb_info.bpp == 24 || _fb_info.bpp == 32);
   _bytes_per_pixel = _fb_info.bpp / 8;
-  
-  _back_buffer = new uint8_t[_fb_info.width * _fb_info.height * _bytes_per_pixel];
+
+  _back_buffer =
+      new uint8_t[_fb_info.width * _fb_info.height * _bytes_per_pixel];
   memset(_back_buffer, 0, _fb_info.width * _fb_info.height * _bytes_per_pixel);
-  
+
   // check alignments
   assert((reinterpret_cast<size_t>(_back_buffer) % sizeof(uint64_t)) == 0);
   assert((reinterpret_cast<size_t>(_fb_info.buffer) % sizeof(uint64_t)) == 0);
-  assert(((_fb_info.width * _fb_info.height * _bytes_per_pixel) % sizeof(uint64_t)) == 0);
+  assert(((_fb_info.width * _fb_info.height * _bytes_per_pixel) %
+          sizeof(uint64_t)) == 0);
 
   // Load font for normal area
   {
@@ -99,7 +101,8 @@ void FrameBuffer::StringRingBuffer::Write(char32_t c) {
   }
 }
 
-int FrameBuffer::CachedFont::PrintChar(uint8_t *vram, int vramXSize, int px, int py, char32_t c) {
+int FrameBuffer::CachedFont::PrintChar(uint8_t *vram, int vramXSize, int px,
+                                       int py, char32_t c) {
   if (!_is_initialized || _bytesPerPixel == 0) return 0;
   uint8_t *font;
   int fontWidth;
@@ -130,7 +133,7 @@ void FrameBuffer::CachedFont::UpdateCache() {
   //
   _tmpFont = new uint8_t[GetMaxh() * GetMaxw() * _bytesPerPixel];
   _fontCache =
-    new uint8_t[GetMaxh() * GetMaxw() * _bytesPerPixel * _cachedCount];
+      new uint8_t[GetMaxh() * GetMaxw() * _bytesPerPixel * _cachedCount];
   _widthChache = new int[_cachedCount];
   for (uint32_t k = 0; k < _cachedCount; k++) {
     uint8_t *font = getFontCache(k);
@@ -194,7 +197,8 @@ void FrameBuffer::PrintShell(const char *str) {
 void FrameBuffer::Refresh() {
   if (_timeup_draw) {
     if (ThreadCtrl::IsInitialized() &&
-        ThreadCtrl::GetCtrl(_draw_cpuid).GetState() != ThreadCtrl::QueueState::kNotStarted) {
+        ThreadCtrl::GetCtrl(_draw_cpuid).GetState() !=
+            ThreadCtrl::QueueState::kNotStarted) {
       DisableTimeupDraw();
     } else {
       if (timer->ReadTime() >= _last_time_refresh + 33 * 1000) {
@@ -206,7 +210,6 @@ void FrameBuffer::Refresh() {
     _needs_redraw = true;
   }
 }
-
 
 void FrameBuffer::DoPeriodicRefresh(void *) {
   Locker locker(_lock);
@@ -220,9 +223,11 @@ void FrameBuffer::DisableTimeupDraw() {
   _timeup_draw = false;
   _needs_redraw = true;
 
-  _refresh_thread = ThreadCtrl::GetCtrl(_draw_cpuid).AllocNewThread(Thread::StackState::kShared);
-  _refresh_thread->CreateOperator().SetFunc(make_uptr(new ClassFunction<FrameBuffer, void *>(
-      this, &FrameBuffer::DoPeriodicRefresh, nullptr)));
+  _refresh_thread = ThreadCtrl::GetCtrl(_draw_cpuid)
+                        .AllocNewThread(Thread::StackState::kShared);
+  _refresh_thread->CreateOperator().SetFunc(
+      make_uptr(new ClassFunction<FrameBuffer, void *>(
+          this, &FrameBuffer::DoPeriodicRefresh, nullptr)));
   ScheduleRefresh();
 }
 
@@ -254,10 +259,10 @@ void FrameBuffer::DrawScreen() {
     }
   }
   for (int y = 0; y < _font_inverted.GetMaxh(); y++) {
-    memset(_back_buffer +
-               (xoffset + (_fb_info.height - y - 1) * _fb_info.width) *
-                   (_fb_info.bpp / 8),
-           0xff, (_fb_info.width - xoffset) * (_fb_info.bpp / 8));
+    memset(
+        _back_buffer + (xoffset + (_fb_info.height - y - 1) * _fb_info.width) *
+                           (_fb_info.bpp / 8),
+        0xff, (_fb_info.width - xoffset) * (_fb_info.bpp / 8));
   }
 
   DrawScreenSub();
@@ -292,7 +297,8 @@ void FrameBuffer::DrawScreenSub() {
         assert((count & 3) == 0);
 
         for (int i = 0; i < count / 8; i++) {
-          reinterpret_cast<uint64_t *>(_back_buffer)[i] = reinterpret_cast<uint64_t *>(_back_buffer)[i + offset / 8];
+          reinterpret_cast<uint64_t *>(_back_buffer)[i] =
+              reinterpret_cast<uint64_t *>(_back_buffer)[i + offset / 8];
         }
       }
     } else {
@@ -340,8 +346,11 @@ void FrameBuffer::DrawScreenSub() {
   }
 
   // copy back buffer to front buffer
-  for (size_t offset = 0; offset < (_fb_info.width * _fb_info.height * _bytes_per_pixel) / sizeof(uint64_t); offset++) {
-    reinterpret_cast<uint64_t *>(_fb_info.buffer)[offset] = reinterpret_cast<uint64_t *>(_back_buffer)[offset];
+  for (size_t offset = 0;
+       offset <
+       (_fb_info.width * _fb_info.height * _bytes_per_pixel) / sizeof(uint64_t);
+       offset++) {
+    reinterpret_cast<uint64_t *>(_fb_info.buffer)[offset] =
+        reinterpret_cast<uint64_t *>(_back_buffer)[offset];
   }
 }
-

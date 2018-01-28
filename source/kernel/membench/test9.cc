@@ -211,47 +211,50 @@ static void func107_sub() {
   static volatile int flag = 0;
   __sync_fetch_and_add(&flag, 1);
 
-  auto thread = ThreadCtrl::GetCurrentCtrl().AllocNewThread(Thread::StackState::kShared);
+  auto thread =
+      ThreadCtrl::GetCurrentCtrl().AllocNewThread(Thread::StackState::kShared);
   do {
     auto t_op = thread->CreateOperator();
-    t_op.SetFunc(make_uptr(new Function<void *>([](void *) {
-            if (flag != cpu_ctrl->GetHowManyCpus()) {
-              ThreadCtrl::GetCurrentThreadOperator().Schedule();
-            } else {
-              sync_5.Do();
-              if (cpu_ctrl->GetCpuId().GetApicId() == 0) {
-                StringTty tty(30);
-                uint64_t rsp;
-                asm volatile("movq %%rsp, %0" : "=r"(rsp));
-                tty.Printf("#rsp: %llx\n", rsp);
-                int argc = 4;
-                const char *argv[] = {"udpsend", ip_addr, port, tty.GetRawPtr()};
-                udpsend(argc, argv);
-                flag = 0;
-              }
-              if (kWorkloadB) {
-                for (int work = 1; work <= kPrivateWork; work += 500) {
-                  func107_sub2<L>(32, work);
-                }
-              } else {
-                for (int cpunum = 8; cpunum <= 32; cpunum += 8) {
-                  func107_sub2<L>(cpunum, 0);
-                }
-              }
-              int apicid = cpu_ctrl->GetCpuId().GetApicId();
-              if (apicid == 0) {
-                StringTty tty(4);
-                tty.Printf("\n");
-                int argc = 4;
-                const char *argv[] = {"udpsend", ip_addr, port, tty.GetRawPtr()};
-                udpsend(argc, argv);
-                flag = 0;
-              }
-              sync_6.Do();
+    t_op.SetFunc(make_uptr(new Function<void *>(
+        [](void *) {
+          if (flag != cpu_ctrl->GetHowManyCpus()) {
+            ThreadCtrl::GetCurrentThreadOperator().Schedule();
+          } else {
+            sync_5.Do();
+            if (cpu_ctrl->GetCpuId().GetApicId() == 0) {
+              StringTty tty(30);
+              uint64_t rsp;
+              asm volatile("movq %%rsp, %0" : "=r"(rsp));
+              tty.Printf("#rsp: %llx\n", rsp);
+              int argc = 4;
+              const char *argv[] = {"udpsend", ip_addr, port, tty.GetRawPtr()};
+              udpsend(argc, argv);
+              flag = 0;
             }
-          }, nullptr)));
+            if (kWorkloadB) {
+              for (int work = 1; work <= kPrivateWork; work += 500) {
+                func107_sub2<L>(32, work);
+              }
+            } else {
+              for (int cpunum = 8; cpunum <= 32; cpunum += 8) {
+                func107_sub2<L>(cpunum, 0);
+              }
+            }
+            int apicid = cpu_ctrl->GetCpuId().GetApicId();
+            if (apicid == 0) {
+              StringTty tty(4);
+              tty.Printf("\n");
+              int argc = 4;
+              const char *argv[] = {"udpsend", ip_addr, port, tty.GetRawPtr()};
+              udpsend(argc, argv);
+              flag = 0;
+            }
+            sync_6.Do();
+          }
+        },
+        nullptr)));
     t_op.Schedule();
-  } while(0);
+  } while (0);
   thread->Join();
 }
 
@@ -325,4 +328,3 @@ void membench9() {
     gtty->Flush();
   }
 }
-

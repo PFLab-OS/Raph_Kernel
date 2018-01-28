@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
- * 
+ *
  */
 
 #pragma once
@@ -28,10 +29,10 @@
 #include <list.h>
 
 class ArpTable {
-public:
+ public:
   void Set(uint32_t ip_addr, uint8_t *hw_addr, NetDev *dev) {
     auto iter = arp_table.GetBegin();
-    while(!iter.IsNull()) {
+    while (!iter.IsNull()) {
       if ((*iter)->ip_addr == ip_addr) {
         memcpy((*iter)->hw_addr, hw_addr, 6);
         (*iter)->dev = dev;
@@ -43,7 +44,7 @@ public:
   }
   NetDev *Search(uint32_t ip_addr, uint8_t *hw_addr) {
     auto iter = arp_table.GetBegin();
-    while(!iter.IsNull()) {
+    while (!iter.IsNull()) {
       if ((*iter)->ip_addr == ip_addr) {
         memcpy(hw_addr, (*iter)->hw_addr, 6);
         return (*iter)->dev;
@@ -52,7 +53,8 @@ public:
     }
     return nullptr;
   }
-private:
+
+ private:
   struct ArpEntry {
     ArpEntry(uint32_t ip_addr_, uint8_t *hw_addr_, NetDev *dev_) {
       ip_addr = ip_addr_;

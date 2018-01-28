@@ -5,8 +5,18 @@ jobs:
        - image: ubuntu:16.04
      steps:
        - run:
+          name: install basic tools
+          command: apt-get update; apt-get install -y wget software-properties-common
+       - run:
+          name: install llvm-toolchain (clang-format)
+          command: |
+            wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -
+            add-apt-repository "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-6.0 main"
+            apt-get update; apt-get install -y clang-format-6.0
+            ln -s /usr/bin/clang-format-6.0 /usr/bin/clang-format
+       - run:
           name: install dependencies
-          command: apt-get update; apt-get install -y git make g++ python musl-tools
+          command: apt-get install -y git make g++ python musl-tools
        - checkout
        - run:
           name: check if debug code remains

@@ -415,7 +415,6 @@ static void arp_scan_on_device(const char *dev_name, uint32_t base_ipv4_addr,
             gtty->Printf("target eth: ");
             PrintEthernetAddr(data + 0);
             gtty->Printf("\n");
-
           },
           container_)));
       t_op.Schedule();

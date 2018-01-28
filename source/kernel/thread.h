@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
- * 
+ *
  */
 
 #pragma once
@@ -34,8 +35,9 @@
 
 class ThreadCtrl;
 
-class Thread final : public QueueContainer<Thread>, public CustomPtrObjInterface {
-public:
+class Thread final : public QueueContainer<Thread>,
+                     public CustomPtrObjInterface {
+ public:
   enum class State {
     kRunning,
     kWaitingInQueue,
@@ -50,16 +52,18 @@ public:
     kShared,
   };
   Thread() = delete;
-  Thread(ThreadCtrl *ctrl) : QueueContainer<Thread>(this), _op_obj(this), _wq_ele(this), _ctrl(ctrl), _stack_state(StackState::kShared) {
-  }
-  virtual ~Thread() {
-    kassert(_state == State::kOutOfQueue);
-  }
+  Thread(ThreadCtrl *ctrl)
+      : QueueContainer<Thread>(this),
+        _op_obj(this),
+        _wq_ele(this),
+        _ctrl(ctrl),
+        _stack_state(StackState::kShared) {}
+  virtual ~Thread() { kassert(_state == State::kOutOfQueue); }
   void Join();
 
   class OperatorObj;
   class Operator final {
-  public:
+   public:
     Operator() = delete;
     Operator(const Operator &op);
     Operator &operator=(const Operator &op) = delete;
@@ -68,36 +72,31 @@ public:
     void Schedule();
     void Schedule(int us);
     void SetFunc(uptr<GenericFunction<>> func);
-    State GetState() {
-      return _obj._thread->GetState();
-    }
-    State Stop() {
-      return _obj._thread->Stop();
-    }
-  private:
+    State GetState() { return _obj._thread->GetState(); }
+    State Stop() { return _obj._thread->Stop(); }
+
+   private:
     friend class Thread;
     explicit Operator(Thread::OperatorObj &obj);
-  
-    OperatorObj& _obj;
+
+    OperatorObj &_obj;
   };
   Operator CreateOperator();
-private:
+
+ private:
   friend class PtrObj<Thread, true>;
   virtual void Delete() override;
   void Wait();
   State Stop();
-  State GetState() {
-    return _state;
-  }
+  State GetState() { return _state; }
   void Schedule();
   void Schedule(int us);
 
   //  friend class Operator;
   class OperatorObj {
-  public:
+   public:
     OperatorObj() = delete;
-    OperatorObj(Thread *thread) : _thread(thread) {
-    }
+    OperatorObj(Thread *thread) : _thread(thread) {}
     int _cnt = 0;
     Thread *_thread;
   } _op_obj;
@@ -108,31 +107,30 @@ private:
   //
   void Init(StackState sstate);
   void Execute();
-  class WaitQueueElement final : public OrderedQueueContainer<WaitQueueElement, Time> {
-  public:
+  class WaitQueueElement final
+      : public OrderedQueueContainer<WaitQueueElement, Time> {
+   public:
     WaitQueueElement() = delete;
-    WaitQueueElement(Thread *thread) : OrderedQueueContainer<WaitQueueElement, Time>(this), _thread(thread) {
-    }
-    Thread *GetThread() {
-      return _thread;
-    }
-  private:
+    WaitQueueElement(Thread *thread)
+        : OrderedQueueContainer<WaitQueueElement, Time>(this),
+          _thread(thread) {}
+    Thread *GetThread() { return _thread; }
+
+   private:
     Thread *_thread;
   };
-  WaitQueueElement &GetWqElement() {
-    return _wq_ele;
-  }
+  WaitQueueElement &GetWqElement() { return _wq_ele; }
   State SetState(State state) {
     return __sync_lock_test_and_set(&_state, state);
   }
   bool CompareAndSetState(State old_state, State new_state) {
     return __sync_bool_compare_and_swap(&_state, old_state, new_state);
   }
-  
+
   uptr<GenericFunction<>> _func;
   State _state = State::kDeleting;
   WaitQueueElement _wq_ele;
-  ThreadCtrl * const _ctrl;
+  ThreadCtrl *const _ctrl;
   Thread *_waiting_thread = nullptr;
 
   //
@@ -148,9 +146,7 @@ private:
     assert(_using_return_buf == 1);
     _using_return_buf = 0;
   }
-  static void InitBufferSub(Thread *t) {
-    t->InitBuffer();
-  }
+  static void InitBufferSub(Thread *t) { t->InitBuffer(); }
   void InitBuffer();
   void Release();
   StackState _stack_state;
@@ -161,23 +157,17 @@ private:
 };
 
 class ThreadCtrl {
-public:
+ public:
   static void Init();
-  static ThreadCtrl &GetCurrentCtrl() {
-    return GetCtrl(cpu_ctrl->GetCpuId());
-  }
-  static ThreadCtrl &GetCtrl(CpuId id) {
-    return _thread_ctrl[id.GetRawId()];
-  }
+  static ThreadCtrl &GetCurrentCtrl() { return GetCtrl(cpu_ctrl->GetCpuId()); }
+  static ThreadCtrl &GetCtrl(CpuId id) { return _thread_ctrl[id.GetRawId()]; }
   void Run();
   enum class QueueState {
     kNotStarted,
     kRunning,
     kSleeping,
   };
-  QueueState GetState() {
-    return _state;
-  }
+  QueueState GetState() { return _state; }
   uptr<Thread> AllocNewThread(Thread::StackState sstate);
   static Thread::Operator GetCurrentThreadOperator() {
     Thread *thread = GetCtrl(cpu_ctrl->GetCpuId())._current_thread;
@@ -189,10 +179,9 @@ public:
     kassert(thread != nullptr);
     thread->Wait();
   }
-  static bool IsInitialized() {
-    return _is_initialized;
-  }
-private:
+  static bool IsInitialized() { return _is_initialized; }
+
+ private:
   friend class Thread;
   //
   // functions for Thread
@@ -206,9 +195,8 @@ private:
   static Thread *GetCurrentThread() {
     return GetCtrl(cpu_ctrl->GetCpuId())._current_thread;
   }
-  
-  ThreadCtrl() {
-  }
+
+  ThreadCtrl() {}
   ~ThreadCtrl();
   void InitSub(CpuId id);
 
@@ -216,20 +204,19 @@ private:
   static bool _is_initialized;
 
   static const int kMaxThreadNum = 100;
-  static const int kExecutionInterval = 1000; // us
-  
+  static const int kExecutionInterval = 1000;  // us
+
   Thread **_threads;
   QueueState _state = QueueState::kNotStarted;
   Queue<Thread> _run_queue;
   OrderedQueue<Thread::WaitQueueElement, Time> _wait_queue;
   class IdleThreads {
-  public:
-    void Init() {
-      _buf = new RingBuffer<Thread *, kMaxThreadNum>;
-    }
+   public:
+    void Init() { _buf = new RingBuffer<Thread *, kMaxThreadNum>; }
     void Push(Thread *t);
     void Pop(Thread *&t);
-  private:
+
+   private:
     RingBuffer<Thread *, kMaxThreadNum> *_buf;
   } _idle_threads;
   Thread *_current_thread = nullptr;
@@ -265,15 +252,13 @@ inline Thread::Operator::Operator(const Thread::Operator &op) : _obj(op._obj) {
   __sync_fetch_and_add(&_obj._cnt, 1);
 }
 
-inline Thread::Operator::~Operator() {
-  __sync_fetch_and_sub(&_obj._cnt, 1);
-}
+inline Thread::Operator::~Operator() { __sync_fetch_and_sub(&_obj._cnt, 1); }
 
 inline Thread::Operator::Operator(Thread::OperatorObj &obj) : _obj(obj) {
   __sync_fetch_and_add(&_obj._cnt, 1);
 }
 
-inline void Thread::Operator::Schedule() { 
+inline void Thread::Operator::Schedule() {
   auto that = _obj._thread;
   that->Schedule();
 }
@@ -286,4 +271,3 @@ inline void Thread::Operator::Schedule(int us) {
 inline void Thread::Operator::SetFunc(uptr<GenericFunction<>> func) {
   _obj._thread->_func = func;
 }
-

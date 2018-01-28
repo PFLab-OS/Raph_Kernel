@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
- * 
+ *
  */
 
 #include "thread.h"
@@ -37,9 +38,10 @@ void Thread::Init(Thread::StackState sstate) {
     _stack = KernelStackCtrl::GetCtrl().AllocThreadStack(cpu_ctrl->GetCpuId());
     AllocReturnBuf();
     if (setjmp(_return_buf) == 0) {
-      asm volatile("movq %0, %%rsp;"
-                   "call *%1;"
-                   :: "r"(_stack), "r"(&Thread::InitBufferSub), "D"(this));
+      asm volatile(
+          "movq %0, %%rsp;"
+          "call *%1;" ::"r"(_stack),
+          "r"(&Thread::InitBufferSub), "D"(this));
       kernel_panic("Thread", "unexpectedly ended.");
     } else {
       // return from Thread::InitBuffer()
@@ -56,9 +58,10 @@ void Thread::InitBuffer() {
   } else {
     // call from Thread::SwitchTo()
     do {
-      auto dummy_op = CreateOperator(); // increment op count during executing the function
+      auto dummy_op =
+          CreateOperator();  // increment op count during executing the function
       _func->Execute();
-    } while(0);
+    } while (0);
     ReleaseReturnBuf();
     longjmp(_return_buf, 1);
   }
@@ -86,27 +89,28 @@ void Thread::Execute() {
 void Thread::Join() {
   kassert(_waiting_thread == nullptr);
   _waiting_thread = ThreadCtrl::GetCurrentThread();
-  kassert(ThreadCtrl::GetCurrentThread()->SetState(State::kOutOfQueue) == State::kRunning);
+  kassert(ThreadCtrl::GetCurrentThread()->SetState(State::kOutOfQueue) ==
+          State::kRunning);
   ThreadCtrl::WaitCurrentThread();
 }
 
 Thread::State Thread::Stop() {
-  while(true) {
+  while (true) {
     auto state = _state;
-    switch(state) {
-    case State::kWaitingInQueue:
-      if (CompareAndSetState(state, State::kStopping)) {
-        __sync_fetch_and_sub(&_op_obj._cnt, 1);
+    switch (state) {
+      case State::kWaitingInQueue:
+        if (CompareAndSetState(state, State::kStopping)) {
+          __sync_fetch_and_sub(&_op_obj._cnt, 1);
+          return state;
+        }
+        break;
+      case State::kRunning:
+      case State::kOutOfQueue:
+      case State::kStopping:
         return state;
-      }
-      break;
-    case State::kRunning:
-    case State::kOutOfQueue:
-    case State::kStopping:
-      return state;
-    default:
-      kassert(false);
-      break;
+      default:
+        kassert(false);
+        break;
     }
   }
 }
@@ -125,27 +129,26 @@ void Thread::Delete() {
     Stop();
   }
   kassert(_op_obj._cnt == 0);
-  while(true) {
-    switch(_state) {
-    case State::kStopping:
-      if (CompareAndSetState(State::kStopping, State::kWaitingToDelete)) {
+  while (true) {
+    switch (_state) {
+      case State::kStopping:
+        if (CompareAndSetState(State::kStopping, State::kWaitingToDelete)) {
+          return;
+        }
+        break;
+      case State::kOutOfQueue:
+        CompareAndSetState(State::kOutOfQueue, State::kDeleting);
+        _ctrl->PushToIdle(this);
         return;
-      }
-      break;
-    case State::kOutOfQueue:
-      CompareAndSetState(State::kOutOfQueue, State::kDeleting);
-      _ctrl->PushToIdle(this);
-      return;
-    case State::kRunning:
-    case State::kWaitingInQueue:
-    case State::kWaitingToDelete:
-    case State::kDeleting:
-    case State::kIdle:
-      kassert(false);
+      case State::kRunning:
+      case State::kWaitingInQueue:
+      case State::kWaitingToDelete:
+      case State::kDeleting:
+      case State::kIdle:
+        kassert(false);
     }
   }
 }
-
 
 int Thread::SwitchTo() {
   kassert(_stack_state == StackState::kIndependent);
@@ -188,7 +191,7 @@ void ThreadCtrl::Init() {
 void ThreadCtrl::InitSub(CpuId id) {
   _cpuid = id;
   _idle_threads.Init();
-  _threads = new Thread*[kMaxThreadNum];
+  _threads = new Thread *[kMaxThreadNum];
   for (int i = 0; i < kMaxThreadNum; i++) {
     _threads[i] = new Thread(this);
     _idle_threads.Push(_threads[i]);
@@ -216,45 +219,45 @@ void ThreadCtrl::IdleThreads::Pop(Thread *&t) {
 
 bool ThreadCtrl::ScheduleRunQueue(Thread *thread) {
   auto state = thread->SetState(Thread::State::kWaitingInQueue);
-  switch(state) {
-  case Thread::State::kOutOfQueue:
-  case Thread::State::kRunning:
-    _run_queue.Push(thread);
-    return true;
-  case Thread::State::kWaitingInQueue:
-  case Thread::State::kStopping:
-    return false;
-  default:
-    kassert(false);
+  switch (state) {
+    case Thread::State::kOutOfQueue:
+    case Thread::State::kRunning:
+      _run_queue.Push(thread);
+      return true;
+    case Thread::State::kWaitingInQueue:
+    case Thread::State::kStopping:
+      return false;
+    default:
+      kassert(false);
   }
 }
 
 bool ThreadCtrl::ScheduleWaitQueue(Thread *thread, int us) {
   kassert(us != 0);
   auto state = thread->SetState(Thread::State::kWaitingInQueue);
-  switch(state) {
-  case Thread::State::kOutOfQueue:
-  case Thread::State::kRunning:
-    _wait_queue.Push(&thread->GetWqElement(), timer->ReadTime() + us);
-    return true;
-  case Thread::State::kWaitingInQueue:
-  case Thread::State::kStopping:
-    return false;
-  default:
-    kassert(false);
+  switch (state) {
+    case Thread::State::kOutOfQueue:
+    case Thread::State::kRunning:
+      _wait_queue.Push(&thread->GetWqElement(), timer->ReadTime() + us);
+      return true;
+    case Thread::State::kWaitingInQueue:
+    case Thread::State::kStopping:
+      return false;
+    default:
+      kassert(false);
   }
 }
 
 void ThreadCtrl::Run() {
   apic_ctrl->SetupTimer(kExecutionInterval);
 
-  while(true) {
+  while (true) {
     Thread *cur;
     bool wait_queue_empty = true;
     Time t;
 
     _state = QueueState::kRunning;
-    
+
     while (true) {
       if (wait_queue_empty) {
         wait_queue_empty = _wait_queue.IsEmpty();
@@ -278,35 +281,39 @@ void ThreadCtrl::Run() {
         // no more threads on run queue
         break;
       }
-      if (cur->CompareAndSetState(Thread::State::kStopping, Thread::State::kOutOfQueue)) {
+      if (cur->CompareAndSetState(Thread::State::kStopping,
+                                  Thread::State::kOutOfQueue)) {
       } else {
-        if (cur->CompareAndSetState(Thread::State::kWaitingInQueue, Thread::State::kRunning)) {
+        if (cur->CompareAndSetState(Thread::State::kWaitingInQueue,
+                                    Thread::State::kRunning)) {
           kassert(_current_thread == nullptr);
           _current_thread = cur;
           cur->Execute();
           _current_thread = nullptr;
-          cur->CompareAndSetState(Thread::State::kRunning, Thread::State::kOutOfQueue);
+          cur->CompareAndSetState(Thread::State::kRunning,
+                                  Thread::State::kOutOfQueue);
         }
-        for(bool flag = false; !flag; ) {
+        for (bool flag = false; !flag;) {
           auto state = cur->GetState();
-          switch(state) {
-          case Thread::State::kWaitingToDelete:
-            kassert(cur->SetState(Thread::State::kDeleting) == Thread::State::kWaitingToDelete);
-            PushToIdle(cur);
-            flag = true;
-            break;
-          case Thread::State::kStopping:
-            if (cur->CompareAndSetState(state, Thread::State::kOutOfQueue)) {
+          switch (state) {
+            case Thread::State::kWaitingToDelete:
+              kassert(cur->SetState(Thread::State::kDeleting) ==
+                      Thread::State::kWaitingToDelete);
+              PushToIdle(cur);
               flag = true;
-            }
-            break;
-          case Thread::State::kDeleting:
-          case Thread::State::kRunning:
-            kassert(false);
-            break;
-          default:
-            flag = true;
-            break;
+              break;
+            case Thread::State::kStopping:
+              if (cur->CompareAndSetState(state, Thread::State::kOutOfQueue)) {
+                flag = true;
+              }
+              break;
+            case Thread::State::kDeleting:
+            case Thread::State::kRunning:
+              kassert(false);
+              break;
+            default:
+              flag = true;
+              break;
           }
         }
       }

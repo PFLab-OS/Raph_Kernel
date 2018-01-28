@@ -62,12 +62,14 @@ IoReturnState V6FileSystem::BlockCtrl::Alloc(BlockIndex &index) {
   Locker locker(_lock);
   for (uint32_t b = 0; b < _sb.size; b += 8) {
     uint8_t flag;
-    RETURN_IF_IOSTATE_NOT_OK(_storage.Read(flag, _sb.bmapstart * kBlockSize + b / 8));
+    RETURN_IF_IOSTATE_NOT_OK(
+        _storage.Read(flag, _sb.bmapstart * kBlockSize + b / 8));
     for (int bi = 0; bi < 8; bi++) {
       uint8_t m = 1 << bi;
       if ((flag & m) == 0) {
         flag |= m;
-        RETURN_IF_IOSTATE_NOT_OK(_storage.Write(flag, _sb.bmapstart * kBlockSize + b / 8));
+        RETURN_IF_IOSTATE_NOT_OK(
+            _storage.Write(flag, _sb.bmapstart * kBlockSize + b / 8));
         RETURN_IF_IOSTATE_NOT_OK(ClearBlock(b));
         index = b;
         return IoReturnState::kOk;
@@ -158,11 +160,13 @@ IoReturnState V6FileSystem::MapBlock(V6fsInode &inode, int index,
     }
 
     uint32_t entry;
-    RETURN_IF_IOSTATE_NOT_OK(_storage.Read(entry, addr * kBlockSize + index * sizeof(uint32_t)));
+    RETURN_IF_IOSTATE_NOT_OK(
+        _storage.Read(entry, addr * kBlockSize + index * sizeof(uint32_t)));
     addr = entry;
     if (addr == 0) {
       RETURN_IF_IOSTATE_NOT_OK(_block_ctrl.Alloc(addr));
-      RETURN_IF_IOSTATE_NOT_OK(_storage.Write(entry, addr * kBlockSize + index * sizeof(uint32_t)));
+      RETURN_IF_IOSTATE_NOT_OK(
+          _storage.Write(entry, addr * kBlockSize + index * sizeof(uint32_t)));
     }
 
     return IoReturnState::kOk;

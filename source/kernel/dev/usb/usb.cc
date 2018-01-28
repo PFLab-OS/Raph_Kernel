@@ -14,12 +14,14 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
- * 
- * reference: Universal Host Controller Interface (UHCI) Design Guide REVISION 1.1
- * 
+ *
+ * reference: Universal Host Controller Interface (UHCI) Design Guide
+ * REVISION 1.1
+ *
  */
 
 #include "usb.h"
@@ -37,13 +39,15 @@ DevUsb *DevUsbController::InitDevices(int addr) {
 }
 
 void UsbCtrl::Init() {
-  new(&_ctrl) UsbCtrl;
-    
+  new (&_ctrl) UsbCtrl;
+
   constexpr int dr_buf_size = _ctrl._dr_buf.GetBufSize();
   PhysAddr dr_buf_paddr;
-  static_assert(dr_buf_size * sizeof(DeviceRequest) <= PagingCtrl::kPageSize, "");
+  static_assert(dr_buf_size * sizeof(DeviceRequest) <= PagingCtrl::kPageSize,
+                "");
   physmem_ctrl->Alloc(dr_buf_paddr, PagingCtrl::kPageSize);
-  DeviceRequest *req_array = addr2ptr<DeviceRequest>(dr_buf_paddr.GetVirtAddr());
+  DeviceRequest *req_array =
+      addr2ptr<DeviceRequest>(dr_buf_paddr.GetVirtAddr());
   for (int i = 0; i < dr_buf_size; i++) {
     kassert(_ctrl._dr_buf.Push(&req_array[i]));
   }
@@ -52,7 +56,7 @@ void UsbCtrl::Init() {
 }
 
 void DevUsb::LoadDeviceDescriptor() {
-  while(true) {
+  while (true) {
     UsbCtrl::DeviceRequest *request = nullptr;
 
     bool release = true;
@@ -61,19 +65,22 @@ void DevUsb::LoadDeviceDescriptor() {
         break;
       }
 
-      request->MakePacketOfGetDescriptorRequest(UsbCtrl::DescriptorType::kDevice, 0, sizeof(UsbCtrl::DeviceDescriptor));
+      request->MakePacketOfGetDescriptorRequest(
+          UsbCtrl::DescriptorType::kDevice, 0,
+          sizeof(UsbCtrl::DeviceDescriptor));
 
-      if (!SendControlTransfer(request, ptr2virtaddr(&_device_desc), sizeof(UsbCtrl::DeviceDescriptor))) {
+      if (!SendControlTransfer(request, ptr2virtaddr(&_device_desc),
+                               sizeof(UsbCtrl::DeviceDescriptor))) {
         break;
       }
 
       release = false;
-    } while(0);
+    } while (0);
 
     if (!release) {
       break;
     }
-    
+
     if (request != nullptr) {
       assert(UsbCtrl::GetCtrl().ReuseDeviceRequest(request));
     }
@@ -82,7 +89,7 @@ void DevUsb::LoadDeviceDescriptor() {
 
 void DevUsb::LoadCombinedDescriptors() {
   UsbCtrl::ConfigurationDescriptor config_desc;
-  while(true) {
+  while (true) {
     UsbCtrl::DeviceRequest *request = nullptr;
 
     bool retry = true;
@@ -90,15 +97,18 @@ void DevUsb::LoadCombinedDescriptors() {
       if (!UsbCtrl::GetCtrl().AllocDeviceRequest(request)) {
         break;
       }
-      
-      request->MakePacketOfGetDescriptorRequest(UsbCtrl::DescriptorType::kConfiguration, 0, sizeof(UsbCtrl::ConfigurationDescriptor));
 
-      if (!SendControlTransfer(request, ptr2virtaddr(&config_desc), sizeof(UsbCtrl::ConfigurationDescriptor))) {
+      request->MakePacketOfGetDescriptorRequest(
+          UsbCtrl::DescriptorType::kConfiguration, 0,
+          sizeof(UsbCtrl::ConfigurationDescriptor));
+
+      if (!SendControlTransfer(request, ptr2virtaddr(&config_desc),
+                               sizeof(UsbCtrl::ConfigurationDescriptor))) {
         break;
       }
 
       retry = false;
-    } while(0);
+    } while (0);
 
     if (request != nullptr) {
       assert(UsbCtrl::GetCtrl().ReuseDeviceRequest(request));
@@ -110,7 +120,7 @@ void DevUsb::LoadCombinedDescriptors() {
   }
 
   _combined_desc = new uint8_t[config_desc.total_length];
-  while(true) {
+  while (true) {
     UsbCtrl::DeviceRequest *request = nullptr;
 
     bool retry = true;
@@ -118,14 +128,16 @@ void DevUsb::LoadCombinedDescriptors() {
       if (!UsbCtrl::GetCtrl().AllocDeviceRequest(request)) {
         break;
       }
-      request->MakePacketOfGetDescriptorRequest(UsbCtrl::DescriptorType::kConfiguration, 0, config_desc.total_length);
-      
-      if (!SendControlTransfer(request, ptr2virtaddr(_combined_desc), config_desc.total_length)) {
+      request->MakePacketOfGetDescriptorRequest(
+          UsbCtrl::DescriptorType::kConfiguration, 0, config_desc.total_length);
+
+      if (!SendControlTransfer(request, ptr2virtaddr(_combined_desc),
+                               config_desc.total_length)) {
         break;
       }
 
       retry = false;
-    } while(0);
+    } while (0);
 
     if (request != nullptr) {
       assert(UsbCtrl::GetCtrl().ReuseDeviceRequest(request));
@@ -135,16 +147,18 @@ void DevUsb::LoadCombinedDescriptors() {
       break;
     }
   }
-
 }
 
-UsbCtrl::DummyDescriptor *DevUsb::GetDescriptorInCombinedDescriptors(UsbCtrl::DescriptorType type, int desc_index) {
+UsbCtrl::DummyDescriptor *DevUsb::GetDescriptorInCombinedDescriptors(
+    UsbCtrl::DescriptorType type, int desc_index) {
   assert(desc_index >= 0);
 
-  UsbCtrl::ConfigurationDescriptor *config_desc = reinterpret_cast<UsbCtrl::ConfigurationDescriptor *>(_combined_desc);
+  UsbCtrl::ConfigurationDescriptor *config_desc =
+      reinterpret_cast<UsbCtrl::ConfigurationDescriptor *>(_combined_desc);
 
   for (uint16_t index = 0; index < config_desc->total_length;) {
-    UsbCtrl::DummyDescriptor *dummy_desc = reinterpret_cast<UsbCtrl::DummyDescriptor *>(_combined_desc + index);
+    UsbCtrl::DummyDescriptor *dummy_desc =
+        reinterpret_cast<UsbCtrl::DummyDescriptor *>(_combined_desc + index);
     assert(dummy_desc->length != 0);
     if (static_cast<UsbCtrl::DescriptorType>(dummy_desc->type) == type) {
       if (desc_index == 0) {
@@ -155,17 +169,20 @@ UsbCtrl::DummyDescriptor *DevUsb::GetDescriptorInCombinedDescriptors(UsbCtrl::De
     }
     index += dummy_desc->length;
   }
-  
+
   assert(false);
 }
 
-int DevUsb::GetDescriptorNumInCombinedDescriptors(UsbCtrl::DescriptorType type) {
+int DevUsb::GetDescriptorNumInCombinedDescriptors(
+    UsbCtrl::DescriptorType type) {
   int num = 0;
-  
-  UsbCtrl::ConfigurationDescriptor *config_desc = reinterpret_cast<UsbCtrl::ConfigurationDescriptor *>(_combined_desc);
-  
+
+  UsbCtrl::ConfigurationDescriptor *config_desc =
+      reinterpret_cast<UsbCtrl::ConfigurationDescriptor *>(_combined_desc);
+
   for (uint16_t index = 0; index < config_desc->total_length;) {
-    UsbCtrl::DummyDescriptor *dummy_desc = reinterpret_cast<UsbCtrl::DummyDescriptor *>(_combined_desc + index);
+    UsbCtrl::DummyDescriptor *dummy_desc =
+        reinterpret_cast<UsbCtrl::DummyDescriptor *>(_combined_desc + index);
     if (static_cast<UsbCtrl::DescriptorType>(dummy_desc->type) == type) {
       num++;
     }
@@ -175,20 +192,26 @@ int DevUsb::GetDescriptorNumInCombinedDescriptors(UsbCtrl::DescriptorType type) 
   return num;
 }
 
-void DevUsb::SetupInterruptTransfer(int num_td, uint8_t *buffer, uptr<GenericFunction<uptr<Array<uint8_t>>>> func) {
-  UsbCtrl::EndpointDescriptor *ed0 = GetEndpointDescriptorInCombinedDescriptors(0);
+void DevUsb::SetupInterruptTransfer(
+    int num_td, uint8_t *buffer,
+    uptr<GenericFunction<uptr<Array<uint8_t>>>> func) {
+  UsbCtrl::EndpointDescriptor *ed0 =
+      GetEndpointDescriptorInCombinedDescriptors(0);
   assert(ed0->GetDirection() == UsbCtrl::PacketIdentification::kIn);
   _interrupt_endpoint = new InterruptEndpoint(this, ed0);
 
   _interrupt_endpoint->Setup(num_td, buffer, func);
 }
 
-void DevUsb::InterruptEndpoint::Setup(int num_td, uint8_t *buffer, uptr<GenericFunction<uptr<Array<uint8_t>>>> func) {
-  while(!_obj_reserved.IsFull()) {
-    assert(_obj_reserved.Push(make_uptr(new Array<uint8_t>(_ed->GetMaxPacketSize()))));
+void DevUsb::InterruptEndpoint::Setup(
+    int num_td, uint8_t *buffer,
+    uptr<GenericFunction<uptr<Array<uint8_t>>>> func) {
+  while (!_obj_reserved.IsFull()) {
+    assert(_obj_reserved.Push(
+        make_uptr(new Array<uint8_t>(_ed->GetMaxPacketSize()))));
   }
 
-  _manager = _dev->_controller->SetupInterruptTransfer(_ed->GetEndpointNumber(), _dev->_addr, _ed->GetInterval(), _ed->GetDirection(), _ed->GetMaxPacketSize(), num_td, buffer, func);
+  _manager = _dev->_controller->SetupInterruptTransfer(
+      _ed->GetEndpointNumber(), _dev->_addr, _ed->GetInterval(),
+      _ed->GetDirection(), _ed->GetMaxPacketSize(), num_td, buffer, func);
 }
-
-

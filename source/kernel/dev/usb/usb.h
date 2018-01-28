@@ -14,12 +14,13 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
- * 
+ *
  * reference: Universal Serial Bus Specification Revision 1.1
- * 
+ *
  */
 
 #pragma once
@@ -40,7 +41,7 @@
 // payload size.
 
 class UsbCtrl {
-public:
+ public:
   // see Table 9-4 Standard Request Codes
   enum class RequestCode : uint8_t {
     kGetStatus = 0,
@@ -69,19 +70,20 @@ public:
     kSetup = 0b10,
   };
 
-  static PacketIdentification ReversePacketIdentification(PacketIdentification pid) {
-    switch(pid) {
-    case PacketIdentification::kOut: {
-      return PacketIdentification::kIn;
-    }
-    case PacketIdentification::kIn: {
-      return PacketIdentification::kOut;
-    }
-    default:
-      assert(false);
+  static PacketIdentification ReversePacketIdentification(
+      PacketIdentification pid) {
+    switch (pid) {
+      case PacketIdentification::kOut: {
+        return PacketIdentification::kIn;
+      }
+      case PacketIdentification::kIn: {
+        return PacketIdentification::kOut;
+      }
+      default:
+        assert(false);
     }
   }
-  
+
   // see Table 9-5 Descriptor Types
   enum class DescriptorType : uint8_t {
     kDevice = 0x1,
@@ -90,10 +92,10 @@ public:
     kInterface = 0x4,
     kEndpoint = 0x5,
   };
-  
+
   // see Table 9-7 Standard Device Descriptor
   class DeviceDescriptor {
-  public:
+   public:
     uint8_t length;
     uint8_t type;
     uint16_t usb_release_number;
@@ -113,7 +115,7 @@ public:
 
   // see Table 9-8 Standard Configuration Descriptor
   class ConfigurationDescriptor {
-  public:
+   public:
     uint8_t length;
     uint8_t type;
     uint16_t total_length;
@@ -127,7 +129,7 @@ public:
 
   // see Table 9-9 Standard Interface Descriptor
   class InterfaceDescriptor {
-  public:
+   public:
     uint8_t length;
     uint8_t type;
     uint8_t interface_number;
@@ -142,23 +144,18 @@ public:
 
   // see Table 9-10 Standard Endpoint Desciptor
   class EndpointDescriptor {
-  public:
+   public:
     TransferType GetTransferType() {
       return static_cast<TransferType>(attributes & 0b11);
     }
-    uint8_t GetEndpointNumber() {
-      return address & 0b1111;
-    }
+    uint8_t GetEndpointNumber() { return address & 0b1111; }
     PacketIdentification GetDirection() {
       return static_cast<PacketIdentification>(address >> 7);
     }
-    uint16_t GetMaxPacketSize() {
-      return max_packet_size;
-    }
-    uint8_t GetInterval() {
-      return interval;
-    }
-  private:
+    uint16_t GetMaxPacketSize() { return max_packet_size; }
+    uint8_t GetInterval() { return interval; }
+
+   private:
     uint8_t length;
     uint8_t type;
     uint8_t address;
@@ -169,7 +166,7 @@ public:
   static_assert(sizeof(EndpointDescriptor) == 7, "");
 
   class DummyDescriptor {
-  public:
+   public:
     uint8_t length;
     uint8_t type;
   } __attribute__((__packed__));
@@ -177,11 +174,10 @@ public:
 
   // see Table 9-2
   class DeviceRequest {
-  public:
-    phys_addr GetPhysAddr() {
-      return v2p(ptr2virtaddr(this));
-    }
-    void MakePacketOfGetDescriptorRequest(DescriptorType desc_type, uint16_t index, uint8_t length) {
+   public:
+    phys_addr GetPhysAddr() { return v2p(ptr2virtaddr(this)); }
+    void MakePacketOfGetDescriptorRequest(DescriptorType desc_type,
+                                          uint16_t index, uint8_t length) {
       // see 9.4.3
       _request_type = 0b10000000;
       _request = static_cast<uint8_t>(RequestCode::kGetDescriptor);
@@ -197,7 +193,8 @@ public:
       _index = 0;
       _length = 0;
     }
-    void MakePacket(uint8_t request_type, uint8_t request, uint16_t value, uint16_t index, uint16_t length) {
+    void MakePacket(uint8_t request_type, uint8_t request, uint16_t value,
+                    uint16_t index, uint16_t length) {
       _request_type = request_type;
       _request = request;
       _value = value;
@@ -205,9 +202,11 @@ public:
       _length = length;
     }
     PacketIdentification GetDirection() {
-      return (_request_type & 0b10000000) != 0 ? PacketIdentification::kIn : PacketIdentification::kOut;
+      return (_request_type & 0b10000000) != 0 ? PacketIdentification::kIn
+                                               : PacketIdentification::kOut;
     }
-  private:
+
+   private:
     uint8_t _request_type;
     uint8_t _request;
     uint16_t _value;
@@ -227,7 +226,8 @@ public:
   bool ReuseDeviceRequest(DeviceRequest *request) {
     return _dr_buf.Push(request);
   }
-private:
+
+ private:
   static UsbCtrl _ctrl;
   static bool _is_initialized;
 
@@ -237,24 +237,28 @@ private:
 class DevUsb;
 
 class DevUsbController {
-public:
+ public:
   class Manager {
-  public:
-    Manager() {
-    }
-    virtual ~Manager() {
-    }
+   public:
+    Manager() {}
+    virtual ~Manager() {}
   };
-  virtual bool SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data, size_t data_size, int device_addr) = 0;
-  virtual sptr<Manager> SetupInterruptTransfer(uint8_t endpt_address, int device_addr, int interval, UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td, uint8_t *buffer, uptr<GenericFunction<uptr<Array<uint8_t>>>> func) = 0;
+  virtual bool SendControlTransfer(UsbCtrl::DeviceRequest *request,
+                                   virt_addr data, size_t data_size,
+                                   int device_addr) = 0;
+  virtual sptr<Manager> SetupInterruptTransfer(
+      uint8_t endpt_address, int device_addr, int interval,
+      UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td,
+      uint8_t *buffer, uptr<GenericFunction<uptr<Array<uint8_t>>>> func) = 0;
   DevUsb *InitDevices(int addr);
-private:
-  template<class T>
+
+ private:
+  template <class T>
   DevUsb *_InitDevices(int addr) {
     return T::InitUsb(this, addr);
   }
 
-  template<class T1, class T2, class... Rest>
+  template <class T1, class T2, class... Rest>
   DevUsb *_InitDevices(int addr) {
     DevUsb *dev = T1::InitUsb(this, addr);
     if (dev == nullptr) {
@@ -269,70 +273,69 @@ private:
 // child class of DevUsb must implement a following function.
 // static DevUsb *InitUsb(DevUsbController *controller, int addr);
 class DevUsb {
-public:
-  DevUsb(DevUsbController *controller, int addr) : _controller(controller), _addr(addr) {
-  }
-  ~DevUsb() {
-    delete[] _combined_desc;
-  }
-protected:
-  void Init() {
-    InitSub();
-  }
+ public:
+  DevUsb(DevUsbController *controller, int addr)
+      : _controller(controller), _addr(addr) {}
+  ~DevUsb() { delete[] _combined_desc; }
+
+ protected:
+  void Init() { InitSub(); }
   virtual void InitSub() = 0;
-  bool SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data, size_t data_size) {
+  bool SendControlTransfer(UsbCtrl::DeviceRequest *request, virt_addr data,
+                           size_t data_size) {
     return _controller->SendControlTransfer(request, data, data_size, _addr);
   }
   void LoadDeviceDescriptor();
   void LoadCombinedDescriptors();
-  UsbCtrl::DeviceDescriptor *GetDeviceDescriptor() {
-    return &_device_desc;
+  UsbCtrl::DeviceDescriptor *GetDeviceDescriptor() { return &_device_desc; }
+  UsbCtrl::InterfaceDescriptor *GetInterfaceDescriptorInCombinedDescriptors(
+      int desc_index) {
+    return reinterpret_cast<UsbCtrl::InterfaceDescriptor *>(
+        GetDescriptorInCombinedDescriptors(UsbCtrl::DescriptorType::kInterface,
+                                           desc_index));
   }
-  UsbCtrl::InterfaceDescriptor *GetInterfaceDescriptorInCombinedDescriptors(int desc_index) {
-    return reinterpret_cast<UsbCtrl::InterfaceDescriptor *>(GetDescriptorInCombinedDescriptors(UsbCtrl::DescriptorType::kInterface, desc_index));
-  }
-  UsbCtrl::EndpointDescriptor *GetEndpointDescriptorInCombinedDescriptors(int desc_index) {
-    return reinterpret_cast<UsbCtrl::EndpointDescriptor *>(GetDescriptorInCombinedDescriptors(UsbCtrl::DescriptorType::kEndpoint, desc_index));
+  UsbCtrl::EndpointDescriptor *GetEndpointDescriptorInCombinedDescriptors(
+      int desc_index) {
+    return reinterpret_cast<UsbCtrl::EndpointDescriptor *>(
+        GetDescriptorInCombinedDescriptors(UsbCtrl::DescriptorType::kEndpoint,
+                                           desc_index));
   }
   int GetDescriptorNumInCombinedDescriptors(UsbCtrl::DescriptorType type);
-  void SetupInterruptTransfer(int num_td, uint8_t *buffer, uptr<GenericFunction<uptr<Array<uint8_t>>>> func);
-  int GetAddr() {
-    return _addr;
-  }
-  DevUsbController * const GetController() {
-    return _controller;
-  }
+  void SetupInterruptTransfer(int num_td, uint8_t *buffer,
+                              uptr<GenericFunction<uptr<Array<uint8_t>>>> func);
+  int GetAddr() { return _addr; }
+  DevUsbController *const GetController() { return _controller; }
   class InterruptEndpoint {
-  public:
-    InterruptEndpoint(DevUsb * const dev, UsbCtrl::EndpointDescriptor *ed) : _dev(dev), _ed(ed) {
+   public:
+    InterruptEndpoint(DevUsb *const dev, UsbCtrl::EndpointDescriptor *ed)
+        : _dev(dev), _ed(ed) {
       assert(ed->GetTransferType() == UsbCtrl::TransferType::kInterrupt);
     }
-    ~InterruptEndpoint() {
-      kernel_panic("DevUsb", "no implmementation");
-    }
+    ~InterruptEndpoint() { kernel_panic("DevUsb", "no implmementation"); }
     uptr<Array<uint8_t>> ObjPop() {
       uptr<Array<uint8_t>> obj;
       _obj_buffered.Pop(obj);
       return obj;
     }
-    void ObjReuse(uptr<Array<uint8_t>> obj) {
-      _obj_reserved.Push(obj);
-    }
-    void Setup(int num_td, uint8_t *buffer, uptr<GenericFunction<uptr<Array<uint8_t>>>> func);
-  private:
+    void ObjReuse(uptr<Array<uint8_t>> obj) { _obj_reserved.Push(obj); }
+    void Setup(int num_td, uint8_t *buffer,
+               uptr<GenericFunction<uptr<Array<uint8_t>>>> func);
+
+   private:
     RingBuffer<uptr<Array<uint8_t>>, 32> _obj_reserved;
     RingBuffer<uptr<Array<uint8_t>>, 32> _obj_buffered;
-    DevUsb * const _dev;
-    UsbCtrl::EndpointDescriptor * const _ed;
+    DevUsb *const _dev;
+    UsbCtrl::EndpointDescriptor *const _ed;
     PollingFunc p;
     sptr<DevUsbController::Manager> _manager;
   };
-private:
-  DevUsbController * const _controller;
+
+ private:
+  DevUsbController *const _controller;
   const int _addr;
   UsbCtrl::DeviceDescriptor _device_desc;
   uint8_t *_combined_desc;
   InterruptEndpoint *_interrupt_endpoint;
-  UsbCtrl::DummyDescriptor *GetDescriptorInCombinedDescriptors(UsbCtrl::DescriptorType type, int desc_index);
+  UsbCtrl::DummyDescriptor *GetDescriptorInCombinedDescriptors(
+      UsbCtrl::DescriptorType type, int desc_index);
 };
-
