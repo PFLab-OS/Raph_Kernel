@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
- * 
+ *
  */
 
 #pragma once
@@ -29,47 +30,33 @@
 template <class T>
 class FunctionalQueue final : public Functional {
  public:
-  FunctionalQueue() {
-  }
-  ~FunctionalQueue() {
-  }
+  FunctionalQueue() {}
+  ~FunctionalQueue() {}
   void Push(T *data) {
     _queue.Push(data);
     WakeupFunction();
   }
-  bool Pop(T *&data) {
-    return _queue.Pop(data);
-  }
-  bool IsEmpty() {
-    return _queue.IsEmpty();
-  }
+  bool Pop(T *&data) { return _queue.Pop(data); }
+  bool IsEmpty() { return _queue.IsEmpty(); }
+
  private:
-  virtual bool ShouldFunc() override {
-    return !_queue.IsEmpty();
-  }
+  virtual bool ShouldFunc() override { return !_queue.IsEmpty(); }
   Queue<T> _queue;
 };
 
 template <class U>
 class FunctionalQueue<uptr<U>> final : public Functional {
  public:
-  FunctionalQueue() {
-  }
-  ~FunctionalQueue() {
-  }
+  FunctionalQueue() {}
+  ~FunctionalQueue() {}
   void Push(uptr<U> data) {
     _queue.Push(data);
     WakeupFunction();
   }
-  uptr<U> Pop() {
-    return _queue.Pop();
-  }
-  bool IsEmpty() {
-    return _queue.IsEmpty();
-  }
+  uptr<U> Pop() { return _queue.Pop(); }
+  bool IsEmpty() { return _queue.IsEmpty(); }
+
  private:
-  virtual bool ShouldFunc() override {
-    return !_queue.IsEmpty();
-  }
+  virtual bool ShouldFunc() override { return !_queue.IsEmpty(); }
   Queue<uptr<U>> _queue;
 };

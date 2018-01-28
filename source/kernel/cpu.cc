@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: hikalium
- * 
+ *
  */
 
 #include <apic.h>
@@ -42,15 +43,15 @@ void CpuCtrl::Init() {
 CpuId CpuCtrl::RetainCpuIdForPurpose(CpuPurpose p) {
   // Returns valid CpuId all time.
   // boot processor is always assigned to kLowPriority
-  if(p == CpuPurpose::kLowPriority) return CpuId(CpuId::kCpuIdBootProcessor);
+  if (p == CpuPurpose::kLowPriority) return CpuId(CpuId::kCpuIdBootProcessor);
   int cpu_id;
   cpu_id = GetCpuIdNotAssigned();
-  if(cpu_id != kCpuIdNotFound) {
+  if (cpu_id != kCpuIdNotFound) {
     RetainCpuId(cpu_id, p);
     return CpuId(cpu_id);
   }
   cpu_id = GetCpuIdLessAssignedFor(p);
-  if(cpu_id != kCpuIdNotFound) {
+  if (cpu_id != kCpuIdNotFound) {
     RetainCpuId(cpu_id, p);
     return CpuId(cpu_id);
   }

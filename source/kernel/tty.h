@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
- * 
+ *
  */
 
 #pragma once
@@ -34,14 +35,15 @@
 /*
  * How to print strings
  *
- * In many cases, you can use Printf(). However, it takes time from when this function is
- * executed until it is drawn on the screen. If you want to output to the screen instantly,
- * you have to call Flush().
+ * In many cases, you can use Printf(). However, it takes time from when this
+ * function is executed until it is drawn on the screen. If you want to output
+ * to the screen instantly, you have to call Flush().
  *
- * ErrPrintf() is used when a serious error occurs in the system. Since this function does
- * not alloc memory internally, there is a high possibility that it will be executed normally
- * even if there is a problem in the system. In order to prevent Printf() from overwriting the
- * screen while this function is drawing, DisablePrint() should be called beforehand.
+ * ErrPrintf() is used when a serious error occurs in the system. Since this
+ * function does not alloc memory internally, there is a high possibility that
+ * it will be executed normally even if there is a problem in the system. In
+ * order to prevent Printf() from overwriting the screen while this function is
+ * drawing, DisablePrint() should be called beforehand.
  */
 class Tty {
  public:
@@ -63,10 +65,8 @@ class Tty {
     kLightBrown,
     kWhite
   };
-  Tty() {
-  }
-  virtual void Init() {
-  }
+  Tty() {}
+  virtual void Init() {}
   void Setup();
   void Printf(const char *fmt, ...) {
     va_list args;
@@ -93,38 +93,31 @@ class Tty {
     PrintErrString(&str);
   }
   virtual void PrintShell(const char *str) = 0;
-  void SetColor(Color c) {
-    _color = c;
-  }
-  void ResetColor() {
-    _color = Color::kWhite;
-  }
+  void SetColor(Color c) { _color = c; }
+  void ResetColor() { _color = Color::kWhite; }
   void Flush() {
     Handle(nullptr);
     FlushSub();
   }
   virtual int GetRow() = 0;
   virtual int GetColumn() = 0;
-  void DisablePrint() {
-    _disable_flag = true;
-  }
+  void DisablePrint() { _disable_flag = true; }
+
  protected:
-  virtual void _Setup() {
-  }
+  virtual void _Setup() {}
   virtual void Write(char c) = 0;
-  virtual void WriteErr(char c) {
-    Write(c);
-  }
+  virtual void WriteErr(char c) { Write(c); }
   virtual void FlushSub() = 0;
   int _cx = 0;
   int _cy = 0;
   Color _color;
   bool _disable_flag = false;
+
  private:
   class String;
   using StringBuffer = RingBuffer<String *, 64>;
   class String final : public QueueContainer<String> {
-  public:
+   public:
     enum class Type {
       kSingle,
       kQueue,
@@ -135,8 +128,7 @@ class Tty {
       offset = 0;
       next = nullptr;
     }
-    virtual ~String() {
-    }
+    virtual ~String() {}
     static String *New();
     static void Init(StringBuffer &buf);
     static String *Get(StringBuffer &buf) {
@@ -169,18 +161,17 @@ class Tty {
         offset++;
       }
     }
-    void Exit(StringBuffer &buf) {
-      Write('\0', buf);
-    }
+    void Exit(StringBuffer &buf) { Write('\0', buf); }
     static const int length = 100;
     uint8_t str[length];
     int offset;
     String *next;
-  private:
+
+   private:
   };
-  void Handle(void *){
+  void Handle(void *) {
     String *str;
-    while(_queue.Pop(str)) {
+    while (_queue.Pop(str)) {
       {
         Locker locker(_lock);
         PrintString(str);
@@ -199,36 +190,26 @@ class Tty {
 };
 
 class StringTty : public Tty {
-public:
+ public:
   StringTty() = delete;
   StringTty(int buffer_size) : _buffer_size(buffer_size) {
     _offset = 0;
     _buf = new char[buffer_size];
   }
-  ~StringTty() {
-    delete[] _buf;
-  }
-  char *GetRawPtr() {
-    return _buf;
-  }
-private:
-  virtual void PrintShell(const char *str) override {
-    kassert(false);
-  }
+  ~StringTty() { delete[] _buf; }
+  char *GetRawPtr() { return _buf; }
+
+ private:
+  virtual void PrintShell(const char *str) override { kassert(false); }
   virtual void Write(char c) {
     assert(_offset + 1 < _buffer_size);
     _buf[_offset] = c;
     _buf[_offset + 1] = '\0';
     _offset++;
   }
-  virtual int GetRow() override {
-    return 1;
-  }
-  virtual int GetColumn() override {
-    return _buffer_size;
-  };
-  virtual void FlushSub() override {
-  }
+  virtual int GetRow() override { return 1; }
+  virtual int GetColumn() override { return _buffer_size; };
+  virtual void FlushSub() override {}
   char *_buf;
   int _offset;
   const int _buffer_size;

@@ -14,13 +14,14 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
  * 動的データ確保アロケータ
  * ある程度の数の同種のオブジェクトを、頻繁に確保、開放する時に使う
  * 領域が足りなくなりそうになったら足りなくなる前に自動で伸ばす
- * 
+ *
  */
 
 #ifndef __RAPH_KERNEL_ALLOCATOR_H__
@@ -33,14 +34,15 @@
 
 template <typename T>
 class Allocator {
-public:
+ public:
   Allocator();
   T *Alloc();
   void Free(T *data);
-private:
+
+ private:
   T *Extend(T *entry);
   class Container {
-  public:
+   public:
     Container() : _next(nullptr), _flag(0) {}
     T _entry[64];
     Container *_next;
@@ -58,14 +60,16 @@ void Allocator<T>::Free(T *data) {
   Locker locker(_lock);
   Container *before = nullptr;
   Container *cur = _list;
-  while(cur != nullptr) {
+  while (cur != nullptr) {
     if (cur->_entry <= data && data <= cur->_entry + 63) {
       if (~cur->_flag == 0 && before != nullptr) {
         before->_next = cur->_next;
         cur->_next = _list;
         _list = cur;
       }
-      assert(((reinterpret_cast<size_t>(data) - reinterpret_cast<size_t>(cur->_entry)) % sizeof(T)) == 0);
+      assert(((reinterpret_cast<size_t>(data) -
+               reinterpret_cast<size_t>(cur->_entry)) %
+              sizeof(T)) == 0);
       cur->_flag &= ~(1 << (data - cur->_entry));
       return;
     }
@@ -78,13 +82,15 @@ void Allocator<T>::Free(T *data) {
 template <typename T>
 T *Allocator<T>::Alloc() {
   bool extend = false;
-  T* rval = nullptr;
-  while(true) {
+  T *rval = nullptr;
+  while (true) {
     // 最適化回避
-    volatile size_t *_list_ptr = const_cast<volatile size_t *>(reinterpret_cast<size_t *>(&this->_list));
-    while(~reinterpret_cast<Container *>(*_list_ptr)->_flag == 0) {
-      _list_ptr = const_cast<volatile size_t *>(reinterpret_cast<size_t *>(&this->_list));
-      asm volatile ("nop");
+    volatile size_t *_list_ptr =
+        const_cast<volatile size_t *>(reinterpret_cast<size_t *>(&this->_list));
+    while (~reinterpret_cast<Container *>(*_list_ptr)->_flag == 0) {
+      _list_ptr = const_cast<volatile size_t *>(
+          reinterpret_cast<size_t *>(&this->_list));
+      asm volatile("nop");
     }
     {
       Locker locker(_lock);
@@ -108,7 +114,7 @@ T *Allocator<T>::Alloc() {
         Container *tmp = _list;
         _list = _list->_next;
         Container *cur = _list;
-        while(cur->_next != nullptr && ~cur->_next->_flag != 0) {
+        while (cur->_next != nullptr && ~cur->_next->_flag != 0) {
           cur = cur->_next;
         }
         tmp->_next = cur->_next;
@@ -129,12 +135,13 @@ template <typename T>
 T *Allocator<T>::Extend(T *entry) {
   Container *tmp = nullptr;
   kassert(system_memory_space != nullptr);
-  tmp = reinterpret_cast<Container *>(system_memory_space->GetKernelVirtmemCtrl()->Alloc(sizeof(Container)));
-  tmp = new(tmp) Container;
+  tmp = reinterpret_cast<Container *>(
+      system_memory_space->GetKernelVirtmemCtrl()->Alloc(sizeof(Container)));
+  tmp = new (tmp) Container;
   Locker locker(_lock);
   tmp->_next = _list;
   _list = tmp;
   return entry;
 }
 
-#endif // __RAPH_KERNEL_ALLOCATOR_H__
+#endif  // __RAPH_KERNEL_ALLOCATOR_H__

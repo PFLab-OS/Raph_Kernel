@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
- * 
+ *
  * see IA-PC HPET Specification
  *
  */
@@ -42,7 +43,7 @@ struct HPETDT {
   uint8_t SeqNum;
   uint16_t MinumClockTick;
   uint8_t PageProtectionAndOEMAttribute;
-} __attribute__ ((packed));
+} __attribute__((packed));
 
 class Hpet : public Timer {
  public:
@@ -54,9 +55,11 @@ class Hpet : public Timer {
     return _reg[kRegMainCnt];
   }
   void SetInt(CpuId cpuid, uint64_t cnt);
+
  private:
   void Disable(int table) {
-    _reg[GetRegTmrOfN(table, kBaseRegTmrConfigCap)] &= ~kRegTmrConfigCapBaseFlagIntEnable & ~kRegTmrConfigCapBaseFlagFsbEnable;
+    _reg[GetRegTmrOfN(table, kBaseRegTmrConfigCap)] &=
+        ~kRegTmrConfigCapBaseFlagIntEnable & ~kRegTmrConfigCapBaseFlagFsbEnable;
     _reg[kBaseRegFsbIntRoute] = 0;
   }
   static void Handle(Regs *rs, void *arg);
@@ -65,7 +68,7 @@ class Hpet : public Timer {
   uint64_t *_reg;
 
   int _table_num = 0;
-  
+
   // see manual 2.3
   static const int kRegGenCap = 0x0 / sizeof(uint64_t);
   static const int kRegGenConfig = 0x10 / sizeof(uint64_t);
@@ -86,7 +89,7 @@ class Hpet : public Timer {
   static const int kRegGenCapLegacyRoute = 1 << 15;
   static const int kRegGenCapOffsetNumTimer = 8;
   static const uint64_t kRegGenCapMaskNumTimer = 0x1F00;
-  
+
   // Timer N Configuration and Capability Register Field Definitions
   static const uint64_t kRegTmrConfigCapBaseFlagIntTypeEdge = 0 << 1;
   static const uint64_t kRegTmrConfigCapBaseFlagIntTypeLevel = 1 << 1;
@@ -102,5 +105,6 @@ class Hpet : public Timer {
   static const uint64_t kRegTmrConfigCapBaseMaskIntRoute = 0x3E00;
   static const uint64_t kRegTmrConfigCapBaseFlagFsbEnable = 1 << 14;
   static const uint64_t kRegTmrConfigCapBaseFlagFsbIntDel = 1 << 15;
-  static const uint64_t kRegTmrConfigCapBaseMaskIntRouteCap = 0xffffffff00000000;
+  static const uint64_t kRegTmrConfigCapBaseMaskIntRouteCap =
+      0xffffffff00000000;
 };

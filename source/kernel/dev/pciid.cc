@@ -6,9 +6,9 @@
 using namespace PciData;
 
 Table::~Table() {
-  while(vendor != nullptr) {
-    while(vendor->device != nullptr) {
-      while(vendor->device->subsystem != nullptr) {
+  while (vendor != nullptr) {
+    while (vendor->device != nullptr) {
+      while (vendor->device->subsystem != nullptr) {
         Subsystem *p = vendor->device->subsystem;
         vendor->device->subsystem = p->next;
         delete p;
@@ -23,21 +23,26 @@ Table::~Table() {
   }
 }
 
-void Table::Search(uint8_t bus, uint8_t device, uint8_t function, const char *search) {
-  uint16_t vendorid = pci_ctrl->ReadPciReg<uint16_t>(bus, device, function, PciCtrl::kVendorIDReg);
-  uint16_t deviceid = pci_ctrl->ReadPciReg<uint16_t>(bus, device, function, PciCtrl::kDeviceIDReg);
-  uint16_t subvendorid = pci_ctrl->ReadPciReg<uint16_t>(bus, device, function, PciCtrl::kSubsystemVendorIdReg);
-  uint16_t subdeviceid = pci_ctrl->ReadPciReg<uint16_t>(bus, device, function, PciCtrl::kSubsystemIdReg);
-  
+void Table::Search(uint8_t bus, uint8_t device, uint8_t function,
+                   const char *search) {
+  uint16_t vendorid = pci_ctrl->ReadPciReg<uint16_t>(bus, device, function,
+                                                     PciCtrl::kVendorIDReg);
+  uint16_t deviceid = pci_ctrl->ReadPciReg<uint16_t>(bus, device, function,
+                                                     PciCtrl::kDeviceIDReg);
+  uint16_t subvendorid = pci_ctrl->ReadPciReg<uint16_t>(
+      bus, device, function, PciCtrl::kSubsystemVendorIdReg);
+  uint16_t subdeviceid = pci_ctrl->ReadPciReg<uint16_t>(
+      bus, device, function, PciCtrl::kSubsystemIdReg);
+
   Vendor *p = vendor;
   Device *d = nullptr;
   Subsystem *s = nullptr;
-  if(p == nullptr) {
+  if (p == nullptr) {
     gtty->Printf("error: Initialization failed\n");
     return;
   }
-  while(p->id != vendorid) {
-    if(p->id > vendorid || p->next == nullptr) {
+  while (p->id != vendorid) {
+    if (p->id > vendorid || p->next == nullptr) {
       p = nullptr;
       break;
     }
@@ -50,8 +55,8 @@ void Table::Search(uint8_t bus, uint8_t device, uint8_t function, const char *se
   if (d == nullptr) {
     goto display;
   }
-  while(d->id != deviceid) {
-    if(d->id > deviceid || d->next == nullptr) {
+  while (d->id != deviceid) {
+    if (d->id > deviceid || d->next == nullptr) {
       d = nullptr;
       break;
     }
@@ -64,22 +69,24 @@ void Table::Search(uint8_t bus, uint8_t device, uint8_t function, const char *se
   if (s == nullptr) {
     goto display;
   }
-  while(s->id != subvendorid) {
-    if(s->id > subvendorid || s->next == nullptr) {
+  while (s->id != subvendorid) {
+    if (s->id > subvendorid || s->next == nullptr) {
       s = nullptr;
       break;
     }
     s = s->next;
   }
 
- display:
+display:
   if (search == nullptr ||
       (p != nullptr && strstr(p->name, search) != nullptr) ||
       (d != nullptr && strstr(d->name, search) != nullptr) ||
       (s != nullptr && strstr(s->name, search) != nullptr)) {
-    gtty->Printf("%x::%x.%x %s", bus, device, function, p == nullptr ? "???" : p->name);
+    gtty->Printf("%x::%x.%x %s", bus, device, function,
+                 p == nullptr ? "???" : p->name);
     gtty->Printf(" %s", d == nullptr ? "???" : d->name);
     gtty->Printf(" %s", s == nullptr ? "???" : s->name);
-    gtty->Printf(" [%04x]:[%04x]:[%04x, %04x]\n", vendorid, deviceid, subvendorid, subdeviceid);
+    gtty->Printf(" [%04x]:[%04x]:[%04x, %04x]\n", vendorid, deviceid,
+                 subvendorid, subdeviceid);
   }
 }

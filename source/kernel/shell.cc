@@ -14,12 +14,12 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Yuchiki
- * 
+ *
  */
-
 
 /*this shell-like program will be substituted later*/
 #include <global.h>
@@ -30,18 +30,25 @@
 #include <dev/keyboard.h>
 
 void Shell::Setup() {
-  _com_buf.SetFunction(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority), make_uptr(new ClassFunction<Shell, void *>(this, &Shell::HandleComBuf, nullptr)));
-  _main_thread = ThreadCtrl::GetCtrl(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority)).AllocNewThread(Thread::StackState::kIndependent);
-  _main_thread->CreateOperator().SetFunc(make_uptr(new ClassFunction<Shell, void *>(this, &Shell::HandleChar, nullptr)));
+  _com_buf.SetFunction(
+      cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority),
+      make_uptr(new ClassFunction<Shell, void *>(this, &Shell::HandleComBuf,
+                                                 nullptr)));
+  _main_thread = ThreadCtrl::GetCtrl(
+                     cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority))
+                     .AllocNewThread(Thread::StackState::kIndependent);
+  _main_thread->CreateOperator().SetFunc(make_uptr(
+      new ClassFunction<Shell, void *>(this, &Shell::HandleChar, nullptr)));
   _liner.Setup(this);
 }
 
-void Shell::Register(const char *name, void (*func)(int argc, const char *argv[])) {
-  if (_next_buf == kBufSize){
+void Shell::Register(const char *name,
+                     void (*func)(int argc, const char *argv[])) {
+  if (_next_buf == kBufSize) {
     kernel_panic("Shell", "command buffer is full");
-  }else{
+  } else {
     int slen = strlen(name);
-    if (slen < kNameSize){
+    if (slen < kNameSize) {
       strncpy(_name_func_mapping[_next_buf].name, name, slen);
       _name_func_mapping[_next_buf].func = func;
       _next_buf++;
@@ -53,7 +60,8 @@ void Shell::Register(const char *name, void (*func)(int argc, const char *argv[]
 
 void Shell::Exec(const char *name, int argc, const char **argv) {
   for (int i = 0; i < _next_buf; i++) {
-    if (strncmp(name, _name_func_mapping[i].name, strlen(_name_func_mapping[i].name)) == 0) {
+    if (strncmp(name, _name_func_mapping[i].name,
+                strlen(_name_func_mapping[i].name)) == 0) {
       _name_func_mapping[i].func(argc, argv);
       return;
     }
@@ -78,42 +86,43 @@ void Shell::Execute(uptr<ExecContainer> ec) {
 }
 
 void Shell::Liner::ReadCh(char c) {
-  switch(c) {
-  case static_cast<char>(Keyboard::SpecialKey::kEnter): {
-    auto ec = make_uptr(new ExecContainer(_shell));
-    ec = Tokenize(ec, _command);
-    gtty->Printf("> %s\n", _command);
-    _shell->Execute(ec);
-    Reset();
-    break;
-  }
-  case static_cast<char>(Keyboard::SpecialKey::kBackSpace): {
-    // backspace
-    if (_next_command > 0) {
-      _next_command--;
-      _command[_next_command] = '\0';
-      gtty->PrintShell(_command);
+  switch (c) {
+    case static_cast<char>(Keyboard::SpecialKey::kEnter): {
+      auto ec = make_uptr(new ExecContainer(_shell));
+      ec = Tokenize(ec, _command);
+      gtty->Printf("> %s\n", _command);
+      _shell->Execute(ec);
+      Reset();
+      break;
     }
-    break;
-  }
-  case static_cast<char>(Keyboard::SpecialKey::kDelete):
-    // TODO impl
-    break;
-  default: {
-    if (_next_command != kCommandSize - 1) {
-      _command[_next_command] = c;
-      _next_command++;
-      _command[_next_command] = '\0';
-      gtty->PrintShell(_command);
+    case static_cast<char>(Keyboard::SpecialKey::kBackSpace): {
+      // backspace
+      if (_next_command > 0) {
+        _next_command--;
+        _command[_next_command] = '\0';
+        gtty->PrintShell(_command);
+      }
+      break;
     }
-  }
+    case static_cast<char>(Keyboard::SpecialKey::kDelete):
+      // TODO impl
+      break;
+    default: {
+      if (_next_command != kCommandSize - 1) {
+        _command[_next_command] = c;
+        _next_command++;
+        _command[_next_command] = '\0';
+        gtty->PrintShell(_command);
+      }
+    }
   }
 }
 
-uptr<Shell::ExecContainer> Shell::Liner::Tokenize(uptr<Shell::ExecContainer> ec, char *command) {
+uptr<Shell::ExecContainer> Shell::Liner::Tokenize(uptr<Shell::ExecContainer> ec,
+                                                  char *command) {
   strcpy(ec->name, command);
   bool inToken = false;
-  for (int i = 0; i < kCommandSize -1; i++) {
+  for (int i = 0; i < kCommandSize - 1; i++) {
     if (ec->name[i] == '\0') return ec;
     if (ec->name[i] == '#') {
       ec->name[i] = '\0';
@@ -141,7 +150,7 @@ uptr<Shell::ExecContainer> Shell::Liner::Tokenize(uptr<Shell::ExecContainer> ec,
 }
 
 void Shell::Liner::Reset() {
-    _command[0] = '\0';
-    _next_command = 0;
-    gtty->PrintShell("");
+  _command[0] = '\0';
+  _next_command = 0;
+  gtty->PrintShell("");
 }

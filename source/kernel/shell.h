@@ -14,12 +14,12 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Yuchiki
- * 
+ *
  */
-
 
 /*this shell-like program is substituted later*/
 
@@ -50,13 +50,15 @@ class Shell {
       argc = 0;
       shell = shell_;
     }
-  private:
+
+   private:
     ExecContainer();
   };
   uptr<ExecContainer> Tokenize(uptr<ExecContainer> ec, char *command) {
     return _liner.Tokenize(ec, command);
   }
   void Execute(uptr<ExecContainer> ec);
+
  private:
   void HandleComBuf(void *);
   void Exec(const char *name, int argc, const char **argv);
@@ -72,20 +74,21 @@ class Shell {
   FunctionalRingBuffer<char, kComBufSize> _com_buf;
   char _c;
   uptr<Thread> _main_thread;
-  
+
   struct NameFuncMapping {
     char name[kNameSize];
     void (*func)(int argc, const char *argv[]);
   } _name_func_mapping[kBufSize];
-  class Liner { //convert char inputs to a line input
-  public:
+  class Liner {  // convert char inputs to a line input
+   public:
     void Setup(Shell *s) {
       _shell = s;
       Reset();
     }
     void ReadCh(char c);
     static uptr<ExecContainer> Tokenize(uptr<ExecContainer> ec, char *command);
-  private:
+
+   private:
     void Reset();
     char _command[kCommandSize] = "";
     int _next_command = 0;

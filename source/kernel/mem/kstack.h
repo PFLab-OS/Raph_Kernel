@@ -14,7 +14,8 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
  *
@@ -34,11 +35,9 @@
 class KernelStackCtrl;
 
 class KernelStackCtrl {
-public:
+ public:
   static void Init();
-  static bool IsInitialized() {
-    return _is_initialized;
-  }
+  static bool IsInitialized() { return _is_initialized; }
   static KernelStackCtrl &GetCtrl() {
     kassert(_is_initialized);
     return _ctrl;
@@ -47,22 +46,21 @@ public:
   virt_addr AllocThreadStack(CpuId cpuid);
   void FreeThreadStack(virt_addr addr);
   static const int kStackSize = PagingCtrl::kPageSize * 4;
-private:
+
+ private:
   class FreedAddr : public QueueContainer<FreedAddr> {
-  public:
-    FreedAddr() : QueueContainer<FreedAddr>(this) {
-    }
+   public:
+    FreedAddr() : QueueContainer<FreedAddr>(this) {}
     virt_addr addr;
   };
-  
-  KernelStackCtrl() {
-  }
+
+  KernelStackCtrl() {}
   // initialize first kernel stack
   void InitFirstStack();
-  
+
   static bool _is_initialized;
   static KernelStackCtrl _ctrl;
-  
+
   virt_addr _stack_area_top;
 
   SpinLock _lock;
@@ -70,5 +68,4 @@ private:
   Queue<FreedAddr> _freed;
 };
 
-#endif // ! ASM_FILE
-
+#endif  // ! ASM_FILE

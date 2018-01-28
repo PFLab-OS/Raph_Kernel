@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
- * 
+ *
  */
 
 #ifndef __RAPH_KERNEL_NETDEV_H__
@@ -42,8 +43,7 @@ class DevEthernet;
  * This class is an abstruct class, and must be derived.
  */
 class NetDev {
-public:
-
+ public:
   /**
    * Network packet structure.
    *
@@ -53,13 +53,12 @@ public:
    * of Ethernet header. Thus Packet::buf will represent an IP packet.
    */
   struct Packet {
-  public:
+   public:
     Packet() {}
     size_t len;
-    uint8_t *GetBuffer() {
-      return _data;
-    }
-  private:
+    uint8_t *GetBuffer() { return _data; }
+
+   private:
     uint8_t _data[MCLBYTES];  // only accessed via buf
   };
 
@@ -113,9 +112,7 @@ public:
    *
    * @param packet a packet will be freed.
    */
-  void ReuseRxBuffer(Packet *packet) {
-    kassert(_rx_reserved.Push(packet));
-  }
+  void ReuseRxBuffer(Packet *packet) { kassert(_rx_reserved.Push(packet)); }
 
   /**
    * Return transmitted packets to the network device.
@@ -125,14 +122,13 @@ public:
    *
    * @param packet a packet will be freed.
    */
-  void ReuseTxBuffer(Packet *packet) {
-    kassert(_tx_reserved.Push(packet));
-  }
+  void ReuseTxBuffer(Packet *packet) { kassert(_tx_reserved.Push(packet)); }
 
   /**
    * Fetch a buffer for packet transmission.
    * If you receives false, you should call it again.
-   * DO NOT forget to call either NetDev::TransmitPacket or NetDev::ReuseTxBuffer.
+   * DO NOT forget to call either NetDev::TransmitPacket or
+   * NetDev::ReuseTxBuffer.
    *
    * @param packet
    * @return if fetched buffer successfully.
@@ -153,9 +149,7 @@ public:
    * @param packet
    * @return if packet is queued into the buffer successfully.
    */
-  bool TransmitPacket(Packet *packet) {
-    return _tx_buffered.Push(packet);
-  }
+  bool TransmitPacket(Packet *packet) { return _tx_buffered.Push(packet); }
 
   /**
    * Receive a packet.
@@ -188,9 +182,10 @@ public:
    * Initialize transmission packet buffer.
    */
   void InitTxPacketBuffer() {
-    while(!_tx_reserved.IsFull()) {
-      Packet *packet_addr = reinterpret_cast<Packet *>(system_memory_space->GetKernelVirtmemCtrl()->Alloc(sizeof(Packet)));
-      Packet *packet = new(packet_addr) Packet();
+    while (!_tx_reserved.IsFull()) {
+      Packet *packet_addr = reinterpret_cast<Packet *>(
+          system_memory_space->GetKernelVirtmemCtrl()->Alloc(sizeof(Packet)));
+      Packet *packet = new (packet_addr) Packet();
       kassert(_tx_reserved.Push(packet));
     }
   }
@@ -199,9 +194,10 @@ public:
    * Initialize reception packet buffer.
    */
   void InitRxPacketBuffer() {
-    while(!_rx_reserved.IsFull()) {
-      Packet *packet_addr = reinterpret_cast<Packet *>(system_memory_space->GetKernelVirtmemCtrl()->Alloc(sizeof(Packet)));
-      Packet *packet = new(packet_addr) Packet();
+    while (!_rx_reserved.IsFull()) {
+      Packet *packet_addr = reinterpret_cast<Packet *>(
+          system_memory_space->GetKernelVirtmemCtrl()->Alloc(sizeof(Packet)));
+      Packet *packet = new (packet_addr) Packet();
       kassert(_rx_reserved.Push(packet));
     }
   }
@@ -217,27 +213,21 @@ public:
    *
    * @param status
    */
-  void SetStatus(LinkStatus status) {
-    _status = status;
-  }
+  void SetStatus(LinkStatus status) { _status = status; }
 
   /**
    * Get link status.
    *
    * @return status
    */
-  volatile LinkStatus GetStatus() {
-    return _status;
-  }
+  volatile LinkStatus GetStatus() { return _status; }
 
   /**
    * Check if link is up.
    *
    * @return if link is already up.
    */
-  bool IsLinkUp() {
-    return _status == LinkStatus::kUp;
-  }
+  bool IsLinkUp() { return _status == LinkStatus::kUp; }
 
   /**
    * Set network interface name.
@@ -256,25 +246,21 @@ public:
   const char *GetName() { return _name; }
 
   void SetHandleMethod(HandleMethod method) {
-    switch(method) {
-    case HandleMethod::kInt: {
-      ChangeHandleMethodToInt();
-      break;
-    }
-    case HandleMethod::kPolling: {
-      ChangeHandleMethodToPolling();
-      break;
-    }
-    default: {
-      kassert(false);
-    }
+    switch (method) {
+      case HandleMethod::kInt: {
+        ChangeHandleMethodToInt();
+        break;
+      }
+      case HandleMethod::kPolling: {
+        ChangeHandleMethodToPolling();
+        break;
+      }
+      default: { kassert(false); }
     }
     _method = method;
   }
 
-  HandleMethod GetHandleMethod() {
-    return _method;
-  }
+  HandleMethod GetHandleMethod() { return _method; }
 
   /**
    * Set up the network interface. Usually you must register this interface
@@ -288,9 +274,7 @@ public:
   /**
    * Simplified method of SetupNetInterface(const char *)
    */
-  void SetupNetInterface() {
-    SetupNetInterface("eth");
-  }
+  void SetupNetInterface() { SetupNetInterface("eth"); }
 
   /**
    * Set protocol stack to this device.
@@ -305,9 +289,7 @@ public:
    * @param addr IPv4 address.
    * @return if the device supports IPv4 address or not.
    */
-  virtual bool AssignIpv4Address(uint32_t addr) {
-    return false;
-  }
+  virtual bool AssignIpv4Address(uint32_t addr) { return false; }
 
   /**
    * Get IPv4 address.
@@ -315,11 +297,9 @@ public:
    * @param addr buffer to return.
    * @return if the device supports IPv4 address or not.
    */
-  virtual bool GetIpv4Address(uint32_t &addr) {
-    return false;
-  }
+  virtual bool GetIpv4Address(uint32_t &addr) { return false; }
 
-protected:
+ protected:
   NetDev();
   virtual void ChangeHandleMethodToPolling() = 0;
   virtual void ChangeHandleMethodToInt() = 0;
@@ -329,7 +309,7 @@ protected:
   volatile LinkStatus _status = LinkStatus::kDown;
   HandleMethod _method = HandleMethod::kInt;
 
-private:
+ private:
   static const uint32_t kNetworkInterfaceNameLen = 8;
   // network interface name
   char _name[kNetworkInterfaceNameLen];
@@ -337,7 +317,6 @@ private:
   // reference to protocol stack
   ProtocolStack *_ptcl_stack;
 };
-
 
 /**
  * A class which manages network devices (NetDev instances).
@@ -347,7 +326,7 @@ private:
  * Network devices can be fetched, using methods provided by this controller.
  */
 class NetDevCtrl {
-public:
+ public:
   struct NetDevInfo {
     NetDev *device;
     ProtocolStack *ptcl_stack;
@@ -369,35 +348,34 @@ public:
    * Fetch the network device information specified by its interface name.
    *
    * @param name interface name.
-   * @return netdev_info the pair of network device and corresponding protocol stack.
+   * @return netdev_info the pair of network device and corresponding protocol
+   * stack.
    */
   NetDevInfo *GetDeviceInfo(const char *name);
-  
+
   /**
    * Get names list of all network devices
    *
    * @return unique pointer to the list
    */
   uptr<Array<const char *>> GetNamesOfAllDevices();
-  
+
   /**
    * Check if the specified network device exists or not.
    *
    * @param name interface name.
    * @return if the interface exists.
    */
-  bool Exists(const char *name) {
-    return GetDeviceInfo(name) != nullptr;
-  }
+  bool Exists(const char *name) { return GetDeviceInfo(name) != nullptr; }
 
   /** maximum length of interface names */
   static const uint32_t kNetworkInterfaceNameLen = 8;
 
-protected:
+ protected:
   /** maximum number of network devices */
   static const uint32_t kMaxDevNumber = 32;
 
-private:
+ private:
   /** current device number */
   uint32_t _current_device_number = 0;
 

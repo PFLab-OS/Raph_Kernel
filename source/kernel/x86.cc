@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
- * 
+ *
  */
 
 #include "x86.h"
@@ -25,12 +26,12 @@
 extern "C" void lgdt_sub(virt_addr gdtr);
 
 namespace x86 {
-  void lgdt(uint32_t *gdt_desc, int entry_num) {
-    volatile uint32_t gdtr[3];
-    gdtr[0] = (entry_num * 8 - 1) << 16;
-    gdtr[1] = reinterpret_cast<virt_addr>(gdt_desc) & 0xFFFFFFFF;
-    gdtr[2] = (reinterpret_cast<virt_addr>(gdt_desc) >> 32) & 0xFFFFFFFF;
+void lgdt(uint32_t *gdt_desc, int entry_num) {
+  volatile uint32_t gdtr[3];
+  gdtr[0] = (entry_num * 8 - 1) << 16;
+  gdtr[1] = reinterpret_cast<virt_addr>(gdt_desc) & 0xFFFFFFFF;
+  gdtr[2] = (reinterpret_cast<virt_addr>(gdt_desc) >> 32) & 0xFFFFFFFF;
 
-    lgdt_sub(reinterpret_cast<virt_addr>(gdtr) + 2);
-  }
+  lgdt_sub(reinterpret_cast<virt_addr>(gdtr) + 2);
 }
+}  // namespace x86

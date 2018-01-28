@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
- * 
+ *
  */
 
 #pragma once
@@ -27,23 +28,19 @@
 #include <array.h>
 
 class Ramdisk : public Storage {
-public:
+ public:
   Ramdisk() = delete;
-  Ramdisk(const char *str) : _fname(str) {
-  }
-  virtual ~Ramdisk() {
-  }
+  Ramdisk(const char *str) : _fname(str) {}
+  virtual ~Ramdisk() {}
   static void Attach();
-private:
+
+ private:
   virtual IoReturnState InitSub() override;
   virtual IoReturnState Read(uint8_t *buf, size_t offset, size_t size) override;
-  virtual IoReturnState Write(uint8_t *buf, size_t offset, size_t size) override;
-  virtual size_t GetBlockSize() {
-    return 1;
-  }
-  virtual const char *GetName() {
-    return "ram";
-  }
+  virtual IoReturnState Write(uint8_t *buf, size_t offset,
+                              size_t size) override;
+  virtual size_t GetBlockSize() { return 1; }
+  virtual const char *GetName() { return "ram"; }
   uptr<Array<uint8_t>> _image;
   const char *_fname;
 };

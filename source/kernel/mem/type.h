@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: mumumu
- * 
+ *
  */
 
 #pragma once
@@ -26,9 +27,8 @@
 
 typedef uint64_t entry_type;
 struct PageTable {
-  entry_type entry[4096/sizeof(uint64_t)];
+  entry_type entry[4096 / sizeof(uint64_t)];
 };
 
 typedef uint64_t virt_addr;
 typedef uint64_t phys_addr;
-

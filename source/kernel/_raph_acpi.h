@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
- * 
+ *
  */
 
 #ifndef __RAPH_KERNEL__RAPH_ACPI_H__
@@ -37,7 +38,7 @@ struct ACPISDTHeader {
   uint32_t OEMRevision;
   uint32_t CreatorID;
   uint32_t CreatorRevision;
-} __attribute__ ((packed));
+} __attribute__((packed));
 
 struct FADT {
   ACPISDTHeader header;
@@ -118,6 +119,6 @@ struct FADT {
   uint32_t SleepStatusReg1;
   uint32_t SleepStatusReg2;
   uint32_t SleepStatusReg3;
-} __attribute__ ((packed));
+} __attribute__((packed));
 
-#endif // __RAPH_KERNEL__RAPH_ACPI_H__
+#endif  // __RAPH_KERNEL__RAPH_ACPI_H__

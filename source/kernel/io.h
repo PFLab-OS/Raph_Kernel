@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
- * 
+ *
  */
 
 #pragma once
@@ -32,4 +33,10 @@ enum class IoReturnState : int {
   kErrNotFound = 8,
 };
 
-#define RETURN_IF_IOSTATE_NOT_OK(x) do { IoReturnState err = (x); if ((err) != IoReturnState::kOk) { return err; }} while(0)
+#define RETURN_IF_IOSTATE_NOT_OK(x)    \
+  do {                                 \
+    IoReturnState err = (x);           \
+    if ((err) != IoReturnState::kOk) { \
+      return err;                      \
+    }                                  \
+  } while (0)

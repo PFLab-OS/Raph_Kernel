@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
- * 
+ *
  */
 
 #include <spinlock.h>
@@ -36,7 +37,10 @@ void SpinLock::Lock() {
   if ((_flag % 2) == 1 && _cpuid == cpu_ctrl->GetCpuId()) {
     assert(_cpuid.IsValid());
     gtty->DisablePrint();
-    gtty->ErrPrintf("SpinLock is holded by cpuid %d.\n(current interrupt handling cnt: %d)\n", _cpuid.GetRawId(), idt->GetHandlingCnt());
+    gtty->ErrPrintf(
+        "SpinLock is holded by cpuid %d.\n(current interrupt handling cnt: "
+        "%d)\n",
+        _cpuid.GetRawId(), idt->GetHandlingCnt());
     for (size_t i = 0; i < sizeof(_rip) / sizeof(_rip[0]); i++) {
       gtty->ErrPrintf("backtrace(%d): rip:%llx,\n", i, _rip[i]);
     }
@@ -45,10 +49,10 @@ void SpinLock::Lock() {
   bool showed_timeout_warning = false;
   Time t1;
   if (_spinlock_timeout && timer != nullptr && timer->DidSetup()) {
-    t1 = timer->ReadTime() + 10 * 1000 * 1000; // 10s
+    t1 = timer->ReadTime() + 10 * 1000 * 1000;  // 10s
   }
   volatile unsigned int flag = _flag;
-  while(true) {
+  while (true) {
     if ((flag % 2) != 1) {
       bool iflag = disable_interrupt();
       if (SetFlag(flag, flag + 1)) {
@@ -57,11 +61,15 @@ void SpinLock::Lock() {
       }
       enable_interrupt(iflag);
     }
-    if (_spinlock_timeout && !showed_timeout_warning && timer != nullptr && timer->DidSetup() && timer->ReadTime() > t1) {
+    if (_spinlock_timeout && !showed_timeout_warning && timer != nullptr &&
+        timer->DidSetup() && timer->ReadTime() > t1) {
       gtty->DisablePrint();
-      gtty->ErrPrintf("[error]: unable to take SpinLock for a long time on cpuid %d.\nA deadlock may occur.\n", cpu_ctrl->GetCpuId().GetRawId());
+      gtty->ErrPrintf(
+          "[error]: unable to take SpinLock for a long time on cpuid %d.\nA "
+          "deadlock may occur.\n",
+          cpu_ctrl->GetCpuId().GetRawId());
       size_t *rbp;
-      asm volatile("movq %%rbp, %0":"=r"(rbp));
+      asm volatile("movq %%rbp, %0" : "=r"(rbp));
       show_backtrace(rbp);
       assert(_cpuid.IsValid());
       gtty->ErrPrintf("SpinLock is holded by cpuid %d.\n", _cpuid.GetRawId());
@@ -74,7 +82,7 @@ void SpinLock::Lock() {
   }
   _cpuid = cpu_ctrl->GetCpuId();
   size_t *rbp;
-  asm volatile("movq %%rbp, %0":"=r"(rbp));
+  asm volatile("movq %%rbp, %0" : "=r"(rbp));
   size_t top_rbp = reinterpret_cast<size_t>(rbp);
   for (size_t i = 0; i < sizeof(_rip) / sizeof(_rip[0]); i++) {
     if (top_rbp <= rbp[1] || top_rbp - 4096 > rbp[1]) {
@@ -99,7 +107,7 @@ ReturnState SpinLock::Trylock() {
     _did_stop_interrupt = iflag;
     _cpuid = cpu_ctrl->GetCpuId();
     size_t *rbp;
-    asm volatile("movq %%rbp, %0":"=r"(rbp));
+    asm volatile("movq %%rbp, %0" : "=r"(rbp));
     for (size_t i = 0; i < sizeof(_rip) / sizeof(_rip[0]); i++) {
       _rip[i] = rbp[1];
       rbp = reinterpret_cast<size_t *>(rbp[0]);
@@ -110,4 +118,3 @@ ReturnState SpinLock::Trylock() {
     return ReturnState::kError;
   }
 }
-

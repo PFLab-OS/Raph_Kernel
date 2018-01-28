@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
- * 
+ *
  */
 
 #pragma once
@@ -34,18 +35,18 @@ class Polling {
     kPolling,
     kStopped,
   };
-  Polling() {
-  }
-  ~Polling() {
-    RemovePolling(); 
-  }
+  Polling() {}
+  ~Polling() { RemovePolling(); }
   void RegisterPolling(CpuId cpuid) {
     if (_state == PollingState::kPolling) {
       return;
     }
     _state = PollingState::kPolling;
-    _thread = ThreadCtrl::GetCtrl(cpuid).AllocNewThread(Thread::StackState::kIndependent);
-    _thread->CreateOperator().SetFunc(make_uptr(new ClassFunction<Polling, void *>(this, &Polling::HandleSub, nullptr)));
+    _thread = ThreadCtrl::GetCtrl(cpuid).AllocNewThread(
+        Thread::StackState::kIndependent);
+    _thread->CreateOperator().SetFunc(
+        make_uptr(new ClassFunction<Polling, void *>(this, &Polling::HandleSub,
+                                                     nullptr)));
     _thread->CreateOperator().Schedule();
   }
   void RemovePolling() {
@@ -57,6 +58,7 @@ class Polling {
     _thread = null_thread;
   }
   virtual void Handle() = 0;
+
  private:
   void HandleSub(void *) {
     if (_state == PollingState::kPolling) {
@@ -72,23 +74,12 @@ class Polling {
 
 class PollingFunc : public Polling {
  public:
-  void Register() {
-    Register(cpu_ctrl->GetCpuId());
-  }
-  void Register(CpuId cpuid) {
-    this->RegisterPolling(cpuid);
-  }
-  void Remove() {
-    this->RemovePolling();
-  }
-  void Init(uptr<GenericFunction<>> func) {
-    _func = func;
-  }
+  void Register() { Register(cpu_ctrl->GetCpuId()); }
+  void Register(CpuId cpuid) { this->RegisterPolling(cpuid); }
+  void Remove() { this->RemovePolling(); }
+  void Init(uptr<GenericFunction<>> func) { _func = func; }
+
  private:
-  virtual void Handle() override {
-    _func->Execute();
-  }
+  virtual void Handle() override { _func->Execute(); }
   uptr<GenericFunction<>> _func;
 };
-
-

@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
- * 
+ *
  */
 
 #include <mem/virtmem.h>
@@ -28,11 +29,13 @@
 
 NetDev::NetDev() {
   extern CpuId network_cpu;
-  _tx_buffered.SetFunction(network_cpu, make_uptr(new ClassFunction<NetDev, void *>(this, &NetDev::Transmit, nullptr)));
+  _tx_buffered.SetFunction(network_cpu,
+                           make_uptr(new ClassFunction<NetDev, void *>(
+                               this, &NetDev::Transmit, nullptr)));
 }
 
 bool NetDevCtrl::RegisterDevice(NetDev *dev, const char *prefix) {
-  if(_current_device_number < kMaxDevNumber) {
+  if (_current_device_number < kMaxDevNumber) {
     // TODO: use sprintf
     char name[kNetworkInterfaceNameLen];
     strncpy(name, prefix, strlen(prefix));
@@ -45,7 +48,8 @@ bool NetDevCtrl::RegisterDevice(NetDev *dev, const char *prefix) {
     _dev_table[_current_device_number].device = dev;
 
     // allocate protocol stack
-    // ProtocolStack *addr = reinterpret_cast<ProtocolStack*>(system_memory_space->GetKernelVirtmemCtrl()->Alloc(sizeof(ProtocolStack)));
+    // ProtocolStack *addr =
+    // reinterpret_cast<ProtocolStack*>(system_memory_space->GetKernelVirtmemCtrl()->Alloc(sizeof(ProtocolStack)));
     // ProtocolStack *ptcl_stack = new(addr) ProtocolStack();
     // ptcl_stack->Setup();
 
@@ -63,11 +67,11 @@ bool NetDevCtrl::RegisterDevice(NetDev *dev, const char *prefix) {
 }
 
 NetDevCtrl::NetDevInfo *NetDevCtrl::GetDeviceInfo(const char *name) {
-  for(uint32_t i = _current_device_number; i > 0; i--) {
+  for (uint32_t i = _current_device_number; i > 0; i--) {
     NetDev *dev = _dev_table[i - 1].device;
 
     // search device by network interface name
-    if(dev != nullptr && !strncmp(dev->GetName(), name, strlen(name))) {
+    if (dev != nullptr && !strncmp(dev->GetName(), name, strlen(name))) {
       return &_dev_table[i - 1];
     }
   }
@@ -76,24 +80,23 @@ NetDevCtrl::NetDevInfo *NetDevCtrl::GetDeviceInfo(const char *name) {
 
 uptr<Array<const char *>> NetDevCtrl::GetNamesOfAllDevices() {
   int j = 0;
-  for(uint32_t i = 0; i < _current_device_number; i++) {
-    if(_dev_table[i].device != nullptr) {
+  for (uint32_t i = 0; i < _current_device_number; i++) {
+    if (_dev_table[i].device != nullptr) {
       j++;
     }
   }
-  
+
   auto list = make_uptr(new Array<const char *>(j));
 
   j = 0;
-  for(uint32_t i = 0; i < _current_device_number; i++) {
+  for (uint32_t i = 0; i < _current_device_number; i++) {
     NetDev *dev = _dev_table[i].device;
 
-    if(dev != nullptr) {
+    if (dev != nullptr) {
       (*list)[j] = dev->GetName();
       j++;
     }
   }
-  
+
   return list;
 }
-

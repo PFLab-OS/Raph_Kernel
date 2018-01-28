@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: Liva
- * 
+ *
  */
 
 #include "paging.h"
@@ -29,12 +30,15 @@
 #include "physmem.h"
 
 void PagingCtrl::MapAllPhysMemory() {
-  for (virt_addr vaddr = 0; vaddr < multiboot_ctrl->GetPhysMemoryEnd(); vaddr += 0x200000) {
+  for (virt_addr vaddr = 0; vaddr < multiboot_ctrl->GetPhysMemoryEnd();
+       vaddr += 0x200000) {
     if (IsVirtAddrMapped(PhysmemCtrl::kLinearMapOffset + vaddr)) continue;
     // まだマップされていない仮想アドレス領域に物理メモリを割り当てる
     PhysAddr paddr;
     paddr.SetAddr(vaddr);
-    Map2MPageToVirtAddr(PhysmemCtrl::kLinearMapOffset + vaddr, paddr, PDE_WRITE_BIT | PDE_USER_BIT, PDE_WRITE_BIT | PDE_GLOBAL_BIT | PDE_USER_BIT);
+    Map2MPageToVirtAddr(PhysmemCtrl::kLinearMapOffset + vaddr, paddr,
+                        PDE_WRITE_BIT | PDE_USER_BIT,
+                        PDE_WRITE_BIT | PDE_GLOBAL_BIT | PDE_USER_BIT);
   }
 }
 
@@ -51,7 +55,8 @@ void PagingCtrl::ConvertVirtMemToPhysMem(virt_addr vaddr, PhysAddr &paddr) {
   if ((entry & PML4E_PRESENT_BIT) == 0) {
     return;
   }
-  PageTable *pdpt = reinterpret_cast<PageTable *>(p2v(GetPML4EMaskedAddr(entry)));
+  PageTable *pdpt =
+      reinterpret_cast<PageTable *>(p2v(GetPML4EMaskedAddr(entry)));
   entry = pdpt->entry[GetPDPTIndex(vaddr)];
   if ((entry & PDPTE_PRESENT_BIT) == 0) {
     return;
@@ -60,7 +65,7 @@ void PagingCtrl::ConvertVirtMemToPhysMem(virt_addr vaddr, PhysAddr &paddr) {
     paddr.SetAddr(GetPDPTEMaskedAddr(entry) | Get1GPageOffset(vaddr));
     return;
   }
-  PageTable * pd = reinterpret_cast<PageTable *>(p2v(GetPDPTEMaskedAddr(entry)));
+  PageTable *pd = reinterpret_cast<PageTable *>(p2v(GetPDPTEMaskedAddr(entry)));
   entry = pd->entry[GetPDIndex(vaddr)];
   if ((entry & PDE_PRESENT_BIT) == 0) {
     return;
@@ -84,7 +89,8 @@ bool PagingCtrl::IsVirtAddrMapped(virt_addr vaddr) {
   if ((entry & PML4E_PRESENT_BIT) == 0) {
     return false;
   }
-  PageTable *pdpt = reinterpret_cast<PageTable *>(p2v(GetPML4EMaskedAddr(entry)));
+  PageTable *pdpt =
+      reinterpret_cast<PageTable *>(p2v(GetPML4EMaskedAddr(entry)));
   entry = pdpt->entry[GetPDPTIndex(vaddr)];
   if ((entry & PDPTE_PRESENT_BIT) == 0) {
     return false;
@@ -92,7 +98,7 @@ bool PagingCtrl::IsVirtAddrMapped(virt_addr vaddr) {
   if ((entry & PDPTE_1GPAGE_BIT) != 0) {
     return true;
   }
-  PageTable * pd = reinterpret_cast<PageTable *>(p2v(GetPDPTEMaskedAddr(entry)));
+  PageTable *pd = reinterpret_cast<PageTable *>(p2v(GetPDPTEMaskedAddr(entry)));
   entry = pd->entry[GetPDIndex(vaddr)];
   if ((entry & PDE_PRESENT_BIT) == 0) {
     return false;
@@ -108,61 +114,68 @@ bool PagingCtrl::IsVirtAddrMapped(virt_addr vaddr) {
   return true;
 }
 
-void PagingCtrl::GetTranslationEntries(virt_addr vaddr, entry_type *pml4e, entry_type *pdpte, entry_type *pde, entry_type *pte){
+void PagingCtrl::GetTranslationEntries(virt_addr vaddr, entry_type *pml4e,
+                                       entry_type *pdpte, entry_type *pde,
+                                       entry_type *pte) {
   Locker locker(_lock);
   // PML4
   entry_type entry = _pml4t->entry[GetPML4TIndex(vaddr)];
-  if(pml4e) *pml4e = entry;
-  if(!(entry & PML4E_PRESENT_BIT)){
+  if (pml4e) *pml4e = entry;
+  if (!(entry & PML4E_PRESENT_BIT)) {
     // 以降のエントリは存在しない
-    if(pdpte) *pdpte = 0;
-    if(pde) *pde = 0;
-    if(pte) *pte = 0;
+    if (pdpte) *pdpte = 0;
+    if (pde) *pde = 0;
+    if (pte) *pte = 0;
     return;
   }
   // PDPT
-  PageTable *pdpt = reinterpret_cast<PageTable *>(p2v(GetPML4EMaskedAddr(entry)));
+  PageTable *pdpt =
+      reinterpret_cast<PageTable *>(p2v(GetPML4EMaskedAddr(entry)));
   entry = pdpt->entry[GetPDPTIndex(vaddr)];
-  if(pdpte) *pdpte = entry;
-  if(!(entry & PDPTE_PRESENT_BIT) || (entry & PDPTE_1GPAGE_BIT)){
+  if (pdpte) *pdpte = entry;
+  if (!(entry & PDPTE_PRESENT_BIT) || (entry & PDPTE_1GPAGE_BIT)) {
     // 以降のエントリは存在しない
-    if(pde) *pde = 0;
-    if(pte) *pte = 0;
+    if (pde) *pde = 0;
+    if (pte) *pte = 0;
     return;
   }
   // PD
   PageTable *pd = reinterpret_cast<PageTable *>(p2v(GetPDPTEMaskedAddr(entry)));
   entry = pd->entry[GetPDIndex(vaddr)];
-  if(pde) *pde = entry;
-  if(!(entry & PDE_PRESENT_BIT) || (entry & PDE_2MPAGE_BIT)){
+  if (pde) *pde = entry;
+  if (!(entry & PDE_PRESENT_BIT) || (entry & PDE_2MPAGE_BIT)) {
     // 以降のエントリは存在しない
-    if(pte) *pte = 0;
+    if (pte) *pte = 0;
     return;
   }
   // PT
   PageTable *pt = reinterpret_cast<PageTable *>(p2v(GetPDEMaskedAddr(entry)));
   entry = pt->entry[GetPTIndex(vaddr)];
-  if(pte) *pte = entry;
+  if (pte) *pte = entry;
   if (!(entry & PTE_PRESENT_BIT)) {
   }
 }
 
-bool PagingCtrl::Map4KPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr pst_flag, phys_addr page_flag) {
+bool PagingCtrl::Map4KPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr,
+                                     phys_addr pst_flag, phys_addr page_flag) {
   Locker locker(_lock);
   entry_type entry = _pml4t->entry[GetPML4TIndex(vaddr)];
   if ((entry & PML4E_PRESENT_BIT) == 0) {
     PhysAddr tpaddr;
     physmem_ctrl->Alloc(tpaddr, kPageSize);
     bzero(reinterpret_cast<void *>(tpaddr.GetVirtAddr()), kPageSize);
-    entry = _pml4t->entry[GetPML4TIndex(vaddr)] = tpaddr.GetAddr() | pst_flag | PML4E_PRESENT_BIT;
+    entry = _pml4t->entry[GetPML4TIndex(vaddr)] =
+        tpaddr.GetAddr() | pst_flag | PML4E_PRESENT_BIT;
   }
-  PageTable *pdpt = reinterpret_cast<PageTable *>(p2v(GetPML4EMaskedAddr(entry)));
+  PageTable *pdpt =
+      reinterpret_cast<PageTable *>(p2v(GetPML4EMaskedAddr(entry)));
   entry = pdpt->entry[GetPDPTIndex(vaddr)];
   if ((entry & PDPTE_PRESENT_BIT) == 0) {
     PhysAddr tpaddr;
     physmem_ctrl->Alloc(tpaddr, kPageSize);
     bzero(reinterpret_cast<void *>(tpaddr.GetVirtAddr()), kPageSize);
-    entry = pdpt->entry[GetPDPTIndex(vaddr)] = tpaddr.GetAddr() | pst_flag | PDPTE_PRESENT_BIT;
+    entry = pdpt->entry[GetPDPTIndex(vaddr)] =
+        tpaddr.GetAddr() | pst_flag | PDPTE_PRESENT_BIT;
   }
   if ((entry & PDPTE_1GPAGE_BIT) != 0) {
     return false;
@@ -173,7 +186,8 @@ bool PagingCtrl::Map4KPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr
     PhysAddr tpaddr;
     physmem_ctrl->Alloc(tpaddr, kPageSize);
     bzero(reinterpret_cast<void *>(tpaddr.GetVirtAddr()), kPageSize);
-    entry = pd->entry[GetPDIndex(vaddr)] = tpaddr.GetAddr() | pst_flag | PDE_PRESENT_BIT;
+    entry = pd->entry[GetPDIndex(vaddr)] =
+        tpaddr.GetAddr() | pst_flag | PDE_PRESENT_BIT;
   }
   if ((entry & PDE_2MPAGE_BIT) != 0) {
     return false;
@@ -181,14 +195,16 @@ bool PagingCtrl::Map4KPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr
   PageTable *pt = reinterpret_cast<PageTable *>(p2v(GetPDEMaskedAddr(entry)));
   entry = pt->entry[GetPTIndex(vaddr)];
   if ((entry & PTE_PRESENT_BIT) == 0) {
-    pt->entry[GetPTIndex(vaddr)] = paddr.GetAddr() | page_flag | PTE_PRESENT_BIT;
+    pt->entry[GetPTIndex(vaddr)] =
+        paddr.GetAddr() | page_flag | PTE_PRESENT_BIT;
     return true;
   } else {
     return false;
   }
 }
 
-bool PagingCtrl::Map2MPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr pst_flag, phys_addr page_flag) {
+bool PagingCtrl::Map2MPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr,
+                                     phys_addr pst_flag, phys_addr page_flag) {
   Locker locker(_lock);
   entry_type entry = _pml4t->entry[GetPML4TIndex(vaddr)];
   if ((entry & PML4E_PRESENT_BIT) == 0) {
@@ -196,16 +212,19 @@ bool PagingCtrl::Map2MPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr
     PhysAddr tpaddr;
     physmem_ctrl->Alloc(tpaddr, kPageSize);
     bzero(reinterpret_cast<void *>(tpaddr.GetVirtAddr()), kPageSize);
-    entry = _pml4t->entry[GetPML4TIndex(vaddr)] = tpaddr.GetAddr() | pst_flag | PML4E_PRESENT_BIT;
+    entry = _pml4t->entry[GetPML4TIndex(vaddr)] =
+        tpaddr.GetAddr() | pst_flag | PML4E_PRESENT_BIT;
   }
-  PageTable *pdpt = reinterpret_cast<PageTable *>(p2v(GetPML4EMaskedAddr(entry)));
+  PageTable *pdpt =
+      reinterpret_cast<PageTable *>(p2v(GetPML4EMaskedAddr(entry)));
   entry = pdpt->entry[GetPDPTIndex(vaddr)];
   if ((entry & PDPTE_PRESENT_BIT) == 0) {
     // まだメモリ上に存在していないPTに登録しようとしたので、PTをmallocしてから継続する。
     PhysAddr tpaddr;
     physmem_ctrl->Alloc(tpaddr, kPageSize);
     bzero(reinterpret_cast<void *>(tpaddr.GetVirtAddr()), kPageSize);
-    entry = pdpt->entry[GetPDPTIndex(vaddr)] = tpaddr.GetAddr() | pst_flag | PDPTE_PRESENT_BIT;
+    entry = pdpt->entry[GetPDPTIndex(vaddr)] =
+        tpaddr.GetAddr() | pst_flag | PDPTE_PRESENT_BIT;
   }
   if ((entry & PDPTE_1GPAGE_BIT) != 0) {
     // すでに1GPageとしてマップされていたので中止
@@ -218,11 +237,13 @@ bool PagingCtrl::Map2MPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr
     return false;
   }
   // マップする
-  pd->entry[GetPDIndex(vaddr)] = paddr.GetAddr() | pst_flag | PDE_PRESENT_BIT | PDE_2MPAGE_BIT;
+  pd->entry[GetPDIndex(vaddr)] =
+      paddr.GetAddr() | pst_flag | PDE_PRESENT_BIT | PDE_2MPAGE_BIT;
   return true;
 }
 
-bool PagingCtrl::Map1GPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr pst_flag, phys_addr page_flag) {
+bool PagingCtrl::Map1GPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr,
+                                     phys_addr pst_flag, phys_addr page_flag) {
   Locker locker(_lock);
   assert((paddr.GetAddr() % 0x40000000) == 0);
   entry_type entry = _pml4t->entry[GetPML4TIndex(vaddr)];
@@ -231,15 +252,17 @@ bool PagingCtrl::Map1GPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr
     PhysAddr tpaddr;
     physmem_ctrl->Alloc(tpaddr, kPageSize);
     bzero(reinterpret_cast<void *>(tpaddr.GetVirtAddr()), kPageSize);
-    entry = _pml4t->entry[GetPML4TIndex(vaddr)] = tpaddr.GetAddr() | pst_flag | PML4E_PRESENT_BIT;
+    entry = _pml4t->entry[GetPML4TIndex(vaddr)] =
+        tpaddr.GetAddr() | pst_flag | PML4E_PRESENT_BIT;
   }
-  PageTable *pdpt = reinterpret_cast<PageTable *>(p2v(GetPML4EMaskedAddr(entry)));
+  PageTable *pdpt =
+      reinterpret_cast<PageTable *>(p2v(GetPML4EMaskedAddr(entry)));
   entry = pdpt->entry[GetPDPTIndex(vaddr)];
   if (entry & PDPTE_PRESENT_BIT) {
     // すでにマップされていたので中止
     return false;
   }
-  pdpt->entry[GetPDPTIndex(vaddr)] = paddr.GetAddr() | pst_flag | PDPTE_PRESENT_BIT | PDPTE_1GPAGE_BIT;
+  pdpt->entry[GetPDPTIndex(vaddr)] =
+      paddr.GetAddr() | pst_flag | PDPTE_PRESENT_BIT | PDPTE_1GPAGE_BIT;
   return true;
 }
-

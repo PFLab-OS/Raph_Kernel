@@ -14,10 +14,11 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: hikalium, Liva
- * 
+ *
  */
 
 #pragma once
@@ -29,32 +30,29 @@
 #include <bin.h>
 
 class ElfObject : public BinObjectInterface {
-public:
-  ElfObject(Loader &loader, const void *ptr) : _head(reinterpret_cast<const uint8_t *>(ptr)), _ehdr(reinterpret_cast<const Elf64_Ehdr *>(ptr)), _membuffer(nullptr), _loader(loader) {
-  }
+ public:
+  ElfObject(Loader &loader, const void *ptr)
+      : _head(reinterpret_cast<const uint8_t *>(ptr)),
+        _ehdr(reinterpret_cast<const Elf64_Ehdr *>(ptr)),
+        _membuffer(nullptr),
+        _loader(loader) {}
   ElfObject() = delete;
-  virtual ~ElfObject() {
-    free(_membuffer);
-  }
+  virtual ~ElfObject() { free(_membuffer); }
   virtual ErrorState Init() override __attribute__((warn_unused_result));
   void Execute() {
     if (_entry != nullptr) {
       _loader.Execute(_entry);
     }
   }
-protected:
+
+ protected:
   bool IsElf() {
-    return _ehdr->e_ident[0] == ELFMAG0 && _ehdr->e_ident[1] == ELFMAG1 && _ehdr->e_ident[2] == ELFMAG2 && _ehdr->e_ident[3] == ELFMAG3;
+    return _ehdr->e_ident[0] == ELFMAG0 && _ehdr->e_ident[1] == ELFMAG1 &&
+           _ehdr->e_ident[2] == ELFMAG2 && _ehdr->e_ident[3] == ELFMAG3;
   }
-  bool IsElf64() {
-    return _ehdr->e_ident[EI_CLASS] == ELFCLASS64;
-  }
-  bool IsOsabiSysv() {
-    return _ehdr->e_ident[EI_OSABI] == ELFOSABI_SYSV;
-  }
-  bool IsOsabiGnu() {
-    return _ehdr->e_ident[EI_OSABI] == ELFOSABI_GNU;
-  }
+  bool IsElf64() { return _ehdr->e_ident[EI_CLASS] == ELFCLASS64; }
+  bool IsOsabiSysv() { return _ehdr->e_ident[EI_OSABI] == ELFOSABI_SYSV; }
+  bool IsOsabiGnu() { return _ehdr->e_ident[EI_OSABI] == ELFOSABI_GNU; }
   virtual ErrorState LoadMemory(bool page_mapping);
   const uint8_t *_head;
   const Elf64_Ehdr *_ehdr;
@@ -65,12 +63,13 @@ protected:
 };
 
 class RaphineRing0AppObject : public ElfObject {
-public:
-  RaphineRing0AppObject(Loader &loader, const void *ptr) : ElfObject(loader, ptr) {
-  }
+ public:
+  RaphineRing0AppObject(Loader &loader, const void *ptr)
+      : ElfObject(loader, ptr) {}
   RaphineRing0AppObject() = delete;
   virtual ErrorState Init() override __attribute__((warn_unused_result));
-private:
+
+ private:
   virtual ErrorState LoadMemory(bool page_mapping) override;
   struct Info {
     uint64_t version;
