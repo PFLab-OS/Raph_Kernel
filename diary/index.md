@@ -6,6 +6,18 @@ About
 大きな変更などがコミットされた時はこの日誌上で簡単に解説します。
 コミットログを追わなくても、ここさえ読んでおけば大体追いかけられる感じにできるといいなぁ、と。
 
+2018/01/29
+----------
+Thread周りのバグが結構残っていたので、その修正（あまりにも修正コミットが多すぎるのでコミットへのリンクは省略）
+
+[fa99c36](https://github.com/PFLab-OS/Raph_Kernel/commit/fa99c368f2f2b8d4795f85f90b171ad5876dec55)
+hikaliumさんの提案により、clang-formatの導入を決定。（上のコミットもhikaliumさんから）
+formatされていないコードはCIで落ちるようになった。
+
+[20c4a3c](https://github.com/PFLab-OS/Raph_Kernel/commit/20c4a3c8ec06efb5508f148c7be246be04ce8326)
+UdpCtrl::DummyServerを自走起動するプロトコルスタックにした。
+これに伴い、udp_setupは廃止
+
 2018/01/13
 ----------
 [9aae0c7](https://github.com/PFLab-OS/Raph_Kernel/pull/171/commits/9aae0c7664bf4bb18d789632c9c05f71113efb18)
