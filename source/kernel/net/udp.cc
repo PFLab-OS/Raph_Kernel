@@ -259,13 +259,8 @@ void UdpCtrl::DummyServer(NetDev *dev) {
   if (!dev->ReceivePacket(rpacket)) {
     return;
   }
-  uint32_t my_addr_int;
-  assert(dev->GetIpv4Address(my_addr_int));
-  uint8_t my_addr[4];
-  my_addr[0] = (my_addr_int >> 0) & 0xff;
-  my_addr[1] = (my_addr_int >> 8) & 0xff;
-  my_addr[2] = (my_addr_int >> 16) & 0xff;
-  my_addr[3] = (my_addr_int >> 24) & 0xff;
+  IpV4Addr my_addr;
+  assert(dev->GetIpv4Address(my_addr.uint32));
 
   if (rpacket->GetBuffer()[12] == 0x08 && rpacket->GetBuffer()[13] == 0x06) {
     // ARP
@@ -273,13 +268,16 @@ void UdpCtrl::DummyServer(NetDev *dev) {
     // received packet
     if (rpacket->GetBuffer()[21] == 0x02) {
       // ARP Reply
-      uint32_t target_addr_int =
-          (rpacket->GetBuffer()[31] << 24) | (rpacket->GetBuffer()[30] << 16) |
-          (rpacket->GetBuffer()[29] << 8) | rpacket->GetBuffer()[28];
-      arp_table->Set(target_addr_int, rpacket->GetBuffer() + 22, dev);
+      IpV4Addr responder_addr;
+      memcpy(responder_addr.bytes, &rpacket->GetBuffer()[28], 4);
+      gtty->Printf(
+                   "ARP reply from %d.%d.%d.%d\n", responder_addr.bytes[0],
+                   responder_addr.bytes[1], responder_addr.bytes[2],
+                   responder_addr.bytes[3]);
+      arp_table->Set(responder_addr.uint32, rpacket->GetBuffer() + 22, dev);
     }
     if (rpacket->GetBuffer()[21] == 0x01 &&
-        (memcmp(rpacket->GetBuffer() + 38, my_addr, 4) == 0)) {
+        (memcmp(rpacket->GetBuffer() + 38, my_addr.bytes, 4) == 0)) {
       // ARP Request
       uint8_t data[] = {
           0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // Target MAC Address
@@ -301,7 +299,7 @@ void UdpCtrl::DummyServer(NetDev *dev) {
       memcpy(data, rpacket->GetBuffer() + 6, 6);
       static_cast<DevEthernet *>(dev)->GetEthAddr(data + 6);
       memcpy(data + 22, data + 6, 6);
-      memcpy(data + 28, my_addr, 4);
+      memcpy(data + 28, my_addr.bytes, 4);
       memcpy(data + 32, rpacket->GetBuffer() + 22, 6);
       memcpy(data + 38, rpacket->GetBuffer() + 28, 4);
 
@@ -347,20 +345,14 @@ void UdpCtrl::DummyServer(NetDev *dev) {
 
       // source address
       uint8_t saddress[4];
-      saddress[0] = eth_data[12];
-      saddress[1] = eth_data[13];
-      saddress[2] = eth_data[14];
-      saddress[3] = eth_data[15];
+      memcpy(saddress, &eth_data[12], 4);
 
       // dest address
       uint8_t daddress[4];
-      daddress[0] = eth_data[16];
-      daddress[1] = eth_data[17];
-      daddress[2] = eth_data[18];
-      daddress[3] = eth_data[19];
+      memcpy(daddress, &eth_data[16], 4);
 
       uint8_t broadcast[4] = {0xFF, 0xFF, 0xFF, 0xFF};
-      if (!memcmp(daddress, my_addr, 4) == 0 &&
+      if (!memcmp(daddress, my_addr.bytes, 4) == 0 &&
           !memcmp(daddress, broadcast, 4) == 0) {
         break;
       }
@@ -390,6 +382,9 @@ void UdpCtrl::DummyServer(NetDev *dev) {
               _socket[i].port == packet->dest_port) {
             _socket[i].protocol->GetRxQueue().Push(packet);
             break;
+          }
+          if (i == kSocketNum - 1) {
+            gtty->Printf("received unknown udp(%d) packet\n", packet->dest_port);
           }
         }
       }

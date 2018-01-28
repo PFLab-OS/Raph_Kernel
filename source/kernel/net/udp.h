@@ -87,6 +87,10 @@ class UdpCtrl {
     uptr<Packet> packet;
     NetDev *dev;
   };
+  union IpV4Addr {
+    uint8_t bytes[4];
+    uint32_t uint32;
+  };
   void Send(uptr<FullPacket> full_packet);
   void DummyServer(NetDev *dev);
 
