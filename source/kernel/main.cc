@@ -85,7 +85,6 @@ MemCtrl _system_memory_space;
 // ArpTable _arp_table;
 
 CpuId network_cpu;
-CpuId pstack_cpu;
 
 static uint32_t rnd_next = 1;
 
@@ -155,8 +154,6 @@ extern "C" int main() {
   cpu_ctrl->Init();
 
   network_cpu = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kHighPerformance);
-
-  pstack_cpu = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kHighPerformance);
 
   rnd_next = timer->ReadTime().GetRaw();
 

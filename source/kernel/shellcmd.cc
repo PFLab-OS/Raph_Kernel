@@ -268,15 +268,6 @@ static void arp_scan_on_device(const char *dev_name, uint32_t base_ipv4_addr,
     gtty->Printf("skip %s (Link Down)\n", dev_name);
     return;
   }
-  union {
-    uint8_t bytes[4];
-    uint32_t uint32;
-  } dev_ipv4_addr;
-  if (!dev->GetIpv4Address(dev_ipv4_addr.uint32) ||
-      dev_ipv4_addr.uint32 == 0xFFFFFFFF) {
-    gtty->Printf("skip %s (no IP)\n", dev_name);
-    return;
-  }
 
   dev->SetReceiveCallback(
       network_cpu,
@@ -291,7 +282,6 @@ static void arp_scan_on_device(const char *dev_name, uint32_t base_ipv4_addr,
             uint8_t my_addr[4];
             *(reinterpret_cast<uint32_t *>(my_addr)) = my_addr_int_;
             // received packet
-            gtty->Printf("Some reply got\n");
             if (rpacket->GetBuffer()[12] == 0x08 &&
                 rpacket->GetBuffer()[13] == 0x06 &&
                 rpacket->GetBuffer()[21] == 0x02) {
@@ -348,9 +338,7 @@ static void arp_scan_on_device(const char *dev_name, uint32_t base_ipv4_addr,
           },
           dev)));
 
-  gtty->Printf("ARP scan with %s(%d.%d.%d.%d)\n", dev_name,
-               dev_ipv4_addr.bytes[0], dev_ipv4_addr.bytes[1],
-               dev_ipv4_addr.bytes[2], dev_ipv4_addr.bytes[3]);
+  gtty->Printf("ARP scan with %s\n", dev_name);
   for (int i = 0; i < (1 << range); i++) {
     uptr<Thread> thread = ThreadCtrl::GetCtrl(cpu_ctrl->RetainCpuIdForPurpose(
                                                   CpuPurpose::kLowPriority))
@@ -366,16 +354,18 @@ static void arp_scan_on_device(const char *dev_name, uint32_t base_ipv4_addr,
       };
       auto container_ = make_uptr(new Container);
       container_->eth = dev;
-      container_->target_ipv4_addr.uint32 = base_ipv4_addr;
-      //(base_ipv4_addr & ~((1 << range) - 1)) + i;
-      gtty->Printf("Target ip: %d.%d.%d.%d\n",
-                   container_->target_ipv4_addr.bytes[0],
-                   container_->target_ipv4_addr.bytes[1],
-                   container_->target_ipv4_addr.bytes[2],
-                   container_->target_ipv4_addr.bytes[3]);
+      container_->target_ipv4_addr.uint32 = __builtin_bswap32(
+          (__builtin_bswap32(base_ipv4_addr) & ~((1 << range) - 1)) + i);
+      if (range == 0) {
+        gtty->Printf("Target ip: %d.%d.%d.%d\n",
+                     container_->target_ipv4_addr.bytes[0],
+                     container_->target_ipv4_addr.bytes[1],
+                     container_->target_ipv4_addr.bytes[2],
+                     container_->target_ipv4_addr.bytes[3]);
+      }
 
-      t_op.SetFunc(make_uptr(new Function<uptr<Container>>(
-          [](uptr<Container> container) {
+      t_op.SetFunc(make_uptr(new Function2<uptr<Container>, bool>(
+          [](uptr<Container> container, bool verbose) {
             uint8_t data[] = {0xff, 0xff, 0xff, 0xff, 0xff,
                               0xff,  // +0x00: Target MAC Address
                               0x00, 0x00, 0x00, 0x00, 0x00,
@@ -407,16 +397,18 @@ static void arp_scan_on_device(const char *dev_name, uint32_t base_ipv4_addr,
             memcpy(tpacket->GetBuffer(), data, len);
             tpacket->len = len;
             container->eth->TransmitPacket(tpacket);
-            gtty->Printf("send ARP Req to (%d.%d.%d.%d)\n",
-                         container->target_ipv4_addr.bytes[0],
-                         container->target_ipv4_addr.bytes[1],
-                         container->target_ipv4_addr.bytes[2],
-                         container->target_ipv4_addr.bytes[3]);
-            gtty->Printf("target eth: ");
-            PrintEthernetAddr(data + 0);
-            gtty->Printf("\n");
+            if (verbose) {
+              gtty->Printf("send ARP Req to (%d.%d.%d.%d)\n",
+                           container->target_ipv4_addr.bytes[0],
+                           container->target_ipv4_addr.bytes[1],
+                           container->target_ipv4_addr.bytes[2],
+                           container->target_ipv4_addr.bytes[3]);
+              gtty->Printf("target eth: ");
+              PrintEthernetAddr(data + 0);
+              gtty->Printf("\n");
+            }
           },
-          container_)));
+          container_, (range == 0))));
       t_op.Schedule();
     } while (0);
     thread->Join();
@@ -428,16 +420,36 @@ static void arp_scan(int argc, const char *argv[]) {
     uint8_t bytes[4];
     uint32_t uint32;
   } target_addr;
-  if (argc < 2 || !parse_ipaddr(argv[1], target_addr.bytes)) {
-    gtty->Printf("invalid ip v4 addr.\n");
-    return;
+  if (argc == 2) {
+    if (!parse_ipaddr(argv[1], target_addr.bytes)) {
+      gtty->Printf("invalid ip v4 addr.\n");
+      return;
+    }
+    gtty->Printf("specified ip: %X %d %d %d %d\n", target_addr.uint32,
+                 target_addr.bytes[0], target_addr.bytes[1],
+                 target_addr.bytes[2], target_addr.bytes[3]);
+  } else if (argc == 1) {
+  } else {
+    gtty->Printf("usage: arp_scan [ip_addr]\n");
   }
-  gtty->Printf("specified ip: %X %d %d %d %d\n", target_addr.uint32,
-               target_addr.bytes[0], target_addr.bytes[1], target_addr.bytes[2],
-               target_addr.bytes[3]);
   auto devices = netdev_ctrl->GetNamesOfAllDevices();
   for (size_t i = 0; i < devices->GetLen(); i++) {
-    arp_scan_on_device((*devices)[i], target_addr.uint32, 0);
+    union {
+      uint8_t bytes[4];
+      uint32_t uint32;
+    } dev_ipv4_addr;
+    if (!netdev_ctrl->GetDeviceInfo((*devices)[i])
+             ->device->GetIpv4Address(dev_ipv4_addr.uint32) ||
+        dev_ipv4_addr.uint32 == 0xFFFFFFFF) {
+      gtty->Printf("skip %s (no IP)\n", (*devices)[i]);
+      continue;
+    }
+    if (argc == 1) {
+      target_addr.uint32 = dev_ipv4_addr.uint32;
+      arp_scan_on_device((*devices)[i], target_addr.uint32, 8);
+    } else {
+      arp_scan_on_device((*devices)[i], target_addr.uint32, 0);
+    }
   }
   uptr<Thread> thread = ThreadCtrl::GetCtrl(cpu_ctrl->RetainCpuIdForPurpose(
                                                 CpuPurpose::kLowPriority))

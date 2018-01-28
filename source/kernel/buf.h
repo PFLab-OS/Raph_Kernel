@@ -33,7 +33,9 @@ class FunctionalRingBuffer final : public Functional {
   ~FunctionalRingBuffer() {}
   bool Push(T data) __attribute__((warn_unused_result)) {
     bool flag = _buf.Push(data);
-    Functional::WakeupFunction();
+    if (flag) {
+      Functional::WakeupFunction();
+    }
     return flag;
   }
   bool Pop(T &data) __attribute__((warn_unused_result)) {
