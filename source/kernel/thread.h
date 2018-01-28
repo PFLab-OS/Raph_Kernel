@@ -59,8 +59,8 @@ class Thread final : public QueueContainer<Thread>,
         _ctrl(ctrl),
         _stack_state(StackState::kShared) {}
   virtual ~Thread() {
+    ShowErr("do not delete thread!");
     kassert(_state == State::kOutOfQueue);
-    kassert(false);
   }
   void Join();
 
@@ -94,6 +94,8 @@ class Thread final : public QueueContainer<Thread>,
   State GetState() { return _state; }
   void Schedule();
   void Schedule(int us);
+  // used when a bug is found.
+  void ShowErr(const char *str);
 
   //  friend class Operator;
   class OperatorObj {
@@ -108,7 +110,7 @@ class Thread final : public QueueContainer<Thread>,
   //
   // functions for ThreadCtrl
   //
-  void Init(StackState sstate);
+  void Init(StackState sstate, const char *file, int line);
   void Execute();
   class WaitQueueElement final
       : public OrderedQueueContainer<WaitQueueElement, Time> {
@@ -157,7 +159,13 @@ class Thread final : public QueueContainer<Thread>,
   jmp_buf _buf;
   jmp_buf _return_buf;
   int _using_return_buf = 0;
+
+  // debug information
+  const char *_file;
+  int _line;
 };
+
+#define AllocNewThread(...) AllocNewThread_(__VA_ARGS__, __FILE__, __LINE__)
 
 class ThreadCtrl {
  public:
@@ -171,7 +179,7 @@ class ThreadCtrl {
     kSleeping,
   };
   QueueState GetState() { return _state; }
-  uptr<Thread> AllocNewThread(Thread::StackState sstate);
+  uptr<Thread> AllocNewThread_(Thread::StackState sstate, const char *file, int line);
   static Thread::Operator GetCurrentThreadOperator() {
     Thread *thread = GetCtrl(cpu_ctrl->GetCpuId())._current_thread;
     kassert(thread != nullptr);
@@ -232,14 +240,18 @@ inline Thread::Operator Thread::CreateOperator() {
 }
 
 inline void Thread::Schedule() {
-  kassert(!_func.IsNull());
+  if (_func.IsNull()) {
+    ShowErr("call SetFunc() before Schedule.");
+  }
   if (_ctrl->ScheduleRunQueue(this)) {
     __sync_fetch_and_add(&_op_obj._cnt, 1);
   }
 }
 
 inline void Thread::Schedule(int us) {
-  kassert(!_func.IsNull());
+  if (_func.IsNull()) {
+    ShowErr("call SetFunc() before Schedule.");
+  }
   bool queued;
   if (us == 0) {
     queued = _ctrl->ScheduleRunQueue(this);
@@ -255,7 +267,7 @@ inline Thread::Operator::Operator(const Thread::Operator &op) : _obj(op._obj) {
   __sync_fetch_and_add(&_obj._cnt, 1);
 }
 
-inline Thread::Operator::~Operator() { __sync_fetch_and_sub(&_obj._cnt, 1); }
+inline Thread::Operator::~Operator() { kassert(__sync_fetch_and_sub(&_obj._cnt, 1) >= 0); }
 
 inline Thread::Operator::Operator(Thread::OperatorObj &obj) : _obj(obj) {
   __sync_fetch_and_add(&_obj._cnt, 1);
