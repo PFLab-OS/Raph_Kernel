@@ -91,6 +91,7 @@ class UserSocket : public UdpCtrl::ProtocolInterface {
     *src_port = upacket->source_port;
     return trans_size;
   }
+  uint16_t GetBoundPort() { return _port; }
 
  private:
   uint16_t _port = 0;

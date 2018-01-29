@@ -157,6 +157,29 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
           }
         }
         break;
+      case 44:
+        // sendto
+        {
+          int fd = args->arg1;
+          const uint8_t *ubuf = const_cast<const uint8_t *>(
+              reinterpret_cast<uint8_t *>(args->arg2));
+          size_t size = args->arg3;
+          unsigned flags = args->arg4;
+          sockaddr_in *addr = reinterpret_cast<sockaddr_in *>(args->arg5);
+          int *addr_len = reinterpret_cast<int *>(args->arg6);
+          if (fd == 1 && _socket) {
+            uint16_t port = (addr->sin_port[0] << 8) | addr->sin_port[1];
+            UdpCtrl::GetCtrl().Send(&addr->sin_addr.s_addr, port, ubuf, size,
+                                    _socket->GetBoundPort());
+            gtty->Printf("sent!!!\n");
+            return size;
+          } else {
+            gtty->DisablePrint();
+            gtty->ErrPrintf("%d %d %d", args->arg1, args->arg2, args->arg3);
+            kernel_panic("sendto", "not impl");
+          }
+        }
+        break;
       case 45:
         // recvfrom
         {
@@ -326,7 +349,7 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
                   &target_addr, 12345,
                   const_cast<const uint8_t *>(
                       reinterpret_cast<uint8_t *>(iv_array[i].iov_base)),
-                  iv_array[i].iov_len);
+                  iv_array[i].iov_len, 12345);  // TODO: Specify PORT
               rval += iv_array[i].iov_len;
             }
             return rval;

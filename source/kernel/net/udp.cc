@@ -244,11 +244,11 @@ void UdpCtrl::Send(uptr<UdpCtrl::FullPacket> full_packet) {
 }
 
 void UdpCtrl::Send(uint8_t (*target_addr)[4], uint16_t target_port,
-                   const uint8_t *data, size_t len) {
+                   const uint8_t *data, size_t len, uint16_t source_port) {
   auto packet = make_uptr(new UdpCtrl::Packet);
   memcpy(packet->dest_ip_addr, target_addr, 4);
   packet->dest_port = target_port;
-  packet->source_port = 12345;
+  packet->source_port = source_port;
   packet->data = make_uptr(new Array<uint8_t>(len));
   memcpy(packet->data->GetRawPtr(), data, len);
   Send(packet);
@@ -377,6 +377,16 @@ void UdpCtrl::DummyServer(NetDev *dev) {
         packet->dev = dev;
 
         gtty->Printf("UDP Receive\n");
+        {
+          // cache to arp table
+          IpV4Addr responder_addr;
+          memcpy(responder_addr.bytes, packet->source_ip_addr, 4);
+          gtty->Printf(
+              "UDP Packet from %d.%d.%d.%d.\nRegistered to ARP Table\n",
+              responder_addr.bytes[0], responder_addr.bytes[1],
+              responder_addr.bytes[2], responder_addr.bytes[3]);
+          arp_table->Set(responder_addr.uint32, rpacket->GetBuffer() + 6, dev);
+        }
 
         for (int i = 0; i < kSocketNum; i++) {
           if (_socket[i].protocol != nullptr &&
