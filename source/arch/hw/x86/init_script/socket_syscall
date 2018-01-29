@@ -4,4 +4,4 @@ ifconfig
 udp_setup
 #setip em0 dhcp
 setip em0 static 10.10.10.77
-mksock
+load testmodule.elf

@@ -31,12 +31,22 @@ extern CpuId network_cpu;
 
 class UserSocket : public UdpCtrl::ProtocolInterface {
  public:
-  void Listen(uint16_t port) {
+  int Bind(uint16_t port) {
+    if (_port != 0) {
+      gtty->Printf("Socket already bound to port: %d\n", _port);
+      return 1;
+    }
+    if (port == 0) {
+      gtty->Printf("Port: %d is reserved.\n", port);
+      return 1;
+    }
+    _port = port;
     this->_rx_queue.SetFunction(network_cpu,
                                 make_uptr(new ClassFunction<UserSocket, void *>(
                                     this, &UserSocket::Handle, nullptr)));
     UdpCtrl::GetCtrl().RegisterSocket(port, this);
     gtty->Printf("sock Listen started. port: %d\n", port);
+    return 0;
   }
   int ReceiveSync(uint8_t *buf, size_t buf_size, uint8_t dst_ip_addr[4],
                   uint8_t src_ip_addr[4], uint16_t *dst_port,
@@ -54,6 +64,8 @@ class UserSocket : public UdpCtrl::ProtocolInterface {
             FunctionalQueue<uptr<UdpCtrl::RxPacket>> *rxq =
                 reinterpret_cast<FunctionalQueue<uptr<UdpCtrl::RxPacket>> *>(
                     arg);
+            gtty->Printf("cnt: %d\n", cnt);
+            gtty->Flush();
             if (cnt < 1000 && rxq->IsEmpty()) {
               ThreadCtrl::GetCurrentThreadOperator().Schedule(1000);
             }
@@ -81,6 +93,8 @@ class UserSocket : public UdpCtrl::ProtocolInterface {
   }
 
  private:
+  uint16_t _port = 0;
+
   void Handle(void *) {
     /*
     uptr<UdpCtrl::RxPacket> upacket = _rx_queue.Pop();

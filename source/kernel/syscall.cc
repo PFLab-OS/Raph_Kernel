@@ -38,7 +38,7 @@ extern CpuId network_cpu;
 void CapturePort() { UdpCtrl::GetCtrl().RegisterSocket(5621, &_dhcp_ctrl); }
 */
 SystemCallCtrl SystemCallCtrl::_ctrl;
-UserSocket _socket;
+UserSocket *_socket;
 
 extern "C" int64_t syscall_handler();
 extern size_t syscall_handler_stack;
@@ -49,6 +49,7 @@ extern "C" int64_t syscall_handler_sub(SystemCallCtrl::Args *args, int index) {
 
 void SystemCallCtrl::Init() {
   new (&_ctrl) SystemCallCtrl();
+  _socket = nullptr;
 
   // IA32_EFER.SCE = 1
   const uint64_t bit_efer_SCE = 0x01;
@@ -143,6 +144,11 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
           const int IPPROTO_UDP = 17;
           if (args->arg1 == PF_INET && args->arg2 == SOCK_DGRAM &&
               args->arg3 == IPPROTO_UDP) {
+            if (_socket != nullptr) {
+              // no more sockets.
+              return -1;
+            }
+            _socket = new UserSocket();
             return 1;
           } else {
             gtty->DisablePrint();
@@ -156,14 +162,36 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
         {
           int fd = args->arg1;
           void *ubuf = reinterpret_cast<void *>(args->arg2);
-          size_t size = args->arg2;
-          unsigned flags = args->arg3;
-          sockaddr_in *addr = reinterpret_cast<sockaddr_in *>(args->arg4);
-          int *addr_len = reinterpret_cast<int *>(args->arg5);
+          size_t size = args->arg3;
+          unsigned flags = args->arg4;
+          sockaddr_in *addr = reinterpret_cast<sockaddr_in *>(args->arg5);
+          int *addr_len = reinterpret_cast<int *>(args->arg6);
           const int SOCK_DGRAM = 2;
           const int IPPROTO_UDP = 17;
           if (fd == 1) {
-            return 1;
+            uint8_t dst_ip_addr[4], src_ip_addr[4];
+            uint16_t dst_port, src_port;
+            for (int i = 0; i < 10; i++) {
+              asm volatile("sti");
+              int recv_size = _socket->ReceiveSync(
+                  reinterpret_cast<uint8_t *>(ubuf), size, dst_ip_addr,
+                  src_ip_addr, &dst_port, &src_port);
+              asm volatile("cli");
+              // int recv_size = 10;
+              //
+              gtty->Printf("Receive in syscall!!!\n");
+              if (recv_size < 0) {
+                gtty->Printf("Error...\n");
+                return -1;
+              } else {
+                addr->sin_port[0] = ((src_port >> 8) & 0xff);
+                addr->sin_port[1] = ((src_port >> 0) & 0xff);
+                memcpy(addr->sin_addr.s_addr, src_ip_addr, 4);
+                return recv_size;
+              }
+            }
+
+            return -1;
           } else {
             gtty->DisablePrint();
             gtty->ErrPrintf("%d %d %d", args->arg1, args->arg2, args->arg3);
@@ -186,7 +214,15 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
                             addr->sin_addr.s_addr[2], addr->sin_addr.s_addr[3]);
             kernel_panic("bind", "not impl");
             */
-            return 0;
+            if (_socket == nullptr) {
+              // socket not created.
+              return -1;
+            }
+            uint16_t port = (addr->sin_port[0] << 8) | addr->sin_port[1];
+            if (_socket->Bind(port)) {
+              return -1;
+            }
+            return 0;  // 0: success
           } else {
             gtty->DisablePrint();
             gtty->ErrPrintf("%d %d %d", args->arg1, args->arg2, args->arg3);

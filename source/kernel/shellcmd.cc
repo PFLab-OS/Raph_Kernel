@@ -669,7 +669,7 @@ void cat(int argc, const char *argv[]) {
 
 void mksock(int argc, const char *argv[]) {
   UserSocket *sock = new UserSocket();
-  sock->Listen(5621);
+  sock->Bind(5621);
 
   uint8_t buf[32];
   uint8_t dst_ip_addr[4], src_ip_addr[4];
@@ -685,10 +685,10 @@ void mksock(int argc, const char *argv[]) {
       gtty->Printf("%d.%d.%d.%d\n", src_ip_addr[0], src_ip_addr[1],
                    src_ip_addr[2], src_ip_addr[3]);
       gtty->Printf("size = %d\n", recv_size);
-      for (int i = 0; i < recv_size; i++) {
-        gtty->Printf("%X ", buf[i]);
+      for (int k = 0; k < recv_size; k++) {
+        gtty->Printf("%X ", buf[k]);
       }
-      gtty->Printf("END\n");
+      gtty->Printf("\nEND\n");
     }
   }
 }

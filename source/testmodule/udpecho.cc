@@ -49,13 +49,15 @@ int main(int argc, char *argv[]) {
       DieWithError("recvfrom() failed");
 
     printf("Handling client %s\n", inet_ntoa(echoClntAddr.sin_addr));
-
-    if (connect(sock, (struct sockaddr *)&echoClntAddr, sizeof(echoClntAddr)))
-      DieWithError("connect() failed");
-
+    /*
+        if (connect(sock, (struct sockaddr *)&echoClntAddr,
+       sizeof(echoClntAddr))) DieWithError("connect() failed");
+    */
     /* Send received datagram back to the client */
+    /*
     if (send(sock, echoBuffer, recvMsgSize, 0) != recvMsgSize)
       DieWithError("sendto() sent a different number of bytes than expected");
+      */
   }
   /* NOT REACHED */
 }
