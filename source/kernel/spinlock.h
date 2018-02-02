@@ -23,6 +23,7 @@
 
 #ifndef __RAPH_KERNEL_SPINLOCK_H__
 #define __RAPH_KERNEL_SPINLOCK_H__
+#ifdef __KERNEL__
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -49,5 +50,31 @@ class SpinLock final : public LockInterface {
   size_t _rip[3];
   bool _did_stop_interrupt = false;
 };
+#else
+#include <raph.h>
+#include <lock.h>
+
+class SpinLock final : public LockInterface {
+ public:
+  SpinLock() {}
+  virtual ~SpinLock() {}
+  virtual void Lock() {
+    while (!SetFlag(0, 1)) {
+    }
+  }
+  virtual void Unlock() { _flag = 0; }
+  virtual ReturnState Trylock() override {
+    kassert(false);  // TODO impl
+    return ReturnState::kOk;
+  }
+  virtual bool IsLocked() override { return _flag == 1; }
+
+ protected:
+  bool SetFlag(unsigned int old_flag, unsigned int new_flag) {
+    return __sync_bool_compare_and_swap(&_flag, old_flag, new_flag);
+  }
+  volatile unsigned int _flag = 0;
+};
+#endif  // __KERNEL__
 
 #endif  // __RAPH_KERNEL_SPINLOCK_H__
