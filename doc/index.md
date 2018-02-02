@@ -12,4 +12,5 @@ Index
 * [一般](kernel/general.md)
 * [メモリ管理](kernel/mem.md)
 * [スレッド](kernel/thread.md)
+* [スマートポインタ](kernel/ptr.md)
 * [ユニットテスト](kernel/test.md)
