@@ -198,7 +198,6 @@ void Rtl8139::Rtl8139Ethernet::ChangeHandleMethodToInt() {
 
 void Rtl8139::Rtl8139Ethernet::Transmit(void *) {
   uint32_t entry = _current_tx_descriptor;
-  _current_tx_descriptor = (_current_tx_descriptor + 1) % 4;
 
   if (!(_tx_descriptor_status & (1 << entry))) {
     // bit立ってない＝TxOKがまだ
@@ -210,6 +209,9 @@ void Rtl8139::Rtl8139Ethernet::Transmit(void *) {
   if (!_tx_buffered.Pop(packet)) {
     return;
   }
+
+  _current_tx_descriptor = (_current_tx_descriptor + 1) % 4;
+
   uint32_t length = packet->len;
   uint8_t *buf = packet->GetBuffer();
   memcpy(reinterpret_cast<uint8_t *>(_tx_buffer[entry].GetVirtAddr()), buf,

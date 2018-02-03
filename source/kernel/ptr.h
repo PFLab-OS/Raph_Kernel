@@ -401,9 +401,14 @@ class wptr {
   }
   ~wptr() { release(); }
   T *operator&();
-  T &operator*() { return *_obj; }
+  T &operator*() {
+    if (IsNull() || IsObjReleased()) {
+      kassert(false);
+    }
+    return *_obj;
+  }
   T *operator->() {
-    if (_obj == nullptr) {
+    if (IsNull() || IsObjReleased()) {
       kassert(false);
     }
     return _obj;
@@ -411,7 +416,7 @@ class wptr {
   bool operator==(const wptr &rhs) const { return _obj == rhs._obj; }
   bool operator!=(const wptr &rhs) const { return _obj != rhs._obj; }
   T *GetRawPtr() {
-    if (_obj == nullptr) {
+    if (IsNull() || IsObjReleased()) {
       kassert(false);
     }
     return _obj;
