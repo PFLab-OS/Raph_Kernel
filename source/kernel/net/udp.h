@@ -91,6 +91,23 @@ class UdpCtrl {
     uint8_t bytes[4];
     uint32_t uint32;
   };
+  struct EthernetRawPacket {
+    uint8_t target_addr[6];
+    uint8_t source_addr[6];
+    uint16_t type;
+  } __attribute__((__packed__));
+  struct IpV4RawPacket {
+    uint8_t ver_and_len;
+    uint8_t type;
+    uint16_t blank1;
+    uint16_t id;
+    uint16_t foffset;
+    uint8_t ttl;
+    uint8_t protocol_number;
+    uint16_t blank2;
+    uint8_t source_addr[4];
+    uint8_t target_addr[4];
+  } __attribute__((__packed__));
   void Send(uptr<FullPacket> full_packet);
   void DummyServer(NetDev *dev);
 

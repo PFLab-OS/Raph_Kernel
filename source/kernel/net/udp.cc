@@ -75,74 +75,41 @@ void UdpCtrl::SendBroadCast(uptr<UdpCtrl::Packet> packet, NetDev *dev) {
 void UdpCtrl::Send(uptr<UdpCtrl::FullPacket> full_packet) {
   uint8_t buf[1518];
   int offset = 0;
+  EthernetRawPacket *eth_raw_packet = reinterpret_cast<EthernetRawPacket *>(buf);
 
   //
   // ethernet
   //
 
-  // target MAC address
-  memcpy(buf + offset, full_packet->dest_mac_addr, 6);
-  offset += 6;
-
-  // source MAC address
-  static_cast<DevEthernet *>(full_packet->dev)->GetEthAddr(buf + offset);
-  offset += 6;
-
-  // type: IPv4
-  uint8_t type[2] = {0x08, 0x00};
-  memcpy(buf + offset, type, 2);
-  offset += 2;
+  memcpy(eth_raw_packet->target_addr, full_packet->dest_mac_addr, 6);
+  static_cast<DevEthernet *>(full_packet->dev)->GetEthAddr(eth_raw_packet->source_addr);
+  
+  uint8_t type[2] = {0x08, 0x00}; // IPv4
+  memcpy(&eth_raw_packet->type, type, sizeof(eth_raw_packet->type));
+  
+  offset += sizeof(EthernetRawPacket);
 
   //
   // IPv4
   //
 
   int ipv4_header_start = offset;
+  IpV4RawPacket *ipv4_raw_packet = reinterpret_cast<IpV4RawPacket *>(&buf[offset]);
 
-  // version & header length
-  buf[offset] = (0x4 << 4) | 0x5;
-  offset += 1;
+  ipv4_raw_packet->ver_and_len = (0x4 << 4) | 0x5;
+  ipv4_raw_packet->type = 0;
+  int datagram_length_offset = offset + __builtin_offsetof(IpV4RawPacket, blank1);
+  ipv4_raw_packet->blank1 = 0;
+  ipv4_raw_packet->id = rand() & 0xFFFF;
+  ipv4_raw_packet->foffset = __builtin_bswap16(0 | (1 << 14));
+  ipv4_raw_packet->ttl = 0xff;
+  ipv4_raw_packet->protocol_number = 17;
+  int checksum_offset = offset + __builtin_offsetof(IpV4RawPacket, blank2);
+  ipv4_raw_packet->blank2 = 0;
+  memcpy(ipv4_raw_packet->source_addr, full_packet->source_ip_addr, 4);
+  memcpy(ipv4_raw_packet->target_addr, full_packet->packet->dest_ip_addr, 4);
 
-  // service type
-  buf[offset] = 0;
-  offset += 1;
-
-  // skip
-  int datagram_length_offset = offset;
-  offset += 2;
-
-  // ID field
-  buf[offset] = rand() & 0xff;
-  buf[offset + 1] = rand() & 0xff;
-  offset += 2;
-
-  // flag & flagment offset
-  uint16_t foffset = 0 | (1 << 14);
-  buf[offset] = foffset >> 8;
-  buf[offset + 1] = foffset;
-  offset += 2;
-
-  // ttl
-  buf[offset] = 0xff;
-  offset += 1;
-
-  // protocol number;
-  buf[offset] = 17;
-  offset += 1;
-
-  // skip
-  int checksum_offset = offset;
-  buf[offset] = 0;
-  buf[offset + 1] = 0;
-  offset += 2;
-
-  // source address
-  memcpy(buf + offset, full_packet->source_ip_addr, 4);
-  offset += 4;
-
-  // target address
-  memcpy(buf + offset, full_packet->packet->dest_ip_addr, 4);
-  offset += 4;
+  offset += sizeof(IpV4RawPacket);
 
   int ipv4_header_end = offset;
 
