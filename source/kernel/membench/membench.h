@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include <x86.h>
+
 struct Uint64 {
   uint64_t i;
 } __attribute__((aligned(64)));
@@ -37,3 +39,5 @@ extern volatile Uint64 monitor[37 * 8];
 
 extern const char ip_addr[];
 extern const char port[];
+
+static inline bool is_knl() { return x86::get_display_family_model() == 0x0657; }

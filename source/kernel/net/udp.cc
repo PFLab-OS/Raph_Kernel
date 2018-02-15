@@ -83,9 +83,7 @@ void UdpCtrl::Send(uptr<UdpCtrl::FullPacket> full_packet) {
 
   memcpy(eth_raw_packet->target_addr, full_packet->dest_mac_addr, 6);
   static_cast<DevEthernet *>(full_packet->dev)->GetEthAddr(eth_raw_packet->source_addr);
-  
-  uint8_t type[2] = {0x08, 0x00}; // IPv4
-  memcpy(&eth_raw_packet->type, type, sizeof(eth_raw_packet->type));
+  eth_raw_packet->type = EthernetRawPacket::Type::kIpv4;
   
   offset += sizeof(EthernetRawPacket);
 
@@ -228,8 +226,9 @@ void UdpCtrl::DummyServer(NetDev *dev) {
   }
   IpV4Addr my_addr;
   assert(dev->GetIpv4Address(my_addr.uint32));
+  EthernetRawPacket *eth_raw_packet = reinterpret_cast<EthernetRawPacket *>(rpacket->GetBuffer());
 
-  if (rpacket->GetBuffer()[12] == 0x08 && rpacket->GetBuffer()[13] == 0x06) {
+  if (eth_raw_packet->type == EthernetRawPacket::Type::kArp) {
     // ARP
 
     // received packet
@@ -278,28 +277,27 @@ void UdpCtrl::DummyServer(NetDev *dev) {
     }
   }
 
-  uint8_t *eth_data = rpacket->GetBuffer() + 14;
-  if (rpacket->GetBuffer()[12] == 0x08 && rpacket->GetBuffer()[13] == 0x00) {
+  uint8_t *eth_data = rpacket->GetBuffer() + sizeof(EthernetRawPacket);
+  IpV4RawPacket *ipv4_raw_packet = reinterpret_cast<IpV4RawPacket *>(eth_data);
+  if (eth_raw_packet->type == EthernetRawPacket::Type::kIpv4) {
     // IPv4
 
     do {
       // version
-      if (eth_data[0] >> 4 != 0x4) {
+      if (ipv4_raw_packet->ver_and_len >> 4 != 0x4) {
         break;
       }
 
       // header length
-      int ipv4_header_length = (eth_data[0] & 0x0F) * 4;
+      int ipv4_header_length = (ipv4_raw_packet->ver_and_len & 0x0F) * 4;
       if (ipv4_header_length < 20) {
         break;
       }
 
-      // ignore service type
-
-      // ignore id field
+      // ignore service type & id field
 
       // flag & flagment offset
-      uint16_t foffset = (eth_data[6] << 8) | eth_data[7];
+      uint16_t foffset = __builtin_bswap16(ipv4_raw_packet->foffset);
       if ((foffset & (1 << 13)) != 0 || (foffset & 0x1FFF) != 0) {
         break;
       }
@@ -307,15 +305,15 @@ void UdpCtrl::DummyServer(NetDev *dev) {
       // ignore ttl
 
       // protocol number
-      uint8_t protocol = eth_data[9];
+      uint8_t protocol = ipv4_raw_packet->protocol_number;
 
       // source address
       uint8_t saddress[4];
-      memcpy(saddress, &eth_data[12], 4);
+      memcpy(saddress, ipv4_raw_packet->source_addr, 4);
 
       // dest address
       uint8_t daddress[4];
-      memcpy(daddress, &eth_data[16], 4);
+      memcpy(daddress, ipv4_raw_packet->target_addr, 4);
 
       uint8_t broadcast[4] = {0xFF, 0xFF, 0xFF, 0xFF};
       if (!memcmp(daddress, my_addr.bytes, 4) == 0 &&

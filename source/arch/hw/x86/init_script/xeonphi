@@ -1,9 +1,7 @@
 show info
-setip ixgbe0 192.168.12.20
-wait_until_linkup ixgbe0
-udp_setup
-arp_scan
-beep
+wait_until_linkup ixgbe1
+setip ixgbe1 dhcp
 wait 3
+arp_scan
 membench
-
+halt

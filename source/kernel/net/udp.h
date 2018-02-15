@@ -94,7 +94,10 @@ class UdpCtrl {
   struct EthernetRawPacket {
     uint8_t target_addr[6];
     uint8_t source_addr[6];
-    uint16_t type;
+    enum class Type : uint16_t {
+      kIpv4 = __builtin_bswap16(0x0800),
+      kArp  = __builtin_bswap16(0x0806),
+    } type;
   } __attribute__((__packed__));
   struct IpV4RawPacket {
     uint8_t ver_and_len;

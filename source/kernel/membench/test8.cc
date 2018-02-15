@@ -35,12 +35,6 @@
 #include "spinlock.h"
 #include "cache.h"
 #include "membench.h"
-/*
-// not used
-static bool is_knl() {
-  return x86::get_display_family_model() == 0x0657;
-}
-*/
 
 void udpsend(int argc, const char *argv[]);
 
@@ -86,6 +80,8 @@ static __attribute__((noinline)) Pair func107_main(int cpunum, int work) {
       monitor[apicid].i = 0;
     }
   }
+
+  bool iflag = disable_interrupt();
 
   sync_1.Do();
   cache_ctrl->Clear(lock, sizeof(L));
@@ -169,6 +165,8 @@ static __attribute__((noinline)) Pair func107_main(int cpunum, int work) {
   }
 
   sync_4.Do();
+  enable_interrupt(iflag);
+
   Pair pair = {time : time, fairness : f_variance};
   return pair;
 }
@@ -177,7 +175,7 @@ template <class L>
 static __attribute__((noinline)) void func107_sub2(int cpunum, int work) {
   int apicid = cpu_ctrl->GetCpuId().GetApicId();
 
-  static const int num = 10;
+  static const int num = 20;
   Pair results[num];
   func107_main<L>(cpunum, work);
   for (int j = 0; j < num; j++) {
@@ -297,9 +295,11 @@ void membench8() {
   // FUNC(TicketSpinLock);
   // FUNC(AndersonSpinLock<1, 256>);
   // FUNC(AndersonSpinLock<64, 256>);
-  FUNC(ClhSpinLock);
+  // FUNC(ClhSpinLock);
   FUNC(McsSpinLock<64>);
-  FUNC(HClhSpinLock);
+  // FUNC(HClhSpinLock);
+  FUNC(ExpSpinLock12);
+  FUNC(ExpSpinLock13);
   FUNC(ExpSpinLock11<McsSpinLock<64>, TicketSpinLockA>);
   FUNC(ExpSpinLock11<McsSpinLockA<64>, McsSpinLockA<64>>);
   FUNC(ExpSpinLock11<TicketSpinLockA, McsSpinLockA<64>>);

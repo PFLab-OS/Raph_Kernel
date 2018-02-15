@@ -29,7 +29,7 @@
 #include "sync.h"
 #include "membench.h"
 
-const char ip_addr[] = "192.168.12.11";
+const char ip_addr[] = "192.168.12.4";
 const char port[] = "12345";
 
 SyncLow sync_1 = {0};
@@ -40,22 +40,23 @@ SyncLow sync_4 = {0};
 Uint64 f_array[256];
 volatile Uint64 monitor[37 * 8];
 
-#define bench_func(x) membench10(x)
+#define bench_func(x) membench8(x)
 
 void bench_func();
 
 CacheCtrl *cache_ctrl;
 
-void beep(int argc, const char *argv[]);
+void halt(int argc, const char *argv[]);
 
 void register_membench2_callout() {
+  uptr<Thread> thread[cpu_ctrl->GetHowManyCpus()];
   for (int i = 0; i < cpu_ctrl->GetHowManyCpus(); i++) {
     CpuId cpuid(i);
 
-    uptr<Thread> thread = ThreadCtrl::GetCtrl(cpuid).AllocNewThread(
+    thread[i] = ThreadCtrl::GetCtrl(cpuid).AllocNewThread(
         Thread::StackState::kIndependent);
     do {
-      auto t_op = thread->CreateOperator();
+      auto t_op = thread[i]->CreateOperator();
       t_op.SetFunc(make_uptr(new Function<void *>(
           [](void *) {
             int raw_cpuid = cpu_ctrl->GetCpuId().GetRawId();
@@ -65,12 +66,14 @@ void register_membench2_callout() {
             }
             bench_func();
             if (raw_cpuid == 0) {
-              beep(0, nullptr);
+              halt(0, nullptr);
             }
           },
           nullptr)));
       t_op.Schedule();
     } while (0);
-    thread->Join();
+  }
+  for (int i = 0; i < cpu_ctrl->GetHowManyCpus(); i++) {
+    thread[i]->Join();
   }
 }

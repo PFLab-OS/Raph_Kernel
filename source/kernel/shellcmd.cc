@@ -74,7 +74,7 @@ static void PrintEthernetAddr(uint8_t *eth_addr) {
 // shell commands
 //
 
-static void halt(int argc, const char *argv[]) { acpi_ctrl->Shutdown(); }
+void halt(int argc, const char *argv[]) { acpi_ctrl->Shutdown(); }
 
 static void reset(int argc, const char *argv[]) { acpi_ctrl->Reset(); }
 
@@ -595,7 +595,7 @@ static void remote_load(int argc, const char *argv[]) {
   }
 }
 
-void beep(int argc, const char *argv[]) {
+static void beep(int argc, const char *argv[]) {
   uptr<Thread> thread = ThreadCtrl::GetCtrl(cpu_ctrl->RetainCpuIdForPurpose(
                                                 CpuPurpose::kLowPriority))
                             .AllocNewThread(Thread::StackState::kShared);
