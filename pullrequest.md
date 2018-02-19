@@ -27,6 +27,7 @@ Pull Request 確認事項
 * なっていて、Pull Requestとしても最低限 →　問題なし
 
 最小単位でPull Requestを出してもらった方が、CIが走る&レビューし易い＆個別にreject可否を判断可能&revertも簡単
+参考：[https://techracho.bpsinc.jp/hachi8833/2018_02_07/51095]
 
 ### コーディング規約
 * 則っていない → reject or 後から修正コミット
