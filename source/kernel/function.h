@@ -28,29 +28,30 @@
 #include <mem/virtmem.h>
 #include <ptr.h>
 
-template <class... Args>
+template <class R, class... Args>
 class GenericFunction {
  public:
   GenericFunction() {}
   virtual ~GenericFunction() {}
-  virtual void Execute(Args... args) {}
+  virtual R  Execute(Args... args) {}
 };
 
-template <class T, class... Args>
-class Function : public GenericFunction<Args...> {
+template <class R, class T, class... Args>
+class Function: public GenericFunction<R,Args...> {
  public:
-  Function(void (*func)(T, Args...), T arg) : _func(func), _arg(arg) {}
+  Function(R  (*func)(T, Args...), T arg) : _func(func), _arg(arg) {}
   virtual ~Function() { kassert(_ref == 0); }
   Function(const Function &obj) : _func(obj._func), _arg(obj._arg) {}
-  virtual void Execute(Args... args) override {
+  virtual R Execute(Args... args) override {
     __sync_fetch_and_add(&_ref, 1);
-    _func(_arg, args...);
+    R res = _func(_arg, args...);
     __sync_fetch_and_sub(&_ref, 1);
+    return res
   }
 
  private:
   Function();
-  void (*_func)(T, Args...);
+  R (*_func)(T, Args...);
   T _arg;
   int _ref = 0;
 };
