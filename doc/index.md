@@ -13,4 +13,5 @@ Index
 * [メモリ管理](kernel/mem.md)
 * [スレッド](kernel/thread.md)
 * [スマートポインタ](kernel/ptr.md)
+* [GenericFunction](kernel/func.md)
 * [ユニットテスト](kernel/test.md)
