@@ -29,32 +29,60 @@
 #include <ptr.h>
 
 template <class R, class... Args>
-class GenericFunction {
+class GenericFunctionX {
  public:
-  GenericFunction() {}
-  virtual ~GenericFunction() {}
-  virtual R  Execute(Args... args) {}
+  GenericFunctionX() {}
+  virtual ~GenericFunctionX() {}
+  virtual R Execute(Args... args) {}
 };
 
 template <class R, class T, class... Args>
-class Function: public GenericFunction<R,Args...> {
+class FunctionX : public GenericFunctionX<R, Args...> {
  public:
-  Function(R  (*func)(T, Args...), T arg) : _func(func), _arg(arg) {}
-  virtual ~Function() { kassert(_ref == 0); }
-  Function(const Function &obj) : _func(obj._func), _arg(obj._arg) {}
+  FunctionX(R (*func)(T, Args...), T arg) : _func(func), _arg(arg) {}
+  virtual ~FunctionX() { kassert(_ref == 0); }
+  FunctionX(const FunctionX &obj) : _func(obj._func), _arg(obj._arg) {}
   virtual R Execute(Args... args) override {
     __sync_fetch_and_add(&_ref, 1);
     R res = _func(_arg, args...);
     __sync_fetch_and_sub(&_ref, 1);
-    return res
+    return res;
   }
 
  private:
-  Function();
+  FunctionX();
   R (*_func)(T, Args...);
   T _arg;
   int _ref = 0;
 };
+
+// template<class T, class... Args>
+// inline void Function<T, Args...>::Execute(Args... args) {
+// }
+
+template <class T, class... Args>
+class FunctionX<void, T, Args...> : public GenericFunctionX<void, Args...> {
+ public:
+  FunctionX(void (*func)(T, Args...), T arg) : _func(func), _arg(arg) {}
+  virtual ~FunctionX() { kassert(_ref == 0); }
+  FunctionX(const FunctionX &obj) : _func(obj._func), _arg(obj._arg) {}
+  virtual void Execute(Args... args) override {
+    __sync_fetch_and_add(&_ref, 1);
+    _func(_arg, args...);
+    __sync_fetch_and_sub(&_ref, 1);
+  }
+
+ private:
+  FunctionX();
+  void (*_func)(T, Args...);
+  T _arg;
+  int _ref = 0;
+};
+
+template <class... Args>
+using GenericFunction = GenericFunctionX<void, Args...>;
+template <class T, class... Args>
+using Function = FunctionX<void, T, Args...>;
 
 template <class T1, class T2, class... Args>
 class Function2 : public GenericFunction<Args...> {
