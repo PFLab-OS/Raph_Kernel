@@ -29,7 +29,7 @@
 
 void Keyboard::Setup() {
   _buf.SetFunction(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority),
-                   make_uptr(new ClassFunction1<Keyboard, void *>(
+                   make_uptr(new ClassFunctionX1<void, Keyboard, void *>(
                        this, &Keyboard::Handle, nullptr)));
   SetupSub();
 }

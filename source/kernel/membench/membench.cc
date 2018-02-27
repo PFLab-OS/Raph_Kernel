@@ -56,7 +56,7 @@ void register_membench2_callout() {
         Thread::StackState::kIndependent);
     do {
       auto t_op = thread->CreateOperator();
-      t_op.SetFunc(make_uptr(new Function1<void *>(
+      t_op.SetFunc(make_uptr(new FunctionX1<void, void *>(
           [](void *) {
             int raw_cpuid = cpu_ctrl->GetCpuId().GetRawId();
             if (raw_cpuid == 0) {

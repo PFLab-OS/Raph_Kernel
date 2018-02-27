@@ -45,8 +45,8 @@ class Polling {
     _thread = ThreadCtrl::GetCtrl(cpuid).AllocNewThread(
         Thread::StackState::kIndependent);
     _thread->CreateOperator().SetFunc(
-        make_uptr(new ClassFunction1<Polling, void *>(this, &Polling::HandleSub,
-                                                      nullptr)));
+        make_uptr(new ClassFunctionX1<void, Polling, void *>(
+            this, &Polling::HandleSub, nullptr)));
     _thread->CreateOperator().Schedule();
   }
   void RemovePolling() {

@@ -32,13 +32,14 @@
 void Shell::Setup() {
   _com_buf.SetFunction(
       cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority),
-      make_uptr(new ClassFunction1<Shell, void *>(this, &Shell::HandleComBuf,
-                                                  nullptr)));
+      make_uptr(new ClassFunctionX1<void, Shell, void *>(
+          this, &Shell::HandleComBuf, nullptr)));
   _main_thread = ThreadCtrl::GetCtrl(
                      cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority))
                      .AllocNewThread(Thread::StackState::kIndependent);
-  _main_thread->CreateOperator().SetFunc(make_uptr(
-      new ClassFunction1<Shell, void *>(this, &Shell::HandleChar, nullptr)));
+  _main_thread->CreateOperator().SetFunc(
+      make_uptr(new ClassFunctionX1<void, Shell, void *>(
+          this, &Shell::HandleChar, nullptr)));
   _liner.Setup(this);
 }
 

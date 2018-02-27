@@ -82,7 +82,7 @@ void DevEhci::Init() {
                     cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority))
                     .AllocNewThread(Thread::StackState::kShared);
   _int_thread->CreateOperator().SetFunc(
-      make_uptr(new ClassFunction1<DevEhci, void *>(
+      make_uptr(new ClassFunctionX1<void, DevEhci, void *>(
           this, &DevEhci::CheckQueuedTdIfCompleted, nullptr)));
   assert(HasLegacyInterrupt());
   SetLegacyInterrupt(Handler, reinterpret_cast<void *>(this),
@@ -441,8 +441,9 @@ DevEhci::DevEhciSub<QueueHead, TransferDescriptor>::SetupInterruptTransfer(
     };
     container_array[i] = tmp;
     td[i]->SetTokenAndBuffer(container_array[i]);
-    td[i]->SetFunc(make_uptr(new Function2<wptr<DevEhciSub::EhciManager>, int>(
-        &DevEhciSub::EhciManager::HandleInterrupt, make_wptr(manager), i)));
+    td[i]->SetFunc(
+        make_uptr(new FunctionX2<void, wptr<DevEhciSub::EhciManager>, int>(
+            &DevEhciSub::EhciManager::HandleInterrupt, make_wptr(manager), i)));
     _queueing_td_buf.PushBack(td[i]);
     buffer += max_packetsize;
   }

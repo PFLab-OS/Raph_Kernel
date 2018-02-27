@@ -31,7 +31,7 @@ public:
   }
   void Init(CpuId cpuid) {
     _thread = ThreadCtrl::GetCtrl(cpuid).AllocNewThread(Thread::StackState::kShared);
-    _thread->CreateOperator().SetFunc(make_uptr(new ClassFunction1<CountableThread, void *>(this, &CountableThread::Handle, nullptr)));
+    _thread->CreateOperator().SetFunc(make_uptr(new ClassFunctionX1<void, CountableThread, void *>(this, &CountableThread::Handle, nullptr)));
   }
   void SetFunc(uptr<GenericFunction<>> func) {
     _func = func;

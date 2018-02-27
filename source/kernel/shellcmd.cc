@@ -291,7 +291,7 @@ static void arp_scan_on_device(const char *dev_name, uint32_t base_ipv4_addr,
                      container_->target_ipv4_addr.bytes[3]);
       }
 
-      t_op.SetFunc(make_uptr(new Function2<uptr<Container>, bool>(
+      t_op.SetFunc(make_uptr(new FunctionX2<void, uptr<Container>, bool>(
           [](uptr<Container> container, bool verbose) {
             uint8_t data[] = {0xff, 0xff, 0xff, 0xff, 0xff,
                               0xff,  // +0x00: Target MAC Address
@@ -383,7 +383,8 @@ static void arp_scan(int argc, const char *argv[]) {
                             .AllocNewThread(Thread::StackState::kShared);
   do {
     auto t_op = thread->CreateOperator();
-    t_op.SetFunc(make_uptr(new Function1<void *>([](void *) {}, nullptr)));
+    t_op.SetFunc(
+        make_uptr(new FunctionX1<void, void *>([](void *) {}, nullptr)));
     t_op.Schedule(3 * 1000 * 1000);
   } while (0);
   thread->Join();
@@ -442,7 +443,7 @@ static void wait_until_linkup(int argc, const char *argv[]) {
                             .AllocNewThread(Thread::StackState::kShared);
   do {
     Thread::Operator t_op = thread->CreateOperator();
-    t_op.SetFunc(make_uptr(new Function1<NetDev *>(
+    t_op.SetFunc(make_uptr(new FunctionX1<void, NetDev *>(
         [](NetDev *dev) {
           if (!dev->IsLinkUp()) {
             ThreadCtrl::GetCurrentThreadOperator().Schedule(1000 * 1000);
@@ -521,7 +522,7 @@ static void load(int argc, const char *argv[]) {
                               .AllocNewThread(Thread::StackState::kIndependent);
     do {
       auto t_op = thread->CreateOperator();
-      t_op.SetFunc(make_uptr(new Function1<uptr<Array<uint8_t>>>(
+      t_op.SetFunc(make_uptr(new FunctionX1<void, uptr<Array<uint8_t>>>(
           [](uptr<Array<uint8_t>> buf) {
             Loader loader;
             ElfObject obj(loader, buf->GetRawPtr());
@@ -542,7 +543,7 @@ static void load(int argc, const char *argv[]) {
                               .AllocNewThread(Thread::StackState::kIndependent);
     do {
       auto t_op = thread->CreateOperator();
-      t_op.SetFunc(make_uptr(new Function1<uptr<Array<uint8_t>>>(
+      t_op.SetFunc(make_uptr(new FunctionX1<void, uptr<Array<uint8_t>>>(
           [](uptr<Array<uint8_t>> buf) {
             Ring0Loader loader;
             RaphineRing0AppObject obj(loader, buf->GetRawPtr());
@@ -575,7 +576,7 @@ static void remote_load(int argc, const char *argv[]) {
                               .AllocNewThread(Thread::StackState::kShared);
     do {
       auto t_op = thread->CreateOperator();
-      t_op.SetFunc(make_uptr(new Function1<uptr<Array<uint8_t>>>(
+      t_op.SetFunc(make_uptr(new FunctionX1<void, uptr<Array<uint8_t>>>(
           [](uptr<Array<uint8_t>> buf) {
             Loader loader;
             ElfObject obj(loader, buf->GetRawPtr());
@@ -601,7 +602,7 @@ void beep(int argc, const char *argv[]) {
                             .AllocNewThread(Thread::StackState::kShared);
   do {
     auto t_op = thread->CreateOperator();
-    t_op.SetFunc(make_uptr(new Function1<void *>(
+    t_op.SetFunc(make_uptr(new FunctionX1<void, void *>(
         [](void *) {
           static int i = 0;
           if (i < 6) {

@@ -226,7 +226,7 @@ void FrameBuffer::DisableTimeupDraw() {
   _refresh_thread = ThreadCtrl::GetCtrl(_draw_cpuid)
                         .AllocNewThread(Thread::StackState::kShared);
   _refresh_thread->CreateOperator().SetFunc(
-      make_uptr(new ClassFunction1<FrameBuffer, void *>(
+      make_uptr(new ClassFunctionX1<void, FrameBuffer, void *>(
           this, &FrameBuffer::DoPeriodicRefresh, nullptr)));
   ScheduleRefresh();
 }

@@ -150,7 +150,7 @@ void DevUhci::Init() {
                     cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority))
                     .AllocNewThread(Thread::StackState::kShared);
   _int_thread->CreateOperator().SetFunc(
-      make_uptr(new ClassFunction1<DevUhci, void *>(
+      make_uptr(new ClassFunctionX1<void, DevUhci, void *>(
           this, &DevUhci::CheckQueuedTdIfCompleted, nullptr)));
   WriteControllerReg<uint16_t>(kCtrlRegStatus, kCtrlRegStatusFlagInt);
   WriteControllerReg<uint16_t>(
@@ -383,8 +383,9 @@ sptr<DevUsbController::Manager> DevUhci::SetupInterruptTransfer(
     };
     container_array[i] = tmp;
     td[i]->SetContainer(container_array[i]);
-    td[i]->SetFunc(make_uptr(new Function2<wptr<DevUhci::UhciManager>, int>(
-        &DevUhci::UhciManager::HandleInterrupt, make_wptr(manager), i)));
+    td[i]->SetFunc(
+        make_uptr(new FunctionX2<void, wptr<DevUhci::UhciManager>, int>(
+            &DevUhci::UhciManager::HandleInterrupt, make_wptr(manager), i)));
     _queueing_td_buf.PushBack(td[i]);
     buffer += max_packetsize;
   }
