@@ -29,7 +29,7 @@
 
 void Tty::Setup() {
   _cpuid = cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority);
-  _queue.SetFunction(_cpuid, make_uptr(new ClassFunctionX1<void, Tty, void *>(
+  _queue.SetFunction(_cpuid, make_uptr(new ClassFunction1<void, Tty, void *>(
                                  this, &Tty::Handle, nullptr)));
   _Setup();
   String::Init(_str_buffer);

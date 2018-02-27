@@ -205,7 +205,7 @@ extern "C" int main() {
                     cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority))
                     .AllocNewThread(Thread::StackState::kIndependent);
   auto t_op = thread->CreateOperator();
-  t_op.SetFunc(make_uptr(new FunctionX1<void, void *>(
+  t_op.SetFunc(make_uptr(new Function1<void, void *>(
       [](void *) { load_script(multiboot_ctrl->LoadFile("init.sh")); },
       nullptr)));
   t_op.Schedule();

@@ -155,7 +155,7 @@ void AcpiCtrl::SetupAcpica() {
                                                  CpuPurpose::kLowPriority))
                              .AllocNewThread(Thread::StackState::kShared);
   get_container.thread->CreateOperator().SetFunc(
-      make_uptr(new ClassFunctionX1<void, AcpiCtrl, void *>(
+      make_uptr(new ClassFunction1<void, AcpiCtrl, void *>(
           this, &AcpiCtrl::GlobalEventHandler, nullptr)));
   AcpiInstallGlobalEventHandler(AcpiGlobalEventHandler, nullptr);
 

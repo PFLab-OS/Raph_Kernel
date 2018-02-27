@@ -59,8 +59,8 @@ void DevUsbKeyboard::InitSub() {
   }
   SetupInterruptTransfer(
       kTdNum, reinterpret_cast<uint8_t *>(_buffer),
-      make_uptr(new ClassFunctionX1<void, DevUsbKeyboard, void *,
-                                    uptr<Array<uint8_t>>>(
+      make_uptr(new ClassFunction1<void, DevUsbKeyboard, void *,
+                                   uptr<Array<uint8_t>>>(
           this, &DevUsbKeyboard::Handle, nullptr)));
 
   while (true) {

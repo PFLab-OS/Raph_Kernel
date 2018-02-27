@@ -45,7 +45,7 @@ class Polling {
     _thread = ThreadCtrl::GetCtrl(cpuid).AllocNewThread(
         Thread::StackState::kIndependent);
     _thread->CreateOperator().SetFunc(
-        make_uptr(new ClassFunctionX1<void, Polling, void *>(
+        make_uptr(new ClassFunction1<void, Polling, void *>(
             this, &Polling::HandleSub, nullptr)));
     _thread->CreateOperator().Schedule();
   }
@@ -77,9 +77,9 @@ class PollingFunc : public Polling {
   void Register() { Register(cpu_ctrl->GetCpuId()); }
   void Register(CpuId cpuid) { this->RegisterPolling(cpuid); }
   void Remove() { this->RemovePolling(); }
-  void Init(uptr<GenericFunction<>> func) { _func = func; }
+  void Init(uptr<GenericFunction<void>> func) { _func = func; }
 
  private:
   virtual void Handle() override { _func->Execute(); }
-  uptr<GenericFunction<>> _func;
+  uptr<GenericFunction<void>> _func;
 };

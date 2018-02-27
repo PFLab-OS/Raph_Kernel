@@ -75,7 +75,7 @@ public:
   public:
     IntContainer() {
       _cthread.Init(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority));
-      _cthread.SetFunc(make_uptr(new ClassFunctionX1<void, IntContainer, void *>(this, &IntContainer::HandleSub, nullptr)));
+      _cthread.SetFunc(make_uptr(new ClassFunction1<void, IntContainer, void *>(this, &IntContainer::HandleSub, nullptr)));
     }
     void SetVector(int vector) {
       _vector = vector;

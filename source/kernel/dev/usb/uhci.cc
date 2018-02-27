@@ -150,7 +150,7 @@ void DevUhci::Init() {
                     cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority))
                     .AllocNewThread(Thread::StackState::kShared);
   _int_thread->CreateOperator().SetFunc(
-      make_uptr(new ClassFunctionX1<void, DevUhci, void *>(
+      make_uptr(new ClassFunction1<void, DevUhci, void *>(
           this, &DevUhci::CheckQueuedTdIfCompleted, nullptr)));
   WriteControllerReg<uint16_t>(kCtrlRegStatus, kCtrlRegStatusFlagInt);
   WriteControllerReg<uint16_t>(
@@ -300,7 +300,7 @@ bool DevUhci::SendControlTransfer(UsbCtrl::DeviceRequest *request,
 sptr<DevUsbController::Manager> DevUhci::SetupInterruptTransfer(
     uint8_t endpt_address, int device_addr, int interval,
     UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td,
-    uint8_t *buffer, uptr<GenericFunction<uptr<Array<uint8_t>>>> func) {
+    uint8_t *buffer, uptr<GenericFunction<void, uptr<Array<uint8_t>>>> func) {
   {
     int i = 0;
     while (interval != 1) {
@@ -384,7 +384,7 @@ sptr<DevUsbController::Manager> DevUhci::SetupInterruptTransfer(
     container_array[i] = tmp;
     td[i]->SetContainer(container_array[i]);
     td[i]->SetFunc(
-        make_uptr(new FunctionX2<void, wptr<DevUhci::UhciManager>, int>(
+        make_uptr(new Function2<void, wptr<DevUhci::UhciManager>, int>(
             &DevUhci::UhciManager::HandleInterrupt, make_wptr(manager), i)));
     _queueing_td_buf.PushBack(td[i]);
     buffer += max_packetsize;

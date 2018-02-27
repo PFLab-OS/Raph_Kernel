@@ -215,7 +215,7 @@ static void func107_sub() {
       ThreadCtrl::GetCurrentCtrl().AllocNewThread(Thread::StackState::kShared);
   do {
     auto t_op = thread->CreateOperator();
-    t_op.SetFunc(make_uptr(new FunctionX1<void, void *>(
+    t_op.SetFunc(make_uptr(new Function1<void, void *>(
         [](void *) {
           if (flag != cpu_ctrl->GetHowManyCpus()) {
             ThreadCtrl::GetCurrentThreadOperator().Schedule();

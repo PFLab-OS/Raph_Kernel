@@ -74,7 +74,7 @@ class Thread final : public QueueContainer<Thread>,
     Operator *operator&() = delete;
     void Schedule();
     void Schedule(int us);
-    void SetFunc(uptr<GenericFunction<>> func);
+    void SetFunc(uptr<GenericFunction<void>> func);
     State GetState() { return _obj._thread->GetState(); }
     State Stop() { return _obj._thread->Stop(); }
 
@@ -132,7 +132,7 @@ class Thread final : public QueueContainer<Thread>,
     return __sync_bool_compare_and_swap(&_state, old_state, new_state);
   }
 
-  uptr<GenericFunction<>> _func;
+  uptr<GenericFunction<void>> _func;
   State _state = State::kDeleting;
   WaitQueueElement _wq_ele;
   ThreadCtrl *const _ctrl;
@@ -286,6 +286,6 @@ inline void Thread::Operator::Schedule(int us) {
   that->Schedule(us);
 }
 
-inline void Thread::Operator::SetFunc(uptr<GenericFunction<>> func) {
+inline void Thread::Operator::SetFunc(uptr<GenericFunction<void>> func) {
   _obj._thread->_func = func;
 }

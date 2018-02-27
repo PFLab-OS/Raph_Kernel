@@ -82,7 +82,7 @@ void DevEhci::Init() {
                     cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority))
                     .AllocNewThread(Thread::StackState::kShared);
   _int_thread->CreateOperator().SetFunc(
-      make_uptr(new ClassFunctionX1<void, DevEhci, void *>(
+      make_uptr(new ClassFunction1<void, DevEhci, void *>(
           this, &DevEhci::CheckQueuedTdIfCompleted, nullptr)));
   assert(HasLegacyInterrupt());
   SetLegacyInterrupt(Handler, reinterpret_cast<void *>(this),
@@ -366,7 +366,7 @@ sptr<DevUsbController::Manager>
 DevEhci::DevEhciSub<QueueHead, TransferDescriptor>::SetupInterruptTransfer(
     uint8_t endpt_address, int device_addr, int interval,
     UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td,
-    uint8_t *buffer, uptr<GenericFunction<uptr<Array<uint8_t>>>> func) {
+    uint8_t *buffer, uptr<GenericFunction<void, uptr<Array<uint8_t>>>> func) {
   {
     int i = 0;
     while (interval != 1) {
@@ -442,7 +442,7 @@ DevEhci::DevEhciSub<QueueHead, TransferDescriptor>::SetupInterruptTransfer(
     container_array[i] = tmp;
     td[i]->SetTokenAndBuffer(container_array[i]);
     td[i]->SetFunc(
-        make_uptr(new FunctionX2<void, wptr<DevEhciSub::EhciManager>, int>(
+        make_uptr(new Function2<void, wptr<DevEhciSub::EhciManager>, int>(
             &DevEhciSub::EhciManager::HandleInterrupt, make_wptr(manager), i)));
     _queueing_td_buf.PushBack(td[i]);
     buffer += max_packetsize;
