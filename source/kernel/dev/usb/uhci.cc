@@ -150,7 +150,7 @@ void DevUhci::Init() {
                     cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority))
                     .AllocNewThread(Thread::StackState::kShared);
   _int_thread->CreateOperator().SetFunc(
-      make_uptr(new ClassFunction<DevUhci, void *>(
+      make_uptr(new ClassFunction1<DevUhci, void *>(
           this, &DevUhci::CheckQueuedTdIfCompleted, nullptr)));
   WriteControllerReg<uint16_t>(kCtrlRegStatus, kCtrlRegStatusFlagInt);
   WriteControllerReg<uint16_t>(

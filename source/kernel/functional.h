@@ -39,7 +39,7 @@ class Functional {
     _thread =
         ThreadCtrl::GetCtrl(cpuid).AllocNewThread(Thread::StackState::kShared);
     _thread->CreateOperator().SetFunc(
-        make_uptr(new ClassFunction<Functional, void *>(
+        make_uptr(new ClassFunction1<Functional, void *>(
             this, &Functional::Handle, nullptr)));
     _func = func;
   }

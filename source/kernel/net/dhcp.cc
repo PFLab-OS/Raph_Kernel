@@ -34,7 +34,7 @@ DhcpCtrl DhcpCtrl::_dhcp_ctrl;
 void DhcpCtrl::Init() {
   new (&_dhcp_ctrl) DhcpCtrl;
   _dhcp_ctrl._rx_queue.SetFunction(
-      network_cpu, make_uptr(new ClassFunction<DhcpCtrl, void *>(
+      network_cpu, make_uptr(new ClassFunction1<DhcpCtrl, void *>(
                        &_dhcp_ctrl, &DhcpCtrl::Handle, nullptr)));
   UdpCtrl::GetCtrl().RegisterSocket(68, &_dhcp_ctrl);
 }

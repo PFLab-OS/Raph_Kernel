@@ -39,7 +39,7 @@ void UdpCtrl::SetupServer() {
   for (size_t i = 0; i < devices->GetLen(); i++) {
     auto dev = netdev_ctrl->GetDeviceInfo((*devices)[i])->device;
     dev->SetReceiveCallback(network_cpu,
-                            make_uptr(new ClassFunction<UdpCtrl, NetDev *>(
+                            make_uptr(new ClassFunction1<UdpCtrl, NetDev *>(
                                 this, &UdpCtrl::DummyServer, dev)));
   }
 }

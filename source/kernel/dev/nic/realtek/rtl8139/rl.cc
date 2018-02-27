@@ -182,7 +182,7 @@ void Rtl8139::Rtl8139Ethernet::ChangeHandleMethodToPolling() {
   _master.WriteReg<uint16_t>(kRegIrMask, 0);
   // TODO:disable LegacyInt
 
-  _polling.Init(make_uptr(new Function<Rtl8139 *>(PollingHandler, &_master)));
+  _polling.Init(make_uptr(new Function1<Rtl8139 *>(PollingHandler, &_master)));
   _polling.Register(
       cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kHighPerformance));
 }
@@ -320,7 +320,7 @@ void Rtl8139::Rtl8139Ethernet::Start() {
                                                  CpuPurpose::kLowPriority))
                              .AllocNewThread(Thread::StackState::kShared);
   _status_check_thread->CreateOperator().SetFunc(
-      make_uptr(new Function<Rtl8139Ethernet *>(
+      make_uptr(new Function1<Rtl8139Ethernet *>(
           Rtl8139::Rtl8139Ethernet::CheckHwState, this)));
 
   _status_check_thread->CreateOperator().Schedule(1000 * 1000);

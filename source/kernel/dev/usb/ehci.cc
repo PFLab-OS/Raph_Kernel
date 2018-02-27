@@ -82,7 +82,7 @@ void DevEhci::Init() {
                     cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority))
                     .AllocNewThread(Thread::StackState::kShared);
   _int_thread->CreateOperator().SetFunc(
-      make_uptr(new ClassFunction<DevEhci, void *>(
+      make_uptr(new ClassFunction1<DevEhci, void *>(
           this, &DevEhci::CheckQueuedTdIfCompleted, nullptr)));
   assert(HasLegacyInterrupt());
   SetLegacyInterrupt(Handler, reinterpret_cast<void *>(this),
