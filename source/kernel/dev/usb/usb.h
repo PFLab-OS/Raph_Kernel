@@ -249,7 +249,8 @@ class DevUsbController {
   virtual sptr<Manager> SetupInterruptTransfer(
       uint8_t endpt_address, int device_addr, int interval,
       UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td,
-      uint8_t *buffer, uptr<GenericFunction<uptr<Array<uint8_t>>>> func) = 0;
+      uint8_t *buffer,
+      uptr<GenericFunction<void, uptr<Array<uint8_t>>>> func) = 0;
   DevUsb *InitDevices(int addr);
 
  private:
@@ -301,8 +302,9 @@ class DevUsb {
                                            desc_index));
   }
   int GetDescriptorNumInCombinedDescriptors(UsbCtrl::DescriptorType type);
-  void SetupInterruptTransfer(int num_td, uint8_t *buffer,
-                              uptr<GenericFunction<uptr<Array<uint8_t>>>> func);
+  void SetupInterruptTransfer(
+      int num_td, uint8_t *buffer,
+      uptr<GenericFunction<void, uptr<Array<uint8_t>>>> func);
   int GetAddr() { return _addr; }
   DevUsbController *const GetController() { return _controller; }
   class InterruptEndpoint {
@@ -319,7 +321,7 @@ class DevUsb {
     }
     void ObjReuse(uptr<Array<uint8_t>> obj) { _obj_reserved.Push(obj); }
     void Setup(int num_td, uint8_t *buffer,
-               uptr<GenericFunction<uptr<Array<uint8_t>>>> func);
+               uptr<GenericFunction<void, uptr<Array<uint8_t>>>> func);
 
    private:
     RingBuffer<uptr<Array<uint8_t>>, 32> _obj_reserved;

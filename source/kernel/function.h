@@ -29,30 +29,64 @@
 #include <ptr.h>
 
 template <class R, class... Args>
-class GenericFunctionX {
+class GenericFunction {
  public:
-  GenericFunctionX() {}
-  virtual ~GenericFunctionX() {}
+  GenericFunction() {}
+  virtual ~GenericFunction() {}
   virtual R Execute(Args... args) = 0;
 };
 
 template <class... Args>
-class GenericFunctionX<void, Args...> {
+class GenericFunction<void, Args...> {
  public:
-  GenericFunctionX() {}
-  virtual ~GenericFunctionX() {}
+  GenericFunction() {}
+  virtual ~GenericFunction() {}
   virtual void Execute(Args... args) {}
 };
 
+template <class R, class... Args>
+class Function0 : public GenericFunction<R, Args...> {
+ public:
+  Function0(R (*func)(Args...)) : _func(func) {}
+  virtual ~Function0() { kassert(_ref == 0); }
+  Function0(const Function0 &obj) : _func(obj._func) {}
+  virtual R Execute(Args... args) override {
+    __sync_fetch_and_add(&_ref, 1);
+    R res = _func(args...);
+    __sync_fetch_and_sub(&_ref, 1);
+    return res;
+  }
+
+ private:
+  Function0();
+  R (*_func)(Args...);
+  int _ref = 0;
+};
+
 template <class... Args>
-using GenericFunction = GenericFunctionX<void, Args...>;
+class Function0<void, Args...> : public GenericFunction<void, Args...> {
+ public:
+  Function0(void (*func)(Args...)) : _func(func) {}
+  virtual ~Function0() { kassert(_ref == 0); }
+  Function0(const Function0 &obj) : _func(obj._func) {}
+  virtual void Execute(Args... args) override {
+    __sync_fetch_and_add(&_ref, 1);
+    _func(args...);
+    __sync_fetch_and_sub(&_ref, 1);
+  }
+
+ private:
+  Function0();
+  void (*_func)(Args...);
+  int _ref = 0;
+};
 
 template <class R, class T, class... Args>
-class FunctionX : public GenericFunctionX<R, Args...> {
+class Function1 : public GenericFunction<R, Args...> {
  public:
-  FunctionX(R (*func)(T, Args...), T arg) : _func(func), _arg(arg) {}
-  virtual ~FunctionX() { kassert(_ref == 0); }
-  FunctionX(const FunctionX &obj) : _func(obj._func), _arg(obj._arg) {}
+  Function1(R (*func)(T, Args...), T arg) : _func(func), _arg(arg) {}
+  virtual ~Function1() { kassert(_ref == 0); }
+  Function1(const Function1 &obj) : _func(obj._func), _arg(obj._arg) {}
   virtual R Execute(Args... args) override {
     __sync_fetch_and_add(&_ref, 1);
     R res = _func(_arg, args...);
@@ -61,18 +95,18 @@ class FunctionX : public GenericFunctionX<R, Args...> {
   }
 
  private:
-  FunctionX();
+  Function1();
   R (*_func)(T, Args...);
   T _arg;
   int _ref = 0;
 };
 
 template <class T, class... Args>
-class FunctionX<void, T, Args...> : public GenericFunctionX<void, Args...> {
+class Function1<void, T, Args...> : public GenericFunction<void, Args...> {
  public:
-  FunctionX(void (*func)(T, Args...), T arg) : _func(func), _arg(arg) {}
-  virtual ~FunctionX() { kassert(_ref == 0); }
-  FunctionX(const FunctionX &obj) : _func(obj._func), _arg(obj._arg) {}
+  Function1(void (*func)(T, Args...), T arg) : _func(func), _arg(arg) {}
+  virtual ~Function1() { kassert(_ref == 0); }
+  Function1(const Function1 &obj) : _func(obj._func), _arg(obj._arg) {}
   virtual void Execute(Args... args) override {
     __sync_fetch_and_add(&_ref, 1);
     _func(_arg, args...);
@@ -80,22 +114,19 @@ class FunctionX<void, T, Args...> : public GenericFunctionX<void, Args...> {
   }
 
  private:
-  FunctionX();
+  Function1();
   void (*_func)(T, Args...);
   T _arg;
   int _ref = 0;
 };
 
-template <class T, class... Args>
-using Function = FunctionX<void, T, Args...>;
-
 template <class R, class T1, class T2, class... Args>
-class FunctionX2 : public GenericFunctionX<R, Args...> {
+class Function2 : public GenericFunction<R, Args...> {
  public:
-  FunctionX2(R (*func)(T1, T2, Args...), T1 arg1, T2 arg2)
+  Function2(R (*func)(T1, T2, Args...), T1 arg1, T2 arg2)
       : _func(func), _arg1(arg1), _arg2(arg2) {}
-  virtual ~FunctionX2() { kassert(_ref == 0); }
-  FunctionX2(const FunctionX2 &obj)
+  virtual ~Function2() { kassert(_ref == 0); }
+  Function2(const Function2 &obj)
       : _func(obj._func), _arg1(obj._arg1), _arg2(obj._arg2) {}
   virtual R Execute(Args... args) override {
     __sync_fetch_and_add(&_ref, 1);
@@ -105,7 +136,7 @@ class FunctionX2 : public GenericFunctionX<R, Args...> {
   }
 
  private:
-  FunctionX2();
+  Function2();
   R (*_func)(T1, T2, Args...);
   T1 _arg1;
   T2 _arg2;
@@ -113,13 +144,12 @@ class FunctionX2 : public GenericFunctionX<R, Args...> {
 };
 
 template <class T1, class T2, class... Args>
-class FunctionX2<void, T1, T2, Args...>
-    : public GenericFunctionX<void, Args...> {
+class Function2<void, T1, T2, Args...> : public GenericFunction<void, Args...> {
  public:
-  FunctionX2(void (*func)(T1, T2, Args...), T1 arg1, T2 arg2)
+  Function2(void (*func)(T1, T2, Args...), T1 arg1, T2 arg2)
       : _func(func), _arg1(arg1), _arg2(arg2) {}
-  virtual ~FunctionX2() { kassert(_ref == 0); }
-  FunctionX2(const FunctionX2 &obj)
+  virtual ~Function2() { kassert(_ref == 0); }
+  Function2(const Function2 &obj)
       : _func(obj._func), _arg1(obj._arg1), _arg2(obj._arg2) {}
   virtual void Execute(Args... args) override {
     __sync_fetch_and_add(&_ref, 1);
@@ -128,23 +158,20 @@ class FunctionX2<void, T1, T2, Args...>
   }
 
  private:
-  FunctionX2();
+  Function2();
   void (*_func)(T1, T2, Args...);
   T1 _arg1;
   T2 _arg2;
   int _ref = 0;
 };
 
-template <class T1, class T2, class... Args>
-using Function2 = FunctionX2<void, T1, T2, Args...>;
-
 template <class R, class T1, class T2, class T3, class... Args>
-class FunctionX3 : public GenericFunctionX<R, Args...> {
+class Function3 : public GenericFunction<R, Args...> {
  public:
-  FunctionX3(R (*func)(T1, T2, T3, Args...), T1 arg1, T2 arg2, T3 arg3)
+  Function3(R (*func)(T1, T2, T3, Args...), T1 arg1, T2 arg2, T3 arg3)
       : _func(func), _arg1(arg1), _arg2(arg2), _arg3(arg3) {}
-  virtual ~FunctionX3() { kassert(_ref == 0); }
-  FunctionX3(const FunctionX3 &obj)
+  virtual ~Function3() { kassert(_ref == 0); }
+  Function3(const Function3 &obj)
       : _func(obj._func),
         _arg1(obj._arg1),
         _arg2(obj._arg2),
@@ -157,7 +184,7 @@ class FunctionX3 : public GenericFunctionX<R, Args...> {
   }
 
  private:
-  FunctionX3();
+  Function3();
   R (*_func)(T1, T2, T3, Args...);
   T1 _arg1;
   T2 _arg2;
@@ -166,13 +193,13 @@ class FunctionX3 : public GenericFunctionX<R, Args...> {
 };
 
 template <class T1, class T2, class T3, class... Args>
-class FunctionX3<void, T1, T2, T3, Args...>
-    : public GenericFunctionX<void, Args...> {
+class Function3<void, T1, T2, T3, Args...>
+    : public GenericFunction<void, Args...> {
  public:
-  FunctionX3(void (*func)(T1, T2, T3, Args...), T1 arg1, T2 arg2, T3 arg3)
+  Function3(void (*func)(T1, T2, T3, Args...), T1 arg1, T2 arg2, T3 arg3)
       : _func(func), _arg1(arg1), _arg2(arg2), _arg3(arg3) {}
-  virtual ~FunctionX3() { kassert(_ref == 0); }
-  FunctionX3(const FunctionX3 &obj)
+  virtual ~Function3() { kassert(_ref == 0); }
+  Function3(const Function3 &obj)
       : _func(obj._func),
         _arg1(obj._arg1),
         _arg2(obj._arg2),
@@ -184,7 +211,7 @@ class FunctionX3<void, T1, T2, T3, Args...>
   }
 
  private:
-  FunctionX3();
+  Function3();
   void (*_func)(T1, T2, T3, Args...);
   T1 _arg1;
   T2 _arg2;
@@ -192,20 +219,56 @@ class FunctionX3<void, T1, T2, T3, Args...>
   int _ref = 0;
 };
 
-template <class T1, class T2, class T3, class... Args>
-using Function3 = FunctionX3<void, T1, T2, T3, Args...>;
-
 // Do not define Function4!
 // use struct as an alternative argument.
 
-template <class R, class C, class T1, class... Args>
-class ClassFunctionX : public GenericFunctionX<R, Args...> {
+template <class R, class C, class... Args>
+class ClassFunction0 : public GenericFunction<R, Args...> {
  public:
-  ClassFunctionX(C *c, R (C::*func)(T1, Args...), T1 arg)
+  ClassFunction0(C *c, R (C::*func)(Args...)) : _c(c), _func(func) {}
+  ClassFunction0(const ClassFunction0 &obj) : _c(obj._c), _func(obj._func) {}
+  virtual ~ClassFunction0() { kassert(_ref == 0); }
+  virtual R Execute(Args... args) override {
+    __sync_fetch_and_add(&_ref, 1);
+    R res = (_c->*_func)(args...);
+    __sync_fetch_and_sub(&_ref, 1);
+    return res;
+  }
+
+ private:
+  ClassFunction0();
+  C *_c;
+  R (C::*_func)(Args...);
+  int _ref = 0;
+};
+
+template <class C, class... Args>
+class ClassFunction0<void, C, Args...> : public GenericFunction<void, Args...> {
+ public:
+  ClassFunction0(C *c, void (C::*func)(Args...)) : _c(c), _func(func) {}
+  ClassFunction0(const ClassFunction0 &obj) : _c(obj._c), _func(obj._func) {}
+  virtual ~ClassFunction0() { kassert(_ref == 0); }
+  virtual void Execute(Args... args) override {
+    __sync_fetch_and_add(&_ref, 1);
+    (_c->*_func)(args...);
+    __sync_fetch_and_sub(&_ref, 1);
+  }
+
+ private:
+  ClassFunction0();
+  C *_c;
+  void (C::*_func)(Args...);
+  int _ref = 0;
+};
+
+template <class R, class C, class T1, class... Args>
+class ClassFunction1 : public GenericFunction<R, Args...> {
+ public:
+  ClassFunction1(C *c, R (C::*func)(T1, Args...), T1 arg)
       : _c(c), _func(func), _arg(arg) {}
-  ClassFunctionX(const ClassFunctionX &obj)
+  ClassFunction1(const ClassFunction1 &obj)
       : _c(obj._c), _func(obj._func), _arg(obj._arg) {}
-  virtual ~ClassFunctionX() { kassert(_ref == 0); }
+  virtual ~ClassFunction1() { kassert(_ref == 0); }
   virtual R Execute(Args... args) override {
     __sync_fetch_and_add(&_ref, 1);
     R res = (_c->*_func)(_arg, args...);
@@ -214,7 +277,7 @@ class ClassFunctionX : public GenericFunctionX<R, Args...> {
   }
 
  private:
-  ClassFunctionX();
+  ClassFunction1();
   C *_c;
   R (C::*_func)(T1, Args...);
   T1 _arg;
@@ -222,14 +285,14 @@ class ClassFunctionX : public GenericFunctionX<R, Args...> {
 };
 
 template <class C, class T1, class... Args>
-class ClassFunctionX<void, C, T1, Args...>
-    : public GenericFunctionX<void, Args...> {
+class ClassFunction1<void, C, T1, Args...>
+    : public GenericFunction<void, Args...> {
  public:
-  ClassFunctionX(C *c, void (C::*func)(T1, Args...), T1 arg)
+  ClassFunction1(C *c, void (C::*func)(T1, Args...), T1 arg)
       : _c(c), _func(func), _arg(arg) {}
-  ClassFunctionX(const ClassFunctionX &obj)
+  ClassFunction1(const ClassFunction1 &obj)
       : _c(obj._c), _func(obj._func), _arg(obj._arg) {}
-  virtual ~ClassFunctionX() { kassert(_ref == 0); }
+  virtual ~ClassFunction1() { kassert(_ref == 0); }
   virtual void Execute(Args... args) override {
     __sync_fetch_and_add(&_ref, 1);
     (_c->*_func)(_arg, args...);
@@ -237,24 +300,21 @@ class ClassFunctionX<void, C, T1, Args...>
   }
 
  private:
-  ClassFunctionX();
+  ClassFunction1();
   C *_c;
   void (C::*_func)(T1, Args...);
   T1 _arg;
   int _ref = 0;
 };
 
-template <class C, class T, class... Args>
-using ClassFunction = ClassFunctionX<void, C, T, Args...>;
-
 template <class R, class C, class T1, class T2, class... Args>
-class ClassFunctionX2 : public GenericFunctionX<R, Args...> {
+class ClassFunction2 : public GenericFunction<R, Args...> {
  public:
-  ClassFunctionX2(C *c, R (C::*func)(T1, T2, Args...), T1 arg1, T2 arg2)
+  ClassFunction2(C *c, R (C::*func)(T1, T2, Args...), T1 arg1, T2 arg2)
       : _c(c), _func(func), _arg1(arg1), _arg2(arg2) {}
-  ClassFunctionX2(const ClassFunctionX2 &obj)
+  ClassFunction2(const ClassFunction2 &obj)
       : _c(obj._c), _func(obj._func), _arg1(obj._arg1), _arg2(obj._arg2) {}
-  virtual ~ClassFunctionX2() {}
+  virtual ~ClassFunction2() {}
   virtual R Execute(Args... args) override {
     __sync_fetch_and_add(&_ref, 1);
     R res = (_c->*_func)(_arg1, _arg2, args...);
@@ -263,7 +323,7 @@ class ClassFunctionX2 : public GenericFunctionX<R, Args...> {
   }
 
  private:
-  ClassFunctionX2();
+  ClassFunction2();
   C *_c;
   R (C::*_func)(T1, T2, Args...);
   T1 _arg1;
@@ -272,14 +332,14 @@ class ClassFunctionX2 : public GenericFunctionX<R, Args...> {
 };
 
 template <class C, class T1, class T2, class... Args>
-class ClassFunctionX2<void, C, T1, T2, Args...>
-    : public GenericFunctionX<void, Args...> {
+class ClassFunction2<void, C, T1, T2, Args...>
+    : public GenericFunction<void, Args...> {
  public:
-  ClassFunctionX2(C *c, void (C::*func)(T1, T2, Args...), T1 arg1, T2 arg2)
+  ClassFunction2(C *c, void (C::*func)(T1, T2, Args...), T1 arg1, T2 arg2)
       : _c(c), _func(func), _arg1(arg1), _arg2(arg2) {}
-  ClassFunctionX2(const ClassFunctionX2 &obj)
+  ClassFunction2(const ClassFunction2 &obj)
       : _c(obj._c), _func(obj._func), _arg1(obj._arg1), _arg2(obj._arg2) {}
-  virtual ~ClassFunctionX2() {}
+  virtual ~ClassFunction2() {}
   virtual void Execute(Args... args) override {
     __sync_fetch_and_add(&_ref, 1);
     (_c->*_func)(_arg1, _arg2, args...);
@@ -287,7 +347,7 @@ class ClassFunctionX2<void, C, T1, T2, Args...>
   }
 
  private:
-  ClassFunctionX2();
+  ClassFunction2();
   C *_c;
   void (C::*_func)(T1, T2, Args...);
   T1 _arg1;
@@ -295,22 +355,18 @@ class ClassFunctionX2<void, C, T1, T2, Args...>
   int _ref = 0;
 };
 
-template <class C, class T1, class T2, class... Args>
-using ClassFunction2 = ClassFunctionX2<void, C, T1, T2, Args...>;
-
 template <class R, class C, class T1, class T2, class T3, class... Args>
-class ClassFunctionX3 : public GenericFunctionX<R, Args...> {
+class ClassFunction3 : public GenericFunction<R, Args...> {
  public:
-  ClassFunctionX3(C *c, R (C::*func)(T1, T2, Args...), T1 arg1, T2 arg2,
-                  T3 arg3)
+  ClassFunction3(C *c, R (C::*func)(T1, T2, Args...), T1 arg1, T2 arg2, T3 arg3)
       : _c(c), _func(func), _arg1(arg1), _arg2(arg2), _arg3(arg3) {}
-  ClassFunctionX3(const ClassFunctionX3 &obj)
+  ClassFunction3(const ClassFunction3 &obj)
       : _c(obj._c),
         _func(obj._func),
         _arg1(obj._arg1),
         _arg2(obj._arg2),
         _arg3(obj._arg3) {}
-  virtual ~ClassFunctionX3() { kassert(_ref == 0); }
+  virtual ~ClassFunction3() { kassert(_ref == 0); }
   virtual R Execute(Args... args) override {
     __sync_fetch_and_add(&_ref, 1);
     R res = (_c->*_func)(_arg1, _arg2, _arg3, args...);
@@ -319,7 +375,7 @@ class ClassFunctionX3 : public GenericFunctionX<R, Args...> {
   }
 
  private:
-  ClassFunctionX3();
+  ClassFunction3();
   C *_c;
   R (C::*_func)(T1, T2, T3, Args...);
   T1 _arg1;
@@ -329,19 +385,19 @@ class ClassFunctionX3 : public GenericFunctionX<R, Args...> {
 };
 
 template <class C, class T1, class T2, class T3, class... Args>
-class ClassFunctionX3<void, C, T1, T2, T3, Args...>
-    : public GenericFunctionX<void, Args...> {
+class ClassFunction3<void, C, T1, T2, T3, Args...>
+    : public GenericFunction<void, Args...> {
  public:
-  ClassFunctionX3(C *c, void (C::*func)(T1, T2, Args...), T1 arg1, T2 arg2,
-                  T3 arg3)
+  ClassFunction3(C *c, void (C::*func)(T1, T2, Args...), T1 arg1, T2 arg2,
+                 T3 arg3)
       : _c(c), _func(func), _arg1(arg1), _arg2(arg2), _arg3(arg3) {}
-  ClassFunctionX3(const ClassFunctionX3 &obj)
+  ClassFunction3(const ClassFunction3 &obj)
       : _c(obj._c),
         _func(obj._func),
         _arg1(obj._arg1),
         _arg2(obj._arg2),
         _arg3(obj._arg3) {}
-  virtual ~ClassFunctionX3() { kassert(_ref == 0); }
+  virtual ~ClassFunction3() { kassert(_ref == 0); }
   virtual void Execute(Args... args) override {
     __sync_fetch_and_add(&_ref, 1);
     (_c->*_func)(_arg1, _arg2, _arg3, args...);
@@ -349,7 +405,7 @@ class ClassFunctionX3<void, C, T1, T2, T3, Args...>
   }
 
  private:
-  ClassFunctionX3();
+  ClassFunction3();
   C *_c;
   void (C::*_func)(T1, T2, T3, Args...);
   T1 _arg1;
@@ -357,9 +413,6 @@ class ClassFunctionX3<void, C, T1, T2, T3, Args...>
   T3 _arg3;
   int _ref = 0;
 };
-
-template <class C, class T1, class T2, class T3, class... Args>
-using ClassFunction3 = ClassFunctionX3<void, C, T1, T2, T3, Args...>;
 
 // Do not define ClassFunction4!
 // use struct as an alternative argument.

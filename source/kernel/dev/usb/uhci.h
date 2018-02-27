@@ -137,7 +137,7 @@ class DevUhci final : public DevPci {
                container.data_toggle, container.total_bytes);
       SetBuffer(ptr2virtaddr(container.buf), 0);
     }
-    void SetFunc(uptr<GenericFunction<>> func) { _func = func; }
+    void SetFunc(uptr<GenericFunction<void>> func) { _func = func; }
     void Execute() { _func->Execute(); }
     uint32_t _next;
     uint32_t _status;
@@ -157,7 +157,7 @@ class DevUhci final : public DevPci {
     }
     //  extra info for driver
     friend DevUhci;
-    uptr<GenericFunction<>> _func;
+    uptr<GenericFunction<void>> _func;
   } __attribute__((__packed__)) __attribute__((aligned(16)));
   RingBuffer<TransferDescriptor *, 128> _td_buf;
 
@@ -215,7 +215,7 @@ class DevUhci final : public DevPci {
   class UhciManager : public DevUsbController::Manager {
    public:
     UhciManager(int num_td, QueueHead *qh,
-                uptr<GenericFunction<uptr<Array<uint8_t>>>> func,
+                uptr<GenericFunction<void, uptr<Array<uint8_t>>>> func,
                 DevUhci *master)
         : _num_td(num_td),
           _td_array(new TransferDescriptor *[num_td]),
@@ -244,7 +244,7 @@ class DevUhci final : public DevPci {
     TransferDescriptor **_td_array;
     TdContainer *_container_array;
     QueueHead *_interrupt_qh;
-    uptr<GenericFunction<uptr<Array<uint8_t>>>> _func;
+    uptr<GenericFunction<void, uptr<Array<uint8_t>>>> _func;
     DevUhci *const _master;
   };
   List<TransferDescriptor *> _queueing_td_buf;
@@ -319,7 +319,7 @@ class DevUhci final : public DevPci {
   sptr<DevUsbController::Manager> SetupInterruptTransfer(
       uint8_t endpt_address, int device_addr, int interval,
       UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td,
-      uint8_t *buffer, uptr<GenericFunction<uptr<Array<uint8_t>>>> func);
+      uint8_t *buffer, uptr<GenericFunction<void, uptr<Array<uint8_t>>>> func);
 
   void HandlerSub();
   static void Handler(void *arg) {
@@ -343,7 +343,7 @@ class DevUhci final : public DevPci {
         uint8_t endpt_address, int device_addr, int interval,
         UsbCtrl::PacketIdentification direction, int max_packetsize, int num_td,
         uint8_t *buffer,
-        uptr<GenericFunction<uptr<Array<uint8_t>>>> func) override {
+        uptr<GenericFunction<void, uptr<Array<uint8_t>>>> func) override {
       return _dev_uhci->SetupInterruptTransfer(
           endpt_address, device_addr, interval, direction, max_packetsize,
           num_td, buffer, func);

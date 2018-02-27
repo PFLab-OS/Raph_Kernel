@@ -38,9 +38,9 @@ void UdpCtrl::SetupServer() {
   auto devices = netdev_ctrl->GetNamesOfAllDevices();
   for (size_t i = 0; i < devices->GetLen(); i++) {
     auto dev = netdev_ctrl->GetDeviceInfo((*devices)[i])->device;
-    dev->SetReceiveCallback(network_cpu,
-                            make_uptr(new ClassFunction<UdpCtrl, NetDev *>(
-                                this, &UdpCtrl::DummyServer, dev)));
+    dev->SetReceiveCallback(
+        network_cpu, make_uptr(new ClassFunction1<void, UdpCtrl, NetDev *>(
+                         this, &UdpCtrl::DummyServer, dev)));
   }
 }
 

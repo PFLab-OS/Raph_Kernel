@@ -194,7 +194,7 @@ int DevUsb::GetDescriptorNumInCombinedDescriptors(
 
 void DevUsb::SetupInterruptTransfer(
     int num_td, uint8_t *buffer,
-    uptr<GenericFunction<uptr<Array<uint8_t>>>> func) {
+    uptr<GenericFunction<void, uptr<Array<uint8_t>>>> func) {
   UsbCtrl::EndpointDescriptor *ed0 =
       GetEndpointDescriptorInCombinedDescriptors(0);
   assert(ed0->GetDirection() == UsbCtrl::PacketIdentification::kIn);
@@ -205,7 +205,7 @@ void DevUsb::SetupInterruptTransfer(
 
 void DevUsb::InterruptEndpoint::Setup(
     int num_td, uint8_t *buffer,
-    uptr<GenericFunction<uptr<Array<uint8_t>>>> func) {
+    uptr<GenericFunction<void, uptr<Array<uint8_t>>>> func) {
   while (!_obj_reserved.IsFull()) {
     assert(_obj_reserved.Push(
         make_uptr(new Array<uint8_t>(_ed->GetMaxPacketSize()))));

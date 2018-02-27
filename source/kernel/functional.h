@@ -35,11 +35,11 @@ class Functional {
   };
   Functional() {}
   virtual ~Functional() {}
-  void SetFunction(CpuId cpuid, uptr<GenericFunction<>> func) {
+  void SetFunction(CpuId cpuid, uptr<GenericFunction<void>> func) {
     _thread =
         ThreadCtrl::GetCtrl(cpuid).AllocNewThread(Thread::StackState::kShared);
     _thread->CreateOperator().SetFunc(
-        make_uptr(new ClassFunction<Functional, void *>(
+        make_uptr(new ClassFunction1<void, Functional, void *>(
             this, &Functional::Handle, nullptr)));
     _func = func;
   }
@@ -62,7 +62,7 @@ class Functional {
 
  private:
   void Handle(void *);
-  uptr<GenericFunction<>> _func;
+  uptr<GenericFunction<void>> _func;
   uptr<Thread> _thread;
   FunctionState _state = FunctionState::kNotFunctioning;
   bool _block_flag = false;

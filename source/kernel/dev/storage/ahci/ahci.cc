@@ -2716,7 +2716,7 @@ AhciChannel *AhciChannel::Init(AhciCtrl *ctrl) {
   channel->InitBsdDevice(channel, sizeof(struct ahci_channel));
   channel->devq.SetFunction(
       cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority),
-      make_uptr(new ClassFunction<AhciChannel, void *>(
+      make_uptr(new ClassFunction1<void, AhciChannel, void *>(
           channel, &AhciChannel::Handle, nullptr)));
   return channel;
 }

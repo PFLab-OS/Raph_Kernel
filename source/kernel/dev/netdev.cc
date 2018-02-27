@@ -30,7 +30,7 @@
 NetDev::NetDev() {
   extern CpuId network_cpu;
   _tx_buffered.SetFunction(network_cpu,
-                           make_uptr(new ClassFunction<NetDev, void *>(
+                           make_uptr(new ClassFunction1<void, NetDev, void *>(
                                this, &NetDev::Transmit, nullptr)));
 }
 

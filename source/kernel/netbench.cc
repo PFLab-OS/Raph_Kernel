@@ -39,7 +39,7 @@ extern CpuId network_cpu;
 void setup_arp_reply(NetDev *dev) {
   dev->SetReceiveCallback(
       network_cpu,
-      make_uptr(new Function<NetDev *>(
+      make_uptr(new Function1<void, NetDev *>(
           [](NetDev *eth) {
             NetDev::Packet *rpacket;
             if (!eth->ReceivePacket(rpacket)) {
@@ -149,7 +149,7 @@ void send_arp_packet(NetDev *dev, uint8_t *ipaddr) {
                       .AllocNewThread(Thread::StackState::kShared);
     do {
       auto t_op = thread->CreateOperator();
-      t_op.SetFunc(make_uptr(new Function<NetDev *>(
+      t_op.SetFunc(make_uptr(new Function1<void, NetDev *>(
           [](NetDev *eth) {
             auto t_op2 = ThreadCtrl::GetCurrentThreadOperator();
             if (!apic_ctrl->IsBootupAll()) {
@@ -222,7 +222,7 @@ void send_arp_packet(NetDev *dev, uint8_t *ipaddr) {
                       .AllocNewThread(Thread::StackState::kShared);
     do {
       auto t_op = thread->CreateOperator();
-      t_op.SetFunc(make_uptr(new Function<NetDev *>(
+      t_op.SetFunc(make_uptr(new Function1<void, NetDev *>(
           [](NetDev *eth) {
             if (rtime > 0) {
               gtty->Printf("ARP Reply average latency:%dus [%d/%d]\n",

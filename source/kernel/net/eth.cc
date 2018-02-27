@@ -46,7 +46,7 @@ void EthernetCtrl::SetupServer() {
     }
     dev->SetReceiveCallback(
         network_cpu,
-        make_uptr(new Function<NetDev *>(
+        make_uptr(new Function1<void, NetDev *>(
             [](NetDev *eth) {
               NetDev::Packet *rpacket;
               if (!eth->ReceivePacket(rpacket)) {

@@ -48,7 +48,7 @@ extern "C" {
     c->callout_container = new LckCalloutContainer();
     c->callout_container->lock = lock->lock;
     c->callout_container->thread = ThreadCtrl::GetCtrl(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority)).AllocNewThread(Thread::StackState::kShared);
-    c->callout_container->thread->CreateOperator().SetFunc(make_uptr(new Function<struct callout *>(_callout_handle, c)));
+    c->callout_container->thread->CreateOperator().SetFunc(make_uptr(new Function1<void, struct callout *>(_callout_handle, c)));
     c->func = nullptr;
   }
 
