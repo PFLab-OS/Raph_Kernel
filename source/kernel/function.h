@@ -33,7 +33,15 @@ class GenericFunction {
  public:
   GenericFunction() {}
   virtual ~GenericFunction() {}
-  virtual R Execute(Args... args) = 0;
+  virtual R Execute(Args... args) {
+    // This Function must not be called.
+    // Because IsBaseOf<S,T>'s T must be abstract class.
+    // Following code call IsBaseOf.
+    // uptr<GenericFunction<void>>
+    kassert(false);
+    R r;
+    return r;
+  };
 };
 
 template <class... Args>
