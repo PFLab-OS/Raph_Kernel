@@ -36,6 +36,9 @@ class Set {
     _elem_list_head->next = _elem_list_head;
   }
   bool Push(sptr<S> t) {
+    if (t.IsNull()) {
+      return false;
+    }
     Locker locker(_lock);
     auto p = _elem_list_head;
     // Check same element
