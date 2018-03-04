@@ -42,6 +42,18 @@ private:
   Set<int> _set;
 } static OBJ(__LINE__);
 
+class SetTester_PushNull : public Tester {
+public:
+  virtual bool Test() override {
+    sptr<int> r1;
+    kassert(_set.Push(r1) == false);
+
+    return true;
+  }
+private:
+  Set<int> _set;
+} static OBJ(__LINE__);
+
 class SetTester_SinglePushPop : public Tester {
 public:
   virtual bool Test() override {
