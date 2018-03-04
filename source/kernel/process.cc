@@ -42,7 +42,7 @@ void Process::Init() {
 void ProcessCtrl::Init() {
   {
     Locker locker(_table_lock);
-    Process* p = _process_table.Init();
+    sptr<Process> p = _process_table.Init();
     CreateFirstProcess(p);
     _current_exec_process = p;
   }
@@ -51,8 +51,8 @@ void ProcessCtrl::Init() {
   auto t_op = _scheduler_thread->CreateOperator();
   t_op.SetFunc(make_uptr(new Function0<void>([]() {
 
-    Process* p = process_ctrl->GetNextExecProcess();
-    if (p != nullptr) {
+    sptr<Process> p = process_ctrl->GetNextExecProcess();
+    if (!p.IsNull()) {
       p->_thread->CreateOperator().Schedule();
     }
 
@@ -65,10 +65,10 @@ void ProcessCtrl::Init() {
 
 //TODO: impl better scheduler.
 //This function is scheduler.
-Process* ProcessCtrl::GetNextExecProcess() {
+sptr<Process> ProcessCtrl::GetNextExecProcess() {
   {
-    Process* cp = _current_exec_process;
-    Process* p = _current_exec_process;
+    sptr<Process> cp =  _current_exec_process;
+    sptr<Process> p = _current_exec_process;
     Locker locker(_table_lock);
     do {
       p = p->_next;
@@ -78,18 +78,19 @@ Process* ProcessCtrl::GetNextExecProcess() {
       }
     } while (p != cp);
   }
-  return nullptr;
+  sptr<Process> res;
+  return res;
 }
 
 //For init
-Process* ProcessCtrl::CreateFirstProcess(Process* process) {
-  if(process == nullptr) {
+sptr<Process> ProcessCtrl::CreateFirstProcess(sptr<Process> process) {
+  if(process.IsNull()) {
     kernel_panic("ProcessCtrl","Could not alloc first process space.");
   }
   process->Init();
 
   auto t_op = process->_thread->CreateOperator();
-  t_op.SetFunc(make_uptr(new Function1<void,Process *>([](Process *p){
+  t_op.SetFunc(make_uptr(new Function1<void,sptr<Process>>([](sptr<Process> p){
       p->_mem_ctrl->Init();
 
       p->_mem_ctrl->Switch();
@@ -132,46 +133,46 @@ Process* ProcessCtrl::CreateFirstProcess(Process* process) {
   return process;
 }
 
- Process* ProcessCtrl::ProcessTable::Init() {
-   Process* p = new Process();
-   p->_status = ProcessStatus::kEmbryo;
-   p->_pid = _next_pid++;
-   p->_next = p->_prev = p;
- 
-   _current_process = p;
- 
-   return p;
- }
- 
- Process* ProcessCtrl::ProcessTable::AllocProcess() {
-   Process* p = new Process();
-   p->_status = ProcessStatus::kEmbryo;
-   p->_pid = _next_pid++;
- 
-   Process* cp = _current_process;
- 
-   p->_next = cp->_next;
-   p->_prev = cp;
-   cp->_next = p;
-   cp->_next->_prev = p;
- 
-   return p;
- }
- 
- void ProcessCtrl::ProcessTable::FreeProcess(Process* p) {
-   p->_prev = p->_next;
-   p->_next->_prev = p->_prev;
-   delete p;
- }
- 
- //TODO: impl (now, super simple implemetation for debug) 
- Process* ProcessCtrl::ProcessTable::GetNextProcess() {
-   while(true) { 
-     Process* res = _current_process->_next;
-     _current_process = res;
-     //DBG
-     if (res->GetStatus() == ProcessStatus::kZombie) continue;
-     return res;
-   }
-   return nullptr;
- }
+sptr<Process> ProcessCtrl::ProcessTable::Init() {
+  sptr<Process> p = make_sptr(new Process());
+  p->_status = ProcessStatus::kEmbryo;
+  p->_pid = _next_pid++;
+  p->_next = p->_prev = p;
+
+  _current_process = p;
+
+  return p;
+}
+
+sptr<Process> ProcessCtrl::ProcessTable::AllocProcess() {
+  sptr<Process> p = make_sptr(new Process());
+  p->_status = ProcessStatus::kEmbryo;
+  p->_pid = _next_pid++;
+
+  sptr<Process> cp = _current_process;
+
+  p->_next = cp->_next;
+  p->_prev = cp;
+  cp->_next = p;
+  cp->_next->_prev = p;
+
+  return p;
+}
+
+void ProcessCtrl::ProcessTable::FreeProcess(sptr<Process> p) {
+  p->_prev = p->_next;
+  p->_next->_prev = p->_prev;
+}
+
+//TODO: impl (now, super simple implemetation for debug) 
+sptr<Process> ProcessCtrl::ProcessTable::GetNextProcess() {
+  while(true) { 
+    sptr<Process> res = _current_process->_next;
+    _current_process = res;
+    //DBG
+    if (res->GetStatus() == ProcessStatus::kZombie) continue;
+    return res;
+  }
+  sptr<Process> n;
+  return n;
+}

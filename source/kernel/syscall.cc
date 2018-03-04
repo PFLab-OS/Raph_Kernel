@@ -178,7 +178,7 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
       // context switch
       {
         Context c;
-        Process* p = process_ctrl->GetCurrentExecProcess(cpu_ctrl->GetCpuId());
+        sptr<Process> p = process_ctrl->GetCurrentExecProcess(cpu_ctrl->GetCpuId());
         SaveContext(&c,syscall_handler_stack,syscall_handler_caller_stack);
 
         c.rax = 1; //return value
@@ -300,7 +300,7 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
       case 329: {
         // context switch
         Context c;
-        Process* p = process_ctrl->GetCurrentExecProcess(cpu_ctrl->GetCpuId());
+        sptr<Process> p = process_ctrl->GetCurrentExecProcess(cpu_ctrl->GetCpuId());
         SaveContext(&c,syscall_handler_stack,syscall_handler_caller_stack);
 
         c.rax = 1; //return value

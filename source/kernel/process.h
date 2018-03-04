@@ -60,11 +60,11 @@ public:
     return _status;
   };
 
-  static void ReturnToKernelJob(Process* p) {
+  static void ReturnToKernelJob(sptr<Process> p) {
     p->_elfobj->ReturnToKernelJob();
   }
 
-  static void SetContext(Process* p,Context* context) {
+  static void SetContext(sptr<Process> p,Context* context) {
     p->_elfobj->SetContext(context);
   }
 
@@ -74,13 +74,12 @@ private:
   friend class ProcessCtrl;
   //TODO:Implementing class ExecutableObject for super class of ElfObject
   ElfObject* _elfobj;
-  Process* _parent;
+  sptr<Process> _parent;
   pid_t  _pid;
   ProcessStatus _status = ProcessStatus::kEmbryo;
-  Process* _next;
-  Process* _prev;
+  sptr<Process> _next,_prev;
   uptr<Thread> _thread;
-  void* _chan; //kSleeping Finish Condition
+  sptr<Process> _chan; //kSleeping Finish Condition
   sptr<MemCtrl> _mem_ctrl;
   int _raw_cpuid = CpuId::kCpuIdNotFound;
 };
@@ -88,33 +87,34 @@ private:
 class ProcessCtrl {
   public:
     void Init();
-    Process* ForkProcess(Process*);
-    Process* ExecProcess(Process*,const char*);
-    Process* CreateFirstProcess(Process*);
-    Process* GetNextExecProcess();
-    Process* GetCurrentExecProcess(CpuId cpuid) {
-      Process* cp = _current_exec_process;
-      Process* p = _current_exec_process;
+    sptr<Process> ForkProcess(sptr<Process>);
+    sptr<Process> ExecProcess(sptr<Process>,const char*);
+    sptr<Process> CreateFirstProcess(sptr<Process>);
+    sptr<Process> GetNextExecProcess();
+    sptr<Process> GetCurrentExecProcess(CpuId cpuid) {
+    sptr<Process> cp = _current_exec_process;
+      sptr<Process> p = _current_exec_process;
       do {
         p = p->_next;
         if (p->_raw_cpuid == cpuid.GetRawId() && p->GetStatus() == ProcessStatus::kRunning) {
           return p;
         }
       } while (p != cp);
-      return nullptr;
+      sptr<Process> res;
+      return res;
     }
 
-    void SetStatus(Process* process,ProcessStatus _status) {
+    void SetStatus(sptr<Process> process,ProcessStatus _status) {
       assert(process->_status != ProcessStatus::kSleeping);
       assert(process->_status != ProcessStatus::kZombie);
       Locker locker(_table_lock);
       process->_status = _status;
     }
-    ProcessStatus GetStatus(Process* p) {
+    ProcessStatus GetStatus(sptr<Process> p) {
       return p->_status;
     }
 
-    bool MakeProcessSleep(Process* process, void* chan) {
+    bool MakeProcessSleep(sptr<Process> process, sptr<Process> chan) {
       assert(process->_status != ProcessStatus::kSleeping);
       assert(process->_status != ProcessStatus::kZombie);
       Locker locker(_table_lock);
@@ -123,9 +123,9 @@ class ProcessCtrl {
       return true;
     }
 
-    void WakeupProcessSub(void* chan) {
-      Process* cp = _current_exec_process;
-      Process* p = _current_exec_process;
+    void WakeupProcessSub(sptr<Process> chan) {
+      sptr<Process> cp = _current_exec_process;
+      sptr<Process> p = _current_exec_process;
       do {
         p = p->_next;
         if (p->GetStatus() == ProcessStatus::kSleeping && p->_chan == chan) {
@@ -134,20 +134,20 @@ class ProcessCtrl {
       } while (p != cp);
     }
 
-    void WakeupProcess(void *chan) {
+    void WakeupProcess(sptr<Process> chan) {
       Locker locker(_table_lock);
       WakeupProcessSub(chan);
     }
 
     //TODO:impl
-    void ExitProcess(Process* process) {
+    void ExitProcess(sptr<Process> process) {
       //Close Files
       WakeupProcess(process->_parent);
-      Process* init = FindProcessFromPid(Process::kInitPid);
+      sptr<Process> init = FindProcessFromPid(Process::kInitPid);
 
       {
-        Process* cp = _current_exec_process;
-        Process* p = _current_exec_process;
+        sptr<Process> cp = _current_exec_process;
+        sptr<Process> p = _current_exec_process;
         Locker locker(_table_lock);
         p->_status = ProcessStatus::kZombie;
         do {
@@ -165,9 +165,9 @@ class ProcessCtrl {
       ThreadCtrl::WaitCurrentThread();
     }
 
-    pid_t WaitProcess(Process* process) {
-      Process* cp = _current_exec_process;
-      Process* p = _current_exec_process;
+    pid_t WaitProcess(sptr<Process> process) {
+      sptr<Process> cp = _current_exec_process;
+      sptr<Process> p = _current_exec_process;
       Locker locker(_table_lock);
       do {
         p = p->_next;
@@ -180,9 +180,9 @@ class ProcessCtrl {
       return Process::kInvalidPid;
     }  
 
-    Process* FindProcessFromPid(pid_t pid) {
-      Process* cp = _current_exec_process;
-      Process* p = _current_exec_process;
+    sptr<Process> FindProcessFromPid(pid_t pid) {
+      sptr<Process> cp = _current_exec_process;
+      sptr<Process> p = _current_exec_process;
       Locker locker(_table_lock);
       do {
         p = p->_next;
@@ -190,25 +190,26 @@ class ProcessCtrl {
           return p;
         }
       } while (p != cp);
-      return nullptr;
+      sptr<Process> res;
+      return res;
     }
 
   private:
-    Process* _current_exec_process = nullptr;
+    sptr<Process> _current_exec_process;
     SpinLock _table_lock;
     uptr<Thread> _scheduler_thread;
 
     class ProcessTable {
     public:
-      Process* Init();
-      Process* AllocProcess();
-      void FreeProcess(Process*);
+      sptr<Process> Init();
+      sptr<Process> AllocProcess();
+      void FreeProcess(sptr<Process>);
 
-      Process* GetNextProcess();
-      Process* GetNextProcess(Process*);
+      sptr<Process> GetNextProcess();
+      sptr<Process> GetNextProcess(sptr<Process>);
 
     private:
       pid_t _next_pid = 1;
-      Process* _current_process = nullptr;
+      sptr<Process> _current_process;
     } _process_table;
 };
