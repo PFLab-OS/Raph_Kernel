@@ -56,8 +56,7 @@ class Set {
 
     return true;
   }
-
-  sptr<S> Pop(uptr<GenericFunction<bool, sptr<S>>> func) {
+  sptr<S> Pop(uptr<Function0<bool, sptr<S>>> func) {
     Locker locker(_lock);
     auto p = _elem_list_head;
     while (p->next != _elem_list_head) {
@@ -74,7 +73,7 @@ class Set {
     return ptr;
   }
 
-  void Pop(uptr<GenericFunction<bool, sptr<S>>> func, sptr<S> &data) {
+  void Pop(uptr<Function0<bool, sptr<S>>> func, sptr<S> &data) {
     Locker locker(_lock);
     auto p = _elem_list_head;
     while (p->next != _elem_list_head) {
@@ -100,6 +99,15 @@ class Set {
   void Pop(sptr<S> &data) {
     Pop(make_uptr(new Function0<bool, sptr<S>>([](sptr<S> s) { return true; })),
         data);
+  }
+
+  void Map(uptr<GenericFunction<void, sptr<S>>> func) {
+    Locker locker(_lock);
+    auto p = _elem_list_head;
+    while (p->next != _elem_list_head) {
+      func->Execute(p->next->elem);
+      p = p->next;
+    }
   }
 
   bool IsEmpty() { return (_elem_list_head == _elem_list_head->next); }

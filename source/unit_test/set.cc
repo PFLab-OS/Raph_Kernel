@@ -152,3 +152,43 @@ public:
 private:
   Set<int> _set;
 } static OBJ(__LINE__);
+
+class SetTester_EmptyMap : public Tester {
+public:
+  virtual bool Test() override {
+    _set.Map(make_uptr(new Function0<void,sptr<int>>([](sptr<int> s){})));
+    kassert(_set.IsEmpty());
+    return true;
+  }
+private:
+  Set<int> _set;
+} static OBJ(__LINE__);
+
+class SetTester_TriplePushAndMap : public Tester {
+public:
+  virtual bool Test() override {
+    sptr<int> s1 = make_sptr(new int(1)),s2 = make_sptr(new int(2)),s3 = make_sptr(new int(3));
+    _set.Push(s1);
+    _set.Push(s2);
+    _set.Push(s3);
+
+    _set.Map(make_uptr(new Function0<void,sptr<int>>([](sptr<int> s){*(s.GetRawPtr()) = 5;})));
+
+    sptr<int> r1 = _set.Pop(make_uptr(new Function0<bool,sptr<int>>([](sptr<int> s){ if(*(s.GetRawPtr()) == 1){return true;} return false;})));
+    kassert(r1.IsNull());
+
+    sptr<int> r2 = _set.Pop(make_uptr(new Function0<bool,sptr<int>>([](sptr<int> s){ if(*(s.GetRawPtr()) == 5){return true;} return false;})));
+    kassert(*(r2.GetRawPtr()) == 5);
+
+    r2 = _set.Pop(make_uptr(new Function0<bool,sptr<int>>([](sptr<int> s){ if(*(s.GetRawPtr()) == 5){return true;} return false;})));
+    kassert(*(r2.GetRawPtr()) == 5);
+
+    r2 = _set.Pop(make_uptr(new Function0<bool,sptr<int>>([](sptr<int> s){ if(*(s.GetRawPtr()) == 5){return true;} return false;})));
+    kassert(*(r2.GetRawPtr()) == 5);
+
+    kassert(_set.IsEmpty());
+    return true;
+  }
+private:
+  Set<int> _set;
+} static OBJ(__LINE__);
