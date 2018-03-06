@@ -42,8 +42,9 @@ void MemCtrl::Init() {
   // FIXME: make satic
   if (system_memory_space != nullptr) {
     _kvc = system_memory_space->_kvc;
-    for(int i = 0; i < KernelVirtmemCtrl::kKernelPml4tEntryNum; i++) {
-      _pml4t->entry[UserVirtmemCtrl::kUserPml4tEntryNum + i] = _kvc.pml4t_entry[i];
+    for (int i = 0; i < KernelVirtmemCtrl::kKernelPml4tEntryNum; i++) {
+      _pml4t->entry[UserVirtmemCtrl::kUserPml4tEntryNum + i] =
+          _kvc.pml4t_entry[i];
     }
   }
 }
@@ -56,26 +57,30 @@ PageTable *MemCtrl::GetPml4tAddr() {
   }
 
   PhysAddr tpaddr;
-  physmem_ctrl->Alloc(tpaddr,PagingCtrl::kPageSize);
+  physmem_ctrl->Alloc(tpaddr, PagingCtrl::kPageSize);
   bzero(reinterpret_cast<void *>(tpaddr.GetVirtAddr()), PagingCtrl::kPageSize);
-  //This tpaddr is aligned in 4K bytes.
-  return reinterpret_cast<PageTable*>(tpaddr.GetVirtAddr());
+  // This tpaddr is aligned in 4K bytes.
+  return reinterpret_cast<PageTable *>(tpaddr.GetVirtAddr());
 }
 
-void MemCtrl::Switch() {
-  _paging_ctrl->Switch();
+void MemCtrl::Switch() { _paging_ctrl->Switch(); }
+
+void MemCtrl::GetTranslationEntries(virt_addr vaddr, entry_type *pml4e,
+                                    entry_type *pdpte, entry_type *pde,
+                                    entry_type *pte) {
+  _paging_ctrl->GetTranslationEntries(vaddr, pml4e, pdpte, pde, pte);
 }
 
-void MemCtrl::GetTranslationEntries(virt_addr vaddr, entry_type *pml4e, entry_type *pdpte, entry_type *pde, entry_type *pte) {
-  _paging_ctrl->GetTranslationEntries(vaddr,pml4e,pdpte,pde,pte);
+bool MemCtrl::Map1GPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr,
+                                  phys_addr pst_flag, phys_addr page_flag) {
+  return _paging_ctrl->Map1GPageToVirtAddr(vaddr, paddr, pst_flag, page_flag);
 }
 
-bool MemCtrl::Map1GPageToVirtAddr(virt_addr vaddr, PhysAddr &paddr, phys_addr pst_flag, phys_addr page_flag) {
-  return _paging_ctrl->Map1GPageToVirtAddr(vaddr,paddr,pst_flag,page_flag);
-}
-
-bool MemCtrl::MapPhysAddrToVirtAddr(virt_addr vaddr, PhysAddr &paddr, size_t size, phys_addr pst_flag, phys_addr page_flag) {
-  return _paging_ctrl->MapPhysAddrToVirtAddr(vaddr,paddr,size,pst_flag,page_flag);
+bool MemCtrl::MapPhysAddrToVirtAddr(virt_addr vaddr, PhysAddr &paddr,
+                                    size_t size, phys_addr pst_flag,
+                                    phys_addr page_flag) {
+  return _paging_ctrl->MapPhysAddrToVirtAddr(vaddr, paddr, size, pst_flag,
+                                             page_flag);
 }
 
 bool MemCtrl::IsVirtAddrMapped(virt_addr vaddr) {
@@ -83,7 +88,7 @@ bool MemCtrl::IsVirtAddrMapped(virt_addr vaddr) {
 }
 
 void MemCtrl::ConvertVirtMemToPhysMem(virt_addr vaddr, PhysAddr &paddr) {
-  _paging_ctrl->ConvertVirtMemToPhysMem(vaddr,paddr);
+  _paging_ctrl->ConvertVirtMemToPhysMem(vaddr, paddr);
 }
 
 void KernelVirtmemCtrl::Init() {

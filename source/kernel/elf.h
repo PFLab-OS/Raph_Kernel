@@ -30,9 +30,12 @@
 #include <bin.h>
 
 class ElfObject : public ExecutableObject {
-public:
-  ElfObject(Loader &loader, const void *ptr) : _head(reinterpret_cast<const uint8_t *>(ptr)), _ehdr(reinterpret_cast<const Elf64_Ehdr *>(ptr)), _membuffer(nullptr), _loader(loader) {
-  }
+ public:
+  ElfObject(Loader &loader, const void *ptr)
+      : _head(reinterpret_cast<const uint8_t *>(ptr)),
+        _ehdr(reinterpret_cast<const Elf64_Ehdr *>(ptr)),
+        _membuffer(nullptr),
+        _loader(loader) {}
   ElfObject() = delete;
   virtual ~ElfObject() { free(_membuffer); }
   virtual ErrorState Init() override __attribute__((warn_unused_result));
@@ -41,19 +44,13 @@ public:
       _loader.Execute(_entry);
     }
   }
-  void Resume() {
-    _loader.Resume();
-  }
+  void Resume() { _loader.Resume(); }
 
-  void ReturnToKernelJob() {
-    _loader.ExitResume();
-  }
-  //TODO: redesigning
-  void SetContext(Context* context) {
-    _loader.SetContext(context);
-  }
+  void ReturnToKernelJob() { _loader.ExitResume(); }
+  // TODO: redesigning
+  void SetContext(Context *context) { _loader.SetContext(context); }
 
-protected:
+ protected:
   bool IsElf() {
     return _ehdr->e_ident[0] == ELFMAG0 && _ehdr->e_ident[1] == ELFMAG1 &&
            _ehdr->e_ident[2] == ELFMAG2 && _ehdr->e_ident[3] == ELFMAG3;

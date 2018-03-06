@@ -14,12 +14,12 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: mumumu
  *
  */
-
 
 #include <elf.h>
 #include <process.h>
@@ -34,7 +34,9 @@
 #include <global.h>
 
 void Process::Init() {
-  _thread = ThreadCtrl::GetCtrl(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority)).AllocNewThread(Thread::StackState::kIndependent);
+  _thread = ThreadCtrl::GetCtrl(
+                cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority))
+                .AllocNewThread(Thread::StackState::kIndependent);
   _mem_ctrl = make_sptr(new MemCtrl());
   _mem_ctrl->Init();
 }
@@ -47,32 +49,33 @@ void ProcessCtrl::Init() {
     _current_exec_process = p;
   }
 
-  _scheduler_thread = ThreadCtrl::GetCtrl(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority)).AllocNewThread(Thread::StackState::kIndependent);
+  _scheduler_thread = ThreadCtrl::GetCtrl(cpu_ctrl->RetainCpuIdForPurpose(
+                                              CpuPurpose::kLowPriority))
+                          .AllocNewThread(Thread::StackState::kIndependent);
   auto t_op = _scheduler_thread->CreateOperator();
   t_op.SetFunc(make_uptr(new Function0<void>([]() {
-
     sptr<Process> p = process_ctrl->GetNextExecProcess();
     if (!p.IsNull()) {
       p->_thread->CreateOperator().Schedule();
     }
 
     ThreadCtrl::GetCurrentThreadOperator().Schedule(90);
-
   })));
 
   t_op.Schedule();
 }
 
-//TODO: impl better scheduler.
-//This function is scheduler.
+// TODO: impl better scheduler.
+// This function is scheduler.
 sptr<Process> ProcessCtrl::GetNextExecProcess() {
   {
-    sptr<Process> cp =  _current_exec_process;
+    sptr<Process> cp = _current_exec_process;
     sptr<Process> p = _current_exec_process;
     Locker locker(_table_lock);
     do {
       p = p->_next;
-      if (p->GetStatus() == ProcessStatus::kRunnable || p->GetStatus() == ProcessStatus::kEmbryo) {
+      if (p->GetStatus() == ProcessStatus::kRunnable ||
+          p->GetStatus() == ProcessStatus::kEmbryo) {
         _current_exec_process = p;
         return _current_exec_process;
       }
@@ -82,53 +85,53 @@ sptr<Process> ProcessCtrl::GetNextExecProcess() {
   return res;
 }
 
-//For init
+// For init
 sptr<Process> ProcessCtrl::CreateFirstProcess(sptr<Process> process) {
-  if(process.IsNull()) {
-    kernel_panic("ProcessCtrl","Could not alloc first process space.");
+  if (process.IsNull()) {
+    kernel_panic("ProcessCtrl", "Could not alloc first process space.");
   }
   process->Init();
 
   auto t_op = process->_thread->CreateOperator();
-  t_op.SetFunc(make_uptr(new Function1<void,sptr<Process>>([](sptr<Process> p){
-      p->_mem_ctrl->Init();
-
-      p->_mem_ctrl->Switch();
-
-      Loader loader(p->_mem_ctrl);
-      //TODO change test.elf to optimal process (such as init).
-      auto tmp = multiboot_ctrl->LoadFile("test.elf");
-      ElfObject obj(loader, tmp->GetRawPtr());
-      if (obj.Init() != BinObjectInterface::ErrorState::kOk) {
-        gtty->Printf("error while loading app\n");
-        kernel_panic("ProcessCtrl","Could not load app in ExecProcess()");
-     }
-
-      p->_elfobj = &obj;
-
-      while(true) {
-        system_memory_space->Switch();
-        switch (p->GetStatus()) {
-          case ProcessStatus::kEmbryo:
-          case ProcessStatus::kRunning:
-            process_ctrl->SetStatus(p,ProcessStatus::kRunnable);
-            break;
-          default:
-            break;
-        }
-
-        p->_raw_cpuid = CpuId::kCpuIdNotFound;
-        ThreadCtrl::WaitCurrentThread();
-        p->_raw_cpuid = cpu_ctrl->GetCpuId().GetRawId();
+  t_op.SetFunc(make_uptr(new Function1<void, sptr<Process>>(
+      [](sptr<Process> p) {
+        p->_mem_ctrl->Init();
 
         p->_mem_ctrl->Switch();
-        process_ctrl->SetStatus(p,ProcessStatus::kRunning);
 
-        p->_elfobj->Resume();
+        Loader loader(p->_mem_ctrl);
+        // TODO change test.elf to optimal process (such as init).
+        auto tmp = multiboot_ctrl->LoadFile("test.elf");
+        ElfObject obj(loader, tmp->GetRawPtr());
+        if (obj.Init() != BinObjectInterface::ErrorState::kOk) {
+          gtty->Printf("error while loading app\n");
+          kernel_panic("ProcessCtrl", "Could not load app in ExecProcess()");
+        }
 
-      }
+        p->_elfobj = &obj;
 
-  },process)));
+        while (true) {
+          system_memory_space->Switch();
+          switch (p->GetStatus()) {
+            case ProcessStatus::kEmbryo:
+            case ProcessStatus::kRunning:
+              process_ctrl->SetStatus(p, ProcessStatus::kRunnable);
+              break;
+            default:
+              break;
+          }
+
+          p->_raw_cpuid = CpuId::kCpuIdNotFound;
+          ThreadCtrl::WaitCurrentThread();
+          p->_raw_cpuid = cpu_ctrl->GetCpuId().GetRawId();
+
+          p->_mem_ctrl->Switch();
+          process_ctrl->SetStatus(p, ProcessStatus::kRunning);
+
+          p->_elfobj->Resume();
+        }
+      },
+      process)));
 
   return process;
 }
@@ -164,12 +167,12 @@ void ProcessCtrl::ProcessTable::FreeProcess(sptr<Process> p) {
   p->_next->_prev = p->_prev;
 }
 
-//TODO: impl (now, super simple implemetation for debug) 
+// TODO: impl (now, super simple implemetation for debug)
 sptr<Process> ProcessCtrl::ProcessTable::GetNextProcess() {
-  while(true) { 
+  while (true) {
     sptr<Process> res = _current_process->_next;
     _current_process = res;
-    //DBG
+    // DBG
     if (res->GetStatus() == ProcessStatus::kZombie) continue;
     return res;
   }

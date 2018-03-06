@@ -94,8 +94,7 @@
 class PagingCtrl {
  public:
   PagingCtrl() = delete;
-  PagingCtrl(PageTable* pt) : _pml4t(pt) {
-  }
+  PagingCtrl(PageTable *pt) : _pml4t(pt) {}
   void Switch();
   void MapAllPhysMemory();
   void ReleaseLowMemory();

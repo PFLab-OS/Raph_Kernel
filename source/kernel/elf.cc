@@ -35,7 +35,8 @@ BinObjectInterface::ErrorState ElfObject::Init() {
   gtty->Printf("ABI: %d\n", _ehdr->e_ident[EI_OSABI]);
   gtty->Printf("Entry point is 0x%08x \n", _ehdr->e_entry);
 
-  const Elf64_Shdr *shstr = &reinterpret_cast<const Elf64_Shdr *>(_head + _ehdr->e_shoff)[_ehdr->e_shstrndx];
+  const Elf64_Shdr *shstr = &reinterpret_cast<const Elf64_Shdr *>(
+      _head + _ehdr->e_shoff)[_ehdr->e_shstrndx];
 
   Elf64_Xword total_memsize = 0;
 

@@ -35,8 +35,8 @@
 SystemCallCtrl SystemCallCtrl::_ctrl;
 
 extern "C" int64_t syscall_handler();
-extern size_t syscall_handler_stack; 
-extern size_t syscall_handler_caller_stack; 
+extern size_t syscall_handler_stack;
+extern size_t syscall_handler_caller_stack;
 
 extern "C" int64_t syscall_handler_sub(SystemCallCtrl::Args *args, int index) {
   return SystemCallCtrl::Handler(args, index);
@@ -164,31 +164,36 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
         }
         return 0;
       }
-      case 231: 
-      {
-      // exit group
+      case 231: {
+        // exit group
         gtty->Printf("user program called exit\n");
         gtty->Flush();
 
-        process_ctrl->ExitProcess(process_ctrl->GetCurrentExecProcess(cpu_ctrl->GetCpuId()));
+        process_ctrl->ExitProcess(
+            process_ctrl->GetCurrentExecProcess(cpu_ctrl->GetCpuId()));
 
-        while(true) {asm volatile("hlt;");}
+        while (true) {
+          asm volatile("hlt;");
+        }
       }
-    case 329:
-      // context switch
-      {
-        Context c;
-        sptr<Process> p = process_ctrl->GetCurrentExecProcess(cpu_ctrl->GetCpuId());
-        SaveContext(&c,syscall_handler_stack,syscall_handler_caller_stack);
+      case 329:
+        // context switch
+        {
+          Context c;
+          sptr<Process> p =
+              process_ctrl->GetCurrentExecProcess(cpu_ctrl->GetCpuId());
+          SaveContext(&c, syscall_handler_stack, syscall_handler_caller_stack);
 
-        c.rax = 1; //return value
+          c.rax = 1;  // return value
 
-        p->SetContext(p,&c);
+          p->SetContext(p, &c);
 
-        Process::ReturnToKernelJob(p);
+          Process::ReturnToKernelJob(p);
 
-        while(true) {asm volatile("hlt;");}
-      }
+          while (true) {
+            asm volatile("hlt;");
+          }
+        }
     }
   } else if (GetCtrl()._mode == Mode::kRemote) {
     switch (index) {
@@ -300,16 +305,19 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
       case 329: {
         // context switch
         Context c;
-        sptr<Process> p = process_ctrl->GetCurrentExecProcess(cpu_ctrl->GetCpuId());
-        SaveContext(&c,syscall_handler_stack,syscall_handler_caller_stack);
+        sptr<Process> p =
+            process_ctrl->GetCurrentExecProcess(cpu_ctrl->GetCpuId());
+        SaveContext(&c, syscall_handler_stack, syscall_handler_caller_stack);
 
-        c.rax = 1; //return value
+        c.rax = 1;  // return value
 
-        p->SetContext(p,&c);
+        p->SetContext(p, &c);
 
         Process::ReturnToKernelJob(p);
 
-        while(true) {asm volatile("hlt;");}
+        while (true) {
+          asm volatile("hlt;");
+        }
       }
     }
   }

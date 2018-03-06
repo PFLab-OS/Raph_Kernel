@@ -192,7 +192,7 @@ extern "C" int main() {
   freebsd_main();
 
   AttachDevices<PciCtrl, LegacyKeyboard, Ramdisk, Device>();
-  
+
   process_ctrl->Init();
 
   SystemCallCtrl::Init();

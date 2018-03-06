@@ -14,12 +14,12 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
  *
  * Author: mumumu
  *
  */
-
 
 #pragma once
 
@@ -29,7 +29,6 @@
 #include <mem/virtmem.h>
 #include <elf.h>
 #include <global.h>
-
 
 using pid_t = uint32_t;
 
@@ -42,174 +41,167 @@ enum class ProcessStatus {
 };
 
 class Process {
-public:
-  Process() {
-  }
+ public:
+  Process() {}
 
-  ~Process() {
-    delete _elfobj;
-  }
+  ~Process() { delete _elfobj; }
 
   void Init();
 
-  pid_t GetPid() {
-    return _pid;
-  }
+  pid_t GetPid() { return _pid; }
 
-  ProcessStatus GetStatus() {
-    return _status;
-  };
+  ProcessStatus GetStatus() { return _status; };
 
   static void ReturnToKernelJob(sptr<Process> p) {
     p->_elfobj->ReturnToKernelJob();
   }
 
-  static void SetContext(sptr<Process> p,Context* context) {
+  static void SetContext(sptr<Process> p, Context* context) {
     p->_elfobj->SetContext(context);
   }
 
   static const int kInvalidPid = 0;
   static const int kInitPid = 1;
-private:
+
+ private:
   friend class ProcessCtrl;
-  //TODO:Implementing class ExecutableObject for super class of ElfObject
+  // TODO:Implementing class ExecutableObject for super class of ElfObject
   ElfObject* _elfobj;
   sptr<Process> _parent;
-  pid_t  _pid;
+  pid_t _pid;
   ProcessStatus _status = ProcessStatus::kEmbryo;
-  sptr<Process> _next,_prev;
+  sptr<Process> _next, _prev;
   uptr<Thread> _thread;
-  sptr<Process> _chan; //kSleeping Finish Condition
+  sptr<Process> _chan;  // kSleeping Finish Condition
   sptr<MemCtrl> _mem_ctrl;
   int _raw_cpuid = CpuId::kCpuIdNotFound;
 };
 
 class ProcessCtrl {
-  public:
-    void Init();
-    sptr<Process> ForkProcess(sptr<Process>);
-    sptr<Process> ExecProcess(sptr<Process>,const char*);
-    sptr<Process> CreateFirstProcess(sptr<Process>);
-    sptr<Process> GetNextExecProcess();
-    sptr<Process> GetCurrentExecProcess(CpuId cpuid) {
+ public:
+  void Init();
+  sptr<Process> ForkProcess(sptr<Process>);
+  sptr<Process> ExecProcess(sptr<Process>, const char*);
+  sptr<Process> CreateFirstProcess(sptr<Process>);
+  sptr<Process> GetNextExecProcess();
+  sptr<Process> GetCurrentExecProcess(CpuId cpuid) {
     sptr<Process> cp = _current_exec_process;
-      sptr<Process> p = _current_exec_process;
-      do {
-        p = p->_next;
-        if (p->_raw_cpuid == cpuid.GetRawId() && p->GetStatus() == ProcessStatus::kRunning) {
-          return p;
-        }
-      } while (p != cp);
-      sptr<Process> res;
-      return res;
-    }
-
-    void SetStatus(sptr<Process> process,ProcessStatus _status) {
-      assert(process->_status != ProcessStatus::kSleeping);
-      assert(process->_status != ProcessStatus::kZombie);
-      Locker locker(_table_lock);
-      process->_status = _status;
-    }
-    ProcessStatus GetStatus(sptr<Process> p) {
-      return p->_status;
-    }
-
-    bool MakeProcessSleep(sptr<Process> process, sptr<Process> chan) {
-      assert(process->_status != ProcessStatus::kSleeping);
-      assert(process->_status != ProcessStatus::kZombie);
-      Locker locker(_table_lock);
-      process->_chan = chan;
-      process->_status = ProcessStatus::kSleeping;
-      return true;
-    }
-
-    void WakeupProcessSub(sptr<Process> chan) {
-      sptr<Process> cp = _current_exec_process;
-      sptr<Process> p = _current_exec_process;
-      do {
-        p = p->_next;
-        if (p->GetStatus() == ProcessStatus::kSleeping && p->_chan == chan) {
-          p->_status = ProcessStatus::kRunnable;
-        }
-      } while (p != cp);
-    }
-
-    void WakeupProcess(sptr<Process> chan) {
-      Locker locker(_table_lock);
-      WakeupProcessSub(chan);
-    }
-
-    //TODO:impl
-    void ExitProcess(sptr<Process> process) {
-      //Close Files
-      WakeupProcess(process->_parent);
-      sptr<Process> init = FindProcessFromPid(Process::kInitPid);
-
-      {
-        sptr<Process> cp = _current_exec_process;
-        sptr<Process> p = _current_exec_process;
-        Locker locker(_table_lock);
-        p->_status = ProcessStatus::kZombie;
-        do {
-          p = p->_next;
-          if (p->_parent == process) {
-            p->_parent = init;
-          }
-        } while (p != cp);
-        WakeupProcessSub(init);
+    sptr<Process> p = _current_exec_process;
+    do {
+      p = p->_next;
+      if (p->_raw_cpuid == cpuid.GetRawId() &&
+          p->GetStatus() == ProcessStatus::kRunning) {
+        return p;
       }
-      delete process->_elfobj;
-      //TODO:paging memory release
+    } while (p != cp);
+    sptr<Process> res;
+    return res;
+  }
 
-      //Now, we are in the exit process's thread.
-      ThreadCtrl::WaitCurrentThread();
-    }
+  void SetStatus(sptr<Process> process, ProcessStatus _status) {
+    assert(process->_status != ProcessStatus::kSleeping);
+    assert(process->_status != ProcessStatus::kZombie);
+    Locker locker(_table_lock);
+    process->_status = _status;
+  }
+  ProcessStatus GetStatus(sptr<Process> p) { return p->_status; }
 
-    pid_t WaitProcess(sptr<Process> process) {
+  bool MakeProcessSleep(sptr<Process> process, sptr<Process> chan) {
+    assert(process->_status != ProcessStatus::kSleeping);
+    assert(process->_status != ProcessStatus::kZombie);
+    Locker locker(_table_lock);
+    process->_chan = chan;
+    process->_status = ProcessStatus::kSleeping;
+    return true;
+  }
+
+  void WakeupProcessSub(sptr<Process> chan) {
+    sptr<Process> cp = _current_exec_process;
+    sptr<Process> p = _current_exec_process;
+    do {
+      p = p->_next;
+      if (p->GetStatus() == ProcessStatus::kSleeping && p->_chan == chan) {
+        p->_status = ProcessStatus::kRunnable;
+      }
+    } while (p != cp);
+  }
+
+  void WakeupProcess(sptr<Process> chan) {
+    Locker locker(_table_lock);
+    WakeupProcessSub(chan);
+  }
+
+  // TODO:impl
+  void ExitProcess(sptr<Process> process) {
+    // Close Files
+    WakeupProcess(process->_parent);
+    sptr<Process> init = FindProcessFromPid(Process::kInitPid);
+
+    {
       sptr<Process> cp = _current_exec_process;
       sptr<Process> p = _current_exec_process;
       Locker locker(_table_lock);
+      p->_status = ProcessStatus::kZombie;
       do {
         p = p->_next;
-        if (p->_parent == process && p->_status == ProcessStatus::kZombie) {
-          pid_t pid = p->GetPid();
-          _process_table.FreeProcess(p);
-          return pid;
+        if (p->_parent == process) {
+          p->_parent = init;
         }
       } while (p != cp);
-      return Process::kInvalidPid;
-    }  
-
-    sptr<Process> FindProcessFromPid(pid_t pid) {
-      sptr<Process> cp = _current_exec_process;
-      sptr<Process> p = _current_exec_process;
-      Locker locker(_table_lock);
-      do {
-        p = p->_next;
-        if (p->GetPid() == pid) {
-          return p;
-        }
-      } while (p != cp);
-      sptr<Process> res;
-      return res;
+      WakeupProcessSub(init);
     }
+    delete process->_elfobj;
+    // TODO:paging memory release
 
-  private:
-    sptr<Process> _current_exec_process;
-    SpinLock _table_lock;
-    uptr<Thread> _scheduler_thread;
+    // Now, we are in the exit process's thread.
+    ThreadCtrl::WaitCurrentThread();
+  }
 
-    class ProcessTable {
-    public:
-      sptr<Process> Init();
-      sptr<Process> AllocProcess();
-      void FreeProcess(sptr<Process>);
+  pid_t WaitProcess(sptr<Process> process) {
+    sptr<Process> cp = _current_exec_process;
+    sptr<Process> p = _current_exec_process;
+    Locker locker(_table_lock);
+    do {
+      p = p->_next;
+      if (p->_parent == process && p->_status == ProcessStatus::kZombie) {
+        pid_t pid = p->GetPid();
+        _process_table.FreeProcess(p);
+        return pid;
+      }
+    } while (p != cp);
+    return Process::kInvalidPid;
+  }
 
-      sptr<Process> GetNextProcess();
-      sptr<Process> GetNextProcess(sptr<Process>);
+  sptr<Process> FindProcessFromPid(pid_t pid) {
+    sptr<Process> cp = _current_exec_process;
+    sptr<Process> p = _current_exec_process;
+    Locker locker(_table_lock);
+    do {
+      p = p->_next;
+      if (p->GetPid() == pid) {
+        return p;
+      }
+    } while (p != cp);
+    sptr<Process> res;
+    return res;
+  }
 
-    private:
-      pid_t _next_pid = 1;
-      sptr<Process> _current_process;
-    } _process_table;
+ private:
+  sptr<Process> _current_exec_process;
+  SpinLock _table_lock;
+  uptr<Thread> _scheduler_thread;
+
+  class ProcessTable {
+   public:
+    sptr<Process> Init();
+    sptr<Process> AllocProcess();
+    void FreeProcess(sptr<Process>);
+
+    sptr<Process> GetNextProcess();
+    sptr<Process> GetNextProcess(sptr<Process>);
+
+   private:
+    pid_t _next_pid = 1;
+    sptr<Process> _current_process;
+  } _process_table;
 };

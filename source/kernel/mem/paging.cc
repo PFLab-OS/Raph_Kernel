@@ -52,14 +52,15 @@ void PagingCtrl::ReleaseLowMemory() {
 void PagingCtrl::Switch() {
   PageTable *pt;
   phys_addr pa;
-  asm volatile("movq %%cr3,%%rax;movq %%rax,%0" :  "=m" (pa) : :"%rax");
-  pt = reinterpret_cast<PageTable*>(p2v(pa));
+  asm volatile("movq %%cr3,%%rax;movq %%rax,%0" : "=m"(pa) : : "%rax");
+  pt = reinterpret_cast<PageTable *>(p2v(pa));
 
-  for(int i = 0; i < KernelVirtmemCtrl::kKernelPml4tEntryNum; i++) {
-    _pml4t->entry[UserVirtmemCtrl::kUserPml4tEntryNum + i] = pt->entry[UserVirtmemCtrl::kUserPml4tEntryNum + i];
+  for (int i = 0; i < KernelVirtmemCtrl::kKernelPml4tEntryNum; i++) {
+    _pml4t->entry[UserVirtmemCtrl::kUserPml4tEntryNum + i] =
+        pt->entry[UserVirtmemCtrl::kUserPml4tEntryNum + i];
   }
 
-  asm volatile("movq %0,%%cr3" : : "r" (k2p(ptr2virtaddr(_pml4t))) :);
+  asm volatile("movq %0,%%cr3" : : "r"(k2p(ptr2virtaddr(_pml4t))) :);
 }
 
 void PagingCtrl::ConvertVirtMemToPhysMem(virt_addr vaddr, PhysAddr &paddr) {
