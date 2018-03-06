@@ -44,7 +44,7 @@ void Process::Init() {
 void ProcessCtrl::Init() {
   {
     Locker locker(_table_lock);
-    sptr<Process> p = _process_table.Init();
+    sptr<Process> p = _process_set.Init();
     CreateFirstProcess(p);
     _current_exec_process = p;
   }
@@ -136,7 +136,7 @@ sptr<Process> ProcessCtrl::CreateFirstProcess(sptr<Process> process) {
   return process;
 }
 
-sptr<Process> ProcessCtrl::ProcessTable::Init() {
+sptr<Process> ProcessCtrl::ProcessSet::Init() {
   sptr<Process> p = make_sptr(new Process());
   p->_status = ProcessStatus::kEmbryo;
   p->_pid = _next_pid++;
@@ -147,7 +147,7 @@ sptr<Process> ProcessCtrl::ProcessTable::Init() {
   return p;
 }
 
-sptr<Process> ProcessCtrl::ProcessTable::AllocProcess() {
+sptr<Process> ProcessCtrl::ProcessSet::AllocProcess() {
   sptr<Process> p = make_sptr(new Process());
   p->_status = ProcessStatus::kEmbryo;
   p->_pid = _next_pid++;
@@ -159,16 +159,18 @@ sptr<Process> ProcessCtrl::ProcessTable::AllocProcess() {
   cp->_next = p;
   cp->_next->_prev = p;
 
+  _set.Push(p);
+
   return p;
 }
 
-void ProcessCtrl::ProcessTable::FreeProcess(sptr<Process> p) {
+void ProcessCtrl::ProcessSet::FreeProcess(sptr<Process> p) {
   p->_prev = p->_next;
   p->_next->_prev = p->_prev;
 }
 
 // TODO: impl (now, super simple implemetation for debug)
-sptr<Process> ProcessCtrl::ProcessTable::GetNextProcess() {
+sptr<Process> ProcessCtrl::ProcessSet::GetNextProcess() {
   while (true) {
     sptr<Process> res = _current_process->_next;
     _current_process = res;

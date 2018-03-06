@@ -29,6 +29,8 @@
 #include <mem/virtmem.h>
 #include <elf.h>
 #include <global.h>
+#include <set.h>
+#include <function.h>
 
 using pid_t = uint32_t;
 
@@ -116,14 +118,20 @@ class ProcessCtrl {
   }
 
   void WakeupProcessSub(sptr<Process> chan) {
-    sptr<Process> cp = _current_exec_process;
-    sptr<Process> p = _current_exec_process;
-    do {
-      p = p->_next;
-      if (p->GetStatus() == ProcessStatus::kSleeping && p->_chan == chan) {
-        p->_status = ProcessStatus::kRunnable;
-      }
-    } while (p != cp);
+    auto f = make_uptr(new Function1<bool, sptr<Process>, sptr<Process>>(
+        [](sptr<Process> cchan, sptr<Process> p) {
+          return (p->GetStatus() == ProcessStatus::kSleeping &&
+                  p->_chan == cchan)
+                     ? true
+                     : false;
+        },
+        chan));
+    while (true) {
+      sptr<Process> pp = _process_set.Pop(f);
+      if (pp.IsNull()) break;
+      SetStatus(pp, ProcessStatus::kRunnable);
+      _process_set.Push(pp);
+    }
   }
 
   void WakeupProcess(sptr<Process> chan) {
@@ -137,19 +145,19 @@ class ProcessCtrl {
     WakeupProcess(process->_parent);
     sptr<Process> init = FindProcessFromPid(Process::kInitPid);
 
-    {
-      sptr<Process> cp = _current_exec_process;
-      sptr<Process> p = _current_exec_process;
-      Locker locker(_table_lock);
-      p->_status = ProcessStatus::kZombie;
-      do {
-        p = p->_next;
-        if (p->_parent == process) {
-          p->_parent = init;
-        }
-      } while (p != cp);
-      WakeupProcessSub(init);
+    auto f = make_uptr(new Function1<bool, sptr<Process>, sptr<Process>>(
+        [](sptr<Process> parent, sptr<Process> p) {
+          return (p->_parent == parent) ? true : false;
+        },
+        process));
+    while (true) {
+      sptr<Process> pp = _process_set.Pop(f);
+      if (pp.IsNull()) break;
+      pp->_parent = init;
+      _process_set.Push(pp);
     }
+    WakeupProcessSub(init);
+
     delete process->_elfobj;
     // TODO:paging memory release
 
@@ -158,32 +166,30 @@ class ProcessCtrl {
   }
 
   pid_t WaitProcess(sptr<Process> process) {
-    sptr<Process> cp = _current_exec_process;
-    sptr<Process> p = _current_exec_process;
-    Locker locker(_table_lock);
-    do {
-      p = p->_next;
-      if (p->_parent == process && p->_status == ProcessStatus::kZombie) {
-        pid_t pid = p->GetPid();
-        _process_table.FreeProcess(p);
-        return pid;
-      }
-    } while (p != cp);
+    auto f = make_uptr(new Function1<bool, sptr<Process>, sptr<Process>>(
+        [](sptr<Process> parent, sptr<Process> p) {
+          return (p->_parent == parent && p->_status == ProcessStatus::kZombie)
+                     ? true
+                     : false;
+        },
+        process));
+    sptr<Process> pp = _process_set.Pop(f);
+
+    if (!pp.IsNull()) {
+      pid_t pid = pp->GetPid();
+      _process_set.FreeProcess(pp);
+      return pid;
+    }
     return Process::kInvalidPid;
   }
 
   sptr<Process> FindProcessFromPid(pid_t pid) {
-    sptr<Process> cp = _current_exec_process;
-    sptr<Process> p = _current_exec_process;
-    Locker locker(_table_lock);
-    do {
-      p = p->_next;
-      if (p->GetPid() == pid) {
-        return p;
-      }
-    } while (p != cp);
-    sptr<Process> res;
-    return res;
+    auto f = make_uptr(new Function1<bool, pid_t, sptr<Process>>(
+        [](pid_t id, sptr<Process> p) {
+          return (p->GetPid() == id) ? true : false;
+        },
+        pid));
+    return _process_set.Pop(f);
   }
 
  private:
@@ -191,11 +197,17 @@ class ProcessCtrl {
   SpinLock _table_lock;
   uptr<Thread> _scheduler_thread;
 
-  class ProcessTable {
+  class ProcessSet {
    public:
     sptr<Process> Init();
     sptr<Process> AllocProcess();
     void FreeProcess(sptr<Process>);
+
+    sptr<Process> Pop() { return _set.Pop(); }
+    sptr<Process> Pop(uptr<Function0<bool, sptr<Process>>> func) {
+      return _set.Pop(func);
+    }
+    bool Push(sptr<Process> p) { return _set.Push(p); }
 
     sptr<Process> GetNextProcess();
     sptr<Process> GetNextProcess(sptr<Process>);
@@ -203,5 +215,6 @@ class ProcessCtrl {
    private:
     pid_t _next_pid = 1;
     sptr<Process> _current_process;
-  } _process_table;
+    Set<Process> _set;
+  } _process_set;
 };
