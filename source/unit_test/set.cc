@@ -156,7 +156,7 @@ private:
 class SetTester_EmptyMap : public Tester {
 public:
   virtual bool Test() override {
-    _set.Map(make_uptr(new Function0<void,sptr<int>>([](sptr<int> s){})));
+    _set.Map(make_uptr(new Function0<void,sptr<int>>([](sptr<int> s){ kassert(false); })));
     kassert(_set.IsEmpty());
     return true;
   }
