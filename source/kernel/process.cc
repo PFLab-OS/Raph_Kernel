@@ -136,6 +136,61 @@ sptr<Process> ProcessCtrl::CreateFirstProcess(sptr<Process> process) {
   return process;
 }
 
+// This fucntion retrun Forked Executable Process
+sptr<Process> ProcessCtrl::ForkProcess(sptr<Process> fp) {
+  sptr<Process> process = _process_set.AllocProcess();
+  if (process.IsNull()) {
+    kernel_panic("ProcessCtrl", "Could not alloc first process space.");
+  }
+  process->Init();
+  process->_parent = fp;
+
+  // In Init(), we create new _mem_ctrl, but we want to
+  // take over the parent's memory space.
+  process->_mem_ctrl = make_sptr(new MemCtrl(fp->_mem_ctrl));
+  process->_mem_ctrl->Init();
+
+  auto t_op = process->_thread->CreateOperator();
+  t_op.SetFunc(make_uptr(new Function2<void, sptr<Process>, sptr<Process>>(
+      [](sptr<Process> p, sptr<Process> parentp) {
+        p->_mem_ctrl->Switch();
+
+        Loader loader(p->_mem_ctrl);
+        ElfObject* obj = new ElfObject(loader, parentp->_elfobj);
+        p->_elfobj = obj;
+
+        Loader::CopyContext(p->_elfobj->GetContext(),
+                            parentp->_elfobj->GetContext());
+        p->_elfobj->GetContext()->rax = 0;  // fork syscall ret val
+
+        process_ctrl->SetStatus(parentp, ProcessStatus::kRunnable);
+
+        while (true) {
+          system_memory_space->Switch();
+          switch (p->GetStatus()) {
+            case ProcessStatus::kEmbryo:
+            case ProcessStatus::kRunning:
+              process_ctrl->SetStatus(p, ProcessStatus::kRunnable);
+              break;
+            default:
+              break;
+          }
+
+          p->_raw_cpuid = CpuId::kCpuIdNotFound;
+          ThreadCtrl::WaitCurrentThread();
+          p->_raw_cpuid = cpu_ctrl->GetCpuId().GetRawId();
+
+          p->_mem_ctrl->Switch();
+          process_ctrl->SetStatus(p, ProcessStatus::kRunning);
+
+          p->_elfobj->Resume();
+        }
+      },
+      process, fp)));
+
+  return process;
+}
+
 sptr<Process> ProcessCtrl::ProcessSet::Init() {
   sptr<Process> p = make_sptr(new Process());
   p->_status = ProcessStatus::kEmbryo;

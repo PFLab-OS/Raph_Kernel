@@ -12,7 +12,7 @@ build: ../../build/$(MODULE).elf
 
 $(MODULE) : $(SRCS) Makefile
 #	g++ -nostdlib -fPIE -static -o $(MODULE) $(SRCS)
-	$(CC) -g0 -mcmodel=large -static -o $(MODULE) $(SRCS)
+	$(CC) -g0 -mcmodel=large -fno-stack-protector -static -o $(MODULE) $(SRCS)
 
 clean:
 	-rm -f $(MODULE)

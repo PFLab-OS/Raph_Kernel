@@ -95,6 +95,7 @@ class PagingCtrl {
  public:
   PagingCtrl() = delete;
   PagingCtrl(PageTable *pt) : _pml4t(pt) {}
+  void CopyMemorySpace(PageTable *mdst, const PageTable *msrc);
   void Switch();
   void MapAllPhysMemory();
   void ReleaseLowMemory();
@@ -196,6 +197,7 @@ class PagingCtrl {
 
  private:
   // page structure tablesのindex情報を元に仮想アドレスを算出する
+  void CopyMemorySpaceSub(entry_type *dst, const entry_type *src, int depth);
   static virt_addr CalcVirtAddrFromStructureTableOffset(
       int pml4_index, int pdpt_index, int pd_index, int pt_index, int offset) {
     kassert(IsPageStructureTableIndex(pml4_index));

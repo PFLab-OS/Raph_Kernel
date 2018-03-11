@@ -28,6 +28,7 @@
 #include <mem/type.h>
 #include <raph.h>
 #include <spinlock.h>
+#include <ptr.h>
 
 // Memory map
 // pml4t 0-255    : User Memory Space (this is different from each process.)
@@ -82,6 +83,7 @@ class PhysAddr;
 class MemCtrl {
  public:
   MemCtrl() : _pml4t(GetPml4tAddr()) {}
+  MemCtrl(sptr<MemCtrl> mc);
   ~MemCtrl() { MemCtrl::_kvc.Free(_pt_mem); }
   void Init();
 
