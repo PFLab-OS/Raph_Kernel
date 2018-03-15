@@ -58,8 +58,8 @@ class Process {
     p->_elfobj->ReturnToKernelJob();
   }
 
-  static void SetContext(sptr<Process> p, Context* context) {
-    p->_elfobj->SetContext(context);
+  static void SetContext(sptr<Process> p, ContextWrapper& context) {
+    p->_elfobj->SetContext(context.GetContext());
   }
 
   static const int kInvalidPid = 0;

@@ -53,8 +53,21 @@ struct Context {
 
 static_assert(sizeof(Context) == sizeof(uint64_t) * 24,"Invalid size of x86_64 Context struct.");
 
-static inline void SaveContext(Context* c,size_t base,size_t stack) {
-    c->rsp = stack;
+class ContextWrapper { 
+public:
+  Context* GetContext() {
+    return &(_context);
+  }
+
+  ContextWrapper(size_t base,size_t stack) {
+    SaveContext(base,stack);
+  }
+
+  ContextWrapper() {
+  }
+
+  void SaveContext(size_t base,size_t stack) {
+    _context.rsp = stack;
     asm("movq %7,%%rax;"
         "subq $112,%%rax;"
         "movq 0(%%rax),%%rcx;"
@@ -71,8 +84,8 @@ static inline void SaveContext(Context* c,size_t base,size_t stack) {
         "movq %%rcx,%5;"
         "movq 48(%%rax),%%rcx;"
         "movq %%rcx,%6;"
-      : "=m"(c->rip),"=m"(c->rflags),"=m"(c->rdi),"=m"(c->rsi),
-        "=m"(c->rdx),"=m"(c->r10),"=m"(c->r8)
+      : "=m"(_context.rip),"=m"(_context.rflags),"=m"(_context.rdi),"=m"(_context.rsi),
+        "=m"(_context.rdx),"=m"(_context.r10),"=m"(_context.r8)
       : "m"(base)
       : "%rax","%rcx");
     asm("movq %7,%%rax;"
@@ -92,34 +105,38 @@ static inline void SaveContext(Context* c,size_t base,size_t stack) {
         "movq 104(%%rax),%%rcx;"
         "movq %%rcx,%6;"
         "swapgs;"
-      : "=m"(c->r9),"=m"(c->rbx),"=m"(c->rbp),"=m"(c->r12),
-        "=m"(c->r13),"=m"(c->r14),"=m"(c->r15)
+      : "=m"(_context.r9),"=m"(_context.rbx),"=m"(_context.rbp),"=m"(_context.r12),
+        "=m"(_context.r13),"=m"(_context.r14),"=m"(_context.r15)
       : "m"(base)
       : "%rax","%rcx");
-}
+  }
 
-static inline void ShowRegContext(Context c) {
-  gtty->Printf("rip : %llx\n",c.rip);
-  gtty->Printf("rax : %llx\n",c.rax);
-  gtty->Printf("rbx : %llx\n",c.rbx);
-  gtty->Printf("rcx : %llx\n",c.rcx);
-  gtty->Printf("rdx : %llx\n",c.rdx);
-  gtty->Printf("rsi : %llx\n",c.rsi);
-  gtty->Printf("rdi : %llx\n",c.rdi);
-  gtty->Printf("rsp : %llx\n",c.rsp);
-  gtty->Printf("rbp : %llx\n",c.rbp);
-  gtty->Printf("r8 : %llx\n",c.r8);
-  gtty->Printf("r9 : %llx\n",c.r9);
-  gtty->Printf("r10 : %llx\n",c.r10);
-  gtty->Printf("r11 : %llx\n",c.r11);
-  gtty->Printf("r12 : %llx\n",c.r12);
-  gtty->Printf("r13 : %llx\n",c.r13);
-  gtty->Printf("r14 : %llx\n",c.r14);
-  gtty->Printf("r15 : %llx\n",c.r15);
-  gtty->Printf("rflags : %llx\n",c.rflags);
+  void ShowRegContext() {
+    gtty->Printf("rip : %llx\n",_context.rip);
+    gtty->Printf("rax : %llx\n",_context.rax);
+    gtty->Printf("rbx : %llx\n",_context.rbx);
+    gtty->Printf("rcx : %llx\n",_context.rcx);
+    gtty->Printf("rdx : %llx\n",_context.rdx);
+    gtty->Printf("rsi : %llx\n",_context.rsi);
+    gtty->Printf("rdi : %llx\n",_context.rdi);
+    gtty->Printf("rsp : %llx\n",_context.rsp);
+    gtty->Printf("rbp : %llx\n",_context.rbp);
+    gtty->Printf("r8 : %llx\n", _context.r8);
+    gtty->Printf("r9 : %llx\n", _context.r9);
+    gtty->Printf("r10 : %llx\n",_context.r10);
+    gtty->Printf("r11 : %llx\n",_context.r11);
+    gtty->Printf("r12 : %llx\n",_context.r12);
+    gtty->Printf("r13 : %llx\n",_context.r13);
+    gtty->Printf("r14 : %llx\n",_context.r14);
+    gtty->Printf("r15 : %llx\n",_context.r15);
+    gtty->Printf("rflags : %llx\n",_context.rflags);
 
-  gtty->Flush();
-}
+    gtty->Flush();
+  }
+
+private:
+  Context _context;
+};
 
 extern "C" int execute_elf_binary(FType f, uint64_t *stack_addr, uint64_t cs, uint64_t ds);
 extern "C" int resume_elf_binary(Context* context,uint64_t* _saved_rsp);

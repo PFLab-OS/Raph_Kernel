@@ -179,14 +179,14 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
       case 329:
         // context switch
         {
-          Context c;
+          ContextWrapper c;
           sptr<Process> p =
               process_ctrl->GetCurrentExecProcess(cpu_ctrl->GetCpuId());
-          SaveContext(&c, syscall_handler_stack, syscall_handler_caller_stack);
+          c.SaveContext(syscall_handler_stack, syscall_handler_caller_stack);
 
-          c.rax = 1;  // return value
+          c.GetContext()->rax = 1;  // return value
 
-          p->SetContext(p, &c);
+          p->SetContext(p, c);
 
           Process::ReturnToKernelJob(p);
 
@@ -304,14 +304,14 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
       }
       case 329: {
         // context switch
-        Context c;
+        ContextWrapper c;
         sptr<Process> p =
             process_ctrl->GetCurrentExecProcess(cpu_ctrl->GetCpuId());
-        SaveContext(&c, syscall_handler_stack, syscall_handler_caller_stack);
+        c.SaveContext(syscall_handler_stack, syscall_handler_caller_stack);
 
-        c.rax = 1;  // return value
+        c.GetContext()->rax = 1;  // return value
 
-        p->SetContext(p, &c);
+        p->SetContext(p, c);
 
         Process::ReturnToKernelJob(p);
 
