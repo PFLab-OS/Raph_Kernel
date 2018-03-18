@@ -37,6 +37,7 @@
 #include <measure.h>
 #include <mem/kstack.h>
 #include <elf.h>
+#include <process.h>
 #include <syscall.h>
 
 #include <dev/hpet.h>
@@ -67,6 +68,7 @@ Idt *idt = nullptr;
 Shell *shell = nullptr;
 PciCtrl *pci_ctrl = nullptr;
 NetDevCtrl *netdev_ctrl = nullptr;
+ProcessCtrl *process_ctrl = nullptr;
 // ArpTable *arp_table = nullptr;
 
 MultibootCtrl _multiboot_ctrl;
@@ -82,6 +84,7 @@ Shell _shell;
 AcpicaPciCtrl _acpica_pci_ctrl;
 NetDevCtrl _netdev_ctrl;
 MemCtrl _system_memory_space;
+ProcessCtrl _process_ctrl;
 // ArpTable _arp_table;
 
 CpuId network_cpu;
@@ -122,6 +125,8 @@ extern "C" int main() {
   shell = new (&_shell) Shell;
 
   netdev_ctrl = new (&_netdev_ctrl) NetDevCtrl();
+
+  process_ctrl = new (&_process_ctrl) ProcessCtrl;
 
   // arp_table = new (&_arp_table) ArpTable();
 
@@ -187,6 +192,8 @@ extern "C" int main() {
   freebsd_main();
 
   AttachDevices<PciCtrl, LegacyKeyboard, Ramdisk, Device>();
+
+  process_ctrl->Init();
 
   SystemCallCtrl::Init();
 

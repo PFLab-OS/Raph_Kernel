@@ -29,7 +29,7 @@
 #include <array.h>
 #include <bin.h>
 
-class ElfObject : public BinObjectInterface {
+class ElfObject : public ExecutableObject {
  public:
   ElfObject(Loader &loader, const void *ptr)
       : _head(reinterpret_cast<const uint8_t *>(ptr)),
@@ -44,6 +44,11 @@ class ElfObject : public BinObjectInterface {
       _loader.Execute(_entry);
     }
   }
+  void Resume() { _loader.Resume(); }
+
+  void ReturnToKernelJob() { _loader.ExitResume(); }
+  // TODO: redesigning
+  void SetContext(Context *context) { _loader.SetContext(context); }
 
  protected:
   bool IsElf() {

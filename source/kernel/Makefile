@@ -10,7 +10,8 @@ OBJS = boot/boot.o boot/bootap.o \
 	   thread.o spinlock.o libglobal.o \
 	   tty.o cpu.o elf.o elf_load.o \
 	   syscall.o syscall_handler.o \
-	   font.o netbench.o $(addsuffix .o,$(SUB)) ../arch/hw/libc/lib.o
+	   font.o netbench.o process.o \
+		 $(addsuffix .o,$(SUB)) ../arch/hw/libc/lib.o
 
 BUILD = $(RAPH_PROJECT_ROOT)/build/
 DEPS= $(filter %.d, $(subst .o,.d, $(OBJS)))

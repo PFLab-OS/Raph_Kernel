@@ -23,7 +23,7 @@ int calc() {
 
 int main(int argc, char *argv[])
 {
-  printf("hello world\n");
+  printf("This kernel supports process feature.");
   if(argv && argv[0]){
     argv[0][0] = 'X';
     argv[0][1] = 0;

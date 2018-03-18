@@ -95,6 +95,7 @@ class PagingCtrl {
  public:
   PagingCtrl() = delete;
   PagingCtrl(PageTable *pt) : _pml4t(pt) {}
+  void Switch();
   void MapAllPhysMemory();
   void ReleaseLowMemory();
   void ConvertVirtMemToPhysMem(virt_addr vaddr, PhysAddr &paddr);
