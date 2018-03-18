@@ -102,6 +102,7 @@ void DhcpCtrl::Handle(void *) {
   if (upacket.IsNull()) {
     return;
   }
+  gtty->Printf("DhcpCtrl::Handle\n");
 
   size_t max_len = upacket->data->GetLen();
   if (max_len < __builtin_offsetof(Packet, options)) {

@@ -30,8 +30,15 @@
 #include <gdt.h>
 #include <global.h>
 #include <net/udp.h>
+#include <dev/eth.h>
+#include <net/usersocket.h>
 
+extern CpuId network_cpu;
+/*
+void CapturePort() { UdpCtrl::GetCtrl().RegisterSocket(5621, &_dhcp_ctrl); }
+*/
 SystemCallCtrl SystemCallCtrl::_ctrl;
+UserSocket *_socket;
 
 extern "C" int64_t syscall_handler();
 extern size_t syscall_handler_stack;
@@ -42,6 +49,7 @@ extern "C" int64_t syscall_handler_sub(SystemCallCtrl::Args *args, int index) {
 
 void SystemCallCtrl::Init() {
   new (&_ctrl) SystemCallCtrl();
+  _socket = nullptr;
 
   // IA32_EFER.SCE = 1
   const uint64_t bit_efer_SCE = 0x01;
@@ -56,6 +64,18 @@ void SystemCallCtrl::Init() {
   syscall_handler_stack =
       KernelStackCtrl::GetCtrl().AllocThreadStack(cpu_ctrl->GetCpuId());
 }
+
+struct in_addr {
+  uint8_t s_addr[4];  // big endian
+};
+
+struct sockaddr_in {
+  uint8_t sin_len;
+  uint8_t sin_family;
+  uint8_t sin_port[2];  // big endian
+  in_addr sin_addr;
+  uint8_t sin_zero[8];
+};
 
 int64_t SystemCallCtrl::Handler(Args *args, int index) {
   if (GetCtrl()._mode == Mode::kLocal) {
@@ -96,8 +116,8 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
       case 20:
         // writev
         {
-          if (args->arg1 == 1) {
-            // stdout
+          if (args->arg1 == 1 || args->arg1 == 2) {
+            // stdout, stderr
             iovec *iv_array = reinterpret_cast<iovec *>(args->arg2);
             int rval = 0;
             for (int i = 0; i < args->arg3; i++) {
@@ -115,6 +135,122 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
             kernel_panic("Sysctrl", "unknown fd(writev)");
           }
           break;
+        }
+      case 41:
+        // socket
+        {
+          const int PF_INET = 2;
+          const int SOCK_DGRAM = 2;
+          const int IPPROTO_UDP = 17;
+          if (args->arg1 == PF_INET && args->arg2 == SOCK_DGRAM &&
+              args->arg3 == IPPROTO_UDP) {
+            if (_socket != nullptr) {
+              // no more sockets.
+              return -1;
+            }
+            _socket = new UserSocket();
+            return 1;
+          } else {
+            gtty->DisablePrint();
+            gtty->ErrPrintf("%d %d %d", args->arg1, args->arg2, args->arg3);
+            kernel_panic("socket", "not impl");
+          }
+        }
+        break;
+      case 44:
+        // sendto
+        {
+          int fd = args->arg1;
+          const uint8_t *ubuf = const_cast<const uint8_t *>(
+              reinterpret_cast<uint8_t *>(args->arg2));
+          size_t size = args->arg3;
+          unsigned flags = args->arg4;
+          sockaddr_in *addr = reinterpret_cast<sockaddr_in *>(args->arg5);
+          int *addr_len = reinterpret_cast<int *>(args->arg6);
+          if (fd == 1 && _socket) {
+            uint16_t port = (addr->sin_port[0] << 8) | addr->sin_port[1];
+            UdpCtrl::GetCtrl().Send(&addr->sin_addr.s_addr, port, ubuf, size,
+                                    _socket->GetBoundPort());
+            gtty->Printf("sent!!!\n");
+            return size;
+          } else {
+            gtty->DisablePrint();
+            gtty->ErrPrintf("%d %d %d", args->arg1, args->arg2, args->arg3);
+            kernel_panic("sendto", "not impl");
+          }
+        }
+        break;
+      case 45:
+        // recvfrom
+        {
+          int fd = args->arg1;
+          void *ubuf = reinterpret_cast<void *>(args->arg2);
+          size_t size = args->arg3;
+          unsigned flags = args->arg4;
+          sockaddr_in *addr = reinterpret_cast<sockaddr_in *>(args->arg5);
+          int *addr_len = reinterpret_cast<int *>(args->arg6);
+          const int SOCK_DGRAM = 2;
+          const int IPPROTO_UDP = 17;
+          if (fd == 1) {
+            uint8_t dst_ip_addr[4], src_ip_addr[4];
+            uint16_t dst_port, src_port;
+            for (int i = 0; i < 10; i++) {
+              asm volatile("sti");
+              int recv_size = _socket->ReceiveSync(
+                  reinterpret_cast<uint8_t *>(ubuf), size, dst_ip_addr,
+                  src_ip_addr, &dst_port, &src_port);
+              asm volatile("cli");
+              // int recv_size = 10;
+              //
+              gtty->Printf("Receive in syscall!!!\n");
+              if (recv_size < 0) {
+                gtty->Printf("Error...\n");
+                return -1;
+              } else {
+                addr->sin_port[0] = ((src_port >> 8) & 0xff);
+                addr->sin_port[1] = ((src_port >> 0) & 0xff);
+                memcpy(addr->sin_addr.s_addr, src_ip_addr, 4);
+                return recv_size;
+              }
+            }
+
+            return -1;
+          } else {
+            gtty->DisablePrint();
+            gtty->ErrPrintf("%d %d %d", args->arg1, args->arg2, args->arg3);
+            kernel_panic("socket", "not impl");
+          }
+        }
+        break;
+      case 49:
+        // bind
+        {
+          int fd = args->arg1;
+          sockaddr_in *addr = reinterpret_cast<sockaddr_in *>(args->arg2);
+          // arg3
+          if (fd == 1) {
+            /*
+            gtty->DisablePrint();
+            gtty->ErrPrintf("port: %d, ip: %d.%d.%d.%d",
+                            (addr->sin_port[0] << 8) | addr->sin_port[1],
+                            addr->sin_addr.s_addr[0], addr->sin_addr.s_addr[1],
+                            addr->sin_addr.s_addr[2], addr->sin_addr.s_addr[3]);
+            kernel_panic("bind", "not impl");
+            */
+            if (_socket == nullptr) {
+              // socket not created.
+              return -1;
+            }
+            uint16_t port = (addr->sin_port[0] << 8) | addr->sin_port[1];
+            if (_socket->Bind(port)) {
+              return -1;
+            }
+            return 0;  // 0: success
+          } else {
+            gtty->DisablePrint();
+            gtty->ErrPrintf("%d %d %d", args->arg1, args->arg2, args->arg3);
+            kernel_panic("bind", "not impl");
+          }
         }
       case 63:
         // uname
@@ -213,7 +349,7 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
                   &target_addr, 12345,
                   const_cast<const uint8_t *>(
                       reinterpret_cast<uint8_t *>(iv_array[i].iov_base)),
-                  iv_array[i].iov_len);
+                  iv_array[i].iov_len, 12345);  // TODO: Specify PORT
               rval += iv_array[i].iov_len;
             }
             return rval;

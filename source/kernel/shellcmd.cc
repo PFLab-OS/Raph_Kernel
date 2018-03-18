@@ -34,6 +34,8 @@
 #include <net/udp.h>
 #include <net/dhcp.h>
 
+#include <net/usersocket.h>
+
 //
 // misc func
 //
@@ -515,7 +517,7 @@ static void load(int argc, const char *argv[]) {
   }
   if (strcmp(argv[1], "script.sh") == 0) {
     load_script(multiboot_ctrl->LoadFile(argv[1]));
-  } else if (strcmp(argv[1], "test.elf") == 0) {
+  } else if (strcmp(argv[1], "testmodule.elf") == 0) {
     auto buf_ = multiboot_ctrl->LoadFile(argv[1]);
     uptr<Thread> thread = ThreadCtrl::GetCtrl(cpu_ctrl->RetainCpuIdForPurpose(
                                                   CpuPurpose::kLowPriority))
@@ -663,6 +665,33 @@ void cat(int argc, const char *argv[]) {
   if (!cat_sub(vfs, argv[1])) {
     gtty->Printf("cat: %s: No such file or directory\n", argv[1]);
   }
+  // TODO: Free v6fs, vfs?
+}
+
+void mksock(int argc, const char *argv[]) {
+  UserSocket *sock = new UserSocket();
+  sock->Bind(5621);
+
+  uint8_t buf[32];
+  uint8_t dst_ip_addr[4], src_ip_addr[4];
+  uint16_t dst_port, src_port;
+  for (int i = 0; i < 10; i++) {
+    int recv_size = sock->ReceiveSync(buf, sizeof(buf), dst_ip_addr,
+                                      src_ip_addr, &dst_port, &src_port);
+    gtty->Printf("Receive!!!\n");
+    if (recv_size < 0) {
+      gtty->Printf("Error...\n");
+
+    } else {
+      gtty->Printf("%d.%d.%d.%d\n", src_ip_addr[0], src_ip_addr[1],
+                   src_ip_addr[2], src_ip_addr[3]);
+      gtty->Printf("size = %d\n", recv_size);
+      for (int k = 0; k < recv_size; k++) {
+        gtty->Printf("%X ", buf[k]);
+      }
+      gtty->Printf("\nEND\n");
+    }
+  }
 }
 
 void RegisterDefaultShellCommands() {
@@ -681,4 +710,5 @@ void RegisterDefaultShellCommands() {
   shell->Register("beep", beep);
   shell->Register("membench", membench);
   shell->Register("cat", cat);
+  shell->Register("mksock", mksock);
 }

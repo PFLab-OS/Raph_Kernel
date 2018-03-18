@@ -54,11 +54,11 @@ class UdpCtrl {
   void SetupServer();
   // Deprecated
   void Send(uint8_t (*target_addr)[4], uint16_t target_port,
-            const uint8_t *data, size_t len);
+            const uint8_t *data, size_t len, uint16_t source_port);
   void SendStr(uint8_t (*target_addr)[4], uint16_t target_port,
                const char *data) {
     Send(target_addr, target_port, reinterpret_cast<const uint8_t *>(data),
-         strlen(data));
+         strlen(data), 1234);  // TODO: SPECIFY PORT
   }
   // TODO reimplement to queue based architecture
   void Send(uptr<Packet> packet);
