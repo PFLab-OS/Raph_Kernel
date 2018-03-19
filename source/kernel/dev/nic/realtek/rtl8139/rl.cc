@@ -128,8 +128,8 @@ void Rtl8139::Rtl8139Ethernet::PollingHandler(Rtl8139 *that) {
 
   // Rx
   while (true) {
-    if (that->ReadReg<uint8_t>(kRegCommand) & kCmdRxBufEmpty) {
-      break;
+    if (!((that->ReadReg<uint8_t>(kRegCommand) & kCmdRxBufEmpty))) {
+      goto tx;
     }
     data = reinterpret_cast<uint8_t *>(that->_eth._rx_buffer.GetVirtAddr() +
                                        that->_eth._rx_buffer_offset);
@@ -149,10 +149,15 @@ void Rtl8139::Rtl8139Ethernet::PollingHandler(Rtl8139 *that) {
       }
     }
   }
-  // Tx
+// Tx
+tx:
   for (int i = 0; i < 4; i++) {
     uint32_t tx_status = that->ReadReg<uint32_t>(kRegTxStatus + i * 4);
     if (tx_status & (1 << 15)) {
+      if (that->_eth._tx_buffered_blocked) {
+        that->_eth._tx_buffered.UnBlock();
+        that->_eth._tx_buffered_blocked = false;
+      }
       that->_eth._tx_descriptor_status |= (1 << i);
     }
   }
@@ -199,10 +204,17 @@ void Rtl8139::Rtl8139Ethernet::ChangeHandleMethodToInt() {
 
 void Rtl8139::Rtl8139Ethernet::Transmit(void *) {
   uint32_t entry = _current_tx_descriptor;
+  _master.WriteReg<uint8_t>(kRegCommand, kCmdTxEnable | kCmdRxEnable);
+  uint16_t status = _master.ReadReg<uint8_t>(kRegCommand);
+  if ((status & kCmdRxEnable) && (status & kCmdTxEnable)) {
+    SetStatus(LinkStatus::kUp);
+  }
 
   if (!(_tx_descriptor_status & (1 << entry))) {
-    // bit立ってない＝TxOKがまだ
-    //なんか処理する
+    if (!_tx_buffered_blocked) {
+      _tx_buffered.Block();
+      _tx_buffered_blocked = true;
+    }
     return;
   }
   // TxOK
@@ -299,10 +311,18 @@ void Rtl8139::Rtl8139Ethernet::Setup() {
   while ((_master.ReadReg<uint8_t>(0x37) & 0x10) != 0) {
   }
 
-  _master.WriteReg<uint16_t>(kRegIrMask, kIsrTok | kIsrRok);
-  _master.SetLegacyInterrupt(InterruptHandler,
-                             reinterpret_cast<void *>(&_master),
-                             Idt::EoiType::kIoapic);
+  _master.WriteReg<uint16_t>(kRegIrMask, 0);
+  // TODO:disable LegacyInt
+
+  _polling.Init(make_uptr(new Function<Rtl8139 *>(PollingHandler, &_master)));
+  _polling.Register(
+      cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kHighPerformance));
+
+  // TODO:enable interrupt
+  // _master.WriteReg<uint16_t>(kRegIrMask, kIsrTok | kIsrRok);
+  // _master.SetLegacyInterrupt(InterruptHandler,
+  //                            reinterpret_cast<void *>(&_master),
+  //                            Idt::EoiType::kIoapic);
 
   InitTxPacketBuffer();
   InitRxPacketBuffer();
