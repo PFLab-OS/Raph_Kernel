@@ -49,6 +49,7 @@ class ElfObject : public ExecutableObject {
   void ReturnToKernelJob() { _loader.ExitResume(); }
   // TODO: redesigning
   void SetContext(Context *context) { _loader.SetContext(context); }
+  Context *GetContext() { return &(_loader.context); }
 
  protected:
   bool IsElf() {

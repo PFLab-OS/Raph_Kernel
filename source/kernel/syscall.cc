@@ -118,6 +118,31 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
           }
           break;
         }
+      case 57:
+        // fork TODO: TBI
+        {
+          ContextWrapper c;
+
+          sptr<Process> p =
+              process_ctrl->GetCurrentExecProcess(cpu_ctrl->GetCpuId());
+          c.SaveContext(syscall_handler_stack, syscall_handler_caller_stack);
+          p->SetContext(p, c);
+
+          sptr<Process> forkedp = process_ctrl->ForkProcess(p);
+          c.GetContext()->rax = forkedp->GetPid();  // ret val
+          p->SetContext(p, c);
+
+          if (p->GetStatus() == ProcessStatus::kHalted) {
+            kernel_panic("Syscall", "Could not fork");
+          } else {
+            process_ctrl->SetStatus(p, ProcessStatus::kHalted);
+          }
+          Process::ReturnToKernelJob(p);
+
+          while (true) {
+            asm volatile("hlt;");
+          }
+        }
       case 63:
         // uname
         {
@@ -247,6 +272,31 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
             kernel_panic("Sysctrl", "unknown fd(writev)");
           }
           break;
+        }
+      case 57:
+        // fork TODO: TBI
+        {
+          ContextWrapper c;
+
+          sptr<Process> p =
+              process_ctrl->GetCurrentExecProcess(cpu_ctrl->GetCpuId());
+          c.SaveContext(syscall_handler_stack, syscall_handler_caller_stack);
+          p->SetContext(p, c);
+
+          sptr<Process> forkedp = process_ctrl->ForkProcess(p);
+          c.GetContext()->rax = forkedp->GetPid();  // ret val
+          p->SetContext(p, c);
+
+          if (p->GetStatus() == ProcessStatus::kHalted) {
+            kernel_panic("Syscall", "Could not fork");
+          } else {
+            process_ctrl->SetStatus(p, ProcessStatus::kHalted);
+          }
+          Process::ReturnToKernelJob(p);
+
+          while (true) {
+            asm volatile("hlt;");
+          }
         }
       case 63:
         // uname

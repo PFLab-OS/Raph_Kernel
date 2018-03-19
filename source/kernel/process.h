@@ -40,6 +40,8 @@ enum class ProcessStatus {
   kRunning,
   kRunnable,
   kZombie,
+  kHalted,  // This make the process stopped *temporally*. For fork syscall
+            // etc...
 };
 
 class Process {
@@ -121,9 +123,7 @@ class ProcessCtrl {
     auto f = make_uptr(new Function1<bool, sptr<Process>, sptr<Process>>(
         [](sptr<Process> cchan, sptr<Process> p) {
           return (p->GetStatus() == ProcessStatus::kSleeping &&
-                  p->_chan == cchan)
-                     ? true
-                     : false;
+                  p->_chan == cchan);
         },
         chan));
     while (true) {
@@ -145,13 +145,13 @@ class ProcessCtrl {
     WakeupProcess(process->_parent);
     sptr<Process> init = FindProcessFromPid(Process::kInitPid);
 
-    auto f = make_uptr(new Function1<bool, sptr<Process>, sptr<Process>>(
-        [](sptr<Process> parent, sptr<Process> p) {
-          return (p->_parent == parent) ? true : false;
-        },
-        process));
     while (true) {
-      sptr<Process> pp = _process_set.Pop(f);
+      sptr<Process> pp = _process_set.Pop(
+          make_uptr(new Function1<bool, sptr<Process>, sptr<Process>>(
+              [](sptr<Process> parent, sptr<Process> p) {
+                return (p->_parent == parent);
+              },
+              process)));
       if (pp.IsNull()) break;
       pp->_parent = init;
       _process_set.Push(pp);

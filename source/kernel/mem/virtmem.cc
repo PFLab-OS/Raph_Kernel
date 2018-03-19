@@ -25,6 +25,7 @@
 #include <mem/virtmem.h>
 #include <mem/physmem.h>
 #include <mem/paging.h>
+#include <ptr.h>
 #include <global.h>
 
 extern int phys_memory_end;
@@ -34,6 +35,11 @@ extern int kHeapEndAddr;
 extern "C" {
 void *dlmalloc(size_t);
 void dlfree(void *);
+}
+
+MemCtrl::MemCtrl(sptr<MemCtrl> mc) : _pml4t(GetPml4tAddr()) {
+  // Copy Memory Space
+  _paging_ctrl->CopyMemorySpace(_pml4t, mc->_pml4t);
 }
 
 void MemCtrl::Init() {

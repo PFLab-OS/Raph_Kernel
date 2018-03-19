@@ -49,6 +49,103 @@ void PagingCtrl::ReleaseLowMemory() {
   _pml4t->entry[GetPML4TIndex(0)] = 0;
 }
 
+void PagingCtrl::CopyMemorySpaceSub(entry_type *dst, const entry_type *src,
+                                    int depth) {
+  for (int i = 0; i < 512; i++) {
+    switch (depth) {
+      case 0:  // PDPTE
+        if (!(src[i] & PDPTE_PRESENT_BIT)) {
+          dst[i] = 0;
+          break;
+        }
+        if (src[i] & PDPTE_1GPAGE_BIT) {
+          PhysAddr tpaddr;
+          physmem_ctrl->Alloc(tpaddr, PagingCtrl::kPageSize * 512 * 512);
+          dst[i] = tpaddr.GetAddr() |
+                   (src[i] ^ PagingCtrl::GetPDPTEMaskedAddr(src[i]));
+          memcpy(reinterpret_cast<void *>(tpaddr.GetVirtAddr()),
+                 reinterpret_cast<entry_type *>(
+                     p2v(PagingCtrl::GetPDPTEMaskedAddr(src[i]))),
+                 PagingCtrl::kPageSize * 512 * 512);
+        } else {
+          PhysAddr tpaddr;
+          physmem_ctrl->Alloc(tpaddr, PagingCtrl::kPageSize);
+          bzero(reinterpret_cast<void *>(tpaddr.GetVirtAddr()),
+                PagingCtrl::kPageSize);
+          dst[i] = tpaddr.GetAddr() |
+                   (src[i] ^ PagingCtrl::GetPDPTEMaskedAddr(src[i]));
+          CopyMemorySpaceSub(
+              reinterpret_cast<entry_type *>(tpaddr.GetVirtAddr()),
+              reinterpret_cast<entry_type *>(
+                  p2v(PagingCtrl::GetPDPTEMaskedAddr(src[i]))),
+              depth + 1);
+        }
+        break;
+      case 1:  // PDE
+        if (!(src[i] & PDE_PRESENT_BIT)) {
+          dst[i] = 0;
+          break;
+        }
+        if (src[i] & PDE_2MPAGE_BIT) {
+          PhysAddr tpaddr;
+          physmem_ctrl->Alloc(tpaddr, PagingCtrl::kPageSize * 512);
+          memcpy(reinterpret_cast<entry_type *>(tpaddr.GetVirtAddr()),
+                 reinterpret_cast<entry_type *>(
+                     p2v(PagingCtrl::GetPDEMaskedAddr(src[i]))),
+                 PagingCtrl::kPageSize * 512 * 512);
+        } else {
+          PhysAddr tpaddr;
+          physmem_ctrl->Alloc(tpaddr, PagingCtrl::kPageSize);
+          bzero(reinterpret_cast<void *>(tpaddr.GetVirtAddr()),
+                PagingCtrl::kPageSize);
+          dst[i] = tpaddr.GetAddr() |
+                   (src[i] ^ PagingCtrl::GetPDEMaskedAddr(src[i]));
+          CopyMemorySpaceSub(
+              reinterpret_cast<entry_type *>(tpaddr.GetVirtAddr()),
+              reinterpret_cast<entry_type *>(
+                  p2v(PagingCtrl::GetPDEMaskedAddr(src[i]))),
+              depth + 1);
+        }
+        break;
+      case 2:  // PTE
+        if (src[i] & PTE_PRESENT_BIT) {
+          PhysAddr tpaddr;
+          physmem_ctrl->Alloc(tpaddr, PagingCtrl::kPageSize);
+          dst[i] = tpaddr.GetAddr() |
+                   (src[i] ^ PagingCtrl::GetPTEMaskedAddr(src[i]));
+          memcpy(reinterpret_cast<void *>(tpaddr.GetVirtAddr()),
+                 reinterpret_cast<entry_type *>(
+                     p2v(PagingCtrl::GetPDEMaskedAddr(src[i]))),
+                 PagingCtrl::kPageSize);
+        }
+        break;
+    }
+  }
+}
+
+void PagingCtrl::CopyMemorySpace(PageTable *mdst, const PageTable *msrc) {
+  // Kernel Memory
+  for (int i = 256; i < 512; i++) {
+    mdst->entry[i] = msrc->entry[i];
+  }
+  // Process Memory
+  PhysAddr tpaddr;
+  for (int i = 0; i < 256; i++) {
+    if (msrc->entry[i] & PML4E_PRESENT_BIT) {
+      physmem_ctrl->Alloc(tpaddr, PagingCtrl::kPageSize);
+      bzero(reinterpret_cast<void *>(tpaddr.GetVirtAddr()),
+            PagingCtrl::kPageSize);
+      mdst->entry[i] =
+          tpaddr.GetAddr() |
+          (msrc->entry[i] ^ PagingCtrl::GetPML4EMaskedAddr(msrc->entry[i]));
+      CopyMemorySpaceSub(reinterpret_cast<entry_type *>(tpaddr.GetVirtAddr()),
+                         reinterpret_cast<entry_type *>(p2v(
+                             PagingCtrl::GetPML4EMaskedAddr(msrc->entry[i]))),
+                         0);
+    }
+  }
+}
+
 void PagingCtrl::Switch() {
   PageTable *pt;
   phys_addr pa;
