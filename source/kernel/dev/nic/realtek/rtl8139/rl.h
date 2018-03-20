@@ -75,6 +75,8 @@ class Rtl8139 : public DevPci {
     PhysAddr _rx_buffer;
     uint32_t _rx_buffer_offset = 0;
 
+    bool _tx_buffered_blocked = false;
+
     uptr<Thread> _status_check_thread;
 
     // Registers see datasheet p16
