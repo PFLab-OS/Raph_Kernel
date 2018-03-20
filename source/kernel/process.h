@@ -50,8 +50,6 @@ class Process {
 
   ~Process() { delete _elfobj; }
 
-  void Init();
-
   pid_t GetPid() { return _pid; }
 
   ProcessStatus GetStatus() { return _status; };
@@ -75,7 +73,7 @@ class Process {
   pid_t _pid;
   ProcessStatus _status = ProcessStatus::kEmbryo;
   sptr<Process> _next, _prev;
-  uptr<Thread> _thread;
+  uptr<Thread> _thread, _thread_sub;
   sptr<Process> _chan;  // kSleeping Finish Condition
   sptr<MemCtrl> _mem_ctrl;
   int _raw_cpuid = CpuId::kCpuIdNotFound;

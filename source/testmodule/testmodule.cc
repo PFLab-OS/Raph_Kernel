@@ -46,6 +46,20 @@ void contextswitch() {
       :::"memory","rax","rbx","rcx","rdx","rsi","rdi","r8","r9","r10","r11","r12","r13","r14","r15");
 }
 
+void myexec() {
+    asm volatile (
+        "mov $59,%%rax;"
+        "syscall;"
+        :::"memory","rax","rbx","rcx","rdx","rsi","rdi","r8","r9","r10","r11","r12","r13","r14","r15");
+}
+
+void mywait() {
+  asm volatile (
+      "mov $61,%%rax;"
+      "syscall;"
+      :::"memory","rax","rbx","rcx","rdx","rsi","rdi","r8","r9","r10","r11","r12","r13","r14","r15");
+}
+
 int main(int argc, char *argv[])
 {
   printf("hello world\n");
@@ -57,16 +71,22 @@ int main(int argc, char *argv[])
     return -1;
   }
 
-  printf("This is test module.(test: fork/contextswitch)\n");
-
-  contextswitch();
+  printf("This is test module.(test: fork/exec/wait/contextswitch)\n");
 
   pid_t pid = myfork();
 
+  contextswitch();
+
+  printf("pid = %d\n",pid);
+
+
   if (pid == 0) {
+    //In child Process
     printf("  forked!\n");
-    myexit();
+    myexec();
   }
+
+  mywait();
 
   printf("good bye!\n");
 

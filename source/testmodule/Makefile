@@ -1,19 +1,27 @@
-MODULE = testmodule
+MODULE01 = testmodule
+MODULE02 = forked
 #SRCS = testmodule.cc stubstart.S
-SRCS = testmodule.cc
+SRCS01 = testmodule.cc
+SRCS02 = forked.cc
 CC = musl-gcc
 
 defalut:
 
-build: ../../build/$(MODULE).elf
+build:
+	$(MAKE) $(MODULE01)
+	$(MAKE) $(MODULE02)
+	cp $(MODULE01) ../../build/$(MODULE01).elf
+	cp $(MODULE02) ../../build/$(MODULE02).elf
 
-../../build/$(MODULE).elf: $(MODULE)
-	cp $^ $@
-
-$(MODULE) : $(SRCS) Makefile
+$(MODULE01) : $(SRCS01) Makefile
 #	g++ -nostdlib -fPIE -static -o $(MODULE) $(SRCS)
-	$(CC) -g0 -mcmodel=large -fno-stack-protector -static -o $(MODULE) $(SRCS)
+	$(CC) -g0 -mcmodel=large -static -fno-stack-protector -o $(MODULE01) $(SRCS01)
+
+$(MODULE02) : $(SRCS02) Makefile
+#	g++ -nostdlib -fPIE -static -o $(MODULE) $(SRCS)
+	$(CC) -g0 -mcmodel=large -static -o $(MODULE02) $(SRCS02)
 
 clean:
-	-rm -f $(MODULE)
-	-rm -f *.o
+	-rm $(MODULE01)
+	-rm $(MODULE02)
+	-rm *.o

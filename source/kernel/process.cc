@@ -33,14 +33,6 @@
 #include <mem/physmem.h>
 #include <global.h>
 
-void Process::Init() {
-  _thread = ThreadCtrl::GetCtrl(
-                cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority))
-                .AllocNewThread(Thread::StackState::kIndependent);
-  _mem_ctrl = make_sptr(new MemCtrl());
-  _mem_ctrl->Init();
-}
-
 void ProcessCtrl::Init() {
   {
     Locker locker(_table_lock);
@@ -90,7 +82,12 @@ sptr<Process> ProcessCtrl::CreateFirstProcess(sptr<Process> process) {
   if (process.IsNull()) {
     kernel_panic("ProcessCtrl", "Could not alloc first process space.");
   }
-  process->Init();
+
+  process->_thread = ThreadCtrl::GetCtrl(cpu_ctrl->RetainCpuIdForPurpose(
+                                             CpuPurpose::kLowPriority))
+                         .AllocNewThread(Thread::StackState::kIndependent);
+  process->_mem_ctrl = make_sptr(new MemCtrl());
+  process->_mem_ctrl->Init();
 
   auto t_op = process->_thread->CreateOperator();
   t_op.SetFunc(make_uptr(new Function1<void, sptr<Process>>(
@@ -142,11 +139,13 @@ sptr<Process> ProcessCtrl::ForkProcess(sptr<Process> fp) {
   if (process.IsNull()) {
     kernel_panic("ProcessCtrl", "Could not alloc first process space.");
   }
-  process->Init();
+
+  process->_thread = ThreadCtrl::GetCtrl(cpu_ctrl->RetainCpuIdForPurpose(
+                                             CpuPurpose::kLowPriority))
+                         .AllocNewThread(Thread::StackState::kIndependent);
+
   process->_parent = fp;
 
-  // In Init(), we create new _mem_ctrl, but we want to
-  // take over the parent's memory space.
   process->_mem_ctrl = make_sptr(new MemCtrl(fp->_mem_ctrl));
   process->_mem_ctrl->Init();
 
@@ -187,6 +186,88 @@ sptr<Process> ProcessCtrl::ForkProcess(sptr<Process> fp) {
         }
       },
       process, fp)));
+
+  return process;
+}
+
+// This fucntion retrun Forked Executable Process
+sptr<Process> ProcessCtrl::ExecProcess(sptr<Process> process,
+                                       const char* exec_path) {
+  if (process.IsNull()) {
+    kernel_panic("ProcessCtrl", "invalid process");
+  }
+
+  process->_mem_ctrl = make_sptr(new MemCtrl());
+  process->_mem_ctrl->Init();
+
+  process_ctrl->SetStatus(process, ProcessStatus::kHalted);
+
+  process->_thread_sub = ThreadCtrl::GetCtrl(cpu_ctrl->RetainCpuIdForPurpose(
+                                                 CpuPurpose::kLowPriority))
+                             .AllocNewThread(Thread::StackState::kIndependent);
+  auto t_op = process->_thread_sub->CreateOperator();
+  t_op.SetFunc(make_uptr(
+      new Function2<void, sptr<Process>,
+                    uptr<Function2<void, sptr<Process>, const char*>>>(
+          [](sptr<Process> pp,
+             uptr<Function2<void, sptr<Process>, const char*>> func) {
+            auto tmp_thread = pp->_thread;
+            tmp_thread->CreateOperator().Stop();
+
+            pp->_thread = ThreadCtrl::GetCtrl(cpu_ctrl->RetainCpuIdForPurpose(
+                                                  CpuPurpose::kLowPriority))
+                              .AllocNewThread(Thread::StackState::kIndependent);
+            auto pt_op = pp->_thread->CreateOperator();
+            pt_op.SetFunc(func);
+
+            process_ctrl->SetStatus(pp, ProcessStatus::kEmbryo);
+
+            ThreadCtrl::WaitCurrentThread();
+          },
+          process,
+          make_uptr(new Function2<void, sptr<Process>, const char*>(
+              [](sptr<Process> p, const char* path) {
+                gtty->Printf("Foekd Process Execution\n");
+                p->_mem_ctrl->Init();
+
+                p->_mem_ctrl->Switch();
+
+                Loader loader(p->_mem_ctrl);
+                // TODO change test.elf to optimal process (such as init).
+                auto tmp = multiboot_ctrl->LoadFile(path);
+                ElfObject obj(loader, tmp->GetRawPtr());
+                if (obj.Init() != BinObjectInterface::ErrorState::kOk) {
+                  gtty->Printf("error while loading app\n");
+                  kernel_panic("ProcessCtrl",
+                               "Could not load app in ExecProcess()");
+                }
+
+                p->_elfobj = &obj;
+
+                while (true) {
+                  system_memory_space->Switch();
+                  switch (p->GetStatus()) {
+                    case ProcessStatus::kEmbryo:
+                    case ProcessStatus::kRunning:
+                      process_ctrl->SetStatus(p, ProcessStatus::kRunnable);
+                      break;
+                    default:
+                      break;
+                  }
+
+                  p->_raw_cpuid = CpuId::kCpuIdNotFound;
+                  ThreadCtrl::WaitCurrentThread();
+                  p->_raw_cpuid = cpu_ctrl->GetCpuId().GetRawId();
+
+                  p->_mem_ctrl->Switch();
+                  process_ctrl->SetStatus(p, ProcessStatus::kRunning);
+
+                  p->_elfobj->Resume();
+                }
+              },
+              process, exec_path)))));
+
+  t_op.Schedule();
 
   return process;
 }
