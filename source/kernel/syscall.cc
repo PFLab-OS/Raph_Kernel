@@ -143,6 +143,35 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
             asm volatile("hlt;");
           }
         }
+      case 59:
+        // execve TODO: TBI
+        {
+          sptr<Process> p =
+              process_ctrl->GetCurrentExecProcess(cpu_ctrl->GetCpuId());
+
+          process_ctrl->ExecProcess(p, "forked.elf");
+
+          Process::ReturnToKernelJob(p);
+
+          while (true) {
+            asm volatile("hlt;");
+          }
+        }
+      case 61:
+        // wait TODO: TBI
+        {
+          ContextWrapper c;
+          sptr<Process> p =
+              process_ctrl->GetCurrentExecProcess(cpu_ctrl->GetCpuId());
+
+          pid_t pid = process_ctrl->WaitProcess(p);
+          if (pid != Process::kInvalidPid) return pid;
+
+          c.SaveContext(syscall_handler_stack, syscall_handler_caller_stack);
+          p->SetContext(p, c);
+          assert(process_ctrl->MakeProcessSleep(p, p));
+          Process::ReturnToKernelJob(p);
+        }
       case 63:
         // uname
         {
@@ -297,6 +326,35 @@ int64_t SystemCallCtrl::Handler(Args *args, int index) {
           while (true) {
             asm volatile("hlt;");
           }
+        }
+      case 59:
+        // execve TODO: TBI
+        {
+          sptr<Process> p =
+              process_ctrl->GetCurrentExecProcess(cpu_ctrl->GetCpuId());
+
+          process_ctrl->ExecProcess(p, "forked.elf");
+
+          Process::ReturnToKernelJob(p);
+
+          while (true) {
+            asm volatile("hlt;");
+          }
+        }
+      case 61:
+        // wait TODO: TBI
+        {
+          ContextWrapper c;
+          sptr<Process> p =
+              process_ctrl->GetCurrentExecProcess(cpu_ctrl->GetCpuId());
+
+          pid_t pid = process_ctrl->WaitProcess(p);
+          if (pid != Process::kInvalidPid) return pid;
+
+          c.SaveContext(syscall_handler_stack, syscall_handler_caller_stack);
+          p->SetContext(p, c);
+          assert(process_ctrl->MakeProcessSleep(p, p));
+          Process::ReturnToKernelJob(p);
         }
       case 63:
         // uname
