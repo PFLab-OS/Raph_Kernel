@@ -60,13 +60,25 @@ bool Hpet::SetupSub() {
   return true;
 }
 
-void Hpet::SetInt(CpuId cpuid, uint64_t cnt) {
+// cnt - nano seconds
+void Hpet::SetInt(CpuId cpuid, uint64_t cnt, bool is_oneshot = kTimerOneShot) {
+  uint64_t cnt_val = cnt / _cnt_clk_period;
   int id = 0;
   uint64_t config =
       kRegTmrConfigCapBaseFlagMode32 | kRegTmrConfigCapBaseFlagTypeNonPer;
   config &= ~kRegTmrConfigCapBaseMaskIntRoute;
   bool fsb_delivery = (_reg[GetRegTmrOfN(id, kBaseRegTmrConfigCap)] &
                        kRegTmrConfigCapBaseFlagFsbIntDel) != 0;
+  bool can_periodic = (_reg[GetRegTmrOfN(id, kBaseRegTmrConfigCap)] &
+                       kRegTmrConfigCapBaseFlagPerCap) != 0;
+
+  if (!is_oneshot && !can_periodic) {
+    return;
+  }
+  config |= (!is_oneshot ? kRegTmrConfigCapBaseFlagTypePer |
+                               kRegTmrConfigCapBaseFlagValueSet
+                         : 0);
+
   if (fsb_delivery) {
     config |=
         kRegTmrConfigCapBaseFlagFsbEnable | kRegTmrConfigCapBaseFlagIntTypeEdge;
@@ -107,15 +119,27 @@ void Hpet::SetInt(CpuId cpuid, uint64_t cnt) {
     kassert(apic_ctrl->SetupIoInt(pin, apic_ctrl->GetApicIdFromCpuId(cpuid),
                                   vector, false, true));
   }
-  _reg[GetRegTmrOfN(id, kBaseRegTmrConfigCap)] = config;
-  _reg[GetRegTmrOfN(id, kBaseRegTmrCmp)] = cnt;
+  if (is_oneshot) {
+    _reg[GetRegTmrOfN(id, kBaseRegTmrConfigCap)] = config;
+    _reg[GetRegTmrOfN(id, kBaseRegTmrCmp)] = cnt_val;
+  } else {
+    _reg[GetRegTmrOfN(id, kBaseRegTmrConfigCap)] = config;
+    _reg[GetRegTmrOfN(id, kBaseRegTmrCmp)] = ReadMainCnt() + cnt_val;
+    _reg[GetRegTmrOfN(id, kBaseRegTmrCmp)] = cnt_val;
+  }
+}
+
+void volatile Hpet::ResetMainCnt() {
+  _reg[kRegGenConfig] |= ~kRegGenConfigFlagEnable;
+  _reg[kRegMainCnt] = 0x0;
+  _reg[kRegGenConfig] &= kRegGenConfigFlagEnable;
 }
 
 void Hpet::Handle(Regs *rs, void *arg) {
   int id = 0;
   Hpet *that = reinterpret_cast<Hpet *>(arg);
-  that->_reg[that->GetRegTmrOfN(id, kBaseRegTmrCmp)] =
-      that->ConvertTimeToCnt(that->ReadTime() + 1000 * 1000);
+  // that->_reg[that->GetRegTmrOfN(id, kBaseRegTmrCmp)] =
+  //    that->ConvertTimeToCnt(that->ReadTime() + 1000 * 1000);
   bool fsb_delivery = (that->_reg[GetRegTmrOfN(id, kBaseRegTmrConfigCap)] &
                        kRegTmrConfigCapBaseFlagFsbIntDel) != 0;
   if (!fsb_delivery) {

@@ -54,7 +54,8 @@ class Hpet : public Timer {
     }
     return _reg[kRegMainCnt];
   }
-  void SetInt(CpuId cpuid, uint64_t cnt);
+  void SetInt(CpuId cpuid, uint64_t cnt, bool is_oneshot);
+  void volatile ResetMainCnt();
 
  private:
   void Disable(int table) {
@@ -107,4 +108,7 @@ class Hpet : public Timer {
   static const uint64_t kRegTmrConfigCapBaseFlagFsbIntDel = 1 << 15;
   static const uint64_t kRegTmrConfigCapBaseMaskIntRouteCap =
       0xffffffff00000000;
+
+  static const bool kTimerOneShot = true;
+  static const bool kTimerPeriodic = false;
 };
