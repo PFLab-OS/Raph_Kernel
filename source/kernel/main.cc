@@ -208,6 +208,9 @@ extern "C" int main() {
   shell->Setup();
   RegisterDefaultShellCommands();
 
+  // periodic timer
+  timer->Start10msecPeriodicTimer();
+
   auto thread = ThreadCtrl::GetCtrl(
                     cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority))
                     .AllocNewThread(Thread::StackState::kIndependent);

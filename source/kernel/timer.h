@@ -24,6 +24,9 @@
 #pragma once
 
 #include <stdint.h>
+#include <ptr.h>
+#include <function.h>
+#include <idt.h>
 
 class Time {
  public:
@@ -83,6 +86,13 @@ class Timer {
       asm volatile("" ::: "memory");
     }
   }
+
+  virtual void SetPeriodicTimer(CpuId cpuid, uint64_t cnt,
+                                int_callback func) = 0;
+  virtual void SetOneShotTimer(CpuId cpuid, uint64_t cnt,
+                               int_callback func) = 0;
+
+  virtual void Start10msecPeriodicTimer() = 0;
 
  protected:
   virtual volatile uint64_t ReadMainCnt() = 0;

@@ -31,6 +31,9 @@
 #include <raph_acpi.h>
 #include <timer.h>
 #include <apic.h>
+#include <ptr.h>
+#include <function.h>
+#include <idt.h>
 
 struct HPETDT {
   ACPISDTHeader header;
@@ -54,8 +57,18 @@ class Hpet : public Timer {
     }
     return _reg[kRegMainCnt];
   }
-  void SetInt(CpuId cpuid, uint64_t cnt, bool is_oneshot);
   void volatile ResetMainCnt();
+
+  // cnt - nano seconds
+  virtual void SetPeriodicTimer(CpuId cpuid, uint64_t cnt,
+                                int_callback func) override;
+  virtual void SetOneShotTimer(CpuId cpuid, uint64_t cnt,
+                               int_callback func) override;
+
+  virtual void Start10msecPeriodicTimer() override {
+    SetPeriodicTimer(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority),
+                     1000 * 1000 * 10, Handle);
+  }
 
  private:
   void Disable(int table) {
@@ -64,6 +77,9 @@ class Hpet : public Timer {
     _reg[kBaseRegFsbIntRoute] = 0;
   }
   static void Handle(Regs *rs, void *arg);
+
+  void SetFsb(CpuId cpuid, int id, int_callback func);
+  int SetLegacyInterrupt(CpuId cpuid, int id, int_callback func);
 
   HPETDT *_dt;
   uint64_t *_reg;
