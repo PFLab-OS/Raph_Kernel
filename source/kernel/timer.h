@@ -92,7 +92,10 @@ class Timer {
   virtual void SetOneShotTimer(CpuId cpuid, uint64_t cnt,
                                int_callback func) = 0;
 
-  virtual void Start10msecPeriodicTimer() = 0;
+  virtual void Start10msecPeriodicTimer() {
+    SetPeriodicTimer(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority),
+                     1000 * 1000 * 10, HandleWrapper);
+  }
 
  protected:
   virtual volatile uint64_t ReadMainCnt() = 0;
@@ -104,5 +107,10 @@ class Timer {
   virtual bool SetupSub() = 0;
 
  private:
+  static void HandleWrapper(Regs *rs, void *arg) {
+    Timer *that = reinterpret_cast<Timer *>(arg);
+    that->Handle(rs);
+  }
+  virtual void Handle(Regs *rs) = 0;
   bool _setup = false;
 };

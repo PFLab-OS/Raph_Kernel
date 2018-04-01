@@ -65,18 +65,13 @@ class Hpet : public Timer {
   virtual void SetOneShotTimer(CpuId cpuid, uint64_t cnt,
                                int_callback func) override;
 
-  virtual void Start10msecPeriodicTimer() override {
-    SetPeriodicTimer(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority),
-                     1000 * 1000 * 10, Handle);
-  }
-
  private:
   void Disable(int table) {
     _reg[GetRegTmrOfN(table, kBaseRegTmrConfigCap)] &=
         ~kRegTmrConfigCapBaseFlagIntEnable & ~kRegTmrConfigCapBaseFlagFsbEnable;
     _reg[kBaseRegFsbIntRoute] = 0;
   }
-  static void Handle(Regs *rs, void *arg);
+  virtual void Handle(Regs *rs) override;
 
   void SetFsb(CpuId cpuid, int id, int_callback func);
   int SetLegacyInterrupt(CpuId cpuid, int id, int_callback func);

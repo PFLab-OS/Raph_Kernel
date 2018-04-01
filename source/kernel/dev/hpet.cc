@@ -149,8 +149,8 @@ int Hpet::SetLegacyInterrupt(CpuId cpuid, int id, int_callback func) {
     kernel_panic("hpet", "unknown error");
   }
   kassert(apic_ctrl != nullptr);
-  int vector = idt->SetIntCallback(
-      cpuid, Handle, reinterpret_cast<void *>(this), Idt::EoiType::kIoapic);
+  int vector = idt->SetIntCallback(cpuid, func, reinterpret_cast<void *>(this),
+                                   Idt::EoiType::kIoapic);
   kassert(apic_ctrl->SetupIoInt(pin, apic_ctrl->GetApicIdFromCpuId(cpuid),
                                 vector, false, true));
   return pin;
@@ -162,14 +162,11 @@ void volatile Hpet::ResetMainCnt() {
   _reg[kRegGenConfig] &= kRegGenConfigFlagEnable;
 }
 
-void Hpet::Handle(Regs *rs, void *arg) {
+void Hpet::Handle(Regs *rs) {
   int id = 0;
-  Hpet *that = reinterpret_cast<Hpet *>(arg);
-  // that->_reg[that->GetRegTmrOfN(id, kBaseRegTmrCmp)] =
-  //    that->ConvertTimeToCnt(that->ReadTime() + 1000 * 1000);
-  bool fsb_delivery = (that->_reg[GetRegTmrOfN(id, kBaseRegTmrConfigCap)] &
+  bool fsb_delivery = (this->_reg[GetRegTmrOfN(id, kBaseRegTmrConfigCap)] &
                        kRegTmrConfigCapBaseFlagFsbIntDel) != 0;
   if (!fsb_delivery) {
-    that->_reg[0x20 / sizeof(uint64_t)] |= 1;
+    this->_reg[0x20 / sizeof(uint64_t)] |= 1;
   }
 }
