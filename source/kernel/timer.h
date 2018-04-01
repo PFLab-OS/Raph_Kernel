@@ -92,7 +92,7 @@ class Timer {
   virtual void SetOneShotTimer(CpuId cpuid, uint64_t cnt,
                                int_callback func) = 0;
 
-  virtual void Start10msecPeriodicTimer() {
+  void Start10msecPeriodicTimer() {
     SetPeriodicTimer(cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kLowPriority),
                      1000 * 1000 * 10, HandleWrapper);
   }
