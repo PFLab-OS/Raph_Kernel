@@ -60,65 +60,113 @@ bool Hpet::SetupSub() {
   return true;
 }
 
-void Hpet::SetInt(CpuId cpuid, uint64_t cnt) {
+void Hpet::SetPeriodicTimer(CpuId cpuid, uint64_t cnt, int_callback func) {
+  uint64_t cnt_val = cnt / _cnt_clk_period;
   int id = 0;
   uint64_t config =
       kRegTmrConfigCapBaseFlagMode32 | kRegTmrConfigCapBaseFlagTypeNonPer;
   config &= ~kRegTmrConfigCapBaseMaskIntRoute;
   bool fsb_delivery = (_reg[GetRegTmrOfN(id, kBaseRegTmrConfigCap)] &
                        kRegTmrConfigCapBaseFlagFsbIntDel) != 0;
+  bool can_periodic = (_reg[GetRegTmrOfN(id, kBaseRegTmrConfigCap)] &
+                       kRegTmrConfigCapBaseFlagPerCap) != 0;
+
+  if (!can_periodic) {
+    return;
+  }
+  config |=
+      (kRegTmrConfigCapBaseFlagTypePer | kRegTmrConfigCapBaseFlagValueSet);
+
   if (fsb_delivery) {
     config |=
         kRegTmrConfigCapBaseFlagFsbEnable | kRegTmrConfigCapBaseFlagIntTypeEdge;
-    int vector = idt->SetIntCallback(
-        cpuid, Handle, reinterpret_cast<void *>(this), Idt::EoiType::kLapic);
-    _reg[kBaseRegFsbIntRoute] =
-        (ApicCtrl::GetMsiAddr(apic_ctrl->GetApicIdFromCpuId(cpuid)) << 32) |
-        ApicCtrl::GetMsiData(vector);
+    SetFsb(cpuid, id, func);
   } else {
-    int pin = -1;
-    if (_reg[kRegGenConfig] & kRegGenConfigFlagLegacy) {
-      if (id == 0) {
-        pin = 2;
-      } else if (id == 1) {
-        pin = 8;
-      }
-    }
-    if (pin == -1) {
-      uint32_t routecap = (_reg[GetRegTmrOfN(id, kBaseRegTmrConfigCap)] &
-                           kRegTmrConfigCapBaseMaskIntRouteCap) >>
-                          32;
-      for (int i = 0; i < 32; i++) {
-        if ((routecap & (1 << i)) != 0) {
-          pin = i;
-          break;
-        }
-      }
-    }
-    if (pin == -1) {
-      kernel_panic("hpet", "unknown error");
-    }
+    int pin = SetLegacyInterrupt(cpuid, id, func);
     config |= (pin << kRegTmrConfigCapBaseOffsetIntRoute) |
               kRegTmrConfigCapBaseFlagIntTypeLevel |
               kRegTmrConfigCapBaseFlagIntEnable;
-    kassert(apic_ctrl != nullptr);
-    int vector = idt->SetIntCallback(
-        cpuid, Handle, reinterpret_cast<void *>(this), Idt::EoiType::kIoapic);
-    kassert(apic_ctrl->SetupIoInt(pin, apic_ctrl->GetApicIdFromCpuId(cpuid),
-                                  vector, false, true));
   }
+
   _reg[GetRegTmrOfN(id, kBaseRegTmrConfigCap)] = config;
-  _reg[GetRegTmrOfN(id, kBaseRegTmrCmp)] = cnt;
+  _reg[GetRegTmrOfN(id, kBaseRegTmrCmp)] = ReadMainCnt() + cnt_val;
+  _reg[GetRegTmrOfN(id, kBaseRegTmrCmp)] = cnt_val;
 }
 
-void Hpet::Handle(Regs *rs, void *arg) {
+void Hpet::SetOneShotTimer(CpuId cpuid, uint64_t cnt, int_callback func) {
+  uint64_t cnt_val = cnt / _cnt_clk_period;
   int id = 0;
-  Hpet *that = reinterpret_cast<Hpet *>(arg);
-  that->_reg[that->GetRegTmrOfN(id, kBaseRegTmrCmp)] =
-      that->ConvertTimeToCnt(that->ReadTime() + 1000 * 1000);
-  bool fsb_delivery = (that->_reg[GetRegTmrOfN(id, kBaseRegTmrConfigCap)] &
+  uint64_t config =
+      kRegTmrConfigCapBaseFlagMode32 | kRegTmrConfigCapBaseFlagTypeNonPer;
+  config &= ~kRegTmrConfigCapBaseMaskIntRoute;
+  bool fsb_delivery = (_reg[GetRegTmrOfN(id, kBaseRegTmrConfigCap)] &
+                       kRegTmrConfigCapBaseFlagFsbIntDel) != 0;
+
+  if (fsb_delivery) {
+    config |=
+        kRegTmrConfigCapBaseFlagFsbEnable | kRegTmrConfigCapBaseFlagIntTypeEdge;
+    SetFsb(cpuid, id, func);
+  } else {
+    int pin = SetLegacyInterrupt(cpuid, id, func);
+    config |= (pin << kRegTmrConfigCapBaseOffsetIntRoute) |
+              kRegTmrConfigCapBaseFlagIntTypeLevel |
+              kRegTmrConfigCapBaseFlagIntEnable;
+  }
+
+  _reg[GetRegTmrOfN(id, kBaseRegTmrConfigCap)] = config;
+  _reg[GetRegTmrOfN(id, kBaseRegTmrCmp)] = cnt_val;
+}
+
+void Hpet::SetFsb(CpuId cpuid, int id, int_callback func) {
+  int vector = idt->SetIntCallback(cpuid, func, reinterpret_cast<void *>(this),
+                                   Idt::EoiType::kLapic);
+  _reg[kBaseRegFsbIntRoute] =
+      (ApicCtrl::GetMsiAddr(apic_ctrl->GetApicIdFromCpuId(cpuid)) << 32) |
+      ApicCtrl::GetMsiData(vector);
+}
+
+int Hpet::SetLegacyInterrupt(CpuId cpuid, int id, int_callback func) {
+  int pin = -1;
+  if (_reg[kRegGenConfig] & kRegGenConfigFlagLegacy) {
+    if (id == 0) {
+      pin = 2;
+    } else if (id == 1) {
+      pin = 8;
+    }
+  }
+  if (pin == -1) {
+    uint32_t routecap = (_reg[GetRegTmrOfN(id, kBaseRegTmrConfigCap)] &
+                         kRegTmrConfigCapBaseMaskIntRouteCap) >>
+                        32;
+    for (int i = 0; i < 32; i++) {
+      if ((routecap & (1 << i)) != 0) {
+        pin = i;
+        break;
+      }
+    }
+  }
+  if (pin == -1) {
+    kernel_panic("hpet", "unknown error");
+  }
+  kassert(apic_ctrl != nullptr);
+  int vector = idt->SetIntCallback(cpuid, func, reinterpret_cast<void *>(this),
+                                   Idt::EoiType::kIoapic);
+  kassert(apic_ctrl->SetupIoInt(pin, apic_ctrl->GetApicIdFromCpuId(cpuid),
+                                vector, false, true));
+  return pin;
+}
+
+void volatile Hpet::ResetMainCnt() {
+  _reg[kRegGenConfig] |= ~kRegGenConfigFlagEnable;
+  _reg[kRegMainCnt] = 0x0;
+  _reg[kRegGenConfig] &= kRegGenConfigFlagEnable;
+}
+
+void Hpet::Handle(Regs *rs) {
+  int id = 0;
+  bool fsb_delivery = (this->_reg[GetRegTmrOfN(id, kBaseRegTmrConfigCap)] &
                        kRegTmrConfigCapBaseFlagFsbIntDel) != 0;
   if (!fsb_delivery) {
-    that->_reg[0x20 / sizeof(uint64_t)] |= 1;
+    this->_reg[0x20 / sizeof(uint64_t)] |= 1;
   }
 }

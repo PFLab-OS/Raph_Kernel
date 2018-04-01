@@ -31,6 +31,9 @@
 #include <raph_acpi.h>
 #include <timer.h>
 #include <apic.h>
+#include <ptr.h>
+#include <function.h>
+#include <idt.h>
 
 struct HPETDT {
   ACPISDTHeader header;
@@ -54,7 +57,13 @@ class Hpet : public Timer {
     }
     return _reg[kRegMainCnt];
   }
-  void SetInt(CpuId cpuid, uint64_t cnt);
+  void volatile ResetMainCnt();
+
+  // cnt - nano seconds
+  virtual void SetPeriodicTimer(CpuId cpuid, uint64_t cnt,
+                                int_callback func) override;
+  virtual void SetOneShotTimer(CpuId cpuid, uint64_t cnt,
+                               int_callback func) override;
 
  private:
   void Disable(int table) {
@@ -62,7 +71,10 @@ class Hpet : public Timer {
         ~kRegTmrConfigCapBaseFlagIntEnable & ~kRegTmrConfigCapBaseFlagFsbEnable;
     _reg[kBaseRegFsbIntRoute] = 0;
   }
-  static void Handle(Regs *rs, void *arg);
+  virtual void Handle(Regs *rs) override;
+
+  void SetFsb(CpuId cpuid, int id, int_callback func);
+  int SetLegacyInterrupt(CpuId cpuid, int id, int_callback func);
 
   HPETDT *_dt;
   uint64_t *_reg;
@@ -107,4 +119,7 @@ class Hpet : public Timer {
   static const uint64_t kRegTmrConfigCapBaseFlagFsbIntDel = 1 << 15;
   static const uint64_t kRegTmrConfigCapBaseMaskIntRouteCap =
       0xffffffff00000000;
+
+  static const bool kTimerOneShot = true;
+  static const bool kTimerPeriodic = false;
 };
