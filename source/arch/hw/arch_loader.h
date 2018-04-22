@@ -31,6 +31,7 @@
 #include <mem/kstack.h>
 #include <gdt.h>
 #include <tty.h>
+#include <idt.h>
 
 //TODO: using fs/gs registers
 
@@ -64,6 +65,39 @@ public:
   }
 
   ContextWrapper() {
+  }
+
+  ContextWrapper(Regs* rs) {
+    SaveContext(rs);
+  }
+
+  ContextWrapper(Context* c) {
+    _context = *c;
+  }
+
+  void SaveContext(Regs* rs) { 
+    _context.rip = rs->rip;
+    _context.rflags = rs->rflags;
+
+    _context.rdi = rs->rdi;
+    _context.rsi = rs->rsi;
+
+    _context.rsp = rs->rsp;
+    _context.rbp = rs->rbp;
+    
+    _context.rax = rs->rax;
+    _context.rbx = rs->rbx;
+    _context.rcx = rs->rcx;
+    _context.rdx = rs->rdx;
+
+    _context.r8 = rs->r8;
+    _context.r9 = rs->r9;
+    _context.r10 = rs->r10;
+    _context.r11 = rs->r11;
+    _context.r12 = rs->r12;
+    _context.r13 = rs->r13;
+    _context.r14 = rs->r14;
+
   }
 
   void SaveContext(size_t base,size_t stack) {
