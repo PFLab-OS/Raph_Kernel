@@ -280,6 +280,8 @@ sptr<Process> ProcessCtrl::ProcessSet::Init() {
 
   _current_process = p;
 
+  _set.Push(p);
+
   return p;
 }
 
