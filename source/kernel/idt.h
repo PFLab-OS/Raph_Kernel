@@ -41,7 +41,8 @@ typedef void (*ioint_callback)(void *arg);
 
 namespace C {
 extern "C" void handle_int(Regs *rs);
-}
+extern "C" void handle_int_finish_for_contextswitch(Regs *rs);
+}  // namespace C
 
 class Idt {
  public:
@@ -95,6 +96,7 @@ class Idt {
   } * *_callback;
   int *_handling_cnt;
   friend void C::handle_int(Regs *rs);
+  friend void C::handle_int_finish_for_contextswitch(Regs *rs);
   SpinLock _lock;
   bool _is_gen_initialized = false;
 };

@@ -26,6 +26,7 @@
 #include "hpet.h"
 #include <idt.h>
 #include <global.h>
+#include <process.h>
 
 bool Hpet::SetupSub() {
   _dt = acpi_ctrl->GetHPETDT();
@@ -168,5 +169,19 @@ void Hpet::Handle(Regs *rs) {
                        kRegTmrConfigCapBaseFlagFsbIntDel) != 0;
   if (!fsb_delivery) {
     this->_reg[0x20 / sizeof(uint64_t)] |= 1;
+  }
+
+  sptr<Process> p = process_ctrl->GetCurrentExecProcess(cpu_ctrl->GetCpuId());
+  if (!p.IsNull() && rs->cs == USER_CS) {
+    // Context Switch
+    ContextWrapper c;
+    c.SaveContext(rs);
+    p->SetContext(p, c);
+
+    // dirty technique
+    // TODO: refactoring
+    C::handle_int_finish_for_contextswitch(rs);
+
+    Process::ReturnToKernelJob(p);
   }
 }

@@ -67,6 +67,10 @@ extern "C" void handle_int(Regs *rs) {
   idt->_handling_cnt[cpuid]--;
   enable_interrupt(iflag);
 }
+extern "C" void handle_int_finish_for_contextswitch(Regs *rs) {
+  apic_ctrl->SendEoi(rs->n);
+  idt->_handling_cnt[cpu_ctrl->GetCpuId().GetRawId()]--;
+}
 }  // namespace C
 
 extern idt_callback vectors[256];
