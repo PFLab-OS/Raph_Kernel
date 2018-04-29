@@ -101,15 +101,18 @@ class ProcessCtrl {
   }
 
   void SetStatus(sptr<Process> process, ProcessStatus _status) {
-    assert(process->_status != ProcessStatus::kSleeping);
-    assert(process->_status != ProcessStatus::kZombie);
     Locker locker(_table_lock);
+    SetStatusSub(process, _status);
+  }
+
+  void SetStatusSub(sptr<Process> process, ProcessStatus _status) {
+    assert(process->_status != ProcessStatus::kZombie);
     process->_status = _status;
   }
+
   ProcessStatus GetStatus(sptr<Process> p) { return p->_status; }
 
   bool MakeProcessSleep(sptr<Process> process, sptr<Process> chan) {
-    assert(process->_status != ProcessStatus::kSleeping);
     assert(process->_status != ProcessStatus::kZombie);
     Locker locker(_table_lock);
     process->_chan = chan;
@@ -118,16 +121,16 @@ class ProcessCtrl {
   }
 
   void WakeupProcessSub(sptr<Process> chan) {
-    auto f = make_uptr(new Function1<bool, sptr<Process>, sptr<Process>>(
-        [](sptr<Process> cchan, sptr<Process> p) {
-          return (p->GetStatus() == ProcessStatus::kSleeping &&
-                  p->_chan == cchan);
-        },
-        chan));
     while (true) {
+      auto f = make_uptr(new Function1<bool, sptr<Process>, sptr<Process>>(
+          [](sptr<Process> cchan, sptr<Process> p) {
+            return (p->GetStatus() == ProcessStatus::kSleeping &&
+                    p->_chan == cchan);
+          },
+          chan));
       sptr<Process> pp = _process_set.Pop(f);
       if (pp.IsNull()) break;
-      SetStatus(pp, ProcessStatus::kRunnable);
+      SetStatusSub(pp, ProcessStatus::kRunnable);
       _process_set.Push(pp);
     }
   }
@@ -166,9 +169,7 @@ class ProcessCtrl {
   pid_t WaitProcess(sptr<Process> process) {
     auto f = make_uptr(new Function1<bool, sptr<Process>, sptr<Process>>(
         [](sptr<Process> parent, sptr<Process> p) {
-          return (p->_parent == parent && p->_status == ProcessStatus::kZombie)
-                     ? true
-                     : false;
+          return (p->_parent == parent && p->_status == ProcessStatus::kZombie);
         },
         process));
     sptr<Process> pp = _process_set.Pop(f);
@@ -183,10 +184,7 @@ class ProcessCtrl {
 
   sptr<Process> FindProcessFromPid(pid_t pid) {
     auto f = make_uptr(new Function1<bool, pid_t, sptr<Process>>(
-        [](pid_t id, sptr<Process> p) {
-          return (p->GetPid() == id) ? true : false;
-        },
-        pid));
+        [](pid_t id, sptr<Process> p) { return (p->GetPid() == id); }, pid));
     return _process_set.Pop(f);
   }
 
