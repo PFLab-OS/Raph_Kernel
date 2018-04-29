@@ -210,6 +210,8 @@ void Rtl8139::Rtl8139Ethernet::Transmit(void *) {
     SetStatus(LinkStatus::kUp);
   }
 
+  _master.WriteReg<uint16_t>(kRegIrMask, kIsrTok | kIsrRok);
+
   if (!(_tx_descriptor_status & (1 << entry))) {
     if (!_tx_buffered_blocked) {
       _tx_buffered.Block();
@@ -271,6 +273,10 @@ void Rtl8139::Rtl8139Ethernet::InterruptHandler(void *p) {
     }
   }
   if (status & kIsrTok) {
+    if (that->_eth._tx_buffered_blocked) {
+      that->_eth._tx_buffered.UnBlock();
+      that->_eth._tx_buffered_blocked = false;
+    }
     for (int i = 0; i < 4; i++) {
       uint32_t tx_status = that->ReadReg<uint32_t>(kRegTxStatus + i * 4);
       if (tx_status & (1 << 15)) {
@@ -312,18 +318,17 @@ void Rtl8139::Rtl8139Ethernet::Setup() {
   }
 
   _master.WriteReg<uint16_t>(kRegIrMask, 0);
-  // TODO:disable LegacyInt
 
-  _polling.Init(
-      make_uptr(new Function1<void, Rtl8139 *>(PollingHandler, &_master)));
-  _polling.Register(
-      cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kHighPerformance));
+  //_polling.Init(
+  //    make_uptr(new Function1<void, Rtl8139 *>(PollingHandler, &_master)));
+  //_polling.Register(
+  //    cpu_ctrl->RetainCpuIdForPurpose(CpuPurpose::kHighPerformance));
 
-  // TODO:enable interrupt
-  // _master.WriteReg<uint16_t>(kRegIrMask, kIsrTok | kIsrRok);
-  // _master.SetLegacyInterrupt(InterruptHandler,
-  //                            reinterpret_cast<void *>(&_master),
-  //                            Idt::EoiType::kIoapic);
+  // using Intrruption (default)
+  _master.WriteReg<uint16_t>(kRegIrMask, kIsrTok | kIsrRok);
+  _master.SetLegacyInterrupt(InterruptHandler,
+                             reinterpret_cast<void *>(&_master),
+                             Idt::EoiType::kIoapic);
 
   InitTxPacketBuffer();
   InitRxPacketBuffer();
